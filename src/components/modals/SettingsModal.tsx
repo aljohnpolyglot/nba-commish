@@ -1,10 +1,14 @@
 import React, { useState, useEffect } from 'react';
-import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User, ArrowLeftRight, Trophy, FolderOpen, PenLine, Palette, Activity, AlertTriangle } from 'lucide-react';
+import { X, Settings2, Zap, Cpu, Layers, Gamepad2, Bot, Database, HardDrive, Crown, User, ArrowLeftRight, Trophy, FolderOpen, PenLine, Activity, AlertTriangle } from 'lucide-react';
 import { clearImageCache } from '../../services/imageCache';
 import { SettingsManager, GameSettings } from '../../services/SettingsManager';
 import { SaveManager, hasFSAccess } from '../../services/SaveManager';
 import { useGame } from '../../store/GameContext';
 import { InflationEditor } from '../shared/InflationEditor';
+import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getTeamFullName } from '../../utils/teamNames';
+import { TeamSwitchModal } from './TeamSwitchModal';
+import { GodModeSimulationSettings } from './GodModeSimulationSettings';
 
 const GAME_MODE_OPTIONS = [
   { value: 1 as const, label: '⚡ Fast',     description: 'Lean feeds, quick turns.' },
@@ -12,7 +16,7 @@ const GAME_MODE_OPTIONS = [
   { value: 3 as const, label: '🧠 Best',     description: 'Full narrative, max detail.' },
 ];
 
-type Tab = 'ai' | 'gameplay' | 'performance' | 'gm' | 'storage' | 'ui';
+type Tab = 'ai' | 'gameplay' | 'god' | 'performance' | 'gm' | 'storage';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -29,6 +33,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   const [folderName, setFolderName] = useState<string | null>(null);
   const [persistentStorage, setPersistentStorage] = useState<boolean | null>(null);
   const [showFastSimWarning, setShowFastSimWarning] = useState(false);
+  const [showTeamSwitch, setShowTeamSwitch] = useState(false);
+  const currentManagedTeam = state.userTeamId != null
+    ? resolveAnyTeam(Number(state.userTeamId), state.teams ?? [], state.nonNBATeams ?? [])
+    : null;
 
   useEffect(() => {
     if (isOpen) {
@@ -39,6 +47,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
     }
   }, [isOpen, isGameLoaded]);
 
+  useEffect(() => {
+    if (activeTab === 'god' && state.godModeEnabled !== true) setActiveTab('gameplay');
+  }, [activeTab, state.godModeEnabled]);
+
   const handleSave = () => {
     SettingsManager.saveSettings(settings);
     onClose();
@@ -47,13 +59,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
   if (!isOpen) return null;
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [
-    // Storage & UI are always available — even before a game is loaded
+    // Storage is always available — even before a game is loaded
     { id: 'storage',     label: 'Storage',      icon: <HardDrive size={14} /> },
-    { id: 'ui',          label: 'UI',           icon: <Palette size={14} /> },
     // Gameplay tabs only when a game is loaded
     ...(isGameLoaded ? [
       { id: 'ai' as const,          label: 'AI',          icon: <Bot size={14} /> },
       { id: 'gameplay' as const,    label: 'Gameplay',    icon: <Gamepad2 size={14} /> },
+      ...(state.godModeEnabled === true
+        ? [{ id: 'god' as const, label: 'God Mode', icon: <Zap size={14} /> }]
+        : []),
       ...(isGM ? [{ id: 'gm' as const, label: 'GM Mode', icon: <User size={14} /> }] : []),
       { id: 'performance' as const, label: 'Performance', icon: <Zap size={14} /> },
     ] : []),
@@ -201,62 +215,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </>
           )}
 
-          {/* ── UI ─────────────────────────────────────────────────────── */}
-          {activeTab === 'ui' && (
-            <div className="space-y-4">
-              <div>
-                <label className="text-sm font-bold text-white flex items-center gap-2 mb-1">
-                  <Palette size={16} className="text-indigo-400" />
-                  Player Hover Card Style
-                </label>
-                <p className="text-xs text-slate-400 mb-4">
-                  Choose what shows when you hover a player name (or tap the 📊 icon on mobile).
-                </p>
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                  {([
-                    {
-                      value: 'k2' as const,
-                      label: 'K2',
-                      desc: 'K2-converted category scores (OS, AT, IS, PL, DF, RB) + full stats.',
-                      preview: [['OS','79'],['AT','82'],['IS','71'],['PL','68'],['DF','74'],['RB','76']],
-                    },
-                    {
-                      value: 'simple' as const,
-                      label: 'BBGM',
-                      desc: 'Raw BBGM sub-ratings (Hgt, Ins, Spd, Dnk…) + full stats.',
-                      preview: [['Hgt','77'],['Ins','44'],['Spd','58'],['Dnk','86'],['3Pt','56'],['oIQ','47']],
-                    },
-                  ] as const).map(opt => {
-                    const isSelected = (settings.tooltipStyle ?? 'k2') === opt.value;
-                    return (
-                      <button
-                        key={opt.value}
-                        onClick={() => setSettings({ ...settings, tooltipStyle: opt.value })}
-                        className={`flex flex-col gap-2 p-3 rounded-xl border text-left transition-all ${
-                          isSelected
-                            ? 'border-indigo-500 bg-indigo-500/10 text-white'
-                            : 'border-slate-700 bg-slate-800/50 text-slate-400 hover:border-slate-600 hover:text-slate-300'
-                        }`}
-                      >
-                        <span className="text-xs font-black">{opt.label}{opt.value === 'k2' && <span className="ml-1.5 text-[8px] font-black text-indigo-400 uppercase tracking-widest">Default</span>}</span>
-                        {/* Mini preview */}
-                        <div className="bg-slate-950 border border-slate-700/60 rounded-lg p-1.5 w-full">
-                          {opt.preview.map(([k, v]) => (
-                            <div key={k} className="flex justify-between text-[9px] tabular-nums">
-                              <span className="text-slate-500">{k}</span>
-                              <span className="text-slate-300 font-bold">{v}</span>
-                            </div>
-                          ))}
-                        </div>
-                        <span className="text-[10px] text-slate-500 leading-tight">{opt.desc}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
           {/* ── AI & Narrative ─────────────────────────────────────────── */}
           {activeTab === 'ai' && (
             <>
@@ -282,31 +240,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   }`} />
                 </button>
               </div>
-
-              {/* Executive Outcome panel */}
-              {settings.enableLLM && (
-                <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
-                  <div className="space-y-1">
-                    <label className="text-sm font-bold text-white flex items-center gap-2">
-                      <Cpu size={16} className={settings.showExecutiveOutcome ? 'text-amber-400' : 'text-slate-500'} />
-                      Executive Outcome Panel
-                    </label>
-                    <p className="text-xs text-slate-400">
-                      Shows the AI narrative summary after each simulated day. Turn off to skip it entirely.
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => setSettings({ ...settings, showExecutiveOutcome: !(settings.showExecutiveOutcome ?? true) })}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                      (settings.showExecutiveOutcome ?? true) ? 'bg-amber-500' : 'bg-slate-600'
-                    }`}
-                  >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                      (settings.showExecutiveOutcome ?? true) ? 'translate-x-6' : 'translate-x-1'
-                    }`} />
-                  </button>
-                </div>
-              )}
 
               {/* Game Mode */}
               {settings.enableLLM && (
@@ -405,6 +338,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 </div>
               </div>
 
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-slate-700/50 bg-slate-800/50 p-4">
+                <div className="min-w-0 space-y-1">
+                  <label className="flex items-center gap-2 text-sm font-bold text-white">
+                    <Layers size={16} className="text-violet-400" />
+                    League Labels
+                  </label>
+                  <p className="text-xs leading-relaxed text-slate-400">
+                    Show familiar names such as NBA and LBA, or country/division codes such as USA-1 and ITA-1.
+                  </p>
+                </div>
+                <div className="flex shrink-0 rounded-lg bg-slate-900/60 p-1" role="group" aria-label="League label style">
+                  {(['name', 'code'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => setSettings({ ...settings, leagueDisplayMode: mode })}
+                      aria-pressed={settings.leagueDisplayMode === mode}
+                      className={`rounded px-3 py-1 text-xs font-black uppercase tracking-wider transition-all ${
+                        settings.leagueDisplayMode === mode
+                          ? 'bg-violet-500 text-white'
+                          : 'text-slate-400 hover:text-white'
+                      }`}
+                    >
+                      {mode === 'name' ? 'Names' : 'Codes'}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Game Mode Toggle */}
               <div className="flex items-center justify-between p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
                 <div className="space-y-1">
@@ -419,16 +381,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                 <button
                   onClick={() => {
                     const newMode = isGM ? 'commissioner' : 'gm';
-                    // Preserve userTeamId across switches so flipping GM → Commissioner → GM lands you back on your franchise
-                    // instead of the alphabetically-first team. Mode-aware consumers (AI handlers, helpers) gate on gameMode,
-                    // so leaving userTeamId set during commissioner mode is safe.
-                    const nextUserTeamId = newMode === 'gm'
-                      ? (state.userTeamId ?? state.teams[0]?.id)
-                      : state.userTeamId;
                     dispatchAction({ type: 'UPDATE_STATE', payload: {
                       gameMode: newMode,
-                      userTeamId: nextUserTeamId,
+                      userTeamId: state.userTeamId,
                     }} as any);
+                    if (newMode === 'gm' && !currentManagedTeam) {
+                      setShowTeamSwitch(true);
+                    }
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-black uppercase tracking-wider transition-all ${
                     isGM
@@ -437,6 +396,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                   }`}
                 >
                   Switch to {isGM ? 'Commissioner' : 'GM'}
+                </button>
+              </div>
+
+              <div className="flex items-center justify-between gap-4 rounded-xl border border-cyan-500/30 bg-cyan-500/5 p-4">
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 text-sm font-bold text-white">
+                    <Zap size={16} className={state.godModeEnabled ? 'text-cyan-300' : 'text-slate-500'} />
+                    God Mode
+                  </label>
+                  <p className="text-xs leading-relaxed text-slate-400">
+                    Reveals Heal Player, Edit Ratings, Player Creator, Hypnotize, and future power controls.
+                  </p>
+                </div>
+                <button
+                  onClick={() => dispatchAction({
+                    type: 'UPDATE_STATE',
+                    payload: { godModeEnabled: state.godModeEnabled !== true },
+                  } as any)}
+                  className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors ${
+                    state.godModeEnabled ? 'bg-cyan-500' : 'bg-slate-600'
+                  }`}
+                  aria-pressed={state.godModeEnabled === true}
+                  aria-label="Toggle God Mode"
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                    state.godModeEnabled ? 'translate-x-6' : 'translate-x-1'
+                  }`} />
                 </button>
               </div>
 
@@ -507,6 +493,39 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
                     settings.allowAIFreeAgency ? 'translate-x-6' : 'translate-x-1'
                   }`} />
                 </button>
+              </div>
+
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    <Activity size={16} className="text-cyan-400" />
+                    Real Player Determinism
+                  </label>
+                  <span className="text-xs font-mono text-cyan-400 bg-cyan-500/10 px-2 py-1 rounded">
+                    {(() => {
+                      const d = settings.realPlayerDeterminism ?? 0;
+                      if (d >= 90) return 'Real-life';
+                      if (d >= 65) return 'Mostly Real';
+                      if (d >= 35) return 'Mixed';
+                      if (d >= 10) return 'What-if';
+                      return 'Normal';
+                    })()}
+                  </span>
+                </div>
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  0% uses normal player development. 100% anchors historical real players to their real rating curve when that season has data. Anything between blends both.
+                </p>
+                <input
+                  type="range" min="0" max="100" step="5"
+                  value={settings.realPlayerDeterminism ?? 0}
+                  onChange={e => setSettings({ ...settings, realPlayerDeterminism: parseInt(e.target.value) })}
+                  className="w-full accent-cyan-500"
+                />
+                <div className="flex justify-between text-[10px] text-slate-500 font-medium uppercase tracking-wider">
+                  <span>Normal (0)</span>
+                  <span>Blend</span>
+                  <span>Real Curve</span>
+                </div>
               </div>
 
               {/* AI Trade Frequency */}
@@ -601,9 +620,37 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
             </>
           )}
 
+          {activeTab === 'god' && state.godModeEnabled === true && (
+            <GodModeSimulationSettings
+              rules={state.leagueStats}
+              onPatch={patch => dispatchAction({
+                type: 'UPDATE_STATE',
+                payload: { leagueStats: { ...state.leagueStats, ...patch } },
+              } as any)}
+            />
+          )}
+
           {/* ── GM Mode ────────────────────────────────────────────────── */}
           {activeTab === 'gm' && isGM && (
             <>
+              <div className="flex items-center justify-between gap-3 p-4 bg-slate-800/50 rounded-xl border border-slate-700/50">
+                <div className="space-y-1">
+                  <label className="text-sm font-bold text-white flex items-center gap-2">
+                    <User size={16} className="text-emerald-400" />
+                    Managed Team
+                  </label>
+                  <p className="text-xs text-slate-400">
+                    {currentManagedTeam ? getTeamFullName(currentManagedTeam) : 'No team selected.'}
+                  </p>
+                </div>
+                <button
+                  onClick={() => setShowTeamSwitch(true)}
+                  className="shrink-0 rounded-lg bg-emerald-600 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white transition-colors hover:bg-emerald-500"
+                >
+                  {currentManagedTeam ? 'Switch Teams' : 'Choose Team'}
+                </button>
+              </div>
+
               {/* Trade Difficulty */}
               <div className="space-y-3">
                 <div className="flex justify-between items-center">
@@ -753,6 +800,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose })
           </div>
         </div>
       )}
+
+      <TeamSwitchModal
+        isOpen={showTeamSwitch}
+        onClose={() => setShowTeamSwitch(false)}
+        reason={currentManagedTeam ? 'manual' : 'missing'}
+      />
     </div>
   );
 };

@@ -1,3 +1,5 @@
+import { getLastAttendedSchool } from '../../../utils/educationUtils';
+
 // ─────────────────────────────────────────────────────────────────────────────
 // nonNBACache.ts
 // Lazy-fetches stats + profile data from the three league gists and stores them
@@ -94,9 +96,7 @@ function buildFlatEntry(item: any): NonNBAGistEntry {
   }
 
   const c = item.nationality || undefined;
-  const s = (item.pre_draft && !['N/A', '-', ''].includes(item.pre_draft))
-    ? item.pre_draft.replace(/\s*\([^)]*\)\s*$/, '').trim()  // strip class suffix e.g. "(So)"
-    : undefined;
+  const s = getLastAttendedSchool(item.pre_draft) ?? undefined;
 
   let b: string | undefined;
   let a: string | undefined;
@@ -176,9 +176,8 @@ function buildBBGMStyleEntry(player: any): NonNBAGistEntry {
 
   // ── College / School ─────────────────────────────────────────────────────
   let s: string | undefined;
-  if (player.college && !['N/A', '-', ''].includes(player.college)) s = player.college;
-  else if (player.pre_draft && !['N/A', '-', ''].includes(player.pre_draft))
-    s = String(player.pre_draft).replace(/\s*\([^)]*\)\s*$/, '').trim();
+  if (player.college) s = getLastAttendedSchool(player.college) ?? undefined;
+  else if (player.pre_draft) s = getLastAttendedSchool(player.pre_draft) ?? undefined;
 
   // ── Birthdate / Age ───────────────────────────────────────────────────────
   let b: string | undefined;
@@ -189,7 +188,9 @@ function buildBBGMStyleEntry(player: any): NonNBAGistEntry {
   // ── Draft ─────────────────────────────────────────────────────────────────
   let d: string | undefined;
   if (player.draft?.year) {
-    d = `${player.draft.year} Round ${player.draft.round ?? '?'}, Pick ${player.draft.pick ?? '?'}`;
+    d = Number(player.draft.round) > 0 && Number(player.draft.pick) > 0
+      ? `${player.draft.year} Round ${player.draft.round}, Pick ${player.draft.pick}`
+      : `${player.draft.year} Undrafted`;
   } else if (player.draft && !['N/A', '-', ''].includes(String(player.draft))) {
     d = String(player.draft);
   }

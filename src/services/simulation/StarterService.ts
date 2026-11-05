@@ -34,7 +34,14 @@ export class StarterService {
     return 'Combo';
   }
 
-  static getProjectedStarters(team: Team, players: Player[], season: number = 2025, overridePlayers?: Player[], modern: boolean = true): Player[] {
+  static getProjectedStarters(
+    team: Team,
+    players: Player[],
+    season: number = 2025,
+    overridePlayers?: Player[],
+    modern: boolean = true,
+    playersOnCourt: number = 5,
+  ): Player[] {
     const teamPlayers = overridePlayers || players.filter(
       p => p.tid === team.id && isOnRoster(p) && (!p.injury || p.injury.gamesRemaining <= 0)
     );
@@ -44,14 +51,10 @@ export class StarterService {
     const Rb = (p: Player, k: string) => this.getScaledRating(p, k, season);
     const getK2 = (p: Player) => convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season), this.getScaledRating(p, 'tp', season));
 
-    // Sort ALL players by K2 OVR descending — top 5 are always starters regardless of role
     const sortedByOvr = [...teamPlayers].sort((a, b) => getK2(b) - getK2(a));
-
-    // Take top 5 by OVR — this guarantees the best players start (no Tatum on bench)
-    const lineup: Player[] = sortedByOvr.slice(0, 5);
-
-    // If fewer than 5 available, return what we have
-    if (lineup.length <= 5 && teamPlayers.length <= 5) return lineup;
+    const starterCount = Math.max(1, Math.min(playersOnCourt, teamPlayers.length));
+    const lineup: Player[] = sortedByOvr.slice(0, starterCount);
+    if (teamPlayers.length <= starterCount) return lineup;
 
     // Role classification is still used for positional assignment downstream,
     // but NEVER for starter selection. The old role-first slot filling was the bug.
@@ -74,8 +77,8 @@ export class StarterService {
         ];
 
     // Positional sanity check: ensure at least one big (hgt >= 62) is in the lineup.
-    // If top 5 by OVR are all guards/wings, swap the weakest for the best available big.
-    if (!lineup.some(p => Rb(p, 'hgt') >= 62)) {
+    // If the projected unit is all guards/wings, swap the weakest for the best available big.
+    if (starterCount >= 3 && !lineup.some(p => Rb(p, 'hgt') >= 62)) {
       const bestBig = sortedByOvr.find(p => !lineup.includes(p) && Rb(p, 'hgt') >= 62);
       if (bestBig) {
         // Swap out the lowest-OVR starter for the big
@@ -91,19 +94,19 @@ export class StarterService {
     // step-down minutes. Display-layer sorting (GameplanTab/IdealRotationTab
     // call sortByPositionSlot at render time) keeps the UI showing PG→SG→...→C
     // while the minutes math stays anchored to OVR.
-    return lineup.slice(0, 5);
+    return lineup.slice(0, starterCount);
   }
 
   /**
-   * Reorder 5 players into PG→SG→SF→PF→C slot order.
+   * Reorder a projected unit from smallest creator through the frontcourt.
    *
    * Strategy:
    *   1. If every player has a specific pos (PG/SG/SF/PF/C), greedy-assign to
    *      slots by a slot-preference score; ties broken by hgt rating.
    *   2. If positions are ambiguous ('G'/'F'/'GF'/'FC'/empty) or only a subset
    *      have specific tags, fall back to: highest pss rating = PG, then the
-   *      remaining four sorted by hgt rating ASCENDING (shortest = SG, tallest
-   *      = C). Critical: uses the hgt RATING (0-100 attribute), not the bio
+   *      remaining players sorted by hgt rating ASCENDING. Critical: uses the
+   *      hgt RATING (0-100 attribute), not the bio
    *      inches — external-league players often have a good hgt attribute but
    *      no proper pos tag from the scrape.
    */
@@ -159,14 +162,25 @@ export class StarterService {
     return [pg, ...rest];
   }
 
-  static getRotation(team: Team, players: Player[], lead: number = 0, season: number = 2025, overridePlayers?: Player[], modern: boolean = true, depthOverride?: number): Player[] {
+  static getRotation(
+    team: Team,
+    players: Player[],
+    lead: number = 0,
+    season: number = 2025,
+    overridePlayers?: Player[],
+    modern: boolean = true,
+    depthOverride?: number,
+    playersOnCourt: number = 5,
+  ): Player[] {
     const teamPlayers = overridePlayers || players.filter(
       p => p.tid === team.id && isOnRoster(p) && (!p.injury || p.injury.gamesRemaining <= 0)
     );
     if (teamPlayers.length === 0) return [];
 
-    const finalStarters = this.getProjectedStarters(team, players, season, teamPlayers, modern);
+    const starterCount = Math.max(1, Math.min(playersOnCourt, teamPlayers.length));
+    const finalStarters = this.getProjectedStarters(team, players, season, teamPlayers, modern, starterCount);
     const Rb = (p: Player, k: string) => this.getScaledRating(p, k, season);
+    const getK2 = (p: Player) => convertTo2KRating(p.overallRating, this.getScaledRating(p, 'hgt', season), this.getScaledRating(p, 'tp', season));
 
     // Bench sort: PER-adjusted K2 so high-OVR/low-PER stat-padders don't
     // crowd out genuine contributors. Blend: up to ±2 K2 pts from PER delta.
@@ -215,15 +229,30 @@ export class StarterService {
     // rotationDepthOverride=12 for All-Star) takes priority over the legacy blowout
     // scale. Without this, an ASG with 12 roster spots collapses to a 10-man rotation
     // because rotationDepth is hardcoded to 10 before the blowout adjustments kick in.
-    let rotationDepth = 10;
-    if      (lead > 25) rotationDepth = 13;
-    else if (lead > 15) rotationDepth = 12;
-    else if (lead > 8)  rotationDepth = 11;
+    let rotationDepth = Math.max(10, starterCount + 5);
+    if      (lead > 25) rotationDepth = Math.max(13, starterCount + 5);
+    else if (lead > 15) rotationDepth = Math.max(12, starterCount + 4);
+    else if (lead > 8)  rotationDepth = Math.max(11, starterCount + 3);
     if (depthOverride !== undefined && depthOverride > 0) rotationDepth = depthOverride;
 
-    return [
+    const rotation = [
       ...finalStarters,
-      ...benchLineup.slice(0, Math.min(rotationDepth - 5, benchLineup.length)),
+      ...benchLineup.slice(0, Math.min(rotationDepth - starterCount, benchLineup.length)),
     ];
+
+    const mustInclude = [...teamPlayers]
+      .sort((a, b) => getK2(b) - getK2(a))
+      .slice(0, Math.min(rotationDepth, teamPlayers.length));
+    for (const player of mustInclude) {
+      if (rotation.includes(player)) continue;
+      const replacement = rotation
+        .map((candidate, index) => ({ candidate, index, rating: getK2(candidate) }))
+        .filter(row => row.index >= starterCount)
+        .sort((a, b) => a.rating - b.rating)[0];
+      if (!replacement || getK2(player) <= replacement.rating) continue;
+      rotation[replacement.index] = player;
+    }
+
+    return rotation;
   }
 }

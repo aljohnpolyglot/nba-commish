@@ -6,4 +6,4 @@ export { generateSocialThreadPrompt } from "./prompts/social";
 export { generateRuleDetailsPrompt, generateAwardDetailsPrompt } from "./prompts/admin";
 export { generateInitialStoryPrompt, generateReactionPrompt } from "./prompts/content";
 export { generateAdvanceDayPrompt, generateLeaguePulsePrompt } from "./prompts/simulation";
-export { generateChatPrompt } from "./prompts/chat";
+export { generateChatPrompt, sanitizeChatReply } from "./prompts/chat";

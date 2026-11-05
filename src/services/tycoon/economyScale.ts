@@ -2,6 +2,19 @@ import type { TycoonState, TycoonTier } from '../../types/tycoon';
 
 export type StaffMarket = 'nba' | 'euro' | 'pba';
 
+export function resolveStaffMarketForTeam(team: {
+  tid?: unknown;
+  id?: unknown;
+  league?: unknown;
+  conference?: unknown;
+} | null | undefined): StaffMarket {
+  const tid = Number(team?.tid ?? team?.id ?? -1);
+  const league = String(team?.league ?? team?.conference ?? '').trim().toLowerCase();
+  if (league === 'pba' || (tid >= 2000 && tid < 3000)) return 'pba';
+  if (tid >= 0 && tid < 100) return 'nba';
+  return 'euro';
+}
+
 const NBA_ROLE_MARKET_PROFILES: Record<string, { base: number; floor: number; ceiling: number }> = {
   'Head Coach': { base: 7_500_000, floor: 2_500_000, ceiling: 22_000_000 },
   'Assistant Coach': { base: 1_450_000, floor: 500_000, ceiling: 4_200_000 },
@@ -20,6 +33,8 @@ const EURO_ROLE_MARKET_PROFILES: Record<string, { base: number; floor: number; c
   'Player Development Coach': { base: 230_000, floor: 115_000, ceiling: 600_000 },
   'Chief Scout': { base: 250_000, floor: 125_000, ceiling: 650_000 },
   'Head of Analytics': { base: 210_000, floor: 100_000, ceiling: 550_000 },
+  'Head of Academy': { base: 235_000, floor: 115_000, ceiling: 620_000 },
+  'Regional Scout': { base: 165_000, floor: 80_000, ceiling: 420_000 },
 };
 
 const PBA_ROLE_MARKET_PROFILES: Record<string, { base: number; floor: number; ceiling: number }> = {
@@ -36,12 +51,17 @@ export const EURO_STAFF_PAYROLL_SHARE = 0.22;
 
 export type StaffMarketValueContext = {
   market?: StaffMarket;
+  economyScale?: number;
   externalSalary?: number | null;
   yearsExperience?: number | null;
   yearsWithTeam?: number | null;
 };
 
 export const ACADEMY_COST_BY_TIER = [0, 250_000, 750_000, 1_500_000, 3_000_000, 6_000_000] as const;
+export const ACADEMY_BUDGET_MIN_EUR = 0;
+export const ACADEMY_BUDGET_MAX_EUR = 6_000_000;
+export const ACADEMY_BUDGET_STEP_EUR = 250_000;
+export const ACADEMY_REGIONAL_SCOUTING_SHARE = 0.2;
 
 function baseRole(role: string): string {
   return role.replace(/ \d+$/, '');
@@ -69,8 +89,9 @@ export function getStaffRoleBaseSalary(tier: TycoonTier | undefined, role: strin
 }
 
 export function getStaffMarketValue(role: string, rating?: number, context: StaffMarketValueContext = {}): number {
+  const economyScale = Math.max(0.05, Number.isFinite(context.economyScale) ? Number(context.economyScale) : 1);
   if (Number.isFinite(context.externalSalary ?? NaN) && (context.externalSalary ?? 0) > 0) {
-    return roundSalary(context.externalSalary!);
+    return roundSalary(context.externalSalary! * economyScale);
   }
   const profiles = getRoleMarketProfiles(context.market ?? 'nba');
   const profile = profiles[baseRole(role)] ?? profiles['Assistant Coach'];
@@ -81,7 +102,7 @@ export function getStaffMarketValue(role: string, rating?: number, context: Staf
   const experienceMult = 0.9 + (yearsExperience / 35) * 0.38;
   const tenureMult = 1 + Math.min(0.12, yearsWithTeam * 0.0125);
   const raw = profile.base * ratingMult * experienceMult * tenureMult;
-  return roundSalary(Math.max(profile.floor, Math.min(profile.ceiling, raw)));
+  return roundSalary(Math.max(profile.floor, Math.min(profile.ceiling, raw)) * economyScale);
 }
 
 export function getStaffMarketSalary(
@@ -109,12 +130,13 @@ export function normalizeStaffSalary(
   return current;
 }
 
-export function sumStaffPayrollEUR(
-  tycoon?: Pick<TycoonState, 'staffMembers' | 'tier'>,
+export function sumStaffPayroll(
+  tycoon?: Pick<TycoonState, 'staffMembers' | 'tier' | 'currentEconomyIndex'>,
   market: StaffMarket = 'nba',
 ): number {
+  const economyScale = market === 'nba' ? 1 : Math.max(0.05, tycoon?.currentEconomyIndex ?? 1);
   return Math.round((tycoon?.staffMembers ?? []).reduce((sum, member) => {
-    return sum + normalizeStaffSalary(tycoon?.tier, member.role, member.salary, member.rating, { market });
+    return sum + normalizeStaffSalary(tycoon?.tier, member.role, member.salary, member.rating, { market, economyScale });
   }, 0));
 }
 
@@ -129,7 +151,27 @@ export function defaultAcademyBudgetForTier(tier: TycoonTier | undefined): numbe
   }
 }
 
-export function academyBudgetCostEUR(value: number | undefined, tier?: TycoonTier): number {
-  const budget = value ?? defaultAcademyBudgetForTier(tier);
-  return ACADEMY_COST_BY_TIER[Math.max(0, Math.min(5, Math.round(budget)))] ?? 0;
+export function defaultAcademyBudgetEURForTier(tier: TycoonTier | undefined, economyIndex = 1): number {
+  return Math.round((ACADEMY_COST_BY_TIER[defaultAcademyBudgetForTier(tier)] ?? 0) * Math.max(0.05, economyIndex));
+}
+
+export function normalizeAcademyBudgetEUR(value: number | undefined, tier?: TycoonTier, economyIndex = 1): number {
+  if (!Number.isFinite(value)) return defaultAcademyBudgetEURForTier(tier, economyIndex);
+  if ((value ?? 0) >= 0 && (value ?? 0) <= 5) {
+    return Math.round((ACADEMY_COST_BY_TIER[Math.round(value ?? 0)] ?? 0) * Math.max(0.05, economyIndex));
+  }
+  return Math.max(0, Math.round(value ?? 0));
+}
+
+export function getAcademyBudgetStrength(value: number | undefined, tier?: TycoonTier, economyIndex = 1): number {
+  const normalized = normalizeAcademyBudgetEUR(value, tier, economyIndex) / Math.max(0.05, economyIndex);
+  return Math.max(0, Math.min(1, Math.log1p(normalized / ACADEMY_BUDGET_STEP_EUR) / Math.log1p(ACADEMY_BUDGET_MAX_EUR / ACADEMY_BUDGET_STEP_EUR)));
+}
+
+export function academyBudgetCostEUR(value: number | undefined, tier?: TycoonTier, economyIndex = 1): number {
+  return normalizeAcademyBudgetEUR(value, tier, economyIndex);
+}
+
+export function getAcademyRegionalScoutingBudgetEUR(value: number | undefined, tier?: TycoonTier, economyIndex = 1): number {
+  return Math.round(normalizeAcademyBudgetEUR(value, tier, economyIndex) * ACADEMY_REGIONAL_SCOUTING_SHARE);
 }

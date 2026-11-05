@@ -3,13 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Calendar } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import StandingsTable from '../StandingsTable';
-import ContactModal from '../../ContactModal';
 import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { PlayerActionsModal } from './PlayerActionsModal';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
-import { PlayerBioView } from './PlayerBioView';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
-import type { NBAPlayer, Contact, Game } from '../../../types';
+import type { NBAPlayer, Contact, Game, ResolvedGamePresentation } from '../../../types';
 import { TeamDetailView } from './TeamDetailView';
 import { normalizeDate, getSeasonPhase } from '../../../utils/helpers';
 import { GameSimulator } from '../../../services/simulation/GameSimulator';
@@ -25,20 +23,28 @@ import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { PBA_COMPETITIONS } from '../../../data/templates/philippines/competitions';
+import { isExternalLeaguePlayer } from '../../../utils/playerLeagueScope';
 import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
 import { selectCountedPbaRegularBoxScores } from '../../../services/pba/competitionGames';
+import { didHomeTeamWin } from '../../../utils/gameOutcome';
+import { findBoxScoreForScheduledGame } from '../../../utils/boxScoreLookup';
+import { syncNbaTeamRecordsFromSchedule } from '../../../utils/nbaOfficialRecords';
+import { useLeagueLabels } from '../../../utils/leagueLabels';
+import { getLeagueConferenceGroups } from '../../../utils/leagueStructure';
+import { formatGameDateShort, parseGameDate } from '../../../utils/dateUtils';
+import { formatLeagueSeasonLabel, getLeagueScheduleReleaseDate } from '../../../services/leagueCalendar';
 
 export const NBACentral: React.FC = () => {
-  const { state, dispatchAction, selectedTeamId, setSelectedTeamId, healPlayer } = useGame();
+  const { state, dispatchAction, selectedTeamId, setSelectedTeamId, healPlayer, navigateToPlayer } = useGame();
+  const labels = useLeagueLabels();
   const rosterGate = useRosterComplianceGate();
   const draftGate = useDraftEventGate();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPlayerForActions, setSelectedPlayerForActions] = useState<NBAPlayer | null>(null);
-  const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
   const [viewingRatingsPlayer, setViewingRatingsPlayer] = useState<NBAPlayer | null>(null);
   const [selectedPlayerContact, setSelectedPlayerContact] = useState<Contact | null>(null);
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
-  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'waive' | 'club' | 'endorse_hof' | 'fire'>('general');
+  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'movie' | 'give_money' | 'sabotage' | 'waive' | 'club' | 'endorse_hof' | 'fire'>('general');
   const personSelectorTitle = '';
 
   const quick = usePlayerQuickActions();
@@ -48,6 +54,7 @@ export const NBACentral: React.FC = () => {
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
   const [precomputedResult, setPrecomputedResult] = useState<any | null>(null);
+  const [watchPresentation, setWatchPresentation] = useState<ResolvedGamePresentation | null>(null);
   const pbaMode = state.leagueStats?.uiMode === 'pba_isolated';
 
   const pbaSpec = useMemo(() => {
@@ -71,7 +78,7 @@ export const NBACentral: React.FC = () => {
       const awayTid = (box as any).awayTeamId;
       const home = records.get(homeTid) ?? { wins: 0, losses: 0 };
       const away = records.get(awayTid) ?? { wins: 0, losses: 0 };
-      const homeWon = (box as any).homeScore > (box as any).awayScore;
+      const homeWon = didHomeTeamWin(box as any);
       home.wins += homeWon ? 1 : 0;
       home.losses += homeWon ? 0 : 1;
       away.wins += homeWon ? 0 : 1;
@@ -83,7 +90,15 @@ export const NBACentral: React.FC = () => {
   }, [pbaMode, state.nonNBATeams, state.boxScores, state.leagueStats, pbaSpec.id]);
 
   const centralTeams = useMemo(() => {
-    if (!pbaMode) return state.teams;
+    if (!pbaMode) {
+      if (state.leagueStats?.uiMode === 'euro_isolated') return state.teams;
+      return syncNbaTeamRecordsFromSchedule(
+        state.teams,
+        state.schedule,
+        state.leagueStats?.year ?? new Date().getFullYear(),
+        state.leagueStats?.gamesPerSeason ?? 82,
+      );
+    }
     return (state.nonNBATeams ?? [])
       .filter((team: any) => team.league === 'PBA')
       .map((team: any) => {
@@ -104,12 +119,14 @@ export const NBACentral: React.FC = () => {
           tycoon: team.tycoon ?? (wrapped as any)?.tycoon,
         };
       }) as any;
-  }, [pbaMode, state.teams, state.nonNBATeams, pbaRecords]);
+  }, [pbaMode, state.teams, state.nonNBATeams, state.schedule, state.leagueStats?.gamesPerSeason, state.leagueStats?.uiMode, state.leagueStats?.year, pbaRecords]);
 
   const centralPlayers = useMemo(() => {
-    if (!pbaMode) return state.players;
+    if (!pbaMode) return state.leagueType === 'fictional'
+      ? state.players.filter(player => !isExternalLeaguePlayer(player))
+      : state.players;
     return state.players.filter(player => player.tid >= 2000 && player.tid < 2100);
-  }, [pbaMode, state.players]);
+  }, [pbaMode, state.leagueType, state.players]);
 
   const playerService = useMemo(() => new PlayerService(centralPlayers), [centralPlayers]);
   const teamService = useMemo(() => new TeamService(centralTeams), [centralTeams]);
@@ -123,13 +140,15 @@ export const NBACentral: React.FC = () => {
     });
   }, [teamService, searchTerm]);
 
-  const eastTeams = filteredTeams.filter(t => t.conference === 'East');
-  const westTeams = filteredTeams.filter(t => t.conference === 'West');
+  const conferenceGroups = useMemo(
+    () => getLeagueConferenceGroups(filteredTeams, state.leagueStats),
+    [filteredTeams, state.leagueStats],
+  );
 
   const selectedTeam = selectedTeamId !== null
     ? resolveAnyTeam(selectedTeamId, state.teams, state.nonNBATeams ?? []) ?? undefined
     : undefined;
-  const seasonPhase = useMemo(() => getSeasonPhase(state), [state.schedule, state.date, state.teams]);
+  const seasonPhase = useMemo(() => getSeasonPhase(state), [state.schedule, state.date, state.teams, state.leagueStats]);
   const centralPhase = useMemo(() => {
     if (!pbaMode) return seasonPhase;
     const phase = (state.leagueStats as any)?.pbaConferencePhase;
@@ -137,12 +156,23 @@ export const NBACentral: React.FC = () => {
     if (phase === 'offseason' || phase === 'complete') return 'offseason';
     return 'regular';
   }, [pbaMode, seasonPhase, state.leagueStats]);
-  const isScheduleRevealed = pbaMode || seasonPhase !== 'preseason';
+  const scheduleSeason = state.leagueStats?.year ?? new Date().getFullYear();
+  const scheduleReleaseDate = useMemo(
+    () => getLeagueScheduleReleaseDate(scheduleSeason, state.leagueStats),
+    [scheduleSeason, state.leagueStats],
+  );
+  const scheduleReleaseLabel = formatGameDateShort(scheduleReleaseDate);
+  const scheduleSeasonLabel = formatLeagueSeasonLabel(scheduleSeason, state.leagueStats);
+  const isScheduleRevealed = pbaMode || parseGameDate(state.date).getTime() >= scheduleReleaseDate.getTime();
 
   const todayGames = useMemo(() => {
     if (!isScheduleRevealed) return [];
     const normalizedCurrent = normalizeDate(state.date);
-    if (!pbaMode) return state.schedule.filter(g => normalizeDate(g.date) === normalizedCurrent && !g.played);
+    if (!pbaMode) return state.schedule.filter(g =>
+      normalizeDate(g.date) === normalizedCurrent
+      && !g.played
+      && !g.isExhibition
+    );
     const teamIds = new Set(centralTeams.map(team => team.id));
     return state.schedule.filter(g =>
       normalizeDate(g.date) === normalizedCurrent &&
@@ -199,7 +229,7 @@ export const NBACentral: React.FC = () => {
     if (!selectedPlayerForActions) return;
 
     if (actionType === 'view_bio') {
-      setViewingBioPlayer(selectedPlayerForActions);
+      navigateToPlayer(selectedPlayerForActions);
       setSelectedPlayerForActions(null);
       return;
     }
@@ -216,32 +246,9 @@ export const NBACentral: React.FC = () => {
 
     const contact = getContactFromPlayer(selectedPlayerForActions);
     setSelectedPlayerForActions(null);
-    if (actionType === 'contact') {
-      setSelectedPlayerContact(contact);
-    } else {
-      setPersonSelectorType(actionType as typeof personSelectorType);
-      setSelectedPlayerContact(contact);
-      setPersonSelectorOpen(true);
-    }
-  };
-
-  const handleSendMessage = async (params: { message: string }) => {
-    if (selectedPlayerContact) {
-      const chat = state.chats.find(c => c.participants.includes(selectedPlayerContact.id));
-      await dispatchAction({
-        type: 'SEND_CHAT_MESSAGE',
-        payload: {
-          chatId: chat?.id,
-          text: params.message,
-          targetId: selectedPlayerContact.id,
-          targetName: selectedPlayerContact.name,
-          targetRole: selectedPlayerContact.title,
-          targetOrg: (selectedPlayerContact as any).teamId || 'Unknown',
-          avatarUrl: selectedPlayerContact.playerPortraitUrl
-        }
-      });
-      setSelectedPlayerContact(null);
-    }
+    setPersonSelectorType(actionType as typeof personSelectorType);
+    setSelectedPlayerContact(contact);
+    setPersonSelectorOpen(true);
   };
 
   const handlePersonSelected = async (contacts: Contact[], reason?: string, amount?: number, location?: string, duration?: string) => {
@@ -254,8 +261,6 @@ export const NBACentral: React.FC = () => {
       if (personSelectorType === 'dinner') actionType = 'INVITE_DINNER';
       if (personSelectorType === 'movie') actionType = 'INVITE_DINNER'; // Reuse INVITE_DINNER for now
       if (personSelectorType === 'fine') actionType = 'FINE_PERSON';
-      if (personSelectorType === 'bribe') actionType = 'BRIBE_PERSON';
-      if (personSelectorType === 'leak_scandal') actionType = 'LEAK_SCANDAL';
       if (personSelectorType === 'give_money') actionType = 'GIVE_MONEY';
       if (personSelectorType === 'sabotage') actionType = 'SABOTAGE_PLAYER';
       if (personSelectorType === 'waive') actionType = 'WAIVE_PLAYER';
@@ -290,13 +295,6 @@ export const NBACentral: React.FC = () => {
     <>
       {quick.fullPageView ? (
         quick.fullPageView
-      ) : viewingBioPlayer ? (
-        <PlayerBioView
-          player={viewingBioPlayer}
-          onBack={() => setViewingBioPlayer(null)}
-          onGameClick={handleWatchGame}
-          onTeamClick={(teamId) => { setViewingBioPlayer(null); setSelectedTeamId(teamId); }}
-        />
       ) : selectedTeam ? (
         <TeamDetailView
           team={selectedTeam}
@@ -312,7 +310,7 @@ export const NBACentral: React.FC = () => {
           currentDate={state.date}
           onBack={() => setSelectedTeamId(null)}
           onContact={quick.openFor}
-          onViewBio={setViewingBioPlayer}
+          onViewBio={navigateToPlayer}
           onGameClick={handleWatchGame}
           onTeamClick={setSelectedTeamId}
           onVisit={async (team) => {
@@ -354,7 +352,7 @@ export const NBACentral: React.FC = () => {
           <NBACentralHeader 
             searchTerm={searchTerm}
             setSearchTerm={setSearchTerm}
-            title={pbaMode ? 'PBA Central' : 'NBA Central'}
+            title={labels.central}
           />
 
           <div className="flex-1 overflow-y-auto p-4 md:p-10 custom-scrollbar">
@@ -376,7 +374,7 @@ export const NBACentral: React.FC = () => {
                       </div>
                       <div>
                         <h4 className="text-sm font-black text-white uppercase tracking-tight">Schedule Reveal Pending</h4>
-                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">The 2025-26 Season Schedule will be revealed on Opening Night (Oct 24).</p>
+                        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">The {scheduleSeasonLabel} season schedule will be revealed on {scheduleReleaseLabel}.</p>
                       </div>
                     </div>
                     <div className="hidden md:block">
@@ -407,21 +405,17 @@ export const NBACentral: React.FC = () => {
                     />
                   </div>
                 ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-10">
-                    <StandingsTable
-                      teams={eastTeams}
-                      conference="East"
-                      onSelectTeam={setSelectedTeamId}
-                      selectedTeamId={selectedTeamId}
-                      phase={centralPhase}
-                    />
-                    <StandingsTable
-                      teams={westTeams}
-                      conference="West"
-                      onSelectTeam={setSelectedTeamId}
-                      selectedTeamId={selectedTeamId}
-                      phase={centralPhase}
-                    />
+                  <div className={`grid grid-cols-1 gap-4 md:gap-10 ${conferenceGroups.length > 1 ? 'lg:grid-cols-2' : ''}`}>
+                    {conferenceGroups.map(group => (
+                      <StandingsTable
+                        key={group.key}
+                        teams={group.teams}
+                        conference={group.name}
+                        onSelectTeam={setSelectedTeamId}
+                        selectedTeamId={selectedTeamId}
+                        phase={centralPhase}
+                      />
+                    ))}
                   </div>
                 )}
               </>
@@ -435,22 +429,11 @@ export const NBACentral: React.FC = () => {
           player={selectedPlayerForActions}
           onClose={() => setSelectedPlayerForActions(null)}
           onActionSelect={handleActionSelect}
-          onHeal={() => { healPlayer(selectedPlayerForActions.internalId); setSelectedPlayerForActions(null); }}
+          onHeal={() => healPlayer(selectedPlayerForActions.internalId)}
         />
       )}
 
       {quick.portals}
-
-      {selectedPlayerContact && !personSelectorOpen && (
-        <ContactModal 
-          contact={selectedPlayerContact}
-          onClose={() => {
-            setSelectedPlayerContact(null);
-          }}
-          onSend={handleSendMessage}
-          isLoading={state.isProcessing}
-        />
-      )}
 
       {personSelectorOpen && (
         <PersonSelectorModal
@@ -463,11 +446,12 @@ export const NBACentral: React.FC = () => {
           onSelect={handlePersonSelected}
           preSelectedContact={selectedPlayerContact || undefined}
           skipPersonSelection={!!selectedPlayerContact}
+          showInviteMorePrompt={personSelectorType === 'dinner' || personSelectorType === 'movie'}
         />
       )}
 
       <AnimatePresence>
-        {gameToWatch && (() => {
+        {gameToWatch && watchPresentation && (() => {
           const norm = normalizeDate(state.date);
           const otherGamesToday = state.schedule.filter(g =>
             normalizeDate(g.date) === norm && !g.played && g.gid !== gameToWatch.gid
@@ -475,16 +459,15 @@ export const NBACentral: React.FC = () => {
           return (
             <GameSimulatorScreen
                 game={gameToWatch}
-                teams={state.teams}
+                presentation={watchPresentation}
                 players={state.players}
-                allStar={state.allStar}
                 isProcessing={state.isProcessing}
                 onClose={() => {
                     // Day already advanced in onConfirm before this screen opened — just close.
-                    setGameToWatch(null); setRiggedForTid(undefined); setPrecomputedResult(null);
+                    setGameToWatch(null); setRiggedForTid(undefined); setPrecomputedResult(null); setWatchPresentation(null);
                 }}
                 onComplete={() => {
-                    setGameToWatch(null); setRiggedForTid(undefined); setPrecomputedResult(null);
+                    setGameToWatch(null); setRiggedForTid(undefined); setPrecomputedResult(null); setWatchPresentation(null);
                 }}
                 otherGamesToday={otherGamesToday}
                 riggedForTid={riggedForTid}
@@ -512,20 +495,28 @@ export const NBACentral: React.FC = () => {
                       // Mirror ScheduleView: pre-sim + RECORD + ADVANCE_DAY before opening viewer.
                       // "Leave Game" is then a pure close — no re-simulation on exit.
                       const game = pendingGameToWatch;
-                      const homeTeam = resolveCentralTeam(game.homeTid)!;
-                      const awayTeam = resolveCentralTeam(game.awayTid)!;
-                      const preResult = GameSimulator.simulateGame(
-                          homeTeam, awayTeam, state.players,
-                          game.gid, game.date,
+                      const prepared = GameSimulator.prepareDayGames(
+                          state.teams,
+                          state.players,
+                          [game],
+                          game.date,
                           state.stats.playerApproval,
-                          undefined, undefined, undefined, undefined, undefined, rig
+                          state.allStar,
+                          undefined,
+                          undefined,
+                          rig,
+                          state.leagueStats,
                       );
+                      const preResult = GameSimulator.simulatePreparedDayGames(prepared)[0];
+                      const presentation = prepared[0]?.presentation;
+                      if (!preResult || !presentation) throw new Error(`Unable to prepare watched game ${game.gid}`);
                       await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId: game.gid, result: preResult } });
                       rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
                           type: 'ADVANCE_DAY' as any,
                           payload: { watchedGameResult: preResult, isWatchingGame: true, ...(rig !== undefined ? { riggedForTid: rig } : {}) }
                       })));
                       setPrecomputedResult(preResult);
+                      setWatchPresentation(presentation);
                       setRiggedForTid(rig);
                       setGameToWatch(game);
                       setPendingGameToWatch(null);
@@ -543,10 +534,10 @@ export const NBACentral: React.FC = () => {
                 const exhibNames: Record<number, { name: string; abbrev: string; logoUrl: string }> = {
                   [-1]: { name: 'Eastern All-Stars', abbrev: 'EST', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/1/16/Eastern_Conference_%28NBA%29_logo.svg/200px-Eastern_Conference_%28NBA%29_logo.svg.png' },
                   [-2]: { name: 'Western All-Stars', abbrev: 'WST', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Western_Conference_%28NBA%29_logo.svg/200px-Western_Conference_%28NBA%29_logo.svg.png' },
-                  [-3]: { name: 'Team USA', abbrev: 'USA', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/9/96/Rising_Stars_Challenge_logo.jpeg' },
-                  [-4]: { name: 'Team World', abbrev: 'WLD', logoUrl: 'https://upload.wikimedia.org/wikipedia/en/9/96/Rising_Stars_Challenge_logo.jpeg' },
-                  [-5]: { name: 'Team Shannon', abbrev: 'SHA', logoUrl: '' },
-                  [-6]: { name: 'Team Stephen A', abbrev: 'SAS', logoUrl: '' },
+                  [-3]: { name: state.allStar?.risingStarsTeams?.[0] ?? 'Rising Stars', abbrev: 'RS1', logoUrl: '' },
+                  [-4]: { name: state.allStar?.risingStarsTeams?.[1] ?? 'Rising Stars', abbrev: 'RS2', logoUrl: '' },
+                  [-5]: { name: state.allStar?.celebrityTeams?.[0] ?? 'Team Spotlight', abbrev: 'CEL', logoUrl: '' },
+                  [-6]: { name: state.allStar?.celebrityTeams?.[1] ?? 'Team Prime', abbrev: 'CEL', logoUrl: '' },
                 };
                 const info = exhibNames[tid] ?? { name: 'Exhibition', abbrev: 'EXH', logoUrl: '' };
                 return { id: tid, name: info.name, abbrev: info.abbrev, logoUrl: info.logoUrl, conference: 'All-Star', wins: 0, losses: 0 } as any;
@@ -554,7 +545,15 @@ export const NBACentral: React.FC = () => {
               const nba = state.teams.find(t => t.id === tid);
               if (nba) return nba;
               const nonNBA = (state.nonNBATeams ?? []).find((t: any) => t.tid === tid);
-              if (nonNBA) return { id: tid, name: nonNBA.name ?? nonNBA.league ?? 'International', abbrev: (nonNBA.name ?? 'INT').slice(0, 3).toUpperCase(), logoUrl: '', conference: 'East' } as any;
+              if (nonNBA) return {
+                id: tid,
+                name: nonNBA.name ?? nonNBA.league ?? 'International',
+                region: nonNBA.region,
+                abbrev: nonNBA.abbrev ?? (nonNBA.name ?? 'INT').slice(0, 3).toUpperCase(),
+                logoUrl: getResolvedTeamLogoUrl(nonNBA),
+                conference: nonNBA.league ?? 'International',
+                colors: nonNBA.colors,
+              } as any;
               return { id: tid, name: 'Unknown', abbrev: 'UNK', logoUrl: '', conference: 'East' } as any;
           };
           const bsHome = resolveTeam(selectedBoxScoreGame.homeTid);
@@ -562,14 +561,14 @@ export const NBACentral: React.FC = () => {
           return (
           <BoxScoreModal
               game={selectedBoxScoreGame}
-              result={state.boxScores.find(b => b.gameId === selectedBoxScoreGame.gid)}
+              result={findBoxScoreForScheduledGame(state.boxScores, selectedBoxScoreGame)}
               homeTeam={bsHome}
               awayTeam={bsAway}
               players={state.players}
               onClose={() => setSelectedBoxScoreGame(null)}
               onPlayerClick={(player) => {
-                setViewingBioPlayer(player);
                 setSelectedBoxScoreGame(null);
+                navigateToPlayer(player);
               }}
               onTeamClick={(teamId) => {
                 setSelectedTeamId(teamId);

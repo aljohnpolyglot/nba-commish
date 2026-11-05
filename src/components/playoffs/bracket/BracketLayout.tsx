@@ -6,6 +6,7 @@ import { BracketColumn } from './BracketColumn';
 import { PlayInColumn } from './PlayInColumn';
 import { SeriesCard } from './SeriesCard';
 import { useLeagueLabels } from '../../../utils/leagueLabels';
+import { BracketLineageList } from './BracketLineageList';
 
 interface BracketLayoutProps {
   playoffs: PlayoffBracket;
@@ -14,6 +15,8 @@ interface BracketLayoutProps {
   stateDate: string;
   onSeriesClick: (id: string) => void;
   selectedSeriesId: string | null;
+  showPlayIn?: boolean;
+  ownTid?: number | null;
 }
 
 // Placeholder column shown before play-in completes
@@ -35,10 +38,13 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
   stateDate,
   onSeriesClick,
   selectedSeriesId,
+  showPlayIn: showPlayInProp,
+  ownTid,
 }) => {
   const labels = useLeagueLabels();
   const scrollRef = useRef<HTMLDivElement>(null);
-  const playInComplete = playoffs.playInComplete;
+  const showPlayIn = showPlayInProp ?? ((playoffs.playInGames?.length ?? 0) > 0 || playoffs.playInComplete === false);
+  const bracketReady = showPlayIn ? playoffs.playInComplete : true;
 
   const scroll = (direction: 'left' | 'right') => {
     if (scrollRef.current) {
@@ -53,6 +59,7 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
 
   return (
     <div className="relative w-full">
+      <BracketLineageList playoffs={playoffs} teams={teams} />
       {/* Scroll arrows */}
       <button
         onClick={() => scroll('left')}
@@ -69,24 +76,26 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
 
       <div
         ref={scrollRef}
-        className="w-full overflow-x-auto pb-8 custom-scrollbar px-4 md:px-12"
+        className={`${playoffs.nodes?.length ? 'hidden md:block' : ''} w-full overflow-x-auto pb-8 custom-scrollbar px-4 md:px-12`}
         style={{ WebkitOverflowScrolling: 'touch' }}
       >
         <div className="min-w-max mx-auto flex items-stretch gap-6 py-4">
 
-          {/* West Play-In */}
-          <PlayInColumn
-            conference="West"
-            playoffs={playoffs}
-            teams={teams}
-            schedule={schedule}
-            stateDate={stateDate}
-            onGameClick={onSeriesClick}
-            selectedId={selectedSeriesId}
-          />
+          {showPlayIn && (
+            <PlayInColumn
+              conference="West"
+              playoffs={playoffs}
+              teams={teams}
+              schedule={schedule}
+              stateDate={stateDate}
+              onGameClick={onSeriesClick}
+              selectedId={selectedSeriesId}
+              ownTid={ownTid}
+            />
+          )}
 
           {/* West R1 */}
-          {playInComplete ? (
+          {bracketReady ? (
             <BracketColumn
               label="West R1"
               labelColor="text-blue-400"
@@ -99,13 +108,14 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
               selectedSeriesId={selectedSeriesId}
               justify="space-between"
               baseDelay={0.2}
+              ownTid={ownTid}
             />
           ) : (
             <TBDColumn label="West R1" color="text-blue-400" />
           )}
 
           {/* West Semis */}
-          {playInComplete ? (
+          {bracketReady ? (
             <BracketColumn
               label="West Semis"
               labelColor="text-blue-400"
@@ -117,15 +127,16 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
               onSeriesClick={onSeriesClick}
               selectedSeriesId={selectedSeriesId}
               justify="space-around"
-              seriesLabels={{ WR2S1: 'Semi TBD', WR2S2: 'Semi TBD' }}
+              seriesLabels={{ WR2S1: 'TBD', WR2S2: 'TBD' }}
               baseDelay={0.35}
+              ownTid={ownTid}
             />
           ) : (
             <TBDColumn label="West Semis" color="text-blue-400" />
           )}
 
           {/* West Finals */}
-          {playInComplete ? (
+          {bracketReady ? (
             <BracketColumn
               label="West Finals"
               labelColor="text-blue-400"
@@ -137,8 +148,9 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
               onSeriesClick={onSeriesClick}
               selectedSeriesId={selectedSeriesId}
               justify="center"
-              seriesLabels={{ WR3S1: 'WCF TBD' }}
+              seriesLabels={{ WR3S1: 'TBD' }}
               baseDelay={0.5}
+              ownTid={ownTid}
             />
           ) : (
             <TBDColumn label="West Finals" color="text-blue-400" />
@@ -157,16 +169,19 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
             >
               <Trophy className="w-8 h-8 text-amber-400 drop-shadow-[0_0_15px_rgba(251,191,36,0.5)]" />
             </motion.div>
-            {playInComplete ? (
+            {bracketReady ? (
               <SeriesCard
                 series={playoffs.series.find(s => s.id === 'Finals') ?? null}
+                node={playoffs.nodes?.find(node => node.id === 'Finals')}
                 teams={teams}
                 schedule={schedule}
                 stateDate={stateDate}
                 isSelected={selectedSeriesId === 'Finals'}
                 onClick={() => onSeriesClick('Finals')}
-                label="Finals TBD"
+                label="TBD"
                 delay={0.65}
+                ownTid={ownTid}
+                allSeries={playoffs.series}
               />
             ) : (
               <div className="flex items-center justify-center bg-white/[0.02] border border-dashed border-amber-500/20 rounded-xl w-48 min-h-[80px]">
@@ -176,7 +191,7 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
           </div>
 
           {/* East Finals */}
-          {playInComplete ? (
+          {bracketReady ? (
             <BracketColumn
               label="East Finals"
               labelColor="text-red-400"
@@ -188,15 +203,16 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
               onSeriesClick={onSeriesClick}
               selectedSeriesId={selectedSeriesId}
               justify="center"
-              seriesLabels={{ ER3S1: 'ECF TBD' }}
+              seriesLabels={{ ER3S1: 'TBD' }}
               baseDelay={0.5}
+              ownTid={ownTid}
             />
           ) : (
             <TBDColumn label="East Finals" color="text-red-400" />
           )}
 
           {/* East Semis */}
-          {playInComplete ? (
+          {bracketReady ? (
             <BracketColumn
               label="East Semis"
               labelColor="text-red-400"
@@ -208,15 +224,16 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
               onSeriesClick={onSeriesClick}
               selectedSeriesId={selectedSeriesId}
               justify="space-around"
-              seriesLabels={{ ER2S1: 'Semi TBD', ER2S2: 'Semi TBD' }}
+              seriesLabels={{ ER2S1: 'TBD', ER2S2: 'TBD' }}
               baseDelay={0.35}
+              ownTid={ownTid}
             />
           ) : (
             <TBDColumn label="East Semis" color="text-red-400" />
           )}
 
           {/* East R1 */}
-          {playInComplete ? (
+          {bracketReady ? (
             <BracketColumn
               label="East R1"
               labelColor="text-red-400"
@@ -229,21 +246,24 @@ export const BracketLayout: React.FC<BracketLayoutProps> = ({
               selectedSeriesId={selectedSeriesId}
               justify="space-between"
               baseDelay={0.2}
+              ownTid={ownTid}
             />
           ) : (
             <TBDColumn label="East R1" color="text-red-400" />
           )}
 
-          {/* East Play-In */}
-          <PlayInColumn
-            conference="East"
-            playoffs={playoffs}
-            teams={teams}
-            schedule={schedule}
-            stateDate={stateDate}
-            onGameClick={onSeriesClick}
-            selectedId={selectedSeriesId}
-          />
+          {showPlayIn && (
+            <PlayInColumn
+              conference="East"
+              playoffs={playoffs}
+              teams={teams}
+              schedule={schedule}
+              stateDate={stateDate}
+              onGameClick={onSeriesClick}
+              selectedId={selectedSeriesId}
+              ownTid={ownTid}
+            />
+          )}
 
         </div>
       </div>

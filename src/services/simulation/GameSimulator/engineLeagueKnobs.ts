@@ -1,8 +1,35 @@
 import { LeagueStats } from '../../../types';
 import { getFourPointDistance, isFourPointEnabled } from '../../../utils/ruleFlags';
+import { buildEraCoachingBiasFromLeagueStats } from '../eraCoachingBias';
 import { getKnobs, SimulatorKnobs } from '../SimulatorKnobs';
+import { getPlayersOnCourt } from '../courtSize';
+import { NO_SHOT_CLOCK_FGA_RATE_MULTIPLIER } from '../../era/basketballEraRules';
+import { getHistoricalNbaEraContext } from '../../../data/historicalNbaSeasons';
+
+export function resolveHomeCourtAdvantagePoints(leagueStats?: Partial<LeagueStats>): number {
+  const raw = Number(leagueStats?.homeCourtAdvantage ?? 50);
+  const level = Number.isFinite(raw) ? Math.max(0, Math.min(100, raw)) : 50;
+  return Math.round(level * 0.06 * 100) / 100;
+}
 
 export function buildLeagueBaseKnobs(leagueStats?: Partial<LeagueStats>): SimulatorKnobs {
+  const simFactor = (value: number | undefined, fallback = 1) => {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? Math.min(4, Math.max(0, parsed)) : fallback;
+  };
+  const rawPace = Number(leagueStats?.pace);
+  const importedPace = Number.isFinite(rawPace)
+    ? Math.min(4, Math.max(0.25, rawPace / 100))
+    : 1;
+  const threePointTendencyFactor = simFactor(leagueStats?.threePointTendencyFactor);
+  const threePointAccuracyFactor = simFactor(leagueStats?.threePointAccuracyFactor);
+  const twoPointAccuracyFactor = simFactor(leagueStats?.twoPointAccuracyFactor);
+  const ftAccuracyFactor = simFactor(leagueStats?.ftAccuracyFactor);
+  const blockFactor = simFactor(leagueStats?.blockFactor);
+  const stealFactor = simFactor(leagueStats?.stealFactor);
+  const turnoverFactor = simFactor(leagueStats?.turnoverFactor);
+  const orbFactor = simFactor(leagueStats?.orbFactor);
+  const foulRateFactor = simFactor(leagueStats?.foulRateFactor);
   const shotClock = leagueStats?.shotClockValue ?? 24;
   const shotClockOn = leagueStats?.shotClockEnabled ?? true;
   const def3sec = leagueStats?.defensiveThreeSecondEnabled ?? true;
@@ -12,10 +39,31 @@ export function buildLeagueBaseKnobs(leagueStats?: Partial<LeagueStats>): Simula
   const goaltending = leagueStats?.goaltendingEnabled ?? true;
   const charging = leagueStats?.chargingEnabled ?? true;
   const noDribble = leagueStats?.noDribbleRule ?? false;
+  const dribbleRule = leagueStats?.dribbleRule ?? (noDribble ? 'none' : 'continuous');
+  const freeThrowsEnabled = leagueStats?.freeThrowsEnabled ?? true;
+  const historicalFtRate = leagueStats?.historicalFreeThrowRateMultiplier ?? 1;
+  const historicalMode = leagueStats?.uiMode === 'nba' || leagueStats?.uiMode === 'fictional';
+  const automaticHistoricalFga = historicalMode
+    && leagueStats?.historicalEraStartYear != null
+    && leagueStats?.historicalGameRulesAutoProgression !== false
+    && !leagueStats?.gameRulesCustomized
+    ? getHistoricalNbaEraContext(leagueStats.historicalEraStartYear).sim.fieldGoalAttemptMultiplier
+    : undefined;
+  const historicalFieldGoalAttempts = automaticHistoricalFga ?? leagueStats?.historicalFieldGoalAttemptMultiplier ?? 1;
+  const historicalTov = leagueStats?.historicalTurnoverMultiplier ?? 1;
+  const historicalEfficiency = leagueStats?.historicalEfficiencyMultiplier ?? 1;
+  const historicalAssistRate = leagueStats?.historicalAssistRateMultiplier ?? 1;
+  const historicalAssistDistribution = Number(leagueStats?.historicalAssistDistributionExponent);
+  const historicalReboundOpportunities = leagueStats?.historicalReboundOpportunityMultiplier ?? 1;
+  const historicalFtAccuracy = leagueStats?.historicalFreeThrowAccuracyMultiplier ?? 1;
+  const historicalReboundDistribution = Number(leagueStats?.historicalReboundDistributionExponent);
+  const historicalOrbRate = leagueStats?.historicalOrbRateMultiplier ?? 1;
+  const historicalBlockRate = leagueStats?.historicalBlockRateMultiplier ?? 1;
+  const eraCoachingBias = buildEraCoachingBiasFromLeagueStats(leagueStats);
 
   const shotClockPace = shotClockOn
     ? Math.min(2.0, 24 / Math.max(8, shotClock))
-    : 0.78;
+    : NO_SHOT_CLOCK_FGA_RATE_MULTIPLIER;
 
   const rimMult = def3sec ? 1.0 : 0.72;
   const threeBumpD = def3sec ? 1.0 : 1.22;
@@ -25,13 +73,15 @@ export function buildLeagueBaseKnobs(leagueStats?: Partial<LeagueStats>): Simula
   const blockMult = goaltending ? 1.0 : 1.6;
   const goaltendEffMult = goaltending ? 1.0 : 0.93;
   const chargingRimBump = charging ? 1.0 : 1.12;
-  const noDribblePaceMult = noDribble ? 0.72 : 1.0;
-  const noDribbleRimMult = noDribble ? 0.65 : 1.0;
-  const noDribble3PMult = noDribble ? 1.40 : 1.0;
+  const noDribblePaceMult = dribbleRule === 'none' ? 0.72 : dribbleRule === 'single_bounce_no_shot' ? 0.86 : 1.0;
+  const noDribbleRimMult = dribbleRule === 'none' ? 0.65 : dribbleRule === 'single_bounce_no_shot' ? 0.82 : 1.0;
+  const noDribble3PMult = dribbleRule === 'none' ? 1.40 : dribbleRule === 'single_bounce_no_shot' ? 1.18 : 1.0;
 
   const offRebReset = leagueStats?.shotClockResetOffensiveRebound ?? 14;
   const offRebResetPace = shotClockOn
-    ? Math.max(0.75, Math.min(1.25, 14 / Math.max(6, offRebReset)))
+    ? offRebReset === shotClock
+      ? 1
+      : Math.max(0.94, Math.min(1.04, 1 + (14 - offRebReset) * 0.004))
     : 1.0;
 
   const backcourtTimerOn = leagueStats?.backcourtTimerEnabled ?? true;
@@ -91,13 +141,8 @@ export function buildLeagueBaseKnobs(leagueStats?: Partial<LeagueStats>): Simula
   const inboundTimerValue = leagueStats?.inboundTimerValue ?? 5;
   const inboundTovMult = inboundTimerOn ? Math.max(0.90, Math.min(1.25, 5 / Math.max(2, inboundTimerValue))) : 0.92;
   const outOfBoundsOn = leagueStats?.outOfBoundsEnabled ?? true;
-  const outOfBoundsTov = outOfBoundsOn ? 1.0 : 0.88;
   const kickedBallOn = leagueStats?.kickedBallEnabled ?? true;
-  const kickedBallPace = kickedBallOn ? 1.0 : 1.03;
-  const kickedBallTov = kickedBallOn ? 1.0 : 0.96;
   const basketInterferenceOn = leagueStats?.basketInterferenceEnabled ?? true;
-  const basketInterferenceBlock = basketInterferenceOn ? 1.0 : 1.12;
-  const basketInterferenceEff = basketInterferenceOn ? 1.0 : 0.98;
 
   const teamFoulPenalty = leagueStats?.teamFoulPenalty ?? 5;
   const penaltyFtMult = Math.max(0.75, Math.min(1.35, 5 / Math.max(1, teamFoulPenalty)));
@@ -111,9 +156,12 @@ export function buildLeagueBaseKnobs(leagueStats?: Partial<LeagueStats>): Simula
   const looseBallFtMult = looseBallOn ? 1.0 : 0.96;
   const overBackOn = leagueStats?.overTheBackFoulEnabled ?? true;
   const overBackFtMult = overBackOn ? 1.0 : 0.97;
-  tovMult *= inboundTovMult * outOfBoundsTov * kickedBallTov * screenTovMult * ballWeightTov;
+  tovMult *= inboundTovMult * screenTovMult * ballWeightTov;
+  const dunkValue = leagueStats?.dunkValue === 1 ? 1 : leagueStats?.dunkValue === 3 ? 3 : 2;
 
   return getKnobs({
+    playersOnCourt: getPlayersOnCourt(leagueStats),
+    homeCourtAdvantagePoints: resolveHomeCourtAdvantagePoints(leagueStats),
     gameFormat: (leagueStats?.gameFormat ?? 'timed') as any,
     targetScore: leagueStats?.gameTargetScore ?? 100,
     quarterLength: leagueStats?.quarterLength ?? 12,
@@ -124,20 +172,86 @@ export function buildLeagueBaseKnobs(leagueStats?: Partial<LeagueStats>): Simula
     overtimeTargetPoints: leagueStats?.overtimeTargetPoints ?? 7,
     maxOvertimesEnabled: leagueStats?.maxOvertimesEnabled ?? false,
     maxOvertimes: leagueStats?.maxOvertimes ?? 0,
+    gameRules: {
+      dribbleRule,
+      threePointLineEnabled: threeOn,
+      startOfPossessionMethod: leagueStats?.startOfPossessionMethod ?? 'jump_ball',
+      possessionPattern: leagueStats?.possessionPattern ?? 'nba',
+      coachChallenges: leagueStats?.coachChallenges ?? true,
+      maxCoachChallenges: Math.max(0, Math.round(leagueStats?.maxCoachChallenges ?? 2)),
+      challengeReimbursed: leagueStats?.challengeReimbursed ?? true,
+      maxTimeouts: Math.max(0, Math.round(leagueStats?.maxTimeouts ?? 7)),
+      clutchTimeoutLimit: Math.max(0, Math.round(leagueStats?.clutchTimeoutLimit ?? 2)),
+      heaveRuleEnabled: leagueStats?.heaveRuleEnabled ?? false,
+      shotClockEnabled: shotClockOn,
+      shotClockSeconds: shotClock,
+      offensiveReboundResetSeconds: offRebReset,
+      backcourtTimerEnabled: backcourtTimerOn,
+      backcourtTimerSeconds: leagueStats?.backcourtTimerValue ?? 8,
+      offensiveThreeSecondEnabled: off3sec,
+      offensiveThreeSecondSeconds: leagueStats?.offensiveThreeSecondValue ?? 3,
+      defensiveThreeSecondEnabled: def3sec,
+      defensiveThreeSecondSeconds: leagueStats?.defensiveThreeSecondValue ?? 3,
+      backToBasketTimerEnabled: backToBasketTimer,
+      backToBasketTimerSeconds: leagueStats?.backToBasketTimerValue ?? 5,
+      inboundTimerEnabled: inboundTimerOn,
+      inboundTimerSeconds: inboundTimerValue,
+      travelingEnabled: travelOn,
+      doubleDribbleEnabled: dblDribOn,
+      backcourtViolationEnabled: backctViol,
+      basketInterferenceEnabled: basketInterferenceOn,
+      kickedBallEnabled: kickedBallOn,
+      outOfBoundsEnabled: outOfBoundsOn,
+      cornerThrowInEnabled: leagueStats?.cornerThrowInEnabled ?? false,
+      foulOutLimit: Math.max(1, Math.round(foulOutLimit)),
+      teamFoulPenalty: Math.max(1, Math.round(teamFoulPenalty)),
+      substitutionLimitEnabled: leagueStats?.substitutionLimitEnabled ?? false,
+      maxSubstitutions: Math.max(0, Math.round(leagueStats?.maxSubstitutions ?? 0)),
+      fieldGoalValue: leagueStats?.fieldGoalValue === 1 ? 1 : 2,
+      dunkValue,
+      freeThrowsEnabled,
+      madeBasketRestart: leagueStats?.madeBasketRestart ?? 'inbound',
+      teamFoulPenaltyMode: leagueStats?.teamFoulPenaltyMode ?? 'free_throws',
+      teamFoulPenaltyPoints: Math.max(1, Math.round(leagueStats?.teamFoulPenaltyPoints ?? 1)),
+      temporaryDisqualificationFoulLimit: Math.max(0, Math.round(leagueStats?.temporaryDisqualificationFoulLimit ?? 0)),
+      temporaryDisqualificationUntilNextScore: leagueStats?.temporaryDisqualificationUntilNextScore ?? false,
+      temporaryDisqualificationAllowsSubstitute: leagueStats?.temporaryDisqualificationAllowsSubstitute ?? true,
+      shootoutRounds: Math.max(1, Math.round(leagueStats?.shootoutRounds || 3)),
+      overtimeTieBreaker: (leagueStats?.overtimeTieBreaker ?? 'sudden_death') as 'target_score' | 'shootout' | 'sudden_death',
+      techEjectionLimit: Math.max(1, Math.round(leagueStats?.techEjectionLimit ?? 2)),
+      flagrant1EjectionLimit: Math.max(1, Math.round(leagueStats?.flagrant1EjectionLimit ?? 2)),
+      flagrant2EjectionLimit: Math.max(1, Math.round(leagueStats?.flagrant2EjectionLimit ?? 1)),
+      fightingInstantEjection: leagueStats?.fightingInstantEjection ?? true,
+      useYellowRedCards: leagueStats?.useYellowRedCards ?? false,
+    },
     shotClockSeconds: shotClock,
     threePointAvailable: threeOn,
-    threePointRateMult: threeOn ? (1.0 * threeBumpD * noDribble3PMult * zone3PMult * threeDistanceRate) : 0,
-    threePointEfficiencyMult: threeDistanceEff,
+    threePointRateMult: threeOn ? (threePointTendencyFactor * threeBumpD * noDribble3PMult * zone3PMult * threeDistanceRate) : 0,
+    threePointEfficiencyMult: threeDistanceEff * threePointAccuracyFactor,
+    twoPointEfficiencyMult: twoPointAccuracyFactor,
     fourPointAvailable: fourPointOn,
     fourPointRateMult: fourDistanceRate,
     fourPointEfficiencyMult: fourDistanceEff,
-    paceMultiplier: shotClockPace * noDribblePaceMult * offRebResetPace * backcourtPace * courtLenPace * baselinePace * kickedBallPace,
-    efficiencyMultiplier: goaltendEffMult * rimHeightEffMult * ballWeightEff * basketInterferenceEff,
+    fieldGoalAttemptMult: shotClockOn ? 1 : NO_SHOT_CLOCK_FGA_RATE_MULTIPLIER * historicalFieldGoalAttempts,
+    boxScoreFgaNormalizationMult: shotClockOn ? historicalFieldGoalAttempts : 1,
+    fastScorePaceMultiplier: shotClockOn ? 1 : NO_SHOT_CLOCK_FGA_RATE_MULTIPLIER,
+    paceMultiplier: importedPace * shotClockPace * noDribblePaceMult * offRebResetPace * backcourtPace * courtLenPace * baselinePace,
+    efficiencyMultiplier: goaltendEffMult * rimHeightEffMult * ballWeightEff * historicalEfficiency,
     rimRateMult: rimMult * rimBumpO * chargingRimBump * noDribbleRimMult * zoneRimMult * manRimBump * keyRimMult,
     lowPostRateMult: lowPostMult * backToBasketLowPost * keyLowPost,
-    ftRateMult: handcheckFtMult * penaltyFtMult * foulOutPhysicality * clearPathFtMult * looseBallFtMult * overBackFtMult,
-    blockRateMult: blockMult * basketInterferenceBlock,
-    tovMult,
-    ftEfficiencyMult,
+    midRangeRateMult: 1,
+    ftRateMult: freeThrowsEnabled
+      ? foulRateFactor * handcheckFtMult * penaltyFtMult * foulOutPhysicality * clearPathFtMult * looseBallFtMult * overBackFtMult * historicalFtRate
+      : 0,
+    blockRateMult: blockMult * blockFactor * historicalBlockRate,
+    stealRateMult: stealFactor,
+    orbRateMult: orbFactor * historicalOrbRate,
+    assistRateMult: historicalAssistRate,
+    assistDistributionExponent: Number.isFinite(historicalAssistDistribution) ? historicalAssistDistribution : undefined,
+    reboundOpportunityMult: historicalReboundOpportunities,
+    reboundDistributionExponent: Number.isFinite(historicalReboundDistribution) ? historicalReboundDistribution : undefined,
+    tovMult: turnoverFactor * tovMult * historicalTov,
+    ftEfficiencyMult: ftEfficiencyMult * ftAccuracyFactor * historicalFtAccuracy,
+    eraCoachingBias,
   });
 }

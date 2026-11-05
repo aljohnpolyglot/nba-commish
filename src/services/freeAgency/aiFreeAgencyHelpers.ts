@@ -4,6 +4,7 @@ import {
   computeContractOffer,
   contractToUSD,
   getCapThresholds,
+  getBiannualExceptionAvailability,
   getContractLimits,
   getMLEAvailability,
   getTeamCapProfileFromState,
@@ -17,17 +18,31 @@ import { daysBetweenGameDates, getGameDateParts } from '../../utils/dateUtils';
 import { calcPot2K } from '../trade/tradeValueEngine';
 import { clampSpendOffer, getGMAttributes } from '../staff/gmAttributes';
 import type { TeamStrategyProfile } from '../../utils/teamStrategy';
+import { normalizeContractOptionKind } from '../../utils/contractTypes';
+import { getWnbaMinimumSalaryUSD } from '../wnba/economy';
+import {
+  getFranchiseCareerLoyaltyTid,
+} from '../../utils/franchiseCareerLoyalty';
+import { isPlayerRestrictedFreeAgent } from './rfaEligibility';
+import { canNbaTeamSignEurostashPlayer } from './eurostashRights';
 
 const RECENT_SIGNING_GRACE_DAYS = 60;
 const MIN_SALARY_FALLBACK_M = 1.273;
+const MIN_SALARY_BASE_CAP_M = 154.6;
+
+export function isNbaBackgroundEconomyMode(leagueStats: GameState['leagueStats'] | undefined): boolean {
+  const uiMode = String((leagueStats as any)?.uiMode ?? '');
+  return uiMode === 'pba_isolated' || uiMode === 'euro_isolated';
+}
 
 export function withNbaBackgroundEconomy(state: GameState): GameState {
-  if ((state.leagueStats as any)?.uiMode !== 'pba_isolated') return state;
+  if (!isNbaBackgroundEconomyMode(state.leagueStats)) return state;
   return {
     ...state,
     leagueStats: {
       ...state.leagueStats,
       uiMode: 'nba',
+      leagueCalendar: undefined,
       currency: 'USD',
       salaryCap: INITIAL_LEAGUE_STATS.salaryCap,
       luxuryPayroll: INITIAL_LEAGUE_STATS.luxuryPayroll,
@@ -37,6 +52,8 @@ export function withNbaBackgroundEconomy(state: GameState): GameState {
       numberOfAprons: INITIAL_LEAGUE_STATS.numberOfAprons,
       firstApronPercentage: INITIAL_LEAGUE_STATS.firstApronPercentage,
       secondApronPercentage: INITIAL_LEAGUE_STATS.secondApronPercentage,
+      firstApronAmount: INITIAL_LEAGUE_STATS.firstApronAmount,
+      secondApronAmount: INITIAL_LEAGUE_STATS.secondApronAmount,
       salaryCapEnabled: INITIAL_LEAGUE_STATS.salaryCapEnabled,
       salaryCapType: INITIAL_LEAGUE_STATS.salaryCapType,
       minContractType: INITIAL_LEAGUE_STATS.minContractType,
@@ -62,6 +79,15 @@ export function withNbaBackgroundEconomy(state: GameState): GameState {
       nonTaxpayerMlePercentage: (INITIAL_LEAGUE_STATS as any).nonTaxpayerMlePercentage,
       taxpayerMlePercentage: (INITIAL_LEAGUE_STATS as any).taxpayerMlePercentage,
       mleUsage: (state.leagueStats as any).backgroundNbaMleUsage ?? (state.leagueStats as any).mleUsage ?? {},
+      biannualEnabled: INITIAL_LEAGUE_STATS.biannualEnabled,
+      biannualAmount: INITIAL_LEAGUE_STATS.biannualAmount,
+      biannualPercentage: INITIAL_LEAGUE_STATS.biannualPercentage,
+      biannualTradeWaiverEnabled: INITIAL_LEAGUE_STATS.biannualTradeWaiverEnabled,
+      biannualFirstApronHardCapEnabled: INITIAL_LEAGUE_STATS.biannualFirstApronHardCapEnabled,
+      biannualProrationEnabled: INITIAL_LEAGUE_STATS.biannualProrationEnabled,
+      capExceptionUsage: state.leagueStats.backgroundNbaCapExceptionUsage
+        ?? state.leagueStats.capExceptionUsage
+        ?? {},
     } as GameState['leagueStats'],
   };
 }
@@ -98,7 +124,16 @@ export function getActiveFAMarketPlayerIds(state: GameState): Set<string> {
 }
 
 export function getMinSalaryUSD(leagueStats: any): number {
-  return ((leagueStats?.minContractStaticAmount as number | undefined) ?? MIN_SALARY_FALLBACK_M) * 1_000_000;
+  if (leagueStats?.uiMode === 'wnba_isolated') return getWnbaMinimumSalaryUSD(Number(leagueStats.year), 0);
+  if (leagueStats?.minContractType === 'none') return 0;
+  const staticMinM = (leagueStats?.minContractStaticAmount as number | undefined) ?? MIN_SALARY_FALLBACK_M;
+  if (leagueStats?.minContractType === 'static') return staticMinM * 1_000_000;
+  const cap = Number(leagueStats?.salaryCap ?? leagueStats?.historicalContractScaleCap ?? 0) ||
+    Number(leagueStats?.historicalContractScaleCap ?? 0);
+  if (Number.isFinite(cap) && cap > 0) {
+    return Math.round(cap * (staticMinM / MIN_SALARY_BASE_CAP_M));
+  }
+  return staticMinM * 1_000_000;
 }
 
 export function clampOfferForDate(
@@ -134,12 +169,12 @@ export function getLoyalPriorTid(player: NBAPlayer): number {
   if (txns.length > 0) {
     const nbaT = [...txns]
       .sort((a, b) => b.season - a.season)
-      .find(t => t.tid >= 0 && t.tid <= 29);
+      .find(t => t.tid >= 0 && t.tid < 100);
     if (nbaT) return nbaT.tid;
   }
   const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
   const nbaStats = stats
-    .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) <= 29)
+    .filter(s => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) < 100)
     .sort((a, b) => (b.season ?? 0) - (a.season ?? 0));
   return nbaStats.length > 0 ? (nbaStats[0].tid ?? -1) : -1;
 }
@@ -152,8 +187,17 @@ export function isRecentWaiverByTeam(player: NBAPlayer, teamId: number, currentD
   return days >= 0 && days < 90;
 }
 
+export function isFreshWaiver(player: NBAPlayer, currentDate: string | undefined, holdDays = 1): boolean {
+  const waivedDate = (player as any).recentlyWaivedDate;
+  if (!waivedDate || !currentDate) return false;
+  const days = daysBetweenGameDates(waivedDate, currentDate);
+  return days >= 0 && days < holdDays;
+}
+
 export function isLoyalBlocked(player: NBAPlayer, teamId: number, currentYear: number): boolean {
   const traits: string[] = (player as any).moodTraits ?? [];
+  const careerLoyaltyTid = getFranchiseCareerLoyaltyTid(player);
+  if (careerLoyaltyTid >= 0) return teamId !== careerLoyaltyTid;
   if (!traits.includes('LOYAL')) return false;
   if ((player as any).status === 'Retired') return false;
   if ((player as any).diedYear) return false;
@@ -172,9 +216,7 @@ export function isLoyalBlocked(player: NBAPlayer, teamId: number, currentYear: n
 }
 
 export function isPlayerRFA(player: NBAPlayer): boolean {
-  const contract = (player as any).contract;
-  if (contract?.isRestrictedFA || contract?.restrictedFA) return true;
-  return !!(contract?.rookie && (player as any).draft?.round === 1);
+  return isPlayerRestrictedFreeAgent(player);
 }
 
 export function rollPriorTeamMatch(player: NBAPlayer, currentYear: number): boolean {
@@ -216,17 +258,6 @@ export function playerMoodForTeam(player: NBAPlayer, team: NBATeam, state: GameS
 
 export function getK2Ovr(player: NBAPlayer): number {
   return getDisplayOverall(player);
-}
-
-export function isTwoWayOriginEligible(player: NBAPlayer): boolean {
-  const country = String((player as any).born?.country ?? (player as any).born?.loc ?? '').trim().toLowerCase();
-  if (['united states', 'usa', 'u.s.a.', 'us', 'canada'].includes(country)) return true;
-  if ((player as any).draft?.lottery === true) return true;
-  const hasNbaStats = ((player as any).stats ?? []).some((s: any) =>
-    typeof s.tid === 'number' && s.tid >= 0 && s.tid <= 29 && (s.gp ?? 0) > 0
-  );
-  if (hasNbaStats) return true;
-  return getK2Ovr(player) >= 75;
 }
 
 export function playerAge(player: NBAPlayer, currentYear: number): number {
@@ -311,6 +342,7 @@ export function getBestFit(
   state: GameState,
   strategy: TeamStrategyProfile,
   localMleUsed: Map<number, { type: MleType; usedUSD: number }>,
+  localBaeUsed: Map<number, number>,
   roundSpentUSD = 0,
 ): NBAPlayer | null {
   const thresholds = getCapThresholds(state.leagueStats as any);
@@ -321,23 +353,36 @@ export function getBestFit(
   const gmSpending = getGMAttributes(state, team.id).spending;
   const deadThisYr = getTeamDeadMoneyForSeason(team, state.leagueStats.year);
   const deadHeavy = (deadThisYr / (thresholds.salaryCap || 140_000_000)) > 0.08;
+  const nbaTeamIds = new Set(state.teams.map(candidate => Number(candidate.id)));
 
   return freeAgents
     .filter(player => {
+      if (!canNbaTeamSignEurostashPlayer(player, team.id, nbaTeamIds)) return false;
       const baseOffer = computeContractOffer(player, state.leagueStats as any);
       const limits = getContractLimits(player, state.leagueStats as any);
       const offer = { ...baseOffer, salaryUSD: clampSpendOffer(baseOffer.salaryUSD, gmSpending, limits.maxSalaryUSD) };
 
       const localEntry = localMleUsed.get(team.id);
-      const effectiveLeagueStats = localEntry
-        ? {
-            ...state.leagueStats,
-            mleUsage: {
-              ...(state.leagueStats as any).mleUsage,
-              [team.id]: localEntry,
+      const localBaeAmount = localBaeUsed.get(team.id) ?? 0;
+      const effectiveLeagueStats = {
+        ...state.leagueStats,
+        ...(localEntry ? {
+          mleUsage: {
+            ...(state.leagueStats as any).mleUsage,
+            [team.id]: localEntry,
+          },
+        } : {}),
+        ...(localBaeAmount > 0 ? {
+          capExceptionUsage: {
+            ...(state.leagueStats.capExceptionUsage ?? {}),
+            [team.id]: {
+              ...(state.leagueStats.capExceptionUsage?.[team.id] ?? { season: state.leagueStats.year }),
+              season: state.leagueStats.year,
+              hardCapLevel: 'first' as const,
             },
-          }
-        : state.leagueStats;
+          },
+        } : {}),
+      };
 
       const mleAvail = getMLEAvailability(
         team.id,
@@ -346,10 +391,26 @@ export function getBestFit(
         thresholds,
         effectiveLeagueStats as any,
       );
+      const baeAvail = getBiannualExceptionAvailability({
+        teamId: team.id,
+        payrollUSD: effectivePayroll,
+        signingUSD: offer.salaryUSD,
+        contractSeasons: offer.years,
+        acquisitionType: 'signing',
+        season: state.leagueStats.year,
+        currentDate: state.date,
+        schedule: state.schedule,
+        thresholds,
+        leagueStats: state.leagueStats,
+      });
 
       const canAffordViaCap = offer.salaryUSD <= effectiveCapSpace + 2_000_000;
       const canAffordViaMle = !mleAvail.blocked && offer.salaryUSD <= mleAvail.available;
-      if (!canAffordViaCap && !canAffordViaMle) return false;
+      const canAffordViaBae = !isPlayerRFA(player)
+        && !baeAvail.blocked
+        && offer.years <= 2
+        && offer.salaryUSD <= Math.max(0, baeAvail.available - (localBaeUsed.get(team.id) ?? 0));
+      if (!canAffordViaCap && !canAffordViaMle && !canAffordViaBae) return false;
       const age = playerAge(player, state.leagueStats.year);
       const k2 = getK2Ovr(player);
       if (k2 < 75 && offer.years > 1) return false;
@@ -408,7 +469,7 @@ export function getRemainingYearsGuaranteed(player: NBAPlayer, currentYear: numb
   const contractYears = (player as any).contractYears as Array<{ season: string; option?: string }> | undefined;
   if (Array.isArray(contractYears) && contractYears.length > 0) {
     return contractYears.filter(year => {
-      const option = String(year.option ?? '').toLowerCase();
+      const option = normalizeContractOptionKind(year.option);
       return seasonLabelToYear(year.season) >= currentYear && option !== 'team' && option !== 'player';
     }).length;
   }
@@ -421,7 +482,7 @@ export function getRemainingGuaranteedUSD(player: NBAPlayer, currentYear: number
   if (Array.isArray(contractYears) && contractYears.length > 0) {
     return contractYears
       .filter(year => {
-        const option = String(year.option ?? '').toLowerCase();
+        const option = normalizeContractOptionKind(year.option);
         return seasonLabelToYear(year.season) >= currentYear && option !== 'team' && option !== 'player';
       })
       .reduce((sum, year) => sum + (year.guaranteed || 0), 0);
@@ -471,12 +532,12 @@ export function birdRightsSeed(playerId: string, year: number): number {
 export function getPriorNbaTid(player: NBAPlayer): number {
   const txns: Array<{ season: number; tid: number }> = (player as any).transactions ?? [];
   if (txns.length > 0) {
-    const transaction = [...txns].sort((a, b) => b.season - a.season).find(x => x.tid >= 0 && x.tid <= 29);
+    const transaction = [...txns].sort((a, b) => b.season - a.season).find(x => x.tid >= 0 && x.tid < 100);
     if (transaction) return transaction.tid;
   }
   const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
   const season = stats
-    .filter(x => !x.playoffs && (x.gp ?? 0) > 0 && (x.tid ?? -1) >= 0 && (x.tid ?? -1) <= 29)
+    .filter(x => !x.playoffs && (x.gp ?? 0) > 0 && (x.tid ?? -1) >= 0 && (x.tid ?? -1) < 100)
     .sort((a, b) => (b.season ?? 0) - (a.season ?? 0))[0];
   return season ? (season.tid ?? -1) : -1;
 }

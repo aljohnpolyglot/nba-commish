@@ -1,4 +1,4 @@
-import { GameState, UserAction } from '../../types';
+import { GameState, NBAPlayer, UserAction } from '../../types';
 import { calculateOutcome } from '../../services/logic/outcomeDecider';
 import { advanceDay, sendDirectMessage } from '../../services/llm/llm';
 import { generateFreeAgentSigningReactions } from '../../services/llm/services/freeAgentService';
@@ -6,14 +6,34 @@ import { executeExecutiveTrade } from '../../services/tradeService';
 import { calculateSocialEngagement, getGamePhase, normalizeDate } from '../../utils/helpers';
 import { computeMoodScore, dramaProbability, moodToStoryType } from '../../utils/mood';
 import * as StoryGenerators from '../../services/storyGenerators';
-import { handleTransferFunds, handleGiveMoney, handleFinePerson, handleBribePerson, handleAdjustFinancials } from './actions/financeActions';
+import { handleTransferFunds, handleGiveMoney, handleFinePerson, handleAdjustFinancials } from './actions/financeActions';
 import { handleExecutiveTrade, handleForceTrade } from './actions/tradeActions';
-import { handleSignFreeAgent, handleSuspendPlayer, handleSabotagePlayer, handleDrugTestPerson, handleWaivePlayer, handleFirePersonnel, handleExerciseTeamOption, handleDeclineTeamOption, handleConvertContractType } from './actions/playerActions';
-import { handleInvitePerformance, handleGlobalGames, handleRigLottery, handleHypnotize, handleHypnoticBroadcast, handleVisitNonNbaTeam, handleTravel, handleInviteDinner } from './actions/eventActions';
+import { handleSignFreeAgent, handleSuspendPlayer, handleSabotagePlayer, handleDrugTestPerson, handleWaivePlayer, handleFirePersonnel, handleRetirePersonnel, handleExerciseTeamOption, handleDeclineTeamOption, handleConvertContractType } from './actions/playerActions';
+import { handleInvitePerformance, handleGlobalGames, handleHypnotize, handleHypnoticBroadcast, handleVisitNonNbaTeam, handleTravel, handleInviteDinner } from './actions/eventActions';
 import { handleGoToClub } from './actions/clubActions';
 import { handleEndorseHof } from './actions/hofActions';
-import { resolveAnyTeam } from '../../utils/teamLookup';
+import { isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
 import { getTeamCoachingGameplayEffects } from '../../services/staff/staffGameplayEffects';
+
+export const getActiveStoryPlayers = (players: NBAPlayer[]): NBAPlayer[] => players.filter(player =>
+    player.overallRating >= 58 && player.tid >= 0 && isOnRoster(player),
+);
+
+export function pickWeightedStoryPlayer(
+    players: NBAPlayer[],
+    weights: number[],
+    randomValue = Math.random(),
+): NBAPlayer | null {
+    if (players.length === 0) return null;
+    const total = weights.reduce((sum, weight) => sum + Math.max(0, Number(weight) || 0), 0);
+    if (total <= 0) return players[0];
+    let pick = Math.min(Math.max(randomValue, 0), 1) * total;
+    for (let index = 0; index < players.length; index += 1) {
+        pick -= Math.max(0, Number(weights[index]) || 0);
+        if (pick <= 0) return players[index];
+    }
+    return players[players.length - 1];
+}
 
 export const processAction = async (stateWithSim: GameState, action: UserAction, executiveTradeTransactionRef: { current: any }, simResults: any[] = [], daysToSimulate: number = 1) => {
     let result;
@@ -58,7 +78,9 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
             effectiveAction = {
                 type: 'SCHEDULED_EVENT',
                 payload: {
-                    outcomeText: `Today, ${artistsList} performed live at the ${eventName || 'game'} between the ${homeTeamName} and ${awayTeamName}. Fans and media are reacting to the highly anticipated performance.`,
+                    outcomeText: homeTeamName && awayTeamName
+                        ? `Today, ${artistsList} performed live at the ${eventName || 'game'} between the ${homeTeamName} and ${awayTeamName}. Fans and media are reacting to the highly anticipated performance.`
+                        : `Today, ${artistsList} performed live at the ${eventName || 'league showcase'}. Fans and media are reacting to the highly anticipated performance.`,
                     isSpecificEvent: true,
                     gameResult,
                     ...event.payload
@@ -113,23 +135,14 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         result = await handleConvertContractType(stateWithSim, action);
     } else if (action.type === 'FIRE_PERSONNEL') {
         result = await handleFirePersonnel(stateWithSim, action, simResults, recentDMs);
+    } else if (action.type === 'RETIRE_PERSONNEL') {
+        result = await handleRetirePersonnel(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'SABOTAGE_PLAYER') {
         result = await handleSabotagePlayer(stateWithSim, action, simResults, recentDMs);
-    } else if (action.type === 'LEAK_SCANDAL') {
-        const names = (action.payload?.contacts || []).map((c: any) => c.name).join(', ') || action.payload?.targetName || 'Unknown';
-        const reason = action.payload?.reason || 'damaging personal information';
-        const leakOutcomeText = `Commissioner ${stateWithSim.commissionerName} anonymously leaked damaging information about ${names}. The leak: ${reason}. Sources close to the league say the information is spreading fast through insider circles.`;
-        const leakSeed = `BREAKING SCANDAL: Damaging information about ${names} has been anonymously leaked to NBA insiders. The details: ${reason}. Media and social media are erupting with reactions. Generate 4-6 social posts — shocked reactions, insider reports, speculation about who leaked it, and a news headline. NEVER attribute the leak to the Commissioner.`;
-        result = await advanceDay(stateWithSim, {
-            type: 'LEAK_SCANDAL',
-            payload: { ...action.payload, outcomeText: leakOutcomeText }
-        } as any, [leakSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
     } else if (action.type === 'FINE_PERSON') {
         result = await handleFinePerson(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'GIVE_MONEY') {
         result = await handleGiveMoney(stateWithSim, action, simResults, recentDMs);
-    } else if (action.type === 'BRIBE_PERSON') {
-        result = await handleBribePerson(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'VISIT_NON_NBA_TEAM') {
         result = await handleVisitNonNbaTeam(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'INVITE_PERFORMANCE') {
@@ -144,8 +157,6 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         result = await handleEndorseHof(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'GLOBAL_GAMES') {
         result = await handleGlobalGames(stateWithSim, action, simResults, recentDMs);
-    } else if (action.type === 'RIG_LOTTERY') {
-        result = await handleRigLottery(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'HYPNOTIZE') {
         result = await handleHypnotize(stateWithSim, action, simResults, recentDMs);
     } else if (action.type === 'HYPNOTIC_BROADCAST') {
@@ -167,25 +178,30 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
         const storySeed = `The NBA has announced its marquee Christmas Day slate: ${gameDescriptions}. Fans and media are analyzing the matchups.`;
         result = await advanceDay(stateWithSim, customAction as any, [storySeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
         result.christmasGames = games;
+        result.newNews = [];
+        result.newSocialPosts = [];
     } else if (action.type === 'CELEBRITY_ROSTER') {
-        const { roster } = action.payload;
+        const { roster, profiles } = action.payload;
+        const leagueName = stateWithSim.leagueType === 'fictional'
+            ? stateWithSim.leagueStats.leagueName ?? 'The league'
+            : 'The NBA';
         const customAction = {
             type: 'CELEBRITY_ROSTER',
             description: `The Commissioner has personally selected the 20 participants for this year's Celebrity Game: ${roster}.`
         };
-        const storySeed = `The NBA has announced the Celebrity Game Roster: ${roster}. Fans and media are reacting to the selections.`;
+        const storySeed = `${leagueName} has announced the Celebrity Game roster: ${roster}. Fans and media are reacting to the selections.`;
         result = await advanceDay(stateWithSim, customAction as any, [storySeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
-        
-        // Add news item
-        const newsItem = {
-            id: `celeb-roster-manual-${Date.now()}`,
-            headline: 'Commissioner Announces Celebrity Game Roster',
-            content: `${stateWithSim.commissionerName} has personally selected the 20 participants for this year's Celebrity Game.`,
-            date: stateWithSim.date,
-            type: 'league',
-            read: false
+        result.allStar = {
+            ...(stateWithSim.allStar as any),
+            celebrityRoster: roster.split(', '),
+            celebrityRosterProfiles: Array.isArray(profiles) ? profiles : [],
+            celebrityTeams: stateWithSim.leagueType === 'fictional'
+                ? ['Team Spotlight', 'Team Prime']
+                : stateWithSim.allStar?.celebrityTeams,
+            celebrityAnnounced: false,
         };
-        result.newNews = [...(result.newNews || []), newsItem];
+        result.newNews = [];
+        result.newSocialPosts = [];
     } else {
         const storySeeds: string[] = [];
         const numToGen = Math.random() > 0.7 ? 2 : Math.random() > 0.3 ? 1 : 0;
@@ -197,11 +213,9 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
 
         // ── Mood-weighted player story routing (Section 6 of moodtodo.md) ──────
         // Pre-compute mood scores for all active players once
-        const activePlayers = stateWithSim.players.filter(
-            p => p.overallRating >= 58 && p.tid >= 0 && p.status === 'Active' // BBGM 58+ = starter tier
-        );
+        const activePlayers = getActiveStoryPlayers(stateWithSim.players);
         const moodMap = new Map(activePlayers.map(p => {
-            const team = stateWithSim.teams.find(t => t.id === p.tid);
+            const team = resolveAnyTeam(p.tid, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
             const endorsed = (stateWithSim.endorsedPlayers ?? []).includes(p.internalId);
             const { score } = computeMoodScore(p, team, stateWithSim.date, endorsed, false, false, activePlayers);
             return [p.internalId, score];
@@ -223,17 +237,12 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
                 // Mood-based player story: pick player by dramaProbability weight, route by mood
                 const weights = activePlayers.map(p => {
                     const mood = moodMap.get(p.internalId) ?? 0;
-                    const team = stateWithSim.teams.find(t => t.id === p.tid);
+                    const team = resolveAnyTeam(p.tid, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
                     const dramaMult = team ? getTeamCoachingGameplayEffects(team as any).dramaMultiplier : 1.0;
                     return dramaProbability(mood, p.moodTraits ?? []) * dramaMult;
                 });
-                const total = weights.reduce((a, b) => a + b, 0);
-                let pick = Math.random() * total;
-                let chosenPlayer = activePlayers[activePlayers.length - 1];
-                for (let j = 0; j < activePlayers.length; j++) {
-                    pick -= weights[j];
-                    if (pick <= 0) { chosenPlayer = activePlayers[j]; break; }
-                }
+                const chosenPlayer = pickWeightedStoryPlayer(activePlayers, weights);
+                if (!chosenPlayer) continue;
                 const chosenMood = moodMap.get(chosenPlayer.internalId) ?? 0;
                 const storyType = moodToStoryType(chosenMood);
 
@@ -258,7 +267,7 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
                     );
                     // Disgruntled players (−10 to −7): append trade demand seed
                     if (storyType === 'discipline_suspend' && chosenMood <= -7) {
-                        const team = stateWithSim.teams.find(t => t.id === chosenPlayer.tid);
+                        const team = resolveAnyTeam(chosenPlayer.tid, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
                         storySeeds.push(
                             `TRADE DEMAND SIGNAL: ${chosenPlayer.name} of the ${team?.name ?? 'Unknown'} is reportedly disgruntled and has privately asked for a trade. ` +
                             `His mood is at an all-time low. Agents and insiders are buzzing. Include this tension in social/news coverage.`
@@ -306,8 +315,8 @@ export const processAction = async (stateWithSim: GameState, action: UserAction,
                     storySeeds.unshift(
                         `BREAKING — IN-GAME ${sevLabel} REQUIRING COMMISSIONER DECISION (${matchup}): ${f.description} ` +
                         `Both players involved (${f.player1Name} of ${homeTeam?.name ?? 'Unknown'} and ${f.player2Name} of ${awayTeam?.name ?? 'Unknown'}) are from the SAME game — do NOT invent other opponents. ` +
-                        `REQUIRED: Generate a formal email from Joe Dumars (Executive VP, Head of Basketball Operations, NBA League Office) to the Commissioner with subject "Incident Report: ${f.player1Name} vs ${f.player2Name}" asking for a suspension/fine ruling. ` +
-                        `Set senderRole to "league_office" so it routes to Inbox. Include 2–3 social posts and a news headline about the incident.`
+                        `The saved League Operations case already requests a suspension/fine ruling; do not create another email. ` +
+                        `Include 2–3 social posts and a news headline about the incident.`
                     );
                 }
             }

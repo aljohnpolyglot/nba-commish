@@ -1,5 +1,5 @@
 import { NBAPlayer } from '../types';
-import { DRIVING_DUNK } from '../services/simulation/live/playback/dunkData';
+import { calcComposite } from '../services/allStar/allStarDunkContestHelpers';
 
 /**
  * Calculates a composite dunk score for odds calculation.
@@ -37,12 +37,7 @@ export function scoreToOdds(score: number) {
  * Dunk score for odds: prefers DRIVING_DUNK lookup (real dunking ability),
  * falls back to dnk/jmp/spd composite for players not in the lookup.
  */
-function getDunkOddsScore(player: NBAPlayer): number {
-  const name = (player as any).name ?? (player as any).playerName ?? '';
-  const dd = DRIVING_DUNK[name];
-  if (dd !== undefined) return dd;
-  return getDunkScore(player);
-}
+const getDunkOddsScore = (player: NBAPlayer): number => calcComposite(player as any);
 
 /**
  * Calculates relative dunk contest odds for one player vs the full contestant field.
@@ -83,4 +78,20 @@ export function calcThreePointOdds(contestants: NBAPlayer[], player: NBAPlayer):
   } else {
     return `+${Math.round(((1 - impliedProb) / impliedProb) * 100)}`;
   }
+}
+
+export function calcSkillsOdds(contestants: NBAPlayer[], player: NBAPlayer): string {
+  const score = (candidate: NBAPlayer) => {
+    const latest = candidate.ratings?.[candidate.ratings.length - 1] as any;
+    return ['spd', 'drb', 'pss', 'tp'].reduce((sum, key) => sum + Number(latest?.[key] ?? 50), 0) / 4;
+  };
+  const scores = contestants.map(score);
+  const myScore = score(player);
+  const total = scores.reduce((sum, value) => sum + value, 0);
+  const impliedProb = total > 0 ? myScore / total : 1 / Math.max(1, contestants.length);
+  if (impliedProb >= 0.5) {
+    const odds = Math.round(-(impliedProb / Math.max(0.01, 1 - impliedProb)) * 100);
+    return odds > 0 ? `+${odds}` : String(odds);
+  }
+  return `+${Math.round(((1 - impliedProb) / Math.max(0.01, impliedProb)) * 100)}`;
 }

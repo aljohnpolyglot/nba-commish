@@ -1,0 +1,7 @@
+Courtside Ring — south-east
+===========================
+
+C17	sections/c17-south-east.svg
+C18	sections/c18-south-east.svg
+C19	sections/c19-south-east.svg
+C20	sections/c20-south-east.svg

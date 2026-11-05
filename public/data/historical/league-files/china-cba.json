@@ -1,0 +1,1159 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "china-cba-league-file.3868568588132932",
+  "competitionKey": "china-cba",
+  "competitionName": "Chinese Basketball Association",
+  "leagueKey": "china-cba",
+  "generatedAt": "2026-07-24T08:11:07.669Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "chinese-cba-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/40/Chinese-CBA/stats/2026/Averages/All/All",
+        "sourcePath": "public/data/external/china-cba/chinese-cba-2026-bbgm.json",
+        "sourceHash": "5bd3de7557f46d83730c48e80ba9388ab6f64aed7f63099fca95ceef9e9ef9bd",
+        "fetchedAt": "2026-07-24T08:11:07.669Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Guangdong Dongguan",
+          "canonicalKey": "china-cba:guangdong-dongguan"
+        },
+        "won": 34,
+        "lost": 9
+      }
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Guangdong Dongguan",
+        "canonicalKey": "china-cba:guangdong-dongguan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Shandong",
+        "canonicalKey": "china-cba:shandong"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Guangdong Dongguan",
+          "canonicalKey": "china-cba:guangdong-dongguan"
+        },
+        "won": 38,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jianlian Yi",
+                "canonicalKey": "person:jianlian-yi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jianlian Yi",
+                "canonicalKey": "person:jianlian-yi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Beijing Shougang",
+        "canonicalKey": "china-cba:beijing-shougang"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Xinjiang Guanghui",
+        "canonicalKey": "china-cba:xinjiang-guanghui"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Guangdong Dongguan",
+          "canonicalKey": "china-cba:guangdong-dongguan"
+        },
+        "won": 35,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jianlian Yi",
+                "canonicalKey": "person:jianlian-yi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Randolph Morris",
+                "canonicalKey": "person:randolph-morris"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Beijing Shougang",
+                "canonicalKey": "china-cba:beijing-shougang"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Beijing Shougang",
+        "canonicalKey": "china-cba:beijing-shougang"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Liaoning",
+        "canonicalKey": "china-cba:liaoning"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Guangdong Dongguan",
+          "canonicalKey": "china-cba:guangdong-dongguan"
+        },
+        "won": 38,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jianlian Yi",
+                "canonicalKey": "person:jianlian-yi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Stephon Marbury",
+                "canonicalKey": "person:stephon-marbury"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Beijing Shougang",
+                "canonicalKey": "china-cba:beijing-shougang"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Sichuan Blue Whales",
+        "canonicalKey": "china-cba:sichuan-blue-whales"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Liaoning",
+        "canonicalKey": "china-cba:liaoning"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Sichuan Blue Whales",
+          "canonicalKey": "china-cba:sichuan-blue-whales"
+        },
+        "won": 40,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jianlian Yi",
+                "canonicalKey": "person:jianlian-yi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Hamed Haddadi",
+                "canonicalKey": "person:hamed-haddadi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sichuan Blue Whales",
+                "canonicalKey": "china-cba:sichuan-blue-whales"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Xinjiang Guanghui",
+        "canonicalKey": "china-cba:xinjiang-guanghui"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Guangdong Dongguan",
+        "canonicalKey": "china-cba:guangdong-dongguan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Xinjiang Guanghui",
+          "canonicalKey": "china-cba:xinjiang-guanghui"
+        },
+        "won": 43,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jimmer Fredette",
+                "canonicalKey": "person:jimmer-fredette"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Shanghai Dongfang",
+                "canonicalKey": "china-cba:shanghai-dongfang"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Darius Adams",
+                "canonicalKey": "person:darius-adams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Xinjiang Guanghui",
+                "canonicalKey": "china-cba:xinjiang-guanghui"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Liaoning",
+        "canonicalKey": "china-cba:liaoning"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Zhejiang Guangsha",
+        "canonicalKey": "china-cba:zhejiang-guangsha"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Liaoning",
+          "canonicalKey": "china-cba:liaoning"
+        },
+        "won": 40,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Courtney Fortson",
+                "canonicalKey": "person:courtney-fortson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zhejiang Guangsha",
+                "canonicalKey": "china-cba:zhejiang-guangsha"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lester Hudson",
+                "canonicalKey": "person:lester-hudson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Liaoning",
+                "canonicalKey": "china-cba:liaoning"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Guangdong Dongguan",
+        "canonicalKey": "china-cba:guangdong-dongguan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Xinjiang Guanghui",
+        "canonicalKey": "china-cba:xinjiang-guanghui"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Guangdong Dongguan",
+          "canonicalKey": "china-cba:guangdong-dongguan"
+        },
+        "won": 53,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zhelin Wang",
+                "canonicalKey": "person:zhelin-wang"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fujian",
+                "canonicalKey": "china-cba:fujian"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jianlian Yi",
+                "canonicalKey": "person:jianlian-yi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jianlian Yi",
+                "canonicalKey": "person:jianlian-yi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jiang Yuxing",
+                "canonicalKey": "person:jiang-yuxing"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Jilin Northeast",
+                "canonicalKey": "china-cba:jilin-northeast"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jianlian Yi",
+                "canonicalKey": "person:jianlian-yi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jiang Yuxing",
+                "canonicalKey": "person:jiang-yuxing"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Jilin Northeast",
+                "canonicalKey": "china-cba:jilin-northeast"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Guangdong Dongguan",
+        "canonicalKey": "china-cba:guangdong-dongguan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Liaoning",
+        "canonicalKey": "china-cba:liaoning"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Guangdong Dongguan",
+          "canonicalKey": "china-cba:guangdong-dongguan"
+        },
+        "won": 49,
+        "lost": 4
+      }
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Guangdong Dongguan",
+        "canonicalKey": "china-cba:guangdong-dongguan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Liaoning",
+        "canonicalKey": "china-cba:liaoning"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Guangdong Dongguan",
+          "canonicalKey": "china-cba:guangdong-dongguan"
+        },
+        "won": 51,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "MarShon Brooks",
+                "canonicalKey": "person:marshon-brooks"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mingxuan Hu",
+                "canonicalKey": "person:mingxuan-hu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zhou Peng",
+                "canonicalKey": "person:zhou-peng"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zhenlin Zhang",
+                "canonicalKey": "person:zhenlin-zhang"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Liaoning",
+                "canonicalKey": "china-cba:liaoning"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zhou Peng",
+                "canonicalKey": "person:zhou-peng"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Guangdong Dongguan",
+                "canonicalKey": "china-cba:guangdong-dongguan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zhenlin Zhang",
+                "canonicalKey": "person:zhenlin-zhang"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Liaoning",
+                "canonicalKey": "china-cba:liaoning"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Liaoning",
+        "canonicalKey": "china-cba:liaoning"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Zhejiang Guangsha",
+        "canonicalKey": "china-cba:zhejiang-guangsha"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Liaoning",
+          "canonicalKey": "china-cba:liaoning"
+        },
+        "won": 41,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jinqiu Hu",
+                "canonicalKey": "person:jinqiu-hu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zhejiang Guangsha",
+                "canonicalKey": "china-cba:zhejiang-guangsha"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zhao Jiwei",
+                "canonicalKey": "person:zhao-jiwei"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Liaoning",
+                "canonicalKey": "china-cba:liaoning"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Liaoning",
+        "canonicalKey": "china-cba:liaoning"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Zhejiang Chouzhou",
+        "canonicalKey": "china-cba:zhejiang-chouzhou"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Liaoning",
+          "canonicalKey": "china-cba:liaoning"
+        },
+        "won": 41,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kay Felder",
+                "canonicalKey": "person:kay-felder"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Shanxi Zhongyu",
+                "canonicalKey": "china-cba:shanxi-zhongyu"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Liaoning",
+        "canonicalKey": "china-cba:liaoning"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Xinjiang Guanghui",
+        "canonicalKey": "china-cba:xinjiang-guanghui"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Liaoning",
+          "canonicalKey": "china-cba:liaoning"
+        },
+        "won": 53,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jared Sullinger",
+                "canonicalKey": "person:jared-sullinger"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Shenzhen",
+                "canonicalKey": "china-cba:shenzhen"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yang Hansen",
+                "canonicalKey": "person:yang-hansen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Qingdao",
+                "canonicalKey": "china-cba:qingdao"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yang Hansen",
+                "canonicalKey": "person:yang-hansen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Qingdao",
+                "canonicalKey": "china-cba:qingdao"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yang Hansen",
+                "canonicalKey": "person:yang-hansen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Qingdao",
+                "canonicalKey": "china-cba:qingdao"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yang Hansen",
+                "canonicalKey": "person:yang-hansen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Qingdao",
+                "canonicalKey": "china-cba:qingdao"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zhejiang Guangsha",
+        "canonicalKey": "china-cba:zhejiang-guangsha"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Beijing Shougang",
+        "canonicalKey": "china-cba:beijing-shougang"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zhejiang Guangsha",
+          "canonicalKey": "china-cba:zhejiang-guangsha"
+        },
+        "won": 49,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jinqiu Hu",
+                "canonicalKey": "person:jinqiu-hu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zhejiang Guangsha",
+                "canonicalKey": "china-cba:zhejiang-guangsha"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Barry Brown, Jr.",
+                "canonicalKey": "person:barry-brown-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zhejiang Guangsha",
+                "canonicalKey": "china-cba:zhejiang-guangsha"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Shanghai Dongfang",
+        "canonicalKey": "china-cba:shanghai-dongfang"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Zhejiang Guangsha",
+        "canonicalKey": "china-cba:zhejiang-guangsha"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Shanghai Dongfang",
+          "canonicalKey": "china-cba:shanghai-dongfang"
+        },
+        "won": 47,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Xining He",
+                "canonicalKey": "person:xining-he"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Shenzhen",
+                "canonicalKey": "china-cba:shenzhen"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brandon Goodwin",
+                "canonicalKey": "person:brandon-goodwin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Shanghai Dongfang",
+                "canonicalKey": "china-cba:shanghai-dongfang"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Hassan Whiteside",
+                "canonicalKey": "person:hassan-whiteside"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Shanghai Dongfang",
+                "canonicalKey": "china-cba:shanghai-dongfang"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Hassan Whiteside",
+                "canonicalKey": "person:hassan-whiteside"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Shanghai Dongfang",
+                "canonicalKey": "china-cba:shanghai-dongfang"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,40 +1,42 @@
 import React from 'react';
 import { Search } from 'lucide-react';
-import { useGame } from '../../store/GameContext';
+import type { NewsBranding } from './branding';
 
 interface NavbarProps {
+  branding: NewsBranding;
   searchQuery: string;
   onSearchChange: (query: string) => void;
 }
 
-export default function Navbar({ searchQuery, onSearchChange }: NavbarProps) {
+export default function Navbar({ branding, searchQuery, onSearchChange }: NavbarProps) {
   const [isSearchOpen, setIsSearchOpen] = React.useState(false);
-  const { state } = useGame();
-  const leagueType = state?.leagueType ?? state?.pendingStartPayload?.leagueType;
-  const isNbaBrand = leagueType !== 'fictional';
 
   return (
-    <nav className="sticky top-0 z-50 bg-[#051c2d] text-white border-b border-white/10">
+    <nav
+      className="sticky top-0 z-50 text-white border-b border-white/10"
+      style={{ background: branding.kind === 'europe' || branding.kind === 'wnba' ? '#000000' : branding.primary }}
+    >
       <div className="max-w-[1400px] mx-auto px-4">
         <div className="flex items-center h-[60px] md:h-[70px]">
           <div className="flex-shrink-0 mr-8 min-w-0">
-            {isNbaBrand ? (
+            {branding.logoUrl ? (
               <img
-                src="https://cdn.nba.com/logos/leagues/logo-nba.svg"
-                alt="NBA Logo"
-                className="h-10 w-auto"
+                src={branding.logoUrl}
+                alt={`${branding.displayName} logo`}
+                className="h-10 max-w-[150px] w-auto object-contain"
+                referrerPolicy="no-referrer"
               />
             ) : (
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl border border-white/15 bg-white/5 flex items-center justify-center">
-                  <span className="text-[11px] font-black tracking-[0.2em] text-white">LN</span>
+                  <span className="text-[11px] font-black tracking-[0.2em] text-white">{branding.wordmark.slice(0, 2)}</span>
                 </div>
                 <div className="leading-none min-w-0">
                   <div className="text-[9px] font-black uppercase tracking-[0.28em] text-cyan-200/70">
-                    League Wire
+                    {branding.networkName}
                   </div>
                   <div className="text-xl font-black uppercase tracking-tight text-white truncate">
-                    League News
+                    {branding.displayName}
                   </div>
                 </div>
               </div>

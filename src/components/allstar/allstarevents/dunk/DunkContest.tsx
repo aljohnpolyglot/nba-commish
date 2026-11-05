@@ -8,9 +8,11 @@ import { DunkContestPlayFeed } from './PlayFeed';
 import { DunkContestJudgeReveal } from './JudgeReveal';
 import { AnimatePresence as AP } from 'motion/react';
 import { DUNK_MOVES } from '../../../../services/allStar/dunkMoves';
+import type { JudgeCandidate } from '../../../../services/allStar/judges';
 
 interface DunkContestProps {
   contestants: NBAPlayer[];
+  judgeCandidates?: JudgeCandidate[];
   onClose?: () => void;
   onComplete?: (result: any) => void;
 }
@@ -19,7 +21,7 @@ interface DunkContestProps {
  * Main Dunk Contest Component.
  * Accepts real game contestants passed from AllStarView.
  */
-export const DunkContest: React.FC<DunkContestProps> = ({ contestants, onClose, onComplete }) => {
+export const DunkContest: React.FC<DunkContestProps> = ({ contestants, judgeCandidates = [], onClose, onComplete }) => {
   const [activeTab, setActiveTab] = useState<'live' | 'results'>('live');
   const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [showWinnerOverlay, setShowWinnerOverlay] = useState(true);
@@ -39,7 +41,7 @@ export const DunkContest: React.FC<DunkContestProps> = ({ contestants, onClose, 
     pause,
     setSpeed,
     closeJudgeModal
-  } = useDunkContest(contestants);
+  } = useDunkContest(contestants, judgeCandidates);
 
   useEffect(() => {
     if (isFinished && simResult && onComplete) {
@@ -87,19 +89,21 @@ export const DunkContest: React.FC<DunkContestProps> = ({ contestants, onClose, 
       color: '#fff',
     }}>
       {/* Header */}
-      <div style={{ flexShrink: 0 }} className="p-4 md:px-8 md:py-4 border-b border-white/5 bg-zinc-900/20">
+      <div style={{ flexShrink: 0 }} className="relative p-4 pr-16 md:px-8 md:pr-20 md:py-4 border-b border-white/5 bg-zinc-900/20">
+        {onClose && (
+          <button
+            type="button"
+            onClick={handleExitClick}
+            className="absolute right-3 top-3 rounded-full p-2 transition-colors hover:bg-white/10 md:right-6 md:top-4"
+            title="Exit contest"
+            aria-label="Exit contest"
+          >
+            <X className="h-6 w-6 text-zinc-400" />
+          </button>
+        )}
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
           <div className="flex items-center space-x-6">
             <div className="flex items-center space-x-4">
-              {onClose && (
-                <button
-                  onClick={handleExitClick}
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
-                  title="Exit contest"
-                >
-                  <X className="w-6 h-6 text-zinc-400" />
-                </button>
-              )}
               <div>
                 <h2 className="text-2xl font-black italic tracking-tighter uppercase">Dunk Contest</h2>
                 <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest">All-Star Saturday Night</p>
@@ -383,22 +387,15 @@ export const DunkContest: React.FC<DunkContestProps> = ({ contestants, onClose, 
                 </div>
               </div>
 
-              <div className="flex gap-3">
+              {onClose && (
                 <button
-                  onClick={() => { setShowWinnerOverlay(false); setActiveTab('results'); }}
-                  className="flex-1 bg-orange-500 hover:bg-orange-400 text-black font-black py-4 rounded-xl transition-colors"
+                  type="button"
+                  onClick={onClose}
+                  className="w-full rounded-xl bg-orange-500 py-4 font-black text-black transition-colors hover:bg-orange-400"
                 >
-                  VIEW RESULTS
+                  EXIT
                 </button>
-                {onClose && (
-                  <button
-                    onClick={onClose}
-                    className="flex-1 bg-zinc-800 text-white font-black py-4 rounded-xl hover:bg-zinc-700 transition-colors"
-                  >
-                    CLOSE
-                  </button>
-                )}
-              </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -434,10 +431,11 @@ export const DunkContest: React.FC<DunkContestProps> = ({ contestants, onClose, 
                   Stay
                 </button>
                 <button
+                  type="button"
                   onClick={handleConfirmExit}
                   className="flex-1 py-3 bg-red-600 hover:bg-red-500 text-white rounded-xl font-bold transition-colors"
                 >
-                  Exit & Save
+                  Exit
                 </button>
               </div>
             </motion.div>

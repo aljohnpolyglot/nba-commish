@@ -11,6 +11,16 @@ export type SponsorSlot = {
 const LEAGUE_ID_TO_KEY: Record<string, LeagueKey> = {
   endesa: 'spain',
   euroleague: 'spain',  // catalog has no separate Euroleague — use Spain pool until expanded
+  'french-jeep-elite': 'france',
+  'italian-serie-a': 'italy',
+  'german-bbl': 'germany',
+  'greek-heba-a1': 'greece',
+  'turkish-bsl': 'turkey',
+  'lithuanian-lkl': 'lithuania',
+  'israeli-bsl': 'israel',
+  'vtb-united-league': 'russia',
+  'adriatic-league': 'adriatic',
+  eurocup: 'spain',
 };
 
 export function leagueIdToKey(leagueId: string): LeagueKey | undefined {

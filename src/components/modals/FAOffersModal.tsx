@@ -1,149 +1,183 @@
 import React from 'react';
-import { X } from 'lucide-react';
-import { useGame } from '../../store/GameContext';
-import { computeOfferStrength, isPlausibleActiveMarket } from '../../services/freeAgencyBidding';
-import { getCurrentOffseasonFAMoratoriumEnd, isInMoratorium, parseGameDate } from '../../utils/dateUtils';
-import { formatContractTotalUSD, formatContractUSD } from '../../utils/salaryUtils';
+import {
+  BadgeDollarSign,
+  BarChart3,
+  Flame,
+  MessageSquareText,
+  Shield,
+  Trophy,
+  Users,
+  X,
+} from 'lucide-react';
 import type { NBAPlayer } from '../../types';
+import { useGame } from '../../store/GameContext';
+import { getDisplayAge } from '../../store/playerRatingStore';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../utils/scoutingFuzz';
+import { computeContractOffer, formatContractTotalUSD, formatContractUSD } from '../../utils/salaryUtils';
+import { formatHeight } from '../../utils/helpers';
+import { getPlayerImage } from '../central/view/bioCache';
+import { MyFace, isRealFaceConfig } from '../shared/MyFace';
+import { isPlausibleActiveMarket } from '../../services/freeAgencyBidding';
+import { countActiveOfferTeams } from '../../services/freeAgency/freeAgencyDecisionTiming';
+import { formatExternalSalary } from '../../constants';
+import { normalizeMoodTraits } from '../../utils/mood/moodScore';
 
 interface Props {
   player: NBAPlayer;
   onClose: () => void;
+  onContactAgent: () => void;
 }
 
-export const FAOffersModal: React.FC<Props> = ({ player, onClose }) => {
-  const { state } = useGame();
-  const market = state.faBidding?.markets?.find(m =>
-    m.playerId === player.internalId &&
-    isPlausibleActiveMarket(m as any, state, player)
+type Importance = 'Not Important' | 'Important' | 'Very Important';
+
+function personality(player: NBAPlayer) {
+  const traits = new Set(normalizeMoodTraits(player.moodTraits ?? []));
+  const loyalty = traits.has('LOYAL') ? 'High' : traits.has('MERCENARY') ? 'Low' : 'Medium';
+  const winning: Importance = traits.has('COMPETITOR')
+    ? 'Very Important'
+    : traits.has('MERCENARY') || traits.has('DIVA')
+      ? 'Important'
+      : 'Important';
+  const money: Importance = traits.has('MERCENARY')
+    ? 'Very Important'
+    : traits.has('LOYAL')
+      ? 'Not Important'
+      : 'Important';
+  const fame: Importance = traits.has('FAME') || traits.has('DIVA')
+    ? 'Very Important'
+    : traits.has('COMPETITOR')
+      ? 'Not Important'
+      : 'Important';
+  return { loyalty, winning, money, fame };
+}
+
+function SnapshotRow({
+  icon,
+  title,
+  description,
+  value,
+  tone,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  description: string;
+  value: React.ReactNode;
+  tone: string;
+}) {
+  return (
+    <div className="grid gap-3 border-b border-white/5 px-4 py-4 last:border-b-0 sm:grid-cols-[42px_minmax(0,1fr)_auto] sm:items-center sm:px-6">
+      <div className={`flex h-10 w-10 items-center justify-center rounded-xl ${tone}`}>{icon}</div>
+      <div>
+        <div className="text-sm font-black uppercase tracking-wide text-slate-200">{title}</div>
+        <div className="mt-0.5 text-xs text-slate-500">{description}</div>
+      </div>
+      <div className="text-left text-lg font-black tabular-nums text-white sm:text-right">{value}</div>
+    </div>
   );
-  const resolvedMarket = !market ? state.faBidding?.markets?.find(m => m.playerId === player.internalId && m.resolved) : null;
-  const activeMarket = market ?? resolvedMarket;
-  const activeBids = market?.bids?.filter(b => b.status === 'active' && !b.isUserBid) ?? [];
-  const userBid = activeMarket?.bids?.find(b => b.isUserBid);
-  const userBidAccepted = userBid?.status === 'accepted';
-  const userBidRejected = userBid && !userBidAccepted && userBid.status !== 'active';
-  const acceptedByOther = resolvedMarket?.bids?.find(b => b.status === 'accepted' && !b.isUserBid);
-  const sortedBids = [...activeBids].sort((a, b) => b.salaryUSD - a.salaryUSD);
-  const decisionDaysOut = (() => {
-    if (!market) return 0;
-    const rawDays = Math.max(0, market.decidesOnDay - (state.day ?? 0));
-    if (!state.date || !isInMoratorium(state.date, state.leagueStats?.year ?? new Date().getFullYear(), state.leagueStats as any, state.schedule as any)) return rawDays;
-    const today = parseGameDate(state.date);
-    const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any);
-    const moratoriumDays = Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));
-    return Math.max(rawDays, moratoriumDays);
-  })();
+}
 
-  // Normalize all bid scores so the leader = 100%
-  const allBidsForStrength = [
-    ...(market?.bids?.filter(b => b.status === 'active') ?? []),
-    ...(resolvedMarket?.bids?.filter(b => b.status === 'accepted' || b.isUserBid) ?? []),
-  ];
-  const rawScores = new Map(allBidsForStrength.map(b => [b.id, computeOfferStrength(b, player, state)]));
-  const maxRaw = Math.max(...rawScores.values(), 1);
-  const normalizedPct = (bid: any) => Math.round((rawScores.get(bid.id) ?? 0) / maxRaw * 100);
-
-  const renderStrengthBar = (bid: any) => {
-    const pct = normalizedPct(bid);
-    const color = pct >= 95 ? '#22c55e' : pct >= 70 ? '#FDB927' : 'rgba(255,255,255,0.2)';
-    const textColor = pct >= 95 ? 'text-emerald-400' : pct >= 70 ? 'text-[#FDB927]' : 'text-white/40';
-    return (
-      <div className="mt-1.5">
-        <div className="flex items-center justify-between mb-0.5">
-          <div className="text-[8px] uppercase tracking-widest text-white/30">Offer Strength</div>
-          <div className={`text-[9px] font-black ${textColor}`}>{pct}%</div>
-        </div>
-        <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-          <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
-        </div>
-      </div>
-    );
-  };
-
-  const renderBidCard = (bid: any, idx: number, isUser = false) => {
-    const totalValue = formatContractTotalUSD(bid.salaryUSD, bid.years);
-    const annualValue = formatContractUSD(bid.salaryUSD);
-    return (
-      <div key={bid.id} className={`px-3 py-2.5 rounded-lg border ${isUser ? 'bg-indigo-500/5 border-indigo-500/30' : 'bg-white/[0.03] border-white/5'}`}>
-        <div className="flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            {isUser ? (
-              <div className="w-7 h-7 rounded-full bg-indigo-500/20 border border-indigo-500/40 flex items-center justify-center shrink-0 text-[9px] font-black text-indigo-300">YOU</div>
-            ) : bid.teamLogoUrl ? (
-              <img src={bid.teamLogoUrl} alt="" className="w-7 h-7 object-contain shrink-0" />
-            ) : null}
-            <div className="min-w-0">
-              <div className={`text-[11px] font-black truncate ${isUser ? 'text-indigo-300' : 'text-white/90'}`}>
-                {isUser ? 'Your Offer' : bid.teamName}
-              </div>
-              <div className="text-[9px] uppercase tracking-widest text-white/40">
-                {bid.option === 'PLAYER' ? 'Player option' : bid.option === 'TEAM' ? 'Team option' : `${bid.years}-year deal`}
-              </div>
-            </div>
-          </div>
-          <div className="text-right shrink-0">
-            <div className="text-[13px] font-black text-[#FDB927]">{totalValue}</div>
-            <div className="text-[9px] uppercase tracking-widest text-white/40">{annualValue} / {bid.years}yr{!isUser && idx === 0 ? ' · leading' : ''}</div>
-          </div>
-        </div>
-        {renderStrengthBar(bid)}
-      </div>
-    );
-  };
+export const FAOffersModal: React.FC<Props> = ({ player, onClose, onContactAgent }) => {
+  const { state } = useGame();
+  const year = state.leagueStats?.year ?? new Date().getUTCFullYear();
+  const age = getDisplayAge(player, year);
+  const overall = getScoutedDisplayOverall(state, player, year);
+  const potential = getScoutedDisplayPotential(state, player, year, year);
+  const profile = personality(player);
+  const market = state.faBidding?.markets?.find(candidate =>
+    candidate.playerId === player.internalId
+    && isPlausibleActiveMarket(candidate as any, state, player)
+  );
+  const pbaMarket = state.pbaLocalFreeAgency?.markets?.find(candidate =>
+    candidate.playerId === player.internalId && !candidate.resolved
+  );
+  const activeBids = (market?.bids ?? pbaMarket?.bids ?? []).filter(bid => bid.status === 'active');
+  const offerCount = countActiveOfferTeams(activeBids);
+  const hasUserBid = !!(market?.bids ?? pbaMarket?.bids)?.some(bid => bid.isUserBid);
+  const asking = computeContractOffer(player, state.leagueStats as any, player.moodTraits ?? []);
+  const bestOffer = [...activeBids].sort((left, right) =>
+    (right.salaryUSD * right.years) - (left.salaryUSD * left.years)
+  )[0];
+  const demand = offerCount >= 4 ? 'High' : offerCount >= 2 ? 'Medium' : 'Low';
+  const image = getPlayerImage(player);
+  const face = (player as any).face;
+  const pbaIsolated = state.leagueStats?.uiMode === 'pba_isolated';
+  const totalMoney = (salaryUSD: number, years: number) => pbaIsolated
+    ? formatExternalSalary(salaryUSD * years, 'PBA')
+    : formatContractTotalUSD(salaryUSD, years);
+  const annualMoney = (salaryUSD: number) => pbaIsolated
+    ? formatExternalSalary(salaryUSD, 'PBA')
+    : formatContractUSD(salaryUSD);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-slate-950/90 p-2 backdrop-blur-md sm:p-5" onClick={onClose}>
       <div
-        className="relative w-full max-w-sm max-h-[calc(100vh-2rem)] overflow-y-auto bg-zinc-950 border border-white/10 rounded-xl shadow-2xl"
-        onClick={e => e.stopPropagation()}
+        className="relative max-h-[calc(100dvh-1rem)] w-full max-w-5xl overflow-y-auto rounded-2xl border border-slate-700/80 bg-[radial-gradient(circle_at_top_left,rgba(29,78,216,0.24),transparent_36%),linear-gradient(145deg,#07111f,#020712_70%)] shadow-2xl sm:max-h-[calc(100dvh-2.5rem)]"
+        onClick={event => event.stopPropagation()}
       >
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-4 sm:px-5 py-4 border-b border-white/5">
-          <div className="min-w-0">
-            <div className="text-[10px] font-black uppercase tracking-[0.3em] text-white/50 italic">Active Market Bids</div>
-            <div className="text-sm font-bold text-white mt-0.5 break-words">{player.name}</div>
+        <button type="button" onClick={onClose} className="absolute right-3 top-3 z-10 rounded-full p-2 text-slate-400 hover:bg-white/10 hover:text-white">
+          <X size={24} />
+        </button>
+
+        <div className="grid gap-5 px-5 pb-5 pt-14 sm:px-8 sm:pb-8 lg:grid-cols-[260px_minmax(0,1fr)] lg:items-end lg:pt-8">
+          <div className="mx-auto h-52 w-52 overflow-hidden rounded-2xl bg-slate-900/70 lg:h-64 lg:w-full">
+            {image ? (
+              <img src={image} alt={player.name} className="h-full w-full object-cover object-top" referrerPolicy="no-referrer" />
+            ) : isRealFaceConfig(face) ? (
+              <MyFace face={face} style={{ width: '100%', height: '100%' }} />
+            ) : (
+              <div className="flex h-full items-center justify-center text-6xl font-black text-slate-700">{player.name.charAt(0)}</div>
+            )}
           </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg hover:bg-white/10 transition-colors">
-            <X className="w-4 h-4 text-white/60" />
-          </button>
+
+          <div>
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+              <div>
+                <h2 className="pr-8 text-3xl font-black uppercase tracking-tight text-white sm:text-5xl">{player.name}</h2>
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm font-bold uppercase text-slate-400">
+                  <span className="rounded bg-blue-700 px-3 py-1 text-white">{player.pos}</span>
+                  <span>{player.hgt ? formatHeight(player.hgt) : '—'}</span>
+                  <span>·</span>
+                  <span>{player.weight ? `${player.weight} lbs` : '—'}</span>
+                  <span>·</span>
+                  <span>{age} years old</span>
+                </div>
+              </div>
+              <div className="flex shrink-0 gap-5">
+                <div><div className="text-xs font-black uppercase tracking-widest text-slate-500">OVR</div><div className="text-5xl font-black text-white">{overall}</div></div>
+                <div className="border-l border-slate-700 pl-5"><div className="text-xs font-black uppercase tracking-widest text-slate-500">Potential</div><div className="text-5xl font-black text-amber-400">{potential}</div></div>
+              </div>
+            </div>
+
+            <div className="mt-6 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-xl border border-violet-500/30 bg-violet-500/10 px-3 py-3 text-xs font-black uppercase text-slate-300"><Shield className="mr-2 inline text-violet-400" size={17} />Loyalty: <span className="text-violet-300">{profile.loyalty}</span></div>
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-3 py-3 text-xs font-black uppercase text-slate-300"><Trophy className="mr-2 inline text-emerald-400" size={17} />Play for Winner: <span className="text-emerald-300">{profile.winning}</span></div>
+              <div className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-3 text-xs font-black uppercase text-slate-300"><BadgeDollarSign className="mr-2 inline text-amber-400" size={17} />Money: <span className="text-amber-300">{profile.money}</span></div>
+              <div className="rounded-xl border border-sky-500/30 bg-sky-500/10 px-3 py-3 text-xs font-black uppercase text-slate-300"><BarChart3 className="mr-2 inline text-sky-400" size={17} />Fame: <span className="text-sky-300">{profile.fame}</span></div>
+            </div>
+          </div>
         </div>
 
-        {/* Body */}
-        <div className="p-4 sm:p-5 space-y-3 custom-scrollbar">
-          {!activeMarket && !userBid ? (
-            <p className="text-[11px] text-white/40 italic text-center py-4">No competing bids on record.</p>
-          ) : (
-            <>
-              {market && (
-                <div className="flex items-center justify-between pb-2 border-b border-white/5">
-                  <div className="text-[9px] uppercase tracking-widest text-white/50">Decision window</div>
-                  <div className="text-[11px] font-bold text-[#FDB927]">
-                    {decisionDaysOut === 0 ? 'Decides today' : `${decisionDaysOut} day${decisionDaysOut === 1 ? '' : 's'} remaining`}
-                  </div>
-                </div>
-              )}
+        <section className="mx-3 mb-3 overflow-hidden rounded-2xl border border-slate-700/70 bg-slate-950/45 sm:mx-8 sm:mb-8">
+          <div className="flex items-center gap-3 border-b border-white/10 px-4 py-4 sm:px-6">
+            <BarChart3 className="text-blue-400" />
+            <h3 className="text-xl font-black uppercase tracking-wide text-white">Market Snapshot</h3>
+          </div>
+          <SnapshotRow icon={<Users size={24} />} title="Offers Received" description="Number of teams that have made an offer." tone="bg-blue-500/15 text-blue-400" value={offerCount} />
+          <SnapshotRow icon={<Flame size={24} />} title="Demand" description="Interest level around the league." tone="bg-orange-500/15 text-orange-400" value={<span className={hasUserBid ? 'text-slate-400' : demand === 'High' ? 'text-rose-400' : demand === 'Medium' ? 'text-amber-400' : 'text-slate-300'}>{hasUserBid ? 'Private' : demand}</span>} />
+          <SnapshotRow icon={<BadgeDollarSign size={24} />} title="Asking Price" description="Contract the player is seeking." tone="bg-emerald-500/15 text-emerald-400" value={<><div>{totalMoney(asking.salaryUSD, asking.years)} / {asking.years} yrs</div><div className="text-xs font-bold uppercase text-slate-500">{annualMoney(asking.salaryUSD)} annually</div></>} />
+          <SnapshotRow icon={<BarChart3 size={24} />} title="Best Offer" description="Best contract currently on the table." tone="bg-emerald-500/15 text-emerald-400" value={hasUserBid ? <span className="text-slate-400">Private</span> : bestOffer ? <><div>{totalMoney(bestOffer.salaryUSD, bestOffer.years)} / {bestOffer.years} yrs</div><div className="text-xs font-bold uppercase text-slate-500">{annualMoney(bestOffer.salaryUSD)} annually</div></> : 'No offer yet'} />
+        </section>
 
-              {userBidAccepted && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
-                  <span className="text-emerald-400 font-black">✓</span>
-                  <span className="text-[11px] font-black text-emerald-300 uppercase tracking-widest">Offer Accepted</span>
-                </div>
-              )}
-              {userBidRejected && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-rose-500/10 border border-rose-500/30 rounded-lg">
-                  <span className="text-rose-400 font-black">✗</span>
-                  <span className="text-[11px] font-black text-rose-300 uppercase tracking-widest">
-                    Outbid{acceptedByOther ? ` — Player chose ${acceptedByOther.teamName}` : ''}
-                  </span>
-                </div>
-              )}
-
-              {userBid && renderBidCard(userBid, -1, true)}
-              {sortedBids.map((bid, idx) => renderBidCard(bid, idx))}
-            </>
-          )}
+        <div className="sticky bottom-0 border-t border-white/10 bg-slate-950/95 p-3 sm:px-8 sm:py-5">
+          <button
+            type="button"
+            onClick={onContactAgent}
+            className="flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-blue-700 to-indigo-600 px-5 py-4 text-lg font-black uppercase tracking-wide text-white shadow-lg shadow-blue-950/40 hover:from-blue-600 hover:to-indigo-500"
+          >
+            <MessageSquareText size={26} />
+            Contact Agent
+          </button>
+          <p className="mt-2 text-center text-xs text-slate-500">Start a conversation with {player.name}&apos;s Agent.</p>
         </div>
       </div>
     </div>

@@ -169,8 +169,7 @@ const TIER_PRESTIGE_DEFAULT: Record<TycoonTier, number> = {
   S: 0.95, A: 0.65, B: 0.50, C: 0.40, D: 0.30,
 };
 
-// Offline fallback only. The gist at https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/sponsor-catalog.json
-// is the source of truth at runtime. Edit there, not here.
+// Bundled baseline; an optional configured catalog may override it at runtime.
 export const SPAIN_INITIAL_SPONSORS: Record<TycoonTier, Record<SponsorshipSlot, string[]>> = {
   S: {
     kit: ['Emirates', 'Adidas', 'Nike', 'Herbalife', 'Qatar Airways', 'Tesla'],

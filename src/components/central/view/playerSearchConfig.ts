@@ -1,5 +1,6 @@
 export const PLAYER_SEARCH_LEAGUES = [
   { id: 'nba', name: 'NBA' },
+  { id: 'freeagents', name: 'Free Agents' },
   { id: 'wnba', name: 'WNBA' },
   { id: 'pba', name: 'PBA' },
   { id: 'euroleague', name: 'Euroleague' },

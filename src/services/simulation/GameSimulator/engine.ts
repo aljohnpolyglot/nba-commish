@@ -1,8 +1,8 @@
-import { NBATeam as Team, NBAPlayer as Player, Game, LeagueStats } from '../../../types';
+import { NBATeam as Team, NBAPlayer as Player, Game, LeagueStats, ResolvedGamePresentation } from '../../../types';
 import { StatGenerator } from '../StatGenerator';
-import { GameResult } from '../types';
+import { GameEjection, GameResult, GameTiebreaker } from '../types';
 import { GameLiveEvent } from '../types';
-import { InjurySystem, enforceSeasonEndingMinimum } from '../InjurySystem';
+import { InjurySystem, enforceSeasonEndingMinimum, injuryChanceWithLeagueFactor } from '../InjurySystem';
 import { calcTeamRatings, expectedTeamScore } from '../teamratinghelper';
 import { normalRandom } from '../utils';
 import { simulateQuarters } from './quarters';
@@ -21,14 +21,22 @@ import {
   KNOBS_PBA,
   KNOBS_PRESEASON,
   KNOBS_RISING_STARS,
+  applySimulationEngineCalibration,
   getKnobs,
 } from '../SimulatorKnobs';
 import { HighlightGenerator } from '../HighlightGenerator';
 import { getInjuries, getRandomInjury } from '../../injuryService';
-import { getScoringOptions, getScoringOptionBiases, getCoachingPenalty } from '../../../store/scoringOptionsStore';
-import { getSystemFitPenalty, getSystemKnobMods } from '../../../store/coachSystemStore';
-import { getLockedStrategy } from '../../../store/coachStrategyLockStore';
-import { simulateGameViaAdapter } from '../SimulatorAdapter';
+import { getScoringOptionBiases, getCoachingPenalty } from '../../../store/scoringOptionsStore';
+import {
+  getSimulationScoringOptions as getScoringOptions,
+  getSimulationSystemFitPenalty as getSystemFitPenalty,
+  getSimulationSystemKnobMods as getSystemKnobMods,
+} from '../simulationRealmContext';
+import {
+  simulateGameViaAdapter,
+  simulatePreparedGameViaAdapter,
+  type SimulateGameArgs,
+} from '../SimulatorAdapter';
 import { getRealDurability } from '../../../utils/durabilityUtils';
 import { getFourPointDistance, isFourPointEnabled } from '../../../utils/ruleFlags';
 import { resolveExhibitionRules } from '../../allStar/exhibitionRules';
@@ -38,9 +46,20 @@ import {
   getTeamMedicalGameplayEffects,
 } from '../../staff/staffGameplayEffects';
 import { getTeamTravelGameplayEffects } from '../../tycoon/travelGameplayEffects';
-import { finalizeBoxScore } from './engineBoxScore';
+import { finalizeBoxScore, reconcileTeamPointsToScore } from './engineBoxScore';
 import { resolveDayGameSetup, buildStandingsContext } from './engineDaySetup';
 import { buildLeagueBaseKnobs } from './engineLeagueKnobs';
+import {
+  getFastEraAssistDistributionExponent,
+  getFastEraInteriorBlockMissShare,
+  getFastEraReboundDistributionExponent,
+  getFastEraSimulationAdapter,
+  NEUTRAL_ERA_COACHING_BIAS,
+} from '../eraCoachingBias';
+import { capturePreparedSimulationGame, recordSimulationPerf } from '../simulationPerfDebug';
+import { annotateFourthQuarterPoints } from '../fourthQuarterStats';
+import { normalizeGameResultScoreIntegrity } from '../resultIntegrity';
+import { generateHeaveEvents } from '../heaveRule';
 import { applyPMToStats, generateSyntheticPM } from './syntheticPM';
 import {
   applyTemporaryTravelFatigue,
@@ -53,10 +72,33 @@ import {
   getEfficiencyMultFromScore,
   getFamiliarityMods,
   getTrainingDefensiveAuraMods,
+  resolveTeamEraCoachingBias,
   resolveTeamStrength,
 } from './engineTeamModifiers';
+import { resolveGameRules, resolveShootout } from '../gameRuleRuntime';
+import { fastHomeWinProbability } from '../playoffProbability';
 
 export class GameSimulator {
+  /**
+   * Capture the exact defensive profiles consumed after staff/travel roster
+   * transforms. Capturing the raw adapter roster is insufficient for players
+   * without a name-matched 2K row because their fallback profile derives from
+   * the transformed ratings.
+   */
+  static capturePreparedGameDefenseProfiles(args: SimulateGameArgs) {
+    const awayTravel = getTeamTravelGameplayEffects(args.awayTeam as any);
+    const rawHomePlayers = args.homeOverridePlayers
+      ?? args.players.filter(player => player.tid === args.homeTeam.id);
+    const rawAwayPlayers = applyTemporaryTravelFatigue(
+      args.awayOverridePlayers
+        ?? args.players.filter(player => player.tid === args.awayTeam.id),
+      awayTravel.awayFatigueShift,
+    );
+    const homePlayers = applyStaffGameEffectsToRoster(rawHomePlayers, args.homeTeam as any);
+    const awayPlayers = applyStaffGameEffectsToRoster(rawAwayPlayers, args.awayTeam as any);
+    return Defense2KService.captureSimulationProfiles([...homePlayers, ...awayPlayers]);
+  }
+
   private static perfNow(): number {
     return typeof performance !== 'undefined' && typeof performance.now === 'function'
       ? performance.now()
@@ -80,8 +122,24 @@ export class GameSimulator {
       : { home: scaledLoser, away: saneTarget };
   }
 
-  private static calcWinProb(strengthDiff: number): number {
-    return 1 / (1 + Math.exp(-strengthDiff * 0.09));
+  private static normalizeElamScores(
+    home: number,
+    away: number,
+    homeRegulation: number,
+    awayRegulation: number,
+    target: number,
+  ): { home: number; away: number } {
+    const saneTarget = Math.max(homeRegulation, awayRegulation) + Math.max(1, Math.round(target - Math.max(homeRegulation, awayRegulation)));
+    if (home >= away) {
+      return {
+        home: saneTarget,
+        away: Math.max(awayRegulation, Math.min(saneTarget - 1, Math.round(away))),
+      };
+    }
+    return {
+      home: Math.max(homeRegulation, Math.min(saneTarget - 1, Math.round(home))),
+      away: saneTarget,
+    };
   }
 
   private static simulateOTPeriod(
@@ -123,16 +181,21 @@ export class GameSimulator {
     riggedForTid?: number,
     homeKnobs: SimulatorKnobs = KNOBS_DEFAULT,
     awayKnobs: SimulatorKnobs = KNOBS_DEFAULT,
+    injuryFrequencyFactor: number = 1,
+    season?: number,
+    allowTies: boolean = false,
   ): GameResult {
+    const fastHomeKnobs = applySimulationEngineCalibration(homeKnobs, 'fast');
+    const fastAwayKnobs = applySimulationEngineCalibration(awayKnobs, 'fast');
     // 500-retry loop to enforce rigged result
     for (let attempt = 0; attempt < 500; attempt++) {
-      const result = this._simulateGameOnce(homeTeam, awayTeam, players, gameId, date, playerApproval, homeOverridePlayers, awayOverridePlayers, isAllStar, isRisingStars, isEliminationGame, homeKnobs, awayKnobs);
+      const result = this._simulateGameOnce(homeTeam, awayTeam, players, gameId, date, playerApproval, homeOverridePlayers, awayOverridePlayers, isAllStar, isRisingStars, isEliminationGame, fastHomeKnobs, fastAwayKnobs, injuryFrequencyFactor, season, allowTies);
       if (!riggedForTid || result.winnerId === riggedForTid) {
         return result;
       }
     }
     // Fallback: return last attempt even if rig failed (shouldn't happen with 500 tries)
-    return this._simulateGameOnce(homeTeam, awayTeam, players, gameId, date, playerApproval, homeOverridePlayers, awayOverridePlayers, isAllStar, isRisingStars, isEliminationGame, homeKnobs, awayKnobs);
+    return this._simulateGameOnce(homeTeam, awayTeam, players, gameId, date, playerApproval, homeOverridePlayers, awayOverridePlayers, isAllStar, isRisingStars, isEliminationGame, fastHomeKnobs, fastAwayKnobs, injuryFrequencyFactor, season, allowTies);
   }
 
   private static _simulateGameOnce(
@@ -149,11 +212,16 @@ export class GameSimulator {
     isEliminationGame?: boolean,
     homeKnobs: SimulatorKnobs = KNOBS_DEFAULT,
     awayKnobs: SimulatorKnobs = KNOBS_DEFAULT,
+    injuryFrequencyFactor: number = 1,
+    season?: number,
+    allowTies: boolean = false,
   ): GameResult {
-
-    const currentSeason = date ? parseInt(date.split('-')[0], 10) : 2026;
-    const baseHomeStrength = resolveTeamStrength(homeTeam, players, currentSeason, homeOverridePlayers);
-    const baseAwayStrength = resolveTeamStrength(awayTeam, players, currentSeason, awayOverridePlayers);
+    const forensicTotalStart = this.perfNow();
+    let forensicStageStart = forensicTotalStart;
+    const currentSeason = Number.isFinite(season) ? Number(season) : date ? parseInt(date.split('-')[0], 10) : 2026;
+    const gameRules = resolveGameRules(homeKnobs, awayKnobs);
+    const baseHomeStrength = resolveTeamStrength(homeTeam, players, currentSeason, homeOverridePlayers, homeKnobs);
+    const baseAwayStrength = resolveTeamStrength(awayTeam, players, currentSeason, awayOverridePlayers, awayKnobs);
     const homeCoaching = getTeamCoachingGameplayEffects(homeTeam as any);
     const awayCoaching = getTeamCoachingGameplayEffects(awayTeam as any);
     const highLeverageGame = !!homeKnobs.isPlayoffs || !!awayKnobs.isPlayoffs || !!isEliminationGame;
@@ -165,13 +233,13 @@ export class GameSimulator {
     const homeCoachPenalty = homeOverridePlayers
       ? 0
       : getCoachingPenalty(
-          buildBaselineOrder(homeOverridePlayers ?? players.filter(p => p.tid === homeTeam.id)),
+          buildBaselineOrder(homeOverridePlayers ?? players.filter(p => p.tid === homeTeam.id), gameRules.dribbleRule),
           getScoringOptions(homeTeam.id)
         );
     const awayCoachPenalty = awayOverridePlayers
       ? 0
       : getCoachingPenalty(
-          buildBaselineOrder(awayOverridePlayers ?? players.filter(p => p.tid === awayTeam.id)),
+          buildBaselineOrder(awayOverridePlayers ?? players.filter(p => p.tid === awayTeam.id), gameRules.dribbleRule),
           getScoringOptions(awayTeam.id)
         );
     // System-fit penalty — wrong system reduces team strength + shooting efficiency.
@@ -187,9 +255,9 @@ export class GameSimulator {
     const homeStrength = baseHomeStrength - homeCoachPenalty - (homeSysFit?.strengthPenalty ?? 0) + homeFamMods.strengthBoost + homeTrainingAura.strengthBoost + homeStaffStrength;
     const awayStrength = baseAwayStrength - awayCoachPenalty - (awaySysFit?.strengthPenalty ?? 0) + awayFamMods.strengthBoost + awayTrainingAura.strengthBoost + awayStaffStrength + awayTravel.awayStrengthBonus;
 
-    const HOME_COURT  = 3;
-    const strengthDiff = (homeStrength - awayStrength) + HOME_COURT;
-    const winProb      = Math.max(0.07, Math.min(0.93, this.calcWinProb(strengthDiff)));
+    const homeCourtAdvantage = Math.max(0, Math.min(6, homeKnobs.homeCourtAdvantagePoints ?? 3));
+    const strengthDiff = (homeStrength - awayStrength) + homeCourtAdvantage;
+    const winProb      = fastHomeWinProbability(strengthDiff);
     const homeWins     = Math.random() < winProb;
 
     const absGap   = Math.abs(homeStrength - awayStrength);
@@ -210,6 +278,8 @@ export class GameSimulator {
     ]);
     const gameplayAdjustedPlayers = players.map(player => adjustedPlayerMap.get(player.internalId) ?? player);
     const fatigueAdjustedPlayers = applyTrainingFatiguePerformance(gameplayAdjustedPlayers);
+    const inputStrengthMs = this.perfNow() - forensicStageStart;
+    forensicStageStart = this.perfNow();
     const homeRatings = calcTeamRatings(homeTeam.id, fatigueAdjustedPlayers);
     const awayRatings = calcTeamRatings(awayTeam.id, fatigueAdjustedPlayers);
 
@@ -232,7 +302,7 @@ export class GameSimulator {
     let loserScore  = Math.min(homeRegScore, awayRegScore);
 
     // Prevent tied scores outside of OT path
-    if (winnerScore === loserScore) {
+    if (winnerScore === loserScore && !allowTies) {
       if (Math.random() < 0.5) winnerScore += 1;
       else loserScore = Math.max(0, loserScore - 1);
     }
@@ -241,6 +311,8 @@ export class GameSimulator {
     let otCount = 0;
     let finalHomeScore: number;
     let finalAwayScore: number;
+    let pendingShootout = false;
+    let tiebreaker: GameTiebreaker | undefined;
     const baseGameFormat = (homeKnobs.gameFormat ?? awayKnobs.gameFormat ?? 'timed') as 'timed' | 'target_score' | 'elam_ending';
     const configuredTargetScore = Math.max(1, Math.round(((homeKnobs.targetScore ?? 0) + (awayKnobs.targetScore ?? 0)) / 2 || 0));
     const overtimeType = homeKnobs.overtimeType ?? awayKnobs.overtimeType ?? 'standard';
@@ -254,9 +326,7 @@ export class GameSimulator {
     const maxOvertimes = enabledOtCaps.length > 0
       ? Math.min(...enabledOtCaps)
       : Number.POSITIVE_INFINITY;
-    const otChance = overtimeEnabled && maxOvertimes !== 0
-      ? baseLead <= 4 ? 0.38 : baseLead <= 8 ? 0.06 : 0
-      : 0;
+    const otChance = baseLead <= 4 ? 0.38 : baseLead <= 8 ? 0.06 : 0;
 
     if (baseGameFormat === 'target_score') {
       const scaled = this.scaleWinnerToTarget(homeRegScore, awayRegScore, configuredTargetScore > 0 ? configuredTargetScore : 100);
@@ -282,30 +352,60 @@ export class GameSimulator {
       }
       isOT = true;
       otCount = 1;
-    } else if (otChance > 0 && Math.random() < otChance) {
-      isOT    = true;
+    } else if (!allowTies && otChance > 0 && Math.random() < otChance) {
       const regTie  = loserScore;
-      if (overtimeType === 'target_score') {
+      if (overtimeType === 'shootout' || !overtimeEnabled) {
+        const selected = overtimeType === 'shootout' ? 'shootout' : gameRules.overtimeTieBreaker;
+        if (selected === 'shootout') {
+          pendingShootout = true;
+          finalHomeScore = regTie;
+          finalAwayScore = regTie;
+        } else if (selected === 'target_score') {
+          isOT = true;
+          otCount = 1;
+          const race = this.simulateOTPeriod(true, strengthDiff, overtimeDuration);
+          const scaled = this.scaleWinnerToTarget(race.homePts, race.awayPts, overtimeTargetPoints);
+          finalHomeScore = regTie + scaled.home;
+          finalAwayScore = regTie + scaled.away;
+          tiebreaker = { type: 'target_score', homeScore: scaled.home, awayScore: scaled.away };
+        } else {
+          const homeWinsSd = Math.random() < (0.50 + strengthDiff * 0.008);
+          const points = Math.random() < 0.25 ? 1 : Math.random() < 0.55 ? 2 : 3;
+          finalHomeScore = regTie + (homeWinsSd ? points : 0);
+          finalAwayScore = regTie + (homeWinsSd ? 0 : points);
+          tiebreaker = { type: 'sudden_death', homeScore: homeWinsSd ? points : 0, awayScore: homeWinsSd ? 0 : points };
+        }
+      } else if (overtimeType === 'target_score') {
+        isOT = true;
         otCount = 1;
         const race = this.simulateOTPeriod(true, strengthDiff, overtimeDuration);
         const scaled = this.scaleWinnerToTarget(race.homePts, race.awayPts, overtimeTargetPoints > 0 ? overtimeTargetPoints : 7);
         finalHomeScore = regTie + scaled.home;
         finalAwayScore = regTie + scaled.away;
+        tiebreaker = { type: 'target_score', homeScore: scaled.home, awayScore: scaled.away };
       } else if (overtimeType === 'sudden_death') {
+        isOT = true;
         otCount = 1;
         const homeWinsSd = Math.random() < (0.50 + strengthDiff * 0.008);
         const suddenDeathPts = Math.random() < 0.25 ? 1 : Math.random() < 0.55 ? 2 : 3;
         finalHomeScore = regTie + (homeWinsSd ? suddenDeathPts : 0);
         finalAwayScore = regTie + (homeWinsSd ? 0 : suddenDeathPts);
+        tiebreaker = {
+          type: 'sudden_death',
+          homeScore: homeWinsSd ? suddenDeathPts : 0,
+          awayScore: homeWinsSd ? 0 : suddenDeathPts,
+        };
       } else {
+        isOT = maxOvertimes !== 0;
         const rolledOtCount = Math.random() < 0.07 ? 3 : Math.random() < 0.22 ? 2 : 1;
         otCount = Math.min(rolledOtCount, maxOvertimes);
+        const capStoppedGame = Number.isFinite(maxOvertimes) && rolledOtCount > maxOvertimes;
 
         let homeOtPts = 0;
         let awayOtPts = 0;
 
         for (let ot = 1; ot <= otCount; ot++) {
-          const isDecisive = ot === otCount;
+          const isDecisive = ot === otCount && !capStoppedGame;
           const { homePts, awayPts } = this.simulateOTPeriod(isDecisive, strengthDiff, overtimeDuration);
           homeOtPts += homePts;
           awayOtPts += awayPts;
@@ -315,8 +415,22 @@ export class GameSimulator {
         finalAwayScore = regTie + awayOtPts;
 
         if (finalHomeScore === finalAwayScore) {
-          if (Math.random() < (0.50 + strengthDiff * 0.005)) finalHomeScore += 1;
-          else finalAwayScore += 1;
+          const selected = gameRules.overtimeTieBreaker;
+          if (selected === 'shootout') {
+            pendingShootout = true;
+          } else if (selected === 'target_score') {
+            const race = this.simulateOTPeriod(true, strengthDiff, overtimeDuration);
+            const scaled = this.scaleWinnerToTarget(race.homePts, race.awayPts, overtimeTargetPoints);
+            finalHomeScore += scaled.home;
+            finalAwayScore += scaled.away;
+            tiebreaker = { type: 'target_score', homeScore: scaled.home, awayScore: scaled.away };
+          } else {
+            const homeWinsSd = Math.random() < (0.50 + strengthDiff * 0.005);
+            const points = Math.random() < 0.25 ? 1 : Math.random() < 0.55 ? 2 : 3;
+            finalHomeScore += homeWinsSd ? points : 0;
+            finalAwayScore += homeWinsSd ? 0 : points;
+            tiebreaker = { type: 'sudden_death', homeScore: homeWinsSd ? points : 0, awayScore: homeWinsSd ? 0 : points };
+          }
         }
       }
 
@@ -329,8 +443,8 @@ export class GameSimulator {
     // pace roll: shared (both teams) — creates slow grinds vs fast shootouts
     // eff roll:  independent per team — creates blowouts and cold-shooting nights
     // Both are uniform with mean 1.0 → long-run player averages are preserved
-    const home2KDef = Defense2KService.getTeamDefense(homePlayers);
-    const away2KDef = Defense2KService.getTeamDefense(awayPlayers);
+    const home2KDef = Defense2KService.getTeamDefense(homePlayers, homeKnobs.playersOnCourt ?? 5);
+    const away2KDef = Defense2KService.getTeamDefense(awayPlayers, awayKnobs.playersOnCourt ?? 5);
 
     // Aura centered at 70: elite (82) → +0.06 debuff on opponent; bad (60) → -0.05 buff to opponent
     const homeDefAura = (home2KDef.overallDef - 70) * 0.005;
@@ -339,11 +453,11 @@ export class GameSimulator {
     // Tempo / Early Offense / Fast Break: both teams pull the game toward their
     // preferred pace. Actual pace ≈ average of the two rosters' pace factors.
     // Run-and-gun vs run-and-gun → 130-128 shootouts; two grinders → 95-93.
-    const homePaceFactor = homeOverridePlayers ? 1.0 : computePaceFactor(homePlayers);
-    const awayPaceFactor = awayOverridePlayers ? 1.0 : computePaceFactor(awayPlayers);
+    const homePaceFactor = homeOverridePlayers ? 1.0 : computePaceFactor(homeTeam.id, homePlayers);
+    const awayPaceFactor = awayOverridePlayers ? 1.0 : computePaceFactor(awayTeam.id, awayPlayers);
     const sharedPaceFactor = (homePaceFactor + awayPaceFactor) / 2;
 
-    const paceRoll    = (0.96 + Math.random() * 0.20) * sharedPaceFactor;   // 0.90–1.10 × pace bias
+    const paceRoll    = (0.96 + Math.random() * 0.20) * sharedPaceFactor;   // calibrated 0.96–1.16 × pace bias
     // Crash Offensive Glass: crashing hard → fewer bodies back on D → opponent
     // gets more transition points. Neutral = 50 → no effect. 100 → +3% to opp.
     const homeCrashPre = homeOverridePlayers ? 50 : getDefenseSliders(homeTeam.id, homePlayers).crashOffensiveGlass;
@@ -353,9 +467,17 @@ export class GameSimulator {
     const homeEffRoll = ((0.88 + Math.random() * 0.24) - awayDefAura) * homeTransitionBonus;
     const awayEffRoll = ((0.88 + Math.random() * 0.24) - homeDefAura) * awayTransitionBonus;
 
-    // Same length scale applied below — 3-min quarters can't have a 75-pt floor.
-    const homePostFloor = Math.max(18, Math.round(75 * lengthScale));
-    const awayPostFloor = Math.max(16, Math.round(70 * lengthScale));
+    const scoringUnitScale = gameRules.fieldGoalValue / 2;
+    const sharedScoreEfficiency = Math.max(0.5, Math.min(1.5, ((homeKnobs.efficiencyMultiplier ?? 1) + (awayKnobs.efficiencyMultiplier ?? 1)) / 2));
+    const sharedFastScorePace = Math.max(0.25, Math.min(2, (
+      (homeKnobs.fastScorePaceMultiplier ?? 1) + (awayKnobs.fastScorePaceMultiplier ?? 1)
+    ) / 2));
+    const historicalFloorMultiplier = homeKnobs.eraCoachingBias || awayKnobs.eraCoachingBias
+      ? Math.min(1, sharedScoreEfficiency * sharedFastScorePace)
+      : 1;
+    const homePostFloor = Math.max(1, Math.round(75 * lengthScale * scoringUnitScale * historicalFloorMultiplier));
+    const awayPostFloor = Math.max(1, Math.round(70 * lengthScale * scoringUnitScale * historicalFloorMultiplier));
+    const shootoutTiedScore = pendingShootout ? finalHomeScore : undefined;
     finalHomeScore = Math.max(homePostFloor, Math.round(finalHomeScore * paceRoll * homeEffRoll));
     finalAwayScore = Math.max(awayPostFloor, Math.round(finalAwayScore * paceRoll * awayEffRoll));
 
@@ -367,12 +489,63 @@ export class GameSimulator {
     if (homeExhibMult !== 1.0) finalHomeScore = Math.max(homePostFloor, Math.round(finalHomeScore * homeExhibMult));
     if (awayExhibMult !== 1.0) finalAwayScore = Math.max(awayPostFloor, Math.round(finalAwayScore * awayExhibMult));
 
-    if (finalHomeScore === finalAwayScore) {
+    const homeScoreTempoBias = homeOverridePlayers ? 1 : resolveTeamEraCoachingBias(homeTeam.id, homeKnobs.eraCoachingBias).tempoMultiplier;
+    const awayScoreTempoBias = awayOverridePlayers ? 1 : resolveTeamEraCoachingBias(awayTeam.id, awayKnobs.eraCoachingBias).tempoMultiplier;
+    const sharedScoreTempoBias = Math.max(0.72, Math.min(1.30, (homeScoreTempoBias + awayScoreTempoBias) / 2));
+    const historicalFastBaseline = homeKnobs.eraCoachingBias || awayKnobs.eraCoachingBias ? 0.94 : 1;
+    const sharedHistoricalScoreMult = sharedScoreTempoBias * sharedScoreEfficiency * historicalFastBaseline;
+    if (sharedHistoricalScoreMult !== 1.0 && !isAllStar && !isRisingStars) {
+      finalHomeScore = Math.max(homePostFloor, Math.round(finalHomeScore * sharedHistoricalScoreMult));
+      finalAwayScore = Math.max(awayPostFloor, Math.round(finalAwayScore * sharedHistoricalScoreMult));
+    }
+    if (sharedFastScorePace !== 1 && !isAllStar && !isRisingStars) {
+      finalHomeScore = Math.max(homePostFloor, Math.round(finalHomeScore * sharedFastScorePace));
+      finalAwayScore = Math.max(awayPostFloor, Math.round(finalAwayScore * sharedFastScorePace));
+    }
+    if (baseGameFormat === 'target_score') {
+      const normalized = this.scaleWinnerToTarget(
+        finalHomeScore,
+        finalAwayScore,
+        configuredTargetScore > 0 ? configuredTargetScore : 100,
+      );
+      finalHomeScore = normalized.home;
+      finalAwayScore = normalized.away;
+    } else if (baseGameFormat === 'elam_ending') {
+      const normalized = this.normalizeElamScores(
+        finalHomeScore,
+        finalAwayScore,
+        homeRegScore,
+        awayRegScore,
+        Math.max(homeRegScore, awayRegScore) + (overtimeTargetPoints > 0 ? overtimeTargetPoints : 24),
+      );
+      finalHomeScore = normalized.home;
+      finalAwayScore = normalized.away;
+    }
+
+    if (shootoutTiedScore !== undefined) {
+      finalHomeScore = shootoutTiedScore;
+      finalAwayScore = shootoutTiedScore;
+    }
+
+    if (finalHomeScore === finalAwayScore && !pendingShootout && !allowTies) {
       if (Math.random() < 0.5) finalHomeScore += 1;
       else finalAwayScore += 1;
     }
 
-    const homeWinsFinal = finalHomeScore > finalAwayScore;
+    if (baseGameFormat === 'timed' && !isAllStar && !isRisingStars && !pendingShootout && !allowTies) {
+      const rolledHomeWin = finalHomeScore > finalAwayScore;
+      if (rolledHomeWin !== homeWins) {
+        const winnerScoreAfterRoll = Math.max(finalHomeScore, finalAwayScore);
+        const loserScoreAfterRoll = Math.min(finalHomeScore, finalAwayScore);
+        finalHomeScore = homeWins ? winnerScoreAfterRoll : loserScoreAfterRoll;
+        finalAwayScore = homeWins ? loserScoreAfterRoll : winnerScoreAfterRoll;
+      }
+    }
+
+    let homeWinsFinal = pendingShootout ? homeWins : finalHomeScore > finalAwayScore;
+    const isDraw = allowTies && finalHomeScore === finalAwayScore && !pendingShootout;
+    const scoreCalculationMs = this.perfNow() - forensicStageStart;
+    forensicStageStart = this.perfNow();
 
     const availablePlayers = gameplayAdjustedPlayers.filter(
       p => !p.injury || p.injury.gamesRemaining <= 0
@@ -390,8 +563,8 @@ export class GameSimulator {
 
     // Baseline order (usage*ovr) for each team — reused by biases, double team,
     // and coaching penalty. Empty for exhibitions.
-    const homeBaselineOrder = homeOverridePlayers ? [] : buildBaselineOrder(homePlayers);
-    const awayBaselineOrder = awayOverridePlayers ? [] : buildBaselineOrder(awayPlayers);
+    const homeBaselineOrder = homeOverridePlayers ? [] : buildBaselineOrder(homePlayers, gameRules.dribbleRule);
+    const awayBaselineOrder = awayOverridePlayers ? [] : buildBaselineOrder(awayPlayers, gameRules.dribbleRule);
 
     // Scoring Options biases (Coaching → Preferences). Skip for exhibition games
     // (overridePlayers set) since synthetic rosters don't have user overrides.
@@ -480,43 +653,67 @@ export class GameSimulator {
     // for exhibition games — synthetic rosters use default knobs.
     const homeShotMults = homeOverridePlayers ? null : computeShotMults(homeTeam.id, homePlayers);
     const awayShotMults = awayOverridePlayers ? null : computeShotMults(awayTeam.id, awayPlayers);
+    const homeEraBias = homeOverridePlayers ? NEUTRAL_ERA_COACHING_BIAS : resolveTeamEraCoachingBias(homeTeam.id, homeKnobsEff.eraCoachingBias);
+    const awayEraBias = awayOverridePlayers ? NEUTRAL_ERA_COACHING_BIAS : resolveTeamEraCoachingBias(awayTeam.id, awayKnobsEff.eraCoachingBias);
+    if (homeBaselineOrder[0] && homeEraBias.primaryOptionUsageMultiplier !== 1) {
+      const current = homeBiases?.get(homeBaselineOrder[0]) ?? { ptsMult: 1, effMult: 1 };
+      homeBiases?.set(homeBaselineOrder[0], { ...current, ptsMult: current.ptsMult * homeEraBias.primaryOptionUsageMultiplier });
+    }
+    if (awayBaselineOrder[0] && awayEraBias.primaryOptionUsageMultiplier !== 1) {
+      const current = awayBiases?.get(awayBaselineOrder[0]) ?? { ptsMult: 1, effMult: 1 };
+      awayBiases?.set(awayBaselineOrder[0], { ...current, ptsMult: current.ptsMult * awayEraBias.primaryOptionUsageMultiplier });
+    }
 
     // Defensive stack — what the opponent's defense projects onto your knobs.
     const homeOpponentStack = awayDef ? defensiveStackOnOpponent(awayDef) : null;
     const awayOpponentStack = homeDef ? defensiveStackOnOpponent(homeDef) : null;
+    const homeDefenseStack = homeDef ? defensiveStackOnOpponent(homeDef) : null;
+    const awayDefenseStack = awayDef ? defensiveStackOnOpponent(awayDef) : null;
 
     // Compose final per-team knobs: base × shotMults × opponent-defense.
     // rimRate and threePointRate are multiplicative stacks; interiorEffMult
     // drops in fresh; tovMult/ftRateMult compound with the base value.
+    const homeFastEraAdapter = getFastEraSimulationAdapter(homeEraBias, homeKnobs.efficiencyMultiplier ?? 1);
+    const awayFastEraAdapter = getFastEraSimulationAdapter(awayEraBias, awayKnobs.efficiencyMultiplier ?? 1);
     const homeKnobsFinal: SimulatorKnobs = {
       ...homeKnobsEff,
       ...(homeShotMults ?? {}),
       paceMultiplier:     (homeKnobsEff.paceMultiplier     ?? 1) * (homeSysMods?.paceBonus     ?? 1),
-      efficiencyMultiplier:(homeKnobsEff.efficiencyMultiplier ?? 1) * (homeSysMods?.efficiencyMod ?? 1) * homeFamMods.efficiencyMult * awayFamMods.opponentEfficiencyMult * awayTrainingAura.opponentEfficiencyMult,
-      tovMult:            (homeKnobsEff.tovMult    ?? 1) * (homeOpponentStack?.tovMult    ?? 1) * homeFamMods.tovMult * awayFamMods.opponentTovMult * awayTrainingAura.opponentTovMult,
-      ftRateMult:         (homeKnobsEff.ftRateMult ?? 1) * (homeOpponentStack?.ftRateMult ?? 1),
+      efficiencyMultiplier:(homeKnobsEff.efficiencyMultiplier ?? 1) * homeFastEraAdapter.efficiencyMultiplier * (homeSysMods?.efficiencyMod ?? 1) * homeFamMods.efficiencyMult * awayFamMods.opponentEfficiencyMult * awayTrainingAura.opponentEfficiencyMult,
+      ftRateMult:         (homeKnobsEff.ftRateMult ?? 1) * homeFastEraAdapter.freeThrowRateMultiplier * (homeOpponentStack?.ftRateMult ?? 1),
       interiorEffMult:    homeOpponentStack?.interiorEffMult ?? 1,
-      rimRateMult:        (homeKnobsEff.rimRateMult        ?? 1) * (homeShotMults?.rimRateMult        ?? 1) * (homeOpponentStack?.rimRateMult        ?? 1) * (homeSysMods?.rimMod        ?? 1),
-      lowPostRateMult:    (homeKnobsEff.lowPostRateMult    ?? 1) * (homeShotMults?.lowPostRateMult    ?? 1) * (homeSysMods?.lowPostMod   ?? 1),
-      midRangeRateMult:   (homeKnobsEff.midRangeRateMult   ?? 1) * (homeShotMults?.midRangeRateMult  ?? 1) * (homeSysMods?.midRangeMod  ?? 1),
-      threePointRateMult: (homeKnobsEff.threePointRateMult ?? 1) * (homeShotMults?.threePointRateMult ?? 1) * (homeOpponentStack?.threePointRateMult ?? 1) * (homeSysMods?.threePointMod ?? 1),
+      rimRateMult:        (homeKnobsEff.rimRateMult        ?? 1) * (homeShotMults?.rimRateMult        ?? 1) * (homeOpponentStack?.rimRateMult        ?? 1) * (homeSysMods?.rimMod        ?? 1) * homeEraBias.rimRateMultiplier,
+      lowPostRateMult:    (homeKnobsEff.lowPostRateMult    ?? 1) * (homeShotMults?.lowPostRateMult    ?? 1) * (homeSysMods?.lowPostMod   ?? 1) * homeEraBias.lowPostRateMultiplier,
+      midRangeRateMult:   (homeKnobsEff.midRangeRateMult   ?? 1) * (homeShotMults?.midRangeRateMult  ?? 1) * (homeSysMods?.midRangeMod  ?? 1) * homeEraBias.midRangeRateMultiplier,
+      threePointRateMult: (homeKnobsEff.threePointRateMult ?? 1) * homeFastEraAdapter.threePointRateMultiplier * (homeShotMults?.threePointRateMult ?? 1) * (homeOpponentStack?.threePointRateMult ?? 1) * (homeSysMods?.threePointMod ?? 1) * homeEraBias.outsideRateMultiplier,
+      threePointSkillExponentMult: (homeKnobsEff.threePointSkillExponentMult ?? 1) * (homeFastEraAdapter.threePointSkillExponentMultiplier ?? 1),
+      threePointPersonalCapMult: (homeKnobsEff.threePointPersonalCapMult ?? 1) * (homeFastEraAdapter.threePointPersonalCapMultiplier ?? 1),
+      threePointEfficiencyMult: (homeKnobsEff.threePointEfficiencyMult ?? 1) * homeFastEraAdapter.threePointEfficiencyMultiplier,
+      stealRateMult: (homeKnobsEff.stealRateMult ?? 1) * (homeDefenseStack?.stealRateMult ?? 1),
+      tovMult: (homeKnobsEff.tovMult ?? 1) * (homeOpponentStack?.tovMult ?? 1) * homeFamMods.tovMult * awayFamMods.opponentTovMult * awayTrainingAura.opponentTovMult,
     };
     const awayKnobsFinal: SimulatorKnobs = {
       ...awayKnobsEff,
       ...(awayShotMults ?? {}),
       paceMultiplier:     (awayKnobsEff.paceMultiplier     ?? 1) * (awaySysMods?.paceBonus     ?? 1),
-      efficiencyMultiplier:(awayKnobsEff.efficiencyMultiplier ?? 1) * (awaySysMods?.efficiencyMod ?? 1) * awayFamMods.efficiencyMult * homeFamMods.opponentEfficiencyMult * homeTrainingAura.opponentEfficiencyMult,
-      tovMult:            (awayKnobsEff.tovMult    ?? 1) * (awayOpponentStack?.tovMult    ?? 1) * awayFamMods.tovMult * homeFamMods.opponentTovMult * homeTrainingAura.opponentTovMult,
-      ftRateMult:         (awayKnobsEff.ftRateMult ?? 1) * (awayOpponentStack?.ftRateMult ?? 1),
+      efficiencyMultiplier:(awayKnobsEff.efficiencyMultiplier ?? 1) * awayFastEraAdapter.efficiencyMultiplier * (awaySysMods?.efficiencyMod ?? 1) * awayFamMods.efficiencyMult * homeFamMods.opponentEfficiencyMult * homeTrainingAura.opponentEfficiencyMult,
+      ftRateMult:         (awayKnobsEff.ftRateMult ?? 1) * awayFastEraAdapter.freeThrowRateMultiplier * (awayOpponentStack?.ftRateMult ?? 1),
       interiorEffMult:    awayOpponentStack?.interiorEffMult ?? 1,
-      rimRateMult:        (awayKnobsEff.rimRateMult        ?? 1) * (awayShotMults?.rimRateMult        ?? 1) * (awayOpponentStack?.rimRateMult        ?? 1) * (awaySysMods?.rimMod        ?? 1),
-      lowPostRateMult:    (awayKnobsEff.lowPostRateMult    ?? 1) * (awayShotMults?.lowPostRateMult    ?? 1) * (awaySysMods?.lowPostMod   ?? 1),
-      midRangeRateMult:   (awayKnobsEff.midRangeRateMult   ?? 1) * (awayShotMults?.midRangeRateMult  ?? 1) * (awaySysMods?.midRangeMod  ?? 1),
-      threePointRateMult: (awayKnobsEff.threePointRateMult ?? 1) * (awayShotMults?.threePointRateMult ?? 1) * (awayOpponentStack?.threePointRateMult ?? 1) * (awaySysMods?.threePointMod ?? 1),
+      rimRateMult:        (awayKnobsEff.rimRateMult        ?? 1) * (awayShotMults?.rimRateMult        ?? 1) * (awayOpponentStack?.rimRateMult        ?? 1) * (awaySysMods?.rimMod        ?? 1) * awayEraBias.rimRateMultiplier,
+      lowPostRateMult:    (awayKnobsEff.lowPostRateMult    ?? 1) * (awayShotMults?.lowPostRateMult    ?? 1) * (awaySysMods?.lowPostMod   ?? 1) * awayEraBias.lowPostRateMultiplier,
+      midRangeRateMult:   (awayKnobsEff.midRangeRateMult   ?? 1) * (awayShotMults?.midRangeRateMult  ?? 1) * (awaySysMods?.midRangeMod  ?? 1) * awayEraBias.midRangeRateMultiplier,
+      threePointRateMult: (awayKnobsEff.threePointRateMult ?? 1) * awayFastEraAdapter.threePointRateMultiplier * (awayShotMults?.threePointRateMult ?? 1) * (awayOpponentStack?.threePointRateMult ?? 1) * (awaySysMods?.threePointMod ?? 1) * awayEraBias.outsideRateMultiplier,
+      threePointSkillExponentMult: (awayKnobsEff.threePointSkillExponentMult ?? 1) * (awayFastEraAdapter.threePointSkillExponentMultiplier ?? 1),
+      threePointPersonalCapMult: (awayKnobsEff.threePointPersonalCapMult ?? 1) * (awayFastEraAdapter.threePointPersonalCapMultiplier ?? 1),
+      threePointEfficiencyMult: (awayKnobsEff.threePointEfficiencyMult ?? 1) * awayFastEraAdapter.threePointEfficiencyMultiplier,
+      stealRateMult: (awayKnobsEff.stealRateMult ?? 1) * (awayDefenseStack?.stealRateMult ?? 1),
+      tovMult: (awayKnobsEff.tovMult ?? 1) * (awayOpponentStack?.tovMult ?? 1) * awayFamMods.tovMult * homeFamMods.opponentTovMult * homeTrainingAura.opponentTovMult,
     };
 
     const homeOverrideForStats = homeOverridePlayers ? applyTrainingFatiguePerformance(rawHomePlayers) : undefined;
     const awayOverrideForStats = awayOverridePlayers ? applyTrainingFatiguePerformance(rawAwayPlayers) : undefined;
+    const usageAllocationMs = this.perfNow() - forensicStageStart;
+    forensicStageStart = this.perfNow();
     const homeInitial = StatGenerator.generateStatsForTeam(
       homeTeam, fatigueAdjustedPlayers, finalHomeScore, homeWinsFinal, actualMargin, { league3PAMult: 1.0 }, currentSeason, homeOverrideForStats, otCount, away2KDef, homeKnobsFinal, homeBiases
     );
@@ -548,8 +745,10 @@ export class GameSimulator {
 
     // Crash Offensive Glass → ORB pool multiplier per team. 50 = neutral.
     // 100 → +35% ORB (Dennis Rodman-mode); 0 → −30% ORB (everyone sprints back).
-    const homeOrbMult = 1 + ((homeCrashPre - 50) / 50) * 0.35;
-    const awayOrbMult = 1 + ((awayCrashPre - 50) / 50) * 0.35;
+    const homeReboundOpportunityMult = homeKnobsFinal.reboundOpportunityMult ?? 1;
+    const awayReboundOpportunityMult = awayKnobsFinal.reboundOpportunityMult ?? 1;
+    const homeOrbMult = (1 + ((homeCrashPre - 50) / 50) * 0.35) * (homeKnobsFinal.orbRateMult ?? 1.0) * homeReboundOpportunityMult;
+    const awayOrbMult = (1 + ((awayCrashPre - 50) / 50) * 0.35) * (awayKnobsFinal.orbRateMult ?? 1.0) * awayReboundOpportunityMult;
 
     // DRB pool keeps the existing 0.70 base (league-wide REB mean is already on target).
     // Layer a small winner-edge with per-team variance: winning team's defense forces
@@ -569,9 +768,9 @@ export class GameSimulator {
       homeInitial,
       homeTeam,
       availablePlayers,
-      awayMisses         * 0.70 * homeDrbMult,
-      awayTov            * 0.60,
-      awayInteriorMisses * 0.39 * awayBlkMult,  // blockRateMult scales away team's blockable interior misses
+      awayMisses         * 0.58 * homeDrbMult * homeReboundOpportunityMult,
+      awayTov            * 0.48 * (homeKnobsFinal.stealRateMult ?? 1.0),
+      awayInteriorMisses * getFastEraInteriorBlockMissShare(homeEraBias) * awayBlkMult,
       awayFTA,
       currentSeason,
       otCount,
@@ -580,15 +779,21 @@ export class GameSimulator {
       homeOrbMult,
       homeKnobsFinal.quarterLength ?? 12,
       homeKnobsFinal.overtimeDuration ?? 5,
-      homeKnobsFinal.numQuarters ?? 4
+      homeKnobsFinal.numQuarters ?? 4,
+      homeKnobsFinal.playersOnCourt ?? 5,
+      homeKnobsFinal.gameRules?.foulOutLimit ?? 6,
+      homeKnobsFinal.assistRateMult ?? 1,
+      getFastEraReboundDistributionExponent(homeEraBias, homeKnobsFinal.reboundDistributionExponent),
+      getFastEraAssistDistributionExponent(homeEraBias, homeKnobsFinal.assistDistributionExponent),
+      homeKnobsFinal.personalFoulRateMult ?? 1,
     );
     const awayStats = StatGenerator.generateCoordinatedStats(
       awayInitial,
       awayTeam,
       availablePlayers,
-      homeMisses         * 0.70 * awayDrbMult,
-      homeTov            * 0.60,
-      homeInteriorMisses * 0.39 * homeBlkMult,  // blockRateMult scales home team's blockable interior misses
+      homeMisses         * 0.58 * awayDrbMult * awayReboundOpportunityMult,
+      homeTov            * 0.48 * (awayKnobsFinal.stealRateMult ?? 1.0),
+      homeInteriorMisses * getFastEraInteriorBlockMissShare(awayEraBias) * homeBlkMult,
       homeFTA,
       currentSeason,
       otCount,
@@ -597,19 +802,33 @@ export class GameSimulator {
       awayOrbMult,
       awayKnobsFinal.quarterLength ?? 12,
       awayKnobsFinal.overtimeDuration ?? 5,
-      awayKnobsFinal.numQuarters ?? 4
+      awayKnobsFinal.numQuarters ?? 4,
+      awayKnobsFinal.playersOnCourt ?? 5,
+      awayKnobsFinal.gameRules?.foulOutLimit ?? 6,
+      awayKnobsFinal.assistRateMult ?? 1,
+      getFastEraReboundDistributionExponent(awayEraBias, awayKnobsFinal.reboundDistributionExponent),
+      getFastEraAssistDistributionExponent(awayEraBias, awayKnobsFinal.assistDistributionExponent),
+      awayKnobsFinal.personalFoulRateMult ?? 1,
     );
+    const boxScoreGenerationMs = this.perfNow() - forensicStageStart;
+    forensicStageStart = this.perfNow();
     const { homeStatsFinal, awayStatsFinal } = finalizeBoxScore(
       homeStats,
       awayStats,
       finalHomeScore,
       finalAwayScore,
+      homeOverrideForStats ?? fatigueAdjustedPlayers.filter(player => player.tid === homeTeam.id),
+      awayOverrideForStats ?? fatigueAdjustedPlayers.filter(player => player.tid === awayTeam.id),
+      currentSeason,
+      gameRules,
+      homeKnobsFinal.boxScoreFgaNormalizationMult ?? 1,
+      awayKnobsFinal.boxScoreFgaNormalizationMult ?? 1,
     );
 
     // then replace homeStats → homeStatsFinal, awayStats → awayStatsFinal below:
     const winnerStats = homeWinsFinal ? homeStatsFinal : awayStatsFinal;  // ← was homeStats/awayStats
     const winnerTeamId = homeWinsFinal ? homeTeam.id : awayTeam.id;
-    const gameWinner = pickGameWinner(
+    let gameWinner = pickGameWinner(
       winnerStats,
       winnerTeamId,
       Math.abs(finalHomeScore - finalAwayScore),
@@ -642,12 +861,21 @@ export class GameSimulator {
       quarterScores = regulationQuarterScores;
     }
 
+    annotateFourthQuarterPoints(homeStatsFinal, awayStatsFinal, quarterScores, otCount, {
+      numQuarters: averageNumQuarters,
+      quarterLengthSeconds: Math.max(1, Math.round(((homeKnobsFinal.quarterLength ?? 12) + (awayKnobsFinal.quarterLength ?? 12)) / 2)) * 60,
+      overtimeLengthSeconds: Math.max(1, Math.round(((homeKnobsFinal.overtimeDuration ?? 5) + (awayKnobsFinal.overtimeDuration ?? 5)) / 2)) * 60,
+    });
+    const boxScoreFinalizationMs = this.perfNow() - forensicStageStart;
+    const fastCoreMs = inputStrengthMs + scoreCalculationMs + usageAllocationMs + boxScoreGenerationMs + boxScoreFinalizationMs;
+    forensicStageStart = this.perfNow();
+
     const gamePlayers = homeOverridePlayers && awayOverridePlayers 
       ? [...homeOverridePlayers, ...awayOverridePlayers]
       : availablePlayers.filter(
           p => p.tid === homeTeam.id || p.tid === awayTeam.id
         );
-    const injuries = InjurySystem.checkInjuries(gamePlayers, homeTeam, awayTeam);
+    const injuries = InjurySystem.checkInjuries(gamePlayers, homeTeam, awayTeam, injuryFrequencyFactor);
 
     // Record DNP reasons at time of simulation so historical views stay accurate
     const playedHomeIds = new Set(homeStatsFinal.map(s => s.playerId));
@@ -729,7 +957,10 @@ export class GameSimulator {
           min < 35  ? 1.15 :
                       1.45;
         const medical = getTeamMedicalGameplayEffects(player.tid === homeTeam.id ? homeTeam as any : awayTeam as any);
-        const injuryChance = preseasonFactor * fatigueRiskMult * 0.012 * minuteExposureMult * durabilityRiskMult * medical.injuryRiskMultiplier;
+        const injuryChance = injuryChanceWithLeagueFactor(
+          preseasonFactor * fatigueRiskMult * 0.012 * minuteExposureMult * durabilityRiskMult * medical.injuryRiskMultiplier,
+          injuryFrequencyFactor,
+        );
 
         if (Math.random() >= injuryChance) continue;
 
@@ -812,11 +1043,13 @@ export class GameSimulator {
       const playerId = team === 'HOME' ? fight.player1Id : fight.player2Id;
       const playerName = team === 'HOME' ? fight.player1Name : fight.player2Name;
       const opponentName = team === 'HOME' ? fight.player2Name : fight.player1Name;
-      const fightLabel = fight.severity === 'brawl'
-        ? `${playerName} and ${opponentName} are going at it. Benches are clearing.`
-        : fight.severity === 'ejection'
-          ? `${playerName} and ${opponentName} square up after the whistle. This is getting ugly.`
-          : `${playerName} gets into it with ${opponentName} after the play.`;
+      const fightLabel = gameRules.fightingInstantEjection && gameRules.useYellowRedCards
+        ? `${playerName} and ${opponentName} receive red cards after the fight. Both will be suspended for the next game.`
+        : gameRules.fightingInstantEjection
+          ? `${playerName} and ${opponentName} are ejected after the fight.`
+          : fight.severity === 'brawl'
+            ? `${playerName} and ${opponentName} are going at it. Benches are clearing.`
+            : `${playerName} gets into it with ${opponentName} after the play.`;
       liveEvents.push({
         kind: 'fight',
         team,
@@ -836,7 +1069,265 @@ export class GameSimulator {
       homeTeam.id,
       awayTeam.id,
       availablePlayers,
+      gameRules,
     );
+
+    const applyDunkValue = (stats: typeof homeStatsFinal) => stats.reduce((teamBonus, stat) => {
+      const bonus = Math.max(0, gameRules.dunkValue - 2) * Math.max(0, stat.dunks ?? 0);
+      if (bonus > 0) {
+        stat.pts += bonus;
+        stat.gameScore += bonus;
+      }
+      return teamBonus + bonus;
+    }, 0);
+    const homeDunkBonus = applyDunkValue(homeStatsFinal);
+    const awayDunkBonus = applyDunkValue(awayStatsFinal);
+    finalHomeScore += homeDunkBonus;
+    finalAwayScore += awayDunkBonus;
+    if (homeDunkBonus > 0 && quarterScores.home.length > 0) {
+      quarterScores.home[quarterScores.home.length - 1] += homeDunkBonus;
+    }
+    if (awayDunkBonus > 0 && quarterScores.away.length > 0) {
+      quarterScores.away[quarterScores.away.length - 1] += awayDunkBonus;
+    }
+    if (baseGameFormat === 'target_score' || baseGameFormat === 'elam_ending') {
+      const target = baseGameFormat === 'target_score'
+        ? (configuredTargetScore > 0 ? configuredTargetScore : 100)
+        : Math.max(homeRegScore, awayRegScore) + (overtimeTargetPoints > 0 ? overtimeTargetPoints : 24);
+      const normalized = baseGameFormat === 'elam_ending'
+        ? this.normalizeElamScores(finalHomeScore, finalAwayScore, homeRegScore, awayRegScore, target)
+        : this.scaleWinnerToTarget(finalHomeScore, finalAwayScore, target);
+      finalHomeScore = normalized.home;
+      finalAwayScore = normalized.away;
+      reconcileTeamPointsToScore(homeStatsFinal, finalHomeScore, gameRules);
+      reconcileTeamPointsToScore(awayStatsFinal, finalAwayScore, gameRules);
+      const reconcilePeriods = (periods: number[], score: number) => {
+        if (periods.length === 0) return;
+        const delta = score - periods.reduce((sum, points) => sum + points, 0);
+        periods[periods.length - 1] = Math.max(0, periods[periods.length - 1] + delta);
+      };
+      reconcilePeriods(quarterScores.home, finalHomeScore);
+      reconcilePeriods(quarterScores.away, finalAwayScore);
+    }
+
+    if (pendingShootout && finalHomeScore !== finalAwayScore) {
+      pendingShootout = false;
+    }
+    if (pendingShootout) {
+      const shootout = resolveShootout(homeStatsFinal, awayStatsFinal, availablePlayers, gameRules.shootoutRounds);
+      tiebreaker = shootout.tiebreaker;
+      homeWinsFinal = shootout.winner === 'home';
+    } else {
+      homeWinsFinal = finalHomeScore > finalAwayScore;
+    }
+
+    const ejections: GameEjection[] = [];
+    const addEjection = (
+      playerId: string,
+      reason: GameEjection['reason'],
+      quarter: number,
+      clock: string,
+      suspensionGames?: number,
+    ) => {
+      const player = availablePlayers.find(candidate => candidate.internalId === playerId);
+      if (!player || ejections.some(event => event.playerId === playerId && event.reason === reason)) return;
+      ejections.push({
+        playerId,
+        playerName: player.name,
+        teamId: player.tid,
+        reason,
+        quarter,
+        clock,
+        card: gameRules.useYellowRedCards && reason !== 'foul_out' ? 'red' : undefined,
+        suspensionGames,
+      });
+    };
+
+    for (const stat of [...homeStatsFinal, ...awayStatsFinal]) {
+      while (
+        (stat.techs ?? 0) > 0
+        && (stat.techs ?? 0) < gameRules.techEjectionLimit
+        && Math.random() < 0.12
+      ) {
+        stat.techs = (stat.techs ?? 0) + 1;
+      }
+      if (stat.pf >= gameRules.foulOutLimit) {
+        addEjection(stat.playerId, 'foul_out', averageNumQuarters + otCount, '0:00');
+      }
+      if ((stat.techs ?? 0) >= gameRules.techEjectionLimit) {
+        addEjection(
+          stat.playerId,
+          gameRules.useYellowRedCards ? 'red_card' : 'technical',
+          Math.min(averageNumQuarters, 3),
+          '4:00',
+          gameRules.useYellowRedCards ? 1 : undefined,
+        );
+      } else if ((stat.techs ?? 0) > 0 && gameRules.useYellowRedCards) {
+        const player = availablePlayers.find(candidate => candidate.internalId === stat.playerId);
+        if (player) {
+          liveEvents.push({
+            kind: 'rule',
+            team: player.tid === homeTeam.id ? 'HOME' : 'AWAY',
+            quarter: Math.min(averageNumQuarters, 3),
+            gs: Math.max(1, (Math.min(averageNumQuarters, 3) - 1) * (homeKnobsFinal.quarterLength ?? 12) * 60 + 480),
+            clock: '4:00',
+            playerId: player.internalId,
+            playerName: player.name,
+            description: `${player.name} receives a yellow card for a technical foul.`,
+          });
+        }
+      }
+    }
+
+    if (!isAllStar && !isRisingStars && Math.random() < 0.018) {
+      const candidates = [...homeStatsFinal, ...awayStatsFinal].filter(stat => stat.min > 8);
+      const offender = candidates.sort((a, b) => b.pf - a.pf)[0];
+      if (offender) {
+        const isFlagrant2 = Math.random() < 0.18;
+        const limit = isFlagrant2 ? gameRules.flagrant2EjectionLimit : gameRules.flagrant1EjectionLimit;
+        const label = isFlagrant2 ? 'Flagrant 2' : 'Flagrant 1';
+        let count = 1;
+        while (count < limit && Math.random() < 0.12) count += 1;
+        const ejected = count >= limit;
+        if (ejected) {
+          addEjection(
+            offender.playerId,
+            gameRules.useYellowRedCards ? 'red_card' : isFlagrant2 ? 'flagrant_2' : 'flagrant_1',
+            Math.min(averageNumQuarters, 3),
+            '6:00',
+            gameRules.useYellowRedCards ? 1 : undefined,
+          );
+        }
+        const player = availablePlayers.find(candidate => candidate.internalId === offender.playerId);
+        if (player) {
+          liveEvents.push({
+            kind: ejected ? 'ejection' : 'rule',
+            team: player.tid === homeTeam.id ? 'HOME' : 'AWAY',
+            quarter: Math.min(averageNumQuarters, 3),
+            gs: Math.max(1, (Math.min(averageNumQuarters, 3) - 1) * (homeKnobsFinal.quarterLength ?? 12) * 60 + 360),
+            clock: '6:00',
+            playerId: player.internalId,
+            playerName: player.name,
+            description: ejected
+              ? gameRules.useYellowRedCards
+                ? `${player.name} has received a red card and is ejected. They will be suspended for the next game.`
+                : `${player.name} is ejected after a ${label}.`
+              : gameRules.useYellowRedCards
+                ? `${player.name} receives a yellow card for a ${label}.`
+                : `${player.name} is assessed ${count > 1 ? `${count} ${label} fouls` : `a ${label}`}.`,
+          });
+        }
+      }
+    }
+
+    if (fight && gameRules.fightingInstantEjection) {
+      for (const playerId of [fight.player1Id, fight.player2Id]) {
+        addEjection(
+          playerId,
+          gameRules.useYellowRedCards ? 'red_card' : 'fighting',
+          Math.min(averageNumQuarters, 3),
+          '5:00',
+          1,
+        );
+      }
+    }
+    for (const ejection of ejections.filter(event => event.reason === 'foul_out')) {
+      liveEvents.push({
+        kind: 'ejection',
+        team: ejection.teamId === homeTeam.id ? 'HOME' : 'AWAY',
+        quarter: ejection.quarter,
+        gs: Math.max(1, ejection.quarter * (homeKnobsFinal.quarterLength ?? 12) * 60),
+        clock: ejection.clock,
+        playerId: ejection.playerId,
+        playerName: ejection.playerName,
+        description: `${ejection.playerName} has fouled out with ${gameRules.foulOutLimit} personal fouls.`,
+      });
+    }
+    for (const ejection of ejections.filter(event => event.reason !== 'foul_out')) {
+      const alreadyAnnounced = liveEvents.some(event =>
+        event.kind === 'ejection'
+        && event.playerId === ejection.playerId,
+      );
+      if (alreadyAnnounced) continue;
+      const team = ejection.teamId === homeTeam.id ? 'HOME' : 'AWAY';
+      const quarterSeconds = Math.max(60, (homeKnobsFinal.quarterLength ?? 12) * 60);
+      const elapsedInQuarter = Math.max(0, quarterSeconds - (() => {
+        const [minutes, seconds] = ejection.clock.split(':').map(Number);
+        return (minutes || 0) * 60 + (seconds || 0);
+      })());
+      liveEvents.push({
+        kind: 'ejection',
+        team,
+        quarter: ejection.quarter,
+        gs: Math.max(1, (ejection.quarter - 1) * quarterSeconds + elapsedInQuarter),
+        clock: ejection.clock,
+        playerId: ejection.playerId,
+        playerName: ejection.playerName,
+        description: ejection.card === 'red'
+          ? `${ejection.playerName} has received a red card and is ejected. They will be suspended for the next game.`
+          : ejection.reason === 'fighting'
+            ? `${ejection.playerName} is ejected for fighting.`
+            : ejection.reason === 'technical'
+              ? `${ejection.playerName} is ejected after reaching the technical-foul limit.`
+              : `${ejection.playerName} is ejected after reaching the flagrant-foul limit.`,
+      });
+    }
+    if (tiebreaker) {
+      const winningTeam = homeWinsFinal ? homeTeam : awayTeam;
+      const shooterId = homeWinsFinal ? tiebreaker.homeShooterId : tiebreaker.awayShooterId;
+      liveEvents.push({
+        kind: 'tiebreaker',
+        team: homeWinsFinal ? 'HOME' : 'AWAY',
+        quarter: Math.max(averageNumQuarters, averageNumQuarters + otCount),
+        gs: Math.max(1, (averageNumQuarters * (homeKnobsFinal.quarterLength ?? 12) + otCount * (homeKnobsFinal.overtimeDuration ?? 5)) * 60 + 0.2),
+        clock: '0:00',
+        playerId: shooterId,
+        playerName: availablePlayers.find(player => player.internalId === shooterId)?.name ?? winningTeam.name,
+        description: tiebreaker.type === 'shootout'
+          ? `${winningTeam.name} win the shootout ${tiebreaker.homeScore}-${tiebreaker.awayScore}.`
+          : `${winningTeam.name} take the ${tiebreaker.type === 'target_score' ? 'target-score' : 'sudden-death'} tiebreak.`,
+      });
+    }
+
+    gameWinner = isDraw || tiebreaker?.type === 'shootout'
+      ? undefined
+      : pickGameWinner(
+          homeWinsFinal ? homeStatsFinal : awayStatsFinal,
+          homeWinsFinal ? homeTeam.id : awayTeam.id,
+          Math.abs(finalHomeScore - finalAwayScore),
+          isOT,
+          players,
+        );
+    const heaves = generateHeaveEvents(
+      homeStatsFinal,
+      awayStatsFinal,
+      homeTeam.id,
+      awayTeam.id,
+      Math.min(averageNumQuarters, quarterScores.home.length, quarterScores.away.length),
+      gameRules.heaveRuleEnabled,
+    );
+    reconcileTeamPointsToScore(homeStatsFinal, finalHomeScore, gameRules);
+    reconcileTeamPointsToScore(awayStatsFinal, finalAwayScore, gameRules);
+
+    const decorationMs = this.perfNow() - forensicStageStart;
+    recordSimulationPerf({
+      engine: 'fast-core',
+      gameId,
+      date,
+      inputStrengthMs,
+      scoreCalculationMs,
+      usageAllocationMs,
+      boxScoreGenerationMs,
+      boxScoreFinalizationMs,
+      coreMs: fastCoreMs,
+      decorationMs,
+      totalMs: this.perfNow() - forensicTotalStart,
+      inputPlayers: players.length,
+      homeRosterPlayers: homePlayers.length,
+      awayRosterPlayers: awayPlayers.length,
+      availablePlayers: availablePlayers.length,
+      outputStatLines: homeStatsFinal.length + awayStatsFinal.length,
+    });
 
     return {
       gameId,
@@ -846,13 +1337,16 @@ export class GameSimulator {
       awayScore:  finalAwayScore,
        homeStats: homeStatsFinal,   // ← was homeStats
       awayStats: awayStatsFinal,   // ← was awayStats
-      winnerId: homeWinsFinal ? homeTeam.id : awayTeam.id,
+      winnerId: isDraw ? -1 : homeWinsFinal ? homeTeam.id : awayTeam.id,
+      isDraw,
       lead:    Math.abs(finalHomeScore - finalAwayScore),
       isOT,
       otCount,
+      playersOnCourt: homeKnobsFinal.playersOnCourt ?? 5,
       date,
       isAllStar,
       isRisingStars,
+      isEliminationGame,
       injuries,
       quarterScores,
       gameWinner,
@@ -861,6 +1355,10 @@ export class GameSimulator {
       playersPlayingHurt,
       liveEvents,
       fight,
+      gameRules,
+      ejections,
+      tiebreaker,
+      heaves,
       highlights,
       // Snapshot records at tip-off (before this game's result is applied)
       homeWins:   homeTeam.wins   ?? 0,
@@ -898,13 +1396,69 @@ export class GameSimulator {
     riggedForTid?: number,
     clubDebuffs?: Map<string, 'heavy' | 'moderate' | 'mild'>,
     leagueStats?: Partial<LeagueStats>,
-    onGame?: (result: GameResult) => void
+    onGame?: (result: GameResult) => void,
+    routing?: { controlledTeamIds?: number[]; watchedGameId?: number; simulationSeed?: string },
   ): Promise<GameResult[]> {
-    const results: GameResult[] = [];
-    const standingsCtx = this.buildStandingsContext(teams);
-    const leagueBaseKnobs = buildLeagueBaseKnobs(leagueStats);
+    const prepared = this.prepareDayGames(
+      teams,
+      players,
+      gamesToSimulate,
+      date,
+      playerApproval,
+      allStar,
+      homeOverridePlayers,
+      awayOverridePlayers,
+      riggedForTid,
+      leagueStats,
+      routing,
+    );
+    const results = this.simulatePreparedDayGames(prepared, clubDebuffs);
 
-    for (const game of gamesToSimulate) {
+    if (onGame && results.length > 0) {
+      onGame(results[results.length - 1]);
+      await new Promise(resolve => setTimeout(resolve, 0));
+    }
+
+    return results;
+  }
+
+  /**
+   * Build immutable per-game inputs from the canonical state at tip-off.
+   * This is deliberately separate from execution so a browser worker may
+   * receive only the two participating teams/rosters and resolved knobs.
+   */
+  static prepareDayGames(
+    teams: Team[],
+    players: Player[],
+    gamesToSimulate: Game[],
+    date: string,
+    playerApproval: number = 50,
+    allStar?: any,
+    homeOverridePlayers?: Player[],
+    awayOverridePlayers?: Player[],
+    riggedForTid?: number,
+    leagueStats?: Partial<LeagueStats>,
+    routing?: { controlledTeamIds?: number[]; watchedGameId?: number; simulationSeed?: string },
+  ): PreparedDayGame[] {
+    const prepared: PreparedDayGame[] = [];
+    const standingsStart = this.perfNow();
+    const standingsCtx = this.buildStandingsContext(teams);
+    const standingsContextMs = this.perfNow() - standingsStart;
+    const leagueKnobsStart = this.perfNow();
+    const leagueBaseKnobs = buildLeagueBaseKnobs(leagueStats);
+    const leagueKnobsMs = this.perfNow() - leagueKnobsStart;
+    recordSimulationPerf({
+      engine: 'day-preparation',
+      date,
+      games: gamesToSimulate.length,
+      teams: teams.length,
+      players: players.length,
+      standingsContextMs,
+      leagueKnobsMs,
+    });
+
+    for (let order = 0; order < gamesToSimulate.length; order += 1) {
+      const game = gamesToSimulate[order];
       const gameStart = this.perfNow();
       const setup = resolveDayGameSetup({
         game,
@@ -916,61 +1470,128 @@ export class GameSimulator {
         allStar,
         homeOverridePlayers,
         awayOverridePlayers,
+        simulationSeed: routing?.simulationSeed,
       });
       if (!setup.home || !setup.away || !setup.homeKnobs || !setup.awayKnobs) continue;
       const setupMs = this.perfMs(gameStart);
 
-      if (clubDebuffs && clubDebuffs.size > 0) setClubDebuffs(clubDebuffs);
       const gameRig = riggedForTid !== undefined &&
         (setup.home.id === riggedForTid || setup.away.id === riggedForTid)
         ? riggedForTid : undefined;
-      const simulateStart = this.perfNow();
-      const gameResult = simulateGameViaAdapter(
-        {
+      const rosterFor = (team: Team, override?: Player[]) => override ?? players.filter(player => {
+        if (player.tid !== team.id) return false;
+        return !['Retired', 'Free Agent', 'Draft Prospect', 'Prospect'].includes(player.status ?? 'Active');
+      });
+      prepared.push({
+        order,
+        gid: game.gid,
+        date,
+        setupMs,
+        homeLabel: setup.home.abbrev ?? setup.home.name,
+        awayLabel: setup.away.abbrev ?? setup.away.name,
+        isPlayoff: !!game.isPlayoff,
+        isPlayIn: !!game.isPlayIn,
+        isNBACup: !!game.isNBACup,
+        presentation: {
+          gameId: game.gid,
+          leagueId: game.cupLeagueId ?? leagueStats?.uiMode,
+          competitionId: game.competitionId,
+          season: game.season ?? leagueStats?.year,
+          site: game.isExhibition || game.homeTid < 0 || game.awayTid < 0 ? 'neutral' : 'home-away',
+          away: { team: setup.away, roster: rosterFor(setup.away, setup.awayOverride) },
+          home: { team: setup.home, roster: rosterFor(setup.home, setup.homeOverride) },
+        },
+        args: {
           homeTeam: setup.home,
           awayTeam: setup.away,
           players,
           gameId: game.gid,
           date,
+          season: Number.isFinite(leagueStats?.year) ? Number(leagueStats?.year) : undefined,
+          rngSeed: routing?.simulationSeed,
           playerApproval,
           homeOverridePlayers: setup.homeOverride,
           awayOverridePlayers: setup.awayOverride,
           isAllStar: game.isAllStar,
           isRisingStars: game.isRisingStars,
           isEliminationGame:
+            game.isEliminationGame === true ||
             !!game.isPlayIn ||
-            !!game.isPlayoff ||
             (game.competitionId && !['group', 'league', 'regular'].includes(String(game.competitionPhase ?? '').toLowerCase())) ||
+            (typeof game.cupRoundId === 'string' && game.cupRoundId !== 'group') ||
             (typeof game.nbaCupRound === 'string' && !['group'].includes(String(game.nbaCupRound).toLowerCase())),
+          enginePolicy: leagueStats?.simulationEnginePolicy ?? 'hybrid',
+          controlledTeamIds: routing?.controlledTeamIds,
+          watched: routing?.watchedGameId === game.gid,
+          isPlayoff: !!game.isPlayoff,
+          isFinals: game.playoffSeriesId === 'Finals' || game.competitionPhase === 'final',
+          allowTies: leagueStats?.allowTies === true && !game.isPlayoff && !game.isPlayIn,
           riggedForTid: gameRig,
           homeKnobs: setup.homeKnobs,
           awayKnobs: setup.awayKnobs,
+          injuryFrequencyFactor: leagueStats?.injuryFrequencyFactor,
         },
-        (a) => this.simulateGame(a.homeTeam, a.awayTeam, a.players, a.gameId, a.date, a.playerApproval, a.homeOverridePlayers, a.awayOverridePlayers, a.isAllStar, a.isRisingStars, a.isEliminationGame, a.riggedForTid, a.homeKnobs ?? KNOBS_DEFAULT, a.awayKnobs ?? KNOBS_DEFAULT),
-      );
-      const simulateMs = this.perfMs(simulateStart);
-      results.push(gameResult);
-      if (clubDebuffs && clubDebuffs.size > 0) clearClubDebuffs();
-
-      console.log('[SIM_GAME_PERF]', {
-        gameId: game.gid,
-        date,
-        home: setup.home.abbrev ?? setup.home.name,
-        away: setup.away.abbrev ?? setup.away.name,
-        isPlayoff: !!game.isPlayoff,
-        isPlayIn: !!game.isPlayIn,
-        isNBACup: !!game.isNBACup,
-        setupMs,
-        simulateMs,
-        totalMs: this.perfMs(gameStart),
       });
-
-      if (onGame) {
-        onGame(gameResult);
-        await new Promise(r => setTimeout(r, 0));
-      }
+      capturePreparedSimulationGame(prepared[prepared.length - 1]);
     }
-
-    return results;
+    return prepared;
   }
+
+  static simulatePreparedGame(
+    prepared: PreparedDayGame,
+    clubDebuffs?: Map<string, 'heavy' | 'moderate' | 'mild'>,
+    inputAlreadyIsolated: boolean = false,
+  ): GameResult {
+    const simulateStart = this.perfNow();
+    if (clubDebuffs && clubDebuffs.size > 0) setClubDebuffs(clubDebuffs);
+    try {
+      const adapter = inputAlreadyIsolated ? simulatePreparedGameViaAdapter : simulateGameViaAdapter;
+      const adapterResult = adapter(
+        prepared.args,
+        (a) => this.simulateGame(a.homeTeam, a.awayTeam, a.players, a.gameId, a.date, a.playerApproval, a.homeOverridePlayers, a.awayOverridePlayers, a.isAllStar, a.isRisingStars, a.isEliminationGame, a.riggedForTid, a.homeKnobs ?? KNOBS_DEFAULT, a.awayKnobs ?? KNOBS_DEFAULT, a.injuryFrequencyFactor, a.season, a.allowTies),
+      );
+      const postAdapterNormalizeStart = this.perfNow();
+      const gameResult = normalizeGameResultScoreIntegrity(adapterResult);
+      const postAdapterNormalizeMs = this.perfNow() - postAdapterNormalizeStart;
+      const simulateMs = this.perfMs(simulateStart);
+      recordSimulationPerf({
+        engine: 'day',
+        gameId: prepared.gid,
+        date: prepared.date,
+        home: prepared.homeLabel,
+        away: prepared.awayLabel,
+        isPlayoff: prepared.isPlayoff,
+        isPlayIn: prepared.isPlayIn,
+        isNBACup: prepared.isNBACup,
+        setupMs: prepared.setupMs,
+        postAdapterNormalizeMs,
+        simulateMs,
+        totalMs: prepared.setupMs + simulateMs,
+      });
+      return gameResult;
+    } finally {
+      if (clubDebuffs && clubDebuffs.size > 0) clearClubDebuffs();
+    }
+  }
+
+  static simulatePreparedDayGames(
+    prepared: PreparedDayGame[],
+    clubDebuffs?: Map<string, 'heavy' | 'moderate' | 'mild'>,
+  ): GameResult[] {
+    return prepared.map(game => this.simulatePreparedGame(game, clubDebuffs));
+  }
+}
+
+export interface PreparedDayGame {
+  order: number;
+  gid: number;
+  date: string;
+  setupMs: number;
+  homeLabel: string;
+  awayLabel: string;
+  isPlayoff: boolean;
+  isPlayIn: boolean;
+  isNBACup: boolean;
+  presentation: ResolvedGamePresentation;
+  args: SimulateGameArgs;
 }

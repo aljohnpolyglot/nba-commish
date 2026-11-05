@@ -1,30 +1,53 @@
 import type { LeagueStats } from '../../../../types';
+import { getLeagueCalendar } from '../../../../services/leagueCalendar';
 import { ruleValue } from './rulesDefaults';
 
 export const createRulesViewDefaults = (leagueStats: LeagueStats) => ({
+  playoffsEnabled: leagueStats.playoffsEnabled ?? true,
   playIn: leagueStats.playIn,
   inSeasonTournament: leagueStats.inSeasonTournament ?? true,
+  summerLeagueEnabled: leagueStats.summerLeagueEnabled ?? leagueStats.year >= 2003,
+  summerLeagueTournamentEnabled: leagueStats.summerLeagueTournamentEnabled ?? leagueStats.year >= 2003,
   cupPrizePoolEnabled: leagueStats.cupPrizePoolEnabled ?? true,
   cupPrizePoolAutoInflate: leagueStats.cupPrizePoolAutoInflate ?? true,
   cupPrizeWinner: leagueStats.cupPrizeWinner ?? 500_000,
   cupPrizeRunnerUp: leagueStats.cupPrizeRunnerUp ?? 200_000,
   cupPrizeSemi: leagueStats.cupPrizeSemi ?? 100_000,
   cupPrizeQuarter: leagueStats.cupPrizeQuarter ?? 50_000,
-  playoffFormat: [...leagueStats.numGamesPlayoffSeries] as (number | string)[],
+  playoffFormat: [...leagueStats.numGamesPlayoffSeries].map(value => {
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed) || parsed <= 1) return 1;
+    if (parsed <= 3) return 3;
+    if (parsed <= 5) return 5;
+    return 7;
+  }) as (number | string)[],
+  numPlayoffTeams: leagueStats.numPlayoffTeams ?? Math.min(16, 2 ** leagueStats.numGamesPlayoffSeries.length),
+  numPlayoffByes: leagueStats.numPlayoffByes ?? 0,
+  playoffsByConf: leagueStats.playoffsByConf ?? true,
   draftType: leagueStats.draftType,
   eligibilityRule: leagueStats.draftEligibilityRule ?? 'one_and_done',
   minAgeRequirement: leagueStats.minAgeRequirement ?? 19,
   minGamesRequirement: leagueStats.minGamesRequirement ?? 65,
   customScheduleEnabled: leagueStats.customScheduleEnabled ?? false,
+  leagueCalendar: getLeagueCalendar(leagueStats),
+  preseasonGamesPerTeam: getLeagueCalendar(leagueStats).preseasonGamesPerTeam ?? 0,
   gamesPerSeason: leagueStats.gamesPerSeason ?? 82,
-  divisionGames: leagueStats.divisionGames ?? 16,
-  conferenceGames: leagueStats.conferenceGames ?? 36,
+  divisionGames: leagueStats.numGamesDiv ?? leagueStats.divisionGames ?? 16,
+  conferenceGames: leagueStats.numGamesConf ?? leagueStats.conferenceGames ?? 36,
+  jerseyPatchProgramEnabled: leagueStats.jerseyPatchProgramEnabled ?? leagueStats.year >= 2017,
   allStarGameEnabled: leagueStats.allStarGameEnabled ?? true,
   allStarFormat: leagueStats.allStarFormat ?? 'usa_vs_world',
   allStarTeams: leagueStats.allStarTeams ?? 3,
+  allStarCaptainType: leagueStats.allStarCaptainType ?? 'player',
+  allStarPlayerCaptainNameStyle: leagueStats.allStarPlayerCaptainNameStyle
+    ?? (leagueStats.uiMode === 'pba_isolated' ? 'first_name' : 'last_name'),
+  allStarLegendCaptainIds: [...(leagueStats.allStarLegendCaptainIds ?? [])],
+  allStarTeamNames: [...(leagueStats.allStarTeamNames ?? [])],
   allStarMirrorLeagueRules: leagueStats.allStarMirrorLeagueRules ?? false,
   allStarDunkContest: leagueStats.allStarDunkContest ?? true,
   allStarDunkContestPlayers: leagueStats.allStarDunkContestPlayers ?? 4,
+  allStarDanceContestEnabled: leagueStats.allStarDanceContestEnabled ?? false,
+  pbaAllStarDanceContestEnabled: leagueStats.pbaAllStarDanceContestEnabled ?? true,
   allStarThreePointContest: leagueStats.allStarThreePointContest ?? true,
   allStarThreePointContestPlayers: leagueStats.allStarThreePointContestPlayers ?? 8,
   allStarShootingStars: leagueStats.allStarShootingStars ?? true,
@@ -41,8 +64,6 @@ export const createRulesViewDefaults = (leagueStats: LeagueStats) => ({
   allStarHorseParticipants: leagueStats.allStarHorseParticipants ?? 3,
   allStarHorseNoPlayerRepeat: leagueStats.allStarHorseNoPlayerRepeat ?? false,
   allStarHorseNoGlobalRepeat: leagueStats.allStarHorseNoGlobalRepeat ?? false,
-  allStarOneOnOneEnabled: leagueStats.allStarOneOnOneEnabled ?? false,
-  allStarOneOnOneParticipants: leagueStats.allStarOneOnOneParticipants ?? 8,
   allStarThroneEnabled: leagueStats.allStarThroneEnabled ?? false,
   allStarThroneFieldSize: (leagueStats.allStarThroneFieldSize ?? 16) as 8 | 16,
   allStarThroneFormat: leagueStats.allStarThroneFormat ?? 'full16',
@@ -55,6 +76,10 @@ export const createRulesViewDefaults = (leagueStats: LeagueStats) => ({
   allStarThroneMandatoryDefense: leagueStats.allStarThroneMandatoryDefense ?? true,
   risingStarsEnabled: leagueStats.risingStarsEnabled ?? true,
   risingStarsFormat: leagueStats.risingStarsFormat ?? '4team_tournament',
+  risingStarsCaptainType: leagueStats.risingStarsFormat === 'captains_draft'
+    ? 'legend'
+    : (leagueStats.risingStarsCaptainType ?? 'player'),
+  risingStarsLegendCaptainIds: [...(leagueStats.risingStarsLegendCaptainIds ?? [])],
   risingStarsMirrorLeagueRules: leagueStats.risingStarsMirrorLeagueRules ?? false,
   risingStarsQuarterLength: leagueStats.risingStarsQuarterLength ?? 3,
   risingStarsEliminationEndings: leagueStats.risingStarsEliminationEndings ?? true,

@@ -1,28 +1,51 @@
 import React from 'react';
 import { Shield, Star, Trophy } from 'lucide-react';
-import type { NBAPlayer } from '../../../types';
+import type { GameState, NBAPlayer } from '../../../types';
 import { RankedPersonCard } from '../../shared/ui';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { getHistoricalTeamSnapshot } from '../../../utils/teamAssets';
+import { getTeamFullName } from '../../../utils/teamNames';
 import type { HistoryAwardCard, HistoryAwardGroup, LeaderEntry } from './leagueHistoryDetailData';
 import { formatHistoryStat } from './leagueHistoryDetailData';
 import { resolveLeagueHistoryPortraitUrl } from './leagueHistoryShared';
+import { ALL_STAR_ASSETS } from '../../../services/allStar/AllStarSelectionService';
+import { resolveNbaConferenceLogo } from '../../../data/nbaConferenceLogos';
+import { getScoutedDisplayOverall } from '../../../utils/scoutingFuzz';
 
-export const AwardWinner: React.FC<{ label: string; award: any; isCurrent: boolean; winCount?: number; onClick?: () => void }> = ({ label, award, isCurrent, winCount = 1, onClick }) => (
+const getHistoricalTeamName = (team: any, season?: number) => {
+  const snapshot = getHistoricalTeamSnapshot(team, season);
+  return getTeamFullName({
+    ...(team ?? {}),
+    region: snapshot.region ?? team?.region,
+    name: snapshot.name ?? team?.name,
+    abbrev: snapshot.abbrev ?? team?.abbrev,
+  }) || snapshot.name || team?.abbrev || 'Team';
+};
+
+export const getAwardWinnerStats = (label: string, award: HistoryAwardCard | null) => {
+  const statLine = label === 'DPOY' ? award?.defensiveStatLine : award?.statLine;
+  if (!statLine) return undefined;
+  const statLabels = label === 'DPOY' ? ['RPG', 'SPG', 'BPG'] : ['PPG', 'RPG', 'APG'];
+  const stats = statLine?.split(' / ');
+  return statLabels.map((statLabel, index) => ({ label: statLabel, val: stats[index] ?? '' }));
+};
+
+export const AwardWinner: React.FC<{ label: string; award: HistoryAwardCard | null; isCurrent: boolean; season?: number; winCount?: number; onClick?: () => void }> = ({ label, award, isCurrent, season, winCount = 1, onClick }) => {
+  const stats = getAwardWinnerStats(label, award);
+  return (
   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
     <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">{label}</div>
     {award ? (
       <RankedPersonCard
         rank={winCount}
         portraitUrl={award.imgURL}
+        portraitSeason={season}
+        disableNameFallback={award.disableNameFallback}
         face={award.face}
         name={award.name}
         subtitle={award.team}
         teamLogoUrl={award.teamLogoUrl}
-        stats={award.statLine ? [
-          { label: 'PPG', val: award.statLine.split(' / ')[0] ?? '' },
-          { label: 'RPG', val: award.statLine.split(' / ')[1] ?? '' },
-          { label: 'APG', val: award.statLine.split(' / ')[2] ?? '' },
-        ] : undefined}
+        stats={stats}
         accentColor="amber"
         animDelay={0}
         onClick={onClick}
@@ -36,7 +59,40 @@ export const AwardWinner: React.FC<{ label: string; award: any; isCurrent: boole
       </div>
     )}
   </div>
-);
+  );
+};
+
+export const CompactAwardWinner: React.FC<{ label: string; award: any; season?: number; onClick?: () => void }> = ({ label, award, season, onClick }) => {
+  if (!award) return null;
+  const content = (
+    <>
+      <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg border border-slate-700 bg-slate-800">
+        <PlayerPortrait
+          imgUrl={award.imgURL}
+          portraitSeason={season}
+          face={award.face}
+          playerName={award.name}
+          teamLogoUrl={award.teamLogoUrl}
+          size={36}
+        />
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="truncate text-[9px] font-black uppercase tracking-widest text-slate-500">{label}</div>
+        <div className="truncate text-xs font-bold text-white">{award.name}</div>
+        {award.team && <div className="truncate text-[9px] font-bold uppercase tracking-wide text-slate-600">{award.team}</div>}
+      </div>
+    </>
+  );
+  return onClick ? (
+    <button type="button" onClick={onClick} className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/55 p-2.5 text-left transition-colors hover:border-slate-600 hover:bg-slate-900">
+      {content}
+    </button>
+  ) : (
+    <div className="flex min-w-0 items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/55 p-2.5 text-left">
+      {content}
+    </div>
+  );
+};
 
 export const COYWinner: React.FC<{ award: any; isCurrent: boolean; winCount?: number }> = ({ award, isCurrent, winCount = 1 }) => (
   <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3">
@@ -45,6 +101,7 @@ export const COYWinner: React.FC<{ award: any; isCurrent: boolean; winCount?: nu
       <RankedPersonCard
         rank={winCount}
         portraitUrl={award.imgURL}
+        disableNameFallback={award.disableNameFallback}
         face={award.face}
         name={award.name}
         subtitle={award.team}
@@ -63,7 +120,7 @@ export const COYWinner: React.FC<{ award: any; isCurrent: boolean; winCount?: nu
   </div>
 );
 
-export const AllTeamSection: React.FC<{ label: string; icon: React.ReactNode; iconColor: string; teams: HistoryAwardGroup[]; onPlayerClick?: (player: HistoryAwardCard) => void; showCount?: boolean }> = ({ label, icon, iconColor, teams, onPlayerClick, showCount = false }) => {
+export const AllTeamSection: React.FC<{ label: string; icon: React.ReactNode; iconColor: string; teams: HistoryAwardGroup[]; season?: number; onPlayerClick?: (player: HistoryAwardCard) => void; showCount?: boolean }> = ({ label, icon, iconColor, teams, season, onPlayerClick, showCount = false }) => {
   const hasAny = teams.some((team) => team.players.length > 0);
   if (!hasAny) return null;
   return (
@@ -87,6 +144,7 @@ export const AllTeamSection: React.FC<{ label: string; icon: React.ReactNode; ic
                     <div className="relative w-10 h-10 rounded-lg overflow-hidden bg-slate-800 border border-slate-700 shrink-0">
                       <PlayerPortrait
                         imgUrl={player.imgURL}
+                        portraitSeason={season}
                         face={player.face}
                         playerName={player.name}
                         teamLogoUrl={player.teamLogoUrl}
@@ -113,7 +171,7 @@ export const AllTeamSection: React.FC<{ label: string; icon: React.ReactNode; ic
   );
 };
 
-export const LeaderColumnWithSeason: React.FC<{ title: string; unit: string; leaders: LeaderEntry[]; isCurrent: boolean; onPlayerClick?: (player: any) => void }> = ({ title, unit, leaders, isCurrent, onPlayerClick }) => (
+export const LeaderColumnWithSeason: React.FC<{ title: string; unit: string; leaders: LeaderEntry[]; isCurrent: boolean; season?: number; onPlayerClick?: (player: any) => void }> = ({ title, unit, leaders, isCurrent, season, onPlayerClick }) => (
   <div className="flex flex-col gap-1.5">
     <div className="flex items-center justify-between px-1 mb-1">
       <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{title}</span>
@@ -126,9 +184,12 @@ export const LeaderColumnWithSeason: React.FC<{ title: string; unit: string; lea
         key={entry.player.internalId}
         rank={index + 1}
         portraitUrl={entry.player.imgURL}
+        portraitSeason={season}
         face={(entry.player as any)?.face}
         name={entry.player.name}
-        subtitle={`${entry.team?.abbrev ?? '—'} · ${formatHistoryStat(entry.value)} ${unit}`}
+        subtitle={entry.sourceOnly
+          ? `${entry.team?.abbrev ?? '—'} · Season leader`
+          : `${entry.team?.abbrev ?? '—'} · ${formatHistoryStat(entry.value)} ${unit}`}
         accentColor="indigo"
         animDelay={index * 0.04}
         onClick={onPlayerClick ? () => onPlayerClick(entry.player) : undefined}
@@ -143,11 +204,13 @@ export const ChampionHeroSection: React.FC<{
   runnerUpTeam: any;
   runnerUpRecord: any;
   finalsMvp: any;
+  finalsMvpLabel?: string;
   isCurrent: boolean;
+  season: number;
   countChamp: (teamId: number | undefined) => number;
   countRunnerUp: (teamId: number | undefined) => number;
   onFinalsMvpClick: () => void;
-}> = ({ champTeam, champRecord, runnerUpTeam, runnerUpRecord, finalsMvp, isCurrent, countChamp, countRunnerUp, onFinalsMvpClick }) => (
+}> = ({ champTeam, champRecord, runnerUpTeam, runnerUpRecord, finalsMvp, finalsMvpLabel = 'Finals MVP', isCurrent, season, countChamp, countRunnerUp, onFinalsMvpClick }) => (
   <div className="relative overflow-hidden rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-950/20 via-slate-900 to-slate-900 p-5">
     <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-amber-400/5 blur-3xl pointer-events-none" />
     <div className="flex flex-col md:flex-row md:items-center gap-6">
@@ -156,19 +219,22 @@ export const ChampionHeroSection: React.FC<{
           <Trophy size={13} className="text-amber-400" />
           <span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Champion</span>
         </div>
-        {champTeam ? (
+        {champTeam ? (() => {
+          const champSnapshot = getHistoricalTeamSnapshot(champTeam, season);
+          const champName = getHistoricalTeamName(champTeam, season);
+          return (
           <div className="flex items-center gap-4">
-            {champTeam.logoUrl && (
+            {champSnapshot.logoUrl && (
               <img
-                src={champTeam.logoUrl}
-                alt={champTeam.abbrev}
+                src={champSnapshot.logoUrl}
+                alt={champSnapshot.abbrev}
                 className="w-20 h-20 object-contain drop-shadow-xl shrink-0"
                 referrerPolicy="no-referrer"
               />
             )}
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-black text-amber-400">{champTeam.name}</span>
+                <span className="text-2xl font-black text-amber-400">{champName}</span>
                 <span className="text-xs font-black text-amber-500 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full">
                   {countChamp(champTeam.id)}×
                 </span>
@@ -185,12 +251,13 @@ export const ChampionHeroSection: React.FC<{
                 >
                   <PlayerPortrait
                     imgUrl={finalsMvp.imgURL}
+                    portraitSeason={season}
                     face={finalsMvp.face}
                     playerName={finalsMvp.name}
                     size={32}
                   />
                   <div>
-                    <div className="text-[9px] text-amber-500 uppercase font-black tracking-wider">Finals MVP</div>
+                    <div className="text-[9px] text-amber-500 uppercase font-black tracking-wider">{finalsMvpLabel}</div>
                     <div className="text-sm font-bold text-white">{finalsMvp.name}</div>
                     {finalsMvp.statLine && <div className="text-[10px] text-slate-400">{finalsMvp.statLine}</div>}
                   </div>
@@ -198,7 +265,8 @@ export const ChampionHeroSection: React.FC<{
               )}
             </div>
           </div>
-        ) : (
+          );
+        })() : (
           <p className="text-slate-500 italic text-sm">
             {isCurrent ? 'Season in progress — champion TBD' : 'Champion data not available'}
           </p>
@@ -207,18 +275,22 @@ export const ChampionHeroSection: React.FC<{
       {runnerUpTeam && (
         <div className="md:border-l md:border-slate-700/50 md:pl-6">
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Runner-Up</div>
+          {(() => {
+            const runnerSnapshot = getHistoricalTeamSnapshot(runnerUpTeam, season);
+            const runnerName = getHistoricalTeamName(runnerUpTeam, season);
+            return (
           <div className="flex items-center gap-3">
-            {runnerUpTeam.logoUrl && (
+            {runnerSnapshot.logoUrl && (
               <img
-                src={runnerUpTeam.logoUrl}
-                alt={runnerUpTeam.abbrev}
+                src={runnerSnapshot.logoUrl}
+                alt={runnerSnapshot.abbrev}
                 className="w-12 h-12 object-contain opacity-50 shrink-0"
                 referrerPolicy="no-referrer"
               />
             )}
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-base font-bold text-slate-300">{runnerUpTeam.name}</span>
+                <span className="text-base font-bold text-slate-300">{runnerName}</span>
                 <span className="text-[9px] font-black text-slate-400 bg-slate-700/50 border border-slate-600/30 px-1.5 py-0.5 rounded-full">
                   {countRunnerUp(runnerUpTeam.id)}× Finals
                 </span>
@@ -230,6 +302,8 @@ export const ChampionHeroSection: React.FC<{
               )}
             </div>
           </div>
+            );
+          })()}
         </div>
       )}
     </div>
@@ -241,6 +315,7 @@ export const PbaConferenceChampionsSection: React.FC<{
     key: string;
     label: string;
     accent: string;
+    season: number;
     team: any | null;
     record?: any | null;
     count: number;
@@ -288,14 +363,14 @@ export const PbaConferenceChampionsSection: React.FC<{
             {card.team ? (
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0 overflow-hidden">
-                  {card.team.logoUrl ? (
-                    <img src={card.team.logoUrl} alt={card.team.abbrev ?? card.team.name ?? 'Team'} className="w-11 h-11 object-contain" referrerPolicy="no-referrer" />
+                  {getHistoricalTeamSnapshot(card.team, card.season).logoUrl ? (
+                    <img src={getHistoricalTeamSnapshot(card.team, card.season).logoUrl} alt={card.team.abbrev ?? card.team.name ?? 'Team'} className="w-11 h-11 object-contain" referrerPolicy="no-referrer" />
                   ) : (
                     <span className="text-sm font-black text-slate-500">{card.team.abbrev ?? '—'}</span>
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-lg font-black text-white leading-tight truncate">{card.team.name ?? card.team.abbrev ?? 'Team'}</div>
+                  <div className="text-lg font-black text-white leading-tight truncate">{getHistoricalTeamName(card.team, card.season)}</div>
                   {card.record && (
                     <div className="text-sm text-slate-400 font-semibold">
                       {card.record.won ?? card.record.wins ?? 0}-{card.record.lost ?? card.record.losses ?? 0}
@@ -336,9 +411,9 @@ export const BestRecordsSection: React.FC<{ bestRecords: { conference: string; t
               : conference;
           return (
             <div key={conference} className="relative bg-slate-900/80 border border-slate-800 hover:border-slate-700 rounded-2xl p-4 flex items-center gap-4 overflow-hidden transition-colors">
-              {team.logoUrl && (
+              {getHistoricalTeamSnapshot(team, ts?.season).logoUrl && (
                 <img
-                  src={team.logoUrl}
+                  src={getHistoricalTeamSnapshot(team, ts?.season).logoUrl}
                   alt=""
                   aria-hidden
                   className="absolute right-3 top-1/2 -translate-y-1/2 w-16 h-16 object-contain opacity-[0.06] pointer-events-none"
@@ -346,15 +421,15 @@ export const BestRecordsSection: React.FC<{ bestRecords: { conference: string; t
                 />
               )}
               <div className="w-14 h-14 rounded-xl bg-slate-800 border border-slate-700 flex items-center justify-center shrink-0">
-                {team.logoUrl
-                  ? <img src={team.logoUrl} alt={team.abbrev} className="w-11 h-11 object-contain" referrerPolicy="no-referrer" />
-                  : <span className="text-lg font-black text-slate-600">{team.abbrev}</span>}
+                {getHistoricalTeamSnapshot(team, ts?.season).logoUrl
+                  ? <img src={getHistoricalTeamSnapshot(team, ts?.season).logoUrl} alt={team.abbrev} className="w-11 h-11 object-contain" referrerPolicy="no-referrer" />
+                  : <span className="text-lg font-black text-slate-600">{getHistoricalTeamSnapshot(team, ts?.season).abbrev}</span>}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500 mb-0.5">
                   {conferenceLabel}
                 </div>
-                <div className="text-base font-black text-white truncate leading-tight">{team.name}</div>
+                <div className="text-base font-black text-white truncate leading-tight">{getHistoricalTeamName(team, ts?.season)}</div>
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-xl font-black font-mono text-emerald-400">{wins}–{losses}</span>
                   <span className="text-[10px] font-bold text-slate-500 bg-slate-800 px-1.5 py-0.5 rounded-full">.{pct}</span>
@@ -368,7 +443,7 @@ export const BestRecordsSection: React.FC<{ bestRecords: { conference: string; t
   );
 };
 
-export const SemifinalsMvpsSection: React.FC<{ semifinalsMvps: any[]; onPlayerSelect: (player: NBAPlayer) => void; onPlayerMissing: (name: string) => void }> = ({ semifinalsMvps, onPlayerSelect, onPlayerMissing }) => {
+export const SemifinalsMvpsSection: React.FC<{ semifinalsMvps: any[]; season?: number; onPlayerSelect: (player: NBAPlayer) => void; onPlayerMissing: (name: string) => void }> = ({ semifinalsMvps, season, onPlayerSelect, onPlayerMissing }) => {
   if (!semifinalsMvps.length) return null;
   return (
     <div>
@@ -382,6 +457,7 @@ export const SemifinalsMvpsSection: React.FC<{ semifinalsMvps: any[]; onPlayerSe
             key={index}
             rank={index + 1}
             portraitUrl={award.imgURL}
+            portraitSeason={season}
             face={award.face}
             name={award.name}
             subtitle={`${award.team}${award.statLine ? ` · ${award.statLine}` : ''}`}
@@ -396,16 +472,17 @@ export const SemifinalsMvpsSection: React.FC<{ semifinalsMvps: any[]; onPlayerSe
   );
 };
 
-const EAST_LOGO = 'https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748';
-const WEST_LOGO = 'https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726';
+const EAST_LOGO = ALL_STAR_ASSETS.eastLogo;
+const WEST_LOGO = ALL_STAR_ASSETS.westLogo;
 
-const buildAllStarSnap = (entry: any, players: any[], teams: any[], season: number, countAllStar: (playerName: string | undefined) => number) => {
+const buildAllStarSnap = (entry: any, players: any[], teams: any[], season: number, countAllStar: (playerName: string | undefined) => number, state: GameState) => {
   const player = players.find((candidate: any) => String(candidate.internalId) === String(entry.playerId));
   const stats = player?.stats?.filter((stat: any) => Number(stat.season) === Number(season) && !stat.playoffs && (stat.tid ?? -1) >= 0) ?? [];
   const tid = stats.length ? stats.reduce((left: any, right: any) => (left.gp >= right.gp ? left : right)).tid : player?.tid;
   const team = teams.find((candidate: any) => candidate.id === tid) ?? teams.find((candidate: any) => candidate.abbrev === entry.teamAbbrev);
-  const snapOvr = player?.ratings?.find((rating: any) => Number(rating.season) === Number(season))?.ovr ?? player?.overallRating ?? 0;
+  const snapOvr = player ? getScoutedDisplayOverall(state, player, season) : 0;
   const snapRatings = player?.ratings?.filter((rating: any) => Number(rating.season) === Number(season));
+  const teamSnapshot = getHistoricalTeamSnapshot(team, season);
   return {
     player,
     team,
@@ -414,10 +491,11 @@ const buildAllStarSnap = (entry: any, players: any[], teams: any[], season: numb
     snapRatings,
     pos: (player as any)?.pos ?? '—',
     count: countAllStar(entry.playerName),
+    teamLogoUrl: teamSnapshot.logoUrl,
   };
 };
 
-const AllStarConferenceSection: React.FC<{ conference: string; logo: string; roster: any[]; players: any[]; teams: any[]; season: number; countAllStar: (playerName: string | undefined) => number; onPlayerSelect: (player: NBAPlayer) => void; onPlayerMissing: (name: string) => void }> = ({ conference, logo, roster, players, teams, season, countAllStar, onPlayerSelect, onPlayerMissing }) => {
+const AllStarConferenceSection: React.FC<{ conference: string; logo: string; roster: any[]; players: any[]; teams: any[]; season: number; countAllStar: (playerName: string | undefined) => number; onPlayerSelect: (player: NBAPlayer) => void; onPlayerMissing: (name: string) => void; state: GameState }> = ({ conference, logo, roster, players, teams, season, countAllStar, onPlayerSelect, onPlayerMissing, state }) => {
   if (!roster.length) return null;
   const starters = roster.filter((entry: any) => entry.isStarter);
   const reserves = roster.filter((entry: any) => !entry.isStarter);
@@ -445,7 +523,7 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
           </div>
           <div className="grid grid-cols-5 gap-2">
             {starters.map((entry: any) => {
-              const { player, team, teamColor, snapOvr, snapRatings, pos, count } = buildAllStarSnap(entry, players, teams, season, countAllStar);
+              const { player, team, teamColor, snapOvr, snapRatings, pos, count, teamLogoUrl } = buildAllStarSnap(entry, players, teams, season, countAllStar, state);
               return (
                 <div
                   key={entry.playerId}
@@ -461,10 +539,12 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
                   <div className="mt-1">
                 <PlayerPortrait
                   imgUrl={resolveLeagueHistoryPortraitUrl(player, entry.playerName)}
+                  portraitSeason={season}
                   face={(player as any)?.face}
                   playerName={entry.playerName}
-                  teamLogoUrl={team?.logoUrl}
+                  teamLogoUrl={teamLogoUrl}
                   overallRating={snapOvr}
+                  ovrLabel={player ? String(snapOvr) : undefined}
                   ratings={snapRatings}
                   size={56}
                 />
@@ -492,7 +572,7 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
           )}
           <div className="p-3 space-y-1.5">
             {reserves.map((entry: any) => {
-              const { player, team, snapOvr, snapRatings, pos, count } = buildAllStarSnap(entry, players, teams, season, countAllStar);
+              const { player, team, snapOvr, snapRatings, pos, count, teamLogoUrl } = buildAllStarSnap(entry, players, teams, season, countAllStar, state);
               return (
                 <div
                   key={entry.playerId}
@@ -501,10 +581,12 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
                 >
                   <PlayerPortrait
                     imgUrl={resolveLeagueHistoryPortraitUrl(player, entry.playerName)}
+                    portraitSeason={season}
                     face={(player as any)?.face}
                     playerName={entry.playerName}
-                    teamLogoUrl={team?.logoUrl}
+                    teamLogoUrl={teamLogoUrl}
                     overallRating={snapOvr}
+                    ovrLabel={player ? String(snapOvr) : undefined}
                     ratings={snapRatings}
                     size={36}
                   />
@@ -527,11 +609,11 @@ const AllStarConferenceSection: React.FC<{ conference: string; logo: string; ros
   );
 };
 
-export const AllStarSection: React.FC<{ allStarRoster: any[] | null; players: any[]; teams: any[]; season: number; countAllStar: (playerName: string | undefined) => number; onPlayerSelect: (player: NBAPlayer) => void; onPlayerMissing: (name: string) => void; groupByConference?: boolean }> = ({ allStarRoster, players, teams, season, countAllStar, onPlayerSelect, onPlayerMissing, groupByConference = true }) => {
+export const AllStarSection: React.FC<{ allStarRoster: any[] | null; players: any[]; teams: any[]; season: number; countAllStar: (playerName: string | undefined) => number; onPlayerSelect: (player: NBAPlayer) => void; onPlayerMissing: (name: string) => void; groupByConference?: boolean; useNbaConferenceLogos?: boolean; state: GameState }> = ({ allStarRoster, players, teams, season, countAllStar, onPlayerSelect, onPlayerMissing, groupByConference = true, useNbaConferenceLogos = false, state }) => {
   if (!allStarRoster?.length) return null;
   const rankedRoster = [...allStarRoster].sort((left: any, right: any) => {
-    const leftSnap = buildAllStarSnap(left, players, teams, season, countAllStar);
-    const rightSnap = buildAllStarSnap(right, players, teams, season, countAllStar);
+    const leftSnap = buildAllStarSnap(left, players, teams, season, countAllStar, state);
+    const rightSnap = buildAllStarSnap(right, players, teams, season, countAllStar, state);
     return (rightSnap.snapOvr - leftSnap.snapOvr) || String(left.playerName ?? '').localeCompare(String(right.playerName ?? ''));
   });
   const eastRoster = allStarRoster.filter((entry: any) => entry.conference === 'East' || entry.conference === 'Eastern' || entry.conference?.startsWith('East'));
@@ -547,8 +629,9 @@ export const AllStarSection: React.FC<{ allStarRoster: any[] | null; players: an
       {groupByConference ? (
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
           <AllStarConferenceSection
+            state={state}
             conference="East"
-            logo={EAST_LOGO}
+            logo={useNbaConferenceLogos ? resolveNbaConferenceLogo('East', season) ?? EAST_LOGO : EAST_LOGO}
             roster={eastRoster}
             players={players}
             teams={teams}
@@ -558,8 +641,9 @@ export const AllStarSection: React.FC<{ allStarRoster: any[] | null; players: an
             onPlayerMissing={onPlayerMissing}
           />
           <AllStarConferenceSection
+            state={state}
             conference="West"
-            logo={WEST_LOGO}
+            logo={useNbaConferenceLogos ? resolveNbaConferenceLogo('West', season) ?? WEST_LOGO : WEST_LOGO}
             roster={westRoster}
             players={players}
             teams={teams}
@@ -572,7 +656,7 @@ export const AllStarSection: React.FC<{ allStarRoster: any[] | null; players: an
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
           {rankedRoster.map((entry: any) => {
-            const { player, team, snapOvr, snapRatings, pos, count } = buildAllStarSnap(entry, players, teams, season, countAllStar);
+            const { player, team, snapOvr, snapRatings, pos, count, teamLogoUrl } = buildAllStarSnap(entry, players, teams, season, countAllStar, state);
             return (
               <div
                 key={entry.playerId}
@@ -581,10 +665,12 @@ export const AllStarSection: React.FC<{ allStarRoster: any[] | null; players: an
               >
                 <PlayerPortrait
                   imgUrl={resolveLeagueHistoryPortraitUrl(player, entry.playerName)}
+                  portraitSeason={season}
                   face={(player as any)?.face}
                   playerName={entry.playerName}
-                  teamLogoUrl={team?.logoUrl}
-                  overallRating={snapOvr}
+                  teamLogoUrl={teamLogoUrl}
+                    overallRating={snapOvr}
+                    ovrLabel={player ? String(snapOvr) : undefined}
                   ratings={snapRatings}
                   size={40}
                 />

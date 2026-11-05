@@ -1,0 +1,931 @@
+{
+  "schemaVersion": 1,
+  "version": "europe-historical-v1-2026-08-09",
+  "generatedAt": "2026-08-09T14:00:38.394Z",
+  "sourceStamp": "2026-08-09T13-28-09-294Z",
+  "ratingModel": "league-season-percentile-basegame-aligned-v2",
+  "ratingTargets": {
+    "stre": [
+      23,
+      25,
+      29,
+      42,
+      56,
+      76,
+      87,
+      90
+    ],
+    "spd": [
+      28,
+      32,
+      42,
+      49,
+      59,
+      64,
+      67,
+      70
+    ],
+    "jmp": [
+      21,
+      23,
+      35,
+      41,
+      50,
+      54,
+      56,
+      59
+    ],
+    "endu": [
+      12,
+      12,
+      22,
+      52,
+      76,
+      90,
+      90,
+      90
+    ],
+    "ins": [
+      12,
+      16,
+      22,
+      37,
+      50,
+      61,
+      70,
+      80
+    ],
+    "dnk": [
+      12,
+      12,
+      18,
+      28,
+      40,
+      57,
+      68,
+      79
+    ],
+    "fg": [
+      12,
+      12,
+      17,
+      31,
+      44,
+      54,
+      61,
+      68
+    ],
+    "tp": [
+      12,
+      12,
+      12,
+      28,
+      52,
+      71,
+      85,
+      90
+    ],
+    "ft": [
+      12,
+      12,
+      22,
+      36,
+      49,
+      62,
+      68,
+      75
+    ],
+    "pss": [
+      12,
+      12,
+      15,
+      23,
+      32,
+      46,
+      56,
+      68
+    ],
+    "reb": [
+      12,
+      12,
+      15,
+      22,
+      33,
+      45,
+      53,
+      62
+    ],
+    "drb": [
+      16,
+      17,
+      25,
+      31,
+      36,
+      42,
+      46,
+      51
+    ],
+    "oiq": [
+      16,
+      16,
+      24,
+      37,
+      50,
+      60,
+      66,
+      74
+    ],
+    "diq": [
+      16,
+      17,
+      23,
+      32,
+      40,
+      48,
+      54,
+      60
+    ]
+  },
+  "seasonConvention": "BBGM season end year",
+  "logicalLeagueSeasons": 68,
+  "canonicalRegularRosterRows": 14055,
+  "ratingRows": 13946,
+  "bioReviews": {
+    "total": 60,
+    "resolved": 1,
+    "pending": 59
+  },
+  "unresolvedNationalities": 947,
+  "rejectedSharedOrPlaceholderPortraits": 13,
+  "awards": {
+    "source": "built-in competition history",
+    "branchCutoff": "selected season minus one"
+  },
+  "outputs": [
+    {
+      "leagueId": "ESP-ACB",
+      "coverage": {
+        "from": 1984,
+        "through": 2003
+      },
+      "file": "europe-ESP-ACB-BBGM-RATED-V1.json.gz",
+      "sourceFile": "europe-ESP-ACB-BBGM-RATED-V1-2026-08-09T13-28-09-294Z.json.gz",
+      "sourceSha256": "B5823AFF91679B84743CADB0E58A55B20E1A409D09FAB77A2DB5F4E2D39BE9A3",
+      "outputSha256": "94B76A9C394E38671C009E0995B7B7A366A73BA83D1277FB42AE02170F7C0A04",
+      "compressedBytes": 486784,
+      "teams": 42,
+      "players": 1540,
+      "ratings": 4647,
+      "stats": 4697,
+      "impliedRawOverall": {
+        "count": 4647,
+        "min": 15.483333333333334,
+        "p10": 20.329166666666666,
+        "median": 35.29166666666667,
+        "mean": 35.54,
+        "p90": 51.65833333333333,
+        "max": 68.22916666666667
+      },
+      "skills": {
+        "stre": {
+          "count": 4647,
+          "min": 23,
+          "p10": 25,
+          "median": 42,
+          "mean": 44.44,
+          "p90": 73,
+          "max": 90
+        },
+        "spd": {
+          "count": 4647,
+          "min": 28,
+          "p10": 32,
+          "median": 49,
+          "mean": 48.93,
+          "p90": 64,
+          "max": 70
+        },
+        "jmp": {
+          "count": 4647,
+          "min": 21,
+          "p10": 23,
+          "median": 41,
+          "mean": 40.39,
+          "p90": 53,
+          "max": 59
+        },
+        "endu": {
+          "count": 4647,
+          "min": 12,
+          "p10": 12,
+          "median": 52,
+          "mean": 49.36,
+          "p90": 88,
+          "max": 90
+        },
+        "ins": {
+          "count": 4647,
+          "min": 12,
+          "p10": 16,
+          "median": 37,
+          "mean": 36.9,
+          "p90": 59,
+          "max": 80
+        },
+        "dnk": {
+          "count": 4647,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 30.11,
+          "p90": 53,
+          "max": 79
+        },
+        "fg": {
+          "count": 4647,
+          "min": 12,
+          "p10": 12,
+          "median": 31,
+          "mean": 31.23,
+          "p90": 53,
+          "max": 68
+        },
+        "tp": {
+          "count": 4647,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 33.41,
+          "p90": 68,
+          "max": 90
+        },
+        "ft": {
+          "count": 4647,
+          "min": 12,
+          "p10": 12,
+          "median": 36,
+          "mean": 34.84,
+          "p90": 57,
+          "max": 75
+        },
+        "pss": {
+          "count": 4647,
+          "min": 12,
+          "p10": 12,
+          "median": 23,
+          "mean": 25.57,
+          "p90": 44,
+          "max": 68
+        },
+        "reb": {
+          "count": 4647,
+          "min": 12,
+          "p10": 12,
+          "median": 22,
+          "mean": 24.85,
+          "p90": 43,
+          "max": 62
+        },
+        "drb": {
+          "count": 4647,
+          "min": 16,
+          "p10": 17,
+          "median": 31,
+          "mean": 30.28,
+          "p90": 41,
+          "max": 51
+        },
+        "oiq": {
+          "count": 4647,
+          "min": 16,
+          "p10": 16,
+          "median": 37,
+          "mean": 37.36,
+          "p90": 59,
+          "max": 74
+        },
+        "diq": {
+          "count": 4647,
+          "min": 16,
+          "p10": 17,
+          "median": 32,
+          "mean": 31.93,
+          "p90": 47,
+          "max": 60
+        }
+      }
+    },
+    {
+      "leagueId": "FRA-LNB",
+      "coverage": {
+        "from": 1988,
+        "through": 2004
+      },
+      "file": "europe-FRA-LNB-BBGM-RATED-V1.json.gz",
+      "sourceFile": "europe-FRA-LNB-BBGM-RATED-V1-2026-08-09T13-28-09-294Z.json.gz",
+      "sourceSha256": "5F33D0A293DC90E2DE52160298914F211E36E0160F70C2FA0F9C3EA49098D92F",
+      "outputSha256": "B46CFCAE856D2CC893700B7978B5DB20317924457D34C368E435980DD60601C5",
+      "compressedBytes": 275704,
+      "teams": 59,
+      "players": 964,
+      "ratings": 2482,
+      "stats": 2487,
+      "impliedRawOverall": {
+        "count": 2482,
+        "min": 16.258333333333333,
+        "p10": 21.741666666666664,
+        "median": 35.5625,
+        "mean": 36.29,
+        "p90": 51.483333333333334,
+        "max": 65.45
+      },
+      "skills": {
+        "stre": {
+          "count": 2482,
+          "min": 23,
+          "p10": 25,
+          "median": 42,
+          "mean": 45.52,
+          "p90": 75,
+          "max": 90
+        },
+        "spd": {
+          "count": 2482,
+          "min": 28,
+          "p10": 32,
+          "median": 49,
+          "mean": 49.18,
+          "p90": 64,
+          "max": 70
+        },
+        "jmp": {
+          "count": 2482,
+          "min": 21,
+          "p10": 23,
+          "median": 41,
+          "mean": 40.71,
+          "p90": 54,
+          "max": 59
+        },
+        "endu": {
+          "count": 2482,
+          "min": 12,
+          "p10": 12,
+          "median": 52,
+          "mean": 50.13,
+          "p90": 89,
+          "max": 90
+        },
+        "ins": {
+          "count": 2482,
+          "min": 12,
+          "p10": 16,
+          "median": 37,
+          "mean": 37.58,
+          "p90": 60,
+          "max": 80
+        },
+        "dnk": {
+          "count": 2482,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 31.13,
+          "p90": 56,
+          "max": 78
+        },
+        "fg": {
+          "count": 2482,
+          "min": 12,
+          "p10": 12,
+          "median": 31,
+          "mean": 31.86,
+          "p90": 53,
+          "max": 68
+        },
+        "tp": {
+          "count": 2482,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 34.62,
+          "p90": 69,
+          "max": 90
+        },
+        "ft": {
+          "count": 2482,
+          "min": 12,
+          "p10": 12,
+          "median": 36,
+          "mean": 35.86,
+          "p90": 59,
+          "max": 75
+        },
+        "pss": {
+          "count": 2482,
+          "min": 12,
+          "p10": 12,
+          "median": 23,
+          "mean": 26.01,
+          "p90": 45,
+          "max": 67
+        },
+        "reb": {
+          "count": 2482,
+          "min": 12,
+          "p10": 12,
+          "median": 22,
+          "mean": 25.58,
+          "p90": 44,
+          "max": 62
+        },
+        "drb": {
+          "count": 2482,
+          "min": 16,
+          "p10": 17,
+          "median": 31,
+          "mean": 30.48,
+          "p90": 42,
+          "max": 51
+        },
+        "oiq": {
+          "count": 2482,
+          "min": 16,
+          "p10": 16,
+          "median": 37,
+          "mean": 37.76,
+          "p90": 59,
+          "max": 73
+        },
+        "diq": {
+          "count": 2482,
+          "min": 16,
+          "p10": 17,
+          "median": 32,
+          "mean": 32.35,
+          "p90": 48,
+          "max": 60
+        }
+      }
+    },
+    {
+      "leagueId": "GER-BBL",
+      "coverage": {
+        "from": 1999,
+        "through": 2003
+      },
+      "file": "europe-GER-BBL-BBGM-RATED-V1.json.gz",
+      "sourceFile": "europe-GER-BBL-BBGM-RATED-V1-2026-08-09T13-28-09-294Z.json.gz",
+      "sourceSha256": "CBC543949992F9D302ECD029F517909F7EF97C66249BD608085215E77DAC3DDF",
+      "outputSha256": "5E63092E0F8DCC8A16E5DE8D121E1C6FC6BA566F91ABA11D8F9F33F75AA984D9",
+      "compressedBytes": 114973,
+      "teams": 22,
+      "players": 554,
+      "ratings": 932,
+      "stats": 932,
+      "impliedRawOverall": {
+        "count": 932,
+        "min": 15.970833333333333,
+        "p10": 20.604166666666668,
+        "median": 34.72083333333334,
+        "mean": 35.34,
+        "p90": 50.56666666666666,
+        "max": 61.025
+      },
+      "skills": {
+        "stre": {
+          "count": 932,
+          "min": 23,
+          "p10": 25,
+          "median": 42,
+          "mean": 44.39,
+          "p90": 71,
+          "max": 90
+        },
+        "spd": {
+          "count": 932,
+          "min": 28,
+          "p10": 32,
+          "median": 49,
+          "mean": 48.62,
+          "p90": 63,
+          "max": 70
+        },
+        "jmp": {
+          "count": 932,
+          "min": 21,
+          "p10": 23,
+          "median": 41,
+          "mean": 40.28,
+          "p90": 53,
+          "max": 59
+        },
+        "endu": {
+          "count": 932,
+          "min": 12,
+          "p10": 12,
+          "median": 52,
+          "mean": 49.14,
+          "p90": 87,
+          "max": 90
+        },
+        "ins": {
+          "count": 932,
+          "min": 12,
+          "p10": 16,
+          "median": 37,
+          "mean": 36.81,
+          "p90": 59,
+          "max": 80
+        },
+        "dnk": {
+          "count": 932,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 29.9,
+          "p90": 53,
+          "max": 78
+        },
+        "fg": {
+          "count": 932,
+          "min": 12,
+          "p10": 12,
+          "median": 31,
+          "mean": 30.98,
+          "p90": 51,
+          "max": 68
+        },
+        "tp": {
+          "count": 932,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 32.51,
+          "p90": 65,
+          "max": 90
+        },
+        "ft": {
+          "count": 932,
+          "min": 12,
+          "p10": 12,
+          "median": 36,
+          "mean": 34.23,
+          "p90": 54,
+          "max": 74
+        },
+        "pss": {
+          "count": 932,
+          "min": 12,
+          "p10": 12,
+          "median": 23,
+          "mean": 25,
+          "p90": 42,
+          "max": 67
+        },
+        "reb": {
+          "count": 932,
+          "min": 12,
+          "p10": 12,
+          "median": 22,
+          "mean": 24.75,
+          "p90": 42,
+          "max": 62
+        },
+        "drb": {
+          "count": 932,
+          "min": 16,
+          "p10": 17,
+          "median": 31,
+          "mean": 30.03,
+          "p90": 40,
+          "max": 51
+        },
+        "oiq": {
+          "count": 932,
+          "min": 16,
+          "p10": 16,
+          "median": 37,
+          "mean": 37.09,
+          "p90": 58,
+          "max": 74
+        },
+        "diq": {
+          "count": 932,
+          "min": 16,
+          "p10": 17,
+          "median": 32,
+          "mean": 31.8,
+          "p90": 47,
+          "max": 60
+        }
+      }
+    },
+    {
+      "leagueId": "GRE-GBL",
+      "coverage": {
+        "from": 2002,
+        "through": 2011
+      },
+      "file": "europe-GRE-GBL-BBGM-RATED-V1.json.gz",
+      "sourceFile": "europe-GRE-GBL-BBGM-RATED-V1-2026-08-09T13-28-09-294Z.json.gz",
+      "sourceSha256": "683A690B8CC0962CE787308333692898358D070266EF975280479F1494F05120",
+      "outputSha256": "743D1B8CDBA4FE7813403D4CCE7182D58CC0DDD29DD2B953B99E298BBE64A715",
+      "compressedBytes": 270664,
+      "teams": 28,
+      "players": 1077,
+      "ratings": 2301,
+      "stats": 2301,
+      "impliedRawOverall": {
+        "count": 2301,
+        "min": 15.620833333333334,
+        "p10": 20.466666666666665,
+        "median": 34.57083333333333,
+        "mean": 34.91,
+        "p90": 50.537499999999994,
+        "max": 62.04166666666668
+      },
+      "skills": {
+        "stre": {
+          "count": 2301,
+          "min": 23,
+          "p10": 25,
+          "median": 42,
+          "mean": 43.6,
+          "p90": 70,
+          "max": 90
+        },
+        "spd": {
+          "count": 2301,
+          "min": 28,
+          "p10": 32,
+          "median": 49,
+          "mean": 48.42,
+          "p90": 62,
+          "max": 70
+        },
+        "jmp": {
+          "count": 2301,
+          "min": 21,
+          "p10": 23,
+          "median": 41,
+          "mean": 40.04,
+          "p90": 53,
+          "max": 59
+        },
+        "endu": {
+          "count": 2301,
+          "min": 12,
+          "p10": 12,
+          "median": 52,
+          "mean": 48.55,
+          "p90": 86,
+          "max": 90
+        },
+        "ins": {
+          "count": 2301,
+          "min": 12,
+          "p10": 16,
+          "median": 37,
+          "mean": 36.27,
+          "p90": 58,
+          "max": 80
+        },
+        "dnk": {
+          "count": 2301,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 29.11,
+          "p90": 50,
+          "max": 79
+        },
+        "fg": {
+          "count": 2301,
+          "min": 12,
+          "p10": 12,
+          "median": 31,
+          "mean": 30.6,
+          "p90": 51,
+          "max": 68
+        },
+        "tp": {
+          "count": 2301,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 31.98,
+          "p90": 64,
+          "max": 90
+        },
+        "ft": {
+          "count": 2301,
+          "min": 12,
+          "p10": 12,
+          "median": 36,
+          "mean": 33.87,
+          "p90": 52,
+          "max": 72
+        },
+        "pss": {
+          "count": 2301,
+          "min": 12,
+          "p10": 12,
+          "median": 23,
+          "mean": 24.68,
+          "p90": 41,
+          "max": 68
+        },
+        "reb": {
+          "count": 2301,
+          "min": 12,
+          "p10": 12,
+          "median": 22,
+          "mean": 24.28,
+          "p90": 41,
+          "max": 62
+        },
+        "drb": {
+          "count": 2301,
+          "min": 16,
+          "p10": 17,
+          "median": 31,
+          "mean": 29.87,
+          "p90": 40,
+          "max": 51
+        },
+        "oiq": {
+          "count": 2301,
+          "min": 16,
+          "p10": 16,
+          "median": 37,
+          "mean": 36.75,
+          "p90": 58,
+          "max": 74
+        },
+        "diq": {
+          "count": 2301,
+          "min": 16,
+          "p10": 17,
+          "median": 32,
+          "mean": 31.54,
+          "p90": 46,
+          "max": 60
+        }
+      }
+    },
+    {
+      "leagueId": "ITA-LBA",
+      "coverage": {
+        "from": 1988,
+        "through": 2003
+      },
+      "file": "europe-ITA-LBA-BBGM-RATED-V1.json.gz",
+      "sourceFile": "europe-ITA-LBA-BBGM-RATED-V1-2026-08-09T13-28-09-294Z.json.gz",
+      "sourceSha256": "7FA5BCA3FCBBEC9E0E45D2A30A99E281171FE79E7AB6211A66F58338AED54981",
+      "outputSha256": "DFF37FC5E806A36C7AA0261B136661C786C16532BF3641B2E6F704C815201569",
+      "compressedBytes": 385246,
+      "teams": 46,
+      "players": 1555,
+      "ratings": 3584,
+      "stats": 3638,
+      "impliedRawOverall": {
+        "count": 3584,
+        "min": 15.633333333333333,
+        "p10": 18.541666666666668,
+        "median": 34.92916666666667,
+        "mean": 35.28,
+        "p90": 52.270833333333336,
+        "max": 66.75
+      },
+      "skills": {
+        "stre": {
+          "count": 3584,
+          "min": 23,
+          "p10": 25,
+          "median": 42,
+          "mean": 44.43,
+          "p90": 73,
+          "max": 90
+        },
+        "spd": {
+          "count": 3584,
+          "min": 28,
+          "p10": 32,
+          "median": 49,
+          "mean": 48.51,
+          "p90": 63,
+          "max": 70
+        },
+        "jmp": {
+          "count": 3584,
+          "min": 21,
+          "p10": 23,
+          "median": 41,
+          "mean": 40.24,
+          "p90": 53,
+          "max": 59
+        },
+        "endu": {
+          "count": 3584,
+          "min": 12,
+          "p10": 12,
+          "median": 52,
+          "mean": 49.46,
+          "p90": 88,
+          "max": 90
+        },
+        "ins": {
+          "count": 3584,
+          "min": 12,
+          "p10": 16,
+          "median": 37,
+          "mean": 36.7,
+          "p90": 59,
+          "max": 80
+        },
+        "dnk": {
+          "count": 3584,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 29.73,
+          "p90": 53,
+          "max": 79
+        },
+        "fg": {
+          "count": 3584,
+          "min": 12,
+          "p10": 12,
+          "median": 31,
+          "mean": 30.7,
+          "p90": 53,
+          "max": 68
+        },
+        "tp": {
+          "count": 3584,
+          "min": 12,
+          "p10": 12,
+          "median": 28,
+          "mean": 32.84,
+          "p90": 66,
+          "max": 90
+        },
+        "ft": {
+          "count": 3584,
+          "min": 12,
+          "p10": 12,
+          "median": 36,
+          "mean": 33.78,
+          "p90": 57,
+          "max": 75
+        },
+        "pss": {
+          "count": 3584,
+          "min": 12,
+          "p10": 12,
+          "median": 23,
+          "mean": 25.44,
+          "p90": 44,
+          "max": 68
+        },
+        "reb": {
+          "count": 3584,
+          "min": 12,
+          "p10": 12,
+          "median": 22,
+          "mean": 24.91,
+          "p90": 43,
+          "max": 62
+        },
+        "drb": {
+          "count": 3584,
+          "min": 16,
+          "p10": 17,
+          "median": 31,
+          "mean": 30.02,
+          "p90": 41,
+          "max": 51
+        },
+        "oiq": {
+          "count": 3584,
+          "min": 16,
+          "p10": 16,
+          "median": 37,
+          "mean": 37.1,
+          "p90": 59,
+          "max": 74
+        },
+        "diq": {
+          "count": 3584,
+          "min": 16,
+          "p10": 17,
+          "median": 32,
+          "mean": 31.95,
+          "p90": 47,
+          "max": 60
+        }
+      }
+    }
+  ]
+}

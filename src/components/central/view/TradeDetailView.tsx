@@ -1,24 +1,35 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { AlertCircle, ArrowLeft, ArrowRightLeft, Calendar } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer, NBATeam } from '../../../types';
 import { getGameDateParts, parseGameDate } from '../../../utils/dateUtils';
-import { PlayerBioView } from './PlayerBioView';
-import { getHistoricalOvr2K, parseTrade } from './TradeDetailHelpers';
+import { getHistoricalOvr2K, parseTrade, resolveTradePlayerByPersistedEvidence } from './TradeDetailHelpers';
 import { TradeTeamColumn } from './TradeTeamColumn';
 import { TradeTrendCharts } from './TradeTrendCharts';
 import { TeamSlot, TradeDetailViewProps, TradeEntry, TradeSide } from './TradeDetailTypes';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { didHomeTeamWin } from '../../../utils/gameOutcome';
+import { formatLeagueSeasonLabel } from '../../../services/leagueCalendar';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
 
 export const TradeDetailView: React.FC<TradeDetailViewProps> = ({ entry, legs, onBack }) => {
-  const { state } = useGame();
-  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
-  const allLegs: TradeEntry[] = legs && legs.length > 0 ? [entry, ...legs] : [];
+  const { state, navigateToPlayer } = useGame();
+  const allLegs: TradeEntry[] = useMemo(() => [entry, ...(legs ?? [])], [entry, legs]);
   const isMultiTeam = allLegs.length >= 2;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const canonicalTradeDate = entry.trade?.transactionDate ?? entry.date;
+  const tradeTeams = useMemo(() => {
+    const teams = new Map(state.teams.map(team => [team.id, team]));
+    for (const team of state.nonNBATeams ?? []) {
+      const resolved = resolveAnyTeam(team.tid, state.teams, state.nonNBATeams ?? []);
+      if (resolved) teams.set(resolved.id, resolved);
+    }
+    return [...teams.values()];
+  }, [state.nonNBATeams, state.teams]);
 
   const { tradeDateMs, tradeYear } = useMemo(() => {
     try {
-      const date = parseGameDate(entry.date);
+      const date = parseGameDate(canonicalTradeDate);
       const ms = Number.isNaN(date.getTime()) ? Date.now() : date.getTime();
       const { month, year } = getGameDateParts(date);
       const seasonYear = Number.isNaN(date.getTime()) ? currentYear : (month >= 7 ? year + 1 : year);
@@ -26,7 +37,7 @@ export const TradeDetailView: React.FC<TradeDetailViewProps> = ({ entry, legs, o
     } catch {
       return { tradeDateMs: Date.now(), tradeYear: currentYear };
     }
-  }, [currentYear, entry.date]);
+  }, [canonicalTradeDate, currentYear]);
 
   const multiTeamReceived = useMemo(() => {
     if (!isMultiTeam) return null;
@@ -63,18 +74,60 @@ export const TradeDetailView: React.FC<TradeDetailViewProps> = ({ entry, legs, o
 
   const parsed = useMemo(() => parseTrade(entry.text), [entry.text]);
 
-  const resolvePlayer = useCallback((name: string) => state.players.find(player => player.name.toLowerCase() === name.toLowerCase()) ?? null, [state.players]);
-  const resolveTeam = useCallback((name: string) => state.teams.find(team => team.name.toLowerCase() === name.toLowerCase()) ?? null, [state.teams]);
+  const structuredReceived = useMemo(() => {
+    const movements = allLegs.flatMap(leg => leg.trade?.movements ?? []);
+    if (movements.length === 0) return null;
+    const byTeam = new Map<number, TradeSide>();
+    for (const movement of movements) {
+      const side = byTeam.get(movement.toTeamId) ?? {
+        playerNames: [],
+        playerIds: [],
+        pickStrs: [],
+        cashStrs: [],
+        draftPicks: [],
+        playerSourceTeamIds: {},
+      };
+      for (const playerId of movement.playerIds) {
+        if (!side.playerIds?.includes(playerId)) side.playerIds?.push(playerId);
+        side.playerSourceTeamIds![playerId] = movement.fromTeamId;
+      }
+      for (const pick of movement.draftPicks) {
+        if (!side.draftPicks?.some(existing => existing.dpid === pick.dpid)) side.draftPicks?.push(pick);
+      }
+      if (movement.cashUSD) side.cashStrs.push(`$${(movement.cashUSD / 1_000_000).toFixed(1)}M cash`);
+      byTeam.set(movement.toTeamId, side);
+    }
+    return byTeam;
+  }, [allLegs]);
+
+  const tradePlayers = useMemo(() => {
+    const playerById = new Map(state.players.map(player => [player.internalId, player]));
+    const ids = Array.from(new Set(allLegs.flatMap(leg => leg.playerIds ?? [])));
+    return ids.map(playerId => playerById.get(playerId)).filter((player): player is NBAPlayer => Boolean(player));
+  }, [allLegs, state.players]);
+  const resolvePlayer = useCallback(
+    (name: string) => resolveTradePlayerByPersistedEvidence(name, tradePlayers),
+    [tradePlayers],
+  );
+  const resolveTeam = useCallback((name: string) => {
+    const key = name.toLowerCase();
+    return tradeTeams.find(team => (
+      team.name.toLowerCase() === key ||
+      getTeamFullName(team).toLowerCase() === key ||
+      team.abbrev.toLowerCase() === key
+    )) ?? null;
+  }, [tradeTeams]);
   const teamRecordAtDate = useCallback((teamId: number) => {
     let wins = 0;
     let losses = 0;
     for (const game of state.schedule) {
       if (!game.played || game.isPreseason || game.isAllStar || game.isExhibition) continue;
       if (new Date(game.date).getTime() > tradeDateMs) continue;
+      const homeWon = didHomeTeamWin(game);
       if (game.homeTid === teamId) {
-        game.homeScore > game.awayScore ? wins++ : losses++;
+        homeWon ? wins++ : losses++;
       } else if (game.awayTid === teamId) {
-        game.awayScore > game.homeScore ? wins++ : losses++;
+        !homeWon ? wins++ : losses++;
       }
     }
     return `${wins}-${losses}`;
@@ -83,27 +136,34 @@ export const TradeDetailView: React.FC<TradeDetailViewProps> = ({ entry, legs, o
   const teamSlots: TeamSlot[] = useMemo(() => {
     const buildSlot = (name: string, received: TradeSide): TeamSlot => {
       const team = resolveTeam(name);
-      const players = received.playerNames.map(resolvePlayer).filter((player): player is NBAPlayer => player !== null);
+      const players = received.playerIds?.length
+        ? received.playerIds.map(playerId => state.players.find(player => player.internalId === playerId)).filter((player): player is NBAPlayer => Boolean(player))
+        : received.playerNames.map(resolvePlayer).filter((player): player is NBAPlayer => player !== null);
       const avgOvr = players.length > 0 ? players.reduce((sum, player) => sum + getHistoricalOvr2K(player, tradeDateMs), 0) / players.length : null;
       const record = team ? teamRecordAtDate(team.id) : '0-0';
       return { name, team, received, players, avgOvr, record };
     };
 
+    if (structuredReceived?.size) {
+      return Array.from(structuredReceived.entries()).map(([teamId, side]) => {
+        const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
+        return buildSlot(team ? getTeamFullName(team) : `Team ${teamId}`, side);
+      });
+    }
+
     if (multiTeamReceived && multiTeamReceived.size >= 2) {
       return Array.from(multiTeamReceived.entries()).map(([name, side]) => buildSlot(name, side));
     }
     if (parsed) {
+      const teamA = resolveTeam(parsed.teamAName);
+      const teamB = resolveTeam(parsed.teamBName);
       return [
-        buildSlot(parsed.teamAName, parsed.aReceived),
-        buildSlot(parsed.teamBName, parsed.bReceived),
+        buildSlot(parsed.teamAName, { ...parsed.aReceived, sourceTeamId: teamB?.id }),
+        buildSlot(parsed.teamBName, { ...parsed.bReceived, sourceTeamId: teamA?.id }),
       ];
     }
     return [];
-  }, [multiTeamReceived, parsed, resolvePlayer, resolveTeam, teamRecordAtDate, tradeDateMs]);
-
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
-  }
+  }, [multiTeamReceived, parsed, resolvePlayer, resolveTeam, state.nonNBATeams, state.players, state.teams, structuredReceived, teamRecordAtDate, tradeDateMs]);
 
   if (teamSlots.length === 0) {
     return (
@@ -123,7 +183,7 @@ export const TradeDetailView: React.FC<TradeDetailViewProps> = ({ entry, legs, o
     );
   }
 
-  const headerTitle = isMultiTeam
+  const headerTitle = teamSlots.length >= 3
     ? `${teamSlots.length}-Team Trade`
     : teamSlots.length === 2 && teamSlots[0].team && teamSlots[1].team
       ? `${(teamSlots[0].team as NBATeam).abbrev} ↔ ${(teamSlots[1].team as NBATeam).abbrev} Trade Details`
@@ -139,13 +199,13 @@ export const TradeDetailView: React.FC<TradeDetailViewProps> = ({ entry, legs, o
       : twoTeamDiff > 0
         ? `${teamSlots[0].name} Win`
         : `${teamSlots[1].name} Win`;
-  const winnerName = showAnalysis && isMultiTeam ? slotsWithAvg.slice().sort((left, right) => (right.avgOvr ?? 0) - (left.avgOvr ?? 0))[0].name : '';
+  const winnerName = showAnalysis && teamSlots.length >= 3 ? slotsWithAvg.slice().sort((left, right) => (right.avgOvr ?? 0) - (left.avgOvr ?? 0))[0].name : '';
 
   const seasonLabel = (() => {
     try {
-      const { month, year } = getGameDateParts(entry.date);
+      const { month, year } = getGameDateParts(canonicalTradeDate);
       const seasonYear = month >= 7 ? year + 1 : year;
-      return `${seasonYear - 1}-${String(seasonYear).slice(2)} Season`;
+      return `${formatLeagueSeasonLabel(seasonYear, state.leagueStats)} Season`;
     } catch {
       return '';
     }
@@ -206,7 +266,7 @@ export const TradeDetailView: React.FC<TradeDetailViewProps> = ({ entry, legs, o
             <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-4 items-start">
               {teamSlots.map((slot, index) => (
                 <React.Fragment key={index}>
-                  <TradeTeamColumn teamName={slot.name} record={slot.record} team={slot.team} received={slot.received} players={slot.players} tradeDateMs={tradeDateMs} tradeYear={tradeYear} currentYear={currentYear} teams={state.teams} onPlayerClick={setViewingPlayer} />
+                  <TradeTeamColumn teamName={slot.name} record={slot.record} team={slot.team} received={slot.received} players={slot.players} tradeDateMs={tradeDateMs} tradeYear={tradeYear} currentYear={currentYear} teams={tradeTeams} onPlayerClick={navigateToPlayer} />
                   {index === 0 && (
                     <div className="hidden sm:flex flex-col items-center justify-center pt-10 gap-2">
                       <ArrowRightLeft size={22} className="text-blue-400 opacity-60" />
@@ -220,7 +280,7 @@ export const TradeDetailView: React.FC<TradeDetailViewProps> = ({ entry, legs, o
               <div className="flex gap-4 items-start min-w-min">
                 {teamSlots.map((slot, index) => (
                   <div key={index} className="w-[320px] sm:w-[360px] shrink-0">
-                    <TradeTeamColumn teamName={slot.name} record={slot.record} team={slot.team} received={slot.received} players={slot.players} tradeDateMs={tradeDateMs} tradeYear={tradeYear} currentYear={currentYear} teams={state.teams} onPlayerClick={setViewingPlayer} />
+                    <TradeTeamColumn teamName={slot.name} record={slot.record} team={slot.team} received={slot.received} players={slot.players} tradeDateMs={tradeDateMs} tradeYear={tradeYear} currentYear={currentYear} teams={tradeTeams} onPlayerClick={navigateToPlayer} />
                   </div>
                 ))}
               </div>

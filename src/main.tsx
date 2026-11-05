@@ -4,7 +4,7 @@ import App from './App.tsx';
 import './index.css';
 import { Defense2KService } from './services/Defense2KService';
 
-const BUILD_TIME = new Date().toISOString();
+const BUILD_TIME = import.meta.env.VITE_BUILD_TIME || new Date().toISOString();
 const BUILD_VERSION = import.meta.env.VITE_APP_VERSION || 'dev';
 
 // Load 2K defensive ratings at startup (non-blocking)

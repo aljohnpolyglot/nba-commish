@@ -1,0 +1,4090 @@
+{
+  "championships": {
+    "pre_bundesliga": [
+      {
+        "season": "1938–39",
+        "champion": "LSV Spandau",
+        "note": null
+      },
+      {
+        "season": "1939–46",
+        "champion": null,
+        "note": "Not held due to World War II"
+      },
+      {
+        "season": "1946–47",
+        "champion": "MTSV Schwabing",
+        "note": null
+      },
+      {
+        "season": "1947–48",
+        "champion": "Turnerbund Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1948–49",
+        "champion": "MTSV Schwabing",
+        "note": null
+      },
+      {
+        "season": "1949–50",
+        "champion": "Stuttgart-Degerloch",
+        "note": null
+      },
+      {
+        "season": "1950–51",
+        "champion": "Turnerbund Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1951–52",
+        "champion": "Turnerbund Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1952–53",
+        "champion": "Turnerbund Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1953–54",
+        "champion": "Bayern Munich",
+        "note": null
+      },
+      {
+        "season": "1954–55",
+        "champion": "Bayern Munich",
+        "note": null
+      },
+      {
+        "season": "1955–56",
+        "champion": "ATV Düsseldorf",
+        "note": null
+      },
+      {
+        "season": "1956–57",
+        "champion": "USC Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1957–58",
+        "champion": "USC Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1958–59",
+        "champion": "USC Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1959–60",
+        "champion": "USC Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1960–61",
+        "champion": "USC Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1961–62",
+        "champion": "USC Heidelberg",
+        "note": null
+      },
+      {
+        "season": "1962–63",
+        "champion": "Alemannia Aachen",
+        "note": null
+      },
+      {
+        "season": "1963–64",
+        "champion": "Alemannia Aachen",
+        "note": null
+      },
+      {
+        "season": "1964–65",
+        "champion": "MTV 1846 Gießen",
+        "note": null
+      },
+      {
+        "season": "1965–66",
+        "champion": "USC Heidelberg",
+        "note": null
+      }
+    ],
+    "bundesliga": [
+      {
+        "season": "1966–67",
+        "champion": "Gießen",
+        "finals_score": "85–73",
+        "runner_up": "VfL Osnabrück",
+        "coach": "Laszlo Lakfalvi",
+        "coach_nationality": "Hungary",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1967–68",
+        "champion": "Gießen",
+        "finals_score": "79–69",
+        "runner_up": "VfL Osnabrück",
+        "coach": "Laszlo Lakfalvi",
+        "coach_nationality": "Hungary",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1968–69",
+        "champion": "VfL Osnabrück",
+        "finals_score": "76–69",
+        "runner_up": "Gießen",
+        "coach": "Miloslav Kříž",
+        "coach_nationality": "Czech Republic",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1969–70",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "76–73",
+        "runner_up": "Gießen",
+        "coach": "Günter Hagedorn",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1970–71",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "158–136",
+        "runner_up": "USC Munich",
+        "coach": "Günter Hagedorn",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1971–72",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "150–142",
+        "runner_up": "Gießen",
+        "coach": "Günter Hagedorn",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1972–73",
+        "champion": "Heidelberg",
+        "finals_score": "141–140",
+        "runner_up": "Gießen",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1973–74",
+        "champion": "Hagen",
+        "finals_score": "137–118",
+        "runner_up": "Heidelberg",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1974–75",
+        "champion": "Gießen",
+        "finals_score": "140–136",
+        "runner_up": "Heidelberg",
+        "coach": "Dietfried Kienast",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1975–76",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": null,
+        "runner_up": "Wolfenbüttel",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1976–77",
+        "champion": "Heidelberg",
+        "finals_score": null,
+        "runner_up": "Gießen",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1977–78",
+        "champion": "Gießen",
+        "finals_score": null,
+        "runner_up": "Heidelberg",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1978–79",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": null,
+        "runner_up": "Gießen",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1979–80",
+        "champion": "SSC Göttingen",
+        "finals_score": null,
+        "runner_up": "Bayer 04 Leverkusen",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1980–81",
+        "champion": "Saturn Köln",
+        "finals_score": null,
+        "runner_up": "Bayer 04 Leverkusen",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1981–82",
+        "champion": "Saturn Köln",
+        "finals_score": null,
+        "runner_up": "ASC Göttingen",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1982–83",
+        "champion": "ASC Göttingen",
+        "finals_score": "2–0",
+        "runner_up": "Saturn Köln",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1983–84",
+        "champion": "ASC Göttingen",
+        "finals_score": "2–0",
+        "runner_up": "Saturn Köln",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1984–85",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "2–0",
+        "runner_up": "DTV Charlottenburg",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1985–86",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "2–0",
+        "runner_up": "Saturn Köln",
+        "coach": null,
+        "coach_nationality": null,
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1986–87",
+        "champion": "Saturn Köln",
+        "finals_score": "2–0",
+        "runner_up": "Bayer 04 Leverkusen",
+        "coach": "Tony DiLeo",
+        "coach_nationality": "United States",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1987–88",
+        "champion": "Saturn Köln",
+        "finals_score": "2–0",
+        "runner_up": "Bayer 04 Leverkusen",
+        "coach": "Tony DiLeo",
+        "coach_nationality": "United States",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1988–89",
+        "champion": "Bayreuth",
+        "finals_score": "3–1",
+        "runner_up": "Bayer 04 Leverkusen",
+        "coach": "Lester Habegger",
+        "coach_nationality": "United States",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1989–90",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "3–1",
+        "runner_up": "Bayreuth",
+        "coach": "Dirk Bauermann",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1990–91",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "3–2",
+        "runner_up": "Charlottenburg",
+        "coach": "Dirk Bauermann",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1991–92",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "3–2",
+        "runner_up": "Alba Berlin",
+        "coach": "Dirk Bauermann",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1992–93",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "3–1",
+        "runner_up": "Bamberg",
+        "coach": "Dirk Bauermann",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1993–94",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "3–0",
+        "runner_up": "Brandt Hagen",
+        "coach": "Dirk Bauermann",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1994–95",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "3–0",
+        "runner_up": "Alba Berlin",
+        "coach": "Dirk Bauermann",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1995–96",
+        "champion": "Bayer 04 Leverkusen",
+        "finals_score": "3–1",
+        "runner_up": "Alba Berlin",
+        "coach": "Dirk Bauermann",
+        "coach_nationality": "Germany",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1996–97",
+        "champion": "Alba Berlin",
+        "finals_score": "3–0",
+        "runner_up": "Ulm",
+        "coach": "Svetislav Pešić",
+        "coach_nationality": "Federal Republic of Yugoslavia",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1997–98",
+        "champion": "Alba Berlin",
+        "finals_score": "3–0",
+        "runner_up": "Ulm",
+        "coach": "Svetislav Pešić",
+        "coach_nationality": "Federal Republic of Yugoslavia",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1998–99",
+        "champion": "Alba Berlin",
+        "finals_score": "3–2",
+        "runner_up": "Bonn",
+        "coach": "Svetislav Pešić",
+        "coach_nationality": "Federal Republic of Yugoslavia",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "1999–2000",
+        "champion": "Alba Berlin",
+        "finals_score": "3–0",
+        "runner_up": "Bayer 04 Leverkusen",
+        "coach": "Svetislav Pešić",
+        "coach_nationality": "Federal Republic of Yugoslavia",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2000–01",
+        "champion": "Alba Berlin",
+        "finals_score": "3–0",
+        "runner_up": "Bonn",
+        "coach": "Emir Mutapčić",
+        "coach_nationality": "Bosnia and Herzegovina",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2001–02",
+        "champion": "Alba Berlin",
+        "finals_score": "3–0",
+        "runner_up": "Köln 99ers",
+        "coach": "Emir Mutapčić",
+        "coach_nationality": "Bosnia and Herzegovina",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2002–03",
+        "champion": "Alba Berlin",
+        "finals_score": "3–0",
+        "runner_up": "Bamberg",
+        "coach": "Emir Mutapčić",
+        "coach_nationality": "Bosnia and Herzegovina",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2003–04",
+        "champion": "Skyliners Frankfurt",
+        "finals_score": "3–2",
+        "runner_up": "Bamberg",
+        "coach": "Gordon Herbert",
+        "coach_nationality": "Canada",
+        "finals_mvp": null,
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2004–05",
+        "champion": "Bamberg",
+        "finals_score": "3–2",
+        "runner_up": "Skyliners Frankfurt",
+        "coach": "Dirk Bauermann",
+        "coach_nationality": "Germany",
+        "finals_mvp": "Chris Williams",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2005–06",
+        "champion": "Köln 99ers",
+        "finals_score": "3–1",
+        "runner_up": "Alba Berlin",
+        "coach": "Saša Obradović",
+        "coach_nationality": "Serbia",
+        "finals_mvp": "Immanuel McElroy",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2006–07",
+        "champion": "Bamberg",
+        "finals_score": "3–1",
+        "runner_up": "Artland Dragons",
+        "coach": "Dirk Bauermann",
+        "coach_nationality": "Germany",
+        "finals_mvp": "Casey Jacobsen",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2007–08",
+        "champion": "Alba Berlin",
+        "finals_score": "3–1",
+        "runner_up": "Bonn",
+        "coach": "Luka Pavićević",
+        "coach_nationality": "Montenegro",
+        "finals_mvp": "Julius Jenkins",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2008–09",
+        "champion": "Oldenburg",
+        "finals_score": "3–2",
+        "runner_up": "Bonn",
+        "coach": "Predrag Krunić",
+        "coach_nationality": "Bosnia and Herzegovina",
+        "finals_mvp": "Rickey Paulding",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2009–10",
+        "champion": "Bamberg",
+        "finals_score": "3–2",
+        "runner_up": "Skyliners Frankfurt",
+        "coach": "Chris Fleming",
+        "coach_nationality": "United States",
+        "finals_mvp": "Casey Jacobsen",
+        "bbl_pokal_winner": true,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2010–11",
+        "champion": "Bamberg",
+        "finals_score": "3–2",
+        "runner_up": "Alba Berlin",
+        "coach": "Chris Fleming",
+        "coach_nationality": "United States",
+        "finals_mvp": "Kyle Hines",
+        "bbl_pokal_winner": true,
+        "bbl_champions_cup_winner": true
+      },
+      {
+        "season": "2011–12",
+        "champion": "Bamberg",
+        "finals_score": "3–0",
+        "runner_up": "Ulm",
+        "coach": "Chris Fleming",
+        "coach_nationality": "United States",
+        "finals_mvp": "P. J. Tucker",
+        "bbl_pokal_winner": true,
+        "bbl_champions_cup_winner": true
+      },
+      {
+        "season": "2012–13",
+        "champion": "Bamberg",
+        "finals_score": "3–0",
+        "runner_up": "Oldenburg",
+        "coach": "Chris Fleming",
+        "coach_nationality": "United States",
+        "finals_mvp": "Anton Gavel",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2013–14",
+        "champion": "Bayern Munich",
+        "finals_score": "3–1",
+        "runner_up": "Alba Berlin",
+        "coach": "Svetislav Pešić",
+        "coach_nationality": "Serbia",
+        "finals_mvp": "Malcolm Delaney",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2014–15",
+        "champion": "Bamberg",
+        "finals_score": "3–2",
+        "runner_up": "Bayern Munich",
+        "coach": "Andrea Trinchieri",
+        "coach_nationality": "Italy",
+        "finals_mvp": "Brad Wanamaker",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2015–16",
+        "champion": "Bamberg",
+        "finals_score": "3–0",
+        "runner_up": "Ulm",
+        "coach": "Andrea Trinchieri",
+        "coach_nationality": "Italy",
+        "finals_mvp": "Darius Miller",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2016–17",
+        "champion": "Bamberg",
+        "finals_score": "3–0",
+        "runner_up": "Oldenburg",
+        "coach": "Andrea Trinchieri",
+        "coach_nationality": "Italy",
+        "finals_mvp": "Fabien Causeur",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2017–18",
+        "champion": "Bayern Munich",
+        "finals_score": "3–2",
+        "runner_up": "Alba Berlin",
+        "coach": "Dejan Radonjić",
+        "coach_nationality": "Montenegro",
+        "finals_mvp": "Danilo Barthel",
+        "bbl_pokal_winner": true,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2018–19",
+        "champion": "Bayern Munich",
+        "finals_score": "3–0",
+        "runner_up": "Alba Berlin",
+        "coach": "Dejan Radonjić",
+        "coach_nationality": "Montenegro",
+        "finals_mvp": "Nihad Đedović",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2019–20",
+        "champion": "Alba Berlin",
+        "finals_score": "163–139",
+        "runner_up": "Riesen Ludwigsburg",
+        "coach": "Aíto García Reneses",
+        "coach_nationality": "Spain",
+        "finals_mvp": "Marcos Knight",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2020–21",
+        "champion": "Alba Berlin",
+        "finals_score": "3–1",
+        "runner_up": "Bayern Munich",
+        "coach": "Aíto García Reneses",
+        "coach_nationality": "Spain",
+        "finals_mvp": "Jayson Granger",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2021–22",
+        "champion": "Alba Berlin",
+        "finals_score": "3–1",
+        "runner_up": "Bayern Munich",
+        "coach": "Israel González",
+        "coach_nationality": "Spain",
+        "finals_mvp": "Johannes Thiemann",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2022–23",
+        "champion": "Ratiopharm Ulm",
+        "finals_score": "3–1",
+        "runner_up": "Telekom Baskets Bonn",
+        "coach": "Anton Gavel",
+        "coach_nationality": "Slovakia",
+        "finals_mvp": "Yago dos Santos",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2023–24",
+        "champion": "Bayern Munich",
+        "finals_score": "3–1",
+        "runner_up": "Alba Berlin",
+        "coach": "Pablo Laso",
+        "coach_nationality": "Spain",
+        "finals_mvp": "Carsen Edwards",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      },
+      {
+        "season": "2024–25",
+        "champion": "Bayern Munich",
+        "finals_score": "3–2",
+        "runner_up": "Ratiopharm Ulm",
+        "coach": "Gordon Herbert",
+        "coach_nationality": "Canada",
+        "finals_mvp": "Shabazz Napier",
+        "bbl_pokal_winner": false,
+        "bbl_champions_cup_winner": false
+      }
+    ]
+  },
+  "mvp_winners": [
+    {
+      "season": "1987–88",
+      "award_type": "German Player of the Year",
+      "player": "Mike Jackel",
+      "position": "Forward",
+      "nationality": "West Germany",
+      "team": "BSC Saturn Köln"
+    },
+    {
+      "season": "1988–89",
+      "award_type": "German Player of the Year",
+      "player": "Hansi Gnad",
+      "position": "Center",
+      "nationality": "West Germany",
+      "team": "BSC Saturn Köln"
+    },
+    {
+      "season": "1989–90",
+      "award_type": "German Player of the Year",
+      "player": "Henning Harnisch",
+      "position": "Forward",
+      "nationality": "West Germany",
+      "team": "TSV Bayer 04 Leverkusen"
+    },
+    {
+      "season": "1990–91",
+      "award_type": "German Player of the Year",
+      "player": "Henning Harnisch",
+      "position": "Forward",
+      "nationality": "Germany",
+      "team": "TSV Bayer 04 Leverkusen"
+    },
+    {
+      "season": "1991–92",
+      "award_type": "German Player of the Year",
+      "player": "Detlef Schrempf",
+      "position": "Forward",
+      "nationality": "Germany",
+      "team": "Indiana Pacers"
+    },
+    {
+      "season": "1992–93",
+      "award_type": "German Player of the Year",
+      "player": "Kai Nürnberger",
+      "position": "Guard",
+      "nationality": "Germany",
+      "team": "TTL Bamberg"
+    },
+    {
+      "season": "1993–94",
+      "award_type": "BBL MVP",
+      "player": "Teoman Alibegović",
+      "position": "Forward",
+      "nationality": "Slovenia",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "1994–95",
+      "award_type": "BBL MVP",
+      "player": "Michael Koch",
+      "position": "Guard",
+      "nationality": "Germany",
+      "team": "TSV Bayer 04 Leverkusen"
+    },
+    {
+      "season": "1995–96",
+      "award_type": "BBL MVP",
+      "player": "Henrik Rödl",
+      "position": "Forward",
+      "nationality": "Germany",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "1996–97",
+      "award_type": "BBL MVP",
+      "player": "Wendell Alexis",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "1997–98",
+      "award_type": "BBL MVP",
+      "player": "Wendell Alexis",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "1998–99",
+      "award_type": "BBL MVP",
+      "player": "Dirk Nowitzki",
+      "position": "Forward",
+      "nationality": "Germany",
+      "team": "DJK Würzburg"
+    },
+    {
+      "season": "1999–2000",
+      "award_type": "BBL MVP",
+      "player": "Wendell Alexis",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "2000–01",
+      "award_type": "BBL MVP",
+      "player": "Derrick Phelps",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "2001–02",
+      "award_type": "BBL MVP",
+      "player": "Wendell Alexis",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "2002–03",
+      "award_type": "BBL MVP",
+      "player": "Jovo Stanojević",
+      "position": "Guard",
+      "nationality": "Serbia and Montenegro",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "2003–04",
+      "award_type": "BBL MVP",
+      "player": "Pascal Roller",
+      "position": "Guard",
+      "nationality": "Germany",
+      "team": "Opel Skyliners Frankfurt"
+    },
+    {
+      "season": "2004–05",
+      "award_type": "BBL MVP",
+      "player": "Chris Williams",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Opel Skyliners Frankfurt"
+    },
+    {
+      "season": "2005–06",
+      "award_type": "BBL MVP",
+      "player": "Jovo Stanojević",
+      "position": "Center",
+      "nationality": "Serbia and Montenegro",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "2006–07",
+      "award_type": "BBL MVP",
+      "player": "Jerry Green",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "EnBW Ludwigsburg"
+    },
+    {
+      "season": "2007–08",
+      "award_type": "BBL MVP",
+      "player": "Julius Jenkins",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "2008–09",
+      "award_type": "BBL MVP",
+      "player": "Jason Gardner",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "EWE Baskets Oldenburg"
+    },
+    {
+      "season": "2009–10",
+      "award_type": "BBL MVP",
+      "player": "Julius Jenkins",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "2010–11",
+      "award_type": "BBL MVP",
+      "player": "DaShaun Wood",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Skyliners Frankfurt"
+    },
+    {
+      "season": "2011–12",
+      "award_type": "BBL MVP",
+      "player": "John Bryant",
+      "position": "Center",
+      "nationality": "United States",
+      "team": "ratiopharm ulm"
+    },
+    {
+      "season": "2012–13",
+      "award_type": "BBL MVP",
+      "player": "John Bryant",
+      "position": "Center",
+      "nationality": "United States",
+      "team": "ratiopharm ulm"
+    },
+    {
+      "season": "2013–14",
+      "award_type": "BBL MVP",
+      "player": "Malcolm Delaney",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Bayern Munich"
+    },
+    {
+      "season": "2014–15",
+      "award_type": "BBL MVP",
+      "player": "Jamel McLean",
+      "position": "Center",
+      "nationality": "United States",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "2015–16",
+      "award_type": "BBL MVP",
+      "player": "Brad Wanamaker",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2016–17",
+      "award_type": "BBL MVP",
+      "player": "Raymar Morgan",
+      "position": "Forward/center",
+      "nationality": "United States",
+      "team": "ratiopharm Ulm"
+    },
+    {
+      "season": "2017–18",
+      "award_type": "BBL MVP",
+      "player": "Luke Sikma",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Alba Berlin"
+    },
+    {
+      "season": "2018–19",
+      "award_type": "BBL MVP",
+      "player": "Will Cummings",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "EWE Baskets Oldenburg"
+    },
+    {
+      "season": "2019–20",
+      "award_type": "BBL MVP",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "note": "No award was given due to COVID-19 shortened season"
+    },
+    {
+      "season": "2020–21",
+      "award_type": "BBL MVP",
+      "player": "Jaleen Smith",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Riesen Ludwigsburg"
+    },
+    {
+      "season": "2021–22",
+      "award_type": "BBL MVP",
+      "player": "Parker Jackson-Cartwright",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Telekom Baskets Bonn"
+    },
+    {
+      "season": "2022–23",
+      "award_type": "BBL MVP",
+      "player": "T. J. Shorts",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Telekom Baskets Bonn"
+    },
+    {
+      "season": "2023–24",
+      "award_type": "BBL MVP",
+      "player": "Otis Livingston II",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Würzburg Baskets"
+    },
+    {
+      "season": "2024–25",
+      "award_type": "BBL MVP",
+      "player": "Jhivvan Jackson",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "FIT/One Würzburg Baskets"
+    },
+    {
+      "season": "2025–26",
+      "award_type": "BBL MVP",
+      "player": "Andreas Obst",
+      "position": "Guard",
+      "nationality": "Germany",
+      "team": "Bayern Munich"
+    }
+  ],
+  "finals_mvp": [
+    {
+      "season": "2004–05",
+      "player": "Chris Williams",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Fraport Skyliners"
+    },
+    {
+      "season": "2005–06",
+      "player": "Immanuel McElroy",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "RheinEnergie Köln"
+    },
+    {
+      "season": "2006–07",
+      "player": "Casey Jacobsen",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2007–08",
+      "player": "Julius Jenkins",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "ALBA Berlin"
+    },
+    {
+      "season": "2008–09",
+      "player": "Rickey Paulding",
+      "position": "Guard/forward",
+      "nationality": "United States",
+      "team": "EWE Baskets Oldenburg"
+    },
+    {
+      "season": "2009–10",
+      "player": "Casey Jacobsen",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2010–11",
+      "player": "Kyle Hines",
+      "position": "Center",
+      "nationality": "United States",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2011–12",
+      "player": "P. J. Tucker",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2012–13",
+      "player": "Anton Gavel",
+      "position": "Guard",
+      "nationality": "Germany",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2013–14",
+      "player": "Malcolm Delaney",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Bayern Munich"
+    },
+    {
+      "season": "2014–15",
+      "player": "Brad Wanamaker",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2015–16",
+      "player": "Darius Miller",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2016–17",
+      "player": "Fabien Causeur",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Brose Bamberg"
+    },
+    {
+      "season": "2017–18",
+      "player": "Danilo Barthel",
+      "position": "Forward/center",
+      "nationality": "Germany",
+      "team": "Bayern Munich"
+    },
+    {
+      "season": "2018–19",
+      "player": "Nihad Đedović",
+      "position": "Guard/forward",
+      "nationality": "Bosnia and Herzegovina",
+      "team": "Bayern Munich"
+    },
+    {
+      "season": "2019–20",
+      "player": "Marcos Knight",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Riesen Ludwigsburg"
+    },
+    {
+      "season": "2020–21",
+      "player": "Jayson Granger",
+      "position": "Guard",
+      "nationality": "Uruguay",
+      "team": "Alba Berlin"
+    },
+    {
+      "season": "2021–22",
+      "player": "Johannes Thiemann",
+      "position": "Forward/center",
+      "nationality": "Germany",
+      "team": "Alba Berlin"
+    },
+    {
+      "season": "2022–23",
+      "player": "Yago dos Santos",
+      "position": "Point guard",
+      "nationality": "Brazil",
+      "team": "Ratiopharm Ulm"
+    },
+    {
+      "season": "2023–24",
+      "player": "Carsen Edwards",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Bayern Munich"
+    },
+    {
+      "season": "2024–25",
+      "player": "Shabazz Napier",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Bayern Munich"
+    },
+    {
+      "season": "2025–26",
+      "player": "Justin Bean",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Alba Berlin"
+    }
+  ],
+  "top_scorers": [
+    {
+      "season": "1966–67",
+      "player": "Dieter Sarodnick",
+      "nationality": "West Germany",
+      "club": "Post-SV Hannover",
+      "value": 447,
+      "metric": "total_points"
+    },
+    {
+      "season": "1967–68",
+      "player": "Dieter Sarodnick",
+      "nationality": "West Germany",
+      "club": "Post-SV Hannover",
+      "value": 465,
+      "metric": "total_points"
+    },
+    {
+      "season": "1968–69",
+      "player": "Volkmar Knopke",
+      "nationality": "West Germany",
+      "club": "MTV Wolfenbüttel",
+      "value": 423,
+      "metric": "total_points"
+    },
+    {
+      "season": "1969–70",
+      "player": "Volkmar Knopke",
+      "nationality": "West Germany",
+      "club": "MTV Wolfenbüttel",
+      "value": 479,
+      "metric": "total_points"
+    },
+    {
+      "season": "1970–71",
+      "player": "Bohumil Tomášek",
+      "nationality": "Czechoslovakia",
+      "club": "SSV Hagen",
+      "value": 507,
+      "metric": "total_points"
+    },
+    {
+      "season": "1971–72",
+      "player": "Jim Wade",
+      "nationality": "United States",
+      "club": "Bamberg",
+      "value": 485,
+      "metric": "total_points"
+    },
+    {
+      "season": "1972–73",
+      "player": "John Ecker",
+      "nationality": "West Germany",
+      "club": "TuS 04 Leverkusen",
+      "value": 504,
+      "metric": "total_points"
+    },
+    {
+      "season": "1973–74",
+      "player": "Terry Schofield",
+      "nationality": "United States",
+      "club": "ASC 1846 Göttingen",
+      "value": 335,
+      "metric": "total_points"
+    },
+    {
+      "season": "1974–75",
+      "player": "Dennis Curran",
+      "nationality": "United States",
+      "club": "MTV 1846 Gießen",
+      "value": 574,
+      "metric": "total_points"
+    },
+    {
+      "season": "1975–76",
+      "player": "Pinky Smith",
+      "nationality": "United States",
+      "club": "SSV Hagen",
+      "value": 485,
+      "metric": "total_points"
+    },
+    {
+      "season": "1976–77",
+      "player": "Ljubodrag Simonović",
+      "nationality": "Yugoslavia",
+      "club": "Bamberg",
+      "value": 544,
+      "metric": "total_points"
+    },
+    {
+      "season": "1977–78",
+      "player": "Rainer Frontzek",
+      "nationality": "West Germany",
+      "club": "USC Heidelberg",
+      "value": 818,
+      "metric": "total_points"
+    },
+    {
+      "season": "1978–79",
+      "player": "Hans DeWitt",
+      "nationality": "United States",
+      "club": "MTV Wolfenbüttel",
+      "value": 725,
+      "metric": "total_points"
+    },
+    {
+      "season": "1979–80",
+      "player": "John Britton",
+      "nationality": "United States",
+      "club": "Eintracht Frankfurt",
+      "value": 721,
+      "metric": "total_points"
+    },
+    {
+      "season": "1980–81",
+      "player": "Lou Hardy",
+      "nationality": "United States",
+      "club": "BG DEK/Fichte Hagen",
+      "value": 633,
+      "metric": "total_points"
+    },
+    {
+      "season": "1981–82",
+      "player": "Michael Pappert",
+      "nationality": "West Germany",
+      "club": "BSC Saturn Köln",
+      "value": 661,
+      "metric": "total_points"
+    },
+    {
+      "season": "1982–83",
+      "player": "Georg Kämpf",
+      "nationality": "West Germany",
+      "club": "USC Bayreuth",
+      "value": 614,
+      "metric": "total_points"
+    },
+    {
+      "season": "1983–84",
+      "player": "Eugene Richardson",
+      "nationality": "United States",
+      "club": "SSV Hagen",
+      "value": 685,
+      "metric": "total_points"
+    },
+    {
+      "season": "1984–85",
+      "player": "Mike Jackel",
+      "nationality": "West Germany",
+      "club": "ASC 1846 Göttingen",
+      "value": 625,
+      "metric": "total_points"
+    },
+    {
+      "season": "1985–86",
+      "player": "Brent Timm",
+      "nationality": "United States",
+      "club": "SSV Hagen",
+      "value": 803,
+      "metric": "total_points"
+    },
+    {
+      "season": "1986–87",
+      "player": "Mike Jackel",
+      "nationality": "West Germany",
+      "club": "BSC Saturn Köln",
+      "value": 524,
+      "metric": "total_points"
+    },
+    {
+      "season": "1987–88",
+      "player": "André Hills",
+      "nationality": "United States",
+      "club": "BSG Basket Ludwigsburg",
+      "value": 554,
+      "metric": "total_points"
+    },
+    {
+      "season": "1988–89",
+      "player": "Keith Gray",
+      "nationality": "United States",
+      "club": "TSV Hagen 1860",
+      "value": 541,
+      "metric": "total_points"
+    },
+    {
+      "season": "1989–90",
+      "player": "Rimas Kurtinaitis",
+      "nationality": "Soviet Union",
+      "club": "SSV Hagen",
+      "value": 638,
+      "metric": "total_points"
+    },
+    {
+      "season": "1990–91",
+      "player": "Greg Wendt",
+      "nationality": "United States",
+      "club": "TuS Bramsche",
+      "value": 36.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1991–92",
+      "player": "Greg Wendt",
+      "nationality": "United States",
+      "club": "TuS Bramsche",
+      "value": 30.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1992–93",
+      "player": "Greg Wendt",
+      "nationality": "United States",
+      "club": "TuS Bramsche",
+      "value": 25.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1993–94",
+      "player": "Sergei Babkov",
+      "nationality": "Russia",
+      "club": "TBB Trier",
+      "value": 24.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1994–95",
+      "player": "Bernard Thompson",
+      "nationality": "United States",
+      "club": "TBB Trier",
+      "value": 23.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1995–96",
+      "player": "Tony Dawson",
+      "nationality": "United States",
+      "club": "TSV 04 Leverkusen",
+      "value": 28.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1996–97",
+      "player": "Donald Williams",
+      "nationality": "United States",
+      "club": "Hertener Löwen",
+      "value": 25.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1997–98",
+      "player": "Keith Gatlin",
+      "nationality": "United States",
+      "club": "Gießen 46ers",
+      "value": 23.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1998–99",
+      "player": "Dirk Nowitzki",
+      "nationality": "Germany",
+      "club": "DJK Würzburg",
+      "value": 22.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1999–00",
+      "player": "Tyron McCoy",
+      "nationality": "United States",
+      "club": "TV 1860 Lich",
+      "value": 23.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2000–01",
+      "player": "John Best",
+      "nationality": "United States",
+      "club": "Bayer Giants Leverkusen",
+      "value": 22.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2001–02",
+      "player": "DeJuan Collins",
+      "nationality": "United States",
+      "club": "SV 03 Tübingen",
+      "value": 24,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2002–03",
+      "player": "BJ McKie",
+      "nationality": "United States",
+      "club": "Gießen 46ers",
+      "value": 25,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2003–04",
+      "player": "BJ McKie",
+      "nationality": "United States",
+      "club": "TBB Trier",
+      "value": 22.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2004–05",
+      "player": "Narcisse Ewodo",
+      "nationality": "France",
+      "club": "BG Karlsruhe",
+      "value": 21,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2005–06",
+      "player": "Andrew Wisniewski",
+      "nationality": "United States",
+      "club": "Baskets Bonn",
+      "value": 20.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2006–07",
+      "player": "Derrick Allen",
+      "nationality": "United States",
+      "club": "Bayer Giants Leverkusen",
+      "value": 16.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2007–08",
+      "player": "Timothy Black",
+      "nationality": "United States",
+      "club": "Paderborn Baskets",
+      "value": 21.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2008–09",
+      "player": "Omari Westley",
+      "nationality": "United States",
+      "club": "Giants Nördlingen",
+      "value": 15.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2009–10",
+      "player": "Chris Copeland",
+      "nationality": "United States",
+      "club": "TBB Trier",
+      "value": 16.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2010–11",
+      "player": "DaShaun Wood",
+      "nationality": "United States",
+      "club": "Deutsche Bank Skyliners",
+      "value": 18.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2011–12",
+      "player": "Bobby Brown",
+      "nationality": "United States",
+      "club": "EWE Baskets Oldenburg",
+      "value": 16.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2012–13",
+      "player": "Davin White",
+      "nationality": "United States",
+      "club": "Phoenix Hagen",
+      "value": 17.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2013–14",
+      "player": "Darius Adams",
+      "nationality": "Bulgaria",
+      "club": "Eisbären Bremerhaven",
+      "value": 18,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2014–15",
+      "player": "D. J. Kennedy",
+      "nationality": "United States",
+      "club": "MHP Riesen Ludwigsburg",
+      "value": 18,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2015–16",
+      "player": "Kyle Fogg",
+      "nationality": "United States",
+      "club": "Eisbären Bremerhaven",
+      "value": 18.2,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2016–17",
+      "player": "Raymar Morgan",
+      "nationality": "United States",
+      "club": "ratiopharm Ulm",
+      "value": 17.7,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2017–18",
+      "player": "Philip Scrubb",
+      "nationality": "Canada",
+      "club": "Fraport Skyliners",
+      "value": 18.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2018–19",
+      "player": "Will Cummings",
+      "nationality": "United States",
+      "club": "EWE Baskets Oldenburg",
+      "value": 20.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "nationality": null,
+      "club": null,
+      "value": null,
+      "metric": "points_per_game",
+      "note": "No award given due to COVID-19 shortened season"
+    },
+    {
+      "season": "2020–21",
+      "player": "Michał Michalak",
+      "nationality": "Poland",
+      "club": "Mitteldeutscher BC",
+      "value": 20.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2021–22",
+      "player": "T. J. Shorts",
+      "nationality": "United States",
+      "club": "Crailsheim Merlins",
+      "value": 20.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2022–23",
+      "player": "DeWayne Russell",
+      "nationality": "United States",
+      "club": "Baskets Oldenburg",
+      "value": 20.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2023–24",
+      "player": "Otis Livingston II",
+      "nationality": "United States",
+      "club": "Würzburg Baskets",
+      "value": 20.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2024–25",
+      "recipients": [
+        {
+          "player": "Jarred Ogungbemi-Jackson",
+          "nationality": "Canada",
+          "club": "Riesen Ludwigsburg",
+          "value": 19
+        },
+        {
+          "player": "Brandon Randolph",
+          "nationality": "United States",
+          "club": "Rasta Vechta",
+          "value": 19
+        }
+      ],
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2025–26",
+      "player": "Chris Clemons",
+      "nationality": "United States",
+      "club": "Baskets Oldenburg",
+      "value": 18.5,
+      "metric": "points_per_game"
+    }
+  ],
+  "all_bbl_teams": [
+    {
+      "season": "2004–05",
+      "first_team": [
+        {
+          "player": "Pascal Roller",
+          "nationality": "Germany",
+          "team": "Skyliners Frankfurt",
+          "is_mvp": false
+        },
+        {
+          "player": "Marko Bulić",
+          "nationality": "Croatia",
+          "team": "Artland Dragons",
+          "is_mvp": false
+        },
+        {
+          "player": "Chuck Eidson",
+          "nationality": "United States",
+          "team": "Gießen 46ers",
+          "is_mvp": false
+        },
+        {
+          "player": "Chris Williams",
+          "nationality": "United States",
+          "team": "Skyliners Frankfurt",
+          "is_mvp": true
+        },
+        {
+          "player": "Jovo Stanojević",
+          "nationality": "Federal Republic of Yugoslavia",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Steffen Hamann",
+          "nationality": "Germany",
+          "team": "Brose Bamberg"
+        },
+        {
+          "player": "Tyron McCoy",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        },
+        {
+          "player": "Narcisse Ewodo",
+          "nationality": "France",
+          "team": "BG Karlsruhe"
+        },
+        {
+          "player": "Koko Archibong",
+          "nationality": "Nigeria",
+          "team": "Brose Bamberg"
+        },
+        {
+          "player": "Chris Ensminger",
+          "nationality": "United States",
+          "team": "Brose Bamberg"
+        }
+      ]
+    },
+    {
+      "season": "2005–06",
+      "first_team": [
+        {
+          "player": "Pascal Roller",
+          "nationality": "Germany",
+          "team": "Skyliners Frankfurt",
+          "is_mvp": false
+        },
+        {
+          "player": "Mike Penberthy",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Chuck Eidson",
+          "nationality": "United States",
+          "team": "Gießen 46ers",
+          "is_mvp": false
+        },
+        {
+          "player": "Aleksandar Nađfeji",
+          "nationality": "Federal Republic of Yugoslavia",
+          "team": "Köln 99ers",
+          "is_mvp": false
+        },
+        {
+          "player": "Jovo Stanojević",
+          "nationality": "Federal Republic of Yugoslavia",
+          "team": "Alba Berlin",
+          "is_mvp": true
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Justin Love",
+          "nationality": "United States",
+          "team": "MHP Riesen Ludwigsburg"
+        },
+        {
+          "player": "Brian Brown",
+          "nationality": "United States",
+          "team": "Trier"
+        },
+        {
+          "player": "Koko Archibong",
+          "nationality": "Nigeria",
+          "team": "Brose Bamberg"
+        },
+        {
+          "player": "Nate Fox",
+          "nationality": "United States",
+          "team": "Bayer Giants Leverkusen"
+        },
+        {
+          "player": "Ermin Jazvin",
+          "nationality": "Bosnia and Herzegovina",
+          "team": "MHP Riesen Ludwigsburg"
+        }
+      ]
+    },
+    {
+      "season": "2006–07",
+      "first_team": [
+        {
+          "player": "Jerry Green",
+          "nationality": "United States",
+          "team": "MHP Riesen Ludwigsburg",
+          "is_mvp": true
+        },
+        {
+          "player": "Julius Jenkins",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Casey Jacobsen",
+          "nationality": "United States",
+          "team": "Brose Bamberg",
+          "is_mvp": false
+        },
+        {
+          "player": "Jeff Gibbs",
+          "nationality": "United States",
+          "team": "ratiopharm Ulm",
+          "is_mvp": false
+        },
+        {
+          "player": "Sharrod Ford",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Demond Mallet",
+          "nationality": "United States",
+          "team": "RheinStars Köln"
+        },
+        {
+          "player": "Immanuel McElroy",
+          "nationality": "United States",
+          "team": "RheinStars Köln"
+        },
+        {
+          "player": "Adam Hess",
+          "nationality": "Germany",
+          "team": "Artland Dragons"
+        },
+        {
+          "player": "Chris Owens",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Darren Fenn",
+          "nationality": "United States",
+          "team": "Brose Bamberg"
+        }
+      ]
+    },
+    {
+      "season": "2007–08",
+      "first_team": [
+        {
+          "player": "Jason Gardner",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Julius Jenkins",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": true
+        },
+        {
+          "player": "Rickey Paulding",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Jeff Gibbs",
+          "nationality": "United States",
+          "team": "ratiopharm Ulm",
+          "is_mvp": false
+        },
+        {
+          "player": "Chris Ensminger",
+          "nationality": "United States",
+          "team": "Brose Bamberg",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Bobby Brown",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Immanuel McElroy",
+          "nationality": "United States",
+          "team": "Köln 99ers"
+        },
+        {
+          "player": "Philipp Schwethelm",
+          "nationality": "Germany",
+          "team": "Köln 99ers"
+        },
+        {
+          "player": "Caleb Green",
+          "nationality": "United States",
+          "team": "Trier"
+        },
+        {
+          "player": "Mike Benton",
+          "nationality": "United States",
+          "team": "Trier"
+        }
+      ]
+    },
+    {
+      "season": "2008–09",
+      "first_team": [
+        {
+          "player": "Jason Gardner",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": true
+        },
+        {
+          "player": "Julius Jenkins",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Rickey Paulding",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Jeff Gibbs",
+          "nationality": "United States",
+          "team": "ratiopharm Ulm",
+          "is_mvp": false
+        },
+        {
+          "player": "Chris Ensminger",
+          "nationality": "United States",
+          "team": "Paderborn Baskets",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Kyle Bailey",
+          "nationality": "United States",
+          "team": "BG Göttingen"
+        },
+        {
+          "player": "Roderick Trice",
+          "nationality": "United States",
+          "team": "BG Göttingen"
+        },
+        {
+          "player": "Immanuel McElroy",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Predrag Šuput",
+          "nationality": "Serbia",
+          "team": "Brose Bamberg"
+        },
+        {
+          "player": "Raško Katić",
+          "nationality": "Serbia",
+          "team": "Tigers Tübingen"
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "first_team": [
+        {
+          "player": "Louis Campbell",
+          "nationality": "United States",
+          "team": "Eisbären Bremerhaven",
+          "is_mvp": false
+        },
+        {
+          "player": "Julius Jenkins",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": true
+        },
+        {
+          "player": "Robin Benzing",
+          "nationality": "Germany",
+          "team": "ratiopharm Ulm",
+          "is_mvp": false
+        },
+        {
+          "player": "Predrag Šuput",
+          "nationality": "Serbia",
+          "team": "Brose Bamberg",
+          "is_mvp": false
+        },
+        {
+          "player": "Chris Ensminger",
+          "nationality": "United States",
+          "team": "Telekom Baskets Bonn",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Taylor Rochestie",
+          "nationality": "Montenegro",
+          "team": "BG Göttingen"
+        },
+        {
+          "player": "Je'Kel Foster",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        },
+        {
+          "player": "Immanuel McElroy",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Jeff Gibbs",
+          "nationality": "United States",
+          "team": "Eisbären Bremerhaven"
+        },
+        {
+          "player": "Blagota Sekulić",
+          "nationality": "Montenegro",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "first_team": [
+        {
+          "player": "DaShaun Wood",
+          "nationality": "United States",
+          "team": "Skyliners Frankfurt",
+          "is_mvp": true
+        },
+        {
+          "player": "Julius Jenkins",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Casey Jacobsen",
+          "nationality": "United States",
+          "team": "Brose Bamberg",
+          "is_mvp": false
+        },
+        {
+          "player": "Predrag Šuput",
+          "nationality": "Serbia",
+          "team": "Brose Bamberg",
+          "is_mvp": false
+        },
+        {
+          "player": "John Bryant",
+          "nationality": "United States",
+          "team": "ratiopharm Ulm",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Tyrese Rice",
+          "nationality": "Montenegro",
+          "team": "Artland Dragons"
+        },
+        {
+          "player": "Brian Roberts",
+          "nationality": "United States",
+          "team": "Brose Bamberg"
+        },
+        {
+          "player": "Robin Benzing",
+          "nationality": "Germany",
+          "team": "ratiopharm Ulm"
+        },
+        {
+          "player": "Derrick Allen",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Tibor Pleiß",
+          "nationality": "Germany",
+          "team": "Brose Bamberg"
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "first_team": [
+        {
+          "player": "DaShaun Wood",
+          "nationality": "United States",
+          "team": "ALBA Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Isaiah Swann",
+          "nationality": "United States",
+          "team": "ratiopharm ulm",
+          "is_mvp": false
+        },
+        {
+          "player": "Casey Jacobsen",
+          "nationality": "United States",
+          "team": "Brose Baskets",
+          "is_mvp": false
+        },
+        {
+          "player": "P. J. Tucker",
+          "nationality": "United States",
+          "team": "Brose Baskets",
+          "is_mvp": false
+        },
+        {
+          "player": "John Bryant",
+          "nationality": "United States",
+          "team": "ratiopharm ulm",
+          "is_mvp": true
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Jared Jordan",
+          "nationality": "United States",
+          "team": "Telekom Baskets Bonn"
+        },
+        {
+          "player": "Anton Gavel",
+          "nationality": "Germany",
+          "team": "Brose Baskets"
+        },
+        {
+          "player": "Bryce Taylor",
+          "nationality": "United States",
+          "team": "ALBA Berlin"
+        },
+        {
+          "player": "Chevon Troutman",
+          "nationality": "United States",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Tibor Pleiß",
+          "nationality": "Germany",
+          "team": "Brose Baskets"
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "first_team": [
+        {
+          "player": "Jared Jordan",
+          "nationality": "United States",
+          "team": "Telekom Baskets Bonn",
+          "is_mvp": false
+        },
+        {
+          "player": "Anton Gavel",
+          "nationality": "Germany",
+          "team": "Brose Baskets",
+          "is_mvp": false
+        },
+        {
+          "player": "Rickey Paulding",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Deon Thompson",
+          "nationality": "United States",
+          "team": "ALBA Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "John Bryant",
+          "nationality": "United States",
+          "team": "ratiopharm ulm",
+          "is_mvp": true
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Tyrese Rice",
+          "nationality": "Montenegro",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Davin White",
+          "nationality": "United States",
+          "team": "Phoenix Hagen"
+        },
+        {
+          "player": "Reggie Redding",
+          "nationality": "United States",
+          "team": "Walter Tigers Tübingen"
+        },
+        {
+          "player": "Chevon Troutman",
+          "nationality": "United States",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Adam Chubb",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "first_team": [
+        {
+          "player": "Malcolm Delaney",
+          "nationality": "United States",
+          "team": "Bayern Munich",
+          "is_mvp": true
+        },
+        {
+          "player": "Anton Gavel",
+          "nationality": "Germany",
+          "team": "Brose Baskets",
+          "is_mvp": false
+        },
+        {
+          "player": "Reggie Redding",
+          "nationality": "United States",
+          "team": "ALBA Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Angelo Caloiaro",
+          "nationality": "Italy",
+          "team": "Mitteldeutscher",
+          "is_mvp": false
+        },
+        {
+          "player": "D'or Fischer",
+          "nationality": "Israel",
+          "team": "Brose Baskets",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Jared Jordan",
+          "nationality": "United States",
+          "team": "Brose Baskets"
+        },
+        {
+          "player": "Julius Jenkins",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        },
+        {
+          "player": "Bryce Taylor",
+          "nationality": "United States",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Deon Thompson",
+          "nationality": "United States",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Leon Radošević",
+          "nationality": "Croatia",
+          "team": "ALBA Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "first_team": [
+        {
+          "player": "Brad Wanamaker",
+          "nationality": "United States",
+          "team": "Brose Baskets",
+          "is_mvp": false
+        },
+        {
+          "player": "Alex Renfroe",
+          "nationality": "United States",
+          "team": "ALBA Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "D. J. Kennedy",
+          "nationality": "United States",
+          "team": "MHP Riesen Ludwigsburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Jamel McLean",
+          "nationality": "United States",
+          "team": "ALBA Berlin",
+          "is_mvp": true
+        },
+        {
+          "player": "John Bryant",
+          "nationality": "United States",
+          "team": "Bayern Munich",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Khalid El-Amin",
+          "nationality": "United States",
+          "team": "BG Göttingen"
+        },
+        {
+          "player": "Nihad Đjedović",
+          "nationality": "Bosnia and Herzegovina",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Ryan Thompson",
+          "nationality": "United States",
+          "team": "Brose Baskets"
+        },
+        {
+          "player": "Raymar Morgan",
+          "nationality": "United States",
+          "team": "BG Göttingen"
+        },
+        {
+          "player": "Tim Ohlbrecht",
+          "nationality": "Germany",
+          "team": "ratiopharm Ulm"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "first_team": [
+        {
+          "player": "Brad Wanamaker",
+          "nationality": "United States",
+          "team": "Brose Baskets",
+          "is_mvp": true
+        },
+        {
+          "player": "Bryce Taylor",
+          "nationality": "United States",
+          "team": "Bayern Munich",
+          "is_mvp": false
+        },
+        {
+          "player": "Rickey Paulding",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Nicolò Melli",
+          "nationality": "Italy",
+          "team": "Brose Baskets",
+          "is_mvp": false
+        },
+        {
+          "player": "Brian Qvale",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Jordan Theodore",
+          "nationality": "North Macedonia",
+          "team": "Fraport Skyliners"
+        },
+        {
+          "player": "Vaughn Duggins",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        },
+        {
+          "player": "Darius Miller",
+          "nationality": "United States",
+          "team": "Brose Baskets"
+        },
+        {
+          "player": "Daniel Theis",
+          "nationality": "Germany",
+          "team": "Brose Baskets"
+        },
+        {
+          "player": "Johannes Voigtmann",
+          "nationality": "Germany",
+          "team": "Fraport Skyliners"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "first_team": [
+        {
+          "player": "Chris Kramer",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Chris Babb",
+          "nationality": "United States",
+          "team": "ratiopharm Ulm",
+          "is_mvp": false
+        },
+        {
+          "player": "Darius Miller",
+          "nationality": "United States",
+          "team": "Brose Bamberg",
+          "is_mvp": false
+        },
+        {
+          "player": "Nicolò Melli",
+          "nationality": "Italy",
+          "team": "Brose Bamberg",
+          "is_mvp": false
+        },
+        {
+          "player": "Raymar Morgan",
+          "nationality": "United States",
+          "team": "ratiopharm Ulm",
+          "is_mvp": true
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Josh Mayo",
+          "nationality": "United States",
+          "team": "Telekom Baskets Bonn"
+        },
+        {
+          "player": "Trey Lewis",
+          "nationality": "United States",
+          "team": "medi bayreuth"
+        },
+        {
+          "player": "Rickey Paulding",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        },
+        {
+          "player": "Maxi Kleber",
+          "nationality": "Germany",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Brian Qvale",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "first_team": [
+        {
+          "player": "Peyton Siva",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Thomas Walkup",
+          "nationality": "United States",
+          "team": "MHP Riesen Ludwigsburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Robin Benzing",
+          "nationality": "Germany",
+          "team": "s.Oliver Würzburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Luke Sikma",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": true
+        },
+        {
+          "player": "John Bryant",
+          "nationality": "United States",
+          "team": "Gießen 46ers",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Josh Mayo",
+          "nationality": "United States",
+          "team": "Telekom Baskets Bonn"
+        },
+        {
+          "player": "Philip Scrubb",
+          "nationality": "Canada",
+          "team": "Skyliners Frankfurt"
+        },
+        {
+          "player": "Rickey Paulding",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        },
+        {
+          "player": "Danilo Barthel",
+          "nationality": "Germany",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Devin Booker",
+          "nationality": "United States",
+          "team": "Bayern Munich"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "first_team": [
+        {
+          "player": "Will Cummings",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": true
+        },
+        {
+          "player": "T. J. Bray",
+          "nationality": "United States",
+          "team": "Rasta Vechta",
+          "is_mvp": false
+        },
+        {
+          "player": "Rokas Giedraitis",
+          "nationality": "Lithuania",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Luke Sikma",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Rašid Mahalbašić",
+          "nationality": "Austria",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Peyton Siva",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Tyrese Rice",
+          "nationality": "Montenegro",
+          "team": "Brose Bamberg"
+        },
+        {
+          "player": "DeAndre Lansdowne",
+          "nationality": "United States",
+          "team": "Löwen Braunschweig"
+        },
+        {
+          "player": "Vladimir Lučić",
+          "nationality": "Serbia",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Danilo Barthel",
+          "nationality": "Germany",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "John Bryant",
+          "nationality": "United States",
+          "team": "Gießen 46ers"
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "first_team": [
+        {
+          "player": "Khadeen Carrington",
+          "nationality": "Trinidad and Tobago",
+          "team": "Riesen Ludwigsburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Marcos Knight",
+          "nationality": "United States",
+          "team": "Riesen Ludwigsburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Marcus Eriksson",
+          "nationality": "Sweden",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Luke Sikma",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Rašid Mahalbašić",
+          "nationality": "Austria",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Martin Hermannsson",
+          "nationality": "Iceland",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Javontae Hawkins",
+          "nationality": "United States",
+          "team": "Crailsheim Merlins"
+        },
+        {
+          "player": "Rickey Paulding",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        },
+        {
+          "player": "Nathan Boothe",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        },
+        {
+          "player": "Scott Eatherton",
+          "nationality": "United States",
+          "team": "Löwen Braunschweig"
+        }
+      ]
+    },
+    {
+      "season": "2020–21",
+      "first_team": [
+        {
+          "player": "Trae Bell-Haynes",
+          "nationality": "Canada",
+          "team": "Crailsheim Merlins",
+          "is_mvp": false
+        },
+        {
+          "player": "Jaleen Smith",
+          "nationality": "United States",
+          "team": "Alba Berlin",
+          "is_mvp": true
+        },
+        {
+          "player": "Paul Zipser",
+          "nationality": "Germany",
+          "team": "Bayern Munich",
+          "is_mvp": false
+        },
+        {
+          "player": "Vladimir Lučić",
+          "nationality": "Serbia",
+          "team": "Bayern Munich",
+          "is_mvp": false
+        },
+        {
+          "player": "Jalen Reynolds",
+          "nationality": "United States",
+          "team": "Bayern Munich",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Jayson Granger",
+          "nationality": "Uruguay",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Karim Jallow",
+          "nationality": "Germany",
+          "team": "Braunschweig"
+        },
+        {
+          "player": "Rickey Paulding",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg"
+        },
+        {
+          "player": "Simone Fontecchio",
+          "nationality": "Italy",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Maik Kotsar",
+          "nationality": "Estonia",
+          "team": "Hamburg Towers"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "first_team": [
+        {
+          "player": "Parker Jackson-Cartwright",
+          "nationality": "United States",
+          "team": "Telekom Bonn",
+          "is_mvp": true
+        },
+        {
+          "player": "Maodo Lô",
+          "nationality": "Germany",
+          "team": "Alba Berlin",
+          "is_mvp": false
+        },
+        {
+          "player": "Jaron Blossomgame",
+          "nationality": "United States",
+          "team": "Ratiopharm Ulm",
+          "is_mvp": false
+        },
+        {
+          "player": "Deshaun Thomas",
+          "nationality": "United States",
+          "team": "Bayern Munich",
+          "is_mvp": false
+        },
+        {
+          "player": "Maik Kotsar",
+          "nationality": "Estonia",
+          "team": "Hamburg Towers",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "T. J. Shorts",
+          "nationality": "United States",
+          "team": "Crailsheim Merlins"
+        },
+        {
+          "player": "Javontae Hawkins",
+          "nationality": "United States",
+          "team": "Telekom Bonn"
+        },
+        {
+          "player": "Vladimir Lučić",
+          "nationality": "Serbia",
+          "team": "Bayern Munich"
+        },
+        {
+          "player": "Luke Sikma",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Augustine Rubit",
+          "nationality": "United States",
+          "team": "Bayern Munich"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "first_team": [
+        {
+          "player": "T. J. Shorts",
+          "nationality": "United States",
+          "team": "Telekom Bonn",
+          "is_mvp": true
+        },
+        {
+          "player": "Yago dos Santos",
+          "nationality": "Brazil",
+          "team": "Ratiopharm Ulm",
+          "is_mvp": false
+        },
+        {
+          "player": "DeWayne Russell",
+          "nationality": "United States",
+          "team": "EWE Baskets Oldenburg",
+          "is_mvp": false
+        },
+        {
+          "player": "Derrick Alston Jr.",
+          "nationality": "United States",
+          "team": "Rostock Seawolves",
+          "is_mvp": false
+        },
+        {
+          "player": "Bruno Caboclo",
+          "nationality": "Brazil",
+          "team": "Ratiopharm Ulm",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Eric Washington",
+          "nationality": "United States",
+          "team": "USC Heidelberg"
+        },
+        {
+          "player": "Stanley Whittaker",
+          "nationality": "United States",
+          "team": "Würzburg Baskets"
+        },
+        {
+          "player": "Brandon Paul",
+          "nationality": "United States",
+          "team": "Ratiopharm Ulm"
+        },
+        {
+          "player": "Karim Jallow",
+          "nationality": "Germany",
+          "team": "Ratiopharm Ulm"
+        },
+        {
+          "player": "Selom Mawugbe",
+          "nationality": "United States",
+          "team": "Rostock Seawolves"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "first_team": [
+        {
+          "player": "Otis Livingston II",
+          "nationality": "United States",
+          "team": "Würzburg Baskets",
+          "is_mvp": true
+        },
+        {
+          "player": "Carsen Edwards",
+          "nationality": "United States",
+          "team": "Bayern Munich",
+          "is_mvp": false
+        },
+        {
+          "player": "Derrick Alston Jr.",
+          "nationality": "United States",
+          "team": "Rostock Seawolves",
+          "is_mvp": false
+        },
+        {
+          "player": "Jeff Garrett",
+          "nationality": "United States",
+          "team": "Niners Chemnitz",
+          "is_mvp": false
+        },
+        {
+          "player": "Kevin Yebo",
+          "nationality": "Germany",
+          "team": "Niners Chemnitz",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Tommy Kuhse",
+          "nationality": "United States",
+          "team": "Rasta Vechta"
+        },
+        {
+          "player": "Matt Thomas",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Zac Seljaas",
+          "nationality": "United States",
+          "team": "Würzburg Baskets"
+        },
+        {
+          "player": "Johannes Thiemann",
+          "nationality": "Germany",
+          "team": "Alba Berlin"
+        },
+        {
+          "player": "Serge Ibaka",
+          "nationality": "Spain",
+          "team": "Bayern Munich"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "first_team": [
+        {
+          "player": "Jhivvan Jackson",
+          "nationality": "Panama",
+          "team": "Würzburg Baskets",
+          "is_mvp": true
+        },
+        {
+          "player": "Andreas Obst",
+          "nationality": "Germany",
+          "team": "Bayern Munich",
+          "is_mvp": false
+        },
+        {
+          "player": "Karim Jallow",
+          "nationality": "Germany",
+          "team": "Ratiopharm Ulm",
+          "is_mvp": false
+        },
+        {
+          "player": "Zac Seljaas",
+          "nationality": "United States",
+          "team": "Würzburg Baskets",
+          "is_mvp": false
+        },
+        {
+          "player": "Sananda Fru",
+          "nationality": "Germany",
+          "team": "Löwen Braunschweig",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "DJ Horne",
+          "nationality": "United States",
+          "team": "USC Heidelberg"
+        },
+        {
+          "player": "Justin Jaworski",
+          "nationality": "United States",
+          "team": "Baskets Oldenburg"
+        },
+        {
+          "player": "Brandon Randolph",
+          "nationality": "United States",
+          "team": "Rasta Vechta"
+        },
+        {
+          "player": "Ryan Mikesell",
+          "nationality": "United States",
+          "team": "USC Heidelberg"
+        },
+        {
+          "player": "Devin Booker",
+          "nationality": "United States",
+          "team": "Bayern Munich"
+        }
+      ]
+    }
+  ],
+  "best_offensive_player": [
+    {
+      "season": "2003–04",
+      "player": "BJ McKie",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "TBB Trier"
+    },
+    {
+      "season": "2004–05",
+      "player": "Chuck Eidson",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Gießen 46ers"
+    },
+    {
+      "season": "2005–06",
+      "player": "Andrew Wisniewski",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Telekom Baskets Bonn"
+    },
+    {
+      "season": "2006–07",
+      "player": "Casey Jacobsen",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2007–08",
+      "player": "Julius Jenkins",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Alba Berlin"
+    },
+    {
+      "season": "2008–09",
+      "player": "Julius Jenkins",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Alba Berlin"
+    },
+    {
+      "season": "2009–10",
+      "player": "Julius Jenkins",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Alba Berlin"
+    },
+    {
+      "season": "2010–11",
+      "player": "DaShaun Wood",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Skyliners Frankfurt"
+    },
+    {
+      "season": "2011–12",
+      "player": "DaShaun Wood",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Alba Berlin"
+    },
+    {
+      "season": "2012–13",
+      "player": "John Bryant",
+      "position": "Center",
+      "nationality": "United States",
+      "team": "ratiopharm ulm"
+    },
+    {
+      "season": "2013–14",
+      "player": "Darius Adams",
+      "position": "Guard",
+      "nationality": "Bulgaria",
+      "team": "Eisbären Bremerhaven"
+    },
+    {
+      "season": "2014–15",
+      "player": "D. J. Kennedy",
+      "position": "Guard/forward",
+      "nationality": "United States",
+      "team": "MHP Riesen Ludwigsburg"
+    },
+    {
+      "season": "2015–16",
+      "player": "Brad Wanamaker",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Brose Baskets"
+    },
+    {
+      "season": "2016–17",
+      "player": "Raymar Morgan",
+      "position": "Forward/center",
+      "nationality": "United States",
+      "team": "ratiopharm Ulm"
+    },
+    {
+      "season": "2017–18",
+      "player": "Philip Scrubb",
+      "position": "Guard",
+      "nationality": "Canada",
+      "team": "Fraport Skyliners"
+    },
+    {
+      "season": "2018–19",
+      "player": "John Bryant",
+      "position": "Center",
+      "nationality": "United States",
+      "team": "Gießen 46ers"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "note": "No award was given due to COVID-19 shortened season"
+    },
+    {
+      "season": "2020–21",
+      "player": "Trae Bell-Haynes",
+      "position": "Point guard",
+      "nationality": "Canada",
+      "team": "Crailsheim Merlins"
+    },
+    {
+      "season": "2021–22",
+      "player": "T. J. Shorts",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Crailsheim Merlins"
+    },
+    {
+      "season": "2022–23",
+      "player": "DeWayne Russell",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Baskets Oldenburg"
+    },
+    {
+      "season": "2023–24",
+      "player": "Otis Livingston II",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Würzburg Baskets"
+    },
+    {
+      "season": "2024–25",
+      "player": "Jhivvan Jackson",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Würzburg Baskets"
+    },
+    {
+      "season": "2025–26",
+      "player": "Jordan Roland",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Vet-Concept Gladiators Trier"
+    }
+  ],
+  "best_defender": [
+    {
+      "season": "2002–03",
+      "winners": [
+        {
+          "player": "Quadre Lollis",
+          "position": "Forward",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2003–04",
+      "winners": [
+        {
+          "player": "Oluoma Nnamaka",
+          "position": "Forward",
+          "nationality": "Sweden",
+          "team": "Telekom Baskets Bonn"
+        }
+      ]
+    },
+    {
+      "season": "2004–05",
+      "winners": [
+        {
+          "player": "Koko Archibong",
+          "position": "Forward",
+          "nationality": "Nigeria",
+          "team": "GHP Bamberg"
+        },
+        {
+          "player": "Matej Mamić",
+          "position": "Forward",
+          "nationality": "Croatia",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2005–06",
+      "winners": [
+        {
+          "player": "Koko Archibong",
+          "position": "Forward",
+          "nationality": "Nigeria",
+          "team": "GHP Bamberg"
+        }
+      ]
+    },
+    {
+      "season": "2006–07",
+      "winners": [
+        {
+          "player": "Immanuel McElroy",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2007–08",
+      "winners": [
+        {
+          "player": "Immanuel McElroy",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2008–09",
+      "winners": [
+        {
+          "player": "Immanuel McElroy",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "winners": [
+        {
+          "player": "Immanuel McElroy",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "winners": [
+        {
+          "player": "Immanuel McElroy",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "winners": [
+        {
+          "player": "Anton Gavel",
+          "position": "Guard",
+          "nationality": "Germany",
+          "team": "Brose Baskets"
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "winners": [
+        {
+          "player": "Anton Gavel",
+          "position": "Guard",
+          "nationality": "Germany",
+          "team": "Brose Baskets"
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "winners": [
+        {
+          "player": "Cliff Hammonds",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "winners": [
+        {
+          "player": "Cliff Hammonds",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Alba Berlin"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "winners": [
+        {
+          "player": "Quantez Robertson",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Fraport Skyliners"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "winners": [
+        {
+          "player": "Daniel Theis",
+          "position": "Center",
+          "nationality": "Germany",
+          "team": "Brose Bamberg"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "winners": [
+        {
+          "player": "Thomas Walkup",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Riesen Ludwigsburg"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "winners": [
+        {
+          "player": "Yorman Polas Bartolo",
+          "position": "Forward",
+          "nationality": "Cuba",
+          "team": "Telekom Baskets Bonn"
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "winners": [],
+      "note": "No award was given due to COVID-19 shortened season"
+    },
+    {
+      "season": "2020–21",
+      "winners": [
+        {
+          "player": "Yorman Polas Bartolo",
+          "position": "Forward",
+          "nationality": "Cuba",
+          "team": "Riesen Ludwigsburg"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "winners": [
+        {
+          "player": "Justin Simon",
+          "position": "Shooting guard",
+          "nationality": "United States",
+          "team": "Riesen Ludwigsburg"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "winners": [
+        {
+          "player": "Selom Mawugbe",
+          "position": "Center",
+          "nationality": "United States",
+          "team": "Rostock Seawolves"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "winners": [
+        {
+          "player": "Javon Bess",
+          "position": "Swingman",
+          "nationality": "United States",
+          "team": "BG Göttingen"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "winners": [
+        {
+          "player": "Nick Weiler-Babb",
+          "position": "Swingman",
+          "nationality": "Germany",
+          "team": "Bayern Munich"
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "winners": [
+        {
+          "player": "EJ Onu",
+          "position": "Center",
+          "nationality": "United States",
+          "team": "Bamberg Baskets"
+        }
+      ]
+    }
+  ],
+  "most_effective_player_international": [
+    {
+      "season": "2015–16",
+      "player": "Brian Qvale",
+      "position": "Center",
+      "nationality": "United States",
+      "club": "EWE Baskets Oldenburg",
+      "efficiency": 18.9
+    },
+    {
+      "season": "2016–17",
+      "player": "Raymar Morgan",
+      "position": "Forward",
+      "nationality": "United States",
+      "club": "ratiopharm Ulm",
+      "efficiency": 20.1
+    },
+    {
+      "season": "2017–18",
+      "player": "John Bryant",
+      "position": "Center",
+      "nationality": "United States",
+      "club": "Gießen 46ers",
+      "efficiency": 24.1
+    },
+    {
+      "season": "2018–19",
+      "player": "John Bryant",
+      "position": "Center",
+      "nationality": "United States",
+      "club": "Gießen 46ers",
+      "efficiency": 24.1
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "club": null,
+      "efficiency": null,
+      "note": "No award given due to COVID-19"
+    },
+    {
+      "season": "2020–21",
+      "player": "David Kravish",
+      "position": "Power forward",
+      "nationality": "United States",
+      "club": "Brose Bamberg",
+      "efficiency": 21.1
+    },
+    {
+      "season": "2021–22",
+      "player": "Parker Jackson-Cartwright",
+      "position": "Point guard",
+      "nationality": "United States",
+      "club": "Telekom Baskets Bonn",
+      "efficiency": 19.6
+    },
+    {
+      "season": "2022–23",
+      "player": "T. J. Shorts",
+      "position": "Point guard",
+      "nationality": "United States",
+      "club": "Telekom Baskets Bonn",
+      "efficiency": 21.1
+    },
+    {
+      "season": "2023–24",
+      "player": "Otis Livingston II",
+      "position": "Point guard",
+      "nationality": "United States",
+      "club": "Würzburg Baskets",
+      "efficiency": 21.2
+    },
+    {
+      "season": "2024–25",
+      "player": "Jhivvan Jackson",
+      "position": "Guard",
+      "nationality": "United States",
+      "club": "Würzburg Baskets",
+      "efficiency": 16.9
+    },
+    {
+      "season": "2025–26",
+      "player": "Jaedon LeDee",
+      "position": "Center",
+      "nationality": "United States",
+      "club": "Skyliners Frankfurt",
+      "efficiency": 20.2
+    }
+  ],
+  "most_improved_player": [
+    {
+      "season": "2002–03",
+      "player": "Steffen Hamann",
+      "position": "PG",
+      "nationality": "Germany",
+      "team": "Brose Baskets",
+      "award_type": "Newcomer of the Year"
+    },
+    {
+      "season": "2003–04",
+      "player": "Demond Greene",
+      "position": "SG",
+      "nationality": "Germany",
+      "team": "Bayer Giants Leverkusen",
+      "award_type": "Newcomer of the Year"
+    },
+    {
+      "season": "2004–05",
+      "player": "Anton Gavel",
+      "position": "SG",
+      "nationality": "Germany",
+      "team": "Gießen 46ers",
+      "award_type": "Newcomer of the Year"
+    },
+    {
+      "season": "2005–06",
+      "player": "Andrew Wisniewski",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Telekom Baskets Bonn",
+      "award_type": "Newcomer of the Year"
+    },
+    {
+      "season": "2006–07",
+      "player": "Je'Kel Foster",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "EnBW Ludwigsburg",
+      "award_type": "Newcomer of the Year"
+    },
+    {
+      "season": "2007–08",
+      "player": "Bobby Brown",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "ALBA Berlin",
+      "award_type": "Newcomer of the Year"
+    },
+    {
+      "season": "2008–09",
+      "player": "Rocky Trice",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "BG Göttingen",
+      "award_type": "Newcomer of the Year"
+    },
+    {
+      "season": "2009–10",
+      "player": "Taylor Rochestie",
+      "position": "SG",
+      "nationality": "Montenegro",
+      "team": "BG Göttingen",
+      "award_type": "Newcomer of the Year"
+    },
+    {
+      "season": "2010–11",
+      "player": "Philip Zwiener",
+      "position": "SF",
+      "nationality": "Germany",
+      "team": "TBB Trier",
+      "award_type": "Most Improved Player"
+    },
+    {
+      "season": "2011–12",
+      "player": "Maik Zirbes",
+      "position": "C",
+      "nationality": "Germany",
+      "team": "TBB Trier",
+      "award_type": "Most Improved Player"
+    },
+    {
+      "season": "2012–13",
+      "player": "Dennis Schröder",
+      "position": "PG",
+      "nationality": "Germany",
+      "team": "New Yorker Phantoms Braunschweig",
+      "award_type": "Most Improved Player"
+    },
+    {
+      "season": "2013–14",
+      "player": "Danilo Barthel",
+      "position": "PF",
+      "nationality": "Germany",
+      "team": "Fraport Skyliners",
+      "award_type": "Most Improved Player"
+    },
+    {
+      "season": "2014–15",
+      "player": "Johannes Voigtmann",
+      "position": "C",
+      "nationality": "Germany",
+      "team": "Fraport Skyliners",
+      "award_type": "Most Improved Player"
+    }
+  ],
+  "best_german_young_player": [
+    {
+      "season": "2001–02",
+      "player": "Marcus Goree",
+      "position": "C",
+      "nationality": "United States",
+      "team": "Skyliners Frankfurt",
+      "award_type": "Rookie of the Year"
+    },
+    {
+      "season": "2002–03",
+      "player": "Szymon Szewczyk",
+      "position": "PF",
+      "nationality": "Poland",
+      "team": "Braunschweig",
+      "award_type": "Rookie of the Year"
+    },
+    {
+      "season": "2003–04",
+      "player": "Aleksandar Ćapin",
+      "position": "PG",
+      "nationality": "Slovenia",
+      "team": "Telekom Baskets Bonn",
+      "award_type": "Rookie of the Year"
+    },
+    {
+      "season": "2004–05",
+      "player": "Koko Archibong",
+      "position": "SF",
+      "nationality": "Nigeria",
+      "team": "Brose Baskets",
+      "award_type": "Rookie of the Year"
+    },
+    {
+      "season": "2005–06",
+      "player": "Anton Gavel",
+      "position": "SG",
+      "nationality": "Germany",
+      "team": "Gießen 46ers",
+      "award_type": "Rookie of the Year"
+    },
+    {
+      "season": "2006–07",
+      "player": "Nicolai Simon",
+      "position": "SG",
+      "nationality": "Germany",
+      "team": "ALBA Berlin",
+      "award_type": "Rookie of the Year"
+    },
+    {
+      "season": "2007–08",
+      "player": "Philipp Schwethelm",
+      "position": "SF",
+      "nationality": "Germany",
+      "team": "Köln 99ers",
+      "award_type": "Rookie of the Year"
+    },
+    {
+      "season": "2008–09",
+      "player": "Per Günther",
+      "position": "PG",
+      "nationality": "Germany",
+      "team": "ratiopharm Ulm",
+      "award_type": "Rookie of the Year"
+    },
+    {
+      "season": "2009–10",
+      "player": "Tibor Pleiß",
+      "position": "C",
+      "nationality": "Germany",
+      "team": "Brose Baskets",
+      "award_type": "Rookie of the Year"
+    },
+    {
+      "season": "2010–11",
+      "player": "Tibor Pleiß",
+      "position": "C",
+      "nationality": "Germany",
+      "team": "Brose Baskets",
+      "award_type": "Best German Player Under-24"
+    },
+    {
+      "season": "2011–12",
+      "player": "Maik Zirbes",
+      "position": "C",
+      "nationality": "Germany",
+      "team": "TBB Trier",
+      "award_type": "Best German Player Under-24"
+    },
+    {
+      "season": "2012–13",
+      "player": "Dennis Schröder",
+      "position": "PG",
+      "nationality": "Germany",
+      "team": "New Yorker Phantoms Braunschweig",
+      "award_type": "Best German Player Under-24"
+    },
+    {
+      "season": "2013–14",
+      "player": "Daniel Theis",
+      "position": "C",
+      "nationality": "Germany",
+      "team": "ratiopharm ulm",
+      "award_type": "Best German Player Under-23"
+    },
+    {
+      "season": "2014–15",
+      "player": "Johannes Voigtmann",
+      "position": "C",
+      "nationality": "Germany",
+      "team": "Fraport Skyliners",
+      "award_type": "Best German Player Under-23"
+    },
+    {
+      "season": "2015–16",
+      "player": "Paul Zipser",
+      "position": "SF",
+      "nationality": "Germany",
+      "team": "Bayern Munich",
+      "award_type": "Best German Player Under-22"
+    },
+    {
+      "season": "2016–17",
+      "player": "İsmet Akpınar",
+      "position": "PG",
+      "nationality": "Germany",
+      "team": "ALBA Berlin",
+      "award_type": "Best German Player Under-22"
+    },
+    {
+      "season": "2017–18",
+      "player": "Andreas Obst",
+      "position": "G",
+      "nationality": "Germany",
+      "team": "Rockets",
+      "award_type": "Best German Player Under-22"
+    },
+    {
+      "season": "2018–19",
+      "player": "Franz Wagner",
+      "position": "F",
+      "nationality": "Germany",
+      "team": "Alba Berlin",
+      "award_type": "Best German Player Under-22"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "award_type": "Best German Player Under-22",
+      "note": "No award given due to COVID-19"
+    },
+    {
+      "season": "2020–21",
+      "player": "Justus Hollatz",
+      "position": "PG",
+      "nationality": "Germany",
+      "team": "Hamburg Towers",
+      "award_type": "Best German Player Under-22"
+    },
+    {
+      "season": "2021–22",
+      "player": "Justus Hollatz",
+      "position": "PG",
+      "nationality": "Germany",
+      "team": "Hamburg Towers",
+      "award_type": "Best German Player Under-22"
+    },
+    {
+      "season": "2022–23",
+      "player": "Malte Delow",
+      "position": "G/F",
+      "nationality": "Germany",
+      "team": "Alba Berlin",
+      "award_type": "Best German Player Under-22"
+    },
+    {
+      "season": "2023–24",
+      "player": "Johann Grünloh",
+      "position": "C",
+      "nationality": "Germany",
+      "team": "Rasta Vechta",
+      "award_type": "Best German Player Under-22"
+    },
+    {
+      "season": "2024–25",
+      "player": "Sananda Fru",
+      "position": "PF",
+      "nationality": "Germany",
+      "team": "Basketball Löwen Braunschweig",
+      "award_type": "Best German Player Under-22"
+    },
+    {
+      "season": "2025–26",
+      "player": "Jack Kayil",
+      "position": "G",
+      "nationality": "Germany",
+      "team": "Alba Berlin",
+      "award_type": "Best German Player Under-22"
+    }
+  ],
+  "coach_of_the_year": [
+    {
+      "season": "1989–90",
+      "coach": "Dirk Bauermann",
+      "nationality": "West Germany",
+      "team": "Bayer Giants Leverkusen",
+      "league_champion": true
+    },
+    {
+      "season": "1990–91",
+      "coach": "Dirk Bauermann",
+      "nationality": "Germany",
+      "team": "Bayer Giants Leverkusen",
+      "league_champion": true
+    },
+    {
+      "season": "1995–96",
+      "coach": "Svetislav Pešić",
+      "nationality": "FR Yugoslavia",
+      "team": "Alba Berlin",
+      "league_champion": false
+    },
+    {
+      "season": "1997–98",
+      "coach": "Svetislav Pešić",
+      "nationality": "FR Yugoslavia",
+      "team": "Alba Berlin",
+      "league_champion": true
+    },
+    {
+      "season": "1998–99",
+      "coach": "Svetislav Pešić",
+      "nationality": "FR Yugoslavia",
+      "team": "Alba Berlin",
+      "league_champion": true
+    },
+    {
+      "season": "1999–00",
+      "coach": "Stefan Koch",
+      "nationality": "Germany",
+      "team": "Skyliners Frankfurt",
+      "league_champion": false
+    },
+    {
+      "season": "2001–02",
+      "coach": "Emir Mutapčić",
+      "nationality": "Bosnia",
+      "team": "Alba Berlin",
+      "league_champion": true
+    },
+    {
+      "season": "2002–03",
+      "coach": "Dirk Bauermann",
+      "nationality": "Germany",
+      "team": "Brose Baskets",
+      "league_champion": false
+    },
+    {
+      "season": "2003–04",
+      "coach": "Dirk Bauermann",
+      "nationality": "Germany",
+      "team": "Brose Baskets",
+      "league_champion": false
+    },
+    {
+      "season": "2004–05",
+      "coach": "Stefan Koch",
+      "nationality": "Germany",
+      "team": "Gießen 46ers",
+      "league_champion": false
+    },
+    {
+      "season": "2005–06",
+      "coach": "Sarunas Sakalauskas",
+      "nationality": "Lithuania",
+      "team": "Eisbären Bremerhaven",
+      "league_champion": false
+    },
+    {
+      "season": "2006–07",
+      "coach": "Silvano Poropat",
+      "nationality": "Croatia",
+      "team": "EnBW Ludwigsburg",
+      "league_champion": false
+    },
+    {
+      "season": "2007–08",
+      "coach": "Achim Kuczmann",
+      "nationality": "Germany",
+      "team": "Bayer Giants Leverkusen",
+      "league_champion": false
+    },
+    {
+      "season": "2008–09",
+      "coach": "John Patrick",
+      "nationality": "United States",
+      "team": "MEG Göttingen",
+      "league_champion": false
+    },
+    {
+      "season": "2009–10",
+      "coach": "John Patrick",
+      "nationality": "United States",
+      "team": "BG Göttingen",
+      "league_champion": false
+    },
+    {
+      "season": "2010–11",
+      "coach": "Chris Fleming",
+      "nationality": "United States",
+      "team": "Brose Baskets",
+      "league_champion": true
+    },
+    {
+      "season": "2011–12",
+      "coach": "Thorsten Leibenath",
+      "nationality": "Germany",
+      "team": "ratiopharm ulm",
+      "league_champion": false
+    },
+    {
+      "season": "2012–13",
+      "coach": "Sebastian Machowski",
+      "nationality": "Germany",
+      "team": "EWE Baskets Oldenburg",
+      "league_champion": false
+    },
+    {
+      "season": "2013–14",
+      "coach": "Silvano Poropat",
+      "nationality": "Croatia",
+      "team": "Mitteldeutscher",
+      "league_champion": false
+    },
+    {
+      "season": "2014–15",
+      "coach": "Saša Obradović",
+      "nationality": "Serbia",
+      "team": "Alba Berlin",
+      "league_champion": false
+    },
+    {
+      "season": "2015–16",
+      "coach": "Gordon Herbert",
+      "nationality": "Canada",
+      "team": "Skyliners Frankfurt",
+      "league_champion": false
+    },
+    {
+      "season": "2016–17",
+      "coach": "Thorsten Leibenath",
+      "nationality": "Germany",
+      "team": "ratiopharm Ulm",
+      "league_champion": false
+    },
+    {
+      "season": "2017–18",
+      "coach": "Aíto García Reneses",
+      "nationality": "Spain",
+      "team": "Alba Berlin",
+      "league_champion": false
+    },
+    {
+      "season": "2018–19",
+      "coach": "Pedro Calles",
+      "nationality": "Spain",
+      "team": "Rasta Vechta",
+      "league_champion": false
+    },
+    {
+      "season": "2019–20",
+      "coach": null,
+      "nationality": null,
+      "team": null,
+      "league_champion": false,
+      "note": "No award given due to COVID-19"
+    },
+    {
+      "season": "2020–21",
+      "coach": "John Patrick",
+      "nationality": "United States",
+      "team": "Riesen Ludwigsburg",
+      "league_champion": false
+    },
+    {
+      "season": "2021–22",
+      "coach": "Tuomas Iisalo",
+      "nationality": "Finland",
+      "team": "Telekom Baskets Bonn",
+      "league_champion": false
+    },
+    {
+      "season": "2022–23",
+      "coach": "Tuomas Iisalo",
+      "nationality": "Finland",
+      "team": "Telekom Baskets Bonn",
+      "league_champion": false
+    },
+    {
+      "season": "2023–24",
+      "coach": "Rodrigo Pastore",
+      "nationality": "Argentina",
+      "team": "Niners Chemnitz",
+      "league_champion": false
+    },
+    {
+      "season": "2024–25",
+      "coach": "Jesús Ramírez",
+      "nationality": "Spain",
+      "team": "Basketball Löwen Braunschweig",
+      "league_champion": false
+    },
+    {
+      "season": "2025–26",
+      "coach": "Anton Gavel",
+      "nationality": "Slovakia",
+      "team": "Bamberg Baskets",
+      "league_champion": false
+    }
+  ]
+}

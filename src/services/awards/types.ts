@@ -5,9 +5,9 @@
  * multiple awards (e.g. NBA MVP + EL MVP + ACB MVP all use mvpCalc, with
  * different player pools). Branding is per-mode via `brandedAs`.
  */
-import type { NBAPlayer, NBATeam, NBAGMStat, StaffData, GameState } from '../../types';
+import type { NBAPlayer, NBATeam, NBAGMStat, StaffData, GameState, GameResult, PlayerGameStats } from '../../types';
 
-export type AwardScope = 'player' | 'coach';
+export type AwardScope = 'player' | 'coach' | 'executive';
 
 export type AwardCategory =
   | 'season'       // MVP, DPOY
@@ -16,12 +16,18 @@ export type AwardCategory =
   | 'rising'       // Rising Star (under-23), Best Young Player (under-22)
   | 'stat-leader'  // Top Scorer, Rebound Leader, PIR, etc.
   | 'coach'        // COY, Best Coach
+  | 'executive'    // Executive of the Year
   | 'all-team'     // All-League 1st/2nd/3rd
   | 'postseason';  // Finals MVP, Final Four MVP (assigned externally)
 
 export type CalculatorId =
   | 'mvp' | 'dpoy' | 'rookie' | 'young' | 'stat-leader'
   | 'pir' | 'coy' | 'all-team' | 'six-man' | 'mip'
+  | 'clutch'
+  | 'ibm' | 'comeback' | 'ironman' | 'sidekick'
+  | 'least-valuable' | 'performance' | 'consistency' | 'sharpshooter' | 'two-way'
+  | 'hustle' | 'sportsmanship' | 'teammate' | 'playoff-mvp'
+  | 'executive'
   | 'postseason'; // marker — actually written by playoff resolver
 
 export type PoolId = 'nba' | 'endesa' | 'euroleague' | 'all-active';
@@ -30,7 +36,7 @@ export type EligibilityKey =
   | 'min-games' | 'rookie-year' | 'under-22' | 'under-23'
   | 'bench-role' | 'pos-G' | 'pos-F' | 'pos-C';
 
-export type UIMode = 'nba' | 'euro_isolated' | 'pba_isolated' | 'fictional';
+export type UIMode = 'nba' | 'euro_isolated' | 'pba_isolated' | 'wnba_isolated' | 'fictional';
 
 export interface TrophyDef {
   /** Lucide icon name (e.g. 'star', 'trophy', 'flame'). */
@@ -51,9 +57,14 @@ export interface CalculatorContext {
   teams: NBATeam[];
   nonNBATeams: any[];
   season: number;
+  uiMode: UIMode;
   staff?: StaffData | null;
+  gameMode?: GameState['gameMode'];
+  userTeamId?: number | null;
+  commissionerName?: string;
   poolTids: Set<number>;
   minGames: number;
+  boxScores: GameResult[];
   /** Optional arg payload (e.g. { metric: 'pts' } for stat-leader). */
   args?: any;
 }
@@ -61,10 +72,23 @@ export interface CalculatorContext {
 export interface AwardCandidate {
   player?: NBAPlayer;
   coachName?: string;
+  executiveName?: string;
+  executiveId?: string;
   team: NBATeam;
   score: number;
   odds: string;
   stats?: NBAGMStat;
+  game?: {
+    gameId: number;
+    date: string;
+    stats: PlayerGameStats;
+    opponent: NBATeam;
+    won: boolean;
+    isPlayoff: boolean;
+    isEliminationGame: boolean;
+    isGameWinner: boolean;
+    contextBonus: number;
+  };
   // For all-team selections
   teamIndex?: number; // 0 = 1st, 1 = 2nd, 2 = 3rd
   pos?: string;
@@ -95,6 +119,10 @@ export interface AwardDefinition {
   defaultActiveIn: UIMode[];
   defaultAnnounceMD: { month: number; day: number };
   minGamesDefault: number;
+  introducedSeason?: number;
+  retiredAfterSeason?: number;
+  showInAwardRaces?: boolean;
+  showInHistoryDetail?: boolean;
   fatigueFactor?: number;
 
   /**
@@ -140,5 +168,6 @@ export interface ResolvedAward extends AwardDefinition {
 
 export type GameStateView = Pick<
   GameState,
-  'players' | 'teams' | 'nonNBATeams' | 'staff' | 'leagueStats' | 'historicalAwards'
+  'players' | 'teams' | 'nonNBATeams' | 'staff' | 'leagueStats' | 'historicalAwards' | 'boxScores'
+  | 'gameMode' | 'userTeamId' | 'commissionerName'
 >;

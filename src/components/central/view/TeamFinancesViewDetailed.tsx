@@ -2,53 +2,105 @@ import React, { useMemo, useState } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { formatCurrency, formatCurrencyWithCode } from '../../../utils/helpers';
 import { contractToUSD, formatSalaryM, getCapThresholds, getTeamPayrollUSD, getMLEAvailability } from '../../../utils/salaryUtils';
-import { ArrowLeft, AlertTriangle, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowLeft, AlertTriangle, Minus, Plus, Ticket, TrendingDown, TrendingUp } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from 'recharts';
 import { ContractTimeline } from '../../shared/ContractTimeline';
-import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode, isWnbaIsolatedMode } from '../../../utils/uiMode';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { getTeamFullName } from '../../../utils/teamNames';
+import { areNonGuaranteedContractsEnabled, areTwoWayContractsEnabled, isNonGuaranteedContract, isTwoWayContract } from '../../../utils/contractTypes';
+import { isDeadMoneyEnabled, isMleEnabled } from '../../../utils/ruleFlags';
 import { AnnualLedgerCard } from '../../tycoon/AnnualLedgerCard';
 import { SponsorshipCard } from '../../tycoon/SponsorshipCard';
 import { LedgerHistoryCard } from '../../tycoon/LedgerHistoryCard';
 import { SponsorshipNegotiationModal } from '../../tycoon/SponsorshipNegotiationModal';
-import { computeAnnualBudget } from '../../../services/tycoon/budgetEngine';
+import { buildBudgetContext, computeAnnualBudget, getEuroFinanceProjectionReadiness } from '../../../services/tycoon/budgetEngine';
 import type { SponsorshipSlot } from '../../../types/tycoon';
+import { resolveSponsorLeagueKey } from '../../../data/sponsorCatalogFetcher';
+import { getTicketPricingLevel, normalizeTicketPriceMultiplier } from '../../../services/tycoon/clubFinance';
+import { getTycoonTierBase } from '../../../services/tycoon/tierBase';
+import type { TicketPricingLevel } from '../../../types/tycoon';
+import { EuroClubContractCommitments } from './EuroClubContractCommitments';
+import { getLeagueCalendarDates } from '../../../services/leagueCalendar';
+import { formatGameDateShort } from '../../../utils/dateUtils';
+import {
+  areWnbaDevelopmentalContractsEnabled,
+  getWnbaDevelopmentalCompensationUSD,
+  getWnbaDevelopmentalContractLabel,
+} from '../../../services/wnba/developmentalContracts';
 
 const COLORS = ['#38bdf8', '#facc15', '#4ade80', '#f87171', '#c084fc', '#fb923c', '#94a3b8'];
+const TICKET_LEVEL_LABELS: Record<TicketPricingLevel, string> = {
+  community: 'Community',
+  value: 'Value',
+  standard: 'Standard',
+  premium: 'Premium',
+  elite: 'Elite',
+};
 
 export const TeamFinancesViewDetailed: React.FC = () => {
-  const { state, selectedTeamId, setCurrentView } = useGame();
+  const { state, selectedTeamId, setCurrentView, applyTycoonMutation } = useGame();
 
-  const teamId = selectedTeamId ?? state.teams[0]?.id ?? 0;
+  const pbaIsolated = isPbaIsolatedMode(state);
+  const euroIsolated = isEuroIsolatedMode(state);
+  const wnbaIsolated = isWnbaIsolatedMode(state);
+  const defaultTeamId = euroIsolated && state.userTeamId != null
+    ? state.userTeamId
+    : pbaIsolated
+    ? Number((state.nonNBATeams ?? []).find((team: any) => team?.league === 'PBA')?.tid ?? 0)
+    : state.teams[0]?.id ?? 0;
+  const teamId = selectedTeamId ?? defaultTeamId;
   const currentYear = state.leagueStats.year;
+  const nonGuaranteedGuaranteeDate = getLeagueCalendarDates(currentYear, state.leagueStats).nonGuaranteedGuaranteeDate;
+  const nonGuaranteedGuaranteeLabel = nonGuaranteedGuaranteeDate
+    ? formatGameDateShort(nonGuaranteedGuaranteeDate)
+    : null;
   const [sponsorModal, setSponsorModal] = useState<{ open: boolean; slot: SponsorshipSlot }>({ open: false, slot: 'kit' });
 
-  const { salaryCap, luxuryPayroll } = state.leagueStats;
   const capThresholds = getCapThresholds(state.leagueStats);
+  const capRulesActive = Number.isFinite(capThresholds.salaryCap);
+  const taxRulesActive = Number.isFinite(capThresholds.luxuryTax);
+  const salaryCap = capRulesActive ? capThresholds.salaryCap : 0;
+  const luxuryPayroll = taxRulesActive ? capThresholds.luxuryTax : 0;
   const { firstApron, secondApron } = capThresholds;
+  const firstApronActive = capRulesActive && Number.isFinite(firstApron);
+  const secondApronActive = capRulesActive && Number.isFinite(secondApron);
 
   const selectedTeam = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamPlayers = useMemo(
-    () => state.players.filter(p => p.tid === teamId && !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '')),
-    [state.players, teamId]
+    () => state.players.filter(p => {
+      if (p.tid !== teamId) return false;
+      if (pbaIsolated) return p.status === 'PBA';
+      if (wnbaIsolated) return p.status === 'WNBA';
+      return !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '');
+    }),
+    [state.players, teamId, pbaIsolated, wnbaIsolated]
   );
-  const twoWayPlayers = useMemo(() => teamPlayers.filter(p => !!(p as any).twoWay), [teamPlayers]);
-  const ngPlayers = useMemo(() => teamPlayers.filter(p => !!(p as any).nonGuaranteed), [teamPlayers]);
-  const standardPlayers = useMemo(() => teamPlayers.filter(p => !(p as any).twoWay && !(p as any).nonGuaranteed), [teamPlayers]);
+  const twoWayEnabled = areTwoWayContractsEnabled(state.leagueStats);
+  const developmentalActive = areWnbaDevelopmentalContractsEnabled(state.leagueStats);
+  const secondaryContractLabel = getWnbaDevelopmentalContractLabel(state.leagueStats);
+  const nonGuaranteedEnabled = areNonGuaranteedContractsEnabled(state.leagueStats);
+  const isActiveTwoWay = (player: any) => twoWayEnabled && isTwoWayContract(player, state.leagueStats);
+  const twoWayPlayers = useMemo(() => twoWayEnabled ? teamPlayers.filter(isActiveTwoWay) : [], [teamPlayers, twoWayEnabled, state.leagueStats]);
+  const ngPlayers = useMemo(() => nonGuaranteedEnabled ? teamPlayers.filter(p => isNonGuaranteedContract(p, state.leagueStats)) : [], [teamPlayers, nonGuaranteedEnabled, state.leagueStats]);
+  const standardPlayers = useMemo(() => teamPlayers.filter(p =>
+    !isActiveTwoWay(p) &&
+    (!nonGuaranteedEnabled || !isNonGuaranteedContract(p, state.leagueStats))
+  ), [teamPlayers, nonGuaranteedEnabled, isActiveTwoWay, state.leagueStats]);
 
   const payroll = useMemo(() => {
     const guaranteedPlayers = state.players.filter((p: any) =>
-      !(p.tid === teamId && p.nonGuaranteed)
+      !(nonGuaranteedEnabled && p.tid === teamId && isNonGuaranteedContract(p, state.leagueStats))
     );
-    return getTeamPayrollUSD(guaranteedPlayers, teamId, selectedTeam, currentYear);
-  }, [state.players, teamId, selectedTeam, currentYear]);
+    return getTeamPayrollUSD(guaranteedPlayers, teamId, selectedTeam, currentYear, state.leagueStats as any);
+  }, [state.players, teamId, selectedTeam, currentYear, nonGuaranteedEnabled, state.leagueStats]);
   const ngPayroll = useMemo(
     () => ngPlayers.reduce((s, p) => s + contractToUSD(p.contract?.amount || 0), 0),
     [ngPlayers],
   );
   const fullPayrollWithNG = payroll + ngPayroll;
-  const deadMoneyEntries = useMemo(() => selectedTeam?.deadMoney ?? [], [selectedTeam]);
+  const deadMoneyEnabled = isDeadMoneyEnabled(state.leagueStats);
+  const deadMoneyEntries = useMemo(() => deadMoneyEnabled ? selectedTeam?.deadMoney ?? [] : [], [deadMoneyEnabled, selectedTeam]);
   const deadMoneyThisSeason = useMemo(
     () => deadMoneyEntries.reduce((sum, e) => {
       const yr = e.remainingByYear.find(y => parseInt(y.season.split('-')[0], 10) + 1 === currentYear);
@@ -57,9 +109,8 @@ export const TeamFinancesViewDetailed: React.FC = () => {
     [deadMoneyEntries, currentYear],
   );
 
-  const capSpace = salaryCap - payroll;
-  const firstApronSpace = firstApron - payroll;
-  const secondApronSpace = secondApron - payroll;
+  const firstApronSpace = firstApronActive ? firstApron - payroll : 0;
+  const secondApronSpace = secondApronActive ? secondApron - payroll : 0;
 
   const positionData = useMemo(() => {
     const groups = { Guards: 0, Forwards: 0, Centers: 0 };
@@ -75,7 +126,7 @@ export const TeamFinancesViewDetailed: React.FC = () => {
       { name: 'Forwards', value: groups.Forwards },
       { name: 'Centers', value: groups.Centers },
     ].filter(d => d.value > 0);
-  }, [teamPlayers]);
+  }, [standardPlayers]);
 
   const playerPieData = useMemo(() =>
     [...standardPlayers]
@@ -85,12 +136,15 @@ export const TeamFinancesViewDetailed: React.FC = () => {
   );
 
   const highEarners = useMemo(() => playerPieData.filter(p => p.value >= 8_000_000), [playerPieData]);
+  const showPayrollPie = capRulesActive && payroll > 0 && positionData.length > 0 && playerPieData.length > 0;
+  const showHighEarners = capRulesActive && highEarners.length > 0;
 
   if (!selectedTeam) return null;
-  if (isEuroIsolatedMode(state)) {
+  if (euroIsolated) {
     const currency = state.leagueStats?.currency ?? 'EUR';
     const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
     const tycoon = (selectedTeam as any).tycoon;
+    const sponsorLeague = resolveSponsorLeagueKey((selectedTeam as any).conference, selectedTeam.region, selectedTeam.name);
 
     if (!tycoon) {
       return (
@@ -101,60 +155,105 @@ export const TeamFinancesViewDetailed: React.FC = () => {
       );
     }
 
-    const liveLedger = computeAnnualBudget(selectedTeam as any, {
-      year: currentYear,
-      endesaFinishPosition: (selectedTeam as any).lastEndesaFinish ?? 9,
-      euroleagueStage: (selectedTeam as any).lastEuroleagueStage ?? 'none',
-      euroleagueAwayGames: (selectedTeam as any).lastEuroAwayGames ?? 0,
-      endesaPrizeEUR: 0,
-      euroleaguePrizeEUR: 0,
-    });
+    const budgetContext = buildBudgetContext(state, Number((selectedTeam as any).id ?? (selectedTeam as any).tid));
+    const projectionReadiness = getEuroFinanceProjectionReadiness(state, teamId);
+    const pendingProjection = !projectionReadiness.matchday
+      || !projectionReadiness.sponsorship
+      || !projectionReadiness.mediaRights
+      || !projectionReadiness.travel;
+    const pendingLedger = {
+      matchday: !projectionReadiness.matchday,
+      sponsorship: !projectionReadiness.sponsorship,
+      tv: !projectionReadiness.mediaRights,
+      travel: !projectionReadiness.travel,
+      profit: pendingProjection,
+    };
+    const liveLedger = computeAnnualBudget(
+      selectedTeam as any,
+      budgetContext,
+      state.players,
+    );
 
-    const revenueTotal = liveLedger.revenue.matchday + liveLedger.revenue.sponsorship + liveLedger.revenue.prize + liveLedger.revenue.tv + liveLedger.revenue.transfer;
-    const utilizationPct = Math.round((liveLedger.expenses.wages / Math.max(revenueTotal, 1)) * 100);
+    const revenueTotal = liveLedger.revenue.matchday + (liveLedger.revenue.commercial ?? 0) + liveLedger.revenue.sponsorship + liveLedger.revenue.prize + liveLedger.revenue.tv + liveLedger.revenue.transfer;
+    const utilizationPct = pendingProjection ? null : Math.round((liveLedger.expenses.wages / Math.max(revenueTotal, 1)) * 100);
+    const canManage = Number(state.userTeamId ?? -1) === teamId;
+    const ticketMultiplier = normalizeTicketPriceMultiplier(tycoon.ticketPriceMultiplier);
+    const ticketLevel = getTicketPricingLevel(ticketMultiplier);
+    const ticketPrice = getTycoonTierBase(tycoon.tier).ticketPrice
+      * ticketMultiplier
+      * budgetContext.economyIndex;
+    const changeTicketPrice = (direction: -1 | 1) => {
+      if (!canManage) return;
+      const nextMultiplier = Math.max(0, ticketMultiplier + direction * 0.25);
+      applyTycoonMutation(teamId, team => {
+        if (!team.tycoon) return;
+        team.tycoon.ticketPricingLevel = getTicketPricingLevel(nextMultiplier);
+        team.tycoon.ticketPriceMultiplier = nextMultiplier;
+      });
+    };
 
     return (
       <div className="h-full overflow-y-auto p-4 md:p-8 bg-slate-950 text-white">
         <div className="max-w-6xl mx-auto space-y-6">
-          <button onClick={() => setCurrentView('Team Office')} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm"><ArrowLeft size={16} /> Back</button>
+          <button onClick={() => setCurrentView('League Finances')} className="flex items-center gap-2 text-slate-400 hover:text-white text-sm"><ArrowLeft size={16} /> Back to Team Finances</button>
           <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
             <div className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300">Euro Finance · Tier {tycoon.tier}</div>
             <h1 className="text-3xl font-black uppercase tracking-tight mt-2">{getTeamFullName(selectedTeam)}</h1>
-            <div className="grid md:grid-cols-3 gap-4 mt-6">
+            <div className="grid gap-4 mt-6 sm:grid-cols-2 xl:grid-cols-4">
+              <div className="rounded-2xl bg-slate-950 border border-slate-800 p-4">
+                <p className="text-xs text-slate-500 uppercase font-black">Cash on Hand</p>
+                <p className={`text-3xl font-black ${tycoon.cashOnHand >= 0 ? 'text-amber-300' : 'text-rose-400'}`}>{fmt(tycoon.cashOnHand)}</p>
+              </div>
               <div className="rounded-2xl bg-slate-950 border border-slate-800 p-4">
                 <p className="text-xs text-slate-500 uppercase font-black">Annual Wage Bill</p>
                 <p className="text-3xl font-black">{fmt(liveLedger.expenses.wages)}</p>
               </div>
               <div className="rounded-2xl bg-slate-950 border border-slate-800 p-4">
                 <p className="text-xs text-slate-500 uppercase font-black">Budget Utilization</p>
-                <p className="text-3xl font-black">{utilizationPct}%</p>
+                <p className={`text-3xl font-black ${utilizationPct == null ? 'text-sky-300' : ''}`}>{utilizationPct == null ? 'Pending' : `${utilizationPct}%`}</p>
               </div>
               <div className="rounded-2xl bg-slate-950 border border-slate-800 p-4">
                 <p className="text-xs text-slate-500 uppercase font-black">Projected Profit</p>
-                <p className={liveLedger.profit >= 0 ? 'text-3xl font-black text-emerald-400' : 'text-3xl font-black text-rose-400'}>{fmt(liveLedger.profit)}</p>
+                <p className={pendingProjection ? 'text-3xl font-black text-sky-300' : liveLedger.profit >= 0 ? 'text-3xl font-black text-emerald-400' : 'text-3xl font-black text-rose-400'}>{pendingProjection ? 'Pending' : fmt(liveLedger.profit)}</p>
+              </div>
+            </div>
+          </div>
+          <div className="rounded-2xl border border-sky-400/20 bg-slate-900/70 p-4 sm:p-5">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 items-start gap-3">
+                <div className="rounded-xl bg-sky-400/10 p-2 text-sky-300"><Ticket size={20} /></div>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-sky-300">Ticket Pricing</p>
+                  <p className="mt-1 text-lg font-black text-white">{ticketMultiplier === 0 ? 'Free admission' : TICKET_LEVEL_LABELS[ticketLevel]} · {ticketMultiplier.toFixed(2)}x · {fmt(ticketPrice)} per seat</p>
+                  <p className="mt-1 text-xs text-slate-400">Projected Matchday revenue: {projectionReadiness.matchday ? fmt(liveLedger.revenue.matchday) : 'Pending fixture release'}</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-[44px_minmax(120px,1fr)_44px] overflow-hidden rounded-xl border border-slate-700 bg-slate-950">
+                <button type="button" onClick={() => changeTicketPrice(-1)} disabled={!canManage || ticketMultiplier <= 0} aria-label="Lower ticket pricing" className="flex h-11 items-center justify-center border-r border-slate-700 text-slate-200 hover:bg-white/5 disabled:text-slate-700"><Minus size={16} /></button>
+                <div className="flex h-11 items-center justify-center px-4 text-center text-xs font-black uppercase tracking-widest text-white">{ticketMultiplier.toFixed(2)}x</div>
+                <button type="button" onClick={() => changeTicketPrice(1)} disabled={!canManage} aria-label="Raise ticket pricing" className="flex h-11 items-center justify-center border-l border-slate-700 text-slate-200 hover:bg-white/5 disabled:text-slate-700"><Plus size={16} /></button>
               </div>
             </div>
           </div>
           <div className="grid lg:grid-cols-2 gap-6">
-            <AnnualLedgerCard ledger={liveLedger} currency={currency} />
+            <AnnualLedgerCard ledger={liveLedger} currency={currency} pending={pendingLedger} />
             <div className="space-y-6">
-              <SponsorshipCard tycoon={tycoon} currency={currency} onNegotiate={(slot) => setSponsorModal({ open: true, slot })} />
+              <SponsorshipCard tycoon={tycoon} currency={currency} leagueKey={sponsorLeague} onNegotiate={canManage ? (slot) => setSponsorModal({ open: true, slot }) : undefined} />
               <LedgerHistoryCard tycoon={tycoon} currency={currency} />
             </div>
           </div>
+          <EuroClubContractCommitments tycoon={tycoon} currency={currency} currentYear={currentYear} />
           <ContractTimeline teamId={teamId} currentYear={currentYear} />
         </div>
-        <SponsorshipNegotiationModal
+        {canManage && <SponsorshipNegotiationModal
           open={sponsorModal.open}
           onClose={() => setSponsorModal({ open: false, slot: 'kit' })}
           initialSlot={sponsorModal.slot}
-        />
+        />}
       </div>
     );
   }
-
-  // MLE availability (signingUSD=0 → what's available RIGHT NOW)
-  const mleAvailBase = (state.leagueStats.mleEnabled ?? true)
+  const mleAvailBase = isMleEnabled(state.leagueStats)
     ? getMLEAvailability(teamId, payroll, 0, capThresholds, state.leagueStats as any)
     : null;
   const reservedMleUSD = ((state.faBidding?.markets ?? []) as any[])
@@ -181,13 +280,26 @@ export const TeamFinancesViewDetailed: React.FC = () => {
         : { label: `Tax MLE · ${formatSalaryM(mleAvail.available)}`, color: 'text-yellow-300', bg: 'bg-yellow-500/15 border-yellow-500/30' }
       : null;
 
-  const maxBarValue = Math.max(payroll, secondApron * 1.05);
-  const capPct = (salaryCap / maxBarValue) * 100;
-  const taxPct = ((luxuryPayroll - salaryCap) / maxBarValue) * 100;
-  const apron1Pct = ((firstApron - luxuryPayroll) / maxBarValue) * 100;
-  const apron2Pct = ((secondApron - firstApron) / maxBarValue) * 100;
+  const topThreshold = secondApronActive
+    ? secondApron
+    : firstApronActive
+      ? firstApron
+      : taxRulesActive
+        ? luxuryPayroll
+        : salaryCap;
+  const maxBarValue = capRulesActive ? Math.max(payroll, topThreshold * 1.05) : Math.max(payroll, 1);
+  const capPct = capRulesActive ? (salaryCap / maxBarValue) * 100 : 0;
+  const taxPct = taxRulesActive ? Math.max(0, ((luxuryPayroll - salaryCap) / maxBarValue) * 100) : 0;
+  const apron1Pct = firstApronActive ? Math.max(0, ((firstApron - (taxRulesActive ? luxuryPayroll : salaryCap)) / maxBarValue) * 100) : 0;
+  const apron2Pct = firstApronActive && secondApronActive ? Math.max(0, ((secondApron - firstApron) / maxBarValue) * 100) : 0;
+  const capMarkers = [
+    { left: capPct, label: 'Cap', color: 'text-[#38bdf8]', value: salaryCap },
+    ...(taxRulesActive ? [{ left: capPct + taxPct, label: 'Tax', color: 'text-[#facc15]', value: luxuryPayroll }] : []),
+    ...(firstApronActive ? [{ left: capPct + taxPct + apron1Pct, label: '1st', color: 'text-slate-400', value: firstApron }] : []),
+    ...(secondApronActive ? [{ left: capPct + taxPct + apron1Pct + apron2Pct, label: '2nd', color: 'text-orange-400', value: secondApron }] : []),
+  ];
 
-  const ApronStatus = ({ space, label }: { space: number; label: string }) => (
+  const ThresholdStatus = ({ space, label }: { space: number; label: string }) => (
     <div className="flex items-center gap-2">
       {space >= 0
         ? <TrendingDown className="w-4 h-4 text-emerald-400" />
@@ -203,7 +315,6 @@ export const TeamFinancesViewDetailed: React.FC = () => {
 
   return (
     <div className="h-full flex flex-col bg-[#1a1d24] text-slate-200">
-      {/* Header */}
       <div className="flex-shrink-0 border-b border-slate-800/50 p-4 sm:p-6">
         <div className="flex items-center gap-3 sm:gap-4 mb-0">
           <button
@@ -224,14 +335,9 @@ export const TeamFinancesViewDetailed: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Content */}
       <div className="flex-1 overflow-y-auto custom-scrollbar p-3 sm:p-6">
         <div className="max-w-7xl mx-auto space-y-4 sm:space-y-6">
-
-          {/* Top Row */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {/* Total Payroll */}
             <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
               <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 sm:mb-6 flex items-center gap-2">
                 <span className="text-slate-500">$</span> TOTAL PAYROLL
@@ -244,10 +350,23 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                   </p>
                 )}
               </div>
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm flex-wrap gap-2">
-                <ApronStatus space={firstApronSpace} label="1st Apron" />
-                <ApronStatus space={secondApronSpace} label="2nd Apron" />
-              </div>
+              {capRulesActive ? (
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between text-sm flex-wrap gap-2">
+                  {firstApronActive || secondApronActive ? (
+                    <>
+                      {firstApronActive && <ThresholdStatus space={firstApronSpace} label="1st Apron" />}
+                      {secondApronActive && <ThresholdStatus space={secondApronSpace} label="2nd Apron" />}
+                    </>
+                  ) : (
+                    <>
+                      <ThresholdStatus space={salaryCap - payroll} label="Salary Cap" />
+                      {taxRulesActive && <ThresholdStatus space={luxuryPayroll - payroll} label="Luxury Tax" />}
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="text-sm font-bold text-slate-400">No salary cap for this season.</div>
+              )}
               {mleBadge && (
                 <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-[10px] font-black uppercase tracking-widest ${mleBadge.bg} ${mleBadge.color}`}>
                   <span>⚡</span>
@@ -255,8 +374,6 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* Cap Utilization */}
             <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
               <div className="flex justify-between items-center mb-4 sm:mb-8">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
@@ -267,39 +384,35 @@ export const TeamFinancesViewDetailed: React.FC = () => {
               </div>
               <div className="overflow-x-auto">
                 <div className="min-w-[260px]">
-                  <div className="text-center text-xs text-slate-500 mb-2">
-                    Range: {formatSalaryM(salaryCap * 0.8)} → {formatSalaryM(secondApron * 1.05)}
-                  </div>
-                  <div className="relative h-8 bg-slate-800/50 rounded-full overflow-hidden mb-4 flex">
-                    <div className="h-full bg-[#38bdf8]" style={{ width: `${capPct}%` }} />
-                    <div className="h-full bg-[#facc15]" style={{ width: `${taxPct}%` }} />
-                    <div className="h-full bg-[#334155]" style={{ width: `${apron1Pct}%` }} />
-                    <div className="h-full bg-[#1e293b]" style={{ width: `${apron2Pct}%` }} />
-                  </div>
-                  <div className="relative h-14 text-xs font-medium">
-                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct}%`, transform: 'translateX(-50%)' }}>
-                      <span className="text-[#38bdf8]">Cap</span>
-                      <span className="text-slate-500">{formatSalaryM(salaryCap)}</span>
+                  {capRulesActive ? (
+                    <>
+                      <div className="text-center text-xs text-slate-500 mb-2">
+                        Range: {formatSalaryM(salaryCap * 0.8)} → {formatSalaryM(maxBarValue)}
+                      </div>
+                      <div className="relative h-8 bg-slate-800/50 rounded-full overflow-hidden mb-4 flex">
+                        <div className="h-full bg-[#38bdf8]" style={{ width: `${capPct}%` }} />
+                        {taxRulesActive && <div className="h-full bg-[#facc15]" style={{ width: `${taxPct}%` }} />}
+                        {firstApronActive && <div className="h-full bg-[#334155]" style={{ width: `${apron1Pct}%` }} />}
+                        {secondApronActive && <div className="h-full bg-[#1e293b]" style={{ width: `${apron2Pct}%` }} />}
+                      </div>
+                      <div className="relative h-14 text-xs font-medium">
+                        {capMarkers.map(marker => (
+                          <div key={marker.label} className="absolute flex flex-col items-center" style={{ left: `${marker.left}%`, transform: 'translateX(-50%)' }}>
+                            <span className={marker.color}>{marker.label}</span>
+                            <span className="text-slate-500">{formatSalaryM(marker.value)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  ) : (
+                    <div className="rounded-lg border border-slate-700/50 bg-slate-900/60 px-4 py-6 text-center text-sm font-bold text-slate-400">
+                      No salary cap for this season.
                     </div>
-                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct}%`, transform: 'translateX(-50%)' }}>
-                      <span className="text-[#facc15]">Tax</span>
-                      <span className="text-slate-500">{formatSalaryM(luxuryPayroll)}</span>
-                    </div>
-                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct}%`, transform: 'translateX(-50%)' }}>
-                      <span className="text-slate-400">1st</span>
-                      <span className="text-slate-500">{formatSalaryM(firstApron)}</span>
-                    </div>
-                    <div className="absolute flex flex-col items-center" style={{ left: `${capPct + taxPct + apron1Pct + apron2Pct}%`, transform: 'translateX(-50%)' }}>
-                      <span className="text-orange-400">2nd</span>
-                      <span className="text-slate-500">{formatSalaryM(secondApron)}</span>
-                    </div>
-                  </div>
+                  )}
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Contract Timeline */}
           <div className="bg-[#232730] rounded-xl border border-slate-800/50 overflow-hidden flex flex-col">
               <div className="p-4 sm:p-6 border-b border-slate-800/50 flex justify-between items-center">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
@@ -311,11 +424,8 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                 <ContractTimeline teamId={teamId} currentYear={currentYear} />
               </div>
             </div>
-
-          {/* Bottom Row: Pie Charts */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-            {/* Payroll Pie Breakdown */}
-            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+            {showPayrollPie && <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
               <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
@@ -359,10 +469,8 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                   ))}
                 </div>
               </div>
-            </div>
-
-            {/* High-Earners Pie */}
-            <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
+            </div>}
+            {showHighEarners && <div className="bg-[#232730] rounded-xl p-4 sm:p-6 border border-slate-800/50">
               <div className="flex justify-between items-center mb-4 sm:mb-6">
                 <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider flex items-center gap-2">
                   <img src={selectedTeam.logoUrl} className="w-4 h-4 object-contain" referrerPolicy="no-referrer" />
@@ -411,28 +519,26 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                   </div>
                 </div>
               </div>
-            </div>
+            </div>}
           </div>
-
-          {/* Two-Way + Non-Guaranteed + Dead Money panels */}
           {(twoWayPlayers.length > 0 || ngPlayers.length > 0 || deadMoneyEntries.length > 0) && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               {twoWayPlayers.length > 0 && (
                 <div className="bg-[#232730] rounded-xl p-4 border border-slate-800/50">
-                  <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3 flex items-center gap-2">
-                    <span className="w-2 h-2 rounded-full bg-sky-400 inline-block" />
-                    Two-Way Contracts
+                  <h3 className="text-xs font-bold text-violet-300 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-violet-400 inline-block" />
+                    {secondaryContractLabel} Contracts
                     <span className="text-slate-600 font-normal normal-case tracking-normal">(cap-exempt)</span>
                   </h3>
                   <div className="space-y-2">
                     {twoWayPlayers.map(p => (
                       <div key={p.internalId} className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                          <span className="text-[9px] font-black text-sky-400 bg-sky-500/10 px-1.5 py-0.5 rounded border border-sky-500/20">2W</span>
+                          <span className="text-[9px] font-black text-violet-300 bg-violet-500/15 px-1.5 py-0.5 rounded border border-violet-500/40">{developmentalActive ? 'DEV' : '2W'}</span>
                           <span className="text-sm text-slate-300">{p.name}</span>
                           <span className="text-[10px] text-slate-500">{p.pos}</span>
                         </div>
-                        <span className="text-sm font-bold text-slate-400">{formatSalaryM(contractToUSD(p.contract?.amount || 0))}</span>
+                        <span className="text-sm font-bold text-violet-300">{formatSalaryM(developmentalActive ? getWnbaDevelopmentalCompensationUSD(p, state.leagueStats) : contractToUSD(p.contract?.amount || 0))}</span>
                       </div>
                     ))}
                   </div>
@@ -443,7 +549,9 @@ export const TeamFinancesViewDetailed: React.FC = () => {
                   <h3 className="text-xs font-bold text-amber-400 uppercase tracking-wider mb-3 flex items-center gap-2">
                     <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" />
                     Non-Guaranteed
-                    <span className="text-slate-600 font-normal normal-case tracking-normal">(guarantee by Jan 10 or cut)</span>
+                    <span className="text-slate-600 font-normal normal-case tracking-normal">
+                      {nonGuaranteedGuaranteeLabel ? `(guarantee by ${nonGuaranteedGuaranteeLabel} or cut)` : '(no automatic guarantee deadline)'}
+                    </span>
                   </h3>
                   <div className="space-y-2">
                     {ngPlayers.map(p => (
@@ -496,7 +604,6 @@ export const TeamFinancesViewDetailed: React.FC = () => {
               )}
             </div>
           )}
-
         </div>
       </div>
     </div>

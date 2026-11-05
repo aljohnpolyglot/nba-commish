@@ -6,6 +6,10 @@ import {
     getDisplayAge,
     getDisplayOverall,
     getDisplayPotential,
+    getProspectDisplayPotential,
+    isGeneratedDraftFill,
+    resolveDisplayPotentialBbgm,
+    resolvePotentialBbgm,
     estimatePotentialBbgm,
     pickPlayerRating,
 } from '../store/playerRatingStore';
@@ -15,6 +19,10 @@ export {
     getDisplayAge,
     getDisplayOverall,
     getDisplayPotential,
+    getProspectDisplayPotential,
+    isGeneratedDraftFill,
+    resolveDisplayPotentialBbgm,
+    resolvePotentialBbgm,
     estimatePotentialBbgm,
     pickPlayerRating,
 };
@@ -33,13 +41,11 @@ export function getTrainingFatigueRatingMultiplier(player: Pick<Player, 'trainin
 
 export const calculatePlayerOverallForYear = (player: NBAGMPlayer, year: number): number => {
     if (!player || !player.ratings || player.ratings.length === 0) return 50;
-    const yearRating = player.ratings.find(r => r.season === year);
-    if (!yearRating) {
-        const latestRating = player.ratings[player.ratings.length - 1];
-        if(!latestRating) return 50;
-        return calculateOverallFromRating(latestRating);
-    }
-    return calculateOverallFromRating(yearRating);
+    const rating = [...player.ratings]
+        .filter(r => Number(r?.season ?? 0) <= year)
+        .sort((a, b) => Number(b?.season ?? 0) - Number(a?.season ?? 0))[0];
+    if (!rating) return 50;
+    return calculateOverallFromRating(rating);
 };
 
 export const calculatePlayerOverall = (player: NBAGMPlayer): number => {
@@ -196,16 +202,15 @@ export function calculateDisplayTeamOverall(teamId: number, players: Player[], o
 }
 
 /**
- * Minutes-weighted team strength. Each player's contribution = their 2K rating ×
- * (their minutes / 240). Bench your star to 8 mpg and they only contribute 3% to
- * team rating; play bums 40 mpg and the bum gets 17%. Star compounding bonus is
- * also scaled by the actual star's minute share — full at 30+ mpg, zero at 0.
+ * Minutes-weighted team strength using each player's share of the configured
+ * team-minute budget. Star compounding follows the actual star's minute share.
  */
 export function calculateTeamStrengthWithMinutes(
   players: Player[],
   minutes: Record<string, number>,
   currentSeason?: number,
   proficiencyBoost = 0,
+  playersOnCourt = 5,
 ): number {
   const active = players.filter(p => (minutes[p.internalId] ?? 0) > 0);
   if (active.length === 0) return 40;
@@ -236,16 +241,17 @@ export function calculateTeamStrengthWithMinutes(
     };
   });
 
-  // Pure minutes-weighted average. Cap per-player share at 20% (≈48/240) so a
+  const maximumShare = 1 / Math.max(1, playersOnCourt);
+  // Pure minutes-weighted average. Cap per-player share at one court slot so a
   // single iron-man can't fully define team strength.
   const totalMins = k2.reduce((s, x) => s + x.mins, 0) || 1;
   let baseStrength = 0;
   for (const x of k2) {
-    const share = Math.min(0.20, x.mins / totalMins);
+    const share = Math.min(maximumShare, x.mins / totalMins);
     baseStrength += x.rating * share;
   }
   // Renormalize after capping so the weights still sum to ~1
-  const totalShare = k2.reduce((s, x) => s + Math.min(0.20, x.mins / totalMins), 0) || 1;
+  const totalShare = k2.reduce((s, x) => s + Math.min(maximumShare, x.mins / totalMins), 0) || 1;
   baseStrength = baseStrength / totalShare;
 
   // Star compounding bonus — your best PLAYER (not best minutes), scaled by
@@ -266,15 +272,21 @@ export function calculateTeamStrengthWithMinutes(
 
   // Spacing synergy — 3+ shooters (tp > 60) getting real minutes
   const spacers = k2.filter(x => x.tp > 60 && x.mins > 15).length;
-  const spacingBonus = spacers >= 4 ? 3.5 : spacers >= 3 ? 2.0 : 0;
+  const spacingBonus = spacers >= Math.max(1, Math.ceil(playersOnCourt * 0.8))
+    ? 3.5
+    : spacers >= Math.max(1, Math.ceil(playersOnCourt * 0.6)) ? 2.0 : 0;
 
   // Playmaking synergy — elite passers (pss > 65) running the offense
   const playmakers = k2.filter(x => x.pss > 65 && x.mins > 20).length;
-  const playmakingBonus = playmakers >= 2 ? 2.5 : playmakers >= 1 ? 1.5 : 0;
+  const playmakingBonus = playmakers >= Math.max(1, Math.ceil(playersOnCourt * 0.4))
+    ? 2.5
+    : playmakers >= Math.max(1, Math.ceil(playersOnCourt * 0.2)) ? 1.5 : 0;
 
   // Rebounding synergy — bigs (hgt+reb composite > 62) crashing the boards
   const rebounders = k2.filter(x => (x.hgt * 2 + x.reb * 2) / 4 > 62 && x.mins > 12).length;
-  const reboundingBonus = rebounders >= 4 ? 2.0 : rebounders >= 3 ? 1.0 : 0;
+  const reboundingBonus = rebounders >= Math.max(1, Math.ceil(playersOnCourt * 0.8))
+    ? 2.0
+    : rebounders >= Math.max(1, Math.ceil(playersOnCourt * 0.6)) ? 1.0 : 0;
 
   let finalStrength = baseStrength + starAdjustment + spacingBonus + playmakingBonus + reboundingBonus + proficiencyBoost;
   finalStrength = (finalStrength - 85) * 1.6 + 85;

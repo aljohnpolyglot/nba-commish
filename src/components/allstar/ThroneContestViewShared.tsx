@@ -4,6 +4,9 @@ import { getPlayerImage } from '../central/view/bioCache';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 
+const initialsFromName = (name: unknown) =>
+  String(name ?? '').trim().split(/\s+/).filter(Boolean).map((part) => part[0]).join('') || '?';
+
 export const VoterPie: React.FC = () => (
   <div className="flex items-center justify-center flex-wrap gap-2 mb-6 text-[9px] font-black uppercase tracking-widest">
     <span className="px-2 py-1 rounded-full bg-rose-500/15 text-rose-300 border border-rose-500/30">Fan 40%</span>
@@ -33,6 +36,7 @@ export const HeroHeader: React.FC<{ phaseLabel: string; sub: string }> = ({ phas
 export const KingCallout: React.FC<{ king: any; vacated: boolean }> = ({ king, vacated }) => {
   if (!king) return null;
   const kingPortrait = getPlayerImage(king);
+  const kingName = typeof king.name === 'string' && king.name.trim() ? king.name : 'TBD';
   if (vacated) {
     return (
       <div className="rounded-2xl border-2 border-red-500/40 bg-red-950/20 p-6 flex items-center gap-4">
@@ -40,7 +44,7 @@ export const KingCallout: React.FC<{ king: any; vacated: boolean }> = ({ king, v
         <div>
           <p className="text-[10px] font-black tracking-widest text-red-300 mb-1">THRONE VACATED</p>
           <p className="text-sm text-zinc-300">
-            <PlayerNameWithHover player={king}>{king.name}</PlayerNameWithHover> cannot defend.
+            <PlayerNameWithHover player={king}>{kingName}</PlayerNameWithHover> cannot defend.
             The crown is up for grabs — anyone in the field of 16 can claim it.
           </p>
         </div>
@@ -52,10 +56,10 @@ export const KingCallout: React.FC<{ king: any; vacated: boolean }> = ({ king, v
       <div className="relative shrink-0">
         <div className="w-16 h-16 rounded-full overflow-hidden border-2 border-yellow-400 shadow-[0_0_30px_rgba(250,204,21,0.4)]">
           {kingPortrait ? (
-            <img src={kingPortrait} alt={king.name} className="w-full h-full object-cover object-top" />
+            <img src={kingPortrait} alt={kingName} className="w-full h-full object-cover object-top" />
           ) : (
             <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-400 font-black">
-              {king.name.split(' ').map((name: string) => name[0]).join('')}
+              {initialsFromName(kingName)}
             </div>
           )}
         </div>
@@ -64,7 +68,7 @@ export const KingCallout: React.FC<{ king: any; vacated: boolean }> = ({ king, v
       <div className="flex-1">
         <p className="text-[10px] font-black tracking-[0.3em] text-yellow-400 mb-1">MANDATORY TITLE DEFENSE</p>
         <p className="text-base font-black text-white">
-          <PlayerNameWithHover player={king}>{king.name}</PlayerNameWithHover> returns as the #1 seed.
+          <PlayerNameWithHover player={king}>{kingName}</PlayerNameWithHover> returns as the #1 seed.
         </p>
         <p className="text-xs text-zinc-400 mt-0.5">Auto-included in the field. Everyone else is gunning for the crown.</p>
       </div>

@@ -253,3 +253,9 @@ export const DRIVING_DUNK: Record<string, number> = {
   'Kevin Porter Jr.':     80,
 };
 
+export const PRE_DRAFT_DRIVING_DUNK: Record<string, { draftYear: number; rating: number }> = {
+  'Vince Carter': { draftYear: 1998, rating: 96 },
+  'Zach LaVine': { draftYear: 2014, rating: 94 },
+  'Aaron Gordon': { draftYear: 2014, rating: 94 },
+  'Rey Guevarra': { draftYear: 2010, rating: 99 },
+};

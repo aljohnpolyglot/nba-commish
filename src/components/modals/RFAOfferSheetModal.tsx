@@ -1,8 +1,11 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { CheckCircle, FileSignature, X } from 'lucide-react';
+import { FileSignature } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { formatContractTotalUSD } from '../../utils/salaryUtils';
+import { formatCurrencyWithCode } from '../../utils/helpers';
+import { rfaOfferSheetSalaries } from '../../services/freeAgency/rfaOfferSheetSalaries';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { getPlayerImage } from '../../utils/playerImage';
 
 export const RFAOfferSheetModal: React.FC = () => {
   const { state, dispatchAction } = useGame();
@@ -15,34 +18,37 @@ export const RFAOfferSheetModal: React.FC = () => {
     years: number;
     expiresInDays: number;
   }>;
-  const [decidedIds, setDecidedIds] = useState<Set<string>>(new Set());
-
-  const sheets = useMemo(() => pending, [pending]);
+  const submitting = useRef(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState<string>();
+  const sheets = pending;
   const isOpen = sheets.length > 0;
+  const decisionError = error ?? (state.lastOutcome?.startsWith('The offer-sheet ') ? state.lastOutcome : undefined);
+  useEffect(() => {
+    if (!isOpen) return;
+    const previousFocus = document.activeElement as HTMLElement | null;
+    dialogRef.current?.focus();
+    return () => { if (previousFocus?.isConnected) previousFocus.focus(); };
+  }, [isOpen]);
 
-  const handle = (playerId: string, decision: 'match' | 'decline') => {
-    if (decidedIds.has(playerId)) return;
-    setDecidedIds(prev => {
-      const next = new Set(prev);
-      next.add(playerId);
-      return next;
-    });
-    dispatchAction({
-      type: decision === 'match' ? 'MATCH_RFA_OFFER' : 'DECLINE_RFA_OFFER',
-      payload: { playerId },
-    } as any);
-    // Remove this entry from the queue so the modal closes once everyone's decided.
-    const remaining = pending.filter(s => s.playerId !== playerId);
-    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingRFAOfferSheets: remaining } });
+  const handle = async (playerId: string, decision: 'match' | 'decline') => {
+    if (submitting.current) return;
+    submitting.current = true;
+    setIsSubmitting(true);
+    setError(undefined);
+    try {
+      await dispatchAction({
+        type: decision === 'match' ? 'MATCH_RFA_OFFER' : 'DECLINE_RFA_OFFER',
+        payload: { playerId },
+      } as any);
+    } catch {
+      setError('The offer-sheet decision could not be completed. Please try again.');
+    } finally {
+      submitting.current = false;
+      setIsSubmitting(false);
+    }
   };
-
-  const dismiss = () => {
-    // Clear any sheets the user hasn't decided yet (they default to letting walk via the AI tick).
-    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingRFAOfferSheets: [] } });
-    setDecidedIds(new Set());
-  };
-
-  const allDecided = sheets.every(s => decidedIds.has(s.playerId));
 
   return (
     <AnimatePresence>
@@ -53,9 +59,25 @@ export const RFAOfferSheetModal: React.FC = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/90 backdrop-blur-md"
-            onClick={dismiss}
           />
           <motion.div
+            ref={dialogRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="rfa-offer-sheet-title"
+            aria-busy={isSubmitting}
+            onKeyDown={event => {
+              if (event.key !== 'Tab') return;
+              const buttons = Array.from(event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'));
+              const first = buttons[0];
+              const last = buttons.at(-1);
+              if (!first || (event.shiftKey ? document.activeElement === first : document.activeElement === last)
+                || document.activeElement === event.currentTarget) {
+                event.preventDefault();
+                (event.shiftKey ? last : first)?.focus();
+              }
+            }}
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -64,11 +86,8 @@ export const RFAOfferSheetModal: React.FC = () => {
             <div className="flex items-start justify-between gap-3 border-b border-white/10 bg-fuchsia-500/[0.06] px-4 py-4 sm:px-6">
               <div className="flex items-center gap-3">
                 <FileSignature className="w-5 h-5 text-fuchsia-400" />
-                <h3 className="text-lg font-black text-white uppercase tracking-tight">RFA Offer Sheets</h3>
+                <h3 id="rfa-offer-sheet-title" className="text-lg font-black text-white uppercase tracking-tight">RFA Offer Sheets</h3>
               </div>
-              <button onClick={dismiss} className="text-slate-500 hover:text-white transition-colors">
-                <X size={18} />
-              </button>
             </div>
 
             <div className="overflow-y-auto p-4 sm:p-6">
@@ -76,17 +95,23 @@ export const RFAOfferSheetModal: React.FC = () => {
                 Your restricted free {sheets.length === 1 ? 'agent has' : 'agents have'} a signed offer sheet from another team.
               </p>
               <p className="text-xs text-slate-500 mb-4">
-                Match the contract to retain via Bird Rights, or decline and let the offering team have him.
+                Match the contract to retain the player, or decline to let him join the offering team.
               </p>
               <div className="mb-6 max-h-72 overflow-y-auto rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/10">
                 {sheets.map(s => {
-                  const decided = decidedIds.has(s.playerId);
-                  const totalValue = formatContractTotalUSD(s.salaryUSD ?? s.annualM * 1_000_000, s.years);
+                  const totalValue = formatCurrencyWithCode(rfaOfferSheetSalaries(s.salaryUSD ?? s.annualM * 1_000_000, s.years).reduce((sum, salary) => sum + salary, 0), 'USD', false);
+                  const player = state.players.find(candidate => candidate.internalId === s.playerId);
                   return (
-                    <div key={s.playerId} className="px-3 py-2 flex items-center gap-3 text-sm">
-                      <div className="flex-1 min-w-0">
+                    <div key={s.playerId} className="px-3 py-3 flex flex-wrap items-center gap-3 text-sm">
+                      <PlayerPortrait
+                        imgUrl={player ? getPlayerImage(player) : undefined}
+                        face={(player as any)?.face}
+                        playerName={s.playerName}
+                        size={38}
+                      />
+                      <div className="flex-1 min-w-32">
                         <div className="font-bold text-white truncate">{s.playerName}</div>
-                        <div className="text-[10px] text-slate-500 flex items-center gap-2">
+                        <div className="text-xs text-slate-400 flex flex-wrap items-center gap-2">
                           <span className="text-rose-300">{s.signingTeamName}</span>
                           <span className="text-slate-600">·</span>
                           <span className="text-[#FDB927] tabular-nums">{totalValue} / {s.years}yr</span>
@@ -94,39 +119,29 @@ export const RFAOfferSheetModal: React.FC = () => {
                           <span>{s.expiresInDays}d</span>
                         </div>
                       </div>
-                      {decided ? (
-                        <span className="shrink-0 text-[10px] font-black uppercase tracking-widest text-emerald-400 px-2 py-1">
-                          Submitted
-                        </span>
-                      ) : (
-                        <div className="shrink-0 flex items-center gap-1.5">
+                        <div className="w-full flex items-center justify-end gap-2">
                           <button
                             onClick={() => handle(s.playerId, 'match')}
-                            className="px-2 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors border border-emerald-500/30"
+                            disabled={isSubmitting}
+                            aria-label={`Match offer for ${s.playerName}`}
+                            className="min-h-11 px-3 py-2 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 rounded-md text-xs font-black uppercase tracking-widest transition-colors border border-emerald-500/30 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                           >
                             Match
                           </button>
                           <button
                             onClick={() => handle(s.playerId, 'decline')}
-                            className="px-2 py-1 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors border border-rose-500/30"
+                            disabled={isSubmitting}
+                            aria-label={`Decline offer for ${s.playerName}`}
+                            className="min-h-11 px-3 py-2 bg-rose-500/15 hover:bg-rose-500/25 text-rose-300 rounded-md text-xs font-black uppercase tracking-widest transition-colors border border-rose-500/30 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white"
                           >
                             Decline
                           </button>
                         </div>
-                      )}
                     </div>
                   );
                 })}
               </div>
-              <div className="flex flex-col gap-2">
-                <button
-                  onClick={dismiss}
-                  className="flex items-center justify-center gap-2 px-4 py-3 bg-fuchsia-500 hover:bg-fuchsia-400 text-black rounded-xl font-black uppercase tracking-widest text-xs transition-colors"
-                >
-                  <CheckCircle size={14} />
-                  {allDecided ? 'Done' : 'Close'}
-                </button>
-              </div>
+              {decisionError && <p role="alert" className="text-sm text-rose-300">{decisionError}</p>}
             </div>
           </motion.div>
         </div>

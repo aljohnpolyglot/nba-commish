@@ -1,64 +1,6 @@
 import React from 'react';
 import { RADAR_AXES } from '../../services/simulation/convert2kAttributes';
 
-export const BBGM_DISPLAY_NAMES: Record<string, string> = {
-  hgt: 'Height',
-  stre: 'Strength',
-  spd: 'Speed',
-  jmp: 'Jumping',
-  endu: 'Endurance',
-  ins: 'Inside Scoring',
-  dnk: 'Dunking',
-  ft: 'Free Throw',
-  fg: 'Mid-Range',
-  tp: 'Three-Point',
-  oiq: 'Offensive IQ',
-  diq: 'Defensive IQ',
-  drb: 'Dribbling',
-  pss: 'Passing',
-  reb: 'Rebounding',
-};
-
-export const BBGM_EDITABLE_KEYS = ['stre', 'spd', 'jmp', 'endu', 'ins', 'dnk', 'ft', 'fg', 'tp', 'oiq', 'diq', 'drb', 'pss', 'reb'];
-
-export const K2_DRIVERS: { catKey: string; subIdx: number; bbgmKey: string; multiplier: number; hgtLimited?: boolean }[] = [
-  { catKey: 'OS', subIdx: 0, bbgmKey: 'ins', multiplier: 0.30 },
-  { catKey: 'OS', subIdx: 1, bbgmKey: 'fg', multiplier: 0.48 },
-  { catKey: 'OS', subIdx: 2, bbgmKey: 'tp', multiplier: 0.48 },
-  { catKey: 'OS', subIdx: 3, bbgmKey: 'ft', multiplier: 0.60 },
-  { catKey: 'OS', subIdx: 4, bbgmKey: 'oiq', multiplier: 0.60 },
-  { catKey: 'OS', subIdx: 5, bbgmKey: 'oiq', multiplier: 0.24 },
-  { catKey: 'AT', subIdx: 0, bbgmKey: 'spd', multiplier: 0.60 },
-  { catKey: 'AT', subIdx: 1, bbgmKey: 'spd', multiplier: 0.42 },
-  { catKey: 'AT', subIdx: 2, bbgmKey: 'stre', multiplier: 0.48 },
-  { catKey: 'AT', subIdx: 3, bbgmKey: 'jmp', multiplier: 0.60 },
-  { catKey: 'AT', subIdx: 4, bbgmKey: 'endu', multiplier: 0.60 },
-  { catKey: 'AT', subIdx: 5, bbgmKey: 'endu', multiplier: 0.36 },
-  { catKey: 'AT', subIdx: 6, bbgmKey: 'endu', multiplier: 0.60 },
-  { catKey: 'IS', subIdx: 0, bbgmKey: 'ins', multiplier: 0.48 },
-  { catKey: 'IS', subIdx: 1, bbgmKey: 'dnk', multiplier: 0.24, hgtLimited: true },
-  { catKey: 'IS', subIdx: 2, bbgmKey: 'dnk', multiplier: 0.54 },
-  { catKey: 'IS', subIdx: 3, bbgmKey: 'ins', multiplier: 0.48 },
-  { catKey: 'IS', subIdx: 4, bbgmKey: 'fg', multiplier: 0.36 },
-  { catKey: 'IS', subIdx: 5, bbgmKey: 'stre', multiplier: 0.36 },
-  { catKey: 'IS', subIdx: 6, bbgmKey: 'ins', multiplier: 0.18 },
-  { catKey: 'IS', subIdx: 7, bbgmKey: 'oiq', multiplier: 0.42 },
-  { catKey: 'PL', subIdx: 0, bbgmKey: 'pss', multiplier: 0.60 },
-  { catKey: 'PL', subIdx: 1, bbgmKey: 'drb', multiplier: 0.60 },
-  { catKey: 'PL', subIdx: 2, bbgmKey: 'drb', multiplier: 0.36 },
-  { catKey: 'PL', subIdx: 3, bbgmKey: 'pss', multiplier: 0.30 },
-  { catKey: 'PL', subIdx: 4, bbgmKey: 'oiq', multiplier: 0.42 },
-  { catKey: 'DF', subIdx: 0, bbgmKey: 'diq', multiplier: 0.135, hgtLimited: true },
-  { catKey: 'DF', subIdx: 1, bbgmKey: 'diq', multiplier: 0.72 },
-  { catKey: 'DF', subIdx: 2, bbgmKey: 'diq', multiplier: 0.54 },
-  { catKey: 'DF', subIdx: 3, bbgmKey: 'jmp', multiplier: 0.24, hgtLimited: true },
-  { catKey: 'DF', subIdx: 4, bbgmKey: 'diq', multiplier: 0.90 },
-  { catKey: 'DF', subIdx: 5, bbgmKey: 'diq', multiplier: 0.54 },
-  { catKey: 'DF', subIdx: 6, bbgmKey: 'diq', multiplier: 0.36, hgtLimited: true },
-  { catKey: 'RB', subIdx: 0, bbgmKey: 'reb', multiplier: 0.18, hgtLimited: true },
-  { catKey: 'RB', subIdx: 1, bbgmKey: 'reb', multiplier: 0.18, hgtLimited: true },
-];
-
 export const K2_CAT_COLORS: Record<string, string> = {
   OS: '#f97316',
   AT: '#22c55e',
@@ -101,8 +43,8 @@ export function RadarChart({ values }: { values: number[] }) {
     return { x: cx + r * Math.cos(a), y: cy + r * Math.sin(a) };
   };
   const polyPoints = (r: number) => Array.from({ length: n }, (_, i) => pt(i, r)).map(p => `${p.x},${p.y}`).join(' ');
-  const scale = (v: number) => ((v - 25) / 74) * maxR;
-  const dataPoints = values.map((v, i) => pt(i, scale(Math.max(25, Math.min(99, v)))));
+  const scale = (v: number) => Math.max(0, Math.min(100, v)) / 100 * maxR;
+  const dataPoints = values.map((v, i) => pt(i, scale(v)));
   const dataPolyStr = dataPoints.map(p => `${p.x},${p.y}`).join(' ');
   const axisLabelPt = (i: number) => pt(i, maxR + 28);
 

@@ -2,6 +2,8 @@ import { GameState, NBAPlayer as Player, NBATeam } from '../../../types';
 import { calculateSocialEngagement, formatCurrency } from '../../../utils/helpers'; // Added formatCurrency just in case
 import { SocialEngine } from '../../../services/social/SocialEngine';
 import { formatGameDateShort, parseGameDate } from '../../../utils/dateUtils';
+import { coerceInsiderPostToEra } from '../../../data/social/handles';
+import { isTwitterAvailable } from '../../../utils/mediaTimeline';
 
 export const handleSocialAndNews = async (
     state: GameState, 
@@ -12,18 +14,21 @@ export const handleSocialAndNews = async (
     daysToSimulate: number,
     endDateString: string
 ) => {
+    const socialAvailable = isTwitterAvailable(endDateString, state.leagueStats?.year);
+
     // Smarter Engagement Algorithm for Social Posts
-    if (result.newSocialPosts) {
+    if (socialAvailable && result.newSocialPosts) {
         const startDate = parseGameDate(state.date);
         const endDate = parseGameDate(endDateString);
         const timeDiff = endDate.getTime() - startDate.getTime();
         
         result.newSocialPosts = result.newSocialPosts.map((post: any) => {
-            const handle = (post.handle || '').toLowerCase();
-            const player = state.players.find(p => p.name === post.author || (handle && handle.includes(p.name.toLowerCase().replace(' ', ''))));
-            const team = state.teams.find(t => t.name === post.author || (handle && handle.includes(t.abbrev.toLowerCase())));
+            const timelinePost = coerceInsiderPostToEra(post, state.leagueType, endDateString, state.leagueStats?.year, state.leagueStats?.uiMode);
+            const handle = (timelinePost.handle || '').toLowerCase();
+            const player = state.players.find(p => p.name === timelinePost.author || (handle && handle.includes(p.name.toLowerCase().replace(' ', ''))));
+            const team = state.teams.find(t => t.name === timelinePost.author || (handle && handle.includes(t.abbrev.toLowerCase())));
             
-            const engagement = calculateSocialEngagement(post.handle, post.content, player?.overallRating);
+            const engagement = calculateSocialEngagement(timelinePost.handle, timelinePost.content, player?.overallRating);
             
             const randomOffset = Math.random() * (timeDiff + (1000 * 60 * 60 * 24));
             const postDate = new Date(startDate.getTime() + randomOffset);
@@ -33,7 +38,7 @@ export const handleSocialAndNews = async (
             postDate.setUTCHours(hours, minutes);
             
             return {
-                ...post,
+                ...timelinePost,
                 likes: engagement.likes,
                 retweets: engagement.retweets,
                 date: postDate.toISOString(),
@@ -42,12 +47,17 @@ export const handleSocialAndNews = async (
                 isNew: true
             };
         }).sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    } else if (!socialAvailable) {
+        result.newSocialPosts = [];
     } // <--- FIX: Added missing closing brace for if block
 
     const socialEngine = new SocialEngine();
     const socialDateString = formatGameDateShort(state.date);
-    const nbaPlayers = updatedPlayers.filter(p => !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || ''));
-    const newSocialPostsFromEngine = await socialEngine.generateDailyPosts(allSimResults, nbaPlayers, updatedTeams, socialDateString, daysToSimulate, state.playoffs, state.schedule, state.leagueType);
+    const activeTeamIds = new Set(updatedTeams.map(team => team.id));
+    const activeLeaguePlayers = updatedPlayers.filter(player => activeTeamIds.has(player.tid));
+    const newSocialPostsFromEngine = socialAvailable && state.leagueStats?.uiMode !== 'pba_isolated'
+        ? await socialEngine.generateDailyPosts(allSimResults, activeLeaguePlayers, updatedTeams, socialDateString, daysToSimulate, state.playoffs, state.schedule, state.leagueType, { uiMode: state.leagueStats?.uiMode })
+        : [];
 
     const newLLMPosts = (result.newSocialPosts || []).map((p: any, i: number) => ({
         ...p,

@@ -12,11 +12,27 @@ import {
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { normalizeDate, getOwnTeamId } from '../../utils/helpers';
-import { LOTTERY_PRESETS, DEFAULT_DRAFT_TYPE, computeTopKOdds } from '../../lib/lotteryPresets';
-import { RigLotteryModal } from '../modals/RigLotteryModal';
+import { getDraftLotteryDate, toISODateString } from '../../utils/dateUtils';
+import { isDraftLotteryEnabled } from '../../lib/lotteryPresets';
 import { isPbaIsolatedMode } from '../../utils/uiMode';
 import { buildPbaDraftRankingRows } from '../../services/pba/draftRules';
 import { getTeamFullName } from '../../utils/teamNames';
+import { getLotteryResultPick, normalizeLotteryRows } from '../../services/draft/lotteryOrder';
+import {
+  getPossibleLotteryPicks,
+  getSeasonLotteryOverrides,
+  lotteryOverrideStorageKey,
+} from '../../services/draft/lotteryOverrides';
+import { updateCommissionerTaskRecord } from '../../services/commissionerTasks/taskRegistry';
+import { useLeagueLabels } from '../../utils/leagueLabels';
+import { DraftCoinFlip } from './DraftCoinFlip';
+import { getDraftSeasonYearForState } from '../../services/offseason/offseasonState';
+import { buildDraftOrderFromState } from '../../services/draft/draftOrder';
+import { DraftOrderReviewPanel } from '../fantasyDraft/components/DraftOrderReviewPanel';
+import { buildDraftLotteryPool } from '../../services/draft/draftLotteryPool';
+import { getDraftLotteryActionAvailability, shouldShowDraftOrderReview } from '../../services/draft/draftLotteryAccess';
+import { isCanonicalDraftComplete } from '../../services/lifecycle/leagueSeasonLifecycle';
+import { autoRunLottery } from '../../services/logic/autoResolvers';
 
 // ─── Fanspo CSS (injected once) ──────────────────────────────────────────────
 const FANSPO_CSS = `
@@ -149,7 +165,7 @@ if (typeof document !== 'undefined' && !document.getElementById('fanspo-draft-cs
   document.head.appendChild(s);
 }
 
-// ─── Lottery runner (mirrors /lib/lottery.ts) ─────────────────────────────────
+// ─── Lottery presentation types ───────────────────────────────────────────────
 interface LotteryTeam {
   id: number;
   name: string;
@@ -164,46 +180,6 @@ interface LotteryTeam {
   tid: number;
 }
 interface LotteryResult { pick?: number; pickNumber?: number; team: LotteryTeam; change: number; }
-
-const getLotteryResultPick = (r: LotteryResult | any): number =>
-  Number(r?.pick ?? r?.pickNumber ?? 0);
-
-const getLotteryResultTid = (r: LotteryResult | any): number =>
-  Number(r?.team?.tid ?? r?.team?.id ?? r?.tid);
-
-function runLottery(teams: LotteryTeam[], chances: number[], numToPick: number): LotteryResult[] {
-  const results: LotteryResult[] = [];
-  const drawnIds = new Set<number>();
-
-  const drawTeam = () => {
-    const avail = teams.filter(t => !drawnIds.has(t.id));
-    const totalW = avail.reduce((s, t) => s + (chances[t.originalSeed - 1] || 0), 0);
-    if (!totalW) return avail[0];
-    let rnd = Math.random() * totalW;
-    for (const t of avail) {
-      rnd -= chances[t.originalSeed - 1] || 0;
-      if (rnd <= 0) return t;
-    }
-    return avail[0];
-  };
-
-  const actual = Math.min(numToPick, teams.length);
-  for (let i = 1; i <= actual; i++) {
-    const w = drawTeam();
-    drawnIds.add(w.id);
-    results.push({ pick: i, team: w, change: w.originalSeed - i });
-  }
-
-  teams
-    .filter(t => !drawnIds.has(t.id))
-    .sort((a, b) => a.originalSeed - b.originalSeed)
-    .forEach((t, idx) => {
-      const pick = idx + actual + 1;
-      results.push({ pick, team: t, change: t.originalSeed - pick });
-    });
-
-  return results;
-}
 
 // ─── Lottery Ball component ───────────────────────────────────────────────────
 interface BallProps {
@@ -230,14 +206,50 @@ const LotteryBall = ({ number, state: bs, team }: BallProps) => (
 
 export const DraftLotteryView = () => {
   const { state, dispatchAction } = useGame();
+  const labels = useLeagueLabels();
   const pbaMode = isPbaIsolatedMode(state);
-  const season = state.leagueStats?.year ?? new Date(state.date).getFullYear();
-  const activePreset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? DEFAULT_DRAFT_TYPE] ?? LOTTERY_PRESETS[DEFAULT_DRAFT_TYPE];
+  const season = getDraftSeasonYearForState(state);
+  const lotteryEnabled = isDraftLotteryEnabled(state.leagueStats?.draftType);
+  const lotteryPool = useMemo(() => buildDraftLotteryPool(state, season), [season, state]);
+  const activePreset = lotteryPool.preset;
+  const activeChances = lotteryPool.chances;
   const ownTid = getOwnTeamId(state);
   const pbaDraftRows = useMemo(
     () => buildPbaDraftRankingRows((state as any).nonNBATeams ?? [], state.boxScores ?? [], season),
     [season, state.boxScores, (state as any).nonNBATeams],
   );
+  const draftOrderReviewed = state.offseasonChecklist?.draftOrderReview === 'done';
+  const pbaOrderReviewed = state.offseasonChecklist?.draftLottery === 'done';
+  const annualOrderTeams = useMemo(
+    () => buildDraftOrderFromState(state)
+      .map((team, index) => {
+        const original = state.teams.find(candidate => candidate.id === team._originalTid);
+        const originalName = original ? getTeamFullName(original) : team._originalName;
+        return {
+          id: team.id,
+          draftSlot: index + 1,
+          name: getTeamFullName(team),
+          abbrev: team.abbrev,
+          logoUrl: team.logoUrl,
+          isUser: team.id === ownTid,
+          secondaryLabel: team._traded
+            ? `Round ${team._round} · Pick ${(index % Number(team._roundSize || 30)) + 1} · Via ${originalName}`
+            : `Round ${team._round} · Pick ${(index % Number(team._roundSize || 30)) + 1}`,
+        };
+      }),
+    [ownTid, state],
+  );
+  const confirmDraftOrder = useCallback(() => {
+    if (draftOrderReviewed) return;
+    void dispatchAction({
+      type: 'OFFSEASON_COMPLETE_PHASE',
+      payload: { row: 'draftOrderReview' },
+    } as any);
+  }, [dispatchAction, draftOrderReviewed]);
+  const confirmPbaDraftOrder = useCallback(() => {
+    if (pbaOrderReviewed) return;
+    void dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'draftLottery' } } as any);
+  }, [dispatchAction, pbaOrderReviewed]);
 
   // Resolve the CURRENT owner of a given original team's upcoming R1 pick.
   // Lottery balls are tied to record, so the "winning" team on the ball is the
@@ -258,61 +270,68 @@ export const DraftLotteryView = () => {
 
   // ─── Date gating ──────────────────────────────────────────────────────────
   const today = state.date ? normalizeDate(state.date) : '';
-  const lotteryDate = `${season}-05-14`;
+  const lotteryDate = toISODateString(getDraftLotteryDate(season, state.leagueStats));
   const isLotteryTime = today >= lotteryDate;
+  const lotteryDateLabel = getDraftLotteryDate(season, state.leagueStats).toLocaleDateString('en-US', {
+    timeZone: 'UTC',
+    month: 'long',
+    day: 'numeric',
+    year: 'numeric',
+  });
 
   const isCommissioner = state.gameMode !== 'gm';
-  const [rigLotteryOpen, setRigLotteryOpen] = useState(false);
 
   // Draft Board is now a separate nav view — no appMode toggle needed here
   const [speed, setSpeed] = useState('normal');
-  const [showHistory, setShowHistory] = useState(false);
 
   // Lazy initializers: restore from game state if lottery was already run this season
   const savedResults = (state as any).draftLotteryResult as LotteryResult[] | undefined;
-  const hasSaved = savedResults && savedResults.length > 0;
+  const hasSaved = !!savedResults?.length;
+  const savedReplayPending = Number(state.draftLotteryReplayPendingYear) === season;
   const [results, setResults] = useState<LotteryResult[]>(() => hasSaved ? savedResults! : []);
-  const [history, setHistory] = useState<LotteryResult[][]>(() => hasSaved ? [savedResults!] : []);
   const [isSimulating, setIsSimulating] = useState(false);
   // 0 = fully revealed (restored), numTeams+1 = idle (no results yet)
-  const [revealIndex, setRevealIndex] = useState<number>(() => hasSaved ? 0 : 15);
-  const [lotteryTableMode, setLotteryTableMode] = useState<'before' | 'after'>(() => hasSaved ? 'after' : 'before');
+  const [revealIndex, setRevealIndex] = useState<number>(() => hasSaved && !savedReplayPending ? 0 : 15);
+  const [lotteryTableMode, setLotteryTableMode] = useState<'before' | 'after'>(() => hasSaved && !savedReplayPending ? 'after' : 'before');
+  const seasonOverrides = useMemo(
+    () => getSeasonLotteryOverrides(state.draftLotteryOverrides, season),
+    [season, state.draftLotteryOverrides],
+  );
 
-  // Build lottery teams — capped by preset pool size, not a hard 14
-  const activeTeams: LotteryTeam[] = useMemo(() => {
-    const poolSize = Math.min(14, activePreset.chances.length);
-    const sorted = [...state.teams]
-      .filter(t => t.id >= 0 && t.id < 100)
-      .sort((a, b) => {
-        const wa = a.wins / Math.max(1, a.wins + a.losses);
-        const wb = b.wins / Math.max(1, b.wins + b.losses);
-        return wa - wb;
-      })
-      .slice(0, poolSize);
-
-    return sorted.map((t, i) => {
-      const chance = activePreset.chances[i] ?? 0;
-      const odds1st = parseFloat(((chance / activePreset.total) * 100).toFixed(1));
-      const oddsTopN = parseFloat((computeTopKOdds(activePreset.chances, i, activePreset.numToPick) * 100).toFixed(1));
-      const gp = t.wins + t.losses;
-      const winPct = gp > 0 ? (t.wins / gp).toFixed(3) : '.000';
-      return {
-        id: t.id,
-        tid: t.id,
-        name: t.name,
-        city: t.region ?? t.name,
-        logoUrl: t.logoUrl ?? '',
-        record: `${t.wins}-${t.losses}`,
-        winPct,
-        odds1st,
-        oddsTopN,
-        color: t.colors?.[0] ?? '#333333',
-        originalSeed: i + 1,
-      };
-    });
-  }, [state.teams, activePreset]);
+  const activeTeams: LotteryTeam[] = lotteryPool.teams;
 
   const numTeams = activeTeams.length;
+  const lotteryPoolReady = numTeams >= Math.min(2, activePreset.chances.length);
+  const lotteryAction = getDraftLotteryActionAvailability({
+    dateReached: isLotteryTime,
+    poolReady: lotteryPoolReady,
+    hasSavedResult: hasSaved,
+    replayPending: savedReplayPending,
+    draftComplete: isCanonicalDraftComplete(state),
+    checklistStatus: state.offseasonChecklist?.draftLottery,
+  });
+  const isCoinFlip = numTeams === 2 && activePreset.numToPick === 1;
+  const coinFlipDurationMs = ({
+    fastest: 500,
+    normal: 1000,
+    slow: 1500,
+    slower: 2200,
+    dramatic: 3500,
+  } as Record<string, number>)[speed] ?? 1000;
+  const coinTeams = useMemo(
+    () => activeTeams.map(team => {
+      const { owner } = resolveOwner(team.tid);
+      return {
+        tid: team.tid,
+        name: getTeamFullName(owner) || team.name,
+        logoUrl: owner?.logoUrl ?? team.logoUrl,
+        abbrev: owner?.abbrev,
+        odds: team.odds1st,
+      };
+    }),
+    [activeTeams, resolveOwner],
+  );
+  const coinWinnerTid = results.find(result => getLotteryResultPick(result) === 1)?.team.tid;
   const canShowAfterTable = results.length > 0 || revealIndex <= numTeams;
   const activeTableMode = canShowAfterTable ? lotteryTableMode : 'before';
 
@@ -336,20 +355,75 @@ export const DraftLotteryView = () => {
 
   const getBallTeam = (n: number): LotteryTeam | undefined => {
     if (revealIndex > numTeams) return undefined;
-    if (n > revealIndex || revealIndex === 0) return results.find(r => getLotteryResultPick(r) === n)?.team;
+    if (n >= revealIndex || revealIndex === 0) return results.find(r => getLotteryResultPick(r) === n)?.team;
     return undefined;
   };
 
+  const setTargetPick = useCallback((tid: number, rawValue: string) => {
+    const storageKey = lotteryOverrideStorageKey(season, tid);
+    const next = { ...(state.draftLotteryOverrides ?? {}) };
+    delete next[storageKey];
+    const targetPick = Number(rawValue);
+    if (Number.isFinite(targetPick) && targetPick > 0) {
+      for (const key of Object.keys(next)) {
+        if (key.startsWith(`${season}:`) && Number(next[key]) === targetPick) delete next[key];
+      }
+      next[storageKey] = targetPick;
+    }
+    dispatchAction({ type: 'UPDATE_STATE', payload: { draftLotteryOverrides: next } } as any);
+  }, [dispatchAction, season, state.draftLotteryOverrides]);
+
   const startSimulation = useCallback(() => {
-    if (isSimulating) return;
+    if (isSimulating || !lotteryAction.canRun) return;
     setIsSimulating(true);
-    const newResults = runLottery(activeTeams, activePreset.chances, activePreset.numToPick);
+    const lotteryPatch = hasSaved ? {} : autoRunLottery(state);
+    const newResults = hasSaved
+      ? savedResults!
+      : (lotteryPatch.draftLotteryResult as LotteryResult[] | undefined) ?? [];
+    if (newResults.length === 0) {
+      setIsSimulating(false);
+      return;
+    }
     setResults(newResults);
     setLotteryTableMode('after');
 
-    // Save to game state immediately — animation is purely visual.
-    // This ensures results survive view switches mid-animation.
-    dispatchAction({ type: 'UPDATE_STATE' as any, payload: { draftLotteryResult: newResults } });
+    if (!hasSaved) {
+      const stateWithResult = { ...state, ...lotteryPatch };
+      dispatchAction({
+        type: 'UPDATE_STATE' as any,
+        payload: {
+          ...lotteryPatch,
+          ...(state.gameMode !== 'gm'
+            ? {
+                commissionerTasks: updateCommissionerTaskRecord(
+                  stateWithResult,
+                  'draft_lottery',
+                  'resolved',
+                  { officialResultSaved: true },
+                ),
+              }
+            : {}),
+        },
+      });
+    }
+
+    const finishSavedReplay = () => {
+      if (!savedReplayPending) return;
+      void (async () => {
+        await dispatchAction({ type: 'UPDATE_STATE', payload: { draftLotteryReplayPendingYear: undefined } });
+        await dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'draftLottery' } });
+      })();
+    };
+
+    if (isCoinFlip) {
+      setRevealIndex(1);
+      setTimeout(() => {
+        setIsSimulating(false);
+        setRevealIndex(0);
+        finishSavedReplay();
+      }, coinFlipDurationMs);
+      return;
+    }
 
     const speedMs: Record<string, number> = { fastest: 100, normal: 300, slow: 500, slower: 1000, dramatic: 3000 };
     const interval = speedMs[speed] ?? 300;
@@ -362,13 +436,13 @@ export const DraftLotteryView = () => {
       if (current < 1) {
         clearInterval(timer);
         setIsSimulating(false);
-        setHistory(prev => [newResults, ...prev].slice(0, 10));
         setRevealIndex(0);
+        finishSavedReplay();
       } else {
         setRevealIndex(current);
       }
     }, interval);
-  }, [isSimulating, speed, activeTeams, numTeams, dispatchAction]);
+  }, [coinFlipDurationMs, dispatchAction, hasSaved, isCoinFlip, isSimulating, lotteryAction.canRun, numTeams, savedReplayPending, savedResults, speed, state]);
 
   const reset = () => {
     setResults([]);
@@ -382,14 +456,42 @@ export const DraftLotteryView = () => {
     if (activeTableMode === 'before' || revealIndex > numTeams) {
       return activeTeams.map((t, i) => ({ currentPick: i + 1, team: t, isRevealed: false, change: 0 }));
     }
-    const revealedPicks = revealIndex === 0 ? results : results.filter(r => getLotteryResultPick(r) >= revealIndex);
-    const revealedTids = new Set(revealedPicks.map(getLotteryResultTid).filter(Number.isFinite));
+    const finalRows = normalizeLotteryRows(activeTeams, results);
+    const revealedPicks = revealIndex === 0
+      ? finalRows
+      : finalRows.filter(row => row.isFromResult && row.currentPick >= revealIndex);
+    const revealedTids = new Set(revealedPicks.map(row => row.team.tid).filter(Number.isFinite));
     const unrevealed = activeTeams.filter(t => !revealedTids.has(t.tid));
     return [
       ...unrevealed.map((t, i) => ({ currentPick: i + 1, team: t, isRevealed: false, change: 0 })),
-      ...revealedPicks.sort((a, b) => getLotteryResultPick(a) - getLotteryResultPick(b)).map(r => ({ currentPick: getLotteryResultPick(r), team: r.team, isRevealed: true, change: r.change })),
+      ...revealedPicks.map(row => ({ currentPick: row.currentPick, team: row.team, isRevealed: true, change: row.change })),
     ];
   }, [activeTableMode, revealIndex, results, activeTeams, numTeams]);
+
+  // Draft Order Review is a one-time offseason task. The permanent Draft
+  // Lottery route must keep showing its saved before/after result afterward.
+  const orderReviewAvailable = shouldShowDraftOrderReview(
+    pbaMode,
+    state.offseasonChecklist?.draftOrderReview,
+  );
+
+  if (orderReviewAvailable) {
+    return (
+      <div className="flex h-full flex-col overflow-hidden bg-slate-950 text-white">
+        <DraftOrderReviewPanel
+          teams={annualOrderTeams}
+          eyebrow="NBA Draft · Draft Order Review · Offseason"
+          title={`${season} Draft Order`}
+          description="Review the official Draft order before the Draft begins. Current pick ownership, traded picks, and both rounds remain in effect."
+          footerLabel="Official two-round order"
+          primaryLabel={draftOrderReviewed ? 'Draft Order Confirmed' : 'Proceed to Draft'}
+          primaryDisabled={draftOrderReviewed || annualOrderTeams.length === 0}
+          userDraftSlots={annualOrderTeams.filter(team => team.isUser).map(team => team.draftSlot)}
+          onPrimary={confirmDraftOrder}
+        />
+      </div>
+    );
+  }
 
   if (pbaMode) {
     return (
@@ -492,6 +594,19 @@ export const DraftLotteryView = () => {
                 </table>
               </div>
             </article>
+            <div className="mt-5 flex flex-col gap-3 rounded-sm border border-white/10 bg-[#141415] p-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs leading-relaxed text-white/55">
+                The final order follows the weighted reverse standings from all three conferences.
+              </p>
+              <button
+                type="button"
+                onClick={confirmPbaDraftOrder}
+                disabled={pbaOrderReviewed || pbaDraftRows.length === 0}
+                className="min-h-11 w-full rounded-sm bg-[#f15a22] px-6 py-3 text-xs font-black uppercase tracking-widest text-white transition-colors hover:bg-[#d44a1a] disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-white/35 sm:w-auto"
+              >
+                {pbaOrderReviewed ? 'Draft Order Confirmed' : 'Confirm Draft Order'}
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -508,7 +623,7 @@ export const DraftLotteryView = () => {
             <div className="flex justify-between items-center py-4">
               <div>
                 <h4 className="tss-u92z5m-headerTitle text-2xl md:text-3xl">
-                  {season} NBA Draft Lottery
+                  {season} {labels.draftLottery}
                 </h4>
               </div>
             </div>
@@ -539,29 +654,7 @@ export const DraftLotteryView = () => {
                   <div className="h-9 bg-transparent border border-[#333] text-xs font-bold text-white/40 px-3 rounded-md flex items-center">
                     {activePreset.label}
                   </div>
-                  {/* Commissioner rig button — only before lottery runs */}
-                  {isCommissioner && !savedResults && (
-                    <button
-                      onClick={() => setRigLotteryOpen(true)}
-                      className="h-9 bg-violet-600/20 border border-violet-500/40 hover:bg-violet-600/30 text-violet-300 text-xs font-bold px-3 rounded-md transition-colors"
-                    >
-                      Rig Lottery
-                    </button>
-                  )}
                 </div>
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <span className="text-xs font-bold text-white/60 uppercase">
-                    Show History {history.length > 0 && `(${history.length})`}
-                  </span>
-                  <div
-                    onClick={() => history.length > 0 && setShowHistory(v => !v)}
-                    className={`relative w-8 h-[18px] rounded-full border border-transparent transition-colors cursor-pointer ${
-                      showHistory && history.length > 0 ? 'bg-[#f15a22]' : 'bg-zinc-700'
-                    } ${history.length === 0 ? 'opacity-40 cursor-not-allowed' : ''}`}
-                  >
-                    <div className={`absolute top-0.5 size-3.5 bg-white rounded-full transition-transform ${showHistory && history.length > 0 ? 'translate-x-[calc(100%-2px)]' : 'translate-x-0'}`} />
-                  </div>
-                </label>
               </div>
             </div>
           </div>
@@ -578,46 +671,76 @@ export const DraftLotteryView = () => {
                   <section className="bg-[#030303] py-8">
                     <div className="text-center mb-6">
                       <p className="text-[10px] text-white/40 uppercase tracking-widest">
-                        {season} NBA Draft Lottery · {activePreset.label} · Top {activePreset.numToPick} pick{activePreset.numToPick !== 1 ? 's' : ''} drawn
+                        {season} {labels.draftLottery} · {activePreset.label} · Top {activePreset.numToPick} pick{activePreset.numToPick !== 1 ? 's' : ''} drawn
                       </p>
                     </div>
 
-                    <div className="fanspo-ball-container max-w-4xl mx-auto">
-                      {Array.from({ length: numTeams }, (_, i) => {
-                        const n = i + 1;
-                        const resultTeam = getBallTeam(n);
-                        const resolved = resultTeam ? resolveOwner(resultTeam.tid) : null;
-                        const displayTeam = resolved?.owner ? { ...resultTeam, ...resolved.owner, logoUrl: resolved.owner.logoUrl ?? resultTeam?.logoUrl } : resultTeam;
-                        return (
-                          <LotteryBall key={n} number={n} state={getBallState(n)} team={displayTeam} />
-                        );
-                      })}
-                    </div>
+                    {!lotteryPoolReady ? (
+                      <div className="mx-auto max-w-xl rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-5 py-8 text-center">
+                        <p className="text-sm font-black uppercase tracking-widest text-amber-200">
+                          Lottery field not ready
+                        </p>
+                        <p className="mt-2 text-xs leading-relaxed text-white/55">
+                          Complete the qualifying seasons before the draft lottery can be held.
+                        </p>
+                      </div>
+                    ) : isCoinFlip ? (
+                      <DraftCoinFlip
+                        teams={coinTeams}
+                        winnerTid={coinWinnerTid}
+                        flipping={isSimulating}
+                        durationMs={coinFlipDurationMs}
+                      />
+                    ) : (
+                      <div className="fanspo-ball-container max-w-4xl mx-auto">
+                        {Array.from({ length: numTeams }, (_, i) => {
+                          const n = i + 1;
+                          const resultTeam = getBallTeam(n);
+                          const resolved = resultTeam ? resolveOwner(resultTeam.tid) : null;
+                          const displayTeam = resolved?.owner ? { ...resultTeam, ...resolved.owner, logoUrl: resolved.owner.logoUrl ?? resultTeam?.logoUrl } : resultTeam;
+                          return (
+                            <LotteryBall key={n} number={n} state={getBallState(n)} team={displayTeam} />
+                          );
+                        })}
+                      </div>
+                    )}
 
                     <div className="flex flex-col items-center gap-3 mt-8">
-                      {!isLotteryTime && revealIndex > numTeams && (
+                      {lotteryAction.reason === 'not-open' && revealIndex > numTeams && (
                         <p className="text-yellow-400/70 text-xs font-black uppercase tracking-widest">
-                          Lottery draws on May 14, {season}
+                          Lottery draws on {lotteryDateLabel}
+                        </p>
+                      )}
+                      {lotteryAction.reason === 'complete' && revealIndex > numTeams && (
+                        <p className="text-white/45 text-xs font-black uppercase tracking-widest">
+                          This lottery has already passed
                         </p>
                       )}
                     <div className="flex justify-center gap-4">
                       {revealIndex > numTeams ? (
                         <button
                           onClick={startSimulation}
-                          disabled={!isLotteryTime}
+                          disabled={!lotteryAction.canRun}
                           className={`text-white font-bold uppercase rounded-sm px-10 py-3 text-sm transition-colors ${
-                            isLotteryTime
+                            lotteryAction.canRun
                               ? 'bg-[#f15a22] hover:bg-[#d44a1a]'
                               : 'bg-[#333] cursor-not-allowed opacity-50'
                           }`}
                         >
-                          Start Lottery
+                          {savedReplayPending ? 'Start Lottery' : hasSaved ? 'Replay Lottery' : lotteryAction.reason === 'complete' ? 'Lottery Complete' : isCoinFlip ? 'Flip Coin' : 'Start Lottery'}
                         </button>
                       ) : revealIndex === 0 ? (
-                        null
+                        hasSaved ? (
+                          <button
+                            onClick={startSimulation}
+                            className="rounded-sm border border-white/15 bg-white/5 px-8 py-2.5 text-xs font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/10"
+                          >
+                            Replay Lottery
+                          </button>
+                        ) : null
                       ) : (
                         <button disabled className="bg-[#333] text-white/40 font-bold uppercase rounded-sm px-10 py-3 text-sm cursor-not-allowed">
-                          Simulating…
+                          {isCoinFlip ? 'Flipping…' : 'Simulating…'}
                         </button>
                       )}
                     </div>
@@ -628,7 +751,9 @@ export const DraftLotteryView = () => {
                   <article className="bg-[#1A1A1A] rounded-sm overflow-hidden">
                     <div className="p-4 flex items-center justify-between gap-3 border-b border-white/5">
                       <h6 className="text-sm font-bold uppercase tracking-widest">
-                        {activeTableMode === 'before' ? 'Before Lottery' : 'After Lottery'}
+                        {activeTableMode === 'before'
+                          ? isCoinFlip ? 'Before Flip' : 'Before Lottery'
+                          : isCoinFlip ? 'After Flip' : 'After Lottery'}
                       </h6>
                       {canShowAfterTable && (
                         <div className="flex rounded-sm border border-white/10 overflow-hidden">
@@ -658,6 +783,44 @@ export const DraftLotteryView = () => {
                       )}
                     </div>
 
+                    {isCommissioner && (
+                      <div className="mb-4 space-y-2 rounded-xl border border-white/10 bg-black/20 p-3 md:hidden">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/50">Lottery targets</p>
+                        {activeTeams.map(team => {
+                          const { owner } = resolveOwner(team.tid);
+                          const teamIndex = activeTeams.findIndex(entry => entry.tid === team.tid);
+                          const possiblePicks = getPossibleLotteryPicks(
+                            activeChances,
+                            teamIndex,
+                            activePreset.numToPick,
+                          );
+                          const selectedTarget = seasonOverrides[team.tid];
+                          const claimedTargets = new Set(
+                            Object.entries(seasonOverrides)
+                              .filter(([tid]) => Number(tid) !== team.tid)
+                              .map(([, pick]) => pick),
+                          );
+                          return (
+                            <label key={team.tid} className="flex items-center justify-between gap-3 rounded-lg bg-white/[0.04] p-2">
+                              <span className="min-w-0 truncate text-xs font-bold text-white">{getTeamFullName(owner) || team.name}</span>
+                              <select
+                                aria-label={`Target pick for ${getTeamFullName(owner) || team.name}`}
+                                value={selectedTarget ?? ''}
+                                onChange={event => setTargetPick(team.tid, event.target.value)}
+                                disabled={!!hasSaved || isSimulating || activeTableMode !== 'before'}
+                                className="h-9 min-w-24 rounded-md border border-white/15 bg-black/50 px-2 text-xs font-bold text-white outline-none disabled:cursor-not-allowed disabled:opacity-45"
+                              >
+                                <option value="">No target</option>
+                                {possiblePicks
+                                  .filter(pick => !claimedTargets.has(pick) || pick === selectedTarget)
+                                  .map(pick => <option key={pick} value={pick}>#{pick}</option>)}
+                              </select>
+                            </label>
+                          );
+                        })}
+                      </div>
+                    )}
+
                     <div className="mui-1auy16m">
                       <table className="tss-p9ljn4-table">
                         <thead>
@@ -667,6 +830,7 @@ export const DraftLotteryView = () => {
                             <th>PCT</th>
                             <th>TOP {activePreset.numToPick}</th>
                             <th>1ST</th>
+                            {isCommissioner && <th className="hidden md:table-cell">TARGET</th>}
                             <th className="text-right">ODDS</th>
                           </tr>
                         </thead>
@@ -679,6 +843,18 @@ export const DraftLotteryView = () => {
                               const displayCity = owner?.region ?? owner?.name ?? team.city;
                               const displayFallback = (owner?.abbrev ?? team.city?.slice(0, 3) ?? '').toUpperCase();
                               const isOwn = ownTid !== null && currentOwnerTid === ownTid;
+                              const teamIndex = activeTeams.findIndex(entry => entry.tid === team.tid);
+                              const possiblePicks = getPossibleLotteryPicks(
+                                activeChances,
+                                teamIndex,
+                                activePreset.numToPick,
+                              );
+                              const selectedTarget = seasonOverrides[team.tid];
+                              const claimedTargets = new Set(
+                                Object.entries(seasonOverrides)
+                                  .filter(([tid]) => Number(tid) !== team.tid)
+                                  .map(([, pick]) => pick),
+                              );
                               return (
                                 <motion.tr
                                   layout
@@ -736,6 +912,24 @@ export const DraftLotteryView = () => {
                                   <td className="text-center font-mono text-white/60">{team.winPct}</td>
                                   <td className="text-center font-mono text-white/60">{team.oddsTopN}%</td>
                                   <td className="text-center font-mono text-white/60">{team.odds1st}%</td>
+                                  {isCommissioner && (
+                                    <td className="hidden text-center md:table-cell">
+                                      <select
+                                        aria-label={`Target pick for ${displayCity}`}
+                                        value={selectedTarget ?? ''}
+                                        onChange={event => setTargetPick(team.tid, event.target.value)}
+                                        disabled={!!hasSaved || isSimulating || activeTableMode !== 'before'}
+                                        className="h-8 min-w-20 rounded-md border border-white/15 bg-black/40 px-2 text-xs font-bold text-white outline-none disabled:cursor-not-allowed disabled:opacity-45"
+                                      >
+                                        <option value="">No target</option>
+                                        {possiblePicks
+                                          .filter(pick => !claimedTargets.has(pick) || pick === selectedTarget)
+                                          .map(pick => (
+                                            <option key={pick} value={pick}>#{pick}</option>
+                                          ))}
+                                      </select>
+                                    </td>
+                                  )}
                                   <td className="text-right">
                                     <button className="text-white/20 hover:text-white p-1">
                                       <Info size={16} />
@@ -751,58 +945,12 @@ export const DraftLotteryView = () => {
                   </article>
                 </div>
 
-                {/* HISTORY */}
-                <div className="space-y-6">
-                  <AnimatePresence>
-                    {showHistory && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 20 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        exit={{ opacity: 0, y: 20 }}
-                        className="space-y-4"
-                      >
-                        <div className="flex items-center justify-between">
-                          <h4 className="font-bold text-[10px] uppercase tracking-[0.2em] text-white/40">Recent Sims</h4>
-                          <button onClick={() => setHistory([])} className="text-[10px] h-6 text-white/20 font-bold hover:text-white">CLEAR</button>
-                        </div>
-                        <div className="space-y-2">
-                          {history.map((sim, i) => (
-                            <div key={i} className="bg-[#1A1A1A] p-4 border-l-4 border-[#f15a22]">
-                              <div className="flex justify-between items-center mb-3">
-                                <span className="text-[10px] font-bold text-white/40 uppercase">Sim #{history.length - i}</span>
-                                <span className="text-[10px] font-bold text-[#f15a22] uppercase tracking-wider">{sim[0].team.name} WINS</span>
-                              </div>
-                              <div className="flex gap-2">
-                                {sim.slice(0, 4).map((r, j) => (
-                                  <div key={j} className="w-9 h-9 rounded-full bg-black/40 flex items-center justify-center p-1.5 border border-white/5">
-                                    {r.team.logoUrl
-                                      ? <img src={r.team.logoUrl} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
-                                      : <span className="text-[8px] font-black text-white/40">{r.team.id}</span>}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
               </div>
             )}
           </div>
         </main>
       </div>
 
-      {rigLotteryOpen && (
-        <RigLotteryModal
-          onClose={() => setRigLotteryOpen(false)}
-          onConfirm={(riggedTid) => {
-            setRigLotteryOpen(false);
-            dispatchAction({ type: 'RIG_LOTTERY' as any, payload: { riggedTid } });
-          }}
-        />
-      )}
     </div>
   );
 };

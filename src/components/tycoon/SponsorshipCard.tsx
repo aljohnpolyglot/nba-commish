@@ -4,15 +4,16 @@ import type { TycoonState, SponsorshipSlot } from '../../types/tycoon';
 import { formatCurrencyWithCode } from '../../utils/helpers';
 import { HelpIconPopover } from './HelpIconPopover';
 import { SponsorLogo } from './SponsorLogo';
-import { getBrandMeta } from '../../data/sponsorCatalogFetcher';
+import { getBrandMeta, type LeagueKey } from '../../data/sponsorCatalogFetcher';
 
 interface Props {
   tycoon: TycoonState;
   currency: string;
-  onNegotiate: (slot: SponsorshipSlot) => void;
+  onNegotiate?: (slot: SponsorshipSlot) => void;
   onTicketMultChange?: (mult: number) => void;
   avgOpponentPrestige?: number;
   marqueeOpponents?: string[];
+  leagueKey?: LeagueKey;
 }
 
 const SLOT_LABELS: Partial<Record<SponsorshipSlot, string>> = {
@@ -26,7 +27,7 @@ const SLOT_LABELS: Partial<Record<SponsorshipSlot, string>> = {
   practice: 'Practice',
 };
 
-export const SponsorshipCard: React.FC<Props> = ({ tycoon, currency, onNegotiate }) => {
+export const SponsorshipCard: React.FC<Props> = ({ tycoon, currency, onNegotiate, leagueKey = 'spain' }) => {
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
   const sponsorships = tycoon.sponsorships ?? {};
   return (
@@ -39,7 +40,7 @@ export const SponsorshipCard: React.FC<Props> = ({ tycoon, currency, onNegotiate
             <>
               <p>Three independent slots: <strong>Kit</strong> (trikotbrust), <strong>Sleeve</strong>, and <strong>Stadium</strong> (naming rights). Each has its own multi-year deal.</p>
               <p>When a deal runs out (Years left = 0), the row opens in the offseason. Accept the market offer or decline — declining drops you to a default fallback worth ~50% of your tier floor.</p>
-              <p>Sponsors pay more after sporting success: Endesa top-4 finishes and EuroLeague Final Four runs boost your next renewal by up to +45%.</p>
+              <p>Sponsors pay more after domestic success and deep continental runs, boosting your next renewal by up to +45%.</p>
             </>
           }
         />
@@ -52,16 +53,16 @@ export const SponsorshipCard: React.FC<Props> = ({ tycoon, currency, onNegotiate
             <div key={slot} className={`rounded-xl border p-3 ${expired ? 'border-amber-500/50 bg-amber-500/5' : 'border-slate-700 bg-slate-900/40'}`}>
               <div className="flex justify-between items-start mb-1">
                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-500">{SLOT_LABELS[slot]}</span>
-                <button
+                {onNegotiate && <button
                   onClick={() => onNegotiate(slot)}
                   className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded ${expired ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
                 >
                   {expired ? 'Renew Available →' : 'Negotiate'}
-                </button>
+                </button>}
               </div>
               {s ? (
                 <div className="flex items-center gap-2.5">
-                  <SponsorLogo name={s.sponsor} meta={getBrandMeta('spain', s.sponsor)} industry={s.industry ?? 'generic'} size={36} />
+                  <SponsorLogo name={s.sponsor} meta={getBrandMeta(leagueKey, s.sponsor)} industry={s.industry ?? 'generic'} size={36} />
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-white truncate">{s.sponsor}</p>
                     <p className="text-xs text-slate-400">{fmt(s.valuePerYear)}/yr · <span className={s.yearsRemaining === 1 ? 'text-amber-300' : 'text-slate-400'}>{s.yearsRemaining}y left</span></p>

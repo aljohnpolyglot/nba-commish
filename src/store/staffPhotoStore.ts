@@ -9,6 +9,10 @@ import {
   getNBA2KCoach,
 } from '../services/staffService';
 import { deterministicStaffImageId, getStaffImageUrl } from '../utils/staffPortrait';
+import {
+  getCachedNbaEraPortraitCandidates,
+  getCachedNbaHistoricalStaffPortraitCandidates,
+} from '../services/nbaEraPortraitCatalog';
 
 type StaffPhotoStatus = 'idle' | 'loading' | 'ready' | 'error';
 
@@ -20,6 +24,7 @@ interface StaffPhotoState {
 }
 
 let loadPromise: Promise<void> | null = null;
+const PREFER_PLAYER_PORTRAIT = new Set(['don nelson']);
 
 export function isGeneratedRealGmPhoto(url?: string | null): boolean {
   return !!url && url.includes('basketball.realgm.com/images/nba/4.2/profiles/photos/2006/');
@@ -32,10 +37,16 @@ export function sanitizeStaffPhotoUrl(url?: string | null): string | undefined {
 
 export function resolveCoachPortrait(name?: string, savedPortrait?: string | null): string | undefined {
   const coachName = name ?? '';
-  return getPrimaryCoachPhoto(coachName)
+  const saved = sanitizeStaffPhotoUrl(savedPortrait);
+  const preferredPlayerPortrait = PREFER_PLAYER_PORTRAIT.has(coachName.trim().toLowerCase())
+    ? saved ?? getCachedNbaEraPortraitCandidates(coachName)[0]
+    : undefined;
+  return preferredPlayerPortrait
+    ?? getCachedNbaHistoricalStaffPortraitCandidates(coachName)[0]
+    ?? getPrimaryCoachPhoto(coachName)
     ?? getExtendedCoachPhoto(coachName)
     ?? getNBA2KCoach(coachName)?.image
-    ?? sanitizeStaffPhotoUrl(savedPortrait);
+    ?? saved;
 }
 
 export function resolveStaffPortrait(options: {

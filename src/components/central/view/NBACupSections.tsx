@@ -2,11 +2,22 @@ import React, { useMemo } from 'react';
 import { motion } from 'motion/react';
 import { Award, Calendar, Medal, Trophy, Users } from 'lucide-react';
 import { NBACupState } from '../../../types';
+import type { CupCompetitionState } from '../../../services/competition/cup';
+import { cleanWikiTeamName, matchTeamByWikiName } from '../../../data/brefFetcher';
 import { useLeagueLabels } from '../../../utils/leagueLabels';
 import { classifyBoxScoreGame } from '../../../utils/gameClassification';
+import { getTeamFullName } from '../../../utils/teamNames';
 import { NBACupYearData } from '../types';
 
-export function PrizePool({ cup }: { cup?: NBACupState }) {
+export function PrizePool({
+  cup,
+  genericCup,
+  prizePool,
+}: {
+  cup?: NBACupState;
+  genericCup?: CupCompetitionState;
+  prizePool?: NBACupYearData['prizePool'];
+}) {
   if (cup && cup.prizePool === undefined && cup.status !== 'group') {
     return (
       <div className="mb-8 px-4 py-3 bg-slate-800/40 border border-slate-700/30 rounded-2xl">
@@ -16,13 +27,16 @@ export function PrizePool({ cup }: { cup?: NBACupState }) {
   }
 
   const pp = cup?.prizePool?.perPlayerByFinish;
+  const genericPrizes = genericCup?.prizePool ?? prizePool;
   const fmt = (n: number) => '$' + n.toLocaleString();
   const prizes = [
-    { label: 'Winner', amount: pp ? fmt(pp.winner) : '$500,000', color: 'text-amber-500', border: 'border-amber-500/30', icon: <Trophy className="w-5 h-5 text-amber-500" /> },
-    { label: 'Runner-up', amount: pp ? fmt(pp.runnerUp) : '$200,000', color: 'text-slate-200', border: 'border-white/10', icon: <Medal className="w-5 h-5 text-slate-400" /> },
-    { label: 'Semifinalist', amount: pp ? fmt(pp.semi) : '$100,000', color: 'text-slate-400', border: 'border-white/5', icon: <Award className="w-5 h-5 text-slate-500" /> },
-    { label: 'Quarterfinalist', amount: pp ? fmt(pp.quarter) : '$50,000', color: 'text-slate-500', border: 'border-white/5', icon: <Users className="w-5 h-5 text-slate-600" /> },
-  ];
+    { label: 'Winner', amount: pp ? fmt(pp.winner) : genericPrizes?.winner != null ? fmt(genericPrizes.winner) : '$500,000', color: 'text-amber-500', border: 'border-amber-500/30', icon: <Trophy className="w-5 h-5 text-amber-500" /> },
+    { label: 'Runner-up', amount: pp ? fmt(pp.runnerUp) : genericPrizes?.runnerUp != null ? fmt(genericPrizes.runnerUp) : '$200,000', color: 'text-slate-200', border: 'border-white/10', icon: <Medal className="w-5 h-5 text-slate-400" /> },
+    { label: 'Semifinalist', amount: pp ? fmt(pp.semi) : genericPrizes?.semiFinalist != null ? fmt(genericPrizes.semiFinalist) : '$100,000', color: 'text-slate-400', border: 'border-white/5', icon: <Award className="w-5 h-5 text-slate-500" /> },
+    { label: 'Quarterfinalist', amount: pp ? fmt(pp.quarter) : genericPrizes?.quarterFinalist != null ? fmt(genericPrizes.quarterFinalist) : '$50,000', color: 'text-slate-500', border: 'border-white/5', icon: <Users className="w-5 h-5 text-slate-600" /> },
+  ].filter(prize => (!genericCup && !prizePool) || prize.label === 'Winner' || prize.label === 'Runner-up' || (
+    prize.label === 'Semifinalist' ? Number(genericPrizes?.semiFinalist ?? 0) > 0 : Number(genericPrizes?.quarterFinalist ?? 0) > 0
+  ));
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-16">
@@ -51,6 +65,7 @@ export function PrizePool({ cup }: { cup?: NBACupState }) {
 export function CupChampionHero({
   data,
   liveCup,
+  genericCup,
   teams,
   players,
   boxScores,
@@ -59,29 +74,46 @@ export function CupChampionHero({
 }: {
   data: NBACupYearData;
   liveCup?: NBACupState;
+  genericCup?: CupCompetitionState;
   teams?: Array<{ id: number; name: string; logoURL?: string; logoUrl?: string; abbrev?: string }>;
-  players?: Array<{ internalId: string; name: string; imgURL?: string; face?: any }>;
+  players?: Array<{ internalId: string; name: string; imgURL?: string; pos?: string; face?: any }>;
   boxScores?: Array<{ gameId: number; homeStats?: any[]; awayStats?: any[] }>;
-  schedule?: Array<{ gid: number; isNBACup?: boolean }>;
+  schedule?: Array<{ gid: number; isNBACup?: boolean; isCupGame?: boolean; cupLeagueId?: string; cupCompetitionId?: string }>;
   onPlayerClick?: (name: string, livePlayer?: any) => void;
 }) {
-  const champTeam = liveCup?.championTid != null ? teams?.find(t => t.id === liveCup.championTid) : (() => {
-    const name = data.summary?.champions?.split('(')[0]?.trim();
-    return name ? teams?.find(t => t.name === name) : undefined;
-  })();
-  const runnerUpTeam = liveCup?.runnerUpTid != null ? teams?.find(t => t.id === liveCup.runnerUpTid) : (() => {
-    const name = data.summary?.runner_up?.split('(')[0]?.trim();
-    return name ? teams?.find(t => t.name === name) : undefined;
-  })();
-  const mvpPid = liveCup?.mvpPlayerId;
+  const sourceChampionName = cleanWikiTeamName(data.summary?.champions);
+  const sourceRunnerUpName = cleanWikiTeamName(data.summary?.runner_up);
+  const genericHistory = genericCup?.history.find(entry => entry.season === genericCup.season);
+  const championTid = liveCup?.championTid ?? genericHistory?.championTid ?? undefined;
+  const runnerUpTid = liveCup?.runnerUpTid ?? genericHistory?.runnerUpTid ?? undefined;
+  const champTeam = championTid != null
+    ? teams?.find(team => team.id === championTid)
+    : matchTeamByWikiName(sourceChampionName, teams ?? []);
+  const runnerUpTeam = runnerUpTid != null
+    ? teams?.find(team => team.id === runnerUpTid)
+    : matchTeamByWikiName(sourceRunnerUpName, teams ?? []);
+  const championName = champTeam ? getTeamFullName(champTeam) : sourceChampionName;
+  const runnerUpName = runnerUpTeam ? getTeamFullName(runnerUpTeam) : sourceRunnerUpName;
+  const hasChampion = Boolean(championName && championName.toUpperCase() !== 'TBD');
+  const hasRunnerUp = Boolean(runnerUpName && runnerUpName.toUpperCase() !== 'TBD');
+  const genericMvpAwardIds = new Set(genericCup?.format.awards
+    .filter(award => award.kind === 'tournamentMvp')
+    .map(award => award.id) ?? []);
+  const mvpPid = liveCup?.mvpPlayerId
+    ?? genericCup?.awards.find(award => genericMvpAwardIds.has(award.awardId))?.playerId;
   const mvpFromLive = mvpPid ? players?.find(p => p.internalId === mvpPid) : undefined;
   const mvpName = mvpFromLive?.name ?? data.summary?.mvp?.split('(')[0]?.trim() ?? '';
-  const mvpPlayer = mvpFromLive ?? (mvpName ? players?.find(p => p.name === mvpName) : undefined);
+  const mvpPlayer = mvpFromLive;
 
   const mvpStatLine = useMemo(() => {
     if (!mvpPid || !boxScores?.length) return undefined;
     const cupGids = new Set<number>();
-    for (const game of schedule ?? []) if (game.isNBACup) cupGids.add(game.gid);
+    for (const game of schedule ?? []) {
+      if (game.isNBACup || (genericCup
+        && game.isCupGame
+        && game.cupLeagueId === genericCup.leagueId
+        && game.cupCompetitionId === genericCup.competitionId)) cupGids.add(game.gid);
+    }
     if (cupGids.size === 0 && liveCup) {
       for (const game of liveCup.knockout) if (game.gameId != null) cupGids.add(game.gameId);
     }
@@ -100,7 +132,7 @@ export function CupChampionHero({
       ast += line.ast ?? 0;
     }
     return gp > 0 ? `${(pts / gp).toFixed(1)} PTS · ${(reb / gp).toFixed(1)} REB · ${(ast / gp).toFixed(1)} AST` : undefined;
-  }, [mvpPid, boxScores, schedule, liveCup]);
+  }, [mvpPid, boxScores, schedule, liveCup, genericCup]);
 
   const champLogo = (champTeam as any)?.logoUrl ?? (champTeam as any)?.logoURL;
   const runnerLogo = (runnerUpTeam as any)?.logoUrl ?? (runnerUpTeam as any)?.logoURL;
@@ -111,11 +143,11 @@ export function CupChampionHero({
       <div className="flex flex-col md:flex-row md:items-center gap-6">
         <div className="flex-1">
           <div className="flex items-center gap-1.5 mb-3"><Trophy size={13} className="text-amber-400" /><span className="text-[10px] font-black uppercase tracking-widest text-amber-500">Champion</span></div>
-          {champTeam ? (
+          {hasChampion ? (
             <div className="flex items-center gap-4">
-              {champLogo && <img src={champLogo} alt={(champTeam as any).abbrev ?? champTeam.name} className="w-20 h-20 object-contain drop-shadow-xl shrink-0" referrerPolicy="no-referrer" />}
+              {champLogo && <img src={champLogo} alt={(champTeam as any)?.abbrev ?? championName} className="w-20 h-20 object-contain drop-shadow-xl shrink-0" referrerPolicy="no-referrer" />}
               <div>
-                <span className="text-2xl font-black text-amber-400">{champTeam.name}</span>
+                <span className="text-2xl font-black text-amber-400">{championName}</span>
                 {mvpName && (
                   <div className={`flex items-center gap-2 mt-2 bg-slate-800/60 rounded-lg px-2.5 py-1.5 w-fit ${onPlayerClick ? 'cursor-pointer hover:bg-slate-800 transition-colors' : ''}`} onClick={onPlayerClick ? () => onPlayerClick(mvpName, mvpPlayer) : undefined}>
                     {mvpPlayer?.imgURL && <img src={mvpPlayer.imgURL} alt={mvpName} className="w-8 h-8 rounded-md object-cover bg-slate-700" referrerPolicy="no-referrer" onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />}
@@ -130,12 +162,12 @@ export function CupChampionHero({
             </div>
           ) : <p className="text-slate-500 italic text-sm">Champion TBD</p>}
         </div>
-        {runnerUpTeam && (
+        {hasRunnerUp && (
           <div className="md:border-l md:border-slate-700/50 md:pl-6">
             <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500 mb-2">Runner-Up</div>
             <div className="flex items-center gap-3">
-              {runnerLogo && <img src={runnerLogo} alt={(runnerUpTeam as any).abbrev ?? runnerUpTeam.name} className="w-12 h-12 object-contain opacity-50 shrink-0" referrerPolicy="no-referrer" />}
-              <span className="text-base font-bold text-slate-300">{runnerUpTeam.name}</span>
+              {runnerLogo && <img src={runnerLogo} alt={(runnerUpTeam as any)?.abbrev ?? runnerUpName} className="w-12 h-12 object-contain opacity-50 shrink-0" referrerPolicy="no-referrer" />}
+              <span className="text-base font-bold text-slate-300">{runnerUpName}</span>
             </div>
           </div>
         )}
@@ -147,6 +179,7 @@ export function CupChampionHero({
 export function CupAllTournamentSection({
   data,
   liveCup,
+  genericCup,
   teams,
   players,
   boxScores,
@@ -155,17 +188,23 @@ export function CupAllTournamentSection({
 }: {
   data: NBACupYearData;
   liveCup?: NBACupState;
+  genericCup?: CupCompetitionState;
   teams?: Array<{ id: number; name: string; logoURL?: string; logoUrl?: string; abbrev?: string }>;
-  players?: Array<{ internalId: string; name: string; imgURL?: string; face?: any }>;
+  players?: Array<{ internalId: string; name: string; imgURL?: string; pos?: string; face?: any }>;
   boxScores?: Array<{ gameId: number; homeTeamId?: number; awayTeamId?: number; homeStats?: any[]; awayStats?: any[] }>;
-  schedule?: Array<{ gid: number; isNBACup?: boolean }>;
+  schedule?: Array<{ gid: number; isNBACup?: boolean; isCupGame?: boolean; cupLeagueId?: string; cupCompetitionId?: string }>;
   onPlayerClick?: (name: string, livePlayer?: any) => void;
 }) {
   const cupStatsByPid = useMemo(() => {
     const out = new Map<string, { gp: number; pts: number; reb: number; ast: number }>();
     if (!boxScores?.length) return out;
     const cupGids = new Set<number>();
-    for (const game of schedule ?? []) if (game.isNBACup) cupGids.add(game.gid);
+    for (const game of schedule ?? []) {
+      if (game.isNBACup || (genericCup
+        && game.isCupGame
+        && game.cupLeagueId === genericCup.leagueId
+        && game.cupCompetitionId === genericCup.competitionId)) cupGids.add(game.gid);
+    }
     if (cupGids.size === 0 && liveCup) {
       for (const game of liveCup.knockout) if (game.gameId != null) cupGids.add(game.gameId);
     }
@@ -179,9 +218,34 @@ export function CupAllTournamentSection({
       }
     }
     return out;
-  }, [liveCup, boxScores, schedule]);
+  }, [liveCup, genericCup, boxScores, schedule]);
 
-  const entries = liveCup?.allTournamentTeam?.length
+  const genericAllTeamAwardIds = new Set(genericCup?.format.awards
+    .filter(award => award.kind === 'allLeague')
+    .map(award => award.id) ?? []);
+  const genericMvpAwardIds = new Set(genericCup?.format.awards
+    .filter(award => award.kind === 'tournamentMvp')
+    .map(award => award.id) ?? []);
+  const genericEntries = genericCup?.awards
+    .filter(entry => genericAllTeamAwardIds.has(entry.awardId))
+    .map(entry => {
+      const player = players?.find(candidate => candidate.internalId === entry.playerId);
+      const team = teams?.find(candidate => candidate.id === entry.teamTid);
+      const ko = cupStatsByPid.get(entry.playerId);
+      return {
+        pos: player?.pos ?? '',
+        playerName: player?.name ?? entry.playerId,
+        teamName: team ? getTeamFullName(team) : '—',
+        teamLogo: (team as any)?.logoUrl ?? (team as any)?.logoURL,
+        imgURL: player?.imgURL,
+        isMvp: genericCup.awards.some(award => award.playerId === entry.playerId && genericMvpAwardIds.has(award.awardId)),
+        statLine: ko && ko.gp > 0 ? `${(ko.pts / ko.gp).toFixed(1)} PTS · ${(ko.reb / ko.gp).toFixed(1)} REB · ${(ko.ast / ko.gp).toFixed(1)} AST` : undefined,
+        livePlayer: player,
+      };
+    }) ?? [];
+  const entries = genericEntries.length > 0
+    ? genericEntries
+    : liveCup?.allTournamentTeam?.length
     ? liveCup.allTournamentTeam.map(entry => {
         const player = players?.find(p => p.internalId === entry.playerId);
         const team = teams?.find(t => t.id === entry.tid);
@@ -189,7 +253,7 @@ export function CupAllTournamentSection({
         return {
           pos: entry.pos,
           playerName: player?.name ?? entry.playerId,
-          teamName: team?.name ?? '—',
+          teamName: team ? getTeamFullName(team) : '—',
           teamLogo: (team as any)?.logoUrl ?? (team as any)?.logoURL,
           imgURL: player?.imgURL,
           isMvp: entry.isMvp,
@@ -198,21 +262,16 @@ export function CupAllTournamentSection({
         };
       })
     : (data.all_tournament_team ?? []).map(player => {
-        const match = players?.find(entry => entry.name === player.player);
-        const histLow = (player.team ?? '').toLowerCase().trim();
-        const histTeam = histLow ? teams?.find(team => {
-          const name = team.name.toLowerCase();
-          return name === histLow || histLow.includes(name) || name.includes(histLow.split(' ').pop() ?? '');
-        }) : undefined;
+        const histTeam = player.team ? matchTeamByWikiName(player.team, teams ?? []) : undefined;
         return {
           pos: player.pos,
           playerName: player.player,
-          teamName: player.team,
+          teamName: histTeam ? getTeamFullName(histTeam) : player.team,
           teamLogo: (histTeam as any)?.logoUrl ?? (histTeam as any)?.logoURL,
-          imgURL: match?.imgURL,
+          imgURL: undefined,
           isMvp: !!player.is_mvp,
           statLine: undefined,
-          livePlayer: match,
+          livePlayer: undefined,
         };
       });
 
@@ -301,12 +360,12 @@ export function CupGameLog({
   );
 }
 
-export function CupNotStarted({ cupShort, year }: { cupShort: string; year: number }) {
+export function CupNotStarted({ cupShort, seasonLabel }: { cupShort: string; seasonLabel: string }) {
   return (
     <div className="flex flex-col items-center justify-center py-20 text-center">
       <Calendar size={48} className="text-slate-700 mb-4" />
       <h2 className="text-xl font-black text-white uppercase italic mb-2">Cup Not Started</h2>
-      <p className="text-slate-500 text-sm max-w-xs">The {year - 1}–{String(year).slice(-2)} {cupShort} begins in November. Simulate through opening night to see the groups.</p>
+      <p className="text-slate-500 text-sm max-w-xs">The {seasonLabel} {cupShort} has not started yet. Its groups will appear when cup play begins.</p>
     </div>
   );
 }

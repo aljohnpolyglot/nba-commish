@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { LogOut, Save, Settings2 } from 'lucide-react';
 import { Tab } from '../types';
@@ -6,8 +6,11 @@ import { NavigationMenu } from './sidebar/NavigationMenu';
 import { ApprovalsWidget } from './sidebar/ApprovalsWidget';
 import { FinancesWidget } from './sidebar/FinancesWidget';
 import { SettingsModal } from './modals/SettingsModal';
-import { formatGameDateShort, parseGameDate } from '../utils/dateUtils';
+import { SaveExportModal } from './modals/SaveExportModal';
+import { PlayerCreatorModal } from './modals/PlayerCreatorModal';
+import { formatGameDateShort } from '../utils/dateUtils';
 import { useLeagueLabels } from '../utils/leagueLabels';
+import { formatLeagueSeasonLabel } from '../services/leagueCalendar';
 
 const GAME_LOGO_URL = 'https://i.imgur.com/66dyyIO.png';
 
@@ -22,26 +25,20 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, isO
   const { state } = useGame();
   const labels = useLeagueLabels();
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isSaveOpen, setIsSaveOpen] = useState(false);
+  const [isPlayerCreatorOpen, setIsPlayerCreatorOpen] = useState(false);
   const seasonLabel = React.useMemo(() => {
     const leagueYear = state.leagueStats?.year;
     if (!leagueYear || !state.date) return `Season ${leagueYear ?? ''}`.trim();
-    try {
-      const dateYear = parseGameDate(state.date).getUTCFullYear();
-      if (dateYear !== leagueYear) {
-        return `${dateYear}-${String(leagueYear).slice(-2)} Season`;
-      }
-    } catch {}
-    return `Season ${leagueYear}`;
-  }, [state.date, state.leagueStats?.year]);
-
-  const handleSave = () => {
-    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state));
-    const downloadAnchorNode = document.createElement('a');
-    downloadAnchorNode.setAttribute("href", dataStr);
-    downloadAnchorNode.setAttribute("download", `nba-commish-save-${state.leagueStats.year}.json`);
-    document.body.appendChild(downloadAnchorNode);
-    downloadAnchorNode.click();
-    downloadAnchorNode.remove();
+    return `${formatLeagueSeasonLabel(leagueYear, state.leagueStats)} Season`;
+  }, [state.date, state.leagueStats]);
+  const handleViewChange = (view: Tab) => {
+    if (view === 'Player Creator' && state.godModeEnabled === true) {
+      setIsPlayerCreatorOpen(true);
+      onClose();
+      return;
+    }
+    onViewChange(view);
   };
 
   const sidebarContent = (
@@ -68,7 +65,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, isO
       </div>
 
       <div className="p-4 flex-1 overflow-y-auto custom-scrollbar">
-        <NavigationMenu currentView={currentView} onViewChange={onViewChange} onClose={onClose} />
+        <NavigationMenu currentView={currentView} onViewChange={handleViewChange} onClose={onClose} />
 
         <div className="space-y-6">
           {state.gameMode !== 'gm' && <ApprovalsWidget />}
@@ -90,9 +87,15 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, isO
             </div>
           </div>
           <button 
-            onClick={() => window.location.reload()} 
+            onClick={() => {
+              if (state.durableSavePending) {
+                setIsSaveOpen(true);
+                return;
+              }
+              window.location.assign('/');
+            }}
             className="p-2 text-slate-500 hover:text-rose-400 transition-colors"
-            title="Exit Game"
+            title={state.durableSavePending ? 'Save this simulation before leaving' : 'Return to Saves'}
           >
             <LogOut size={18} />
           </button>
@@ -100,8 +103,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, isO
         
         <div className="flex items-center gap-2 px-2 pt-2 border-t border-slate-800/50">
           <button
-            onClick={handleSave}
-            className="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-medium rounded-lg transition-colors"
+            onClick={() => setIsSaveOpen(true)}
+            className="flex-1 flex items-center justify-center gap-2 py-1.5 px-3 bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-200 border border-indigo-500/25 text-xs font-semibold rounded-lg transition-colors"
             title="Save Game"
           >
             <Save size={14} />
@@ -123,6 +126,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ currentView, onViewChange, isO
   return (
     <>
       <SettingsModal isOpen={isSettingsOpen} onClose={() => setIsSettingsOpen(false)} />
+      <SaveExportModal isOpen={isSaveOpen} onClose={() => setIsSaveOpen(false)} />
+      <PlayerCreatorModal isOpen={isPlayerCreatorOpen} onClose={() => setIsPlayerCreatorOpen(false)} />
       {/* Mobile Overlay */}
       {isOpen && (
         <div 

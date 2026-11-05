@@ -4,6 +4,7 @@ import { useGame } from '../../../../store/GameContext';
 import { Home } from '../TeamOffice/pages/Home';
 import { CoachingPage } from '../TeamOffice/pages/CoachingPage';
 import { resolveAnyTeam } from '../../../../utils/teamLookup';
+import { getTeamFullName } from '../../../../utils/teamNames';
 
 export function CoachingHubView() {
   const { state } = useGame();
@@ -34,9 +35,7 @@ export function CoachingHubView() {
                   <img src={currentTeam.logoUrl} alt="" className="w-5 h-5 object-contain" />
                 )}
                 <span style={{ color: teamColor }}>
-                  {currentTeam.region && !currentTeam.name.includes(currentTeam.region)
-                    ? `${currentTeam.region} ${currentTeam.name}`
-                    : currentTeam.name}
+                  {getTeamFullName(currentTeam)}
                 </span>
               </div>
             </>

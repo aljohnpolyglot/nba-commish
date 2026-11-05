@@ -1,29 +1,48 @@
 import React, { useState, useMemo } from 'react';
-import { Trophy, FastForward, Play, ChevronLeft, ChevronRight, Target, AlertTriangle } from 'lucide-react';
+import { Trophy, FastForward, Play, ChevronLeft, ChevronRight, Target } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { useGame } from '../../store/GameContext';
 import { HistoricalPlayoffBracket } from './HistoricalPlayoffBracket';
-import { Game } from '../../types';
+import { Game, ResolvedGamePresentation } from '../../types';
 import { GameSimulatorScreen } from '../shared/GameSimulatorScreen';
 import { WatchGamePreviewModal } from '../modals/WatchGamePreviewModal';
 import { normalizeDate, getTeamForGame, getPlayersForExhibitionTeam } from '../../utils/helpers';
 import { getRolloverDate, toISODateString } from '../../utils/dateUtils';
 import { BracketLayout } from './bracket/BracketLayout';
+import { ConferenceBracketLayout } from './bracket/ConferenceBracketLayout';
+import { LeagueWideBracketLayout } from './bracket/LeagueWideBracketLayout';
 import { SeriesDetailPanel } from './detail/SeriesDetailPanel';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
+import { useSimulationBoundaryPreflight } from '../../hooks/useSimulationBoundaryPreflight';
 import { useLeagueLabels } from '../../utils/leagueLabels';
-import { addDaysISO, shouldWarnForLottery } from './playoffDateGuards';
-import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { addDaysISO } from './playoffDateGuards';
+import { isNonNbaIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { CompetitionBracketView } from '../competition/CompetitionBracketView';
 import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
+import { getHistoricalNbaBranchSeasonCutoff } from '../../services/playerDevelopment/hofHistoryWindow';
+import { getPlayoffRoundLabel } from '../../utils/playoffFormat';
+import { getCanonicalCurrentPlayoffRound } from '../../services/playoffs/playoffCompletion';
+import { compileTargetPlan, type TargetPlan, type TargetName } from '../../services/simulation/targetPlanner';
 
 export const PlayoffView: React.FC = () => {
-  const { state, dispatchAction } = useGame();
+  const { state, dispatchAction, setCurrentView } = useGame();
   const labels = useLeagueLabels();
   const rosterGate = useRosterComplianceGate();
+  const boundaryPreflight = useSimulationBoundaryPreflight(state);
   const playoffs = state.playoffs;
   const year = state.leagueStats.year;
+  const playoffRoundCount = Math.max(1, state.leagueStats.numGamesPlayoffSeries?.length ?? 4);
+  const leagueWideConfigured = state.leagueStats.playoffsByConf === false;
+  const flexibleConferenceConfigured = !leagueWideConfigured && (
+    playoffRoundCount !== 4
+    || (state.leagueStats.numPlayoffTeams ?? 16) !== 16
+    || (state.leagueStats.numPlayoffByes ?? 0) > 0
+  );
+  const showPlayIn = !leagueWideConfigured && state.leagueStats?.playIn !== false;
+  const playoffsInPlayIn = showPlayIn && !!playoffs && !playoffs.playInComplete;
+  const canonicalCurrentRound = getCanonicalCurrentPlayoffRound(playoffs);
   const pbaIsolated = isPbaIsolatedMode(state);
+  const nonNbaIsolated = isNonNbaIsolatedMode(state);
   const pbaConference = (state.leagueStats as any)?.pbaConference ?? 'philippine';
   const pbaSpecId = pbaConference === 'commissioners'
     ? PBA_COMPETITIONS[1].id
@@ -37,9 +56,16 @@ export const PlayoffView: React.FC = () => {
   const [pendingWatchGame, setPendingWatchGame] = useState<Game | null>(null);
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
   const [precomputedResult, setPrecomputedResult] = useState<any | null>(null);
+  const [watchPresentation, setWatchPresentation] = useState<ResolvedGamePresentation | null>(null);
   const [viewYear, setViewYear]     = useState<number>(year);
 
   const isHistorical = viewYear !== year;
+  const historicalNbaSourceCutoff = getHistoricalNbaBranchSeasonCutoff({
+    currentYear: state.leagueStats?.year,
+    leagueType: state.leagueType,
+    moddedLeagueBase: state.moddedLeagueBase,
+    nbaStartYear: state.nbaStartYear,
+  });
   const navYear = (dir: 1 | -1) => setViewYear(y => Math.max(1984, Math.min(year, y + dir)));
 
   if (pbaIsolated) {
@@ -47,7 +73,8 @@ export const PlayoffView: React.FC = () => {
   }
 
   // ─── Derived ──────────────────────────────────────────────────────────────
-  const roundLabel = ['', 'First Round', 'Second Round', 'Conf. Finals', labels.finals];
+  const roundLabel = (round: number, fieldSize = state.leagueStats.numPlayoffTeams) =>
+    getPlayoffRoundLabel(round, playoffRoundCount, fieldSize, labels.finals);
 
   const isGMMode = state.gameMode === 'gm';
   const userTeamId = (state as any).userTeamId as number | undefined;
@@ -63,18 +90,24 @@ export const PlayoffView: React.FC = () => {
     return candidates.reduce((a, b) => a.date <= b.date ? a : b);
   }, [isGMMode, userTeamId, state.schedule]);
 
-  // ─── Draft lottery warning ─────────────────────────────────────────────────
-  const lotteryDate = `${year}-05-14`;
-  const [showLotteryWarning, setShowLotteryWarning] = useState(false);
-  const [pendingSimFn, setPendingSimFn] = useState<(() => void) | null>(null);
+  const targetPlan = (name: TargetName, targetDate: string): TargetPlan =>
+    compileTargetPlan(state, name, targetDate);
 
-  const withLotteryGuard = (targetDate: string, fn: () => void) => {
-    if (shouldWarnForLottery(state.date, lotteryDate, targetDate, !!(state as any).draftLotteryResult)) {
-      setPendingSimFn(() => fn);
-      setShowLotteryWarning(true);
-    } else {
-      fn();
-    }
+  const startSimulation = (
+    plan: TargetPlan,
+    fn: (resolvedPlan: TargetPlan) => void | Promise<void>,
+  ) => {
+    boundaryPreflight.attempt(plan, resolvedPlan => {
+      rosterGate.attempt(async () => {
+        await fn(resolvedPlan);
+        if (
+          resolvedPlan.confirmedBoundaries.includes('DRAFT_LOTTERY')
+          && resolvedPlan.boundaryPolicy.draftLottery === 'STOP_AND_WATCH'
+        ) {
+          setCurrentView('Draft Lottery');
+        }
+      });
+    });
   };
 
   // ─── Handlers ─────────────────────────────────────────────────────────────
@@ -104,6 +137,7 @@ export const PlayoffView: React.FC = () => {
     setWatchingGame(null);
     setRiggedForTid(undefined);
     setPrecomputedResult(null);
+    setWatchPresentation(null);
 
     await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId, result } });
     rosterGate.attempt(() => dispatchAction({
@@ -117,31 +151,36 @@ export const PlayoffView: React.FC = () => {
 
   const handleSimDay = () => {
     const tomorrow = addDaysISO(state.date);
-    withLotteryGuard(tomorrow, () => rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY' } as any)));
+    const plan = targetPlan('ONE_DAY', tomorrow);
+    startSimulation(plan, resolvedPlan => {
+      return dispatchAction({ type: 'ADVANCE_DAY', payload: { targetPlan: resolvedPlan } } as any);
+    });
   };
 
   const handleSimulateRound = () => {
     if (!playoffs) return;
 
-    if (!playoffs.playInComplete) {
+    if (playoffsInPlayIn) {
       const PLAYIN_END = `${year}-04-20`;
-      withLotteryGuard(PLAYIN_END, () =>
-        rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: PLAYIN_END } } as any))
-      );
+      const plan = targetPlan('SIM_ROUND', PLAYIN_END);
+      startSimulation(plan, resolvedPlan => {
+        return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: PLAYIN_END, targetPlan: resolvedPlan } } as any);
+      });
       return;
     }
 
     const activeSeries = playoffs.series.filter(
-      s => s.round === playoffs.currentRound && s.status !== 'complete'
+      s => s.round === canonicalCurrentRound && s.status !== 'complete'
     );
     if (activeSeries.length === 0) return;
     const gameIds = new Set(activeSeries.flatMap(s => s.gameIds));
     const games = state.schedule.filter(g => gameIds.has(g.gid) && !g.played);
     if (games.length === 0) return;
     const lastDate = games.reduce((d, g) => g.date > d ? g.date : d, games[0].date);
-    withLotteryGuard(lastDate, () =>
-      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastDate } } as any))
-    );
+    const plan = targetPlan('SIM_ROUND', lastDate);
+    startSimulation(plan, resolvedPlan => {
+      return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastDate, targetPlan: resolvedPlan } } as any);
+    });
   };
 
   const handleSimGame = () => {
@@ -156,47 +195,50 @@ export const PlayoffView: React.FC = () => {
         g => g.playoffSeriesId === selectedSeriesId && !g.played
       );
       if (!nextGame) return;
-      withLotteryGuard(nextGame.date, () =>
-        rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: nextGame.date } } as any))
-      );
+      const plan = targetPlan('SIMULATE_TO_DATE', nextGame.date);
+      startSimulation(plan, resolvedPlan => {
+        return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: nextGame.date, targetPlan: resolvedPlan } } as any);
+      });
     } else if (playIn?.gameId) {
       const game = state.schedule.find(g => g.gid === playIn.gameId && !g.played);
       if (!game) return;
-      withLotteryGuard(game.date, () =>
-        rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: game.date } } as any))
-      );
+      const plan = targetPlan('SIMULATE_TO_DATE', game.date);
+      startSimulation(plan, resolvedPlan => {
+        return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: game.date, targetPlan: resolvedPlan } } as any);
+      });
     }
   };
 
   const handleSimPlayoffs = () => {
     const rolloverDate = toISODateString(getRolloverDate(year, state.leagueStats as any, state.schedule as any));
-    withLotteryGuard(rolloverDate, () =>
-      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: rolloverDate } } as any))
-    );
+    const plan = targetPlan('TO_CHAMPION', rolloverDate);
+    startSimulation(plan, resolvedPlan => {
+      return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: rolloverDate, targetPlan: resolvedPlan } } as any);
+    });
   };
 
   const handleSimToMyNextGame = () => {
     if (!myNextPlayoffGame) return;
-    withLotteryGuard(myNextPlayoffGame.date, () =>
-      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: myNextPlayoffGame.date, stopBefore: true } } as any))
-    );
+    const plan = targetPlan('UNTIL_NEXT_GAME', myNextPlayoffGame.date);
+    startSimulation(plan, resolvedPlan => {
+      return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: myNextPlayoffGame.date, stopBefore: true, targetPlan: resolvedPlan } } as any);
+    });
   };
 
   // ─── Full-screen game simulator ──────────────────────────────────────────
-  if (watchingGame) {
+  if (watchingGame && watchPresentation) {
     return (
       <div className="fixed inset-0 z-[100] bg-black">
         <GameSimulatorScreen
           game={watchingGame}
-          teams={state.teams}
+          presentation={watchPresentation}
           players={state.players}
-          allStar={state.allStar}
           isProcessing={state.isProcessing}
           onClose={async () => {
               // precomputedResult is always set before GameSimulatorScreen opens (see onConfirm).
               const result = precomputedResult!;
               const gameId = watchingGame!.gid;
-              setWatchingGame(null); setRiggedForTid(undefined); setPrecomputedResult(null);
+              setWatchingGame(null); setRiggedForTid(undefined); setPrecomputedResult(null); setWatchPresentation(null);
               await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId, result } });
               rosterGate.attempt(() => dispatchAction({ type: 'ADVANCE_DAY', payload: { watchedGameResult: result } } as any));
           }}
@@ -227,9 +269,9 @@ export const PlayoffView: React.FC = () => {
             <p className="text-slate-500 text-xs">
               {isHistorical ? 'Historical Season' :
                 !playoffs ? 'Begins April 14'
-                : playoffs.bracketComplete ? 'Complete'
-                : playoffs.playInComplete ? (roundLabel[playoffs.currentRound] ?? `Round ${playoffs.currentRound}`)
-                : 'Play-In Tournament'}
+                  : playoffs.bracketComplete ? 'Complete'
+                  : playoffsInPlayIn ? 'Play-In Tournament'
+                  : roundLabel(canonicalCurrentRound, playoffs.numPlayoffTeams)}
             </p>
           </div>
         </div>
@@ -284,7 +326,7 @@ export const PlayoffView: React.FC = () => {
                   className="px-2 sm:px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-xl transition-all flex items-center gap-2 disabled:opacity-50 whitespace-nowrap"
                 >
                   <FastForward size={14} />
-                  <span className="hidden sm:inline">{playoffs.playInComplete ? `Sim ${roundLabel[playoffs.currentRound] ?? 'Round'}` : 'Sim Play-In'}</span>
+                  <span className="hidden sm:inline">{playoffsInPlayIn ? 'Sim Play-In' : `Sim ${roundLabel(canonicalCurrentRound, playoffs.numPlayoffTeams)}`}</span>
                 </button>
               )}
             </>
@@ -301,6 +343,9 @@ export const PlayoffView: React.FC = () => {
           const simPlayoffs = (state as any).historicalPlayoffs?.[viewYear];
           if (simPlayoffs?.series) {
             const champTeam = simPlayoffs.champion ? state.teams.find((t: any) => t.id === simPlayoffs.champion) : null;
+            const simRoundCount = simPlayoffs.playoffSeeding === 'league-wide'
+              ? Math.max(1, ...simPlayoffs.series.map((series: any) => Number(series.round) || 1))
+              : Math.max(1, new Set(simPlayoffs.series.map((series: any) => Number(series.round) || 1)).size);
             return (
               <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
                 {champTeam && (
@@ -309,23 +354,57 @@ export const PlayoffView: React.FC = () => {
                     <span className="font-black text-yellow-300 text-sm">{champTeam.name} — {viewYear - 1}-{String(viewYear).slice(-2)} Champions</span>
                   </div>
                 )}
-                <BracketLayout
-                  playoffs={simPlayoffs}
-                  teams={state.teams}
-                  schedule={[]}
-                  stateDate={state.date}
-                  onSeriesClick={() => {}}
-                  selectedSeriesId={null}
-                />
+                {simPlayoffs.playoffSeeding === 'league-wide' ? (
+                  <LeagueWideBracketLayout
+                    playoffs={simPlayoffs}
+                    teams={state.teams}
+                    schedule={[]}
+                    stateDate={state.date}
+                    roundCount={simRoundCount}
+                    onSeriesClick={() => {}}
+                    selectedSeriesId={null}
+                    ownTid={userTeamId ?? null}
+                  />
+                ) : simRoundCount !== 4 || (simPlayoffs.numPlayoffTeams ?? 16) !== 16 || (simPlayoffs.numPlayoffByes ?? 0) > 0 ? (
+                  <ConferenceBracketLayout
+                    playoffs={simPlayoffs}
+                    teams={state.teams}
+                    schedule={[]}
+                    stateDate={state.date}
+                    roundCount={simRoundCount}
+                    onSeriesClick={() => {}}
+                    selectedSeriesId={null}
+                    ownTid={userTeamId ?? null}
+                  />
+                ) : (
+                  <BracketLayout
+                    playoffs={simPlayoffs}
+                    teams={state.teams}
+                    schedule={[]}
+                    stateDate={state.date}
+                    onSeriesClick={() => {}}
+                    selectedSeriesId={null}
+                    showPlayIn={showPlayIn && ((simPlayoffs.playInGames?.length ?? 0) > 0 || simPlayoffs.playInComplete === false)}
+                    ownTid={userTeamId ?? null}
+                  />
+                )}
               </div>
             );
           }
-          // Fictional leagues have no pre-sim historical data — block gist fetch
-          if (state.leagueType === 'fictional') {
+          // Fictional and isolated non-NBA leagues have no NBA source-history fallback.
+          if (state.leagueType === 'fictional' || nonNbaIsolated) {
             return (
               <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-8">
                 <Trophy size={48} className="text-slate-700 mb-4" />
                 <p className="text-slate-500 text-sm">No historical {labels.finals} playoff data before your league started.</p>
+              </div>
+            );
+          }
+          if (historicalNbaSourceCutoff !== undefined && viewYear > historicalNbaSourceCutoff) {
+            return (
+              <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-8">
+                <Trophy size={48} className="text-slate-700 mb-4" />
+                <p className="text-slate-500 text-sm">No saved playoff bracket is available for this season.</p>
               </div>
             );
           }
@@ -339,14 +418,68 @@ export const PlayoffView: React.FC = () => {
 
         {/* ── No active playoffs: show empty bracket (TBD slots) ────────── */}
         {!playoffs && (
-          <BracketLayout
-            playoffs={{ series: [], playInGames: [], currentRound: 1 as any, bracketComplete: false, playInComplete: false, season: viewYear } as any}
-            teams={state.teams}
-            schedule={[]}
-            stateDate={state.date}
-            onSeriesClick={() => {}}
-            selectedSeriesId={null}
-          />
+          leagueWideConfigured ? (
+            <LeagueWideBracketLayout
+              playoffs={{
+                series: [],
+                playInGames: [],
+                currentRound: 1,
+                bracketComplete: false,
+                playInComplete: true,
+                season: viewYear,
+                eastTop6: [],
+                westTop6: [],
+                gamesInjected: false,
+                round1Injected: false,
+                playoffSeeding: 'league-wide',
+                numPlayoffTeams: state.leagueStats.numPlayoffTeams,
+                numPlayoffByes: state.leagueStats.numPlayoffByes,
+              }}
+              teams={state.teams}
+              schedule={[]}
+              stateDate={state.date}
+              roundCount={playoffRoundCount}
+              onSeriesClick={() => {}}
+              selectedSeriesId={null}
+              ownTid={userTeamId ?? null}
+            />
+          ) : flexibleConferenceConfigured ? (
+            <ConferenceBracketLayout
+              playoffs={{
+                series: [],
+                playInGames: [],
+                currentRound: 1,
+                bracketComplete: false,
+                playInComplete: true,
+                season: viewYear,
+                eastTop6: [],
+                westTop6: [],
+                gamesInjected: false,
+                round1Injected: false,
+                playoffSeeding: 'conference',
+                numPlayoffTeams: state.leagueStats.numPlayoffTeams,
+                numPlayoffByes: state.leagueStats.numPlayoffByes,
+              }}
+              teams={state.teams}
+              schedule={[]}
+              stateDate={state.date}
+              roundCount={playoffRoundCount}
+              onSeriesClick={() => {}}
+              selectedSeriesId={null}
+              ownTid={userTeamId ?? null}
+            />
+          ) : (
+            <BracketLayout
+              playoffs={{ series: [], playInGames: [], currentRound: 1, bracketComplete: false, playInComplete: !showPlayIn, season: viewYear, eastTop6: [], westTop6: [], gamesInjected: false, round1Injected: false }}
+              teams={state.teams}
+              schedule={[]}
+              stateDate={state.date}
+              onSeriesClick={() => {}}
+              selectedSeriesId={null}
+              showPlayIn={showPlayIn}
+              ownTid={userTeamId ?? null}
+            />
+          )
         )}
 
         {/* ── Bracket + Play-In layout ─────────────────────────────────────── */}
@@ -361,14 +494,40 @@ export const PlayoffView: React.FC = () => {
               </div>
             )}
 
-            <BracketLayout
-              playoffs={playoffs}
-              teams={state.teams}
-              schedule={state.schedule}
-              stateDate={state.date}
-              onSeriesClick={handleSeriesClick}
-              selectedSeriesId={selectedSeriesId}
-            />
+            {playoffs.playoffSeeding === 'league-wide' || leagueWideConfigured ? (
+              <LeagueWideBracketLayout
+                playoffs={playoffs}
+                teams={state.teams}
+                schedule={state.schedule}
+                stateDate={state.date}
+                roundCount={playoffRoundCount}
+                onSeriesClick={handleSeriesClick}
+                selectedSeriesId={selectedSeriesId}
+                ownTid={userTeamId ?? null}
+              />
+            ) : flexibleConferenceConfigured || playoffs.playoffFormat === 'historical' ? (
+              <ConferenceBracketLayout
+                playoffs={playoffs}
+                teams={state.teams}
+                schedule={state.schedule}
+                stateDate={state.date}
+                roundCount={playoffRoundCount}
+                onSeriesClick={handleSeriesClick}
+                selectedSeriesId={selectedSeriesId}
+                ownTid={userTeamId ?? null}
+              />
+            ) : (
+              <BracketLayout
+                playoffs={playoffs}
+                teams={state.teams}
+                schedule={state.schedule}
+                stateDate={state.date}
+                onSeriesClick={handleSeriesClick}
+                selectedSeriesId={selectedSeriesId}
+                showPlayIn={showPlayIn}
+                ownTid={userTeamId ?? null}
+              />
+            )}
           </div>
         )}
 
@@ -396,74 +555,9 @@ export const PlayoffView: React.FC = () => {
           onSimPlayoffs={handleSimPlayoffs}
           onClose={() => setSelectedSeriesId(null)}
           isProcessing={state.isProcessing}
+          roundCount={playoffRoundCount}
         />
       )}
-
-      {/* ── Draft Lottery Warning ─────────────────────────────────────────── */}
-      <AnimatePresence>
-        {showLotteryWarning && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6 bg-black/80 backdrop-blur-md"
-          >
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-md bg-[#0a0a0a] border border-amber-500/40 shadow-2xl rounded flex flex-col items-center text-center overflow-hidden"
-            >
-              <div className="w-full bg-gradient-to-b from-amber-600/20 to-transparent p-8">
-                <div className="flex justify-center mb-3">
-                  <AlertTriangle size={32} className="text-amber-400" />
-                </div>
-                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-300 mb-2">Heads Up</p>
-                <h2 className="text-2xl font-black italic uppercase tracking-wider text-amber-400">
-                  Draft Lottery Ahead
-                </h2>
-              </div>
-              <div className="px-8 pb-8 w-full flex flex-col items-center">
-                <p className="text-white/80 italic mb-4 leading-relaxed text-sm">
-                  This simulation will pass through the {labels.draftLottery} (May 14). It will run automatically in the background — you won't get a chance to trade picks before positions are locked in.
-                </p>
-                <p className="text-[10px] text-white/40 mb-6 leading-relaxed">
-                  Stop before the lottery if you want to review pick values and make moves first. Otherwise, the results will auto-resolve and show up in the Draft tab.
-                </p>
-                <div className="flex flex-col gap-2 w-full">
-                  <button
-                    onClick={() => {
-                      setShowLotteryWarning(false);
-                      setPendingSimFn(null);
-                      rosterGate.attempt(() => dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lotteryDate, stopBefore: true } } as any));
-                    }}
-                    className="w-full py-4 bg-amber-600/20 border border-amber-500/40 hover:bg-amber-600/40 text-amber-300 font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
-                  >
-                    Stop Before Lottery
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowLotteryWarning(false);
-                      const fn = pendingSimFn;
-                      setPendingSimFn(null);
-                      fn?.();
-                    }}
-                    className="w-full py-4 bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest text-xs transition-colors rounded-sm"
-                  >
-                    Continue Simulation
-                  </button>
-                  <button
-                    onClick={() => { setShowLotteryWarning(false); setPendingSimFn(null); }}
-                    className="w-full py-3 bg-transparent border border-white/5 hover:bg-white/5 text-white/40 font-black uppercase tracking-widest text-[10px] transition-colors rounded-sm"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
       {/* ── Watch game preview modal ──────────────────────────────────────── */}
       <AnimatePresence>
@@ -473,8 +567,8 @@ export const PlayoffView: React.FC = () => {
             homeTeam={getTeamForGame(pendingWatchGame.homeTid, state.teams)}
             awayTeam={getTeamForGame(pendingWatchGame.awayTid, state.teams)}
             players={state.players}
-            homeStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, true, state.allStar, state.players)}
-            awayStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, false, state.allStar, state.players)}
+            homeStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, true, state.allStar, state.players, state.leagueType)}
+            awayStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, false, state.allStar, state.players, state.leagueType)}
             onClose={() => setPendingWatchGame(null)}
             onConfirm={async (rig?: number, watchLive?: boolean) => {
               if (watchLive === false) {
@@ -489,15 +583,23 @@ export const PlayoffView: React.FC = () => {
                 // both use the same result — prevents score discrepancies on early exit.
                 if (pendingWatchGame) {
                   const { GameSimulator } = await import('../../services/simulation/GameSimulator');
-                  const homeTeam = state.teams.find(t => t.id === pendingWatchGame.homeTid)!;
-                  const awayTeam = state.teams.find(t => t.id === pendingWatchGame.awayTid)!;
-                  const preResult = GameSimulator.simulateGame(
-                    homeTeam, awayTeam, state.players,
-                    pendingWatchGame.gid, pendingWatchGame.date,
+                  const prepared = GameSimulator.prepareDayGames(
+                    state.teams,
+                    state.players,
+                    [pendingWatchGame],
+                    pendingWatchGame.date,
                     state.stats.playerApproval,
-                    undefined, undefined, undefined, undefined, undefined, rig
+                    state.allStar,
+                    undefined,
+                    undefined,
+                    rig,
+                    state.leagueStats,
                   );
+                  const preResult = GameSimulator.simulatePreparedDayGames(prepared)[0];
+                  const presentation = prepared[0]?.presentation;
+                  if (!preResult || !presentation) throw new Error(`Unable to prepare watched game ${pendingWatchGame.gid}`);
                   setPrecomputedResult(preResult);
+                  setWatchPresentation(presentation);
                 }
                 setWatchingGame(pendingWatchGame);
                 setPendingWatchGame(null);
@@ -508,6 +610,7 @@ export const PlayoffView: React.FC = () => {
       </AnimatePresence>
 
       {rosterGate.modal}
+      {boundaryPreflight.modal}
     </div>
   );
 };

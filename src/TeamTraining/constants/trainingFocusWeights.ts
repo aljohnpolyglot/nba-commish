@@ -7,7 +7,7 @@ export interface TrainingFocusWeights {
 
 export const TRAINING_WEIGHTS: Record<string, Partial<Record<string, number>>> = {
   'Balanced': { oiq: 0.15, diq: 0.15, fg: 0.1, tp: 0.1, drb: 0.1, pss: 0.1, reb: 0.1, ins: 0.1, ft: 0.1 },
-  'Generalist': { oiq: 0.2, diq: 0.2, endu: 0.1, fg: 0.1, tp: 0.1, drb: 0.1, pss: 0.1, reb: 0.1 },
+  'Generalist': { oiq: 0.2, diq: 0.2, endu: 0.15, fg: 0.1, tp: 0.1, drb: 0.1, reb: 0.15 },
   'Glue Guy': { oiq: 0.3, diq: 0.3, endu: 0.2, reb: 0.1, pss: 0.1 },
   'Two-Way Wing': { oiq: 0.2, diq: 0.2, fg: 0.1, tp: 0.1, reb: 0.1, drb: 0.1, pss: 0.1, ins: 0.1 },
   'Scoring Guard': { fg: 0.3, tp: 0.3, ft: 0.2, drb: 0.1, oiq: 0.1 },

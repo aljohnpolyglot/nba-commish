@@ -2,7 +2,7 @@ import { Bet, BetLeg, GameResult } from '../../types';
 
 /**
  * Pure function — resolves pending bets against a batch of game results.
- * Model A: wager was deducted at placement, so netChange = potentialPayout - wager on win, 0 on loss.
+ * The wager is deducted at placement. A win returns the full payout; a loss returns nothing.
  *
  * DNP rule: if a player's ID appears in result.playerDNPs OR is absent from all stats arrays,
  * the leg stays pending (null) — never marked lost.
@@ -30,7 +30,7 @@ export function resolveBets(
     const won = legResults.every(lr => lr === true);
 
     if (won) {
-      netChange += bet.potentialPayout - bet.wager;
+      netChange += bet.potentialPayout;
       return { ...bet, status: 'won' as const };
     } else {
       return { ...bet, status: 'lost' as const };

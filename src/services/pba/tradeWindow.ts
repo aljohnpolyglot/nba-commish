@@ -2,7 +2,7 @@ import type { GameState, NBAPlayer, NBATeam } from '../../types';
 import { getActiveLeagueTeams, isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
 import { isPbaIsolatedMode } from '../../utils/uiMode';
 
-function isPbaTeam(team: { id?: number; tid?: number; conference?: string; league?: string }): boolean {
+export function isPbaTradeTeam(team: { id?: number; tid?: number; conference?: string; league?: string }): boolean {
   const tid = Number(team.id ?? team.tid ?? -1);
   const league = String(team.league ?? team.conference ?? '').toLowerCase();
   return (tid >= 2000 && tid < 3000) || league.includes('pba');
@@ -19,11 +19,11 @@ export function getPbaTradeTeams(state: Pick<GameState, 'teams' | 'nonNBATeams' 
     teams: state.teams,
     nonNBATeams: state.nonNBATeams ?? [],
     userTeamId: state.userTeamId,
-  }).filter(isPbaTeam);
+  }).filter(isPbaTradeTeam);
   if (scoped.length > 0) return scoped;
 
   return (state.nonNBATeams ?? [])
-    .filter(isPbaTeam)
+    .filter(isPbaTradeTeam)
     .map(team => resolveAnyTeam(team.tid, state.teams, state.nonNBATeams ?? []))
     .filter((team): team is NBATeam => team !== null);
 }

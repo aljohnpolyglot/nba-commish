@@ -1,5 +1,7 @@
-import { GameState, Email, NBAPlayer as Player, UserAction } from '../../../types';
+import { GameState, Email, GameResult, NBAPlayer as Player, UserAction } from '../../../types';
 import { getAllReferees, getPlayerPhoto } from '../../../data/photos';
+import { buildFightDisciplineEmail, maybeGenerateDisciplineEmail } from '../../../services/disciplineInbox';
+import { appendMediaProjectInboxForRange } from '../../../services/mediaProjects';
 
 const resolveRealName = (senderName: string, senderRole: string, state: GameState): {
     name: string,
@@ -74,8 +76,14 @@ const resolveRealName = (senderName: string, senderRole: string, state: GameStat
     return { name: senderName };
 };
 
-export const handleCommunication = (state: GameState, action: UserAction, result: any, dateString: string) => {
-    let updatedInbox = [...state.inbox];
+export const handleCommunication = (
+    state: GameState,
+    action: UserAction,
+    result: any,
+    dateString: string,
+    simResults: GameResult[] = [],
+) => {
+    let updatedInbox = [...(result.inbox ?? state.inbox)];
 
     // Handle email replies
     if (action.type === 'REPLY_EMAIL' && action.payload?.emailId) {
@@ -110,12 +118,36 @@ export const handleCommunication = (state: GameState, action: UserAction, result
             return role.includes(rLower);
         });
 
-        if (isChatRole) {
+        if (email.delivery === 'message' || isChatRole) {
             newChatMessages.push(email);
         } else {
             newInboxEmails.push(email);
         }
     });
+
+    if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+        const start = new Date(`${state.date} 00:00:00`).getTime();
+        const end = new Date(`${dateString} 00:00:00`).getTime();
+        const days = Number.isFinite(start) && Number.isFinite(end)
+            ? Math.max(1, Math.round(Math.abs(end - start) / 86_400_000))
+            : 1;
+        const disciplineProbability = 1 - Math.pow(1 - 0.006, days);
+        const disciplineEmail = maybeGenerateDisciplineEmail(state, dateString, disciplineProbability);
+        if (disciplineEmail) newInboxEmails.push(disciplineEmail);
+        for (const gameResult of simResults) {
+            if (!gameResult.fight) continue;
+            const fightEmail = buildFightDisciplineEmail(state, gameResult.fight, dateString);
+            if (fightEmail) newInboxEmails.push(fightEmail);
+        }
+        const mediaProjectState = appendMediaProjectInboxForRange(
+            { ...state, inbox: [...newInboxEmails, ...updatedInbox] },
+            state.date,
+            dateString,
+        );
+        const knownIds = new Set([...newInboxEmails, ...updatedInbox].map(email => email.id));
+        const mediaProjectEmail = mediaProjectState.inbox.find(email => !knownIds.has(email.id));
+        if (mediaProjectEmail) newInboxEmails.push(mediaProjectEmail);
+    }
 
     // Probabilistic Inbox Messages (Scandals, Discipline, Sponsors)
     const dailyProb = 0.002; // Roughly 5-6% monthly
@@ -177,7 +209,8 @@ export const handleCommunication = (state: GameState, action: UserAction, result
         const matchedRef = getAllReferees().find(
             r => msg.sender && r.name.toLowerCase() === msg.sender.toLowerCase()
         );
-        const targetId = matchedPlayer?.internalId
+        const targetId = msg.senderId
+            || matchedPlayer?.internalId
             || matchedStaff?.name
             || (matchedRef ? `ref-${matchedRef.id}` : null)
             || msg.sender;
@@ -193,8 +226,15 @@ export const handleCommunication = (state: GameState, action: UserAction, result
                 id: `chat-${Date.now()}-${Math.random()}`,
                 participants: ['commissioner', targetId],
                 participantDetails: [
-                    { id: 'commissioner', name: state.commissionerName, role: 'Commissioner' },
-                    { id: targetId, name: displayName, role: msg.senderRole, avatarUrl, teamLogoUrl: resolved.teamLogoUrl }
+                    { id: 'commissioner', name: state.commissionerName, role: state.gameMode === 'gm' ? 'General Manager' : 'Commissioner' },
+                    {
+                        id: targetId,
+                        name: displayName,
+                        role: msg.senderRole,
+                        avatarUrl,
+                        teamLogoUrl: resolved.teamLogoUrl,
+                        organization: msg.organization,
+                    }
                 ],
                 messages: [],
                 unreadCount: 0,

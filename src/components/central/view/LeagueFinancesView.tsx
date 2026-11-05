@@ -1,28 +1,35 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { DollarSign, Ticket, TrendingUp } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
-import { estimateAttendance } from '../../../utils/attendanceUtils';
+import { resolveAttendanceProfile } from '../../../utils/attendanceUtils';
 import { getOwnTeamId } from '../../../utils/helpers';
 import { getMLEAvailability, getTeamPayrollUSD, type CapThresholds, effectiveRecord, getCapStatus, getCapThresholds } from '../../../utils/salaryUtils';
 import { resolveTeamStrategyProfile } from '../../../utils/teamStrategy';
 import { getActiveTPEs, getTotalActiveTPE } from '../../../utils/tradeExceptionUtils';
-import { isEuroIsolatedMode } from '../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode, isWnbaIsolatedMode } from '../../../utils/uiMode';
+import { getSigningRosterLimit, getTwoWayRosterLimit } from '../../../utils/rosterLimits';
+import { getTeamRosterContractCounts } from '../../../utils/rosterCounts';
+import { areTradeExceptionsEnabled, isMleEnabled } from '../../../utils/ruleFlags';
 import {
   type AttSortKey,
   AttendanceTab,
   type CapSortKey,
-  CAP_GRID,
   CapRow,
   CapSortHeader,
+  getCapGrid,
   type TabKey,
   TeamEnriched,
   LeagueFinancesEuroView,
-  LeagueFinancesHeader,
   ROLE_RANK,
   STATUS_SEVERITY,
   TradeBoardTab,
   areAttendanceSoldOut,
 } from './LeagueFinancesViewShared';
+import { LeagueFinancesHeader } from './LeagueFinancesHeader';
+import type { NBATeam } from '../../../types';
+import { areTwoWayContractsEnabled } from '../../../utils/contractTypes';
+import { areWnbaDevelopmentalContractsEnabled } from '../../../services/wnba/developmentalContracts';
+import { isLeagueTrainingCampWindow } from '../../../services/leagueCalendar';
 
 export const LeagueFinancesView: React.FC = () => {
   const { state, navigateToTeamFinances } = useGame();
@@ -33,19 +40,45 @@ export const LeagueFinancesView: React.FC = () => {
   const [attSort, setAttSort] = useState<AttSortKey>('attendance');
   const [attDir, setAttDir] = useState<'desc' | 'asc'>('desc');
   const tradesDisabled = state.leagueStats?.tradesAllowed === false;
+  const pbaIsolated = isPbaIsolatedMode(state);
+  const wnbaIsolated = isWnbaIsolatedMode(state);
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats), [state.leagueStats]);
+  const capRulesActive = Number.isFinite(thresholds.salaryCap);
+  const taxRulesActive = Number.isFinite(thresholds.luxuryTax);
+  const showMleColumn = isMleEnabled(state.leagueStats);
+  const showTpeColumn = areTradeExceptionsEnabled(state.leagueStats);
   const seasonYear = state.leagueStats.year;
+  const expandedRosterWindow = state.offseasonChecklist?.freeAgency === 'in-progress'
+    || isLeagueTrainingCampWindow(state.date, state.leagueStats);
 
   useEffect(() => {
     if (tradesDisabled && tab === 'trade') setTab('cap');
   }, [tradesDisabled, tab]);
 
+  useEffect(() => {
+    if ((capSort === 'mle' && !showMleColumn) || (capSort === 'tpe' && !showTpeColumn)) {
+      setCapSort('payroll');
+      setCapDir('desc');
+    }
+  }, [capSort, showMleColumn, showTpeColumn]);
+
+  const financeTeams = useMemo(() => {
+    if (!pbaIsolated) return state.teams;
+    return (state.nonNBATeams ?? [])
+      .filter((team: any) => team?.league === 'PBA')
+      .map((team: any) => ({
+        ...team,
+        id: Number(team.tid ?? team.id),
+        conference: 'PBA',
+      }));
+  }, [pbaIsolated, state.teams, state.nonNBATeams]);
+
   const confStandings = useMemo(() => {
     const byConf: Record<string, { teamId: number; wins: number; losses: number }[]> = {};
-    state.teams.forEach(t => {
+    financeTeams.forEach(t => {
       const conf = t.conference || 'East';
       if (!byConf[conf]) byConf[conf] = [];
-      const rec = effectiveRecord(t, seasonYear);
+      const rec = effectiveRecord(t, seasonYear, true);
       byConf[conf].push({ teamId: t.id, wins: rec.wins, losses: rec.losses });
     });
 
@@ -63,19 +96,26 @@ export const LeagueFinancesView: React.FC = () => {
       });
     });
     return result;
-  }, [state.teams, seasonYear]);
+  }, [financeTeams, seasonYear, wnbaIsolated]);
 
-  const teamData: TeamEnriched[] = useMemo(() => state.teams.map(team => {
-    const players = state.players.filter(p =>
-      p.tid === team.id &&
-      !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || ''),
+  const teamData: TeamEnriched[] = useMemo(() => financeTeams.map(team => {
+    const rosterCounts = getTeamRosterContractCounts(
+      state.players,
+      team.id,
+      state.leagueStats,
+      pbaIsolated ? 'PBA' : wnbaIsolated ? 'WNBA' : 'NBA',
     );
-    const payroll = getTeamPayrollUSD(state.players, team.id, team, seasonYear);
+    const players = rosterCounts.rosterPlayers;
+    const payroll = getTeamPayrollUSD(state.players, team.id, team, seasonYear, state.leagueStats as any);
     const expiringCount = players.filter(p => (p.contract?.exp ?? 0) <= seasonYear).length;
-    const twoWayCount = players.filter(p => p.twoWay === true).length;
-    const standardCount = players.length - twoWayCount;
+    const standardMax = getSigningRosterLimit(state.leagueStats as any, expandedRosterWindow);
+    const twoWayMax = getTwoWayRosterLimit(state.leagueStats as any);
+    const twoWayEnabled = twoWayMax > 0 && areTwoWayContractsEnabled(state.leagueStats);
+    const secondaryContractShortLabel = areWnbaDevelopmentalContractsEnabled(state.leagueStats) ? 'DEV' : '2W';
+    const twoWayCount = twoWayEnabled ? rosterCounts.twoWayCount : 0;
+    const standardCount = expandedRosterWindow ? rosterCounts.total : rosterCounts.standardCount;
     const { confRank = 15, gbFromLeader = 0 } = confStandings[team.id] ?? {};
-    const { wins: effectiveWins, losses: effectiveLosses } = effectiveRecord(team, seasonYear);
+    const { wins: effectiveWins, losses: effectiveLosses } = effectiveRecord(team, seasonYear, true);
     const topPlayer = [...players].sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))[0];
     const hasInjuredStar = !!topPlayer && (topPlayer.injury?.gamesRemaining ?? 0) >= 30;
     const mle = getMLEAvailability(team.id, payroll, 0, thresholds, state.leagueStats);
@@ -96,30 +136,42 @@ export const LeagueFinancesView: React.FC = () => {
     const strategy = resolveTeamStrategyProfile({
       team,
       players: state.players,
-      teams: state.teams,
+      teams: financeTeams as any,
       leagueStats: state.leagueStats,
       currentYear: seasonYear,
       gameMode: state.gameMode,
       userTeamId: state.userTeamId,
     });
-    return { team, payroll, expiringCount, standardCount, twoWayCount, confRank, gbFromLeader, effectiveWins, effectiveLosses, hasInjuredStar, mleAvailable, mleUsed, mleLimit, mleType, tpeTotalUSD, tpeCount, strategy };
-  }), [state.teams, state.players, seasonYear, confStandings, thresholds, state.leagueStats, state.gameMode, state.userTeamId, state.date, state.faBidding?.markets]);
+    const attendanceProfile = resolveAttendanceProfile(state, team as NBATeam);
+    return { team, payroll, expiringCount, standardCount, standardMax, twoWayCount, twoWayMax, twoWayEnabled, secondaryContractShortLabel, confRank, gbFromLeader, effectiveWins, effectiveLosses, hasInjuredStar, mleAvailable, mleUsed, mleLimit, mleType, tpeTotalUSD, tpeCount, strategy, attendanceProfile };
+  }), [financeTeams, state.players, seasonYear, confStandings, thresholds, state.leagueStats, state.gameMode, state.userTeamId, state.date, state.faBidding?.markets, pbaIsolated, wnbaIsolated, expandedRosterWindow]);
 
   const maxPayroll = useMemo(
-    () => Math.max(...teamData.map(d => d.payroll), thresholds.secondApron * 1.05),
-    [teamData, thresholds],
+    () => capRulesActive
+      ? Math.max(
+          ...teamData.map(d => d.payroll),
+          (Number.isFinite(thresholds.secondApron)
+            ? thresholds.secondApron
+            : Number.isFinite(thresholds.firstApron)
+              ? thresholds.firstApron
+              : Number.isFinite(thresholds.luxuryTax)
+                ? thresholds.luxuryTax
+                : thresholds.salaryCap) * 1.05,
+        )
+      : Math.max(...teamData.map(d => d.payroll), 1),
+    [teamData, thresholds, capRulesActive],
   );
   const totalPayroll = useMemo(() => teamData.reduce((sum, d) => sum + d.payroll, 0), [teamData]);
-  const overTaxCount = useMemo(() => teamData.filter(d => d.payroll >= thresholds.luxuryTax).length, [teamData, thresholds]);
-  const underCapCount = useMemo(() => teamData.filter(d => d.payroll < thresholds.salaryCap).length, [teamData, thresholds]);
+  const overTaxCount = useMemo(() => taxRulesActive ? teamData.filter(d => d.payroll >= thresholds.luxuryTax).length : 0, [teamData, thresholds, taxRulesActive]);
+  const underCapCount = useMemo(() => capRulesActive ? teamData.filter(d => d.payroll < thresholds.salaryCap).length : 0, [teamData, thresholds, capRulesActive]);
   const avgPayroll = totalPayroll / (teamData.length || 1);
 
   const capSorted = useMemo(() => [...teamData].sort((a, b) => {
     let diff = 0;
     if (capSort === 'payroll') diff = a.payroll - b.payroll;
     else if (capSort === 'wins') diff = a.effectiveWins - b.effectiveWins;
-    else if (capSort === 'mle') diff = a.mleAvailable - b.mleAvailable;
-    else if (capSort === 'tpe') diff = a.tpeTotalUSD - b.tpeTotalUSD;
+    else if (capSort === 'mle') diff = showMleColumn ? a.mleAvailable - b.mleAvailable : a.payroll - b.payroll;
+    else if (capSort === 'tpe') diff = showTpeColumn ? a.tpeTotalUSD - b.tpeTotalUSD : a.payroll - b.payroll;
     else if (capSort === 'expiring') diff = a.expiringCount - b.expiringCount;
     else if (capSort === 'roster') diff = (a.standardCount * 10 + a.twoWayCount) - (b.standardCount * 10 + b.twoWayCount);
     else if (capSort === 'status') {
@@ -134,10 +186,10 @@ export const LeagueFinancesView: React.FC = () => {
       diff = a.team.name.localeCompare(b.team.name);
     }
     return capDir === 'desc' ? -diff : diff;
-  }), [teamData, capSort, capDir, thresholds]);
+  }), [teamData, capSort, capDir, thresholds, showMleColumn, showTpeColumn]);
 
   const attSorted = useMemo(() => {
-    const profiles = teamData.map(d => ({ d, p: estimateAttendance(d.team) }));
+    const profiles = teamData.map(d => ({ d, p: d.attendanceProfile }));
     profiles.sort((a, b) => {
       let diff = 0;
       if (attSort === 'attendance') diff = a.p.avgAttendance - b.p.avgAttendance;
@@ -150,19 +202,20 @@ export const LeagueFinancesView: React.FC = () => {
       return attDir === 'desc' ? -diff : diff;
     });
     return profiles.map(x => x.d);
-  }, [teamData, attSort, attDir]);
+  }, [teamData, attSort, attDir, seasonYear]);
 
   const buyers = useMemo(() => teamData.filter(d => d.strategy.initiateBuyTrades).sort((a, b) => a.confRank - b.confRank), [teamData]);
   const sellers = useMemo(() => teamData.filter(d => d.strategy.initiateSellTrades).sort((a, b) => b.confRank - a.confRank), [teamData]);
   const neutrals = useMemo(() => teamData.filter(d => !d.strategy.initiateBuyTrades && !d.strategy.initiateSellTrades), [teamData]);
   const attTotals = useMemo(() => {
-    const profiles = teamData.map(d => estimateAttendance(d.team));
+    const profiles = teamData.map(d => d.attendanceProfile);
     const totalRev = profiles.reduce((sum, p) => sum + p.seasonRevenue, 0);
     const avgFill = profiles.reduce((sum, p) => sum + p.fillRate, 0) / (profiles.length || 1);
     const avgAtt = profiles.reduce((sum, p) => sum + p.avgAttendance, 0) / (profiles.length || 1);
-    const soldOut = profiles.filter(p => areAttendanceSoldOut(p.avgAttendance)).length;
-    return { totalRev, avgFill, avgAtt: Math.round(avgAtt), soldOut };
-  }, [teamData]);
+    const soldOut = profiles.filter(p => areAttendanceSoldOut(p.avgAttendance, p.arenaCapacity)).length;
+    const actualTeams = profiles.filter(p => p.source === 'actual').length;
+    return { totalRev, avgFill, avgAtt: Math.round(avgAtt), soldOut, actualTeams, teamCount: profiles.length };
+  }, [teamData, seasonYear]);
 
   const toggleCap = (col: CapSortKey) => {
     if (capSort === col) setCapDir(dir => dir === 'desc' ? 'asc' : 'desc');
@@ -185,6 +238,8 @@ export const LeagueFinancesView: React.FC = () => {
         avgPayroll={avgPayroll}
         overTaxCount={overTaxCount}
         underCapCount={underCapCount}
+        teamCount={teamData.length}
+        leagueStats={state.leagueStats}
       />
 
       <div className="flex-shrink-0 flex items-center gap-1 border-b border-slate-800/50 bg-[#161616] px-4">
@@ -209,7 +264,7 @@ export const LeagueFinancesView: React.FC = () => {
       {tab === 'cap' && (
         <div className="flex-1 overflow-auto custom-scrollbar">
           <div className="min-w-[1048px]">
-            <div className={`${CAP_GRID} sticky top-0 z-10 border-b border-slate-800/40 bg-[#161616] px-4 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest`}>
+            <div className={`${getCapGrid(showMleColumn, showTpeColumn)} sticky top-0 z-10 border-b border-slate-800/40 bg-[#161616] px-4 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest`}>
               <span className="text-right">#</span>
               <CapSortHeader capSort={capSort} capDir={capDir} col="name" label="Team" onToggle={toggleCap} />
               <CapSortHeader capSort={capSort} capDir={capDir} col="wins" label="W-L" align="center" onToggle={toggleCap} />
@@ -217,8 +272,8 @@ export const LeagueFinancesView: React.FC = () => {
               <CapSortHeader capSort={capSort} capDir={capDir} col="status" label="Status" align="center" onToggle={toggleCap} />
               <span className="px-1">Payroll vs. Cap</span>
               <CapSortHeader capSort={capSort} capDir={capDir} col="payroll" label="Payroll" align="right" onToggle={toggleCap} />
-              <CapSortHeader capSort={capSort} capDir={capDir} col="mle" label="MLE" align="right" onToggle={toggleCap} />
-              <CapSortHeader capSort={capSort} capDir={capDir} col="tpe" label="TPE" align="right" onToggle={toggleCap} />
+              {showMleColumn && <CapSortHeader capSort={capSort} capDir={capDir} col="mle" label="MLE" align="right" onToggle={toggleCap} />}
+              {showTpeColumn && <CapSortHeader capSort={capSort} capDir={capDir} col="tpe" label="TPE" align="right" onToggle={toggleCap} />}
               <CapSortHeader capSort={capSort} capDir={capDir} col="expiring" label="Exp" align="right" onToggle={toggleCap} />
               <CapSortHeader capSort={capSort} capDir={capDir} col="roster" label="Roster" align="right" onToggle={toggleCap} />
               <span />
@@ -231,6 +286,8 @@ export const LeagueFinancesView: React.FC = () => {
                 maxPayroll={maxPayroll}
                 rank={index + 1}
                 isOwn={ownTid !== null && d.team.id === ownTid}
+                showMle={showMleColumn}
+                showTpe={showTpeColumn}
                 onClick={() => navigateToTeamFinances(d.team.id)}
               />
             ))}
@@ -256,6 +313,7 @@ export const LeagueFinancesView: React.FC = () => {
           attSort={attSort}
           attDir={attDir}
           ownTid={ownTid}
+          seasonYear={seasonYear}
           navigateToTeamFinances={navigateToTeamFinances}
           onToggleAtt={toggleAtt}
         />

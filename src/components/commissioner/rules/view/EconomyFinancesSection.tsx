@@ -1,10 +1,11 @@
 import React from 'react';
 import { DollarSign, Info, Lock, Tv, TrendingUp } from 'lucide-react';
 import { useGame } from '../../../../store/GameContext';
+import { formatLeagueSeasonLabel } from '../../../../services/leagueCalendar';
 
 const InfoTooltip = ({ text }: { text: string }) => (
     <div className="group relative inline-flex items-center justify-center ml-1">
-        <Info size={12} className="text-slate-500 cursor-help hover:text-indigo-400 transition-colors" />
+        <Info size={12} className="text-slate-500 cursor-default hover:text-indigo-400 transition-colors" />
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none shadow-xl border border-slate-700 text-center leading-relaxed">
             {text}
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
@@ -230,7 +231,7 @@ export const EconomyFinancesSection = ({ props }: { props: any }) => {
             {props.salaryCapEnabled && (
                 <div className="bg-slate-900/60 rounded-2xl p-4 border border-slate-700/30 space-y-2">
                     <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest mb-3">
-                        Derived Thresholds — {state.leagueStats.year}–{state.leagueStats.year + 1}
+                        Derived Thresholds — {formatLeagueSeasonLabel(state.leagueStats.year, state.leagueStats)}
                     </div>
                     {[
                         { label: 'Salary Cap',   val: props.salaryCap / 1_000_000,                                                          color: 'text-sky-400',    bar: 'bg-sky-400' },

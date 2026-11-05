@@ -1,0 +1,5 @@
+Courtside Ring — south-west
+===========================
+
+C31	sections/c31-south-west.svg
+C32	sections/c32-south-west.svg

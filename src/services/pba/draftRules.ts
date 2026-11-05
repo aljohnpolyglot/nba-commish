@@ -1,118 +1,29 @@
-import type { LeagueStats, NBAPlayer } from '../../types';
+import type { DraftPick, LeagueStats, NBAPlayer } from '../../types';
 import type { DraftOrderTeam } from '../draft/draftOrder';
 import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
 import { selectCompetitionTeamTids } from '../competition/competitionScheduler';
 import { isFilipino } from './importManager';
-import { computeAge, convertTo2KRating } from '../../utils/helpers';
-
-const PBA_DRAFT_TUNING_VERSION = 'pba-draft-2026-06-k2-v11';
-
-const seededUnit = (value: string): number => {
-  let hash = 2166136261;
-  for (let i = 0; i < value.length; i++) {
-    hash ^= value.charCodeAt(i);
-    hash = Math.imul(hash, 16777619);
-  }
-  return (hash >>> 0) / 4294967295;
-};
-
-const internalRatingForK2 = (target: number, height: number, threePoint?: number): number => {
-  let best = 0;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  for (let rating = 0; rating <= 100; rating++) {
-    const distance = Math.abs(convertTo2KRating(rating, height, threePoint) - target);
-    if (distance < bestDistance) {
-      best = rating;
-      bestDistance = distance;
-    }
-  }
-  return best;
-};
-
-const displayK2ForPlayer = (player: NBAPlayer): number => {
-  const ratings = Array.isArray(player.ratings) ? player.ratings : [];
-  const last = ratings.length > 0 ? ratings[ratings.length - 1] : undefined;
-  const rawOvr = Number(player.overallRating ?? last?.ovr ?? 50);
-  const height = Number(last?.hgt ?? 50);
-  const threePoint = typeof last?.tp === 'number' ? last.tp : undefined;
-  return convertTo2KRating(rawOvr, height, threePoint);
-};
-
-const displayPotK2ForPlayer = (player: NBAPlayer, currentYear: number): number => {
-  const ratings = Array.isArray(player.ratings) ? player.ratings : [];
-  const last = ratings.length > 0 ? ratings[ratings.length - 1] : undefined;
-  const rawOvr = Number(player.overallRating ?? last?.ovr ?? 50);
-  const rawPot = Number(player.potential ?? last?.pot ?? rawOvr);
-  const age = computeAge(player, currentYear);
-  const resolvedPot = Number.isFinite(rawPot) && rawPot > 0 ? Math.max(rawOvr, rawPot) : Math.max(rawOvr, rawOvr + Math.max(2, 23 - age));
-  const height = Number(last?.hgt ?? 50);
-  const threePoint = typeof last?.tp === 'number' ? last.tp : undefined;
-  return convertTo2KRating(resolvedPot, height, threePoint);
-};
-
-const draftYearOf = (player: NBAPlayer, fallbackYear: number): number => {
-  const draftYear = Number((player as any).draft?.year);
-  return Number.isFinite(draftYear) ? draftYear : fallbackYear;
-};
+import { computeAge } from '../../utils/helpers';
+import { normalizeCompactPositionLabel } from '../../utils/positionUtils';
 
 const isDraftProspect = (player: NBAPlayer): boolean =>
   player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect';
 
-const isRetunablePbaDraftee = (player: NBAPlayer, currentYear: number): boolean => {
-  if ((player as any).pbaDraftTunedVersion === PBA_DRAFT_TUNING_VERSION) return false;
-  if (player.status !== 'PBA') return false;
-  const draft = (player as any).draft;
-  const draftYear = Number(draft?.year);
-  const draftRound = Number(draft?.round);
-  if (!Number.isFinite(draftYear) || draftYear < currentYear - 3 || draftYear > currentYear + 1) return false;
-  if (!Number.isFinite(draftRound) || draftRound <= 0) return false;
-  const version = String((player as any).pbaDraftTunedVersion ?? '');
-  return version.startsWith('pba-draft-') || version.length === 0;
-};
+const isPbaDraftImport = (player: NBAPlayer): boolean =>
+  player.isImport === true
+  || player.historicalPbaSource?.importTagged === true
+  || /\(Import\)\s*$/i.test(player.name);
 
-type PbaTuneMeta = {
-  rankPct: number;
-  targetOvrK2: number;
-  targetPotK2: number;
-};
+const isPbaDraftLocal = (player: NBAPlayer): boolean => isFilipino(player) || !!(player as any).pbaLocalEligible;
 
-const buildPbaTuneMeta = (
-  players: NBAPlayer[],
-  currentYear: number,
-): Map<string, PbaTuneMeta> => {
-  const byDraftYear = new Map<number, Array<{ player: NBAPlayer; score: number }>>();
-  for (const player of players) {
-    const shouldTune = isDraftProspect(player) || isRetunablePbaDraftee(player, currentYear);
-    if (!shouldTune || !isFilipino(player)) continue;
-    const draftYear = draftYearOf(player, currentYear);
-    const age = computeAge(player, currentYear);
-    const displayOvr = displayK2ForPlayer(player);
-    const displayPot = displayPotK2ForPlayer(player, currentYear);
-    const readiness = Math.max(0, 23 - age) * 0.35;
-    const score = (displayPot * 0.58) + (displayOvr * 0.42) + readiness;
-    const group = byDraftYear.get(draftYear) ?? [];
-    group.push({ player, score });
-    byDraftYear.set(draftYear, group);
-  }
+export const isPbaSourceDraftProspect = (player: NBAPlayer): boolean => (
+  (player as any).historicalPbaDraftProspect === true
+  || typeof (player as any).pbaDraftSource === 'string'
+  || (player as any).pbaDraftRatingsSource === 'historical-pba-roster'
+);
 
-  const meta = new Map<string, PbaTuneMeta>();
-  for (const [draftYear, group] of byDraftYear.entries()) {
-    group.sort((a, b) => b.score - a.score);
-    const denom = Math.max(1, group.length - 1);
-    for (let index = 0; index < group.length; index++) {
-      const { player } = group[index];
-      const seed = seededUnit(`${player.internalId}|${player.name}|${draftYear}|ovr`);
-      const potSeed = seededUnit(`${player.internalId}|${player.name}|${draftYear}|pot`);
-      const rankPct = group.length === 1 ? 1 : 1 - (index / denom);
-      const yearsUntilDraft = Math.max(0, draftYear - currentYear);
-      const futurePenalty = yearsUntilDraft * 2;
-      const targetOvrK2 = Math.round(Math.max(42, Math.min(50, 42 + (rankPct * 6) + seed - futurePenalty)));
-      const targetPotK2 = Math.round(Math.max(45, Math.min(54, targetOvrK2 + 2 + rankPct + potSeed - yearsUntilDraft)));
-      meta.set(player.internalId, { rankPct, targetOvrK2, targetPotK2 });
-    }
-  }
-  return meta;
-};
+const normalizePbaDraftPosition = (pos: unknown, height?: number): string =>
+  normalizeCompactPositionLabel(pos, height);
 
 export function getPbaDraftPool(
   players: NBAPlayer[],
@@ -122,10 +33,15 @@ export function getPbaDraftPool(
   const eligibilityAgeRange = getPbaEligibilityAgeRange(leagueStats);
   return players.filter(p => {
     if (!isDraftProspect(p)) return false;
-    if (!isFilipino(p)) return false;
+    if (isPbaDraftImport(p)) return false;
+    if (!isPbaDraftLocal(p)) return false;
     const playerDraftYear = Number((p as any).draft?.year);
     if (Number.isFinite(playerDraftYear) && playerDraftYear !== draftYear) return false;
     if (computeAge(p, draftYear) < eligibilityAgeRange.min) return false;
+    if ((p as any).historicalPbaDraftProspect === true) {
+      if ((p as any).pbaDraftRatingsSource !== 'historical-pba-roster') return false;
+      if (!Array.isArray(p.ratings) || p.ratings.length === 0) return false;
+    }
     return true;
   });
 }
@@ -154,84 +70,13 @@ export const getPbaEligibilityAgeRange = (
 
 export function tunePbaDraftProspects(
   players: NBAPlayer[],
-  currentYear: number,
-  leagueStats?: Pick<LeagueStats, 'draftEligibilityRule' | 'minAgeRequirement'> | null,
+  _currentYear: number,
+  _leagueStats?: Pick<LeagueStats, 'draftEligibilityRule' | 'minAgeRequirement'> | null,
 ): NBAPlayer[] {
-  const eligibilityAgeRange = getPbaEligibilityAgeRange(leagueStats);
-  const tuneMeta = buildPbaTuneMeta(players, currentYear);
   return players.map(player => {
-    const shouldTune = isDraftProspect(player) || isRetunablePbaDraftee(player, currentYear);
-    if (!shouldTune || !isFilipino(player)) return player;
-
-    const draftYear = draftYearOf(player, currentYear);
-    const yearsUntilDraft = Math.max(0, draftYear - currentYear);
-    const minAge = Math.max(16, eligibilityAgeRange.min - yearsUntilDraft);
-    const maxAge = Math.max(minAge, eligibilityAgeRange.max - yearsUntilDraft);
-    const seed = seededUnit(`${player.internalId}|${player.name}|${draftYear}`);
-    const rawAge = Number(player.age ?? (player.born?.year ? currentYear - player.born.year : maxAge));
-    let age = Number.isFinite(rawAge) ? rawAge : maxAge;
-    age = Math.min(maxAge, Math.max(minAge, age));
-    if (age === maxAge && maxAge > minAge && seed < 0.6) age -= 1;
-
-    const ratings = Array.isArray(player.ratings) && player.ratings.length > 0 ? [...player.ratings] : [];
-    const lastIndex = ratings.length - 1;
-    const last = lastIndex >= 0 ? { ...ratings[lastIndex] } : undefined;
-    const meta = tuneMeta.get(player.internalId);
-    const rankPct = meta?.rankPct ?? 0.5;
-    const targetOvrK2 = meta?.targetOvrK2 ?? (43 + Math.floor(seed * 5));
-    const targetPotK2 = meta?.targetPotK2 ?? Math.min(54, targetOvrK2 + 3);
-    const height = Number(last?.hgt ?? 50);
-    const threePoint = typeof last?.tp === 'number' ? Math.min(last.tp, 84) : undefined;
-    const tunedOvr = internalRatingForK2(targetOvrK2, height, threePoint);
-    const tunedPot = internalRatingForK2(targetPotK2, height, threePoint);
-
-    if (last) {
-      const pos = String(player.pos ?? '');
-      const isGuard = pos.includes('G') && !pos.includes('C');
-      const isCenter = pos.includes('C');
-      const isComboForward = pos.includes('F');
-      const floorBase = Math.max(24, tunedOvr - 6 + Math.round(rankPct * 4));
-      const shootingFloor = floorBase + (isGuard ? 4 : isComboForward ? 1 : -2);
-      const finishingFloor = floorBase + (isCenter ? 6 : 3);
-      const playmakingFloor = floorBase + (isGuard ? 5 : isCenter ? -3 : 1);
-      const iqFloor = floorBase + 1;
-      const defenseFloor = floorBase + (isCenter ? 4 : 2);
-      const athleticFloor = floorBase + (String((player as any).archetype ?? '').toLowerCase().includes('athletic') ? 4 : 2);
-      const reboundingFloor = floorBase + (isCenter ? 7 : isComboForward ? 3 : 0);
-      const strengthFloor = floorBase + (isCenter ? 7 : isComboForward ? 3 : 1);
-      const cap = 64;
-      const lift = (value: unknown, floor: number) => {
-        const numeric = Number(value);
-        return Math.round(Math.max(Number.isFinite(numeric) ? numeric : floor, floor));
-      };
-      last.tp = Math.min(cap, lift(last.tp, shootingFloor));
-      last.fg = Math.min(cap, lift(last.fg, shootingFloor - 1));
-      last.ft = Math.min(cap, lift(last.ft, shootingFloor - 2));
-      last.ins = Math.min(cap, lift(last.ins, finishingFloor));
-      last.dnk = Math.min(cap, lift(last.dnk, finishingFloor + (isCenter ? 1 : 2)));
-      last.pss = Math.min(cap, lift(last.pss, playmakingFloor));
-      last.drb = Math.min(cap, lift(last.drb, playmakingFloor + (isGuard ? 1 : 0)));
-      last.oiq = Math.min(cap, lift(last.oiq, iqFloor));
-      last.diq = Math.min(cap, lift(last.diq, defenseFloor));
-      last.spd = Math.min(cap, lift(last.spd, athleticFloor + (isGuard ? 2 : 0)));
-      last.jmp = Math.min(cap, lift(last.jmp, athleticFloor + 1));
-      last.endu = Math.min(cap, lift(last.endu, athleticFloor));
-      last.reb = Math.min(cap, lift(last.reb, reboundingFloor));
-      last.stre = Math.min(cap, lift(last.stre, strengthFloor));
-      last.ovr = tunedOvr;
-      last.pot = tunedPot;
-      ratings[lastIndex] = last;
-    }
-
-    return {
-      ...player,
-      age,
-      born: player.born ? { ...player.born, year: currentYear - age } : { year: currentYear - age, loc: 'Philippines' },
-      overallRating: tunedOvr,
-      potential: tunedPot,
-      ratings,
-      pbaDraftTunedVersion: PBA_DRAFT_TUNING_VERSION,
-    };
+    if (!isPbaDraftLocal(player)) return player;
+    const pos = normalizePbaDraftPosition(player.pos, player.hgt);
+    return pos === player.pos ? player : { ...player, pos };
   });
 }
 
@@ -244,7 +89,8 @@ export function getPbaComparisonPool(players: NBAPlayer[]): NBAPlayer[] {
 }
 
 export const PBA_DRAFT_ROUNDS = 2;
-export const PBA_MAX_DRAFT_ROUNDS = 8;
+export const getPbaDraftClassTargetSize = (activeTeamCount: number): number =>
+  Math.max(1, Math.floor(activeTeamCount)) * PBA_DRAFT_ROUNDS + 10;
 
 type PbaConferenceKey = 'philippine' | 'commissioners' | 'governors';
 
@@ -385,28 +231,31 @@ export const buildPbaDraftOrderTeams = (
   boxScores: any[] = [],
   seasonYear?: number,
   prospectCount = 0,
+  draftPicks: DraftPick[] = [],
 ): DraftOrderTeam[] => {
   const pbaRows = buildPbaDraftRankingRows(nonNBATeams, boxScores, seasonYear);
   const pbaOrder = pbaRows.map(row => row.tid);
   const order: DraftOrderTeam[] = [];
   const teamCount = Math.max(1, pbaOrder.length);
-  const roundsByPool = Math.ceil(Math.max(prospectCount, teamCount * PBA_DRAFT_ROUNDS) / teamCount);
-  const totalRounds = Math.max(PBA_DRAFT_ROUNDS, Math.min(PBA_MAX_DRAFT_ROUNDS, roundsByPool));
+  const totalRounds = PBA_DRAFT_ROUNDS;
 
   for (let round = 1; round <= totalRounds; round++) {
     for (const tid of pbaOrder) {
       const row = pbaRows.find(entry => entry.tid === tid);
       const team = row?.team;
       if (!team) continue;
+      const pickAsset = draftPicks.find(pick => pick.season === seasonYear && pick.round === round && pick.originalTid === tid);
+      const owner = pbaRows.find(entry => entry.tid === pickAsset?.tid)?.team ?? team;
       order.push({
-        ...team,
-        id: tid,
-        name: team.name ?? 'PBA Team',
-        abbrev: team.abbrev ?? '???',
+        ...owner,
+        id: teamIdOf(owner),
+        name: owner.name ?? 'PBA Team',
+        abbrev: owner.abbrev ?? '???',
         _originalTid: tid,
         _originalAbbrev: team.abbrev ?? '???',
         _originalName: team.name ?? 'PBA Team',
-        _traded: false,
+        _traded: teamIdOf(owner) !== tid,
+        _forfeited: !!pickAsset?.forfeiture,
         _round: round,
         _roundSize: teamCount,
         _r2: round === 2,

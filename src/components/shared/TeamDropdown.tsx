@@ -16,6 +16,7 @@ export interface TeamDropdownProps {
   compact?: boolean;
   /** Placeholder shown when no team is selected */
   placeholder?: string;
+  showRecords?: boolean;
 }
 
 export const TeamDropdown: React.FC<TeamDropdownProps> = ({
@@ -28,6 +29,7 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
   onToggle,
   compact = false,
   placeholder = 'Select team...',
+  showRecords = true,
 }) => {
   const selectedTeam = teams.find(t => t.id === selectedTeamId);
   const visibleTeams = teams.filter(t => t.id !== otherTeamId);
@@ -102,24 +104,26 @@ export const TeamDropdown: React.FC<TeamDropdownProps> = ({
                   <div key={group.key}>
                     <div className="bg-[#111] px-4 py-2 text-[10px] font-black text-slate-500 uppercase tracking-[0.3em] sticky top-0 border-b border-slate-800 z-10 flex justify-between items-center">
                       <span>{group.label}</span>
-                      <span className="text-[8px] opacity-50">W-L</span>
+                      {showRecords && <span className="text-[8px] opacity-50">W-L</span>}
                     </div>
                     {group.teams.map(t => (
                         <button
                           key={t.id}
                           onClick={() => { onSelect(t.id); onToggle(); }}
-                          className={`w-full px-4 py-3 flex items-center justify-between hover:bg-slate-800 transition-all border-b border-slate-800/50 last:border-0 ${selectedTeamId === t.id ? 'bg-indigo-600/20 text-indigo-400' : ''}`}
+                          className={`w-full px-4 ${showRecords ? 'py-3' : 'py-2'} flex items-center justify-between hover:bg-slate-800 transition-all border-b border-slate-800/50 last:border-0 ${selectedTeamId === t.id ? 'bg-indigo-600/20 text-indigo-400' : ''}`}
                         >
                           <div className="flex items-center gap-4 min-w-0">
-                            <img src={t.logoUrl} alt="" className="w-8 h-8 object-contain" />
+                            <img src={t.logoUrl} alt="" className={`${showRecords ? 'w-8 h-8' : 'w-7 h-7'} object-contain`} />
                             <div className="text-left truncate">
                               <div className="text-sm font-black uppercase tracking-tight truncate">{t.abbrev}</div>
                               <div className="text-[10px] font-bold text-slate-500 truncate">{getTeamFullName(t)}</div>
                             </div>
                           </div>
-                          <div className="text-xs font-mono font-black text-slate-400">
-                            {t.wins}-{t.losses}
-                          </div>
+                          {showRecords && (
+                            <div className="text-xs font-mono font-black text-slate-400">
+                              {t.wins}-{t.losses}
+                            </div>
+                          )}
                         </button>
                       ))}
                   </div>

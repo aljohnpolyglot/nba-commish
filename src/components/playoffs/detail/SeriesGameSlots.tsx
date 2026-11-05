@@ -1,6 +1,8 @@
 import React from 'react';
 import { Game, GameResult, NBATeam, PlayoffSeries, PlayInGame } from '../../../types';
 import { normalizeDate } from '../../../utils/helpers';
+import { findBoxScoreForScheduledGame } from '../../../utils/boxScoreLookup';
+import { didHomeTeamWin } from '../../../utils/gameOutcome';
 
 interface SeriesGameSlotsProps {
   series: PlayoffSeries | PlayInGame;
@@ -54,13 +56,17 @@ export const SeriesGameSlots: React.FC<SeriesGameSlotsProps> = ({
   return (
     <div className="flex gap-1 overflow-x-auto pb-1">
       {slots.map((game, idx) => {
-        const result = game ? (boxScores.find(b => b.gameId === game.gid && (!b.season || b.season === currentSeason)) ?? null) : null;
+        const result = game
+          ? (findBoxScoreForScheduledGame(boxScores, game) ?? boxScores.find(b => b.gameId === game.gid && (!b.season || b.season === currentSeason)) ?? null)
+          : null;
         const isPlayed = game?.played ?? false;
         const isToday = game ? normalizeDate(game.date) === normalizeDate(stateDate) : false;
         const isSelected = idx === selectedIdx;
 
-        const homeTeam = game ? teams.find(t => t.id === game.homeTid) : null;
-        const awayTeam = game ? teams.find(t => t.id === game.awayTid) : null;
+        const homeTid = game ? Number(game.homeTid) : null;
+        const awayTid = game ? Number(game.awayTid) : null;
+        const homeTeam = homeTid != null ? teams.find(t => t.id === homeTid) : null;
+        const awayTeam = awayTid != null ? teams.find(t => t.id === awayTid) : null;
 
         const homeAbbrev = homeTeam?.abbrev ?? '???';
         const awayAbbrev = awayTeam?.abbrev ?? '???';
@@ -73,13 +79,13 @@ export const SeriesGameSlots: React.FC<SeriesGameSlotsProps> = ({
         if (isPlayed && result) {
           homeScore = result.homeScore;
           awayScore = result.awayScore;
-          homeWon = result.winnerId === game?.homeTid;
-          awayWon = result.winnerId === game?.awayTid;
+          homeWon = didHomeTeamWin(result);
+          awayWon = !homeWon;
         } else if (isPlayed && game) {
           homeScore = game.homeScore;
           awayScore = game.awayScore;
-          homeWon = game.homeScore > game.awayScore;
-          awayWon = game.awayScore > game.homeScore;
+          homeWon = didHomeTeamWin(game);
+          awayWon = !homeWon;
         }
 
         return (

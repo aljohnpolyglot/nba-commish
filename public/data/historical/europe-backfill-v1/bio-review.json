@@ -1,0 +1,7361 @@
+{
+  "version": "europe-historical-v1-2026-08-09",
+  "reviews": [
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-000070",
+      "name": "Alberto Abalde",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Alberto Abalde",
+        "born": {
+          "year": 1995,
+          "loc": "Ferrol"
+        },
+        "pos": "SG",
+        "hgt": 80,
+        "weight": 209,
+        "imgURL": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Alberto%20Abalde%206%20Valencia%20Basket%20EuroLeague%2020180201.jpg?width=700",
+        "sourceDob": "1995-12-15",
+        "sourceHeightCm": 202
+      },
+      "scaffold": {
+        "born": {
+          "year": 1963,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-000080",
+      "name": "Alberto Diaz",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Alberto Diaz",
+        "born": {
+          "year": 1994,
+          "loc": "Málaga"
+        },
+        "pos": "PG",
+        "hgt": 75,
+        "weight": 190,
+        "imgURL": "https://www.eurobasket.com/photos/Diaz_Alberto.jpg",
+        "sourceDob": "1994-04-23",
+        "sourceHeightCm": 191
+      },
+      "scaffold": {
+        "born": {
+          "year": 1965,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-000388",
+      "name": "Antonio Diaz",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Antonio Diaz",
+        "born": {
+          "year": 1934,
+          "loc": "Alcázar de San Juan"
+        },
+        "pos": "G",
+        "hgt": 73,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Diaz_Antonio.jpg",
+        "sourceDob": "1934-07-02",
+        "sourceHeightCm": 186
+      },
+      "scaffold": {
+        "born": {
+          "year": 1974,
+          "loc": ""
+        },
+        "pos": "G",
+        "hgt": 76
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-000666",
+      "name": "Carlos Martinez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Carlos Martinez",
+        "born": {
+          "year": 1996,
+          "loc": "A Coruña"
+        },
+        "pos": "FC",
+        "hgt": 81,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Martinez_Carlos.jpg",
+        "sourceDob": "1996-01-19",
+        "sourceHeightCm": null
+      },
+      "scaffold": {
+        "born": {
+          "year": 1965,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-000675",
+      "name": "Carlos Suarez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Carlos Suarez",
+        "born": {
+          "year": 1988,
+          "loc": ""
+        },
+        "pos": "C",
+        "hgt": 80,
+        "weight": 238,
+        "imgURL": "https://www.eurobasket.com/photos/Suarez_Carlos_1.png",
+        "sourceDob": "1988-12-17",
+        "sourceHeightCm": 203
+      },
+      "scaffold": {
+        "born": {
+          "year": 1965,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-000941",
+      "name": "Daniel Garcia",
+      "status": "resolved",
+      "reason": "user-confirmed-historical-identity",
+      "rejected": {
+        "name": "Dani Garcia",
+        "born": {
+          "year": 1998,
+          "loc": "Mataró"
+        },
+        "pos": "PG",
+        "hgt": 73,
+        "weight": 176,
+        "imgURL": "https://www.eurobasket.com/photos/Garcia_Dani.jpg",
+        "sourceDob": "1998-01-30",
+        "sourceHeightCm": 185
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-000942",
+      "name": "Dani Perez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Dani Perez",
+        "born": {
+          "year": 1990,
+          "loc": "L'Hospitalet de Llobregat"
+        },
+        "pos": "PG",
+        "hgt": 74,
+        "weight": 187,
+        "imgURL": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Dani%20P%C3%A9rez%20(53070523495).jpg?width=700",
+        "sourceDob": "1990-02-28",
+        "sourceHeightCm": 188
+      },
+      "scaffold": {
+        "born": {
+          "year": 1964,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-001047",
+      "name": "David Gomez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "David Gomez",
+        "born": {
+          "year": 1989,
+          "loc": "Madrid"
+        },
+        "pos": "F",
+        "hgt": 78,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Gomez_David.jpg",
+        "sourceDob": "1989-01-01",
+        "sourceHeightCm": 198
+      },
+      "scaffold": {
+        "born": {
+          "year": 1976,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-001312",
+      "name": "Eddie Smith",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Eddie Smith",
+        "born": {
+          "year": 1983,
+          "loc": "Illinois"
+        },
+        "pos": "PG",
+        "hgt": 75,
+        "weight": 209,
+        "imgURL": "https://www.eurobasket.com/photos/Smith_Eddie.jpg",
+        "sourceDob": "1983-02-17",
+        "sourceHeightCm": 191
+      },
+      "scaffold": {
+        "born": {
+          "year": 1962,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-001336",
+      "name": "Eduardo Sanchez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Eduardo Sanchez",
+        "born": {
+          "year": 2003,
+          "loc": "Brazil"
+        },
+        "pos": "G",
+        "hgt": 72,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Sanchez_Eduardo.jpg",
+        "sourceDob": "2003-05-07",
+        "sourceHeightCm": 183
+      },
+      "scaffold": {
+        "born": {
+          "year": 1973,
+          "loc": ""
+        },
+        "pos": "G",
+        "hgt": 76
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-001402",
+      "name": "Eric Anderson",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Eric Anderson",
+        "born": {
+          "year": 1993,
+          "loc": "Newark"
+        },
+        "pos": "F",
+        "hgt": 80,
+        "weight": 236,
+        "imgURL": "",
+        "sourceDob": "1993-04-15",
+        "sourceHeightCm": 204
+      },
+      "scaffold": {
+        "born": {
+          "year": 1971,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-001617",
+      "name": "Francisco Garcia",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Francisco Garcia",
+        "born": {
+          "year": 1981,
+          "loc": "Santo Domingo"
+        },
+        "pos": "F",
+        "hgt": 79,
+        "weight": 195,
+        "imgURL": "https://www.eurobasket.com/photos/Garcia_Francisco.jpg",
+        "sourceDob": "1981-12-31",
+        "sourceHeightCm": 201
+      },
+      "scaffold": {
+        "born": {
+          "year": 1965,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-001628",
+      "name": "Francisco Sanchez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Francisco Sanchez",
+        "born": {
+          "year": 1989,
+          "loc": "Ciudad Real"
+        },
+        "pos": "FC",
+        "hgt": 81,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Sanchez_Francisco.jpg",
+        "sourceDob": "1989-08-11",
+        "sourceHeightCm": null
+      },
+      "scaffold": {
+        "born": {
+          "year": 1963,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-001984",
+      "name": "Harold Johnson",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Harold Johnson",
+        "born": {
+          "year": 1920,
+          "loc": "Richmond"
+        },
+        "pos": "F",
+        "hgt": 78,
+        "weight": 240,
+        "imgURL": "",
+        "sourceDob": "1920-01-30",
+        "sourceHeightCm": 198
+      },
+      "scaffold": {
+        "born": {
+          "year": 1961,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-001992",
+      "name": "Hector Garcia",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Hector Garcia",
+        "born": {
+          "year": 1926,
+          "loc": "Montevideo"
+        },
+        "pos": "C",
+        "hgt": 76,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1926-06-12",
+        "sourceHeightCm": 194
+      },
+      "scaffold": {
+        "born": {
+          "year": 1975,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002046",
+      "name": "Ignacio Gonzalez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Ignacio Gonzalez",
+        "born": {
+          "year": 2000,
+          "loc": "Buenos Aires"
+        },
+        "pos": "G",
+        "hgt": 74,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Gonzalez_Ignacio.png",
+        "sourceDob": "2000-04-18",
+        "sourceHeightCm": 188
+      },
+      "scaffold": {
+        "born": {
+          "year": 1977,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002229",
+      "name": "Javier Mendiburu",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Javier Mendiburu",
+        "born": {
+          "year": 1980,
+          "loc": "Badalona"
+        },
+        "pos": "PG",
+        "hgt": 78,
+        "weight": 223,
+        "imgURL": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Mediburu.jpg?width=700",
+        "sourceDob": "1980-12-01",
+        "sourceHeightCm": 197
+      },
+      "scaffold": {
+        "born": {
+          "year": 1960,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002274",
+      "name": "Jeff Allen",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Jeff Allen",
+        "born": {
+          "year": 1987,
+          "loc": "Washington, D.C."
+        },
+        "pos": "PF",
+        "hgt": 79,
+        "weight": 229,
+        "imgURL": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Allen-0035.jpg?width=700",
+        "sourceDob": "1987-06-12",
+        "sourceHeightCm": 201
+      },
+      "scaffold": {
+        "born": {
+          "year": 1961,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002454",
+      "name": "Jordi Puig",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Jordi Puig",
+        "born": {
+          "year": 1971,
+          "loc": "Girona"
+        },
+        "pos": "PG",
+        "hgt": 72,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1971-04-16",
+        "sourceHeightCm": 182
+      },
+      "scaffold": {
+        "born": {
+          "year": 1960,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002484",
+      "name": "Jose Antonio Villegas",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Jose Antonio Villegas",
+        "born": {
+          "year": 1984,
+          "loc": "España"
+        },
+        "pos": "SF",
+        "hgt": 75,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1984-10-13",
+        "sourceHeightCm": 190
+      },
+      "scaffold": {
+        "born": {
+          "year": 1961,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002496",
+      "name": "Jose Garcia",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Jose Garcia",
+        "born": {
+          "year": 1989,
+          "loc": "Santo Domingo"
+        },
+        "pos": "PF",
+        "hgt": 79,
+        "weight": 201,
+        "imgURL": "https://www.eurobasket.com/photos/Garcia_Jose.jpg",
+        "sourceDob": "1989-04-22",
+        "sourceHeightCm": 201
+      },
+      "scaffold": {
+        "born": {
+          "year": 1972,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002497",
+      "name": "Jose Gonzalez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Jose Gonzalez",
+        "born": {
+          "year": 1914,
+          "loc": "Valparaíso"
+        },
+        "pos": "C",
+        "hgt": 83,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Gonzalez_Jose.jpg",
+        "sourceDob": "1914-08-03",
+        "sourceHeightCm": null
+      },
+      "scaffold": {
+        "born": {
+          "year": 1968,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002498",
+      "name": "Jose Guzman",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Jose Guzman",
+        "born": {
+          "year": 1937,
+          "loc": "Lima"
+        },
+        "pos": "C",
+        "hgt": 75,
+        "weight": 165,
+        "imgURL": "https://www.eurobasket.com/photos/Guzman_Jose.jpg",
+        "sourceDob": "1937-05-19",
+        "sourceHeightCm": 190
+      },
+      "scaffold": {
+        "born": {
+          "year": 1978,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002501",
+      "name": "Jose Lopez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Jose Lopez",
+        "born": {
+          "year": 1990,
+          "loc": "Española"
+        },
+        "pos": "FC",
+        "hgt": 81,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1990-01-06",
+        "sourceHeightCm": 206
+      },
+      "scaffold": {
+        "born": {
+          "year": 1966,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002639",
+      "name": "Julio Lacaba",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Julio Lacaba",
+        "born": {
+          "year": 1989,
+          "loc": "España"
+        },
+        "pos": "C",
+        "hgt": 80,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1989-03-25",
+        "sourceHeightCm": 202
+      },
+      "scaffold": {
+        "born": {
+          "year": 1965,
+          "loc": ""
+        },
+        "pos": "G",
+        "hgt": 76
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002750",
+      "name": "Koldo Tellitu",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Koldo Tellitu",
+        "born": {
+          "year": 1983,
+          "loc": "Barakaldo, España"
+        },
+        "pos": "SG",
+        "hgt": 73,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1983-11-20",
+        "sourceHeightCm": 186
+      },
+      "scaffold": {
+        "born": {
+          "year": 1960,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002881",
+      "name": "Liru Valiño",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Liru Valiño",
+        "born": {
+          "year": 1984,
+          "loc": "Lugo (Galicia), España"
+        },
+        "pos": "C",
+        "hgt": 78,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1984-11-18",
+        "sourceHeightCm": 199
+      },
+      "scaffold": {
+        "born": {
+          "year": 1961,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-002963",
+      "name": "Luis Francisco De Dios",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Luis Francisco De Dios",
+        "born": {
+          "year": 1984,
+          "loc": "España"
+        },
+        "pos": "PG",
+        "hgt": 73,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1984-09-23",
+        "sourceHeightCm": 185
+      },
+      "scaffold": {
+        "born": {
+          "year": 1961,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-003018",
+      "name": "Manu Rodriguez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Manu Rodriguez",
+        "born": {
+          "year": 1991,
+          "loc": "Granada"
+        },
+        "pos": "SG",
+        "hgt": 76,
+        "weight": 181,
+        "imgURL": "",
+        "sourceDob": "1991-08-17",
+        "sourceHeightCm": 192
+      },
+      "scaffold": {
+        "born": {
+          "year": 1966,
+          "loc": ""
+        },
+        "pos": "G",
+        "hgt": 76
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-003172",
+      "name": "Mark Smith",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Mark Smith",
+        "born": {
+          "year": 1999,
+          "loc": "Decatur"
+        },
+        "pos": "SG",
+        "hgt": 76,
+        "weight": 225,
+        "imgURL": "https://www.eurobasket.com/photos/Smith_Mark.jpg",
+        "sourceDob": "1999-08-16",
+        "sourceHeightCm": 193
+      },
+      "scaffold": {
+        "born": {
+          "year": 1962,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-003332",
+      "name": "Melvin Johnson",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Melvin Johnson",
+        "born": {
+          "year": 1990,
+          "loc": "Dallas"
+        },
+        "pos": "SG",
+        "hgt": 78,
+        "weight": 170,
+        "imgURL": "https://www.eurobasket.com/photos/Johnson_Melvin.jpg",
+        "sourceDob": "1990-05-20",
+        "sourceHeightCm": 198
+      },
+      "scaffold": {
+        "born": {
+          "year": 1967,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-003414",
+      "name": "Miguel Angel Marcos",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Miguel Angel Marcos",
+        "born": {
+          "year": 1985,
+          "loc": "España"
+        },
+        "pos": "SF",
+        "hgt": 76,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1985-10-05",
+        "sourceHeightCm": 194
+      },
+      "scaffold": {
+        "born": {
+          "year": 1962,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-003426",
+      "name": "Miguel Sánchez",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Miguel Sánchez",
+        "born": {
+          "year": 1984,
+          "loc": "España"
+        },
+        "pos": "SF",
+        "hgt": 76,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1984-12-15",
+        "sourceHeightCm": 194
+      },
+      "scaffold": {
+        "born": {
+          "year": 1961,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-003458",
+      "name": "Mike Jones",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Mike Jones",
+        "born": {
+          "year": 1984,
+          "loc": "Dorchester"
+        },
+        "pos": "SG",
+        "hgt": 77,
+        "weight": 201,
+        "imgURL": "https://www.eurobasket.com/photos/Jones_Mike.png",
+        "sourceDob": "1984-07-24",
+        "sourceHeightCm": 196
+      },
+      "scaffold": {
+        "born": {
+          "year": 1969,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-003477",
+      "name": "Mike Smith",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Mike Smith",
+        "born": {
+          "year": 1976,
+          "loc": "West Monroe"
+        },
+        "pos": "SF",
+        "hgt": 80,
+        "weight": 194,
+        "imgURL": "https://www.eurobasket.com/photos/Smith_Mike.png",
+        "sourceDob": "1976-04-15",
+        "sourceHeightCm": 203
+      },
+      "scaffold": {
+        "born": {
+          "year": 1965,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-003589",
+      "name": "Nicola Frzop",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Nicola Frzop",
+        "born": {
+          "year": 1983,
+          "loc": "España"
+        },
+        "pos": "C",
+        "hgt": 79,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1983-09-17",
+        "sourceHeightCm": 200
+      },
+      "scaffold": {
+        "born": {
+          "year": 1960,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-003729",
+      "name": "Oscar Moglia",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Oscar Moglia",
+        "born": {
+          "year": 1935,
+          "loc": "Montevideo"
+        },
+        "pos": "SF",
+        "hgt": 81,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Moglia_Oscar.jpg",
+        "sourceDob": "1935-02-01",
+        "sourceHeightCm": 205
+      },
+      "scaffold": {
+        "born": {
+          "year": 1966,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-004062",
+      "name": "Reggie Jackson",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Reggie Jackson",
+        "born": {
+          "year": 1990,
+          "loc": "Pordenone"
+        },
+        "pos": "G",
+        "hgt": 74,
+        "weight": 207,
+        "imgURL": "https://www.eurobasket.com/photos/Jackson_Reggie.jpg",
+        "sourceDob": "1990-04-16",
+        "sourceHeightCm": 188
+      },
+      "scaffold": {
+        "born": {
+          "year": 1975,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-004252",
+      "name": "Roque Hernández",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Roque Hernández",
+        "born": {
+          "year": 1985,
+          "loc": "Buenavista (Tenerife), España"
+        },
+        "pos": "SF",
+        "hgt": 76,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1985-10-19",
+        "sourceHeightCm": 194
+      },
+      "scaffold": {
+        "born": {
+          "year": 1962,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-004334",
+      "name": "Santi Aldama",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Santi Aldama",
+        "born": {
+          "year": 2001,
+          "loc": "Las Palmas de Gran Canaria"
+        },
+        "pos": "PF",
+        "hgt": 84,
+        "weight": 216,
+        "imgURL": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Santi%20Aldama%20(51812767732)%20(cropped).jpg?width=700",
+        "sourceDob": "2001-01-10",
+        "sourceHeightCm": 213
+      },
+      "scaffold": {
+        "born": {
+          "year": 1964,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "ESP-ACB",
+      "personId": "EURO-SAFE-004936",
+      "name": "Wayne Freeman",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Wayne Freeman",
+        "born": {
+          "year": 1983,
+          "loc": "EE.UU."
+        },
+        "pos": "PG",
+        "hgt": 77,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1983-09-10",
+        "sourceHeightCm": 195
+      },
+      "scaffold": {
+        "born": {
+          "year": 1960,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "FRA-LNB",
+      "personId": "EURO-SAFE-000371",
+      "name": "Anthony Smith",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Anthony Smith",
+        "born": {
+          "year": 1986,
+          "loc": ""
+        },
+        "pos": "SG",
+        "hgt": 77,
+        "weight": 220,
+        "imgURL": "",
+        "sourceDob": "1986-10-04",
+        "sourceHeightCm": 195.6
+      },
+      "scaffold": {
+        "born": {
+          "year": 1974,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "FRA-LNB",
+      "personId": "EURO-SAFE-001242",
+      "name": "Donald Robinson",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Donald Robinson",
+        "born": {
+          "year": 1989,
+          "loc": ""
+        },
+        "pos": "C",
+        "hgt": 83,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1989-07-11",
+        "sourceHeightCm": null
+      },
+      "scaffold": {
+        "born": {
+          "year": 1964,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "FRA-LNB",
+      "personId": "EURO-SAFE-003540",
+      "name": "Moussa Toure",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Moussa Toure",
+        "born": {
+          "year": 1992,
+          "loc": ""
+        },
+        "pos": "PG",
+        "hgt": 74,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1992-12-29",
+        "sourceHeightCm": null
+      },
+      "scaffold": {
+        "born": {
+          "year": 1964,
+          "loc": ""
+        },
+        "pos": "G",
+        "hgt": 76
+      }
+    },
+    {
+      "leagueId": "FRA-LNB",
+      "personId": "EURO-SAFE-004119",
+      "name": "Rick Raivio",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Rick Raivio",
+        "born": {
+          "year": 2000,
+          "loc": ""
+        },
+        "pos": "PF",
+        "hgt": 77,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "2000-01-01",
+        "sourceHeightCm": 195.6
+      },
+      "scaffold": {
+        "born": {
+          "year": 1965,
+          "loc": ""
+        },
+        "pos": "G",
+        "hgt": 76
+      }
+    },
+    {
+      "leagueId": "FRA-LNB",
+      "personId": "EURO-SAFE-004578",
+      "name": "Steve Martial",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Steve Martial",
+        "born": {
+          "year": 1984,
+          "loc": ""
+        },
+        "pos": "C",
+        "hgt": 83,
+        "weight": 200,
+        "imgURL": "",
+        "sourceDob": "1984-03-20",
+        "sourceHeightCm": null
+      },
+      "scaffold": {
+        "born": {
+          "year": 1964,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "FRA-LNB",
+      "personId": "EURO-SAFE-004648",
+      "name": "Terry Tarpey",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Terry Tarpey",
+        "born": {
+          "year": 1994,
+          "loc": ""
+        },
+        "pos": "SG",
+        "hgt": 77,
+        "weight": 209,
+        "imgURL": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Terry%20Tarpey%2022%20AS%20Monaco%20Basket%20EuroLeague%2020241212%20(2).jpg",
+        "sourceDob": "1994-03-02",
+        "sourceHeightCm": 195.6
+      },
+      "scaffold": {
+        "born": {
+          "year": 1971,
+          "loc": ""
+        },
+        "pos": "G",
+        "hgt": 76
+      }
+    },
+    {
+      "leagueId": "FRA-LNB",
+      "personId": "EURO-SAFE-004920",
+      "name": "Walsh Jordan",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Walsh Jordan",
+        "born": {
+          "year": 2004,
+          "loc": "DeSoto"
+        },
+        "pos": "F",
+        "hgt": 78,
+        "weight": 205,
+        "imgURL": "https://www.eurobasket.com/photos/Jordan_Walsh.jpg",
+        "sourceDob": "2004-03-03",
+        "sourceHeightCm": 198
+      },
+      "scaffold": {
+        "born": {
+          "year": 1980,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "GER-BBL",
+      "personId": "EURO-SAFE-000914",
+      "name": "Damekssa Durasso",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Damekssa Durasso",
+        "born": {
+          "year": 2003,
+          "loc": ""
+        },
+        "pos": "PG",
+        "hgt": 74,
+        "weight": 200,
+        "imgURL": "https://easycredit-bbl.de/_next/image?url=https%3A%2F%2Fapi.basketball-bundesliga.de%2Fimages%2Fplayer%2Fportrait%2F1999%2F592&w=640&q=75",
+        "sourceDob": "2003-01-01",
+        "sourceHeightCm": 188
+      },
+      "scaffold": {
+        "born": {
+          "year": 1976,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "GER-BBL",
+      "personId": "EURO-SAFE-003135",
+      "name": "Mario Hubert",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Mario Hubert",
+        "born": {
+          "year": 2003,
+          "loc": "Deutschland (DE)"
+        },
+        "pos": "PF",
+        "hgt": 81,
+        "weight": 200,
+        "imgURL": "https://easycredit-bbl.de/_next/image?url=https%3A%2F%2Fapi.basketball-bundesliga.de%2Fimages%2Fplayer%2Fportrait%2F2001%2F882&w=640&q=75",
+        "sourceDob": "2003-01-01",
+        "sourceHeightCm": null
+      },
+      "scaffold": {
+        "born": {
+          "year": 1978,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "GER-BBL",
+      "personId": "EURO-SAFE-003838",
+      "name": "Patrick Ofuatey-Kodjoe",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Patrick Ofuatey-Kodjoe",
+        "born": {
+          "year": 1992,
+          "loc": "Deutschland (DE)"
+        },
+        "pos": "PG",
+        "hgt": 74,
+        "weight": 200,
+        "imgURL": "https://easycredit-bbl.de/_next/image?url=https%3A%2F%2Fapi.basketball-bundesliga.de%2Fimages%2Fplayer%2Fportrait%2F2002%2F1143&w=640&q=75",
+        "sourceDob": "1992-01-01",
+        "sourceHeightCm": null
+      },
+      "scaffold": {
+        "born": {
+          "year": 1979,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "GRE-GBL",
+      "personId": "EURO-SAFE-000853",
+      "name": "Corey Allen",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Corey Allen",
+        "born": {
+          "year": 1992,
+          "loc": "St. Louis"
+        },
+        "pos": "G",
+        "hgt": 73,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Allen_Corey.png",
+        "sourceDob": "1992-05-03",
+        "sourceHeightCm": 185
+      },
+      "scaffold": {
+        "born": {
+          "year": 1979,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "GRE-GBL",
+      "personId": "EURO-SAFE-001798",
+      "name": "Giannis Molfetas",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Giannis Molfetas",
+        "born": {
+          "year": 1992,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 81,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Molfetas_Giannis.jpg",
+        "sourceDob": "1992-01-28",
+        "sourceHeightCm": null
+      },
+      "scaffold": {
+        "born": {
+          "year": 1978,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "GRE-GBL",
+      "personId": "EURO-SAFE-002071",
+      "name": "Ioannis Anagnostopoulos",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Ioannis Anagnostopoulos",
+        "born": {
+          "year": 1994,
+          "loc": "Cholargos, Greece"
+        },
+        "pos": "C",
+        "hgt": 80,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Anagnostopoulos_Gian.png",
+        "sourceDob": "1994-02-09",
+        "sourceHeightCm": 203
+      },
+      "scaffold": {
+        "born": {
+          "year": 1981,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "GRE-GBL",
+      "personId": "EURO-SAFE-002129",
+      "name": "Jack Hartman",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Jack Hartman",
+        "born": {
+          "year": 1925,
+          "loc": "Dewey"
+        },
+        "pos": "F",
+        "hgt": 79,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Hartman_Jack.jpg",
+        "sourceDob": "1925-10-07",
+        "sourceHeightCm": 201
+      },
+      "scaffold": {
+        "born": {
+          "year": 1981,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "GRE-GBL",
+      "personId": "EURO-SAFE-004964",
+      "name": "Willie Taylor",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Willie Taylor",
+        "born": {
+          "year": 1946,
+          "loc": "Mason"
+        },
+        "pos": "C",
+        "hgt": 80,
+        "weight": 240,
+        "imgURL": "https://www.eurobasket.com/photos/Taylor_Willie.jpg",
+        "sourceDob": "1946-09-24",
+        "sourceHeightCm": 203
+      },
+      "scaffold": {
+        "born": {
+          "year": 1980,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ITA-LBA",
+      "personId": "EURO-SAFE-000138",
+      "name": "Alessandro Santoro",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Alessandro Santoro",
+        "born": {
+          "year": 1989,
+          "loc": "Maddaloni"
+        },
+        "pos": "G",
+        "hgt": 72,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Santoro_Alessandro.jpg",
+        "sourceDob": "1989-03-16",
+        "sourceHeightCm": 183
+      },
+      "scaffold": {
+        "born": {
+          "year": 1976,
+          "loc": ""
+        },
+        "pos": "G",
+        "hgt": 76
+      }
+    },
+    {
+      "leagueId": "ITA-LBA",
+      "personId": "EURO-SAFE-000279",
+      "name": "Andrea Gracis",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Andrea Gracis",
+        "born": {
+          "year": 1976,
+          "loc": "Grecia"
+        },
+        "pos": "C",
+        "hgt": 84,
+        "weight": 236,
+        "imgURL": "https://www.legabasket.it/_next/static/media/player-placeholder.7753e19f.svg",
+        "sourceDob": "1976-05-30",
+        "sourceHeightCm": 213.4
+      },
+      "scaffold": {
+        "born": {
+          "year": 1964,
+          "loc": ""
+        },
+        "pos": "F",
+        "hgt": 79
+      }
+    },
+    {
+      "leagueId": "ITA-LBA",
+      "personId": "EURO-SAFE-000853",
+      "name": "Corey Allen",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Corey Allen",
+        "born": {
+          "year": 1992,
+          "loc": "St. Louis"
+        },
+        "pos": "G",
+        "hgt": 73,
+        "weight": 200,
+        "imgURL": "https://www.eurobasket.com/photos/Allen_Corey.png",
+        "sourceDob": "1992-05-03",
+        "sourceHeightCm": 185
+      },
+      "scaffold": {
+        "born": {
+          "year": 1976,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    },
+    {
+      "leagueId": "ITA-LBA",
+      "personId": "EURO-SAFE-004206",
+      "name": "Rodney Elliott",
+      "status": "review-needed",
+      "reason": "source-bio-impossible-for-stat-seasons",
+      "rejected": {
+        "name": "Rodney Elliott",
+        "born": {
+          "year": 1995,
+          "loc": "(Date unknown) in United States"
+        },
+        "pos": "C",
+        "hgt": 77,
+        "weight": 190,
+        "imgURL": "https://www.eurobasket.com/photos/Elliott_Rodney.jpg",
+        "sourceDob": "1995-11-13",
+        "sourceHeightCm": 196
+      },
+      "scaffold": {
+        "born": {
+          "year": 1978,
+          "loc": ""
+        },
+        "pos": "FC",
+        "hgt": 82
+      }
+    }
+  ],
+  "unresolvedNationalities": [
+    {
+      "personId": "EURO-SAFE-000675",
+      "name": "Carlos Suarez",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002543",
+      "name": "Jose Silva",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000003",
+      "name": "A.J. English",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000008",
+      "name": "Abbas Sy",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000010",
+      "name": "Abdou Ndiaye",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000040",
+      "name": "Ainars Bagatskis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000049",
+      "name": "Al Wood",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000050",
+      "name": "Alain Crespo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000052",
+      "name": "Alain Jacquet",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000054",
+      "name": "Alain Larrouquis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000055",
+      "name": "Alain Serino",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000166",
+      "name": "Alex Sylva",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000176",
+      "name": "Alexander Miloserdov",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000208",
+      "name": "Ali Benamar",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000211",
+      "name": "Allen Bunting",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000249",
+      "name": "Andre Moore",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000251",
+      "name": "Andre Owens",
+      "rawNationality": "-",
+      "birthplace": "-"
+    },
+    {
+      "personId": "EURO-SAFE-000252",
+      "name": "Andre Riddick",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000325",
+      "name": "Andy Fields",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000339",
+      "name": "Angelo Francois-Elocie",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000348",
+      "name": "Anicet Kessely",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000359",
+      "name": "Anthony Cook",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000366",
+      "name": "Anthony Lopez",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000371",
+      "name": "Anthony Smith",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000391",
+      "name": "Antonio Garcia",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000423",
+      "name": "Apollo Faye",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000426",
+      "name": "Archie Johnson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000439",
+      "name": "Arsène Ade-Mensah",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000470",
+      "name": "Bassirou Niang",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000486",
+      "name": "Benkaly Kaba",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000489",
+      "name": "Benoit Georget",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000492",
+      "name": "Benoit Toffin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000495",
+      "name": "Bernard Letailleur",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000497",
+      "name": "Bernard Vandenbroucke",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000506",
+      "name": "Bertrand Van Butsele",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000510",
+      "name": "Bill Edwards",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000516",
+      "name": "Billy Goodwin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000517",
+      "name": "Billy Joe Williams",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000519",
+      "name": "Billy Reid",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000527",
+      "name": "Bo Kimble",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000532",
+      "name": "Bob Wymbs",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000535",
+      "name": "Bobby Lazor",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000552",
+      "name": "Borko Radovic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000560",
+      "name": "Brad Sellers",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000565",
+      "name": "Brandon Brantley",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000600",
+      "name": "Brook Steppe",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000602",
+      "name": "Bruce Bowen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000605",
+      "name": "Bruno Beaumont",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000606",
+      "name": "Bruno Constant",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000607",
+      "name": "Bruno Coqueran",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000609",
+      "name": "Bruno Lejeune",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000611",
+      "name": "Bruno Rodriguez",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000613",
+      "name": "Bruno Ruiz",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000614",
+      "name": "Bruno Servolle",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000640",
+      "name": "Carl Nicks",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000689",
+      "name": "Cecil Rucker",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000692",
+      "name": "Cedric Henderson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000694",
+      "name": "Cedric Lewis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000723",
+      "name": "Charles Minlend",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000720",
+      "name": "Charles-Henri Gretouce",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000730",
+      "name": "Charlie Williamson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000733",
+      "name": "Cheikhou Ndiaye",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000765",
+      "name": "Christian Cleante",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000768",
+      "name": "Christian Garnier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000769",
+      "name": "Christian Gaufreteau",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000772",
+      "name": "Christian Monschau",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000773",
+      "name": "Christian Ortega",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000778",
+      "name": "Christophe Baufils",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000779",
+      "name": "Christophe Bouetel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000780",
+      "name": "Christophe Bourse",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000782",
+      "name": "Christophe Evano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000783",
+      "name": "Christophe Gorak",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000784",
+      "name": "Christophe Gregoire",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000785",
+      "name": "Christophe Henry",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000786",
+      "name": "Christophe Lion",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000789",
+      "name": "Christophe Soule",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000811",
+      "name": "Claude Cavallo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000886",
+      "name": "Craig Robinson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000887",
+      "name": "Craig Upchurch",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000900",
+      "name": "Curtis Berry",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000901",
+      "name": "Curtis Kitchen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000905",
+      "name": "Cyr Gbaguidi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000915",
+      "name": "Dametri Hill",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000921",
+      "name": "Damien Pastres",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000927",
+      "name": "Damon Patterson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000938",
+      "name": "Dan Shanks",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000945",
+      "name": "Daniel Contessi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000946",
+      "name": "Daniel Dos Anjos",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000949",
+      "name": "Daniel Haquet",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000950",
+      "name": "Daniel Jacquemot",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000977",
+      "name": "Danny Pearson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000979",
+      "name": "Danny Young",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000991",
+      "name": "Darius Hall",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001006",
+      "name": "Darren Fenn",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001007",
+      "name": "Darren Henrie",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001025",
+      "name": "David Bergstrom",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001026",
+      "name": "David Bialski",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001027",
+      "name": "David Blackwell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001033",
+      "name": "David Condouant",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001035",
+      "name": "David Djolakian",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001037",
+      "name": "David Dubosc",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001040",
+      "name": "David Evans",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001048",
+      "name": "David Heaulme",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001059",
+      "name": "David Rivers",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001112",
+      "name": "Delaney Rudd",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001143",
+      "name": "Derrick Pope",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001144",
+      "name": "Derrick Rowland",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001158",
+      "name": "Didier Dobbels",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001159",
+      "name": "Didier Gadou",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001160",
+      "name": "Didier Przygoda",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001161",
+      "name": "Didier Sanga",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001236",
+      "name": "Dominique Devos",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001237",
+      "name": "Dominique Pierotti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001239",
+      "name": "Don Collins",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001240",
+      "name": "Don Washington",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001242",
+      "name": "Donald Robinson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001248",
+      "name": "Donnell Harris",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001250",
+      "name": "Donnie Boyce",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001262",
+      "name": "Dragan Lukovski",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001274",
+      "name": "Drissa Die",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001294",
+      "name": "Dwayne Perry",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001295",
+      "name": "Dwayne Scholten",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001305",
+      "name": "Ed O'Brien",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001314",
+      "name": "Eddy Lamie",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001315",
+      "name": "Eddy Pope",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001347",
+      "name": "Elijah Allen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001355",
+      "name": "Elwayne Campbell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001362",
+      "name": "Emile Popo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001374",
+      "name": "Emmanuel Lorentz",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001375",
+      "name": "Emmanuel Raynaud",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001376",
+      "name": "Emmanuel Schmitt",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001404",
+      "name": "Eric Beugnot",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001405",
+      "name": "Eric Broallier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001408",
+      "name": "Eric Cavelier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001413",
+      "name": "Eric Dezelus",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001414",
+      "name": "Eric Fleury",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001416",
+      "name": "Eric John",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001418",
+      "name": "Eric Lecerf",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001419",
+      "name": "Eric Lepape",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001422",
+      "name": "Eric Nordmann",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001423",
+      "name": "Eric Occansey",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001441",
+      "name": "Ernie Signars",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001469",
+      "name": "Fabien Fond",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001494",
+      "name": "Fabrice Courcier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001529",
+      "name": "Felix Courtinard",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001533",
+      "name": "Fennis Dembo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001574",
+      "name": "Florent Eleleara",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001580",
+      "name": "Forrest McKenzie",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001632",
+      "name": "Franck Butter",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001633",
+      "name": "Franck Cazalon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001634",
+      "name": "Franck Lewis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001637",
+      "name": "Franck Verove",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001643",
+      "name": "François Petit",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001651",
+      "name": "Frankie King",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001654",
+      "name": "Fred Piper",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001659",
+      "name": "Frederic Domon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001662",
+      "name": "Frederic Guinot",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001663",
+      "name": "Frédéric Hufnagel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001666",
+      "name": "Frédéric Zadro",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001718",
+      "name": "George Montgomery",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001724",
+      "name": "Georges Vestris",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001734",
+      "name": "Gérard Goddard",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001738",
+      "name": "Germain Castano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001751",
+      "name": "Gheorghe Muresan",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001811",
+      "name": "Gilles Jehannin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001813",
+      "name": "Gilles Vechambre",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001918",
+      "name": "Graylin Warner",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001926",
+      "name": "Greg Johns",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001928",
+      "name": "Greg Pudwill",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001936",
+      "name": "Gregor Beugnot",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001944",
+      "name": "Gregory Tahon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001953",
+      "name": "Guillaume Leburgue",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001955",
+      "name": "Guillaume Pons",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001973",
+      "name": "Guy Prat",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001975",
+      "name": "Hakan Larsson",
+      "rawNationality": "undefined (SW)",
+      "birthplace": "undefined (SW)"
+    },
+    {
+      "personId": "EURO-SAFE-001978",
+      "name": "Hanno Schoenmakers",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001985",
+      "name": "Harold Keeling",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002013",
+      "name": "Hervé Dubuisson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002014",
+      "name": "Hervé Raoult",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002019",
+      "name": "Horace Wyatt",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002020",
+      "name": "Howard Carter",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002027",
+      "name": "Hubert Chery",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002029",
+      "name": "Hubert Register",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002039",
+      "name": "Ian Whyte",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002050",
+      "name": "Igor Lovric",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002085",
+      "name": "Irving Thomas",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002086",
+      "name": "Isaac Austin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002122",
+      "name": "J.D. Jackson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002126",
+      "name": "J.R. Reid",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002130",
+      "name": "Jack Lothian",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002137",
+      "name": "Jacques Cusset",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002138",
+      "name": "Jacques Monclar",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002140",
+      "name": "Jaime Peterson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002148",
+      "name": "Jamel Benabid",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002150",
+      "name": "James Banks",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002154",
+      "name": "James Clabon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002167",
+      "name": "James Scott",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002172",
+      "name": "Jamie Waller",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002189",
+      "name": "Jared Miller",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002193",
+      "name": "Jaroslaw Jechorek",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002203",
+      "name": "Jason Reese",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002246",
+      "name": "Jean-Aimé Toupane",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002248",
+      "name": "Jean-Claude Sylva",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002249",
+      "name": "Jean-François Evert",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002251",
+      "name": "Jean-Frédéric Monetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002253",
+      "name": "Jean-Gérard Hannequin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002255",
+      "name": "Jean-Louis Hersin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002256",
+      "name": "Jean-louis Kali",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002257",
+      "name": "Jean-Luc Deganis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002258",
+      "name": "Jean-Luc Tissot",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002260",
+      "name": "Jean-Marc Setier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002263",
+      "name": "Jean-Olivier Peloux",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002264",
+      "name": "Jean-Pascal Feray",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002266",
+      "name": "Jean-Philippe Besson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002268",
+      "name": "Jean-Philippe Tailleman",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002269",
+      "name": "Jean-phillippe Fedi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002270",
+      "name": "Jean-Pierre Ville",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002286",
+      "name": "Jeff Wilkins",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002306",
+      "name": "Jerome Batiste",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002310",
+      "name": "Jerome Henderson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002313",
+      "name": "Jerome Robinson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002339",
+      "name": "Jim Chambers",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002340",
+      "name": "Jim Deines",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002342",
+      "name": "Jim Galla",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002352",
+      "name": "Jimmy Verove",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002384",
+      "name": "Joel Honore",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002410",
+      "name": "John Long",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002423",
+      "name": "John White",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002426",
+      "name": "Johnnie James",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002427",
+      "name": "Johnny Gordolon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002547",
+      "name": "José Vargas",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002549",
+      "name": "Jose Waitman",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002566",
+      "name": "Josh Grant",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002642",
+      "name": "Julius Michalik",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002652",
+      "name": "Jurij Zdovc",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002655",
+      "name": "Justin Gainey",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002658",
+      "name": "Justin Love",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002665",
+      "name": "Karim Ouattara",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002674",
+      "name": "Keith Gatlin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002682",
+      "name": "Keith Robinson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002684",
+      "name": "Keith Veney",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002693",
+      "name": "Ken Dancy",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002702",
+      "name": "Kenny Austin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002703",
+      "name": "Kenny Barer",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002715",
+      "name": "Kent Hill",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002722",
+      "name": "Kevin Figaro",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002737",
+      "name": "Kevin Van Veldhuizen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002739",
+      "name": "Khalid El-amin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002740",
+      "name": "Khari Jaxon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002756",
+      "name": "Kornel David",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002805",
+      "name": "Larry Lawrence",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002818",
+      "name": "Lassana Sylla",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002824",
+      "name": "Laurent Rufier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002826",
+      "name": "Laurent Senechal",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002827",
+      "name": "Laurent Verschueren",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002833",
+      "name": "Lawrence Funderburke",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002848",
+      "name": "Lenzie Howell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002869",
+      "name": "Leslie Reynolds",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002874",
+      "name": "Lex Fagen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002879",
+      "name": "Lionel Rigo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002986",
+      "name": "Maguette Ndoye",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003012",
+      "name": "Mansour Thiam",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003013",
+      "name": "Mantcha Traore",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003040",
+      "name": "Marc Bousiniere",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003041",
+      "name": "Marc Brown",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003044",
+      "name": "Marc Johnson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003048",
+      "name": "Marc Risacher",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003113",
+      "name": "Marcus Campbell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003116",
+      "name": "Marcus Gaither",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003159",
+      "name": "Mark Flick",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003166",
+      "name": "Mark Mitchell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003252",
+      "name": "Mathias Desaever",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003255",
+      "name": "Mathieu Faye",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003256",
+      "name": "Mathieu Sturm",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003261",
+      "name": "Matt Beeuwsaert",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003298",
+      "name": "Maurice Brangeon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003302",
+      "name": "Maurice Smith",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003344",
+      "name": "Michael Brooks",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003356",
+      "name": "Michael Kennedy",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003363",
+      "name": "Michael Payne",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003385",
+      "name": "Michel Herlem",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003386",
+      "name": "Michel Wachowiak",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003404",
+      "name": "Mickaël Hay",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003448",
+      "name": "Mike Gonsalves",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003456",
+      "name": "Mike James",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003457",
+      "name": "Mike Jones",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003465",
+      "name": "Mike Mitchell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003470",
+      "name": "Mike Ratliff",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003473",
+      "name": "Mike Russel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003478",
+      "name": "Mike Wiley",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003507",
+      "name": "Miloud Dahine",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003508",
+      "name": "Miloud Doubal",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003510",
+      "name": "Milt Wagner",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003540",
+      "name": "Moussa Toure",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003541",
+      "name": "Moustapha Ndoye",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003543",
+      "name": "Murray Brown",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003556",
+      "name": "Narou Diagne",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003567",
+      "name": "Nedeljko Asceric",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003582",
+      "name": "Nicky White",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003599",
+      "name": "Nicolas Jault",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003608",
+      "name": "Nikola Dacevic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003662",
+      "name": "Nkechi Ezugwu",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003670",
+      "name": "Norris Bell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003677",
+      "name": "Oladipo Ayinla",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003690",
+      "name": "Olivier Allinei",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003692",
+      "name": "Olivier Basset",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003693",
+      "name": "Olivier Bourgain",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003694",
+      "name": "Olivier Garry",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003695",
+      "name": "Olivier Guelle",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003696",
+      "name": "Olivier Hanquiez",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003697",
+      "name": "Olivier Hergott",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003698",
+      "name": "Olivier Lebrun",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003699",
+      "name": "Olivier Meriguet",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003700",
+      "name": "Olivier Perrin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003701",
+      "name": "Olivier Ruiz",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003702",
+      "name": "Olivier Weissler",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003739",
+      "name": "Oumar Dia",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003740",
+      "name": "Oumar Ndoye",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003806",
+      "name": "Pascal Dassonville",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003807",
+      "name": "Pascal Jullien",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003808",
+      "name": "Pascal Lequertier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003809",
+      "name": "Pascal Masse",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003816",
+      "name": "Pat Burtey",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003821",
+      "name": "Pat Taylor",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003822",
+      "name": "Patrice Sclear",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003826",
+      "name": "Patrick Cham",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003829",
+      "name": "Patrick Galaya",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003830",
+      "name": "Patrick Galin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003831",
+      "name": "Patrick Gonthier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003832",
+      "name": "Patrick Haquet",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003836",
+      "name": "Patrick Millavet",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003840",
+      "name": "Patrick Perroni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003841",
+      "name": "Patrick Plantier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003843",
+      "name": "Patrick Scudo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003845",
+      "name": "Patrick Zamour",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003850",
+      "name": "Paul Bergman",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003854",
+      "name": "Paul Graham",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003855",
+      "name": "Paul Henderson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003879",
+      "name": "Pekka Markkanen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003886",
+      "name": "Per Stuemer",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003904",
+      "name": "Peter Hoffmann",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003915",
+      "name": "Phil Hicks",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003916",
+      "name": "Phil Lockett",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003919",
+      "name": "Philip Szanyiel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003920",
+      "name": "Philippe Beorchia",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003921",
+      "name": "Philippe Bienvenu",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003922",
+      "name": "Philippe Blancq",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003923",
+      "name": "Philippe Faury",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003924",
+      "name": "Philippe Herve",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003925",
+      "name": "Philippe Urie",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003926",
+      "name": "Philippe Von Buchwaldt",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003941",
+      "name": "Pierre Bressant",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003942",
+      "name": "Pierre-louis Bonneau",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003981",
+      "name": "Radoslaw Hyzy",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004029",
+      "name": "Raphael Ghewy",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004034",
+      "name": "Rashard Lee",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004048",
+      "name": "Ray Jackson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004069",
+      "name": "Régis Racine",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004070",
+      "name": "Reith Vivot",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004071",
+      "name": "Rémi Bousquet",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004072",
+      "name": "Rémi Rippert",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004079",
+      "name": "René Tony",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004109",
+      "name": "Richard Dacoury",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004115",
+      "name": "Rick Doyle",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004119",
+      "name": "Rick Raivio",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004128",
+      "name": "Ricky Price",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004142",
+      "name": "Robert Carman",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004153",
+      "name": "Robert Reisenbuchler",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004155",
+      "name": "Robert Smith",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004175",
+      "name": "Roberto Durigo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004235",
+      "name": "Roman Rubchenko",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004238",
+      "name": "Ron Anderson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004240",
+      "name": "Ron Curry",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004244",
+      "name": "Ron Fraper",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004248",
+      "name": "Ronnie Smith",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004249",
+      "name": "Rony Coco",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004255",
+      "name": "Ross Land",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004269",
+      "name": "Rudy Bourgarel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004293",
+      "name": "Sadi Diagne",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004295",
+      "name": "Saint-Ange Vebobe",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004305",
+      "name": "Sam Mitchell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004308",
+      "name": "Sam Williams",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004310",
+      "name": "Sambou Traore",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004380",
+      "name": "Sébastien Gomez",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004384",
+      "name": "Serge Provillard",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004426",
+      "name": "Shea Seals",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004459",
+      "name": "Singaras Tribe",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004462",
+      "name": "Skeeter Jackson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004487",
+      "name": "Spencer McKay",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004505",
+      "name": "Stanley Jackson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004552",
+      "name": "Stephane Bergeron",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004553",
+      "name": "Stéphane Bourgeois",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004556",
+      "name": "Stéphane Dumas",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004557",
+      "name": "Stephane Gazzetta",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004559",
+      "name": "Stephane Lauvergne",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004560",
+      "name": "Stéphane Monschau",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004561",
+      "name": "Stéphane Ostrowski",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004565",
+      "name": "Stephen Emeline",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004572",
+      "name": "Steve Carney",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004578",
+      "name": "Steve Martial",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004579",
+      "name": "Steve Mitchell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004606",
+      "name": "Sylvain Delorme",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004608",
+      "name": "Sylvain Lesage",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004628",
+      "name": "Teddy Citadelle",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004634",
+      "name": "Terence Stansbury",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004646",
+      "name": "Terry Martin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004648",
+      "name": "Terry Tarpey",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004651",
+      "name": "Terry White",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004652",
+      "name": "Terry Williams",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004667",
+      "name": "Thierry Becchetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004669",
+      "name": "Thierry Marcilly",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004671",
+      "name": "Thierry Zaire",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004679",
+      "name": "Thomas Johnson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004686",
+      "name": "Thomas Lotz",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004723",
+      "name": "Tom Domako",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004729",
+      "name": "Tom Snyder",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004760",
+      "name": "Tony Dorsey",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004763",
+      "name": "Tony Farmer",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004774",
+      "name": "Tony Zeno",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004795",
+      "name": "Troy Bowers",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004796",
+      "name": "Troy Brown",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004831",
+      "name": "Valery Demory",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004878",
+      "name": "Vince Taylor",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004880",
+      "name": "Vincent Collet",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004881",
+      "name": "Vincent Krieger",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004884",
+      "name": "Vincent Naulleau",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004947",
+      "name": "Wilfrid Aka",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004962",
+      "name": "Willie Redden",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004975",
+      "name": "Xavier Boivin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004985",
+      "name": "Xavier Wallez",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004989",
+      "name": "Yann Barbitch",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004990",
+      "name": "Yann Boisson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004993",
+      "name": "Yann Millois",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004998",
+      "name": "Yaya Cissokho",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-005003",
+      "name": "Yorane Julians",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-005006",
+      "name": "Youcef Ouldyassia",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-005008",
+      "name": "Yves Ehret",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-005011",
+      "name": "Zakhar Pashutin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-005031",
+      "name": "Zoran Sretenovic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000018",
+      "name": "Adam Fiedler",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000108",
+      "name": "Aleksandar Meimarides",
+      "rawNationality": "undefined (JU)",
+      "birthplace": "undefined (JU)"
+    },
+    {
+      "personId": "EURO-SAFE-000110",
+      "name": "Aleksandar Simic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000177",
+      "name": "Alexander Simic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000500",
+      "name": "Bernd Endres",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000505",
+      "name": "Berthold Bocsanyi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000524",
+      "name": "Björn Meyer-Schomann",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000526",
+      "name": "Bo Heiden",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000541",
+      "name": "Bojan Barjaktarevic",
+      "rawNationality": "undefined (Ju)",
+      "birthplace": "undefined (Ju)"
+    },
+    {
+      "personId": "EURO-SAFE-000548",
+      "name": "Boris Raicevic",
+      "rawNationality": "undefined (JU)",
+      "birthplace": "undefined (JU)"
+    },
+    {
+      "personId": "EURO-SAFE-000559",
+      "name": "Brad Robisch",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000581",
+      "name": "Brent Wilson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000588",
+      "name": "Brian Crabtee",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000682",
+      "name": "Carsten Heinichen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000684",
+      "name": "Carsten Scheel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000745",
+      "name": "Chris Fite",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000764",
+      "name": "Christian Birkenfeld",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000914",
+      "name": "Damekssa Durasso",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000922",
+      "name": "Damir Kurtagic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000997",
+      "name": "Darnell Hoskins",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001003",
+      "name": "Darrell Mickens",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001109",
+      "name": "Dejan Koturovic",
+      "rawNationality": "undefined (JU)",
+      "birthplace": "Belgrad"
+    },
+    {
+      "personId": "EURO-SAFE-001126",
+      "name": "Dennis Woudall",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001171",
+      "name": "Dima Buschin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001216",
+      "name": "Dirk Diepenseifen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001235",
+      "name": "Dominik Völker",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001243",
+      "name": "Donald Williams",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001301",
+      "name": "Dziony",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001329",
+      "name": "Eduard Schlegel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001572",
+      "name": "Flesch",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001676",
+      "name": "Gabriel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001698",
+      "name": "Gary Wright",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001826",
+      "name": "Giorgio Zambellis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001904",
+      "name": "Goran Karadzic",
+      "rawNationality": "undefined (Ju)",
+      "birthplace": "undefined (Ju)"
+    },
+    {
+      "personId": "EURO-SAFE-001939",
+      "name": "Gregor Kern",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001975",
+      "name": "Hakan Larsson",
+      "rawNationality": "undefined (SW)",
+      "birthplace": "undefined (SW)"
+    },
+    {
+      "personId": "EURO-SAFE-001989",
+      "name": "Harris",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001991",
+      "name": "Hartmut Ortmann",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001999",
+      "name": "Henning Dume",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002001",
+      "name": "Henrik Kreuder",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002003",
+      "name": "Henry",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002012",
+      "name": "Herriman",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002016",
+      "name": "Holger Eggers",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002044",
+      "name": "Ignacio Castellanos",
+      "rawNationality": "undefined (Sp)",
+      "birthplace": "undefined (Sp)"
+    },
+    {
+      "personId": "EURO-SAFE-002064",
+      "name": "Ingmar Jahnke",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002120",
+      "name": "Izmitlioglu",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002176",
+      "name": "Jan Bokemeyer",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002191",
+      "name": "Jari Vekkilä",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002271",
+      "name": "Jean Pütz",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002273",
+      "name": "Jef Tomesch",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002278",
+      "name": "Jeff Kent",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002293",
+      "name": "Jens Temme",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002461",
+      "name": "Jörg Brunner",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002552",
+      "name": "Josef Wylie",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002646",
+      "name": "Jürgen Maaßmann",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002660",
+      "name": "Kai Gutzeit",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002661",
+      "name": "Kai Löffler",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002669",
+      "name": "Karsten Kemna",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002670",
+      "name": "Karsten Wehry",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002673",
+      "name": "Katsikis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002747",
+      "name": "Klaus Wallenhauer",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002753",
+      "name": "Konstantin Furmann",
+      "rawNationality": "undefined (Uk)",
+      "birthplace": "undefined (Uk)"
+    },
+    {
+      "personId": "EURO-SAFE-002776",
+      "name": "Krneta",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002787",
+      "name": "Ladislau Kabat",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002837",
+      "name": "Le Shell",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002891",
+      "name": "Lorenz Manthey",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002976",
+      "name": "Lutz Mandler",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002999",
+      "name": "Malik Ruddigkeit",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003047",
+      "name": "Marc Nees",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003083",
+      "name": "Marco Laine",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003112",
+      "name": "Marcus Buchmann",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003114",
+      "name": "Marcus Engelke",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003129",
+      "name": "Mario Bosnjak",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003151",
+      "name": "Mark Boyd",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003159",
+      "name": "Mark Flick",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003170",
+      "name": "Mark Poag",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003175",
+      "name": "Markku Larkio",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003183",
+      "name": "Marko Radulovic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003189",
+      "name": "Markus Jahn",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003196",
+      "name": "Martin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003200",
+      "name": "Martin Ekomeye",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003254",
+      "name": "Mathias Lück",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003291",
+      "name": "Matthias Krieg",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003311",
+      "name": "Maurizio Pratesi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003351",
+      "name": "Michael Held",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003361",
+      "name": "Michael Nachreiner",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003367",
+      "name": "Michael Schwarz",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003369",
+      "name": "Michael Stockhammer",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003576",
+      "name": "Niang",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003583",
+      "name": "Nico Wucherer",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003623",
+      "name": "Nikolas Meier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003654",
+      "name": "Nils Becker",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003655",
+      "name": "Nils Collingro",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003678",
+      "name": "Olaf Hollenkamp",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003683",
+      "name": "Oliver Bourgain",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003707",
+      "name": "Önder Kutlu",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003715",
+      "name": "Orlando Lightfoot",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003716",
+      "name": "Orlando Lightfoot",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003814",
+      "name": "Passing",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003833",
+      "name": "Patrick Hoyler",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003852",
+      "name": "Paul Deppisch",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003976",
+      "name": "Rade Milutinovic",
+      "rawNationality": "undefined (Ju)",
+      "birthplace": "undefined (Ju)"
+    },
+    {
+      "personId": "EURO-SAFE-003999",
+      "name": "Rafael Wilczek",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004004",
+      "name": "Raikos",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004010",
+      "name": "Ralph Metzger",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004067",
+      "name": "Reggie Townsend",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004108",
+      "name": "Richard Barry",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004139",
+      "name": "Robert Apelt",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004145",
+      "name": "Robert Conley",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004147",
+      "name": "Robert Fisicaro",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004157",
+      "name": "Robert Youngblood",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004158",
+      "name": "Robert Youngblood",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004208",
+      "name": "Rodney Newsom",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004218",
+      "name": "Rogerio Fernandes",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004232",
+      "name": "Roman Hogräber",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004236",
+      "name": "Romano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004253",
+      "name": "Rory Keuscher",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004277",
+      "name": "Ruslan Boidakov",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004332",
+      "name": "Sanni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004347",
+      "name": "Sasa Zivanovic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004351",
+      "name": "Sava Stefanovic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004387",
+      "name": "Sergej Smirnov",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004388",
+      "name": "Sergej Smirnov",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004476",
+      "name": "Sonsteby",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004485",
+      "name": "Spanos",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004515",
+      "name": "Stefan Göllner",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004567",
+      "name": "Stephen Johnson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004590",
+      "name": "Steven Johnson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004666",
+      "name": "Thesis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004677",
+      "name": "Thomas Burrough",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004678",
+      "name": "Thomas Glasauer",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004684",
+      "name": "Thomas Krull",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004694",
+      "name": "Thomas Wempe",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004747",
+      "name": "Toni Dirlic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004810",
+      "name": "Uldis Visnevics",
+      "rawNationality": "undefined (LE)",
+      "birthplace": "undefined (LE)"
+    },
+    {
+      "personId": "EURO-SAFE-004870",
+      "name": "Victor Heck",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004907",
+      "name": "Vogel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004912",
+      "name": "Vourliotis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-005014",
+      "name": "Zarko Stankovic",
+      "rawNationality": "undefined (JU)",
+      "birthplace": "undefined (JU)"
+    },
+    {
+      "personId": "EURO-SAFE-005034",
+      "name": "Zvonimir Paradzik",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000149",
+      "name": "Alex Aggelakos",
+      "rawNationality": null,
+      "birthplace": "Rhodes"
+    },
+    {
+      "personId": "EURO-SAFE-000521",
+      "name": "BJ Elder",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000622",
+      "name": "Bryand Markson",
+      "rawNationality": "-",
+      "birthplace": "-"
+    },
+    {
+      "personId": "EURO-SAFE-001153",
+      "name": "Devin Smith",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001798",
+      "name": "Giannis Molfetas",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002038",
+      "name": "Ian Vouyoukas",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003812",
+      "name": "Pascali Panagiotidis",
+      "rawNationality": "-",
+      "birthplace": "-"
+    },
+    {
+      "personId": "EURO-SAFE-004821",
+      "name": "Vaggelis Karaboulas",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-005001",
+      "name": "Yiorgos Georgakis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000016",
+      "name": "Achille Gelsomini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000017",
+      "name": "Achille Milani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000031",
+      "name": "Adriano Grassetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000087",
+      "name": "Alberto Pizzolato",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000131",
+      "name": "Alessandro Marcovaldi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000132",
+      "name": "Alessandro Piperno",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000133",
+      "name": "Alessandro Porcella",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000134",
+      "name": "Alessandro Praino",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000135",
+      "name": "Alessandro Pucci",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000144",
+      "name": "Alessio Donnini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000145",
+      "name": "Alessio Marini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000146",
+      "name": "Alessio Nicolosi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000147",
+      "name": "Alessio Vatteroni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000179",
+      "name": "Alexander Volkov",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000193",
+      "name": "Alfiero Perbellini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000199",
+      "name": "Alfonso Ielasi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000229",
+      "name": "Amedeo Filippetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000241",
+      "name": "Andrade Israel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000270",
+      "name": "Andrea Cozzi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000275",
+      "name": "Andrea Giacchino",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000277",
+      "name": "Andrea Gnecchi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000278",
+      "name": "Andrea Gollessi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000281",
+      "name": "Andrea Landini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000283",
+      "name": "Andrea Madio",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000287",
+      "name": "Andrea Negro",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000290",
+      "name": "Andrea Oldrini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000292",
+      "name": "Andrea Pelletti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000294",
+      "name": "Andrea Pistilli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000297",
+      "name": "Andrea Sales",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000298",
+      "name": "Andrea Sanchietti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000299",
+      "name": "Andrea Sciarabba",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000300",
+      "name": "Andrea Spinetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000301",
+      "name": "Andrea Valentini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000303",
+      "name": "Andrea Zatti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000311",
+      "name": "Andrei Fetissov",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000338",
+      "name": "Angelo Calcagno",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000341",
+      "name": "Angelo Giorgi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000342",
+      "name": "Angelo Reale",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000367",
+      "name": "Anthony Miller",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000372",
+      "name": "Anthony Taylor",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000381",
+      "name": "Antonino Favano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000390",
+      "name": "Antonio Fuss",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000400",
+      "name": "Antonio Pelletier",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000402",
+      "name": "Antonio Piccirillo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000403",
+      "name": "Antonio Pirillo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000412",
+      "name": "Antonio Strazzera",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000479",
+      "name": "Benito Colmani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000595",
+      "name": "Brian Shaw",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000633",
+      "name": "Camillo Stazzonelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000637",
+      "name": "Carl Curry",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000644",
+      "name": "Carlo Contaldo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000647",
+      "name": "Carlo Maurovic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000693",
+      "name": "Cedric Jenkins",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000708",
+      "name": "Cesare Forino",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000722",
+      "name": "Charles Jones",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000752",
+      "name": "Chris Mc Nealy",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000767",
+      "name": "Christian Ferretti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000821",
+      "name": "Claudio Calandri",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000827",
+      "name": "Claudio Gabba",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000829",
+      "name": "Claudio Meroni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000832",
+      "name": "Claudio Rossetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000833",
+      "name": "Claudio Russo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000834",
+      "name": "Claus Hansen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000844",
+      "name": "Clivo Massimo Righi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000864",
+      "name": "Corrado Moffa",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000880",
+      "name": "Cozell Mc Queen",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000890",
+      "name": "Cristian Corsini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000891",
+      "name": "Cristian Sari",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000892",
+      "name": "Cristiano Carlesi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000893",
+      "name": "Cristiano Cocco",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000919",
+      "name": "Damiano Scalera",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000967",
+      "name": "Daniele Zenarolla",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000971",
+      "name": "Danilo Scimia",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-000990",
+      "name": "Dario Sigon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001034",
+      "name": "David Corzine",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001041",
+      "name": "David Farinon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001084",
+      "name": "Davide Filippini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001086",
+      "name": "Davide Giuliani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001087",
+      "name": "Davide Gonzo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001091",
+      "name": "Davide Piccoli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001092",
+      "name": "Davide Polimeni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001094",
+      "name": "Davide Ratta",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001113",
+      "name": "Delme Herriman",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001170",
+      "name": "Diego Zivic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001176",
+      "name": "Dimitri Pirovano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001220",
+      "name": "Dirk Rassloff",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001227",
+      "name": "Domenico Liguori",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001230",
+      "name": "Domenico Rigo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001232",
+      "name": "Domenico Zecca",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001241",
+      "name": "Donald Reese",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001319",
+      "name": "Edgardo Parizzia",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001323",
+      "name": "Edoardo Gaddo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001325",
+      "name": "Edoardo Mingotti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001351",
+      "name": "Elston Turner",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001358",
+      "name": "Emanuele Polesel",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001366",
+      "name": "Emiliano Neri",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001371",
+      "name": "Emilio Marcheselli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001373",
+      "name": "Emilio Rotasperti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001380",
+      "name": "Enrico Corni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001381",
+      "name": "Enrico Degli Agosti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001382",
+      "name": "Enrico Favero",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001383",
+      "name": "Enrico Figlios",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001385",
+      "name": "Enrico Gaeta",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001387",
+      "name": "Enrico Gozzoli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001388",
+      "name": "Enrico Meleo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001389",
+      "name": "Enrico Milesi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001390",
+      "name": "Enrico Paci",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001434",
+      "name": "Eris Righetto",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001454",
+      "name": "Eugenio Spano'",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001466",
+      "name": "Ezio De Piccoli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001473",
+      "name": "Fabio Capelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001476",
+      "name": "Fabio Espa",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001477",
+      "name": "Fabio Ferraretti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001479",
+      "name": "Fabio Leonardi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001481",
+      "name": "Fabio Lodi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001482",
+      "name": "Fabio Marzinotto",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001489",
+      "name": "Fabio Torri",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001490",
+      "name": "Fabio Vignone",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001492",
+      "name": "Fabio Zerbi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001499",
+      "name": "Fabrizio Ercolini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001500",
+      "name": "Fabrizio Mazzini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001501",
+      "name": "Fabrizio Righini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001502",
+      "name": "Fabrizio Valente",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001512",
+      "name": "Federico Forti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001516",
+      "name": "Federico Manucci",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001519",
+      "name": "Federico Peruzzo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001521",
+      "name": "Federico Stefanini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001522",
+      "name": "Federico Zini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001562",
+      "name": "Filippo Fiori",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001564",
+      "name": "Filippo Morosi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001598",
+      "name": "Francesco Ciardelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001599",
+      "name": "Francesco Fischetto",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001601",
+      "name": "Francesco Gori",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001602",
+      "name": "Francesco Guarino",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001604",
+      "name": "Francesco Lucchi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001606",
+      "name": "Francesco Marini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001607",
+      "name": "Francesco Mazzoni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001641",
+      "name": "Franco Picozzi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001642",
+      "name": "Franco Rossi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001672",
+      "name": "Fulvio Fantetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001681",
+      "name": "Gabriele Casalvieri",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001682",
+      "name": "Gabriele Ricci",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001699",
+      "name": "Gaspare Nardella",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001715",
+      "name": "George Maslarinos",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001716",
+      "name": "George Mc Cloud",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001725",
+      "name": "Georgi Glouchkov",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001752",
+      "name": "Gherardo Soresina",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001757",
+      "name": "Giacomo Golinelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001758",
+      "name": "Giacomo Mulinacci",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001762",
+      "name": "Giampaolo Paci",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001767",
+      "name": "Gianantonio Furigo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001769",
+      "name": "Giancarlo Giordano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001773",
+      "name": "Gianluca Carra",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001775",
+      "name": "Gianluca Ceccarini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001777",
+      "name": "Gianluca Giacomi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001779",
+      "name": "Gianluca Lazzeri",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001780",
+      "name": "Gianluca Lenoli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001782",
+      "name": "Gianluca Mantovani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001783",
+      "name": "Gianluca Porfiri",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001784",
+      "name": "Gianluca Ragionieri",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001785",
+      "name": "Gianluca Toracca",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001816",
+      "name": "Giordano Marusic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001823",
+      "name": "Giorgio Ottaviani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001824",
+      "name": "Giorgio Rifatti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001866",
+      "name": "Giovanni Cumerlato",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001868",
+      "name": "Giovanni Diana",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001869",
+      "name": "Giovanni Focardi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001871",
+      "name": "Giovanni Pastori",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001872",
+      "name": "Giovanni Picano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001873",
+      "name": "Giovanni Sabbia",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001876",
+      "name": "Giovanni Spataro",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001877",
+      "name": "Giovanni Verde",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001879",
+      "name": "Giulio Rossi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001881",
+      "name": "Giuseppe Calavita",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001888",
+      "name": "Giuseppe Motta",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001889",
+      "name": "Giuseppe Natali",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001890",
+      "name": "Giuseppe Perfetto",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001892",
+      "name": "Giuseppe Valerio",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001893",
+      "name": "Giuseppe Vitiello",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001942",
+      "name": "Gregory Grant",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001947",
+      "name": "Guido Cenderelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001949",
+      "name": "Guido Franco",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-001951",
+      "name": "Guido Vettore",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002005",
+      "name": "Henry James",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002010",
+      "name": "Herbert Johnson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002051",
+      "name": "Igor Melnik",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002135",
+      "name": "Jacopo Danese",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002287",
+      "name": "Jeffrey Colladon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002309",
+      "name": "Jerome Henderson",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002318",
+      "name": "Jerry Reynolds",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002403",
+      "name": "John Douglas",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002546",
+      "name": "Josè Vargas",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002563",
+      "name": "Joseph Wylie",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002652",
+      "name": "Jurij Zdovc",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002746",
+      "name": "Klaus Schluderbacher",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002775",
+      "name": "Kristian Sartor",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002839",
+      "name": "Leandro Gros",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002858",
+      "name": "Leonardo Conti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002859",
+      "name": "Leonardo Mariotti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002860",
+      "name": "Leonardo Masini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002863",
+      "name": "Leonardo Vitellozzi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002870",
+      "name": "Letterio Visigalli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002895",
+      "name": "Lorenzo Capisciotti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002898",
+      "name": "Lorenzo Corradini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002900",
+      "name": "Lorenzo Fabbrini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002901",
+      "name": "Lorenzo Luini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002902",
+      "name": "Lorenzo Marchetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002906",
+      "name": "Lorenzo Zanni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002919",
+      "name": "Luca Cadorin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002920",
+      "name": "Luca Carretta",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002921",
+      "name": "Luca Cimatti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002922",
+      "name": "Luca Colò",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002927",
+      "name": "Luca Giroli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002929",
+      "name": "Luca Martinelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002930",
+      "name": "Luca Merli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002931",
+      "name": "Luca Mio",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002933",
+      "name": "Luca Rotelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002934",
+      "name": "Luca Sabatini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002935",
+      "name": "Luca Santachiara",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002937",
+      "name": "Luca Sonego",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002940",
+      "name": "Luca Vicinelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002941",
+      "name": "Luca Viselli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002947",
+      "name": "Lucio Romano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002948",
+      "name": "Lucius Davis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002951",
+      "name": "Luigi Corvo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002952",
+      "name": "Luigi Donati",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002954",
+      "name": "Luigi Marinelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002956",
+      "name": "Luigi Recchia",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-002957",
+      "name": "Luigi Vertaldi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003038",
+      "name": "Mar Dondi Dall'Orologio",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003055",
+      "name": "Marcello Casadei",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003056",
+      "name": "Marcello Sala",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003071",
+      "name": "Marco Carlon",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003074",
+      "name": "Marco Cognolato",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003076",
+      "name": "Marco Dalloca",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003079",
+      "name": "Marco Domante",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003081",
+      "name": "Marco Grossi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003087",
+      "name": "Marco Malavasi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003089",
+      "name": "Marco Marchetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003093",
+      "name": "Marco Nicoli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003097",
+      "name": "Marco Pugliesi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003106",
+      "name": "Marco Vorano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003131",
+      "name": "Mario Di Sabato",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003140",
+      "name": "Mario Romeo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003143",
+      "name": "Mario Soave",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003169",
+      "name": "Mark Plansky",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003219",
+      "name": "Massimiliano Pagani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003220",
+      "name": "Massimiliano Pedone",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003221",
+      "name": "Massimiliano Peroni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003229",
+      "name": "Massimo Cielo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003231",
+      "name": "Massimo Divitini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003240",
+      "name": "Massimo Petracchi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003241",
+      "name": "Massimo Pezzotta",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003242",
+      "name": "Massimo Re",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003244",
+      "name": "Massimo Rossi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003248",
+      "name": "Massimo Spezie",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003249",
+      "name": "Massimo Valentinuzzi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003272",
+      "name": "Matteo Herich",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003275",
+      "name": "Matteo Maggioni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003277",
+      "name": "Matteo Minelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003280",
+      "name": "Matteo Panzeri",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003283",
+      "name": "Matteo Sacchetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003284",
+      "name": "Matteo Salvatori",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003304",
+      "name": "Maurizio D'Amicis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003307",
+      "name": "Maurizio Frastornini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003320",
+      "name": "Mauro Rosso",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003348",
+      "name": "Michael Davis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003390",
+      "name": "Michele Celenza",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003391",
+      "name": "Michele Fabiani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003392",
+      "name": "Michele Faraoni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003394",
+      "name": "Michele Filippi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003395",
+      "name": "Michele Gazzato",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003396",
+      "name": "Michele Gregoris",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003400",
+      "name": "Michele Verderame",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003401",
+      "name": "Michele Zanatta",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003402",
+      "name": "Michele Zeno",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003461",
+      "name": "Mike Mc Gee",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003476",
+      "name": "Mike Silvester",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003519",
+      "name": "Mirko Polidori",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003574",
+      "name": "Nenad Trunic",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003588",
+      "name": "Nicola Foschini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003590",
+      "name": "Nicola Ghizzoni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003591",
+      "name": "Nicola Morini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003592",
+      "name": "Nicola Nardi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003594",
+      "name": "Nicola Rossi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003595",
+      "name": "Nicola Santini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003596",
+      "name": "Nicola Signorile",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003784",
+      "name": "Paolo Cappelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003785",
+      "name": "Paolo Casonato",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003786",
+      "name": "Paolo Coccoli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003787",
+      "name": "Paolo Colpani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003794",
+      "name": "Paolo Prato",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003797",
+      "name": "Paolo Scarnati",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003931",
+      "name": "Pieraldo Ferrari",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003935",
+      "name": "Pierluigi Portesani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003936",
+      "name": "Piero Mandelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003937",
+      "name": "Piero Montecchi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003940",
+      "name": "Pierpaolo Del Buono",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003947",
+      "name": "Pietro Casarini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-003948",
+      "name": "Pietro Generali",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004001",
+      "name": "Raffaele Pasquato",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004002",
+      "name": "Raffaello Venturini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004076",
+      "name": "Renato Drigani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004077",
+      "name": "Renato Ottavi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004080",
+      "name": "Renzo Filoia",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004081",
+      "name": "Renzo Pernich",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004099",
+      "name": "Riccardo Marisi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004103",
+      "name": "Riccardo Riccardini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004104",
+      "name": "Riccardo Salvato",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004106",
+      "name": "Riccardo Tedeschi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004107",
+      "name": "Riccardo Valoti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004126",
+      "name": "Ricky Mahorn",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004151",
+      "name": "Robert Lock",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004179",
+      "name": "Roberto Gentile",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004180",
+      "name": "Roberto Giusti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004183",
+      "name": "Roberto Guerrini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004186",
+      "name": "Roberto Marengo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004188",
+      "name": "Roberto Nicoletti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004191",
+      "name": "Roberto Paliani",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004193",
+      "name": "Roberto Ritossa",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004198",
+      "name": "Rocco Famà",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004257",
+      "name": "Rossano Sassi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004301",
+      "name": "Salvatore Casamento",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004302",
+      "name": "Salvatore Lapetina",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004303",
+      "name": "Salvatore Sanfilippo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004307",
+      "name": "Sam Williams",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004316",
+      "name": "Samuel Gecchele",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004321",
+      "name": "Samuele Mingozzi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004325",
+      "name": "Sandro Cherubini",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004329",
+      "name": "Sandro Ranieri",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004354",
+      "name": "Saverio Nero",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004376",
+      "name": "Sebastian Neal",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004397",
+      "name": "Sergio Cherin",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004400",
+      "name": "Sergio Donadoni",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004406",
+      "name": "Sergio Scognamiglio",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004407",
+      "name": "Sergio Zucchi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004436",
+      "name": "Silvano Fumagalli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004448",
+      "name": "Simone Cei",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004453",
+      "name": "Simone Leo",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004455",
+      "name": "Simone Moscatelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004457",
+      "name": "Simone Silvino",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004458",
+      "name": "Simone Velluti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004501",
+      "name": "Stanislao Metta",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004527",
+      "name": "Stefano Leva",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004530",
+      "name": "Stefano Mantica",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004531",
+      "name": "Stefano Menichetti",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004532",
+      "name": "Stefano Morelli",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004533",
+      "name": "Stefano Pagliari",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004538",
+      "name": "Stefano Sacchi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004539",
+      "name": "Stefano Sala",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004541",
+      "name": "Stefano Servadio",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004542",
+      "name": "Stefano Tosi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004742",
+      "name": "Tommaso Raffaele",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004743",
+      "name": "Tommaso Tasso",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004787",
+      "name": "Travis Williams",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004815",
+      "name": "Umberto De Sanctis",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004816",
+      "name": "Umberto Malcangi",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004888",
+      "name": "Vincenzo Romano",
+      "rawNationality": null,
+      "birthplace": ""
+    },
+    {
+      "personId": "EURO-SAFE-004891",
+      "name": "Virgilio Vitiello",
+      "rawNationality": null,
+      "birthplace": ""
+    }
+  ]
+}

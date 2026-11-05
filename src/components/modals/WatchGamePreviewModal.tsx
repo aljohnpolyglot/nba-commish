@@ -4,15 +4,20 @@ import { X, Play, Shield, ChevronRight, Tv } from 'lucide-react';
 import { NBATeam, Game, NBAPlayer } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { calculateTeamStrength } from '../../utils/playerRatings';
-import { convertTo2KRating, getPlayerHeadshot, getPlayersForExhibitionTeam, extractNbaId } from '../../utils/helpers';
+import { getPlayerHeadshot } from '../../utils/helpers';
 import { StarterService } from '../../services/simulation/StarterService';
 import { getPlayerImage } from '../central/view/bioCache';
-import { REFS } from '../central/view/LeagueOfficeSearcher';
 import { RefereePickerModal } from './RefereePickerModal';
 import { RigConfirmModal } from './RigConfirmModal';
 import { fetchRefereeData, getRefereePhoto } from '../../data/photos';
 import { pickBroadcasterForGame, BROADCASTER_NAMES, BROADCASTER_LOGOS, getBroadcasterDisplayName, FICTIONAL_BROADCASTER_BADGE } from '../../utils/broadcastingUtils';
 import { getGameplan } from '../../store/gameplanStore';
+import { getPlayersOnCourt } from '../../services/simulation/courtSize';
+import { resolveRigGameOffer } from '../../services/referees/rigGame';
+import type { RefereeData } from '../../data/photos/referees';
+import { getScoutedDisplayOverall } from '../../utils/scoutingFuzz';
+import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
 
 interface SelectedRef {
   id: string;
@@ -20,6 +25,9 @@ interface SelectedRef {
   slug: string;
   photo?: string;
   number?: string;
+  isFictional?: boolean;
+  ratings?: Record<string, number | null>;
+  riggingProfile?: Record<string, unknown>;
 }
 
 interface WatchGamePreviewModalProps {
@@ -33,78 +41,93 @@ interface WatchGamePreviewModalProps {
   onConfirm: (riggedForTid?: number, watchLive?: boolean) => void;
 }
 
+export function resolvePreviewOverrideStarters(
+  team: NBATeam,
+  overridePlayers: NBAPlayer[],
+  season: number,
+  playersOnCourt: number,
+): NBAPlayer[] {
+  return StarterService.getProjectedStarters(
+    team,
+    overridePlayers,
+    season,
+    overridePlayers,
+    true,
+    playersOnCourt,
+  );
+}
+
+export function resolvePreviewPlayerPortrait(player: NBAPlayer): string {
+  const shared = getPlayerImage(player);
+  if (shared) return shared;
+  return getPlayerHeadshot(
+    player.internalId,
+    String((player as NBAPlayer & { nbaId?: string }).nbaId ?? '') || null,
+  );
+}
+
 export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
   game, homeTeam, awayTeam, players,
   homeStartersOverride, awayStartersOverride,
   onClose, onConfirm
 }) => {
-  const { state } = useGame();
+  const { state, dispatchAction } = useGame();
+  const playersOnCourt = getPlayersOnCourt(state.leagueStats);
 
-  const isCelebrity = !!(game as any).isCelebrityGame;
-  const isRisingStars = !!(game as any).isRisingStars;
-  const isAllStar = !!(game as any).isAllStar;
   const isIntrasquad = homeTeam.id === awayTeam.id;
 
   // For non-NBA (external) teams tid ≥ 100, StarterService's `status === 'Active'`
   // filter produces an empty list. Fall back to top-5 by rating instead.
   const getStarters = (team: NBATeam, isHome: boolean): NBAPlayer[] => {
-    if (isHome && homeStartersOverride && homeStartersOverride.length > 0)
-      return homeStartersOverride.slice(0, 5);
-    if (!isHome && awayStartersOverride && awayStartersOverride.length > 0)
-      return awayStartersOverride.slice(0, 5);
+    if (isHome && homeStartersOverride && homeStartersOverride.length > 0) {
+      return resolvePreviewOverrideStarters(team, homeStartersOverride, state.leagueStats.year, playersOnCourt);
+    }
+    if (!isHome && awayStartersOverride && awayStartersOverride.length > 0) {
+      return resolvePreviewOverrideStarters(team, awayStartersOverride, state.leagueStats.year, playersOnCourt);
+    }
     // GM's saved gameplan wins over StarterService for their own team
     if (state.gameMode === 'gm' && team.id === state.userTeamId) {
       const plan = getGameplan(team.id);
-      if (plan?.starterIds?.length === 5) {
+      if (plan?.starterIds?.length === playersOnCourt) {
         const byId = new Map(players.map(p => [p.internalId, p]));
         const picked = plan.starterIds
           .map(id => byId.get(id))
           .filter((p): p is NBAPlayer => !!p && p.tid === team.id);
-        if (picked.length === 5) return picked;
+        if (picked.length === playersOnCourt) return picked;
       }
     }
-    if (isCelebrity || isRisingStars || isAllStar)
-      return getPlayersForExhibitionTeam(game, isHome, state.allStar, players).slice(0, 5);
     if (team.id >= 100) {
       // External / non-NBA roster — pick 1C, 2F, 2G by position, sorted by overall
       const roster = players
         .filter(p => p.tid === team.id)
         .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0));
-      const starters: NBAPlayer[] = [];
-      const used = new Set<string>();
-      const pickPos = (posTokens: string[], need: number) => {
-        for (const p of roster) {
-          if (need === 0) break;
-          if (used.has(p.internalId)) continue;
-          if (posTokens.some(tok => (p.pos ?? '').includes(tok))) {
-            starters.push(p); used.add(p.internalId); need--;
-          }
-        }
-        // fill gaps from remaining roster
-        for (const p of roster) {
-          if (need === 0) break;
-          if (!used.has(p.internalId)) { starters.push(p); used.add(p.internalId); need--; }
-        }
-      };
-      pickPos(['C'], 1);
-      pickPos(['F'], 2);
-      pickPos(['G'], 2);
-      // safety — shouldn't be needed but fill if still short
-      for (const p of roster) {
-        if (starters.length >= 5) break;
-        if (!used.has(p.internalId)) starters.push(p);
-      }
-      return starters;
+      return StarterService.getProjectedStarters(
+        team,
+        players,
+        state.leagueStats.year,
+        roster,
+        true,
+        playersOnCourt,
+      );
     }
-    return StarterService.getProjectedStarters(team, players);
+    return StarterService.getProjectedStarters(
+      team,
+      players,
+      state.leagueStats.year,
+      undefined,
+      true,
+      playersOnCourt,
+    );
   };
 
   const homeStarters = getStarters(homeTeam, true);
   const awayStarters = getStarters(awayTeam, false);
 
-  const homeOvr = homeTeam.id < 0 ? 85 : calculateTeamStrength(homeTeam.id, players);
-  const awayOvr = awayTeam.id < 0 ? 85 : calculateTeamStrength(awayTeam.id, players);
-
+  const exhibitionStrength = (starters: NBAPlayer[]) => starters.length > 0
+    ? Math.round(starters.reduce((sum, player) => sum + getScoutedDisplayOverall(state, player, state.leagueStats.year), 0) / starters.length)
+    : 0;
+  const homeOvr = homeTeam.id < 0 ? exhibitionStrength(homeStarters) : calculateTeamStrength(homeTeam.id, players);
+  const awayOvr = awayTeam.id < 0 ? exhibitionStrength(awayStarters) : calculateTeamStrength(awayTeam.id, players);
   // Broadcaster + tipoff time — prefer pre-attached data on game, compute as fallback
   const isFictional = state.leagueType === 'fictional';
   const gameBroadcastInfo = (() => {
@@ -135,57 +158,83 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
   const [showRefPicker, setShowRefPicker] = useState(false);
   const [showRigConfirm, setShowRigConfirm] = useState(false);
   const [selectedRef, setSelectedRef] = useState<SelectedRef | null>(null);
+  const [isSettlingRig, setIsSettlingRig] = useState(false);
+  const canRigGame = state.gameMode === 'commissioner' && state.leagueType === 'fictional';
 
   // Preload ref photos when rig panel opens
   useEffect(() => {
     if (showRigPanel) fetchRefereeData();
   }, [showRigPanel]);
 
-  const handleRefSelected = (ref: { id: string; name: string; slug: string }) => {
+  const handleRefSelected = (ref: RefereeData) => {
     setSelectedRef({
       ...ref,
       photo: getRefereePhoto(ref.name) || undefined,
-      number: ref.id,
+      number: String(ref.officialNumber ?? ref.id),
     });
     setShowRefPicker(false);
     setShowRigConfirm(true);
   };
 
-  const handleRigWatchLive = () => {
-    setShowRigConfirm(false);
-    onConfirm(riggedForTid, true);
-    onClose();
-  };
+  const selectedRigOffer = selectedRef && riggedForTid !== undefined
+    ? resolveRigGameOffer(state, game.gid, selectedRef as RefereeData, riggedForTid)
+    : undefined;
 
-  const handleRigJustSimulate = () => {
+  const settleRigAndStart = async (watchLive: boolean) => {
+    if (!selectedRef || riggedForTid === undefined || !selectedRigOffer?.settlement || !selectedRigOffer.canAfford) {
+      return;
+    }
+    setIsSettlingRig(true);
+    await dispatchAction({
+      type: 'SETTLE_RIG_GAME_OFFER',
+      payload: {
+        gameId: game.gid,
+        refereeId: selectedRef.id,
+        favoredTid: riggedForTid,
+      },
+    });
+    const effectiveRig = selectedRigOffer.settlement.outcome === 'success'
+      ? riggedForTid
+      : undefined;
     setShowRigConfirm(false);
-    onConfirm(riggedForTid, false);
+    onConfirm(effectiveRig, watchLive);
     onClose();
   };
 
   const renderTeamPreview = (team: NBATeam, starters: NBAPlayer[], ovr: number, isHome: boolean) => {
-    const teamLogo = isCelebrity && isHome
-      ? 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRffhUYYZKE2ShRfkq_jZsd'
-      : team.logoUrl;
-
     const isRigged = riggedForTid === team.id;
 
     return (
-      <div className={`flex flex-col flex-1 ${isHome ? 'items-end text-right' : 'items-start text-left'}`}>
-        <div className={`flex items-center gap-4 mb-6 ${isHome ? 'flex-row-reverse' : 'flex-row'}`}>
-          <div className="relative">
-            <img src={teamLogo} alt={team.name} className="w-20 h-20 md:w-28 md:h-28 object-contain drop-shadow-2xl" referrerPolicy="no-referrer" />
+      <section className="flex min-w-0 flex-1 flex-col border border-white/[0.08] bg-white/[0.025] p-4 sm:p-5">
+        <div className="mb-5 flex items-center gap-4">
+          <div className="relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-white/15 bg-[#111827] sm:h-20 sm:w-20">
+            {team.logoUrl ? (
+              <>
+                <img
+                  src={team.logoUrl}
+                  alt=""
+                  className="h-full w-full object-contain"
+                  referrerPolicy="no-referrer"
+                  onError={(event) => {
+                    event.currentTarget.hidden = true;
+                    event.currentTarget.nextElementSibling?.removeAttribute('hidden');
+                  }}
+                />
+                <span hidden className="text-sm font-black text-slate-400">{team.abbrev}</span>
+              </>
+            ) : <span className="text-sm font-black text-slate-400">{team.abbrev}</span>}
             {isRigged && (
               <div className="absolute -top-1 -right-1 w-5 h-5 bg-amber-500 rounded-full flex items-center justify-center">
                 <Shield size={10} className="text-black" />
               </div>
             )}
           </div>
-          <div className="flex flex-col">
-            <h3 className="text-2xl md:text-3xl font-black text-white uppercase tracking-tighter">{team.name}</h3>
-            <div className={`flex items-center gap-3 mt-1 ${isHome ? 'justify-end' : 'justify-start'}`}>
-              <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">OVR</span>
-              <span className="text-2xl font-black font-mono text-indigo-400">{ovr}</span>
+          <div className="min-w-0 flex-1">
+            <p className="mb-1 text-[9px] font-black uppercase tracking-[0.2em] text-indigo-300">{isHome ? 'Home' : 'Away'}</p>
+            <h3 className="truncate text-xl font-black uppercase tracking-tight text-white sm:text-2xl">{team.name}</h3>
+            <div className="mt-1 flex items-center gap-2">
+              <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">OVR</span>
+              <span className="font-mono text-xl font-black text-indigo-300">{ovr || '—'}</span>
               {team.id >= 0 && (
                 <span className="text-sm font-bold text-slate-400 font-mono">{team.wins ?? 0}–{team.losses ?? 0}</span>
               )}
@@ -193,33 +242,27 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
           </div>
         </div>
 
-        {!isCelebrity && !isIntrasquad ? (
+        {!isIntrasquad ? (
           <div className="w-full space-y-3">
-            <h4 className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-2 border-b border-white/10 pb-2">Projected Starters</h4>
+            <h4 className="mb-2 border-b border-white/10 pb-2 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+              Projected Lineup ({playersOnCourt})
+            </h4>
             {starters.map((player) => {
-              const rating = convertTo2KRating(player.overallRating || (player as any).ovr || (player as any).rating || 60, player.ratings?.[player.ratings.length - 1]?.hgt ?? 50, player.ratings?.[player.ratings.length - 1]?.tp);
+              const rating = getScoutedDisplayOverall(state, player, state.leagueStats.year);
               const playerName = player.name ?? (player as any).playerName ?? 'Player';
               const playerId = player.internalId ?? (player as any).playerId ?? Math.random().toString();
-              const nbaId = (player as any).nbaId || extractNbaId(player.imgURL || "", playerName);
-              // For external players with no NBA CDN ID, use imgURL directly
-              const portraitSrc = nbaId
-                ? getPlayerHeadshot(playerId, nbaId)
-                : (player.imgURL || getPlayerHeadshot(playerId, null));
+              const portraitSrc = resolvePreviewPlayerPortrait(player);
               return (
-                <div key={playerId} className={`flex items-center gap-3 bg-white/5 p-2 rounded-xl border border-white/5 ${isHome ? 'flex-row-reverse' : 'flex-row'}`}>
-                  <div className="w-10 h-10 rounded-full bg-slate-800 overflow-hidden flex-shrink-0 border border-white/10 relative">
-                    <img
-                      src={portraitSrc}
-                      alt={playerName}
-                      className="w-full h-full object-cover absolute inset-0"
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(playerName)}&background=0D9488&color=fff`;
-                      }}
-                      referrerPolicy="no-referrer"
-                    />
-                  </div>
-                  <div className={`flex flex-col flex-1 ${isHome ? 'items-end' : 'items-start'}`}>
-                    <span className="text-sm font-bold text-white truncate max-w-[120px] md:max-w-[160px]">{playerName}</span>
+                <div key={playerId} className="flex min-h-12 items-center gap-3 border border-white/[0.06] bg-black/20 px-3 py-2 transition-colors hover:border-white/15 hover:bg-white/[0.04]">
+                  <PlayerPortrait
+                    imgUrl={portraitSrc}
+                    playerName={playerName}
+                    playerIdentity={player}
+                    portraitSeason={state.leagueStats.year}
+                    size={40}
+                  />
+                  <div className="flex min-w-0 flex-1 flex-col items-start">
+                    <PlayerNameWithHover player={player} className="max-w-[150px] truncate text-left text-sm font-bold text-white sm:max-w-[190px]">{playerName}</PlayerNameWithHover>
                     <span className="text-[10px] font-bold text-slate-500">{player.pos}</span>
                   </div>
                   <div className={`text-lg font-black font-mono ${rating >= 90 ? 'text-amber-400' : rating >= 80 ? 'text-emerald-400' : 'text-slate-300'}`}>
@@ -234,14 +277,8 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
             <div className="text-3xl mb-2">🏀</div>
             <p className="text-slate-500 text-[10px] mt-1 uppercase tracking-widest">Intrasquad Scrimmage</p>
           </div>
-        ) : (
-          <div className="w-full mt-4 p-4 rounded-2xl bg-fuchsia-500/5 border border-fuchsia-500/20 text-center">
-            <div className="text-3xl mb-2">🎤🎬🏀</div>
-            <p className="text-fuchsia-300 text-sm font-bold">Celebrity Roster</p>
-            <p className="text-slate-500 text-[10px] mt-1 uppercase tracking-widest">Exhibition Matchup</p>
-          </div>
-        )}
-      </div>
+        ) : null}
+      </section>
     );
   };
 
@@ -252,33 +289,36 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative bg-[#0a0a0a] border border-white/10 rounded-[24px] md:rounded-[32px] w-full max-w-5xl flex flex-col shadow-2xl overflow-hidden max-h-[calc(100dvh-32px)]"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="game-preview-title"
+          className="relative flex max-h-[calc(100dvh-16px)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#080b12] shadow-2xl sm:max-h-[calc(100dvh-32px)] sm:rounded-[28px]"
         >
           {/* Header */}
-          <div className="flex items-center justify-between p-5 md:p-6 border-b border-white/10 bg-[#111] shrink-0">
-            <h2 className="text-lg md:text-xl font-black text-white uppercase tracking-tight flex items-center gap-2">
+          <div className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#0d111b] p-4 sm:px-6 sm:py-5">
+            <h2 id="game-preview-title" className="flex items-center gap-2 text-lg font-black uppercase tracking-tight text-white md:text-xl">
               <Play size={20} className="text-indigo-500" />
               Game Preview
             </h2>
-            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white transition-colors">
+            <button onClick={onClose} aria-label="Close game preview" className="flex h-10 w-10 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-white/10 hover:text-white">
               <X size={24} />
             </button>
           </div>
 
           {/* Scrollable content */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar bg-gradient-to-b from-[#111] to-[#0a0a0a]">
-            <div className="flex flex-col md:flex-row gap-8 md:gap-12 p-6 md:p-12">
+          <div className="custom-scrollbar flex-1 overflow-y-auto bg-[#080b12]">
+            <div className="grid grid-cols-1 gap-3 p-3 sm:p-5 md:grid-cols-[1fr_auto_1fr] md:items-stretch">
               {renderTeamPreview(awayTeam, awayStarters, awayOvr, false)}
 
-              <div className="flex flex-col items-center justify-center py-4 md:py-0 shrink-0">
-                <div className="text-4xl md:text-6xl font-black text-slate-800 italic tracking-tighter">VS</div>
+              <div className="flex shrink-0 flex-row items-center justify-center gap-3 py-1 md:flex-col md:px-2 md:py-0">
+                <div className="text-3xl font-black italic tracking-tighter text-slate-700 md:text-5xl">VS</div>
                 <div className="mt-2 md:mt-4 text-[10px] font-bold text-slate-500 uppercase tracking-widest text-center">
                   {new Date(game.date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                 </div>
                 <div className="mt-1 text-[11px] font-bold text-indigo-400 text-center">
                   {gameBroadcastInfo.tipoffTime}
                 </div>
-                {!isCelebrity && !isAllStar && !isRisingStars && (() => {
+                {(() => {
                   const bcId   = game.broadcaster || '';
                   const logoUrl = BROADCASTER_LOGOS[bcId];
                   return (
@@ -314,8 +354,7 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
               {renderTeamPreview(homeTeam, homeStarters, homeOvr, true)}
             </div>
 
-            {/* Rig Panel — commissioner-only */}
-            {state.gameMode !== 'gm' && !isCelebrity && !isAllStar && !isRisingStars && !isIntrasquad && (
+            {canRigGame && homeTeam.id >= 0 && awayTeam.id >= 0 && !isIntrasquad && (
               <div className="px-6 md:px-12 pb-6">
                 {!showRigPanel ? (
                   <button
@@ -369,15 +408,13 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
           {/* Footer */}
           <div className="p-4 md:p-6 border-t border-white/10 bg-[#111] flex flex-col md:flex-row justify-end gap-3 md:gap-4 shrink-0">
             <button
-              onClick={onClose}
-              className="w-full md:w-auto px-8 py-3 md:py-4 bg-white/5 hover:bg-white/10 text-white rounded-xl md:rounded-2xl font-bold transition-all uppercase tracking-widest text-[10px] md:text-xs"
-            >
-              Cancel
-            </button>
-            <button
               onClick={() => {
-                onConfirm(riggedForTid, false);
-                onClose();
+                if (riggedForTid !== undefined) {
+                  setShowRefPicker(true);
+                } else {
+                  onConfirm(undefined, false);
+                  onClose();
+                }
               }}
               className="w-full md:w-auto px-8 py-3 md:py-4 bg-slate-700 hover:bg-slate-600 text-white rounded-xl md:rounded-2xl font-bold transition-all uppercase tracking-widest text-[10px] md:text-xs flex items-center justify-center gap-2"
             >
@@ -426,9 +463,12 @@ export const WatchGamePreviewModal: React.FC<WatchGamePreviewModalProps> = ({
         refName={selectedRef?.name || ''}
         refNumber={selectedRef?.number || ''}
         refPhoto={selectedRef?.photo}
+        amountMillion={selectedRigOffer?.settlement?.quotedAmountMillion ?? 0}
+        personalWealthMillion={state.stats.personalWealth}
+        isProcessing={isSettlingRig}
         onClose={() => setShowRigConfirm(false)}
-        onWatchLive={handleRigWatchLive}
-        onJustSimulate={handleRigJustSimulate}
+        onWatchLive={() => void settleRigAndStart(true)}
+        onJustSimulate={() => void settleRigAndStart(false)}
       />
     </>
   );

@@ -1,7 +1,72 @@
 import { NBACupState } from '../../../types';
+import { matchTeamByWikiName } from '../../../data/brefFetcher';
+import type {
+  CupCompetitionFormat,
+  CupCompetitionState,
+  CupSeasonHistory,
+} from '../../../services/competition/cup';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { getHistoricalTeamSnapshot, getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { STATIC_NBA_TEAMS, staticNbaTeamLogo } from '../../../data/staticNbaTeams';
 import { NBACupYearData, Standing, BracketTeam, WikiYearData } from '../types';
 
 export const GIST_URL = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/nbacupdata';
+
+export interface NbaCupTeamIdentityInput {
+  id: number;
+  name?: string;
+  region?: string;
+  abbrev?: string;
+  logoUrl?: string;
+  logoURL?: string;
+  league?: string;
+  seasons?: unknown[];
+  identitySeasons?: unknown[];
+}
+
+export interface NbaCupTeamIdentity {
+  id: number;
+  name: string;
+  region: string;
+  abbrev: string;
+  logoUrl: string;
+}
+
+const staticTeamsForLookup = STATIC_NBA_TEAMS.map(team => ({ ...team, id: team.tid }));
+
+export function resolveNbaCupTeamIdentity(
+  teamName: string,
+  season: number,
+  teams: NbaCupTeamIdentityInput[] = [],
+): NbaCupTeamIdentity | null {
+  const cleanName = teamName.replace(/^[ew]\d+\s*/i, '').trim();
+  const canonical = matchTeamByWikiName(cleanName, staticTeamsForLookup);
+  if (!canonical) return null;
+  const canonicalStatic = STATIC_NBA_TEAMS.find(team => team.tid === canonical.id);
+  if (!canonicalStatic) return null;
+  const eligibleTeams = teams.filter(team => !team.league || String(team.league).toUpperCase() === 'NBA');
+  const liveTeam = eligibleTeams.find(team => {
+    const snapshot = getHistoricalTeamSnapshot(team, season);
+    return String(snapshot.abbrev ?? team.abbrev ?? '').toUpperCase() === canonicalStatic.abbrev;
+  }) ?? eligibleTeams.find(team => String(team.abbrev ?? '').toUpperCase() === canonicalStatic.abbrev);
+  if (!liveTeam) {
+    return {
+      id: canonicalStatic.tid,
+      name: canonicalStatic.name,
+      region: canonicalStatic.region,
+      abbrev: canonicalStatic.abbrev,
+      logoUrl: staticNbaTeamLogo(canonicalStatic),
+    };
+  }
+  const snapshot = getHistoricalTeamSnapshot(liveTeam, season);
+  return {
+    id: liveTeam.id,
+    name: String(snapshot.name ?? liveTeam.name ?? canonicalStatic.name),
+    region: String(snapshot.region ?? liveTeam.region ?? canonicalStatic.region),
+    abbrev: String(snapshot.abbrev ?? liveTeam.abbrev ?? canonicalStatic.abbrev),
+    logoUrl: getResolvedTeamLogoUrl(snapshot, season) || staticNbaTeamLogo(canonicalStatic),
+  };
+}
 
 function parseSeasonEndYear(season: string): string {
   const trimmed = season.trim();
@@ -43,21 +108,7 @@ function inferTeamConference(
   teams?: { id: number; name: string; logoURL?: string; conference?: string }[],
 ): 'East' | 'West' | null {
   if (!teams) return null;
-  const cleanName = teamName.replace(/^[EW]\d+\s*/i, '').trim().toLowerCase();
-  const normalizedName = cleanName.replace(/[^a-z0-9]/g, '');
-  const match = teams.find(team => {
-    const teamNameLower = team.name.toLowerCase();
-    const teamNameNorm = teamNameLower.replace(/[^a-z0-9]/g, '');
-    const abbrevNorm = (team as any).abbrev ? String((team as any).abbrev).toLowerCase().replace(/[^a-z0-9]/g, '') : '';
-    return (
-      teamNameLower === cleanName ||
-      teamNameNorm === normalizedName ||
-      (abbrevNorm && normalizedName.includes(abbrevNorm)) ||
-      (abbrevNorm && abbrevNorm.includes(normalizedName)) ||
-      cleanName.includes(teamNameLower) ||
-      teamNameLower.includes(cleanName)
-    );
-  });
+  const match = matchTeamByWikiName(teamName.replace(/^[EW]\d+\s*/i, '').trim(), teams);
   if (!match) return null;
   return match.conference === 'East' || match.conference === 'West' ? match.conference : null;
 }
@@ -126,6 +177,192 @@ export function sortGroupsForDisplay(
   return { east: [...east, ...unknown], west };
 }
 
+export function sortLeagueWideGroupsForDisplay(groups: Record<string, Standing[]>) {
+  return Object.entries(groups ?? {})
+    .map(([name, standings]) => ({
+      name,
+      standings: sortStandingsRows(Array.isArray(standings) ? standings : []),
+    }))
+    .sort((left, right) => groupSortKey(left.name) - groupSortKey(right.name) || left.name.localeCompare(right.name));
+}
+
+function formatPrizePool(prizePool: CupCompetitionFormat['prizePool']): string {
+  const currency = prizePool.currency ?? 'USD';
+  const amount = (value?: number) => value == null
+    ? null
+    : new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency,
+        maximumFractionDigits: 0,
+      }).format(value);
+  return [
+    prizePool.winner != null ? `Winner ${amount(prizePool.winner)}` : null,
+    prizePool.runnerUp != null ? `Runner-up ${amount(prizePool.runnerUp)}` : null,
+    prizePool.semiFinalist != null ? `Semifinalist ${amount(prizePool.semiFinalist)}` : null,
+    prizePool.quarterFinalist != null ? `Quarterfinalist ${amount(prizePool.quarterFinalist)}` : null,
+  ].filter(Boolean).join(' · ');
+}
+
+function genericHistoryToViewData(
+  history: CupSeasonHistory,
+  format: CupCompetitionFormat,
+  teams: { id: number; name: string; logoURL?: string }[],
+  players?: Array<{ internalId: string; name: string; pos?: string; tid?: number }>,
+  historicalMvpName?: string,
+): NBACupYearData {
+  const teamName = (tid: number | null) => tid == null
+    ? 'TBD'
+    : getTeamFullName(teams.find(team => team.id === tid)) || String(tid);
+  const mvpAwardIds = new Set(format.awards
+    .filter(award => award.kind === 'tournamentMvp')
+    .map(award => award.id));
+  const allTeamAwardIds = new Set(format.awards
+    .filter(award => award.kind === 'allLeague')
+    .map(award => award.id));
+  const mvp = history.awards.find(award => mvpAwardIds.has(award.awardId));
+  const playerName = (playerId?: string) => players?.find(player => player.internalId === playerId)?.name;
+  return {
+    year: String(history.season),
+    prizePool: history.prizePool,
+    summary: {
+      location: '',
+      date: '',
+      venues: '',
+      teams: String(format.teamCount),
+      purse: formatPrizePool(history.prizePool),
+      champions: teamName(history.championTid),
+      runner_up: teamName(history.runnerUpTid),
+      mvp: historicalMvpName ?? playerName(mvp?.playerId) ?? 'TBD',
+    },
+    all_tournament_team: history.awards
+      .filter(award => allTeamAwardIds.has(award.awardId))
+      .map(award => {
+        const player = players?.find(candidate => candidate.internalId === award.playerId);
+        return {
+          pos: player?.pos ?? '',
+          player: player?.name ?? award.playerId,
+          team: teamName(award.teamTid ?? null),
+          is_mvp: mvp?.playerId === award.playerId,
+        };
+      }),
+    groups: {},
+    bracket: [],
+  };
+}
+
+export function genericCupHistoryToViewData(
+  history: CupSeasonHistory,
+  format: CupCompetitionFormat,
+  teams: { id: number; name: string; logoURL?: string }[],
+  players?: Array<{ internalId: string; name: string; pos?: string; tid?: number }>,
+  historicalMvpName?: string,
+): NBACupYearData {
+  return genericHistoryToViewData(history, format, teams, players, historicalMvpName);
+}
+
+export function genericCupStateToViewData(
+  cup: CupCompetitionState,
+  teams: { id: number; name: string; logoURL?: string }[],
+  players?: Array<{ internalId: string; name: string; pos?: string; tid?: number }>,
+  schedule?: Array<{
+    gid: number;
+    homeTid: number;
+    awayTid: number;
+    homeScore?: number;
+    awayScore?: number;
+    played?: boolean;
+    isCupGame?: boolean;
+    cupLeagueId?: string;
+    cupCompetitionId?: string;
+    cupRoundId?: string;
+  }>,
+  boxScores?: Array<{ gameId: number; homeTeamId: number; awayTeamId: number; homeScore: number; awayScore: number }>,
+): NBACupYearData {
+  const completed = [...cup.history].reverse().find(entry => entry.season === cup.season);
+  const base = genericHistoryToViewData(
+    completed ?? {
+      leagueId: cup.leagueId,
+      competitionId: cup.competitionId,
+      season: cup.season,
+      championTid: null,
+      runnerUpTid: null,
+      awards: cup.awards,
+      prizePool: cup.prizePool,
+    },
+    cup.format,
+    teams,
+    players,
+  );
+  const teamName = (tid: number) => getTeamFullName(teams.find(team => team.id === tid)) || String(tid);
+  const qualifierByTid = new Map(cup.qualifiers.map(qualifier => [qualifier.tid, qualifier]));
+  const groups: Record<string, Standing[]> = {};
+  for (const assignment of cup.groups) {
+    const groupSpec = cup.format.groups.find(group => group.id === assignment.groupId);
+    const rows = assignment.tids.map(tid => {
+      const standing = cup.standings.find(candidate => candidate.groupId === assignment.groupId && candidate.tid === tid);
+      const qualifier = qualifierByTid.get(tid);
+      const advancement: Standing['advancement'] | undefined = cup.status === 'scheduled' || cup.status === 'group-stage'
+        ? undefined
+        : qualifier?.source === 'wildcard'
+          ? 'wildcard'
+          : qualifier
+            ? 'winner'
+            : 'eliminated';
+      return {
+        rank: String(standing?.rank ?? ''),
+        team: teamName(tid),
+        pld: String(standing?.gamesPlayed ?? 0),
+        w: String(standing?.wins ?? 0),
+        l: String(standing?.losses ?? 0),
+        pf: String(standing?.pointsFor ?? 0),
+        pa: String(standing?.pointsAgainst ?? 0),
+        pd: formatStandingPd(standing?.pointDifferential ?? 0),
+        advancement,
+      };
+    });
+    groups[groupSpec?.label ?? assignment.groupId] = sortStandingsRows(rows);
+  }
+
+  const bracket: BracketTeam[] = [];
+  for (const round of cup.format.knockoutRounds) {
+    for (const match of cup.bracket.filter(candidate => candidate.roundId === round.id).sort((a, b) => a.slot - b.slot)) {
+      const game = schedule?.find(candidate => (
+        candidate.isCupGame === true
+        && candidate.cupLeagueId === cup.leagueId
+        && candidate.cupCompetitionId === cup.competitionId
+        && candidate.cupRoundId === match.roundId
+        && ((candidate.homeTid === match.homeTid && candidate.awayTid === match.awayTid)
+          || (candidate.homeTid === match.awayTid && candidate.awayTid === match.homeTid))
+      ));
+      const result = game?.gid != null ? boxScores?.find(box => box.gameId === game.gid) : undefined;
+      const homeScore = game?.played ? game.homeScore : result?.homeScore;
+      const awayScore = game?.played ? game.awayScore : result?.awayScore;
+      const scoreFor = (tid: number) => {
+        if (game) return game.homeTid === tid ? homeScore ?? 0 : awayScore ?? 0;
+        if (result) return result.homeTeamId === tid ? result.homeScore : result.awayScore;
+        return 0;
+      };
+      bracket.push({
+        seed: String(match.homeSeed),
+        team: teamName(match.homeTid),
+        score: scoreFor(match.homeTid),
+        gameId: game?.gid,
+        roundId: round.id,
+        roundLabel: round.label,
+      });
+      bracket.push({
+        seed: String(match.awaySeed),
+        team: teamName(match.awayTid),
+        score: scoreFor(match.awayTid),
+        gameId: game?.gid,
+        roundId: round.id,
+        roundLabel: round.label,
+      });
+    }
+  }
+  return { ...base, groups, bracket };
+}
+
 export function cupStateToViewData(
   cup: NBACupState,
   teams: { id: number; name: string; logoURL?: string }[],
@@ -133,7 +370,7 @@ export function cupStateToViewData(
   schedule?: Array<{ gid: number; homeTid: number; awayTid: number; homeScore?: number; awayScore?: number; played?: boolean }>,
   boxScores?: Array<{ gameId: number; homeTeamId: number; awayTeamId: number; homeScore: number; awayScore: number }>,
 ): NBACupYearData {
-  const teamName = (tid: number) => teams.find(t => t.id === tid)?.name ?? String(tid);
+  const teamName = (tid: number) => getTeamFullName(teams.find(team => team.id === tid)) || String(tid);
   const playerName = (pid: string) => players?.find(p => p.internalId === pid)?.name ?? pid;
   const champion = cup.championTid !== undefined ? teamName(cup.championTid) : 'TBD';
   const runnerUp = cup.runnerUpTid !== undefined ? teamName(cup.runnerUpTid) : 'TBD';
@@ -205,6 +442,12 @@ export function cupStateToViewData(
 
   return {
     year: String(cup.year),
+    prizePool: cup.prizePool?.perPlayerByFinish ? {
+      winner: cup.prizePool.perPlayerByFinish.winner,
+      runnerUp: cup.prizePool.perPlayerByFinish.runnerUp,
+      semiFinalist: cup.prizePool.perPlayerByFinish.semi,
+      quarterFinalist: cup.prizePool.perPlayerByFinish.quarter,
+    } : undefined,
     summary: {
       location: 'T-Mobile Arena',
       date: `Dec ${cup.year - 1}`,
@@ -334,11 +577,7 @@ export function transformWikiData(wikiData: WikiYearData[]): NBACupYearData[] {
   });
 }
 
-export function getTeamLogo(teamName: string, teams?: any[]): string | null {
-  const clean = teamName.toLowerCase().replace(/^[ew]\d+\s*/i, '').trim();
-  const team = teams?.find(entry => {
-    const teamNameLower = entry.name.toLowerCase();
-    return teamNameLower === clean || teamNameLower.includes(clean) || clean.includes(teamNameLower.split(' ').pop() ?? '');
-  });
-  return team?.logoUrl ?? null;
+export function getTeamLogo(teamName: string, teams?: NbaCupTeamIdentityInput[], season?: number): string | null {
+  const identity = resolveNbaCupTeamIdentity(teamName, season ?? new Date().getUTCFullYear(), teams);
+  return identity?.logoUrl ?? null;
 }

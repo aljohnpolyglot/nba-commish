@@ -142,7 +142,7 @@ export function computeMoodScore(
   // real morale anchor — the BBGM roster carries the `relatives` list per player.
   let familyDelta = 0;
   if (teamPlayers && teamPlayers.length > 0) {
-    const familyCount = getFamilyOnRoster(player, teamPlayers).length;
+    const familyCount = getFamilyOnRoster(player, teamPlayers, currentYear).length;
     familyDelta = Math.min(3, familyCount);
   }
 

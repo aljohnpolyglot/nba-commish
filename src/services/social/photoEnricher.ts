@@ -7,17 +7,19 @@
 
 import type { SocialPost } from '../../types';
 import { fetchGamePlayerPhotos, type ImagnPhoto } from '../ImagnPhotoService';
-import { SettingsManager } from '../SettingsManager';
 import {
   extractPlayerName,
+  getEligibleRealPhotoProviders,
   type GamePhotoInfo,
   isAllowedSocialPhoto,
   isSubjectOfCaption,
   makeGameKey,
   needsCanvasEditor,
   pickBestPhoto,
+  resolveRealPhotoCredit,
+  toImagnSearchContext,
 } from './photoEnricherHelpers';
-export { needsCanvasEditor, type GamePhotoInfo } from './photoEnricherHelpers';
+export { buildGamePhotoInfo, isAllowedSocialPhoto, needsCanvasEditor, type GamePhotoInfo } from './photoEnricherHelpers';
 
 // ─── Module-level cache (survives across renders, cleared on page reload) ─────
 
@@ -27,13 +29,54 @@ const photoCache = new Map<string, Map<string, ImagnPhoto[]>>();
 /** gameKey → in-flight promise (prevents duplicate fetches) */
 const pendingFetches = new Map<string, Promise<Map<string, ImagnPhoto[]>>>();
 
-/** postId → resolved mediaUrl  (prevents re-enriching same post) */
+type PhotoEnrichmentSurface = 'social' | 'news';
+
+interface NewsPhotoSource {
+    id: string;
+    title?: string;
+    headline?: string;
+    content?: string;
+    imageUrl?: string;
+    image?: string;
+    playerPortraitUrl?: string;
+    gameId?: number;
+}
+
+interface NewsPhotoRequest {
+    id: string;
+    headline: string;
+    content: string;
+    image?: string;
+    playerPortraitUrl?: string;
+    gameId?: number;
+}
+
+export function buildNewsPhotoRequest(item: NewsPhotoSource): NewsPhotoRequest {
+    return {
+        id: item.id,
+        headline: item.headline ?? item.title ?? '',
+        content: item.content ?? '',
+        image: item.image ?? item.imageUrl,
+        playerPortraitUrl: item.playerPortraitUrl,
+        gameId: item.gameId,
+    };
+}
+
+const makeResolvedKey = (surface: PhotoEnrichmentSurface, id: string): string => `${surface}:${id}`;
+
+/** surface + itemId → resolved mediaUrl (prevents cross-feed ID collisions) */
 const resolvedPosts = new Map<string, string | null>();
+const resolvedPhotoCredits = new Map<string, string>();
 
 // ─── Imagn fetch (cached) ─────────────────────────────────────────────────────
 
-async function fetchForGame(info: GamePhotoInfo): Promise<Map<string, ImagnPhoto[]>> {
-    const gameKey = makeGameKey(info.homeTeam, info.awayTeam, info.date);
+async function fetchForGame(info: GamePhotoInfo, hint?: string, targetPlayerName?: string | null): Promise<Map<string, ImagnPhoto[]>> {
+    if (!getEligibleRealPhotoProviders(info).includes('imagn')) return new Map();
+    const requestedTopPlayers = targetPlayerName
+        ? info.topPlayers.filter(player => player.name === targetPlayerName)
+        : info.topPlayers;
+    const subjectKey = targetPlayerName?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'all';
+    const gameKey = `${makeGameKey(info, hint)}|subject:${subjectKey}`;
 
     if (photoCache.has(gameKey)) return photoCache.get(gameKey)!;
     if (pendingFetches.has(gameKey)) return pendingFetches.get(gameKey)!;
@@ -41,13 +84,20 @@ async function fetchForGame(info: GamePhotoInfo): Promise<Map<string, ImagnPhoto
     const promise = fetchGamePlayerPhotos({
         homeTeam: info.homeTeam,
         awayTeam: info.awayTeam,
-        topPlayers: info.topPlayers,
+        topPlayers: requestedTopPlayers,
         gameKey,
+        date: info.date,
+        season: info.season,
+        league: info.league,
+        competitionId: info.competitionId,
+        uiMode: info.uiMode,
+        branchCutoffDate: info.branchCutoffDate,
+        actionHint: hint,
     })
         .then(rawPhotos => {
             // Build a set of names who actually played (from topPlayers)
             const playedNames = new Set(
-                (info.topPlayers || []).map(p => p.name.toLowerCase())
+                requestedTopPlayers.map(p => p.name.toLowerCase())
             );
 
             console.log('[PhotoEnricher] topPlayers who played:', [...playedNames]);
@@ -73,17 +123,14 @@ async function fetchForGame(info: GamePhotoInfo): Promise<Map<string, ImagnPhoto
                     return isSubjectOfCaption(playerName, caption);
                 });
 
-                // If subject photos exist, use them. Otherwise keep all (ambiguous captions)
-                const finalPhotos = subjectPhotos.length > 0 ? subjectPhotos : photos;
-
-                if (finalPhotos.length > 0) {
-                    filteredMap.set(playerName, finalPhotos);
-                    console.log(`[PhotoEnricher] "${playerName}" → ${finalPhotos.length} subject photos kept (${photos.length - finalPhotos.length} bystander photos removed)`);
+                if (subjectPhotos.length > 0) {
+                    filteredMap.set(playerName, subjectPhotos);
+                    console.log(`[PhotoEnricher] "${playerName}" → ${subjectPhotos.length} subject photos kept (${photos.length - subjectPhotos.length} bystander photos removed)`);
                 }
             }
 
             console.log(`[PhotoEnricher] Photo map: ${rawPhotos.size} raw players → ${filteredMap.size} after filtering`);
-            photoCache.set(gameKey, filteredMap);
+            if (filteredMap.size > 0) photoCache.set(gameKey, filteredMap);
             pendingFetches.delete(gameKey);
             return filteredMap;
         })
@@ -113,30 +160,17 @@ export async function enrichPostWithPhoto(
     leagueType?: string
 ): Promise<string | null> {
     if (leagueType === 'fictional') return null;
+    const resolvedKey = makeResolvedKey('social', post.id);
+    const allowedSocialPhoto = isAllowedSocialPhoto(post);
+    const fallbackUrl = (post.data?.league === 'euro' || post.data?.leagueId === 'euro')
+        ? post.mediaUrl || post.playerPortraitUrl || null
+        : allowedSocialPhoto ? null : post.mediaUrl || null;
     // Already resolved (including null = "tried and found nothing")
-    if (resolvedPosts.has(post.id)) return resolvedPosts.get(post.id)!;
+    if (resolvedPosts.has(resolvedKey)) return resolvedPosts.get(resolvedKey)!;
 
-    // Already has a photo from somewhere
-    if (post.mediaUrl) {
-        const tplId = (post.data?.templateId || '') as string;
-        if (tplId.startsWith('nba_')) {
-            console.log(`[PhotoEnricher] @NBA post "${tplId}" already has mediaUrl="${post.mediaUrl?.slice(0, 80)}" — skipping enrichment`);
-        }
-        resolvedPosts.set(post.id, post.mediaUrl);
-        return post.mediaUrl;
-    }
-
-    // Strip mediaUrl from non-nba_ template posts (keeps feed clean)
-    if (post.mediaUrl && !isAllowedSocialPhoto(post)) {
-        const handle = (post.handle || '').toLowerCase().replace('@', '').trim();
-        if (!handle.includes('statmuse')) {
-            resolvedPosts.set(post.id, null);
-            return null;
-        }
-    }
-
-    // Only nba_ templates (and StatMuse shield) get Imagn photos
-    if (!isAllowedSocialPhoto(post)) {
+    // Only eligible game templates use licensed real-photo providers. Any existing
+    // media remains a fallback while the provider lookup runs.
+    if (!allowedSocialPhoto) {
         const tplId = (post.data?.templateId || '') as string;
         if (tplId.startsWith('nba_')) {
             console.warn(`[PhotoEnricher] @NBA post "${tplId}" blocked by isAllowed — templateId check failed! handle="${post.handle}" post.data=`, post.data);
@@ -144,9 +178,9 @@ export async function enrichPostWithPhoto(
         // StatMuse: skip enrichment entirely, leave their post and mediaUrl untouched
         const handle = (post.handle || '').toLowerCase().replace('@', '').trim();
         if (!handle.includes('statmuse')) {
-            resolvedPosts.set(post.id, null);
+            resolvedPosts.set(resolvedKey, fallbackUrl);
         }
-        return null;
+        return fallbackUrl;
     }
 
     const allowedTplId = (post.data?.templateId || '') as string;
@@ -157,57 +191,37 @@ export async function enrichPostWithPhoto(
     // No game association = no photo
     const gameId = post.data?.gameId as number | undefined;
     if (!gameId) {
-        resolvedPosts.set(post.id, null);
-        return null;
+        resolvedPosts.set(resolvedKey, fallbackUrl);
+        return fallbackUrl;
     }
 
     const gameInfo = gameLookup.get(gameId);
     if (!gameInfo) {
-        resolvedPosts.set(post.id, null);
+        return fallbackUrl;
+    }
+    if (gameInfo.league === 'Fictional') {
+        resolvedPosts.set(resolvedKey, null);
         return null;
     }
+
+    const playerName = extractPlayerName(post, gameInfo.topPlayers);
 
     // Await the shared fetch without a hard timeout.
     // fetchForGame deduplicates via pendingFetches, so all posts for the same game
     // share one HTTP request. A timeout here would race against sibling posts that
     // piggyback on the same promise — whichever post started the fetch first could
     // time out just before the fetch completes, permanently caching null for that post.
-    const playerPhotoMap = await fetchForGame(gameInfo);
+    const hint = post.data?.templateId || post.category || '';
+    const playerPhotoMap = await fetchForGame(gameInfo, hint, playerName);
 
     if (playerPhotoMap.size === 0) {
-        // Still allow AI fallback for named players even when Imagn has nothing
-        const playerName = extractPlayerName(post, gameInfo.topPlayers);
-        if (!playerName || !SettingsManager.getSettings().enableLLM) {
-            resolvedPosts.set(post.id, null);
-            return null;
-        }
-        const { generateGamePhoto } = await import('./gameImageGenerator');
-        const aiKey = `ai-${gameInfo.homeTeam.abbrev}-${gameInfo.awayTeam.abbrev}-${gameInfo.date.slice(0, 10)}-${playerName.replace(/\s+/g, '_')}`;
-        const aiUrl = await generateGamePhoto({
-            playerName,
-            playerFaceUrl: post.playerPortraitUrl || undefined,
-            jerseyNumber: post.data?.jerseyNumber,
-            teamName: gameInfo.homeTeam.name,
-            teamColors: (gameInfo.homeTeam as any).colors,
-            homeTeam: gameInfo.homeTeam,
-            awayTeam: gameInfo.awayTeam,
-            actionHint: post.data?.templateId || post.category || '',
-            gameKey: aiKey,
-        });
-        if (aiUrl) {
-            console.log(`[PhotoEnricher]  → AI generated photo for "${playerName}" (Imagn empty)`);
-            resolvedPosts.set(post.id, aiUrl);
-            return aiUrl;
-        }
-        resolvedPosts.set(post.id, null);
-        return null;
+        return fallbackUrl;
     }
 
     // ── Debug logging ───────────────────────────────────────────────────────
     console.log(`[PhotoEnricher] Post (${post.handle}): "${post.content.slice(0, 90)}"`);
 
     // ── Find player ────────────────────────────────────────────────────────
-    const playerName = extractPlayerName(post, gameInfo.topPlayers);
     let photo: ImagnPhoto | null = null;
 
     if (playerName) {
@@ -223,8 +237,7 @@ export async function enrichPostWithPhoto(
                     )
                 )?.[1];
 
-        const hint = post.data?.templateId || post.category || '';
-        photo = pickBestPhoto(matchedEntry || [], hint);
+        photo = pickBestPhoto(matchedEntry || [], hint, toImagnSearchContext(gameInfo, playerName, hint));
         console.log(
             `[PhotoEnricher]  → Player extracted: "${playerName}"`,
             photo
@@ -238,68 +251,41 @@ export async function enrichPostWithPhoto(
     // render clean — don't show a random other player's photo.
     if (!photo && !playerName) {
         const firstPhotos = [...playerPhotoMap.values()][0];
-        const hint = post.data?.templateId || post.category || '';
-        photo = pickBestPhoto(firstPhotos || [], hint);
+        photo = pickBestPhoto(firstPhotos || [], hint, toImagnSearchContext(gameInfo, undefined, hint));
         if (photo) {
             console.log(`[PhotoEnricher]  → Fallback photo (no player extracted): "${(photo.captionClean || '').slice(0, 70)}"`);
         }
     }
 
-    if (!photo && playerName) {
-        console.log(`[PhotoEnricher]  → "${playerName}" had no photos — trying AI fallback`);
-    }
-
-    // ── AI fallback: generate photo when Imagn has nothing ────────────────────
-    if (!photo && playerName && gameInfo && SettingsManager.getSettings().enableLLM) {
-        const { generateGamePhoto } = await import('./gameImageGenerator');
-        const aiKey = `ai-${gameInfo.homeTeam.abbrev}-${gameInfo.awayTeam.abbrev}-${gameInfo.date.slice(0, 10)}-${playerName.replace(/\s+/g, '_')}`;
-        const aiUrl = await generateGamePhoto({
-            playerName,
-            playerFaceUrl: post.playerPortraitUrl || undefined,
-            jerseyNumber: post.data?.jerseyNumber,
-            teamName: gameInfo.homeTeam.name,
-            teamColors: (gameInfo.homeTeam as any).colors,
-            homeTeam: gameInfo.homeTeam,
-            awayTeam: gameInfo.awayTeam,
-            actionHint: post.data?.templateId || post.category || '',
-            gameKey: aiKey,
-        });
-        if (aiUrl) {
-            console.log(`[PhotoEnricher]  → AI generated photo for "${playerName}"`);
-            resolvedPosts.set(post.id, aiUrl);
-            return aiUrl;
-        }
-    }
-
-    const result = photo?.medUrl || null;
-    resolvedPosts.set(post.id, result);
+    const result = photo?.medUrl || fallbackUrl;
+    if (photo) resolvedPhotoCredits.set(resolvedKey, resolveRealPhotoCredit(photo));
+    resolvedPosts.set(resolvedKey, result);
     return result;
 }
 
 // ─── News item enrichment ─────────────────────────────────────────────────────
 
 export async function enrichNewsWithPhoto(
-    item: { id: string; headline: string; content: string; image?: string; playerPortraitUrl?: string },
+    item: NewsPhotoRequest,
     gameLookup: Map<number, GamePhotoInfo>,
     leagueType?: string
 ): Promise<string | null> {
-    if (leagueType === 'fictional') return item.playerPortraitUrl || null;
+    const fallbackUrl = item.playerPortraitUrl || item.image || null;
+    if (leagueType === 'fictional') return fallbackUrl;
+    const resolvedKey = makeResolvedKey('news', item.id);
     // Already resolved (including null = "tried and found nothing")
-    if (resolvedPosts.has(item.id)) return resolvedPosts.get(item.id)!;
-    // Static image (team logo) with no portrait override → use immediately, no Imagn needed
-    if (item.image && !item.playerPortraitUrl) {
-        resolvedPosts.set(item.id, item.image);
-        return item.image;
-    }
+    if (resolvedPosts.has(resolvedKey)) return resolvedPosts.get(resolvedKey)!;
 
     const text = `${item.headline} ${item.content}`;
     const textLower = text.toLowerCase();
 
     // ── Find best matching game by team/player name mention ───────────────────
-    let bestGameInfo: GamePhotoInfo | null = null;
+    let bestGameInfo: GamePhotoInfo | null = item.gameId == null
+        ? null
+        : gameLookup.get(Number(item.gameId)) ?? null;
     let bestMatchScore = 0;
 
-    for (const [, info] of gameLookup.entries()) {
+    for (const [, info] of bestGameInfo ? [] : gameLookup.entries()) {
         const homeWord = (info.homeTeam.name.split(' ').pop() || '').toLowerCase();
         const awayWord = (info.awayTeam.name.split(' ').pop() || '').toLowerCase();
         const homeAbbrev = info.homeTeam.abbrev.toLowerCase();
@@ -318,23 +304,10 @@ export async function enrichNewsWithPhoto(
         if (score > bestMatchScore) { bestMatchScore = score; bestGameInfo = info; }
     }
 
-    if (!bestGameInfo || bestMatchScore === 0) {
-        resolvedPosts.set(item.id, item.playerPortraitUrl || null);
-        return item.playerPortraitUrl || null;
+    if (!bestGameInfo || (item.gameId == null && bestMatchScore === 0)) {
+        return fallbackUrl;
     }
 
-    const playerPhotoMap = await Promise.race([
-        fetchForGame(bestGameInfo),
-        new Promise<Map<string, ImagnPhoto[]>>(resolve => setTimeout(() => resolve(new Map()), 5000))
-    ]);
-
-    if (playerPhotoMap.size === 0) {
-        const result = item.playerPortraitUrl || null;
-        resolvedPosts.set(item.id, result);
-        return result;
-    }
-
-    // ── Match player by name in headline/content (same logic as social feed) ─
     let targetPlayerName: string | null = null;
     const sortedPlayers = [...bestGameInfo.topPlayers].sort((a, b) => b.gameScore - a.gameScore);
     for (const tp of sortedPlayers) {
@@ -349,6 +322,12 @@ export async function enrichNewsWithPhoto(
         }
     }
 
+    const playerPhotoMap = await fetchForGame(bestGameInfo, item.headline, targetPlayerName);
+
+    if (playerPhotoMap.size === 0) {
+        return fallbackUrl;
+    }
+
     let photo: ImagnPhoto | null = null;
 
     if (targetPlayerName) {
@@ -360,35 +339,40 @@ export async function enrichNewsWithPhoto(
                     targetPlayerName!.toLowerCase().endsWith((name.toLowerCase().split(/\s+/).pop() || ''))
                 )?.[1];
         if (matchedPhotos) {
-            photo = pickBestPhoto(matchedPhotos, item.headline);
+            photo = pickBestPhoto(matchedPhotos, item.headline, toImagnSearchContext(bestGameInfo, targetPlayerName, item.headline));
             console.log(`[PhotoEnricher] News "${item.headline.slice(0, 50)}" → player "${targetPlayerName}" → "${(photo?.captionClean || '').slice(0, 60)}"`);
         }
     }
 
-    // Fallback: first player in photo map when no name extracted
-    if (!photo) {
+    // Fallback: first player in photo map only when the article has no named player.
+    if (!photo && !targetPlayerName) {
         const firstPhotos = [...playerPhotoMap.values()][0];
         if (firstPhotos) {
-            photo = pickBestPhoto(firstPhotos, item.headline);
+            photo = pickBestPhoto(firstPhotos, item.headline, toImagnSearchContext(bestGameInfo, undefined, item.headline));
             if (photo) console.log(`[PhotoEnricher] News "${item.headline.slice(0, 50)}" → fallback photo`);
         }
     }
 
     if (!photo) {
-        const result = item.playerPortraitUrl || null;
-        resolvedPosts.set(item.id, result);
-        return result;
+        resolvedPosts.set(resolvedKey, fallbackUrl);
+        return fallbackUrl;
     }
 
-    resolvedPosts.set(item.id, photo.medUrl || null);
+    resolvedPhotoCredits.set(resolvedKey, resolveRealPhotoCredit(photo));
+    resolvedPosts.set(resolvedKey, photo.medUrl || null);
     return photo.medUrl || null;
 }
 
 /** Synchronously check if a post already has a resolved URL in cache */
-export function getResolvedUrl(postId: string): string | null | undefined {
+export function getResolvedUrl(postId: string, surface: PhotoEnrichmentSurface = 'social'): string | null | undefined {
+    const resolvedKey = makeResolvedKey(surface, postId);
     // undefined = not yet resolved, null = resolved but no photo, string = has photo
-    if (!resolvedPosts.has(postId)) return undefined;
-    return resolvedPosts.get(postId) ?? null;
+    if (!resolvedPosts.has(resolvedKey)) return undefined;
+    return resolvedPosts.get(resolvedKey) ?? null;
+}
+
+export function getResolvedPhotoCredit(id: string, surface: PhotoEnrichmentSurface = 'social'): string | undefined {
+    return resolvedPhotoCredits.get(makeResolvedKey(surface, id));
 }
 
 /** Clear all photo caches — call between game simulations so each session starts fresh */

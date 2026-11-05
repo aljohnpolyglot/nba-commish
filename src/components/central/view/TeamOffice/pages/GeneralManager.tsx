@@ -1,109 +1,91 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { Film, UtensilsCrossed } from 'lucide-react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
+import type { Contact } from '../../../../../types';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
-import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
-import { getTeamFullName } from '../../../../../utils/teamNames';
+import { PersonSelectorModal } from '../../../../modals/PersonSelectorModal';
+import { resolveAnyTeam } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
+import { getSigningRosterLimit, getStandardRosterLimit, getTwoWayRosterLimit } from '../../../../../utils/rosterLimits';
+import { areNonGuaranteedContractsEnabled, areTwoWayContractsEnabled } from '../../../../../utils/contractTypes';
+import { getTeamRosterContractCounts } from '../../../../../utils/rosterCounts';
+import { findGMForTeam, normalizeGMAttributes } from '../../../../../services/staff/gmAttributes';
+import { makePlaceholderGM } from '../../../../../services/staff/staffFallback';
+import { getTeamCompetitionRecord } from '../../../../../utils/competitionRecord';
+import { getConferenceSpec, type PbaConference } from '../../../../../services/pba/conferenceTransition';
+import { getTeamActivityCostMillion } from '../../../../../services/teamActivities';
+import { getWnbaDevelopmentalContractLabel } from '../../../../../services/wnba/developmentalContracts';
+import { isLeagueTrainingCampWindow } from '../../../../../services/leagueCalendar';
 
 interface GeneralManagerProps {
   teamId: number;
 }
 
-const GM_RATINGS_URL = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/nbagmratings';
-
-let gmRatingsCache: any[] | null = null;
-
-async function fetchGMRatings(): Promise<any[]> {
-  if (gmRatingsCache) return gmRatingsCache;
-  try {
-    const res = await fetch(GM_RATINGS_URL);
-    if (!res.ok) return [];
-    gmRatingsCache = await res.json();
-    return gmRatingsCache!;
-  } catch {
-    return [];
-  }
-}
-
 export function GeneralManager({ teamId }: GeneralManagerProps) {
-  const { state } = useGame();
+  const { state, dispatchAction } = useGame();
+  const [teamActivity, setTeamActivity] = useState<'dinner' | 'movie' | null>(null);
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
-  const staff = state.staff;
   const teamColor = team?.colors?.[0] || '#552583';
-  const teamName = team ? getTeamFullName(team) : '';
   const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
+  const expandedRosterWindow = state.offseasonChecklist?.freeAgency === 'in-progress'
+    || isLeagueTrainingCampWindow(state.date, state.leagueStats);
+  const maxStandardRoster = getStandardRosterLimit(state.leagueStats as any);
+  const maxActiveRoster = getSigningRosterLimit(state.leagueStats as any, expandedRosterWindow);
+  const maxTwoWayRoster = getTwoWayRosterLimit(state.leagueStats as any);
+  const twoWayContractsEnabled = !hideNbaContractBadges && areTwoWayContractsEnabled(state.leagueStats);
+  const nonGuaranteedContractsEnabled = !hideNbaContractBadges && areNonGuaranteedContractsEnabled(state.leagueStats);
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const activeCompetitionId = state.leagueStats?.uiMode === 'pba_isolated'
+    ? getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id
+    : isEuroIsolatedMode(state)
+      ? state.euroPrimaryCompetitionId
+      : undefined;
   const teamPlayers = useMemo(
-    () => (state.players ?? []).filter(p => p.tid === teamId && isOnRoster(p)),
-    [state.players, teamId],
+    () => getTeamRosterContractCounts(
+      state.players ?? [],
+      teamId,
+      state.leagueStats,
+      (team as any)?.league ?? 'NBA',
+    ).rosterPlayers,
+    [state.leagueStats, state.players, team, teamId],
+  );
+  const teamPlayerIds = useMemo(
+    () => new Set(teamPlayers.map(player => player.internalId)),
+    [teamPlayers],
   );
   const rosterCounts = useMemo(() => {
-    const twoWayCount = teamPlayers.filter(p => !!(p as any).twoWay).length;
-    const nonGuaranteedCount = teamPlayers.filter(p => !!(p as any).nonGuaranteed).length;
-    const standardCount = teamPlayers.length - twoWayCount;
-    const guaranteedCount = Math.max(0, standardCount - nonGuaranteedCount);
+    const counts = getTeamRosterContractCounts(teamPlayers, teamId, state.leagueStats, (team as any)?.league ?? 'NBA');
     return {
-      total: teamPlayers.length,
-      guaranteedCount,
-      twoWayCount,
-      nonGuaranteedCount,
+      ...counts,
+      twoWayCount: twoWayContractsEnabled ? counts.twoWayCount : 0,
+      nonGuaranteedCount: nonGuaranteedContractsEnabled ? counts.nonGuaranteedCount : 0,
     };
-  }, [teamPlayers]);
-
-  const [gmRatings, setGmRatings] = useState<any[]>([]);
-  const [loadingRatings, setLoadingRatings] = useState(false);
-
-  // Find GM from staff data
-  const gm = staff?.gms.find(g => {
-    const teamField = (g.position || g.team || '').toLowerCase();
-    return teamField.includes(team?.name.toLowerCase() || '') || teamField.includes((team?.region || '').toLowerCase());
-  });
-
-  // Fallback: fetch GM ratings gist if GM not found in staff
-  useEffect(() => {
-    if (!gm && !gmRatingsCache) {
-      setLoadingRatings(true);
-      fetchGMRatings().then(data => {
-        setGmRatings(data);
-        setLoadingRatings(false);
-      });
-    } else if (gmRatingsCache) {
-      setGmRatings(gmRatingsCache);
-    }
-  }, [gm]);
+  }, [nonGuaranteedContractsEnabled, state.leagueStats, team, teamId, teamPlayers, twoWayContractsEnabled]);
+  const teamRecord = useMemo(
+    () => activeCompetitionId
+      ? getTeamCompetitionRecord(state.boxScores ?? [], teamId, currentYear, activeCompetitionId)
+      : null,
+    [activeCompetitionId, currentYear, state.boxScores, teamId],
+  );
+  const displayWins = teamRecord?.wins ?? team?.wins ?? 0;
+  const displayLosses = teamRecord?.losses ?? team?.losses ?? 0;
+  const activeRosterCount = expandedRosterWindow ? rosterCounts.total : rosterCounts.standardCount;
+  const rosterAtLimit = activeRosterCount >= maxActiveRoster;
+  const rosterOverLimit = activeRosterCount > maxActiveRoster;
 
   if (!team) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
   }
 
-  if (!staff && !loadingRatings) {
+  if (!state.staff) {
     return <div className="text-[#8b949e] font-bold uppercase tracking-widest animate-pulse">Loading Staff Data...</div>;
   }
 
-  // Fallback GM from ratings gist
-  let gmName = gm?.name;
-  let gmPortrait = gm?.playerPortraitUrl;
-  let gmStats: any = null;
-
-  if (!gm && gmRatings.length > 0) {
-    // Find GM by matching team name in tenures
-    const fallback = gmRatings.find(r =>
-      r.tenures?.some((t: any) =>
-        t.team?.toLowerCase().includes(team.name.toLowerCase()) &&
-        t.span?.toLowerCase().includes('present')
-      )
-    );
-    if (fallback) {
-      gmName = fallback.name;
-      gmPortrait = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallback.name)}&background=random&size=256`;
-      gmStats = fallback;
-    }
-  }
-
-  // Also try to match in ratings for attributes
-  if (!gmStats && gmName && gmRatings.length > 0) {
-    gmStats = gmRatings.find(r => r.name?.toLowerCase() === gmName?.toLowerCase());
-  }
+  const gm = findGMForTeam(state, teamId) ?? makePlaceholderGM(team as any);
+  let gmName = gm.name;
+  let gmPortrait = gm.playerPortraitUrl;
+  let gmStats: any = gm;
 
   // GM mode own-team: user IS the GM. Their name replaces the historical GM's name + portrait.
   const isGM = state.gameMode === 'gm';
@@ -115,45 +97,75 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
     gmStats = null;
   }
 
-  if (!gmName) {
-    if (loadingRatings) {
-      return <div className="text-[#8b949e] font-bold uppercase tracking-widest animate-pulse">Loading GM Data...</div>;
-    }
-    return <div className="text-red-400 font-bold uppercase tracking-widest">GM not found for {teamName}</div>;
-  }
-
   // Calculate years with team from tenure data
-  let yearsWithTeam = 0;
+  let yearsWithTeam = Number(gmStats?.yearsWithTeam ?? 0);
   const currentTenure = gmStats?.tenures?.find((t: any) =>
     t.team?.toLowerCase().includes(team.name.toLowerCase()) &&
-    t.span?.toLowerCase().includes('present')
+    (t.span?.toLowerCase().includes('present') || !t.endYear)
   ) || gmStats?.tenures?.[0];
 
-  if (currentTenure?.span) {
+  if (!yearsWithTeam && currentTenure?.span) {
     const startYearMatch = currentTenure.span.match(/(\d{4})/);
     if (startYearMatch) yearsWithTeam = (state.leagueStats?.year || 2026) - parseInt(startYearMatch[1], 10);
   }
 
-  // NOTE FOR MAIN GAME INTEGRATION (scale 50-100, floor 50):
-  // Trade Aggression — frequency of trade initiation. [LIVE: AITradeHandler]
-  // Scouting Focus  — pick-hoarding vs trading picks for proven young players. [NOT YET WIRED]
-  // Work Ethic      — roster-churn appetite. [NOT YET WIRED]
-  // Spending        — FA overpay vs value-hunting. [NOT YET WIRED]
-  const attributes = gmStats?.attributes || {
-    trade_aggression: 65,
-    scouting_focus: 60,
-    work_ethic: 55,
-    spending: 60,
-  };
+  const attributes = normalizeGMAttributes(gmStats?.attributes);
+  const teamChemistry = Number(Math.min(
+    100,
+    Math.max(
+      0,
+      Number(
+        team.teamChemistry
+        ?? (team as typeof team & { chemistry?: number; Chemistry?: number }).chemistry
+        ?? (team as typeof team & { Chemistry?: number }).Chemistry
+        ?? 50,
+      ),
+    ),
+  ).toFixed(1));
 
   const attributeTooltips = {
+    overall: 'General decision-making competence across roster-building decisions.',
     trade_aggression: 'How often this GM initiates trades.',
-    scouting_focus: 'Preference for hoarding draft picks versus trading them for proven young players.',
-    work_ethic: 'Appetite for constant roster churn versus keeping the same group together.',
-    spending: 'Sets the opening offer in free agency — high-spending GMs start above market; value hunters start lean.',
+    scouting_focus: 'How strongly this GM values and protects draft capital.',
+    drafting: 'Ability to identify prospects who outperform their draft position.',
+    negotiation: 'Ability to attract and retain established players.',
+    work_ethic: 'How actively this GM searches for roster improvements.',
+    spending: 'Willingness to use available budget and roster exceptions.',
+  };
+
+  const handleTeamActivity = async (
+    contacts: Contact[],
+    reason?: string,
+    amount?: number,
+    location?: string,
+    duration?: string,
+  ) => {
+    const activity = teamActivity;
+    setTeamActivity(null);
+    if (!activity || contacts.length === 0) return;
+    await dispatchAction({
+      type: 'INVITE_DINNER',
+      payload: {
+        targetName: contacts.map(contact => contact.name).join(', '),
+        targetRole: contacts.map(contact => contact.title).join(', '),
+        targetId: contacts.map(contact => contact.id).join(','),
+        reason,
+        amount,
+        duration,
+        location,
+        count: contacts.length,
+        subType: activity,
+        contacts,
+        teamId,
+        managedTeamId: teamId,
+        teamActivity: true,
+        activityCostMillion: getTeamActivityCostMillion(activity, contacts.length),
+      },
+    });
   };
 
   return (
+    <>
     <div className="h-full flex flex-col relative z-10">
       <div
         className="rounded-t-lg p-4 sm:p-8 flex flex-col md:flex-row items-center justify-between border border-[#30363d] border-b-0 relative overflow-hidden gap-6 md:gap-0"
@@ -165,6 +177,7 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
             <PlayerPortrait
               playerName={gmName}
               imgUrl={gmPortrait}
+              disableNameFallback
               size={120}
             />
           </div>
@@ -181,7 +194,7 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
           </div>
           <div>
             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">Record</div>
-            <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{team.wins}-{team.losses}</div>
+            <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{displayWins}-{displayLosses}</div>
           </div>
           <div>
             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">Trades</div>
@@ -198,7 +211,19 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
             <div className="flex items-center justify-between gap-4 mb-4">
             <div>
               <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Roster Snapshot</div>
-              <div className="text-sm font-bold text-slate-200">{rosterCounts.total} players active</div>
+              <div
+                className={`text-sm font-bold ${rosterOverLimit ? 'text-rose-300' : rosterAtLimit ? 'text-amber-300' : 'text-slate-200'}`}
+                role={rosterAtLimit ? 'status' : undefined}
+              >
+                {expandedRosterWindow
+                  ? `${activeRosterCount} / ${maxActiveRoster} camp · ${Math.max(0, maxActiveRoster - activeRosterCount)} available`
+                  : `${rosterCounts.standardCount} / ${maxStandardRoster} standard · ${rosterCounts.total} active`}
+              </div>
+              {rosterAtLimit && (
+                <div className={`mt-1 text-[10px] font-bold ${rosterOverLimit ? 'text-rose-300' : 'text-amber-300'}`}>
+                  {rosterOverLimit ? 'Roster exceeds the active limit.' : 'Roster is at the active limit.'}
+                </div>
+              )}
             </div>
               {!hideNbaContractBadges && (
                 <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">Contract Mix</div>
@@ -207,36 +232,97 @@ export function GeneralManager({ teamId }: GeneralManagerProps) {
             {!hideNbaContractBadges && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <RosterCount
-                  label="Guaranteed"
-                  value={rosterCounts.guaranteedCount}
-                  max={15}
-                  tone={rosterCounts.guaranteedCount >= 15 ? 'emerald' : rosterCounts.guaranteedCount < 13 ? 'amber' : 'slate'}
+                  label={expandedRosterWindow ? 'Camp Roster' : 'Standard'}
+                  value={activeRosterCount}
+                  max={maxActiveRoster}
+                  tone={activeRosterCount >= maxActiveRoster ? 'emerald' : activeRosterCount < Math.max(1, maxActiveRoster - 2) ? 'amber' : 'slate'}
                 />
-                <RosterCount
-                  label="Two-Way"
+                {twoWayContractsEnabled && <RosterCount
+                  label={getWnbaDevelopmentalContractLabel(state.leagueStats)}
                   value={rosterCounts.twoWayCount}
-                  max={3}
-                  tone={rosterCounts.twoWayCount >= 3 ? 'cyan' : 'slate'}
-                />
-                <RosterCount
+                  max={maxTwoWayRoster}
+                  tone={rosterCounts.twoWayCount >= maxTwoWayRoster ? 'cyan' : 'slate'}
+                />}
+                {nonGuaranteedContractsEnabled && <RosterCount
                   label="Non-Guaranteed"
                   value={rosterCounts.nonGuaranteedCount}
                   max={Math.max(rosterCounts.nonGuaranteedCount, 1)}
                   tone={rosterCounts.nonGuaranteedCount > 0 ? 'amber' : 'slate'}
-                />
+                />}
               </div>
             )}
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <AttributeBar label="Overall" value={attributes.overall} tooltip={attributeTooltips.overall} />
             <AttributeBar label="Trade Aggression" value={attributes.trade_aggression} tooltip={attributeTooltips.trade_aggression} />
             <AttributeBar label="Scouting Focus" value={attributes.scouting_focus} tooltip={attributeTooltips.scouting_focus} />
+            <AttributeBar label="Drafting" value={attributes.drafting} tooltip={attributeTooltips.drafting} />
+            <AttributeBar label="Negotiation" value={attributes.negotiation} tooltip={attributeTooltips.negotiation} />
             <AttributeBar label="Work Ethic" value={attributes.work_ethic} tooltip={attributeTooltips.work_ethic} />
             <AttributeBar label="Spending" value={attributes.spending} tooltip={attributeTooltips.spending} />
           </div>
+
+          <div className="border-t border-[#30363d] pt-8">
+            <AttributeBar
+              label="Team Chemistry"
+              value={teamChemistry}
+              tooltip="How connected and comfortable the current team is together."
+            />
+          </div>
+
+          {isOwnTeam && (
+            <section className="rounded-xl border border-[#30363d] bg-slate-900/60 p-4 sm:p-5">
+              <div className="mb-4">
+                <h3 className="text-sm font-black uppercase tracking-widest text-[#e6edf3]">Team Activities</h3>
+                <p className="mt-1 text-xs text-slate-500">Spend time with players from your current roster.</p>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setTeamActivity('dinner')}
+                  className="flex min-h-16 items-center gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-3 text-left transition-colors hover:bg-amber-500/15"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 text-amber-300">
+                    <UtensilsCrossed size={19} />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-black text-white">Team Dinner</span>
+                    <span className="block text-[11px] text-slate-400">Choose players and a venue</span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setTeamActivity('movie')}
+                  className="flex min-h-16 items-center gap-3 rounded-xl border border-indigo-500/20 bg-indigo-500/10 px-4 py-3 text-left transition-colors hover:bg-indigo-500/15"
+                >
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-500/15 text-indigo-300">
+                    <Film size={19} />
+                  </span>
+                  <span>
+                    <span className="block text-sm font-black text-white">Movie Night</span>
+                    <span className="block text-[11px] text-slate-400">Choose a film and teammates</span>
+                  </span>
+                </button>
+              </div>
+            </section>
+          )}
         </div>
       </div>
     </div>
+    {teamActivity && (
+      <PersonSelectorModal
+        title={teamActivity === 'movie' ? 'Movie Night' : 'Team Dinner'}
+        actionType={teamActivity}
+        onClose={() => setTeamActivity(null)}
+        onSelect={handleTeamActivity}
+        contactFilter={contact => contact.type === 'player' && teamPlayerIds.has(contact.id)}
+        selectionTitle="Choose Teammates"
+        selectionDescription="Select players from your current roster."
+        chargePersonalFunds
+      />
+    )}
+    </>
   );
 }
 
@@ -285,7 +371,7 @@ function AttributeBar({ label, value, tooltip }: { label: string; value: number;
   };
 
   return (
-    <div className="flex flex-col gap-2 group relative cursor-help">
+    <div className="flex flex-col gap-2 group relative cursor-default">
       <div className="flex justify-between items-end">
         <span className="text-xs font-bold uppercase tracking-widest text-[#8b949e]">{label}</span>
         <span className="text-lg font-black text-[#e6edf3]">{value}</span>

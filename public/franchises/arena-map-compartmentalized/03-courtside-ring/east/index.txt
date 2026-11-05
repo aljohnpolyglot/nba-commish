@@ -1,0 +1,7 @@
+Courtside Ring — east
+=====================
+
+C13	sections/c13-east.svg
+C14	sections/c14-east.svg
+C15	sections/c15-east.svg
+C16	sections/c16-east.svg

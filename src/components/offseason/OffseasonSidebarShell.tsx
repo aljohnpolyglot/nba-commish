@@ -1,29 +1,18 @@
 import React from 'react';
-import { AlertTriangle, ChevronRight, FastForward, Sparkles } from 'lucide-react';
+import { FastForward, Sparkles } from 'lucide-react';
 import {
   getVisibleOffseasonRows,
   isChecklistComplete,
 } from '../../services/offseason/offseasonState';
 import type { OffseasonChecklistRow } from '../../types';
-
-type EuroSection = {
-  id: string;
-  title: string;
-  blurb: string;
-  rows: OffseasonChecklistRow[];
-};
+import { OffseasonTaskRailFrame } from './OffseasonTaskRailFrame';
 
 type Props = {
   checklist: any;
   visibleRows: ReturnType<typeof getVisibleOffseasonRows>;
   isEuroMode: boolean;
   expansionPin: React.ReactNode;
-  euroRecap: React.ReactNode;
-  euroSections: EuroSection[];
   orderedRows: OffseasonChecklistRow[];
-  expiringUnsignedCount: number;
-  showExpiringBanner: boolean;
-  onExpiringBanner: () => void;
   renderChecklistRow: (row: OffseasonChecklistRow) => React.ReactNode;
   onAutoResolveAll: () => void;
   onExit: () => void;
@@ -37,12 +26,7 @@ export const OffseasonSidebarShell: React.FC<Props> = ({
   visibleRows,
   isEuroMode,
   expansionPin,
-  euroRecap,
-  euroSections,
   orderedRows,
-  expiringUnsignedCount,
-  showExpiringBanner,
-  onExpiringBanner,
   renderChecklistRow,
   onAutoResolveAll,
   onExit,
@@ -50,62 +34,12 @@ export const OffseasonSidebarShell: React.FC<Props> = ({
   pbaConference,
   children,
 }) => (
-  <aside className="w-full lg:w-[320px] shrink-0 bg-slate-950/60 border border-slate-800 rounded-2xl p-4 space-y-3">
-    <header className="mb-2">
-      <span className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-300/80 block">
-        Offseason
-      </span>
-      <h2 className="text-base font-black text-white uppercase tracking-tight">
-        Tasks
-      </h2>
-    </header>
-
-    {showExpiringBanner && (
-      <button
-        onClick={onExpiringBanner}
-        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl bg-rose-500/10 border border-rose-500/40 hover:bg-rose-500/20 transition-colors text-left"
-        title="These players' contracts expire this offseason. Re-sign them before FA opens or they walk as UFA."
-      >
-        <AlertTriangle size={14} className="text-rose-400 shrink-0" />
-        <div className="flex-1 min-w-0">
-          <div className="text-[11px] font-black uppercase tracking-tight text-rose-200">
-            {expiringUnsignedCount} expiring contract{expiringUnsignedCount === 1 ? '' : 's'}
-          </div>
-          <div className="text-[9px] text-rose-300/70">
-            May walk as UFA — review before FA opens
-          </div>
-        </div>
-        <ChevronRight size={12} className="text-rose-400/60 shrink-0" />
-      </button>
-    )}
-
+  <OffseasonTaskRailFrame>
     {expansionPin}
 
-    {euroRecap}
-
-    {isEuroMode ? (
-      <div className="space-y-3">
-        {euroSections.map(section => (
-          <section key={section.id} className="space-y-1.5">
-            <div className="px-1">
-              <div className="text-[9px] font-black uppercase tracking-[0.2em] text-slate-500">
-                {section.title}
-              </div>
-              <div className="text-[10px] text-slate-500 mt-0.5">
-                {section.blurb}
-              </div>
-            </div>
-            <ol className="space-y-1.5">
-              {section.rows.map(renderChecklistRow)}
-            </ol>
-          </section>
-        ))}
-      </div>
-    ) : (
-      <ol className="space-y-1.5">
-        {orderedRows.map(renderChecklistRow)}
-      </ol>
-    )}
+    <ol className="space-y-1.5">
+      {orderedRows.map(renderChecklistRow)}
+    </ol>
 
     {!isEuroMode && !isChecklistComplete(checklist, visibleRows) && (
       <button
@@ -143,5 +77,5 @@ export const OffseasonSidebarShell: React.FC<Props> = ({
     )}
 
     {children}
-  </aside>
+  </OffseasonTaskRailFrame>
 );

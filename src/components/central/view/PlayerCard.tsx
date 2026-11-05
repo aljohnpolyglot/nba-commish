@@ -1,26 +1,50 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Activity } from 'lucide-react';
 import { NBAPlayer, NBATeam } from '../../../types';
 import { getPlayerImage } from './bioCache';
 import { useGame } from '../../../store/GameContext';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
-import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
+import { getDisplayAge } from '../../../store/playerRatingStore';
+import { getScoutedDisplayOverall } from '../../../utils/scoutingFuzz';
+import { isNonGuaranteedContract, isTwoWayContract } from '../../../utils/contractTypes';
+import { isExternalLeagueStatus } from '../../../constants';
+import { ensurePortraitLookupsLoaded } from '../../../data/realPlayerDataFetcher';
+import { areWnbaDevelopmentalContractsEnabled } from '../../../services/wnba/developmentalContracts';
 
 interface PlayerCardProps {
   player: NBAPlayer;
   team?: NBATeam;
   onActionClick: (player: NBAPlayer) => void;
   hideNbaContractBadges?: boolean;
+  displaySeason?: number;
+  historicalRoster?: boolean;
 }
 
-export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionClick, hideNbaContractBadges = false }) => {
+export const PlayerCard: React.FC<PlayerCardProps> = ({
+  player,
+  team,
+  onActionClick,
+  hideNbaContractBadges = false,
+  displaySeason,
+  historicalRoster = false,
+}) => {
   const { state } = useGame();
-  const simYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const simYear = displaySeason ?? state.leagueStats?.year ?? new Date().getFullYear();
   const age = getDisplayAge(player, simYear);
-  const isInjured = player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;
-  const isSuspended = player.suspension && player.suspension.gamesRemaining > 0;
+  const displayOvr = getScoutedDisplayOverall(state, player, simYear);
+  const isInjured = !historicalRoster && player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;
+  const isSuspended = !historicalRoster && player.suspension && player.suspension.gamesRemaining > 0;
   const isAvailable = !isInjured && !isSuspended;
+  const [, setPortraitLookupVersion] = useState(0);
+
+  useEffect(() => {
+    let active = true;
+    ensurePortraitLookupsLoaded()
+      .then(() => { if (active) setPortraitLookupVersion(version => version + 1); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, [player.internalId]);
 
   // Determine status label
   let statusLabel = 'Free Agent';
@@ -30,22 +54,24 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
     statusLabel = 'Draft Prospect';
   } else if (player.status === 'WNBA') {
     statusLabel = 'WNBA';
-  } else if (['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
+  } else if (isExternalLeagueStatus(player.status)) {
     statusLabel = player.status!;
   }
 
   // Handle image source safely
   const imageSrc = getPlayerImage(player);
 
-  let statusText = 'Available';
+  let statusText = historicalRoster ? `${simYear - 1}-${String(simYear).slice(-2)} roster` : 'Available';
   if (isInjured) {
     statusText = `Out - ${player.injury.type}`;
   } else if (isSuspended) {
-    statusText = 'OUT - SUSPENDED';
+    statusText = /red card/i.test(player.suspension?.reason ?? '')
+      ? 'Suspended - Red Card'
+      : 'OUT - SUSPENDED';
   }
 
-  const isTwoWay = !hideNbaContractBadges && !!(player as any).twoWay;
-  const isNonGuaranteed = !hideNbaContractBadges && !!(player as any).nonGuaranteed;
+  const isTwoWay = !historicalRoster && !hideNbaContractBadges && isTwoWayContract(player, state.leagueStats);
+  const isNonGuaranteed = !historicalRoster && !hideNbaContractBadges && isNonGuaranteedContract(player, state.leagueStats);
   const contractBorder = isTwoWay
     ? 'border-purple-500/40 hover:border-purple-500/70'
     : isNonGuaranteed
@@ -82,7 +108,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
              </div>
           )}
           <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-slate-950 rounded-full flex items-center justify-center border-2 border-slate-800">
-            <span className="text-[10px] font-black text-white">{getDisplayOverall(player, simYear)}</span>
+            <span className="text-[10px] font-black text-white">{displayOvr}</span>
           </div>
         </div>
         <div className="flex-1 min-w-0">
@@ -99,7 +125,7 @@ export const PlayerCard: React.FC<PlayerCardProps> = ({ player, team, onActionCl
             </span>
             {isTwoWay && (
               <span className="bg-purple-500/15 text-purple-300 text-[10px] font-black px-2 py-1 rounded-lg uppercase tracking-widest">
-                2W
+                {areWnbaDevelopmentalContractsEnabled(state.leagueStats) ? 'DEV' : '2W'}
               </span>
             )}
             {isNonGuaranteed && !isTwoWay && (

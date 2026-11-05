@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Clock, Inbox, ListChecks, Plus, Search, TrendingDown, TrendingUp } from 'lucide-react';
+import { ArrowRight, ArrowUpDown, Clock, Inbox, ListChecks, Plus, Search, TrendingDown, TrendingUp } from 'lucide-react';
 import { type BrowseListing, type InboxBid } from './mockData';
 import { TransferMarketProvider, useTransferMarketContext } from './state';
 import { useGame } from '../../store/GameContext';
@@ -20,6 +20,7 @@ import {
   TabsRow,
 } from './EuroTransferMarketShared';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
+import { CountryFlag } from '../shared/CountryFlag';
 import {
   BidOnListingModal,
   ConfirmTransferModal,
@@ -29,6 +30,10 @@ import {
   ViewBidsModal,
 } from './EuroTransferMarketModals';
 import { ReleaseClausesTab } from './EuroTransferMarketReleaseClausesTab';
+import { EuroLoanFinderTab } from './EuroLoanFinderTab';
+import { getLoanCandidates } from '../../services/transfer/loanMarket';
+import { isInLoanWindow } from '../../utils/transferWindow';
+import { EuroLoanOutPanel } from './EuroLoanOutPanel';
 
 // ───────────────────────────────────────────────────────────────────────────
 // Tab 1: My Listings
@@ -39,13 +44,17 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
   const { state, dispatchAction } = useGame();
   const [selected, setSelected] = useState<string | null>(listings[0]?.id ?? null);
   const [showListModal, setShowListModal] = useState(false);
+  const [listingIntentPlayerId, setListingIntentPlayerId] = useState<string | null>(null);
   const [viewBidsListingId, setViewBidsListingId] = useState<string | null>(null);
   const [pendingAccept, setPendingAccept] = useState<InboxBid | null>(null);
   const [celebration, setCelebration] = useState<InboxBid | null>(null);
+  const [listingKind, setListingKind] = useState<'transfer' | 'loan'>('transfer');
   const pendingTransferListingPlayerId = state.pendingTransferListingPlayerId ?? null;
+  const pendingLoanListingPlayerId = state.pendingLoanListingPlayerId ?? null;
 
   useEffect(() => {
     if (!pendingTransferListingPlayerId) return;
+    setListingIntentPlayerId(pendingTransferListingPlayerId);
     setShowListModal(true);
     dispatchAction({
       type: 'UPDATE_STATE',
@@ -53,10 +62,19 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
     } as any);
   }, [dispatchAction, pendingTransferListingPlayerId]);
 
+  useEffect(() => {
+    if (pendingLoanListingPlayerId) setListingKind('loan');
+  }, [pendingLoanListingPlayerId]);
+
   return (
     <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 p-4 sm:p-6">
       {/* Left: Listing cards */}
       <div className="xl:col-span-2 space-y-3">
+        <div className="inline-flex w-full rounded-xl border border-slate-800 bg-slate-900/60 p-1 sm:w-auto">
+          <button type="button" onClick={() => setListingKind('transfer')} className={`flex-1 rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest sm:flex-none ${listingKind === 'transfer' ? 'bg-amber-400 text-slate-950' : 'text-slate-400 hover:text-white'}`}>Transfer ({listings.length})</button>
+          <button type="button" onClick={() => setListingKind('loan')} className={`flex-1 rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-widest sm:flex-none ${listingKind === 'loan' ? 'bg-sky-400 text-slate-950' : 'text-slate-400 hover:text-white'}`}>Loan ({state.loanListedPlayerIds?.length ?? 0})</button>
+        </div>
+        {listingKind === 'loan' ? <EuroLoanOutPanel initialPlayerId={pendingLoanListingPlayerId} onInitialPlayerHandled={() => dispatchAction({ type: 'UPDATE_STATE', payload: { pendingLoanListingPlayerId: null } } as any)} onOpenPlayer={(player) => onOpenPlayer({ id: player.internalId, name: player.name, position: player.pos as 'PG' | 'SG' | 'SF' | 'PF' | 'C', age: player.age ?? 0, nationality: player.nationality ?? player.born?.loc ?? '', flag: '', ovr: 0, pot: 0, annualWageEUR: 0, contractYearsLeft: 0, imgURL: player.imgURL, face: (player as any).face })} /> : <>
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <h2 className="text-sm font-black text-white uppercase tracking-tight flex items-center gap-2">
             <ListChecks size={16} className="text-amber-400" />
@@ -64,7 +82,7 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
             <span className="text-[10px] font-bold text-slate-500">({listings.length} active)</span>
           </h2>
           <button
-            onClick={() => setShowListModal(true)}
+            onClick={() => { setListingIntentPlayerId(null); setShowListModal(true); }}
             disabled={!w.open}
             title={w.open ? 'List a player for transfer' : 'Transfer window closed'}
             className="text-[11px] font-bold uppercase tracking-wider px-3 py-1.5 rounded-lg bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 flex items-center gap-1.5 disabled:opacity-40 disabled:cursor-not-allowed"
@@ -147,12 +165,13 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
             </div>
           );
         })}
+        </>}
       </div>
 
       {showListModal && (
         <ListPlayerModal
-          onClose={() => setShowListModal(false)}
-          preselectedPlayerId={pendingTransferListingPlayerId}
+          onClose={() => { setShowListModal(false); setListingIntentPlayerId(null); }}
+          preselectedPlayerId={listingIntentPlayerId}
         />
       )}
 
@@ -247,7 +266,15 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
           <div className="space-y-2">
             {marketActivity.length === 0 && <div className="text-[10px] text-slate-500">No transfers yet this season.</div>}
             {marketActivity.map((a, i) => (
-              <div key={i} className="text-[10px] flex items-center justify-between gap-2">
+              <div key={i} className="text-[10px] flex items-center gap-2">
+                <div className="flex shrink-0 items-center">
+                  {a.fromLogoUrl
+                    ? <img src={a.fromLogoUrl} alt="" className="h-6 w-6 object-contain" referrerPolicy="no-referrer" />
+                    : <div className="h-6 w-6 rounded bg-slate-800" />}
+                  {a.toLogoUrl
+                    ? <img src={a.toLogoUrl} alt="" className="-ml-1 h-6 w-6 object-contain" referrerPolicy="no-referrer" />
+                    : <div className="-ml-1 h-6 w-6 rounded bg-slate-700" />}
+                </div>
                 <div className="min-w-0">
                   <div className="text-slate-300 truncate">
                     <span className="font-bold text-white">{a.player}</span>{' '}
@@ -255,7 +282,7 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
                   </div>
                   <div className="text-[9px] text-slate-500">from {a.from} · {a.date}</div>
                 </div>
-                <span className="text-[10px] font-black text-amber-300 shrink-0">{a.amount}</span>
+                <span className="ml-auto text-[10px] font-black text-amber-300 shrink-0">{a.amount}</span>
               </div>
             ))}
           </div>
@@ -271,8 +298,10 @@ const MyListingsTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPla
 
 const InboxTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }) => {
   const { inboxBids, actions, club } = useTransferMarketContext();
+  type InboxSortKey = 'ovr' | 'pot' | 'bidder' | 'type' | 'amount' | 'status';
   const [filter, setFilter] = useState<'all' | 'active' | 'accepted' | 'rejected'>('all');
-  const [selected, setSelected] = useState<InboxBid | null>(inboxBids[0] ?? null);
+  const [sort, setSort] = useState<{ key: InboxSortKey; direction: 'asc' | 'desc' } | null>(null);
+  const [selected, setSelected] = useState<InboxBid | null>(null);
   const [pendingAccept, setPendingAccept] = useState<InboxBid | null>(null);
   const [celebration, setCelebration] = useState<InboxBid | null>(null);
   const handleAcceptRequest = (b: InboxBid) => setPendingAccept(b);
@@ -303,7 +332,40 @@ const InboxTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }
     if (filter === 'accepted') return b.status === 'Accepted';
     if (filter === 'rejected') return b.status === 'Rejected' || b.status === 'Withdrawn';
     return true;
+  }).sort((a, b) => {
+    if (!sort) return 0;
+    const valueFor = (bid: InboxBid): string | number => {
+      if (sort.key === 'ovr') return bid.player.ovr;
+      if (sort.key === 'pot') return bid.player.pot;
+      if (sort.key === 'bidder') return bid.bidder.name;
+      if (sort.key === 'type') return bid.bidType;
+      if (sort.key === 'amount') return bid.amountEUR;
+      return bid.status;
+    };
+    const left = valueFor(a);
+    const right = valueFor(b);
+    const compared = typeof left === 'number' && typeof right === 'number'
+      ? left - right
+      : String(left).localeCompare(String(right));
+    return sort.direction === 'asc' ? compared : -compared;
   });
+
+  const toggleSort = (key: InboxSortKey) => {
+    setSort(current => current?.key === key
+      ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+      : { key, direction: 'asc' });
+  };
+
+  const SortHeader: React.FC<{ column: InboxSortKey; label: string; className?: string }> = ({ column, label, className = '' }) => {
+    const active = sort?.key === column;
+    return (
+      <button type="button" onClick={() => toggleSort(column)} className={`inline-flex items-center gap-1 hover:text-white ${active ? 'text-amber-300' : ''} ${className}`}>
+        {label}
+        <ArrowUpDown size={11} className={active ? 'text-amber-300' : 'text-slate-600'} />
+        {active && <span className="sr-only">{sort.direction === 'asc' ? 'ascending' : 'descending'}</span>}
+      </button>
+    );
+  };
 
   const filterTabs: Array<{ key: typeof filter; label: string; count: number }> = [
     { key: 'all', label: 'All', count: counts.all },
@@ -394,12 +456,12 @@ const InboxTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }
       <div className="hidden md:block bg-slate-800/40 rounded-2xl border border-slate-800/50 overflow-hidden">
           <div className="grid grid-cols-12 gap-2 px-4 py-2 bg-slate-900/60 text-[9px] uppercase tracking-wider text-slate-500 font-bold">
             <div className="col-span-3">Player</div>
-            <div className="col-span-1 text-center">OVR</div>
-            <div className="col-span-1 text-center">POT</div>
-            <div className="col-span-2">Bidder</div>
-            <div className="col-span-1">Type</div>
-            <div className="col-span-2">Amount</div>
-            <div className="col-span-2 text-right">Status</div>
+            <div className="col-span-1 flex justify-center"><SortHeader column="ovr" label="OVR" /></div>
+            <div className="col-span-1 flex justify-center"><SortHeader column="pot" label="POT" /></div>
+            <div className="col-span-2"><SortHeader column="bidder" label="Bidder" /></div>
+            <div className="col-span-1"><SortHeader column="type" label="Type" /></div>
+            <div className="col-span-2"><SortHeader column="amount" label="Amount" /></div>
+            <div className="col-span-2 flex justify-end"><SortHeader column="status" label="Status" /></div>
           </div>
           {filtered.length === 0 && (
             <div className="px-4 py-8 text-center text-sm text-slate-500 border-t border-slate-800/40">
@@ -626,7 +688,17 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
               className="grid gap-2 px-4 py-3 items-center border-t border-slate-800/40 hover:bg-slate-800/30 transition-colors"
               style={{ gridTemplateColumns: browseGrid }}
             >
-              <div className="flex items-center gap-3 min-w-0">
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => onOpenPlayer(b.player)}
+                onKeyDown={(event) => {
+                  if (event.key !== 'Enter' && event.key !== ' ') return;
+                  event.preventDefault();
+                  onOpenPlayer(b.player);
+                }}
+                className="flex min-w-0 cursor-pointer items-center gap-3 text-left hover:opacity-90"
+              >
                 <img
                   src={b.player.imgURL}
                   alt=""
@@ -644,8 +716,9 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
                   ) : (
                     <div className="text-[11px] font-bold text-white truncate">{b.player.name}</div>
                   )}
-                  <div className="text-[9px] text-slate-500 truncate">
-                    {b.player.flag} {b.player.position} · {b.player.age}y · {b.player.contractYearsLeft}y left
+                  <div className="flex items-center gap-1 text-[9px] text-slate-500 truncate">
+                    <CountryFlag country={b.player.nationality} className="inline-flex h-3 w-4 rounded-[2px]" />
+                    <span>{b.player.position} · {b.player.age}y · {b.player.contractYearsLeft}y left</span>
                   </div>
                 </div>
               </div>
@@ -687,7 +760,7 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
         listing={selected}
         windowOpen={w.open}
         onClose={() => setSelected(null)}
-        onSubmit={(amountEUR) => {
+        onSubmit={(amountEUR, signingBonusEUR, sponsorSigningPerk) => {
           if (!selected) return;
           actions.submitBid({
             listingId: selected.id,
@@ -695,6 +768,8 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
             sellerTid: -1,
             bidType: 'Transfer',
             amountEUR,
+            signingBonusEUR,
+            sponsorSigningPerk,
             validDays: 5,
           });
           setSelected(null);
@@ -709,16 +784,26 @@ const BrowseMarketTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenP
 // ───────────────────────────────────────────────────────────────────────────
 
 const TabCountsAdapter: React.FC<{ initialTab: TabKey }> = ({ initialTab }) => {
-  const { listings, inboxBids, browseListings, clauses } = useTransferMarketContext();
+  const { listings, inboxBids, browseListings, clauses, window: marketWindow } = useTransferMarketContext();
   const { state } = useGame();
   const quick = usePlayerQuickActions();
   const [tab, setTab] = useState<TabKey>(initialTab);
   const players = state.players ?? [];
+  const loanWindow = isInLoanWindow(state.date, state.leagueStats);
+  const loanCandidateCount = useMemo(
+    () => loanWindow.open ? getLoanCandidates(state, Number(state.userTeamId ?? -1)).length : 0,
+    [loanWindow.open, state],
+  );
+
+  useEffect(() => {
+    if (tab === 'loans' && !loanWindow.open) setTab('browse');
+  }, [loanWindow.open, tab]);
 
   const counts: Record<TabKey, number> = {
     listings: listings.length,
     inbox:    inboxBids.length,
     browse:   browseListings.length,
+    loans:    loanCandidateCount,
     clauses:  clauses.length,
   };
 
@@ -729,14 +814,50 @@ const TabCountsAdapter: React.FC<{ initialTab: TabKey }> = ({ initialTab }) => {
 
   if (quick.fullPageView) return quick.fullPageView;
 
+  const nextAction = inboxBids.length > 0
+    ? {
+        title: `${inboxBids.length} offer${inboxBids.length === 1 ? '' : 's'} waiting`,
+        detail: 'Review bids before deciding whether to sell.',
+        label: 'Review offers',
+        tone: 'rose',
+        tab: 'inbox' as TabKey,
+      }
+    : marketWindow.open
+      ? {
+          title: `Transfer window open · ${marketWindow.daysLeft} days left`,
+          detail: `${browseListings.length} player${browseListings.length === 1 ? '' : 's'} currently available.`,
+          label: 'Browse players',
+          tone: 'amber',
+          tab: 'browse' as TabKey,
+        }
+      : {
+          title: 'Transfer window closed',
+          detail: 'Existing contracts and release clauses remain available for review.',
+          label: 'Review clauses',
+          tone: 'slate',
+          tab: 'clauses' as TabKey,
+        };
+
   return (
     <>
       <HeaderStrip />
-      <TabsRow active={tab} onChange={setTab} counts={counts} />
+      <TabsRow active={tab} onChange={setTab} counts={counts} showLoans={loanWindow.open} />
+      <div className="px-4 pt-3 sm:px-6">
+        <div className={`flex flex-col gap-3 rounded-xl border px-4 py-3 sm:flex-row sm:items-center sm:justify-between ${nextAction.tone === 'rose' ? 'border-rose-400/30 bg-rose-400/[0.06]' : nextAction.tone === 'amber' ? 'border-amber-400/30 bg-amber-400/[0.06]' : 'border-slate-700 bg-slate-900/60'}`}>
+          <div>
+            <div className="text-sm font-black text-white">{nextAction.title}</div>
+            <div className="mt-0.5 text-xs text-slate-400">{nextAction.detail}</div>
+          </div>
+          <button type="button" onClick={() => setTab(nextAction.tab)} className="inline-flex w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-amber-400/40 px-3 py-2 text-[10px] font-black uppercase tracking-widest text-amber-200 hover:bg-amber-400/10 sm:w-auto">
+            {nextAction.label} <ArrowRight size={13} />
+          </button>
+        </div>
+      </div>
       <div className="flex-1 overflow-y-auto scrollbar-hide">
         {tab === 'listings' && <MyListingsTab onOpenPlayer={openMarketPlayer} />}
         {tab === 'inbox' && <InboxTab onOpenPlayer={openMarketPlayer} />}
         {tab === 'browse' && <BrowseMarketTab onOpenPlayer={openMarketPlayer} />}
+        {tab === 'loans' && loanWindow.open && <EuroLoanFinderTab onOpenPlayer={player => quick.openFor(player)} />}
         {tab === 'clauses' && <ReleaseClausesTab onOpenPlayer={openMarketPlayer} />}
       </div>
       {quick.portals}

@@ -1,5 +1,8 @@
 import type { NBATeam as Team } from '../../../types';
-import { getSystemFitPenalty, getSystemKnobMods } from '../../../store/coachSystemStore';
+import {
+  getSimulationSystemFitPenalty as getSystemFitPenalty,
+  getSimulationSystemKnobMods as getSystemKnobMods,
+} from '../simulationRealmContext';
 import {
   getFamiliarityMods,
   getTrainingDefensiveAuraMods,

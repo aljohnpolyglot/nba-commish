@@ -2,7 +2,6 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { useHubScope } from '../../../hooks/useHubScope';
 import { NBAPlayer, NBATeam } from '../../../types';
-import { PlayerBioView } from './PlayerBioView';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { StatCategory, getStatValue } from '../../../utils/statUtils';
 import { getOwnTeamId } from '../../../utils/helpers';
@@ -11,11 +10,21 @@ import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { PBA_COMPETITIONS } from '../../../data/templates/philippines/competitions';
 import { getConferenceSpec, type PbaConference } from '../../../services/pba/conferenceTransition';
-import { buildBoxScoreStatsByPlayer } from './playerStatsBoxScoreMaps';
+import { buildBoxScoreStatsByPlayer, buildCurrentSeasonStatsByPhase } from './playerStatsBoxScoreMaps';
 import { aggregateStats } from './PlayerStatsShared';
 import { classifyBoxScoreGame } from '../../../utils/gameClassification';
 import { loadPbaStatsForPlayers, type PbaStatsByPlayer } from '../../../services/pba/statsArchive';
-import { loadEuroStatsForPlayers, type EuroStatsByPlayer } from '../../../services/euro/statsArchive';
+import {
+  getCanonicalEuroStatCompetitionId,
+  loadEuroStatsForPlayers,
+  type EuroStatsByPlayer,
+} from '../../../services/euro/statsArchive';
+import { getHistoricalNbaCompletedSeasonCutoff } from '../../../services/playerDevelopment/hofHistoryWindow';
+import { getHistoricalTeamSnapshot, getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { getPlayerImage } from '../../../utils/playerImage';
+import { useLeagueLabels } from '../../../utils/leagueLabels';
+import { formatLeagueSeasonLabel } from '../../../services/leagueCalendar';
 
 const PBA_COMBINED_FILTER = 'combined';
 type LeaderPhase = 'regular' | 'playoffs' | 'combined';
@@ -54,37 +63,52 @@ const PLAYER_LEADER_SORT_FIELDS: Record<string, string> = {
 };
 
 export const LeagueLeadersView: React.FC = () => {
-  const { state, navigateToTeam, setCurrentView, setPendingStatSort } = useGame();
+  const { state, navigateToTeam, navigateToPlayer, setCurrentView, setPendingStatSort } = useGame();
+  const labels = useLeagueLabels();
+  const currentSeason = state.leagueStats.year;
+  const maxVisibleSeason = getHistoricalNbaCompletedSeasonCutoff({
+    currentYear: currentSeason,
+    leagueType: state.leagueType,
+    moddedLeagueBase: state.moddedLeagueBase,
+    nbaStartYear: state.nbaStartYear,
+  }) ?? currentSeason;
+  const isStatsSeasonVisible = (seasonYear: number) => seasonYear <= maxVisibleSeason || seasonYear === currentSeason;
   const ownTid = getOwnTeamId(state);
-  const { players: scopedPlayers, teams: scopedTeams, euroIsolated, pbaIsolated } = useHubScope();
+  const { players: scopedPlayers, teams: scopedTeams, hubTab, euroIsolated, pbaIsolated } = useHubScope();
+  const hubCompetition = state.activeCompetitions?.find(competition => competition.id === hubTab);
+  const knockoutOnly = hubCompetition?.format === 'knockout' || hubCompetition?.format === 'tournament';
   const [activeTab, setActiveTab] = useState<'Player' | 'Team'>('Player');
-  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [pbaCompetitionFilter, setPbaCompetitionFilter] = useState(() =>
     getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id,
   );
   const currentPbaCompetitionId = getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id;
-  const [leaderPhase, setLeaderPhase] = useState<LeaderPhase>('regular');
+  const [leaderPhase, setLeaderPhase] = useState<LeaderPhase>(() => knockoutOnly ? 'combined' : 'regular');
   const [pbaArchiveStats, setPbaArchiveStats] = useState<PbaStatsByPlayer>(new Map());
   const [euroArchiveStats, setEuroArchiveStats] = useState<EuroStatsByPlayer>(new Map());
 
   useEffect(() => {
+    if (!hubTab) return;
+    setLeaderPhase(knockoutOnly ? 'combined' : 'regular');
+  }, [hubTab, knockoutOnly]);
+
+  useEffect(() => {
     let cancelled = false;
     if (pbaIsolated) {
-      loadPbaStatsForPlayers(scopedPlayers).then(rows => {
+      loadPbaStatsForPlayers(scopedPlayers, { maxSeason: currentSeason - 1 }).then(rows => {
         if (!cancelled) setPbaArchiveStats(rows);
       });
     } else {
       setPbaArchiveStats(new Map());
     }
     if (euroIsolated) {
-      loadEuroStatsForPlayers(scopedPlayers).then(rows => {
+      loadEuroStatsForPlayers(scopedPlayers, { maxSeason: currentSeason - 1 }).then(rows => {
         if (!cancelled) setEuroArchiveStats(rows);
       });
     } else {
       setEuroArchiveStats(new Map());
     }
     return () => { cancelled = true; };
-  }, [euroIsolated, pbaIsolated, scopedPlayers]);
+  }, [currentSeason, euroIsolated, pbaIsolated, scopedPlayers]);
 
   useEffect(() => {
     if (!pbaIsolated) return;
@@ -101,10 +125,16 @@ export const LeagueLeadersView: React.FC = () => {
     if (!pbaIsolated) return undefined;
     return new Set(
       pbaCompetitionFilter === PBA_COMBINED_FILTER
-        ? PBA_COMPETITIONS.map(spec => spec.id)
+        ? [...PBA_COMPETITIONS.map(spec => spec.id), 'pba']
         : [pbaCompetitionFilter],
     );
   }, [pbaIsolated, pbaCompetitionFilter]);
+  const competitionIds = useMemo(() => {
+    if (pbaCompetitionIds) return pbaCompetitionIds;
+    const competitionId = hubTab ?? state.euroPrimaryCompetitionId;
+    if (euroIsolated && competitionId) return new Set([competitionId]);
+    return undefined;
+  }, [euroIsolated, hubTab, pbaCompetitionIds, state.euroPrimaryCompetitionId]);
 
   const filteredPbaArchiveStats = useMemo(() => {
     if (!pbaIsolated) return new Map();
@@ -121,85 +151,155 @@ export const LeagueLeadersView: React.FC = () => {
   const availableSeasons = useMemo(() => {
     if (pbaIsolated) {
       const pbaIds = new Set(PBA_COMPETITIONS.map(spec => spec.id));
-      const years = new Set<number>();
+      const years = new Set<number>([currentSeason]);
       for (const box of state.boxScores as any[]) {
         if (!pbaIds.has(String(box.competitionId ?? ''))) continue;
-        const seasonYear = Number(box.season) || state.leagueStats.year;
-        if (seasonYear > 0) years.add(seasonYear);
+        const seasonYear = Number(box.season) || currentSeason;
+        if (seasonYear > 0 && isStatsSeasonVisible(seasonYear)) years.add(seasonYear);
       }
       for (const rows of pbaArchiveStats.values()) {
         rows.forEach(row => {
-          if (row.gp > 0) years.add(row.season);
+          if (row.gp > 0 && isStatsSeasonVisible(row.season)) years.add(row.season);
         });
+      }
+      for (const player of scopedPlayers) {
+        for (const stat of player.stats ?? []) {
+          if (!stat.playoffs && stat.gp > 0 && isStatsSeasonVisible(stat.season)) years.add(stat.season);
+        }
       }
       return Array.from(years).sort((a, b) => b - a);
     }
     if (euroIsolated) {
-      const years = new Set<number>();
-      for (const p of scopedPlayers) {
-        if (!p.stats) continue;
-        for (const s of p.stats) {
-          if (!s.playoffs && s.gp > 0) years.add(s.season);
-        }
+      const years = new Set<number>([currentSeason]);
+      for (const box of state.boxScores as any[]) {
+        if (hubTab && String(box.competitionId ?? '').toLowerCase() !== hubTab.toLowerCase()) continue;
+        const seasonYear = Number(box.season) || currentSeason;
+        if (seasonYear > 0 && isStatsSeasonVisible(seasonYear)) years.add(seasonYear);
       }
       for (const rows of euroArchiveStats.values()) {
         rows.forEach(row => {
-          if (row.gp > 0) years.add(row.season);
+          if (hubTab && getCanonicalEuroStatCompetitionId(row as any) !== hubTab.toLowerCase()) return;
+          if (row.gp > 0 && isStatsSeasonVisible(row.season)) years.add(row.season);
         });
       }
       return Array.from(years).sort((a, b) => b - a);
     }
-    const years = new Set<number>();
+    const years = new Set<number>([currentSeason]);
     for (const p of scopedPlayers) {
       if (!p.stats) continue;
       for (const s of p.stats) {
-        if (!s.playoffs && s.gp > 0) years.add(s.season);
+        if (!s.playoffs && s.gp > 0 && isStatsSeasonVisible(s.season)) years.add(s.season);
       }
     }
     return Array.from(years).sort((a, b) => b - a);
-  }, [euroArchiveStats, euroIsolated, pbaArchiveStats, pbaIsolated, state.boxScores, state.leagueStats.year, scopedPlayers]);
+  }, [currentSeason, euroArchiveStats, euroIsolated, hubTab, maxVisibleSeason, pbaArchiveStats, pbaIsolated, state.boxScores, scopedPlayers]);
 
-  const defaultSeason = availableSeasons[0] || state.leagueStats.year;
+  const defaultSeason = currentSeason;
   const [selectedSeason, setSelectedSeason] = useState(defaultSeason);
   const season = selectedSeason;
 
   useEffect(() => {
-    if (!pbaIsolated && !euroIsolated) return;
+    if (!pbaIsolated) return;
+    const hasSeasonAggregate = scopedPlayers.some(player => (player.stats ?? []).some(stat =>
+      stat.season === selectedSeason
+      && !stat.playoffs
+      && stat.gp > 0
+      && String(stat.competitionId ?? '').toLowerCase() === 'pba'
+    ));
+    if (hasSeasonAggregate) setPbaCompetitionFilter(PBA_COMBINED_FILTER);
+  }, [pbaIsolated, scopedPlayers, selectedSeason]);
+
+  useEffect(() => {
     if (availableSeasons.length > 0 && !availableSeasons.includes(selectedSeason)) {
-      setSelectedSeason(availableSeasons[0]);
+      setSelectedSeason(availableSeasons.includes(currentSeason) ? currentSeason : availableSeasons[0]);
     }
-  }, [availableSeasons, euroIsolated, pbaIsolated, selectedSeason]);
+  }, [availableSeasons, currentSeason, selectedSeason]);
 
   const handleCompleteLeaders = (type: 'player' | 'team', field: string, order: 'asc' | 'desc' = 'desc') => {
     setPendingStatSort({
       type,
       field: type === 'player' ? (PLAYER_LEADER_SORT_FIELDS[field] ?? field) : field,
       order,
-      ...(pbaIsolated ? { phase: leaderPhase, competitionId: pbaCompetitionFilter } : {}),
+      ...((pbaIsolated || euroIsolated) ? {
+        phase: leaderPhase,
+        competitionId: pbaIsolated ? pbaCompetitionFilter : hubTab ?? state.euroPrimaryCompetitionId,
+      } : {}),
     });
     setCurrentView(type === 'player' ? 'Player Stats' : 'Team Stats');
   };
 
-  const pbaStatsByPlayer = useMemo(
-    () => pbaCompetitionIds
-      ? buildBoxScoreStatsByPlayer(state, { competitionIds: pbaCompetitionIds, phase: leaderPhase })
+  const competitionStatsByPlayer = useMemo(
+    () => competitionIds
+      ? buildBoxScoreStatsByPlayer(state, { competitionIds, phase: leaderPhase })
       : null,
-    [pbaCompetitionIds, leaderPhase, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats],
+    [competitionIds, leaderPhase, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats],
   );
+  const currentSeasonStatsByPhase = useMemo(() => buildCurrentSeasonStatsByPhase(state), [
+    state.boxScores,
+    state.schedule,
+    state.playoffs,
+    state.nbaCup,
+    state.nbaCupHistory,
+    state.leagueStats.year,
+  ]);
 
-  const externalArchiveStats = pbaIsolated ? filteredPbaArchiveStats : euroIsolated ? euroArchiveStats : new Map();
+  const filteredEuroArchiveStats = useMemo(() => {
+    if (!euroIsolated || !hubTab) return euroArchiveStats;
+    const filtered: EuroStatsByPlayer = new Map();
+    for (const [playerId, rows] of euroArchiveStats.entries()) {
+      const matching = rows.filter(row => getCanonicalEuroStatCompetitionId(row as any) === hubTab.toLowerCase());
+      if (matching.length > 0) filtered.set(playerId, matching);
+    }
+    return filtered;
+  }, [euroArchiveStats, euroIsolated, hubTab]);
+
+  const externalArchiveStats = pbaIsolated
+    ? filteredPbaArchiveStats
+    : euroIsolated
+      ? filteredEuroArchiveStats
+      : new Map();
 
   // Player Leaders
   const playerLeaders = useMemo(() => {
     const playersWithStats = scopedPlayers.map(player => {
-      const boxRows = pbaStatsByPlayer?.get(player.internalId)?.filter(stat => stat.season === season) ?? [];
+      if (season === currentSeason && (player as NBAPlayer & { euroAcademyPlayer?: boolean; promotedFromAcademy?: boolean }).euroAcademyPlayer && !(player as NBAPlayer & { promotedFromAcademy?: boolean }).promotedFromAcademy) return { player, stat: undefined };
+      const boxRows = competitionStatsByPlayer?.get(player.internalId)?.filter(stat => stat.season === season) ?? [];
+      const embeddedRows = leaderPhase === 'playoffs'
+        ? (player.stats ?? []).filter(stat => stat.season === season && stat.playoffs)
+        : (player.stats ?? []).filter(stat => {
+            if (stat.season !== season || stat.playoffs) return false;
+            if (!competitionIds) return true;
+            return competitionIds.has(String(stat.competitionId ?? '').toLowerCase());
+          });
       const archiveRows = leaderPhase === 'playoffs'
         ? []
-        : externalArchiveStats.get(player.internalId)?.filter(stat => stat.season === season && !boxRows.some(boxRow => boxRow.season === stat.season)) ?? [];
-      const pbaRows = [...archiveRows, ...boxRows];
-      const stat = pbaStatsByPlayer || externalArchiveStats.size > 0
-        ? (pbaRows.length ? aggregateStats(pbaRows) : undefined)
-        : player.stats?.find(s => s.season === season && !s.playoffs);
+        : externalArchiveStats.get(player.internalId)?.filter(stat => stat.season === season && stat.season <= currentSeason) ?? [];
+      const liveSeasons = new Set(boxRows.map(stat => stat.season));
+      const embeddedKeys = new Set(embeddedRows.map(stat => [
+        stat.season,
+        stat.tid,
+        stat.playoffs ? 1 : 0,
+        String(stat.competitionId ?? ''),
+      ].join('|')));
+      const competitionRows = [
+        ...[
+          ...embeddedRows,
+          ...archiveRows.filter(stat => !embeddedKeys.has([
+            stat.season,
+            stat.tid,
+            stat.playoffs ? 1 : 0,
+            String(stat.competitionId ?? ''),
+          ].join('|'))),
+        ].filter(stat =>
+          !(String(stat.competitionId ?? '').toLowerCase() === 'pba' && liveSeasons.has(stat.season))
+        ),
+        ...boxRows,
+      ];
+      const stat = competitionStatsByPlayer || externalArchiveStats.size > 0
+        ? (competitionRows.length ? aggregateStats(competitionRows) : undefined)
+        : season === currentSeason
+          ? currentSeasonStatsByPhase.regular.get(player.internalId)
+          : player.stats?.find(s => s.season === season && !s.playoffs);
       return { player, stat };
     }).filter(p => p.stat && p.stat.gp > 0);
 
@@ -264,7 +364,7 @@ export const LeagueLeadersView: React.FC = () => {
       'WS/48':getTop5('WS/48', false, qAdvanced),
       VORP:   getTop5('VORP',  false, qAdvanced),
     };
-  }, [externalArchiveStats, leaderPhase, scopedPlayers, season, pbaStatsByPlayer]);
+  }, [competitionStatsByPlayer, currentSeason, currentSeasonStatsByPhase, externalArchiveStats, leaderPhase, scopedPlayers, season]);
 
   // Team Leaders
   const teamLeaders = useMemo(() => {
@@ -279,11 +379,11 @@ export const LeagueLeadersView: React.FC = () => {
       const meta = classifyBoxScoreGame(game as any, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, state.leagueStats);
       const gameSeason = Number((game as any).season ?? meta.seasonYear);
       if (gameSeason !== season) return;
-      if (pbaCompetitionIds) {
-        if (!pbaCompetitionIds.has(String((game as any).competitionId ?? ''))) return;
-        if (meta.isPreseason || meta.isPlayIn || meta.excludeFromRecord) return;
-        if (leaderPhase === 'regular' && meta.isPlayoff) return;
-        if (leaderPhase === 'playoffs' && !meta.isPlayoff) return;
+      if (competitionIds) {
+        if (!competitionIds.has(String((game as any).competitionId ?? ''))) return;
+        if (meta.isPreseason || meta.excludeFromRecord) return;
+        if (leaderPhase === 'regular' && (meta.isPlayoff || meta.isPlayIn)) return;
+        if (leaderPhase === 'playoffs' && !meta.isPlayoff && !meta.isPlayIn) return;
       } else if (meta.isPreseason || meta.isPlayoff || meta.isPlayIn || meta.excludeFromRecord) {
         return;
       }
@@ -357,11 +457,7 @@ export const LeagueLeadersView: React.FC = () => {
       REB: getTop5('REB'),
       BLK: getTop5('BLK'),
     };
-  }, [scopedTeams, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats, season, pbaCompetitionIds, leaderPhase]);
-
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
-  }
+  }, [scopedTeams, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats, season, competitionIds, leaderPhase]);
 
   const renderPlayerTable = (title: string, data: any[], statKey: string, format: 'number' | 'percent' | 'decimal3' = 'number', order: 'desc' | 'asc' = 'desc') => (
     <div className="mb-8">
@@ -378,6 +474,7 @@ export const LeagueLeadersView: React.FC = () => {
           <tbody className="divide-y divide-slate-800/50">
             {data.map((item, index) => {
               const team = resolveAnyTeam(item.stat.tid, state.teams, state.nonNBATeams ?? []);
+              const teamSnapshot = team ? getHistoricalTeamSnapshot(team, season) : null;
               const isOwn = ownTid !== null && item.player.tid === ownTid;
               return (
                 <tr key={item.player.internalId} className={`transition-colors ${isOwn ? 'bg-indigo-500/10 hover:bg-indigo-500/15' : 'hover:bg-slate-800/50'}`}>
@@ -385,20 +482,21 @@ export const LeagueLeadersView: React.FC = () => {
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-3">
                       <PlayerPortrait
-                        imgUrl={item.player.imgURL}
+                        imgUrl={getPlayerImage(item.player)}
                         face={(item.player as any).face}
                         playerName={item.player.name}
+                        teamLogoUrl={teamSnapshot ? getResolvedTeamLogoUrl(teamSnapshot, season) : undefined}
                         size={32}
                       />
                       <div className="flex items-baseline gap-2">
                         <PlayerNameWithHover
                           player={item.player}
                           className="font-medium text-indigo-400 cursor-pointer hover:text-indigo-300 hover:underline"
-                          onClick={() => setViewingPlayer(item.player)}
+                          onClick={() => navigateToPlayer(item.player)}
                         >
                           {item.player.name}
                         </PlayerNameWithHover>
-                        <span className="text-xs text-slate-500">{team?.abbrev || item.player.status || 'FA'}</span>
+                        <span className="text-xs text-slate-500">{teamSnapshot?.abbrev || item.player.status || 'FA'}</span>
                       </div>
                     </div>
                   </td>
@@ -440,23 +538,24 @@ export const LeagueLeadersView: React.FC = () => {
           <tbody className="divide-y divide-slate-800/50">
             {data.map((item, index) => {
               const isOwn = ownTid !== null && item.team.id === ownTid;
+              const teamSnapshot = getHistoricalTeamSnapshot(item.team, season);
               return (
               <tr key={item.team.id} className={`transition-colors ${isOwn ? 'bg-indigo-500/10 hover:bg-indigo-500/15' : 'hover:bg-slate-800/50'}`}>
                 <td className="px-4 py-3 text-slate-500">{index + 1}</td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-3">
-                    {item.team.logoUrl ? (
-                      <img src={item.team.logoUrl} alt={item.team.name} className="w-8 h-8 object-contain" />
+                    {getResolvedTeamLogoUrl(teamSnapshot, season) ? (
+                      <img src={getResolvedTeamLogoUrl(teamSnapshot, season)} alt={getTeamFullName(teamSnapshot)} className="w-8 h-8 object-contain" />
                     ) : (
                       <div className="w-8 h-8 rounded bg-slate-800 flex items-center justify-center text-slate-400 font-bold text-xs">
-                        {item.team.abbrev}
+                        {teamSnapshot.abbrev}
                       </div>
                     )}
                     <span
                       className="font-medium text-indigo-400 cursor-pointer hover:text-indigo-300 hover:underline"
                       onClick={() => navigateToTeam(item.team.id)}
                     >
-                      {item.team.name}
+                      {getTeamFullName(teamSnapshot)}
                     </span>
                     {isOwn && <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">You</span>}
                   </div>
@@ -489,29 +588,37 @@ export const LeagueLeadersView: React.FC = () => {
       <div className="p-6 border-b border-slate-800 shrink-0">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-2xl font-black text-white uppercase tracking-tight">
-            {pbaIsolated ? 'PBA' : euroIsolated ? 'EuroLeague' : 'NBA'} Stat Leaders {season - 1}-{String(season).slice(2)}
+            {hubCompetition?.displayName ?? labels.leagueName} Stat Leaders {formatLeagueSeasonLabel(season, state.leagueStats)}
           </h2>
           <div className="flex flex-wrap items-center justify-end gap-2">
-          {pbaIsolated && (
+          {(pbaIsolated || euroIsolated) && (
             <>
-              <select
-                value={pbaCompetitionFilter}
-                onChange={e => setPbaCompetitionFilter(e.target.value)}
-                className="h-8 bg-slate-900 border border-slate-700 text-white text-xs px-2 rounded focus:outline-none focus:border-indigo-500 appearance-none"
-              >
-                {pbaCompetitionOptions.map(option => (
-                  <option key={option.id} value={option.id}>{option.label}</option>
-                ))}
-              </select>
-              <select
-                value={leaderPhase}
-                onChange={e => setLeaderPhase(e.target.value as LeaderPhase)}
-                className="h-8 bg-slate-900 border border-slate-700 text-white text-xs px-2 rounded focus:outline-none focus:border-indigo-500 appearance-none"
-              >
-                <option value="regular">Regular Season</option>
-                <option value="playoffs">Playoffs</option>
-                <option value="combined">Combined</option>
-              </select>
+              {pbaIsolated && (
+                <select
+                  value={pbaCompetitionFilter}
+                  onChange={e => setPbaCompetitionFilter(e.target.value)}
+                  className="h-8 bg-slate-900 border border-slate-700 text-white text-xs px-2 rounded focus:outline-none focus:border-indigo-500 appearance-none"
+                >
+                  {pbaCompetitionOptions.map(option => (
+                    <option key={option.id} value={option.id}>{option.label}</option>
+                  ))}
+                </select>
+              )}
+              {knockoutOnly ? (
+                <span className="rounded-md border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs font-bold text-slate-300">
+                  Tournament Games
+                </span>
+              ) : (
+                <select
+                  value={leaderPhase}
+                  onChange={e => setLeaderPhase(e.target.value as LeaderPhase)}
+                  className="h-8 bg-slate-900 border border-slate-700 text-white text-xs px-2 rounded focus:outline-none focus:border-indigo-500 appearance-none"
+                >
+                  <option value="regular">Regular Season</option>
+                  <option value="playoffs">Playoffs</option>
+                  <option value="combined">Combined</option>
+                </select>
+              )}
             </>
           )}
           {availableSeasons.length > 1 && (

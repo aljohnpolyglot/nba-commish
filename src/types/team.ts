@@ -1,4 +1,5 @@
 import type { TycoonState } from './tycoon';
+import type { FranchiseOperationsState } from './franchise';
 
 export interface NBAConf {
   cid: number;
@@ -74,6 +75,8 @@ export type SetupTierLabel = 'Powerhouse' | 'Established' | 'MidTier' | 'Underdo
 
 export interface NBATeam {
   id: number;
+  franchiseId?: string;
+  teamIdentityId?: string;
   name: string;
   abbrev: string;
   region?: string;
@@ -84,9 +87,12 @@ export interface NBATeam {
   losses: number;
   otl?: number;
   tied?: number;
+  standingsPoints?: number;
+  pointDifferential?: number;
   strength: number;
   clinchedPlayoffs?: 'w' | 'x' | 'y' | 'z' | 'o';
   pop?: number;
+  stadiumCapacity?: number | string;
   logoUrl?: string;
   colors?: string[];
   streak?: { type: 'W' | 'L'; count: number };
@@ -95,7 +101,34 @@ export interface NBATeam {
     season: number;
     won: number;
     lost: number;
+    tied?: number;
+    standingsPoints?: number;
+    pointDifferential?: number;
     playoffRoundsWon: number;
+    pop?: number;
+    abbrev?: string;
+    region?: string;
+    name?: string;
+    imgURL?: string;
+    imgURLSmall?: string;
+    logoUrl?: string;
+    teamLogoUrl?: string;
+    colors?: string[];
+    payrollBeforeDistributionUSD?: number;
+    minimumPayrollUSD?: number;
+    minimumPayrollDistributionUSD?: number;
+    minimumPayrollDistributions?: Array<{ playerId: string; amountUSD: number }>;
+  }>;
+  identitySeasons?: Array<{
+    season: number;
+    abbrev?: string;
+    region?: string;
+    name?: string;
+    imgURL?: string;
+    imgURLSmall?: string;
+    logoUrl?: string;
+    teamLogoUrl?: string;
+    colors?: string[];
   }>;
   retiredJerseyNumbers?: RetiredJerseyRecord[];
   tradeExceptions?: TradeException[];
@@ -106,7 +139,14 @@ export interface NBATeam {
     paradigm: 'Balanced' | 'Offensive' | 'Defensive' | 'Biometrics' | 'Recovery';
     allocations: { offense: number; defense: number; conditioning: number; recovery: number; systemFocus?: string[] };
     auto?: boolean;
+    version?: number;
   }>;
+  trainingCalendarGeneration?: {
+    version: number;
+    anchorDate: string;
+    daysAhead: number;
+    scheduleKey: string;
+  };
   normalDayDefault?: {
     intensity: number;
     paradigm: 'Balanced' | 'Offensive' | 'Defensive' | 'Biometrics' | 'Recovery';
@@ -118,13 +158,18 @@ export interface NBATeam {
     byOffense?: Record<string, number>;
     byDefense?: Record<string, number>;
   };
+  teamChemistry?: number;
   defensiveAura?: number;
   tycoon?: TycoonState;
+  franchiseOperations?: FranchiseOperationsState;
+  recentDomesticPositions?: number[];
   recentEndesaPositions?: number[];
   recentEuroleagueStages?: Array<'final-four' | 'qf' | 'group' | 'none'>;
+  lastDomesticFinish?: number;
   lastEndesaFinish?: number;
   lastEuroleagueStage?: 'final-four' | 'qf' | 'group' | 'none';
   lastEuroAwayGames?: number;
+  justWonDomesticTitle?: boolean;
   justWonEndesa?: boolean;
   justReachedEuroFinalFour?: boolean;
   ownerProfile?: OwnerProfile;
@@ -143,6 +188,8 @@ export interface DeadMoneyEntry {
 
 export interface NonNBATeam {
   tid: number;
+  franchiseId?: string;
+  teamIdentityId?: string;
   cid?: number;
   did?: number;
   region?: string;
@@ -153,5 +200,38 @@ export interface NonNBATeam {
   imgURL?: string;
   colors?: string[];
   league: 'Euroleague' | 'PBA' | 'WNBA' | 'B-League' | 'G-League' | 'Endesa' | 'China CBA' | 'NBL Australia' | string;
+  teamChemistry?: number;
+  tycoon?: TycoonState;
+  realgmTeamId?: number;
+  seasons?: Array<{
+    season: number;
+    won: number;
+    lost: number;
+    playoffRoundsWon: number;
+    wins?: number;
+    losses?: number;
+    note?: string;
+  }>;
+  identitySeasons?: Array<{
+    season: number;
+    region?: string;
+    name?: string;
+    abbrev?: string;
+    imgURL?: string;
+    imgURLSmall?: string;
+    logoUrl?: string;
+    colors?: string[];
+  }>;
+  historicalEuropeSource?: {
+    sourceVersion: string;
+    franchiseId?: string;
+    aliases?: string[];
+    sourceRefs?: string[];
+    selectedSeasonDisplayName: string;
+  };
+  endesaRelegated?: boolean;
+  endesaRelegatedSeason?: number;
+  euroDomesticRelegatedFrom?: string;
+  euroDomesticRelegatedSeason?: number;
   nbaAffiliate?: string;
 }

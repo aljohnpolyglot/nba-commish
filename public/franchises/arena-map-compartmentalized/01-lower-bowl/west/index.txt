@@ -1,0 +1,8 @@
+Lower Bowl — west
+=================
+
+121	sections/121-west.svg
+122	sections/122-west.svg
+123	sections/123-west.svg
+127	sections/127-west.svg
+128	sections/128-west.svg

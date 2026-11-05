@@ -1,6 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { X, Users, Star } from 'lucide-react';
+import { useGame } from '../../store/GameContext';
+import { getLeagueEventDisplayName } from '../../services/franchises/franchiseEventNaming';
 
 export const AllStarGamePreviewModal: React.FC<{
   game: any;
@@ -8,10 +10,17 @@ export const AllStarGamePreviewModal: React.FC<{
   onViewRosters: () => void;
   onWatch: () => void;
 }> = ({ game, onClose, onViewRosters, onWatch }) => {
+  const { state } = useGame();
   const isRisingStars = game.isRisingStars;
   const isAllStar = game.isAllStar;
   const isCelebrity = game.isCelebrityGame;
-  const title = isRisingStars ? 'Rising Stars Game' : isAllStar ? 'All-Star Game' : isCelebrity ? 'Celebrity Game' : 'All-Star Event';
+  const title = isRisingStars
+    ? getLeagueEventDisplayName(state, 'rising_stars', 'Rising Stars Game')
+    : isAllStar
+      ? getLeagueEventDisplayName(state, 'all_star_game', 'All-Star Game')
+      : isCelebrity
+        ? getLeagueEventDisplayName(state, 'celebrity_game', 'Celebrity Game')
+        : 'All-Star Event';
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-6 bg-black/80 backdrop-blur-sm">

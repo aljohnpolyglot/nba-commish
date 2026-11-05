@@ -1,29 +1,216 @@
+
 import { ROSTER_URL, EXTRA_RETIRED_PLAYERS_URL, CONTRACTS_URL } from '../constants';
 import type { NBAGMRosterData, NBAPlayer as Player, NBATeam as Team, DraftPick, NBAGMPlayer, GamePhase } from '../types';
 import { normalizeTeamJerseyNumbers, pickJerseyNumber } from '../utils/jerseyUtils';
 import JSONParserText from '../utils/JSONParserText';
 import { calculatePlayerOverallForYear, calculateTeamStrength } from '../utils/playerRatings';
+import { getTeamFullName } from '../utils/teamNames';
+import { getHistoricalNbaRosterSource } from '../data/historicalNbaRosterSources';
+import { isHistoricalNbaStart } from '../data/historicalNbaSeasons';
+import { STATIC_NBA_TEAMS, staticNbaTeamLogo } from '../data/staticNbaTeams';
+import {
+  applyZengmHistoricalContracts,
+  buildZengmHistoricalDraftProspects,
+  buildZengmHistoricalRosterResult,
+  buildZengmIncomingDraftedPlayers,
+} from './zengmHistoricalRoster';
 import {
   extractJerseyNumber,
   findTeamInfoForSeason,
   normalizeBBGMStat,
   stampInitialInjury,
 } from './rosterServiceHelpers';
+import { resolvePersistentPlayerImage } from '../utils/playerImage';
+import { hasTwoWayContractMarker, normalizeContractOptionKind } from '../utils/contractTypes';
+import { getHistoricalNbaClutchAwards } from '../data/historicalNbaClutchAwards';
+import { getHistoricalNbaExtraAwards } from '../data/historicalNbaExtraAwards';
+import { assertJsonResponse, readJsonResponse } from './utils/jsonResponse';
+import { getExplicitSourceRetiredYear, inferSourceRetirement } from './retirement/sourceRetirement';
+import { flattenHistoricalAwards } from './bbgmParser';
+import { normalizeModernNbaDivisionAssignments } from '../utils/modernNbaTeamStructure';
 
 
 // ── Contract override helpers ─────────────────────────────────────────────────
 
-type ContractEntry = { season: string; option: string; guaranteed: number };
+type ContractEntry = { season: string; option?: string; guaranteed: number; type?: string; contractType?: string };
 type ContractsJSON = Record<string, ContractEntry[]>;
 
 /** Normalize a player name for loose matching: lowercase, no periods, no suffixes. */
 function normalizeContractName(name: string): string {
   return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
-    .replace(/\./g, '')
+    .replace(/[.'’]/g, '')
+    .replace(/[-_]/g, ' ')
     .replace(/\s+(jr|sr|ii|iii|iv|v)\.?$/i, '')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function canonicalContractOption(entry: ContractEntry): '' | 'Player' | 'Team' | 'Two-Way' | 'Non-Guaranteed' {
+  const kind = normalizeContractOptionKind(entry.option ?? entry.type ?? entry.contractType);
+  if (kind === 'player') return 'Player';
+  if (kind === 'team') return 'Team';
+  if (kind === 'twoWay') return 'Two-Way';
+  if (kind === 'nonGuaranteed') return 'Non-Guaranteed';
+  return '';
+}
+
+const LATEST_LOGO_ABBREV_ALIASES: Record<string, string> = {
+  GS: 'GSW',
+  SA: 'SAS',
+  NYC: 'NYK',
+  PHO: 'PHX',
+  BRK: 'BKN',
+  NJN: 'BKN',
+  NOH: 'NOP',
+  NOK: 'NOP',
+  NOL: 'NOP',
+  CHO: 'CHA',
+  CHH: 'CHA',
+  SEA: 'OKC',
+  VAN: 'MEM',
+  WSB: 'WAS',
+  KCK: 'SAC',
+  CIN: 'SAC',
+  ROC: 'SAC',
+  SDC: 'LAC',
+  BUF: 'LAC',
+  SYR: 'PHI',
+  PHW: 'GSW',
+  MPL: 'LAL',
+  STL: 'ATL',
+};
+
+function latestNbaLogoForAbbrev(abbrev?: string): string | undefined {
+  const rawAbbrev = String(abbrev ?? '').toUpperCase();
+  const staticAbbrev = LATEST_LOGO_ABBREV_ALIASES[rawAbbrev] ?? rawAbbrev;
+  const staticTeam = STATIC_NBA_TEAMS.find(team => team.abbrev === staticAbbrev);
+  return staticTeam ? staticNbaTeamLogo(staticTeam) : undefined;
+}
+
+function resolveNbaTeamLogo(abbrev: string | undefined, rawLogo?: string): string | undefined {
+  const logo = String(rawLogo ?? '').trim();
+  if (logo.startsWith('http://') || logo.startsWith('https://')) return logo;
+  return latestNbaLogoForAbbrev(abbrev);
+}
+
+function buildTeamIdentitySeasons(team: any): Team['identitySeasons'] {
+  return (team?.seasons ?? [])
+    .map((season: any) => {
+      const seasonYear = Number(season?.season);
+      if (!Number.isFinite(seasonYear)) return null;
+      return {
+        season: seasonYear,
+        abbrev: season.abbrev ?? team?.abbrev,
+        region: season.region ?? team?.region ?? '',
+        name: season.name ?? team?.name ?? '',
+        imgURL: season.imgURL,
+        imgURLSmall: season.imgURLSmall,
+        logoUrl: season.logoUrl,
+        teamLogoUrl: season.teamLogoUrl,
+        colors: season.colors ?? team?.colors,
+      };
+    })
+    .filter((row: any): row is NonNullable<Team['identitySeasons']>[number] => Boolean(row));
+}
+
+function inferRawHofInductionYear(player: any): number | undefined {
+  const directYear = Number(player?.hofInductionYear ?? 0);
+  if (directYear > 0) return directYear;
+  const hofAward = (player?.awards ?? []).find((award: any) => {
+    const type = String(award?.type ?? '').toLowerCase();
+    return type.includes('inducted into the hall of fame') || type === 'hall of fame';
+  });
+  const awardYear = Number(hofAward?.season ?? 0);
+  return awardYear > 0 ? awardYear : undefined;
+}
+
+type NormalizedAward = { season: number; type: string };
+
+function normalizeRosterAwardType(rawType: unknown): string {
+  const trimmed = String(rawType ?? '')
+    .replace(/\([^)]*\)/g, '')
+    .replace(/^\s*\d+x\s+/i, '')
+    .trim();
+  const normalized = trimmed.toLowerCase().replace(/[_-]/g, ' ').replace(/\s+/g, ' ');
+  const compact = normalized.replace(/\s+/g, '');
+  if (!normalized) return '';
+  if (normalized === 'mvp') return 'Most Valuable Player';
+  if (normalized === 'dpoy') return 'Defensive Player of the Year';
+  if (normalized === 'roy') return 'Rookie of the Year';
+  if (normalized === 'smoy') return 'Sixth Man of the Year';
+  if (normalized === 'mip') return 'Most Improved Player';
+  if (normalized === 'champion' || normalized === 'nba champion' || normalized === 'won championship') return 'Champion';
+  if (normalized === 'finals mvp') return 'Finals MVP';
+  if (compact === 'allstar') return 'All-Star';
+  if (compact === 'allstarmvp') return 'All-Star MVP';
+  if (normalized === 'slam dunk contest winner' || normalized === 'slam dunk winner') return 'Slam Dunk Contest Winner';
+  if (normalized === 'league scoring leader' || normalized === 'scoring leader' || normalized === 'scoring title') return 'League Scoring Leader';
+  if (normalized === 'first team all league') return 'All-NBA First Team';
+  if (normalized === 'second team all league') return 'All-NBA Second Team';
+  if (normalized === 'third team all league') return 'All-NBA Third Team';
+  if (normalized === 'first team all defensive') return 'All-Defensive First Team';
+  if (normalized === 'second team all defensive') return 'All-Defensive Second Team';
+  return trimmed;
+}
+
+function expandAwardYearToken(token: string): number[] {
+  const cleaned = token.trim().replace(/[–—]/g, '-');
+  const range = cleaned.match(/^(\d{4})\s*-\s*(\d{2,4})$/);
+  if (range) {
+    const start = Number(range[1]);
+    const rawEnd = String(range[2]);
+    const end = rawEnd.length === 2 ? Math.floor(start / 100) * 100 + Number(rawEnd) : Number(rawEnd);
+    if (Number.isFinite(start) && Number.isFinite(end) && end >= start && end - start <= 80) {
+      return Array.from({ length: end - start + 1 }, (_, index) => start + index);
+    }
+  }
+  const single = cleaned.match(/\d{4}/);
+  return single ? [Number(single[0])] : [];
+}
+
+function extractAwardSeasons(rawAward: unknown): number[] {
+  if (rawAward && typeof rawAward === 'object') {
+    const award = rawAward as any;
+    if (Array.isArray(award.seasons)) {
+      return award.seasons.flatMap((season: any) => {
+        const value = Number(season);
+        return Number.isFinite(value) ? [value] : expandAwardYearToken(String(season ?? ''));
+      });
+    }
+    const directSeason = Number(award.season ?? award.year);
+    if (Number.isFinite(directSeason)) return [directSeason];
+    const rawSeason = award.season ?? award.year;
+    if (rawSeason !== undefined && rawSeason !== null) return expandAwardYearToken(String(rawSeason));
+  }
+
+  const text = String(rawAward ?? '');
+  const match = text.match(/\(([^)]*)\)/);
+  if (!match) return [];
+  return match[1].split(',').flatMap(expandAwardYearToken);
+}
+
+function normalizeRawPlayerAwards(rawAwards: unknown, seasonEndYear: number): NormalizedAward[] | undefined {
+  if (!Array.isArray(rawAwards)) return rawAwards as any;
+  const awards: NormalizedAward[] = [];
+  const seen = new Set<string>();
+  for (const rawAward of rawAwards) {
+    const rawType = typeof rawAward === 'string'
+      ? rawAward
+      : (rawAward as any)?.type ?? (rawAward as any)?.award ?? (rawAward as any)?.name;
+    const type = normalizeRosterAwardType(rawType);
+    if (!type) continue;
+    for (const season of extractAwardSeasons(rawAward)) {
+      if (!Number.isFinite(season) || season >= seasonEndYear) continue;
+      const key = `${season}:${type}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      awards.push({ season, type });
+    }
+  }
+  return awards.length > 0 ? awards : undefined;
 }
 
 /**
@@ -31,26 +218,37 @@ function normalizeContractName(name: string): string {
  *
  * Rules (per gist docs):
  *  - Duplicate season rows → use highest guaranteed value
- *  - current season = "${startYear-1}-${String(startYear).slice(-2)}" (e.g. "2025-26" when startYear=2026)
+ *  - current season = "${startYear}-${String(startYear + 1).slice(-2)}"
  *  - contract.amount stored in BBGM thousands (55224526 → 55224)
  *  - exp = parseInt(lastSeason.split('-')[0]) + 1  (e.g. "2027-28" → 2028)
  *  - hasPlayerOption / hasTeamOption from the LAST contracted season's option field
  */
 function applyContractOverrides(players: Player[], contractsData: ContractsJSON, startYear: number): Player[] {
-  const currentSeasonStr = `${startYear - 1}-${String(startYear).slice(-2)}`;
+  const currentSeasonStr = `${startYear}-${String(startYear + 1).slice(-2)}`;
 
   // Build normalized-name → entries map
   const contractMap = new Map<string, ContractEntry[]>();
   for (const [name, entries] of Object.entries(contractsData)) {
     if (!Array.isArray(entries)) continue;
     const key = normalizeContractName(name);
-    // Deduplicate by season: keep LOWEST guaranteed per season.
-    // Duplicate rows for the same season are buyout remnants (the inflated number
-    // is the pre-buyout salary; the lower number is the actual cap hit after buyout).
     const seasonBest = new Map<string, ContractEntry>();
     for (const e of entries) {
       const prev = seasonBest.get(e.season);
-      if (!prev || e.guaranteed < prev.guaranteed) seasonBest.set(e.season, e);
+      if (!prev) {
+        seasonBest.set(e.season, e);
+        continue;
+      }
+      const positiveAmounts = [prev.guaranteed, e.guaranteed].filter(amount => amount > 0);
+      const guaranteed = positiveAmounts.length > 0 ? Math.min(...positiveAmounts) : 0;
+      const optionSource = canonicalContractOption(e) ? e : prev;
+      const amountSource = e.guaranteed === guaranteed ? e : prev;
+      seasonBest.set(e.season, {
+        ...amountSource,
+        guaranteed,
+        option: optionSource.option,
+        type: optionSource.type,
+        contractType: optionSource.contractType,
+      });
     }
     contractMap.set(key, Array.from(seasonBest.values()).sort((a, b) => a.season.localeCompare(b.season)));
   }
@@ -82,8 +280,9 @@ function applyContractOverrides(players: Player[], contractsData: ContractsJSON,
     // Store ALL contract years for PlayerBioContractTab display (real per-season amounts).
     // If an option year has blank salary (guaranteed===0), estimate from prior year + ~5% escalator.
     const contractYears = entries.map((e, idx) => {
+      const option = canonicalContractOption(e);
       let guaranteed = e.guaranteed;
-      if (guaranteed <= 0 && (e.option === 'Team' || e.option === 'Player')) {
+      if (guaranteed <= 0 && (option === 'Team' || option === 'Player')) {
         // Walk backwards to find last known salary, then apply ~5% compounded escalator
         let base = 0;
         let stepsBack = 0;
@@ -94,7 +293,7 @@ function applyContractOverrides(players: Player[], contractsData: ContractsJSON,
           guaranteed = Math.round(base * Math.pow(1.05, stepsBack));
         }
       }
-      return { season: e.season, guaranteed, option: e.option };
+      return { season: e.season, guaranteed, option };
     });
 
     // Current season salary (for cap engine)
@@ -112,16 +311,23 @@ function applyContractOverrides(players: Player[], contractsData: ContractsJSON,
     // exp year: first part of last season string + 1  ("2027-28" → 2027+1=2028)
     const expYear = parseInt(lastEntry.season.split('-')[0], 10) + 1;
 
-    const hasPlayerOption = lastEntry.option === 'Player';
-    const hasTeamOption   = lastEntry.option === 'Team';
+    const lastOptionKind = normalizeContractOptionKind(lastEntry.option ?? lastEntry.type ?? lastEntry.contractType);
+    const currentOptionKind = normalizeContractOptionKind(currentEntry.option ?? currentEntry.type ?? currentEntry.contractType);
+    const hasPlayerOption = lastOptionKind === 'player';
+    const hasTeamOption = lastOptionKind === 'team';
+    const isTwoWay = currentOptionKind === 'twoWay' || futureEntries.some(entry => normalizeContractOptionKind(entry.option ?? entry.type ?? entry.contractType) === 'twoWay');
+    const isNonGuaranteed = currentOptionKind === 'nonGuaranteed';
 
     return {
       ...player,
       contractYears,  // real per-season amounts for display
+      twoWay: isTwoWay || (player as any).twoWay || undefined,
+      nonGuaranteed: isNonGuaranteed || (player as any).nonGuaranteed || undefined,
       contract: {
         ...(player.contract ?? {}),
         amount: Math.round(currentEntry.guaranteed / 1000), // BBGM thousands
         exp: expYear,
+        ...(isTwoWay ? { type: 'TWO_WAY' } : {}),
         hasPlayerOption: hasPlayerOption || undefined,
         hasTeamOption:   hasTeamOption   || undefined,
         // teamOptionExp must match expYear so seasonRollover's teamOptExp !== nextYear guard fires
@@ -131,30 +337,76 @@ function applyContractOverrides(players: Player[], contractsData: ContractsJSON,
   });
 }
 
-type RosterResult = { players: Player[], teams: Team[], teamNameMap: Map<string, Team>, availableYears: number[], draftPicks: DraftPick[] };
-let _rosterCache: { key: string; promise: Promise<RosterResult> } | null = null;
+export type RosterResult = {
+  players: Player[];
+  teams: Team[];
+  teamNameMap: Map<string, Team>;
+  availableYears: number[];
+  draftPicks: DraftPick[];
+  supported: boolean;
+};
+const ROSTER_CACHE_LIMIT = 3;
+const rosterCache = new Map<string, Promise<RosterResult>>();
+
+function cacheRosterPromise(key: string, promise: Promise<RosterResult>): Promise<RosterResult> {
+    const cachedPromise = promise.catch(error => {
+        rosterCache.delete(key);
+        throw error;
+    });
+    rosterCache.set(key, cachedPromise);
+    while (rosterCache.size > ROSTER_CACHE_LIMIT) {
+        const oldestKey = rosterCache.keys().next().value;
+        if (oldestKey) rosterCache.delete(oldestKey);
+    }
+    return cachedPromise;
+}
 
 /** Kicks off the roster fetch without waiting. Safe to call multiple times — memoized by (year,phase). */
 export const prewarmRoster = (startYear: number = 2025, startPhase: GamePhase = 'Opening Week'): Promise<RosterResult> => {
   return getRosterData(startYear, startPhase);
 };
 
-export const getRosterData = (startYear: number, startPhase: GamePhase): Promise<RosterResult> => {
-    const cacheKey = `${startYear}:${startPhase}`;
-    if (_rosterCache && _rosterCache.key === cacheKey) return _rosterCache.promise;
-    const promise = new Promise<RosterResult>((resolve, reject) => {
-        console.log(`RosterService: Fetching MASTER roster to process for ${startYear}...`);
-        
-        // Fetch contracts data in parallel
-        const contractsPromise = fetch(CONTRACTS_URL)
-            .then(res => res.json())
-            .catch(() => ({} as ContractsJSON));
+const rosterBranchStart = (startYear: number, startPhase: GamePhase, explicit?: string): number | string => {
+    if (explicit) return explicit;
+    if (startPhase === 'Preseason' || startPhase === 'Training Camp') return `${startYear}-09-01`;
+    if (startPhase === 'Opening Week' || startPhase.startsWith('Regular Season')) return `${startYear}-10-01`;
+    return startYear;
+};
 
+export const getRosterData = (startYear: number, startPhase: GamePhase, branchDate?: string): Promise<RosterResult> => {
+    const rosterSource = getHistoricalNbaRosterSource(startYear);
+    const branchStart = rosterBranchStart(startYear, startPhase, branchDate);
+    const cacheKey = `${startYear}:${startPhase}:${branchStart}:${rosterSource?.url ?? 'zengm-reconstructed'}`;
+    const cachedRoster = rosterCache.get(cacheKey);
+    if (cachedRoster) {
+        rosterCache.delete(cacheKey);
+        rosterCache.set(cacheKey, cachedRoster);
+        return cachedRoster;
+    }
+    const contractsPromise = startYear >= 2025
+        ? fetch(CONTRACTS_URL)
+            .then(res => readJsonResponse<ContractsJSON>(res, 'NBA contract source'))
+            .catch(() => ({} as ContractsJSON))
+        : Promise.resolve({} as ContractsJSON);
+    if (!rosterSource) {
+        const reconstructedPromise = Promise.all([
+            buildZengmHistoricalRosterResult(startYear, branchStart),
+            contractsPromise,
+        ]).then(([result, contractsData]) => ({
+            ...result,
+            players: applyContractOverrides(result.players, contractsData, startYear),
+        }));
+        return cacheRosterPromise(cacheKey, reconstructedPromise);
+    }
+    const promise = new Promise<RosterResult>((resolve, reject) => {
+        console.log(`RosterService: Fetching ${rosterSource.label} roster to process for ${startYear}...`);
+        const seasonEndYear = startYear + 1;
+        
         // Fetch extra retired players in parallel
         const extraRetiredPromise = fetch(EXTRA_RETIRED_PLAYERS_URL)
             .then(res => {
                 console.log(`RosterService: Extra retired players fetch status: ${res.status}`);
-                return res.json();
+                return readJsonResponse<any>(res, 'NBA extra retired-player source');
             })
             .then(data => {
                 console.log("RosterService: Extra retired players data keys:", Object.keys(data));
@@ -171,7 +423,8 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
 
                 const filtered = players.filter((p: any) => {
                     // Only take retired players or HOF
-                    const isRetired = p.tid === -3 || (p.retiredYear && p.retiredYear < startYear);
+                    const retiredYear = getExplicitSourceRetiredYear(p);
+                    const isRetired = p.tid === -3 || (retiredYear !== null && retiredYear <= startYear);
                     // Exclude deceased players
                     const isDeceased = p.diedYear && p.diedYear < startYear;
                     return isRetired && !isDeceased;
@@ -189,12 +442,12 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
             data = parsedJson;
         });
 
-        fetch(ROSTER_URL).then(response => {
-            if (!response.ok || !response.body) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
+        fetch(rosterSource.url).then(response => {
+            assertJsonResponse(response, rosterSource.label);
+            if (!response.body) throw new Error(`${rosterSource.label} returned no readable body.`);
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
+            let firstContentChunk = true;
 
             const push = () => {
                 reader.read().then(async ({ done, value }) => {
@@ -233,21 +486,31 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                                 if (name.toLowerCase().includes('booker')) {
                                     console.log(`✅ DEBUG: MERGING ${name} (tid: ${p.tid}) into roster!`);
                                 }
-                                // Extra retired gist stats have tid values off by -1 (NBA team tids).
-                                // Add +1 to correct: ATL=-1→0, BOS=0→1, etc. External leagues (>=1000) untouched.
-                                const correctedStats = Array.isArray(p.stats)
-                                    ? p.stats.map((s: any) => (typeof s.tid === 'number' && s.tid >= -1 && s.tid < 100) ? { ...s, tid: s.tid + 1 } : s)
-                                    : p.stats;
-                                mergedPlayersRaw.push(correctedStats === p.stats ? p : { ...p, stats: correctedStats });
+                                mergedPlayersRaw.push(p);
                                 mergedCount++;
                             }
                         });
                         console.log(`RosterService: Merged ${mergedCount} new retired players into the main roster.`);
+                        const normalizedPlayersRaw = mergedPlayersRaw.map((player: any) => {
+                            const sourceRetirement = inferSourceRetirement(player, {
+                                branchCutoffYear: startYear,
+                                sourceCoverageThrough: startYear,
+                            });
+                            if (!sourceRetirement) return player;
+                            return {
+                                ...player,
+                                retiredYear: sourceRetirement.retiredYear,
+                                sourceRetirement,
+                            };
+                        });
 
-                        const processedPlayers: Player[] = mergedPlayersRaw
+                        const processedPlayers: Player[] = normalizedPlayersRaw
                         .filter(p => {
+                            const draftYear = Number(p.draft?.year ?? 0);
+                            if (startYear < 2025 && draftYear > seasonEndYear) return false;
+
                             // Don't filter out players if they are future prospects (>= catches current-year draft class)
-                            const isProspect = p.draft && p.draft.year >= startYear && p.tid < 0;
+                            const isProspect = p.draft && p.draft.year >= startYear && p.draft.year <= seasonEndYear && p.tid < 0;
                             if (isProspect) return true;
                             
                             // Don't filter out Hall of Famers (tid: -3)
@@ -294,70 +557,141 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
 
                             const teamInfo = findTeamInfoForSeason(p, startYear, startPhase);
                             // teamInfo.tid < 0 guards against already-drafted BBGM players being demoted to prospect
-                            const isProspect = p.draft && p.draft.year >= startYear && teamInfo.tid < 0;
-                            const isRetired = p.tid === -3 || (p.retiredYear && p.retiredYear < startYear);
-                            
-                            const jerseyNumber = extractJerseyNumber(p);
+                            const isProspect = p.draft && p.draft.year >= startYear && p.draft.year <= seasonEndYear && teamInfo.tid < 0;
+                            const explicitRetiredYear = getExplicitSourceRetiredYear(p);
+                            const isRetired = !!(p as any).sourceRetirement
+                              || (p.tid === -3 && explicitRetiredYear === null && teamInfo.tid < 0);
+                            const visibleStats = (p.stats || [])
+                                .filter((stat: any) => Number(stat.season ?? seasonEndYear) < seasonEndYear)
+                                .map(normalizeBBGMStat);
+                            const visibleAwards = normalizeRawPlayerAwards((p as any).awards, seasonEndYear);
+                            const rawHofInductionYear = inferRawHofInductionYear(p);
+                            const scheduledHofInductionYear = isHistoricalNbaStart(startYear)
+                                ? undefined
+                                : rawHofInductionYear && rawHofInductionYear >= seasonEndYear
+                                    ? rawHofInductionYear
+                                    : (p as any).scheduledHofInductionYear;
+                            const visibleTransactions = Array.isArray((p as any).transactions)
+                                ? (p as any).transactions.filter((transaction: any) => Number(transaction.season ?? startYear) <= startYear)
+                                : (p as any).transactions;
+                            const ratingHistory = (p.ratings ?? []).filter((rating: any) => Number(rating.season ?? seasonEndYear) <= seasonEndYear);
+                            const visibleRatings = ratingHistory.length > 0 || !isProspect ? ratingHistory : p.ratings;
+                            const jerseyNumber = extractJerseyNumber({ ...p, stats: visibleStats });
 
-                            // Detect two-way contracts at initialization — BBGM stores two-way salary as 625 (thousands = $625K)
-                            // Use < 800 threshold for grace (some may be slightly above exact 625)
-                            // Mark immediately so roster-trim logic doesn't count them against the 15-man standard cap
-                            const isTwoWay = !isProspect && !isRetired && (p.contract?.amount ?? 0) > 0 && (p.contract?.amount ?? 9999) < 800 && teamInfo.tid >= 0;
+                            const contractAmount = Number(p.contract?.amount ?? 0);
+                            const explicitTwoWay = hasTwoWayContractMarker(p as any);
+                            const draftInfo = p.draft as (typeof p.draft & { round?: number; pick?: number }) | undefined;
+                            const draftYear = Number(draftInfo?.year);
+                            const draftRound = Number(draftInfo?.round ?? 0);
+                            const draftPick = Number(draftInfo?.pick ?? 0);
+                            const recentDraft = Number.isFinite(draftYear) && startYear - draftYear >= 0 && startYear - draftYear < 2;
+                            const twoWayDraftPath = draftRound === 2 || (draftRound <= 0 && draftPick <= 0);
+                            const inferredTwoWay = startYear >= 2017
+                              && recentDraft
+                              && twoWayDraftPath
+                              && contractAmount > 0
+                              && contractAmount <= 1000
+                              && !(p as any).nonGuaranteed;
+                            const isTwoWay =
+                              !isProspect
+                              && !isRetired
+                              && teamInfo.tid >= 0
+                              && (explicitTwoWay || inferredTwoWay);
+                            const portraitPlayer = {
+                                ...p,
+                                name: playerName,
+                                srID: p.srID ?? (p as any).slug,
+                                slug: (p as any).slug ?? p.srID,
+                                status: isProspect ? 'Prospect' : (isRetired ? 'Retired' : (teamInfo.tid === -1 ? 'Free Agent' : 'Active')),
+                            } as any;
                             return {
                                 ...p,
                                 name: playerName,
                                 contract: p.contract || { amount: 0, exp: startYear - 1 },
                                 injury: stampInitialInjury(p.injury),
-                                tid: isProspect ? -1 : (isRetired ? -3 : teamInfo.tid),
+                                tid: isProspect ? -2 : (isRetired ? -3 : teamInfo.tid),
                                 // STEP 4: Stable ID based on name + birth year (not tid, which changes on trades)
                                 // nba-DevinBooker-1996  euro-LukaKrajnc-2001
                                 internalId: `${p.tid < 100 ? 'nba' : 'euro'}-${playerName.replace(/\s+/g, '')}-${(p as any).born?.year ?? Math.abs(p.tid)}`,
-                                overallRating: calculatePlayerOverallForYear(p, startYear),
-                                status: isProspect ? 'Prospect' : (isRetired ? 'Retired' : (teamInfo.tid === -1 ? 'Free Agent' : 'Active')),
+                                srID: p.srID ?? (p as any).slug,
+                                slug: (p as any).slug ?? p.srID,
+                                overallRating: calculatePlayerOverallForYear(p, seasonEndYear),
+                                status: portraitPlayer.status,
                                 diedYear: p.diedYear,
                                 hof: p.hof,
                                 jerseyNumber,
+                                imgURL: resolvePersistentPlayerImage(portraitPlayer),
+                                ratings: visibleRatings,
+                                awards: visibleAwards,
+                                transactions: visibleTransactions,
+                                scheduledHofInductionYear,
                                 twoWay: isTwoWay || undefined,
-                                // Normalize BBGM short stat field names → game field names
-                                stats: (p.stats || []).map(normalizeBBGMStat),
+                                ...(isTwoWay ? { contract: { ...(p.contract ?? { amount: 0, exp: startYear - 1 }), type: 'TWO_WAY' } } : {}),
+                                stats: visibleStats,
                             } as any;
                         })
                         .filter((p): p is Player => p !== null);  
 
-                        const activeTeamsData = (data.teams || []).filter(t => 
-                            !t.disabled && t.seasons.some((s: any) => s.season === startYear)
-                        );
-                        const processedTeams: Team[] = activeTeamsData.map(t => {
-                            const seasonData = t.seasons.find((s: any) => s.season === startYear)!;
+                        const activeTeamsData = (data.teams || [])
+                            .filter(team => {
+                                const teamId = Number(team?.tid);
+                                return team?.disabled !== true && Number.isInteger(teamId) && teamId >= 0;
+                            })
+                            .map(t => ({
+                                team: t,
+                                seasonData: t.seasons?.find((s: any) => s.season === seasonEndYear)
+                                    ?? t.seasons?.find((s: any) => s.season === startYear)
+                                    ?? t,
+                            }));
+                        const importedTeams: Team[] = activeTeamsData.map(({ team: t, seasonData }) => {
+                            const region = seasonData.region || t.region || '';
+                            const name = seasonData.name || t.name || '';
+                            const abbrev = seasonData.abbrev || t.abbrev;
+                            const cid = typeof seasonData.cid === 'number'
+                              ? seasonData.cid
+                              : typeof t.cid === 'number' ? t.cid : 0;
+                            const did = typeof seasonData.did === 'number'
+                              ? seasonData.did
+                              : typeof t.did === 'number' ? t.did : 0;
                             return {
                                 id: t.tid,
-                                name: `${seasonData.region || t.region} ${seasonData.name || t.name}`,
-                                abbrev: seasonData.abbrev || t.abbrev,
-                                region: seasonData.region || t.region || '',
-                                conference: t.cid === 0 ? 'East' : 'West',
-                                cid: typeof t.cid === 'number' ? t.cid : (t.cid === 0 ? 0 : 1),
-                                did: typeof t.did === 'number' ? t.did : 0,
+                                name: getTeamFullName({ region, name, abbrev }),
+                                abbrev,
+                                region,
+                                conference: cid === 0 ? 'East' : 'West',
+                                cid,
+                                did,
                                 strength: 0,
                                 wins: 0,
                                 losses: 0,
                                 pop: seasonData.pop ?? (t as any).pop ?? 0,
-                                logoUrl: t.imgURLSmall,
-                                colors: t.colors,
+                                logoUrl: resolveNbaTeamLogo(abbrev, seasonData.imgURLSmall ?? t.imgURLSmall ?? t.imgURL),
+                                colors: seasonData.colors ?? t.colors,
                                 streak: { type: 'W', count: 0 },
                                 // Preserved for TeamHistoryView — essential for franchise season records
-                                seasons: (t.seasons ?? []).map((s: any) => ({
+                                seasons: (t.seasons ?? [])
+                                  .filter((s: any) => Number(s.season ?? seasonEndYear) < seasonEndYear)
+                                  .map((s: any) => ({
                                     season: s.season,
                                     won: s.won ?? 0,
                                     lost: s.lost ?? 0,
                                     playoffRoundsWon: s.playoffRoundsWon ?? -1,
+                                    pop: Number.isFinite(Number(s.pop)) ? Number(s.pop) : undefined,
                                     abbrev: s.abbrev ?? t.abbrev,
                                     region: s.region ?? t.region ?? '',
                                     name: s.name ?? t.name ?? '',
                                     imgURLSmall: s.imgURLSmall,
-                                })),
+                                    imgURL: s.imgURL,
+                                    logoUrl: s.logoUrl,
+                                    teamLogoUrl: s.teamLogoUrl,
+                                    colors: s.colors ?? t.colors,
+                                  })),
+                                identitySeasons: buildTeamIdentitySeasons(t),
                                 retiredJerseyNumbers: t.retiredJerseyNumbers ?? [],
                             };
                         });
+
+                        const processedTeams = normalizeModernNbaDivisionAssignments(importedTeams, seasonEndYear);
 
                         processedTeams.forEach(team => {
                            team.strength = calculateTeamStrength(team.id, processedPlayers);
@@ -373,10 +707,29 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                         });
                         const availableYears = Array.from(allSeasons).sort((a, b) => b - a);
 
-                        const draftPicks = (data.draftPicks || []).filter(p => p.season >= startYear);
+                        const draftPicks = (data.draftPicks || []).filter(p => p.season >= seasonEndYear);
                         
+                        const incomingDraftedPlayers = rosterSource.strategy === 'alexnoob_post_draft_hybrid'
+                            ? await buildZengmIncomingDraftedPlayers(startYear, processedTeams, processedPlayers)
+                            : [];
+                        const incomingIds = new Set(incomingDraftedPlayers.map(player => player.internalId));
+                        const playersWithIncomingDrafted = incomingDraftedPlayers.length > 0
+                            ? [...processedPlayers.filter(player => !incomingIds.has(player.internalId)), ...incomingDraftedPlayers]
+                            : processedPlayers;
+                        const zengmDraftProspects = isHistoricalNbaStart(startYear)
+                            ? await buildZengmHistoricalDraftProspects(startYear, playersWithIncomingDrafted)
+                            : [];
+                        const playersWithHistoricalDrafts = zengmDraftProspects.length > 0
+                            ? [...playersWithIncomingDrafted, ...zengmDraftProspects]
+                            : playersWithIncomingDrafted;
+                        const playersWithHistoricalContracts = isHistoricalNbaStart(startYear)
+                            ? await applyZengmHistoricalContracts(playersWithHistoricalDrafts, startYear)
+                            : playersWithHistoricalDrafts;
+
                         const contractsData: ContractsJSON = await contractsPromise;
-                        const finalPlayers = applyContractOverrides(processedPlayers, contractsData, startYear);
+                        const finalPlayers = startYear >= 2025
+                            ? applyContractOverrides(playersWithHistoricalContracts, contractsData, startYear)
+                            : playersWithHistoricalContracts;
 
                         // Fill missing jersey numbers (BBGM prospects have no stats yet → extractJerseyNumber → undefined)
                         const retiredByTid = new Map<number, Set<string>>();
@@ -413,9 +766,16 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
                         });
 
                         console.log(`RosterService: Successfully processed ${normalizedPlayers.length} players and ${processedTeams.length} teams for the ${startYear} season.`);
-                        resolve({ players: normalizedPlayers, teams: processedTeams, teamNameMap, availableYears, draftPicks });
+                        resolve({ players: normalizedPlayers, teams: processedTeams, teamNameMap, availableYears, draftPicks, supported: true });
                     } else {
-                       parser.write(decoder.decode(value, { stream: true }));
+                       const chunk = decoder.decode(value, { stream: true });
+                       if (firstContentChunk && chunk.trimStart()) {
+                         firstContentChunk = false;
+                         if (chunk.trimStart().startsWith('<')) {
+                           throw new Error(`${rosterSource.label} returned the app page instead of JSON. Check the data file path or deployment assets.`);
+                         }
+                       }
+                       parser.write(chunk);
                        push();
                     }
                 }).catch(err => reject(err));
@@ -423,29 +783,18 @@ export const getRosterData = (startYear: number, startPhase: GamePhase): Promise
             push();
         }).catch(err => reject(err));
     });
-    _rosterCache = { key: cacheKey, promise };
-    return promise;
+    return cacheRosterPromise(cacheKey, promise);
 };
 export const getHistoricalAwards = async (): Promise<any[]> => {
+    const clutchAwards = getHistoricalNbaClutchAwards();
+    const extraAwards = getHistoricalNbaExtraAwards();
     try {
         const response = await fetch(ROSTER_URL);
-        const data = await response.json();
-        // BBGM awards are season-objects: {season, champion:{tid,name}, ...}
-        // Normalize to flat {type, tid, season, name} so lazySimRunner filters work
+        const data = await readJsonResponse<any>(response, 'NBA historical awards source');
         const raw: any[] = data.awards || [];
-        return raw.flatMap((a: any) => {
-            const items: any[] = [];
-            if (a.champion?.tid !== undefined) {
-                items.push({ season: a.season, type: 'Champion', name: a.champion.name ?? '', tid: a.champion.tid });
-            }
-            // Derive runner-up from runnerUp field if present (BBGM doesn't always include it)
-            if (a.runnerUp?.tid !== undefined) {
-                items.push({ season: a.season, type: 'Runner Up', name: a.runnerUp.name ?? '', tid: a.runnerUp.tid });
-            }
-            return items;
-        });
+        return [...flattenHistoricalAwards(raw, STATIC_NBA_TEAMS), ...clutchAwards, ...extraAwards];
     } catch (err) {
         console.warn("RosterService: Failed to fetch historical awards:", err);
-        return [];
+        return [...clutchAwards, ...extraAwards];
     }
 };  

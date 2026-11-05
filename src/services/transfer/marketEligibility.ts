@@ -1,55 +1,68 @@
-/**
- * marketEligibility.ts — single source of truth for which leagues participate
- * in the Euro Transfer Market.
- *
- * Architectural reason this lives in its own file: tickTransferMarket, the UI
- * filters, and the team-league label helper all need to agree on "which TIDs
- * are valid sellers/bidders". Hardcoding ranges in three places led to leaks
- * (WNBA/PBA/B-League/CBA teams showing up as 'Liga Endesa' listings). One
- * registry → one truth.
- *
- * TID offset convention (per CLAUDE.md):
- *   NBA:        0–99
- *   Euroleague: 1000–1999
- *   PBA:        2000–2999
- *   WNBA:       3000–3999
- *   B-League:   4000–4999
- *   Liga Endesa: 5000–5999
- *   G-League:   6000–6999
- *   CBA:        7000–7999
- *   NBL:        8000–8999
- */
+import { EURO_BASKETBALL_SOURCE_ARCHIVES, EUROLEAGUE_2026_SOURCE } from '../../data/euroBasketballSources';
 
 export interface TransferMarketLeague {
   name: string;
+  leagueId: string;
+  leagueStatus: string;
   minTid: number;
   maxTid: number;
 }
 
-/**
- * Leagues that participate in the Euro Transfer Market. To add a new league
- * (e.g. B-League if user enables it), append here and the ticker + UI pick it
- * up automatically. PBA, WNBA, G-League, CBA, NBL deliberately excluded —
- * they have their own roster mechanics or no transfer-fee concept at all.
- */
+type TransferMarketTeam = {
+  tid?: number;
+  id?: number;
+  league?: string;
+  status?: string;
+};
+
+const catalogLeagues = [EUROLEAGUE_2026_SOURCE, ...EURO_BASKETBALL_SOURCE_ARCHIVES]
+  .map(source => ({
+    name: source.displayName,
+    leagueId: source.leagueId,
+    leagueStatus: source.leagueStatus,
+    minTid: source.teamTidOffset,
+    maxTid: source.teamTidOffset + 999,
+  }));
+
 export const TRANSFER_MARKET_LEAGUES: readonly TransferMarketLeague[] = [
-  { name: 'Euroleague',  minTid: 1000, maxTid: 1999 },
-  { name: 'Liga Endesa', minTid: 5000, maxTid: 5999 },
+  ...catalogLeagues,
+  {
+    name: 'Liga Endesa',
+    leagueId: 'endesa',
+    leagueStatus: 'Endesa',
+    minTid: 5000,
+    maxTid: 5999,
+  },
 ];
 
-/** True if this tid belongs to a league that participates in the transfer market. */
-export function isTransferMarketEligibleTid(tid: number): boolean {
-  if (typeof tid !== 'number' || tid < 0) return false;
-  return TRANSFER_MARKET_LEAGUES.some(lg => tid >= lg.minTid && tid <= lg.maxTid);
+const normalize = (value?: string): string => String(value ?? '').trim().toLowerCase();
+
+function leagueFromLabel(value?: string): TransferMarketLeague | null {
+  const label = normalize(value);
+  if (!label) return null;
+  return TRANSFER_MARKET_LEAGUES.find(league => (
+    [league.name, league.leagueId, league.leagueStatus].some(candidate => normalize(candidate) === label)
+  )) ?? null;
 }
 
-/** Returns the league a tid belongs to, or null if it's not in any transfer-market league. */
-export function getTransferMarketLeague(tid: number): TransferMarketLeague | null {
+export function getTransferMarketLeague(tid: number, team?: TransferMarketTeam | null): TransferMarketLeague | null {
+  const explicit = leagueFromLabel(team?.league) ?? leagueFromLabel(team?.status);
+  if (explicit) return explicit;
+  if (normalize(team?.league) || normalize(team?.status)) return null;
   if (typeof tid !== 'number' || tid < 0) return null;
-  return TRANSFER_MARKET_LEAGUES.find(lg => tid >= lg.minTid && tid <= lg.maxTid) ?? null;
+  return TRANSFER_MARKET_LEAGUES.find(league => tid >= league.minTid && tid <= league.maxTid) ?? null;
 }
 
-/** Filter a list of teams (NBATeam-shaped or tycoon-shaped) down to eligible sellers/bidders. */
-export function filterTransferMarketTeams<T extends { tid?: number; id?: number }>(teams: T[]): T[] {
-  return teams.filter(t => isTransferMarketEligibleTid((t.tid ?? t.id) as number));
+export function isTransferMarketEligibleTid(tid: number): boolean {
+  return getTransferMarketLeague(tid) != null;
+}
+
+export function isTransferMarketEligibleTeam(team: TransferMarketTeam | null | undefined): boolean {
+  if (!team) return false;
+  const tid = Number(team.tid ?? team.id ?? -1);
+  return getTransferMarketLeague(tid, team) != null;
+}
+
+export function filterTransferMarketTeams<T extends TransferMarketTeam>(teams: T[]): T[] {
+  return teams.filter(isTransferMarketEligibleTeam);
 }

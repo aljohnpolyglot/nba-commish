@@ -1,0 +1,191 @@
+{
+  "schemaVersion": "1.0.0",
+  "source": "English Wikipedia indoor-arena country snapshot",
+  "sourceUrl": "https://github.com/aljohnpolyglot/nba-store-data/blob/main/wikipedia-indoor-arenas-split/countries/philippines.json",
+  "venues": [
+    {
+      "id": "rizal-memorial-coliseum",
+      "name": "Rizal Memorial Coliseum",
+      "city": "Manila",
+      "openedYear": 1934,
+      "capacity": 6100,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Rizal_Memorial_Coliseum"
+    },
+    {
+      "id": "blue-eagle-gym",
+      "name": "Blue Eagle Gym",
+      "city": "Quezon City",
+      "openedYear": 1949,
+      "capacity": 7000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Blue_Eagle_Gym"
+    },
+    {
+      "id": "araneta-coliseum",
+      "name": "Araneta Coliseum",
+      "city": "Quezon City",
+      "openedYear": 1960,
+      "capacity": 14429,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Araneta_Coliseum"
+    },
+    {
+      "id": "philsports-arena",
+      "name": "PhilSports Arena",
+      "city": "Pasig",
+      "openedYear": 1985,
+      "capacity": 10000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/PhilSports_Arena"
+    },
+    {
+      "id": "cuneta-astrodome",
+      "name": "Cuneta Astrodome",
+      "city": "Pasay",
+      "openedYear": 1993,
+      "capacity": 12000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Cuneta_Astrodome"
+    },
+    {
+      "id": "makati-coliseum",
+      "name": "Makati Coliseum",
+      "city": "Makati",
+      "openedYear": 1997,
+      "capacity": 3500,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Makati_Coliseum"
+    },
+    {
+      "id": "ynares-center",
+      "name": "Ynares Center",
+      "city": "Antipolo",
+      "openedYear": 2000,
+      "capacity": 7400,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Ynares_Center"
+    },
+    {
+      "id": "quezon-convention-center",
+      "name": "Quezon Convention Center",
+      "city": "Lucena City",
+      "openedYear": 2001,
+      "capacity": 7000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Quezon_Convention_Center"
+    },
+    {
+      "id": "agan-coliseum",
+      "name": "Mayor Vitaliano D. Agan Coliseum",
+      "city": "Zamboanga City",
+      "openedYear": 2002,
+      "capacity": 10000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Mayor_Vitaliano_D._Agan_Coliseum"
+    },
+    {
+      "id": "filoil-ecooil-centre",
+      "name": "Filoil EcoOil Centre",
+      "city": "San Juan",
+      "openedYear": 2006,
+      "capacity": 6000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Filoil_EcoOil_Centre"
+    },
+    {
+      "id": "ynares-sports-arena",
+      "name": "Ynares Sports Arena",
+      "city": "Pasig",
+      "openedYear": 2008,
+      "capacity": 3000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Ynares_Sports_Arena"
+    },
+    {
+      "id": "jesse-robredo-coliseum",
+      "name": "Jesse M. Robredo Coliseum",
+      "city": "Naga City",
+      "openedYear": 2010,
+      "capacity": 12000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Jesse_M._Robredo_Coliseum"
+    },
+    {
+      "id": "hoops-dome",
+      "name": "Hoops Dome",
+      "city": "Lapu-Lapu City",
+      "openedYear": 2011,
+      "capacity": 4600,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Hoops_Dome"
+    },
+    {
+      "id": "sm-moa-arena",
+      "name": "SM Mall of Asia Arena",
+      "city": "Pasay",
+      "openedYear": 2012,
+      "capacity": 15000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/SM_Mall_of_Asia_Arena"
+    },
+    {
+      "id": "alonte-sports-arena",
+      "name": "Alonte Sports Arena",
+      "city": "Biñan",
+      "openedYear": 2013,
+      "capacity": 6500,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Alonte_Sports_Arena"
+    },
+    {
+      "id": "santa-rosa-sports-complex",
+      "name": "Santa Rosa Sports Complex",
+      "city": "Santa Rosa",
+      "openedYear": 2017,
+      "capacity": 5700,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Santa_Rosa_Sports_Complex"
+    },
+    {
+      "id": "caloocan-sports-complex",
+      "name": "Caloocan Sports Complex",
+      "city": "Caloocan",
+      "openedYear": 2017,
+      "capacity": null,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Caloocan_Sports_Complex"
+    },
+    {
+      "id": "fpj-arena",
+      "name": "FPJ Arena",
+      "city": "San Jose, Batangas",
+      "openedYear": 2023,
+      "capacity": 3000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/FPJ_Arena"
+    },
+    {
+      "id": "candon-city-arena",
+      "name": "Candon City Arena",
+      "city": "Candon",
+      "openedYear": 2023,
+      "capacity": 8000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Candon_City_Arena"
+    },
+    {
+      "id": "capital-arena",
+      "name": "Capital Arena",
+      "city": "Ilagan",
+      "openedYear": 2024,
+      "capacity": 10000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Capital_Arena"
+    },
+    {
+      "id": "ynares-center-rodriguez",
+      "name": "Ynares Center (Rodriguez)",
+      "city": "Rodriguez, Rizal",
+      "openedYear": 2025,
+      "capacity": 6000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Ynares_Center_(Rodriguez,_Rizal)"
+    },
+    {
+      "id": "chavit-coliseum",
+      "name": "Chavit Coliseum",
+      "city": "Vigan",
+      "openedYear": 2025,
+      "capacity": 9000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/Chavit_Coliseum"
+    },
+    {
+      "id": "sm-seaside-cebu-arena",
+      "name": "SM Seaside Cebu Arena",
+      "city": "Cebu City",
+      "openedYear": 2026,
+      "capacity": 16000,
+      "sourceUrl": "https://en.wikipedia.org/wiki/SM_Seaside_Cebu_Arena"
+    }
+  ]
+}

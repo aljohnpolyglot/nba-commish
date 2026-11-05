@@ -2,6 +2,8 @@ import React from 'react';
 import { ArrowLeft } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { WhoToFollow } from './SidebarComponents';
+import { AVATAR_DATA } from '../../data/avatars';
+import { getAvatarByHandle } from '../../services/avatarService';
 
 interface FollowingListViewProps {
   onProfileClick?: (handle: string) => void;
@@ -18,7 +20,7 @@ export const FollowingListView: React.FC<FollowingListViewProps> = ({ onProfileC
     return {
       name: cached?.name || postWithHandle?.author || handle,
       handle: '@' + handle,
-      avatar: cached?.avatarUrl || postWithHandle?.avatarUrl,
+      avatar: getAvatarByHandle(handle, AVATAR_DATA) || cached?.avatarUrl || postWithHandle?.avatarUrl,
     };
   });
 

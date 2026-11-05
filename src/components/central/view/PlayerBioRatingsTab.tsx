@@ -6,7 +6,7 @@ import {
 import {
   K2_CATS, getRadarValues, RADAR_AXES,
 } from '../../../services/simulation/convert2kAttributes';
-import { convertTo2KRating } from '../../../utils/helpers';
+import { convertTo2KRating, getTimelineK2Rating } from '../../../utils/helpers';
 import type { NBAPlayer } from '../../../types';
 import { useGame } from '../../../store/GameContext';
 import {
@@ -14,7 +14,13 @@ import {
   resolvePlayerRatingBundle,
   usePlayerRatingStore,
 } from '../../../store/playerRatingStore';
-import { getScoutedDisplayOverall, getScoutedDisplayPotential, fuzzRatingValue } from '../../../utils/scoutingFuzz';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential, getScoutedK2Data, fuzzRatingValue } from '../../../utils/scoutingFuzz';
+import {
+  ensureBiosLoaded,
+  getNativeHistoricalRatingsForIdentity,
+} from '../../../data/realPlayerDataFetcher';
+import { getHistoricalNbaCompletedSeasonCutoff } from '../../../services/playerDevelopment/hofHistoryWindow';
+import { alignCurrentDisplayOverall, buildRatingProgressionSeries } from '../../../services/playerDevelopment/progressionTimeline';
 
 // ─── Radar ───────────────────────────────────────────────────────────────────
 
@@ -67,14 +73,6 @@ interface PlayerBioRatingsTabProps {
   teamColor: string;
 }
 
-const BBGM_LABELS: Record<string, string> = {
-  spd: 'Speed', jmp: 'Jumping', endu: 'Endurance', ins: 'Inside Scoring',
-  dnk: 'Dunking', ft: 'Free Throw', fg: 'Mid-Range', tp: 'Three-Point',
-  oiq: 'Off. IQ', diq: 'Def. IQ', drb: 'Dribbling', pss: 'Passing',
-  reb: 'Rebounding', stre: 'Strength', hgt: 'Height',
-};
-const BBGM_ALL = ['hgt', 'ins', 'dnk', 'ft', 'fg', 'tp', 'spd', 'jmp', 'endu', 'stre', 'oiq', 'diq', 'drb', 'pss', 'reb'];
-
 const K2_CAT_COLORS: Record<string, string> = {
   OS: '#f97316', AT: '#22c55e', IS: '#ef4444',
   PL: '#3b82f6', DF: '#8b5cf6', RB: '#eab308',
@@ -107,30 +105,49 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
   const { state } = useGame();
   const teamColor = ensureVisibleColor(rawTeamColor);
   const ratingVersion = usePlayerRatingStore(s => s.version);
-  const [view, setView] = React.useState<'K2' | 'Simple'>('K2');
   const [period, setPeriod] = React.useState<'Career' | '3Y' | '1Y'>('Career');
   const [collapsedCats, setCollapsedCats] = React.useState<Record<string, boolean>>({});
+  const [nativeRatingHistory, setNativeRatingHistory] = React.useState<NonNullable<NBAPlayer['ratings']>>([]);
   const toggleCat = (k: string) => setCollapsedCats(prev => ({ ...prev, [k]: !prev[k] }));
 
   React.useEffect(() => {
     ensurePlayerRatingData();
   }, []);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    setNativeRatingHistory([]);
+    if (state.leagueType === 'fictional') return () => { cancelled = true; };
+    const cutoff = getHistoricalNbaCompletedSeasonCutoff({
+      currentYear,
+      leagueType: state.leagueType,
+      moddedLeagueBase: state.moddedLeagueBase,
+      nbaStartYear: state.nbaStartYear,
+    }) ?? currentYear;
+    ensureBiosLoaded()
+      .then(() => {
+        if (!cancelled) setNativeRatingHistory(getNativeHistoricalRatingsForIdentity(player, cutoff));
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [currentYear, player.internalId, player.name, player.srID, state.leagueType, state.moddedLeagueBase, state.nbaStartYear]);
+
+  const visibleRatings = React.useMemo(() => {
+    const bySeason = new Map<number, NonNullable<NBAPlayer['ratings']>[number]>();
+    for (const rating of nativeRatingHistory) bySeason.set(Number(rating.season), rating);
+    for (const rating of player.ratings ?? []) bySeason.set(Number(rating.season), rating);
+    return [...bySeason.values()].sort((left, right) => Number(left.season) - Number(right.season));
+  }, [nativeRatingHistory, player.ratings]);
+
   const ratingBundle = React.useMemo(() => {
     return resolvePlayerRatingBundle(player, currentYear, currentYear);
   }, [player, currentYear, ratingVersion]);
   const currentRating = ratingBundle.currentRatings;
-  const prevRating = player.ratings?.find((r: any) => r.season === currentYear - 1);
   const k2 = ratingBundle.displayK2;
-  const fuzzedK2 = React.useMemo(() => ({
-    OS: { ovr: fuzzRatingValue(k2.OS.ovr, state, player, 'OS'), sub: k2.OS.sub.map((v, i) => fuzzRatingValue(v, state, player, `OS-${i}`)) },
-    AT: { ovr: fuzzRatingValue(k2.AT.ovr, state, player, 'AT'), sub: k2.AT.sub.map((v, i) => fuzzRatingValue(v, state, player, `AT-${i}`)) },
-    IS: { ovr: fuzzRatingValue(k2.IS.ovr, state, player, 'IS'), sub: k2.IS.sub.map((v, i) => fuzzRatingValue(v, state, player, `IS-${i}`)) },
-    PL: { ovr: fuzzRatingValue(k2.PL.ovr, state, player, 'PL'), sub: k2.PL.sub.map((v, i) => fuzzRatingValue(v, state, player, `PL-${i}`)) },
-    DF: { ovr: fuzzRatingValue(k2.DF.ovr, state, player, 'DF'), sub: k2.DF.sub.map((v, i) => fuzzRatingValue(v, state, player, `DF-${i}`)) },
-    RB: { ovr: fuzzRatingValue(k2.RB.ovr, state, player, 'RB'), sub: k2.RB.sub.map((v, i) => fuzzRatingValue(v, state, player, `RB-${i}`)) },
-    MI: { ovr: fuzzRatingValue(k2.MI.ovr, state, player, 'MI'), sub: k2.MI.sub.map((v, i) => fuzzRatingValue(v, state, player, `MI-${i}`)) },
-  }), [k2, state, player]);
+  const fuzzedK2 = React.useMemo(
+    () => getScoutedK2Data(state, player, k2),
+    [k2, state, player],
+  );
   const overall2k = getScoutedDisplayOverall(state, player, currentYear);
 
   const attrKeys = ['stre', 'spd', 'jmp', 'endu', 'ins', 'dnk', 'ft', 'fg', 'tp', 'oiq', 'diq', 'drb', 'pss', 'reb'];
@@ -142,7 +159,7 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
 
     // Step 1: Historical seasons from ratings[] (BBGM pre-game data — 2020, 2021, etc.)
     // Only include seasons NOT already in ovrHistory (ovrHistory is more accurate for sim years)
-    const ratingsEntries = (player.ratings ?? [])
+    const ratingsEntries = visibleRatings
       .filter((r: any) => r.season != null && !ovrHistSeasons.has(r.season))
       .filter((r: any) => !player.retiredYear || r.season <= player.retiredYear)
       .sort((a: any, b: any) => a.season - b.season)
@@ -150,14 +167,22 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
         const baseOvr = (r.ovr && r.ovr > 0 && r.ovr <= 100)
           ? r.ovr
           : Math.round(attrKeys.reduce((s: number, k: string) => s + (r[k] ?? 50), 0) / attrKeys.length);
-        return { season: r.season as number, label: `'${String(r.season).slice(-2)}`, ovr: convertTo2KRating(baseOvr, r.hgt ?? 50, r.tp) };
+        return {
+          season: r.season as number,
+          label: `'${String(r.season).slice(-2)}`,
+          ovr: fuzzRatingValue(convertTo2KRating(baseOvr, r.hgt ?? 50, r.tp), state, player, 'ovr'),
+        };
       });
 
     // Step 2: Sim-generated seasons from ovrHistory[] (snapshotted at each rollover)
     const ovrEntries = ovrHist
       .filter((h: any) => !player.retiredYear || h.season <= player.retiredYear)
       .sort((a: any, b: any) => a.season - b.season)
-      .map((h: any) => ({ season: h.season as number, label: `'${String(h.season).slice(-2)}`, ovr: convertTo2KRating(h.ovr, _h, _t) }));
+      .map((h: any) => ({
+        season: h.season as number,
+        label: `'${String(h.season).slice(-2)}`,
+        ovr: fuzzRatingValue(convertTo2KRating(h.ovr, _h, _t), state, player, 'ovr'),
+      }));
 
     // Step 3: Merge, sort, dedupe by season
     const merged = [...ratingsEntries, ...ovrEntries].sort((a, b) => a.season - b.season);
@@ -180,7 +205,7 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
 
   const _hgt = currentRating?.hgt ?? 50;
   const _tp  = currentRating?.tp  ?? 50;
-  const weeklyData = (player.ovrTimeline ?? [])
+  const weeklyTimeline = buildRatingProgressionSeries(player, state.date)
     .filter((s: { date: string; ovr: number }) => {
       if (!player.retiredYear) return true;
       const dateYear = parseInt(s.date.split('-')[0]);
@@ -188,8 +213,15 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
     })
     .map((s: { date: string; ovr: number }) => {
       const [, mm, dd] = s.date.split('-');
-      return { season: `${MON[parseInt(mm)]} ${parseInt(dd)}`, ovr: convertTo2KRating(s.ovr, _hgt, _tp) };
+      return {
+        season: `${MON[parseInt(mm)]} ${parseInt(dd)}`,
+        ovr: fuzzRatingValue(getTimelineK2Rating(s, _hgt, _tp), state, player, 'ovr'),
+      };
     });
+  const alignedWeeklyTimeline = player.retiredYear
+    ? weeklyTimeline
+    : alignCurrentDisplayOverall(weeklyTimeline, overall2k);
+  const weeklyData = alignedWeeklyTimeline;
 
   const rawChartData = period === 'Career' ? ratingHistory
     : period === '3Y' ? ratingHistory.slice(-3)
@@ -204,7 +236,6 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
   const delta = overall2k - prevSeasonOvr;
   const deltaColor = delta > 0 ? '#22c55e' : delta < 0 ? '#f43f5e' : '#64748b';
 
-  // Canonical POT — same as PlayerRatingsView / everywhere else.
   const pot = getScoutedDisplayPotential(state, player, currentYear, currentYear);
   const potColor = pot >= 90 ? '#3b82f6' : pot >= 80 ? '#22c55e' : pot >= 70 ? '#eab308' : '#94a3b8';
 
@@ -259,22 +290,7 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
         </div>
       </div>
 
-      {/* K2 / Simple toggle */}
-      <div className="flex rounded-xl overflow-hidden border border-slate-700">
-        {(['K2', 'Simple'] as const).map(tab => (
-          <button key={tab} onClick={() => setView(tab)}
-            className={`flex-1 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest transition-all ${
-              view === tab
-                ? tab === 'K2' ? 'bg-sky-600 text-white' : 'bg-violet-600 text-white'
-                : 'bg-slate-800 text-slate-400 hover:text-white'
-            }`}>
-            {tab}
-          </button>
-        ))}
-      </div>
-
-      {view === 'K2' && (
-        fuzzedK2 ? (
+      {fuzzedK2 ? (
           <div className="space-y-3">
             {K2_CATS.map(cat => {
               const catData = (fuzzedK2 as any)[cat.k];
@@ -304,45 +320,7 @@ export const PlayerBioRatingsTab: React.FC<PlayerBioRatingsTabProps> = ({ player
               );
             })}
           </div>
-        ) : <div className="text-center py-8 text-slate-600 text-sm">No rating data available.</div>
-      )}
-
-      {view === 'Simple' && currentRating && (
-        <div className="space-y-1">
-          {BBGM_ALL.map(attr => {
-            const val = Math.round(currentRating[attr] ?? 0);
-            const prevVal = prevRating ? Math.round(prevRating[attr] ?? 0) : null;
-            const d = prevVal !== null ? val - prevVal : null;
-            return (
-              <div key={attr} className="flex items-center gap-2">
-                <span className="text-[10px] text-slate-400 w-28 shrink-0">{BBGM_LABELS[attr] ?? attr}</span>
-                <div className="flex-1 bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${val}%`, backgroundColor: getRatingColor(val) }} />
-                </div>
-                <span className="text-xs font-black w-7 text-right shrink-0" style={{ color: getRatingColor(val) }}>{val}</span>
-                <span className={`text-[9px] font-black w-8 text-right shrink-0 ${d !== null && d > 0 ? 'text-emerald-400' : d !== null && d < 0 ? 'text-rose-400' : 'text-transparent'}`}>
-                  {d !== null && d !== 0 ? `${d > 0 ? '+' : ''}${d}` : '—'}
-                </span>
-              </div>
-            );
-          })}
-          {/* Durability — derived from real injury data (90 = iron man ceiling) */}
-          {(() => {
-            const durVal = Math.max(0, Math.min(99, ratingBundle.durability));
-            const barPct = (durVal / 99) * 100;
-            return (
-              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-slate-800">
-                <span className="text-[10px] text-slate-400 w-28 shrink-0">Durability</span>
-                <div className="flex-1 bg-slate-800 rounded-full h-1.5 overflow-hidden">
-                  <div className="h-full rounded-full" style={{ width: `${barPct}%`, backgroundColor: getRatingColor(durVal) }} />
-                </div>
-                <span className="text-xs font-black w-7 text-right shrink-0" style={{ color: getRatingColor(durVal) }}>{durVal}</span>
-                <span className="text-[9px] text-slate-600 w-8 text-right shrink-0">inj.</span>
-              </div>
-            );
-          })()}
-        </div>
-      )}
+      ) : <div className="text-center py-8 text-slate-600 text-sm">No rating data available.</div>}
     </div>
   );
 };

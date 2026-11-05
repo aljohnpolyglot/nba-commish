@@ -1,9 +1,12 @@
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import { useGame } from '../store/GameContext';
+import type { SocialPost } from '../types';
+import { AVATAR_DATA } from '../data/avatars';
+import { getAvatarByHandle } from '../services/avatarService';
 
-export const useSidebarData = () => {
+export const useSidebarData = (posts?: SocialPost[]) => {
   const { state } = useGame();
-  const [suggestedUsersList, setSuggestedUsersList] = useState<{ name: string, handle: string, avatar?: string }[]>([]);
+  const sourcePosts = posts ?? state.socialFeed;
 
   const trendsData = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -27,7 +30,7 @@ export const useSidebarData = () => {
       'Charlotte Hornets', 'Hornets', 'Washington Wizards', 'Wizards'
     ];
 
-    state.socialFeed.forEach(post => {
+    sourcePosts.forEach(post => {
       teamKeywords.forEach(team => {
         if (post.content.toLowerCase().includes(team.toLowerCase())) {
           counts[team] = (counts[team] || 0) + 4;
@@ -68,59 +71,22 @@ export const useSidebarData = () => {
       trends: sortedTrends.slice(0, 5),
       allTrends: sortedTrends
     };
-  }, [state.socialFeed]);
+  }, [sourcePosts]);
 
-  const [allSuggestedUsers, setAllSuggestedUsers] = useState<{ name: string, handle: string, avatar?: string }[]>([]);
-
-  useEffect(() => {
-    if (state.socialFeed.length > 0) {
-      const users = new Map<string, { name: string, handle: string, avatar?: string }>();
-      
-      state.socialFeed.forEach(post => {
-        const cleanHandle = post.handle.replace('@', '');
-        if (cleanHandle !== 'username') {
-          // Check cache first for more up-to-date info
-          const cached = state.cachedProfiles?.[cleanHandle];
-          users.set(cleanHandle, {
-            name: cached?.name || post.author,
-            handle: post.handle,
-            avatar: cached?.avatarUrl || post.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanHandle}`
-          });
-        }
+  const suggestedUsersList = useMemo(() => {
+    const users = new Map<string, { name: string; handle: string; avatar?: string }>();
+    for (const post of sourcePosts) {
+      const cleanHandle = post.handle.replace('@', '');
+      if (cleanHandle === 'username' || (state.followedHandles ?? []).includes(cleanHandle)) continue;
+      const cached = state.cachedProfiles?.[cleanHandle];
+      users.set(cleanHandle, {
+        name: cached?.name || post.author,
+        handle: post.handle,
+        avatar: getAvatarByHandle(cleanHandle, AVATAR_DATA) || cached?.avatarUrl || post.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanHandle}`,
       });
-
-      const allUsers = Array.from(users.values());
-      // Only shuffle if we haven't set the list yet or if the feed changed significantly
-      if (allSuggestedUsers.length === 0) {
-        for (let i = allUsers.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [allUsers[i], allUsers[j]] = [allUsers[j], allUsers[i]];
-        }
-        setAllSuggestedUsers(allUsers);
-      } else {
-        // Just update existing users with new data without re-shuffling
-        const updatedUsers = allSuggestedUsers.map(existing => {
-          const fresh = users.get(existing.handle.replace('@', ''));
-          return fresh ? { ...existing, ...fresh } : existing;
-        });
-        
-        // Also add any new users that appeared in the feed
-        const existingHandles = new Set(allSuggestedUsers.map(u => u.handle));
-        const newUsers = allUsers.filter(u => !existingHandles.has(u.handle));
-        
-        if (newUsers.length > 0 || JSON.stringify(updatedUsers) !== JSON.stringify(allSuggestedUsers)) {
-          setAllSuggestedUsers([...updatedUsers, ...newUsers]);
-        }
-      }
     }
-  }, [state.socialFeed, state.cachedProfiles]);
-
-  useEffect(() => {
-    const filtered = allSuggestedUsers.filter(user => 
-      !(state.followedHandles || []).includes(user.handle.replace('@', ''))
-    );
-    setSuggestedUsersList(filtered);
-  }, [allSuggestedUsers, state.followedHandles]);
+    return [...users.values()].sort((left, right) => left.handle.localeCompare(right.handle));
+  }, [sourcePosts, state.cachedProfiles, state.followedHandles]);
 
   return { trends: trendsData.trends, allTrends: trendsData.allTrends, suggestedUsersList };
 };

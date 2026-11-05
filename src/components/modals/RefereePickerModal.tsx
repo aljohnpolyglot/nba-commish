@@ -8,6 +8,10 @@ interface Ref {
   name: string;
   slug: string;
   photo?: string;
+  officialNumber?: number;
+  isFictional?: boolean;
+  ratings?: Record<string, number | null>;
+  riggingProfile?: Record<string, unknown>;
 }
 
 interface RefereePickerModalProps {
@@ -32,6 +36,7 @@ export const RefereePickerModal: React.FC<RefereePickerModalProps> = ({
   }, []);
 
   const refs: Ref[] = getAllReferees()
+    .filter(r => r.isFictional === true && !!r.riggingProfile)
     .filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
     .map(r => ({ ...r, photo: getRefereePhoto(r.name) }));
 
@@ -58,7 +63,7 @@ export const RefereePickerModal: React.FC<RefereePickerModalProps> = ({
                 </div>
                 <div>
                   <h2 className="text-base font-black text-white uppercase tracking-tight">
-                    Assign Referee
+                    Choose Referee
                   </h2>
                   {favoredTeamName && (
                     <p className="text-[9px] font-bold text-amber-400 uppercase tracking-widest mt-0.5">
@@ -117,7 +122,7 @@ export const RefereePickerModal: React.FC<RefereePickerModalProps> = ({
                       )}
                       {/* Number badge */}
                       <div className="absolute bottom-0 right-0 bg-indigo-600 text-white text-[8px] font-black px-1.5 py-0.5 rounded-tl-lg leading-none">
-                        #{ref.id}
+                        #{ref.officialNumber ?? ref.id}
                       </div>
                     </div>
 
@@ -138,7 +143,7 @@ export const RefereePickerModal: React.FC<RefereePickerModalProps> = ({
             {/* Footer */}
             <div className="p-4 border-t border-white/10 bg-[#111] flex items-center justify-between shrink-0">
               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
-                {selected ? `Selected: ${selected.name} #${selected.id}` : 'No referee selected'}
+                {selected ? `Selected: ${selected.name} #${selected.officialNumber ?? selected.id}` : 'No referee selected'}
               </p>
               <div className="flex gap-3">
                 <button
@@ -152,7 +157,7 @@ export const RefereePickerModal: React.FC<RefereePickerModalProps> = ({
                   disabled={!selected}
                   className="px-6 py-2.5 rounded-xl text-xs font-black text-black bg-amber-500 hover:bg-amber-400 disabled:opacity-40 disabled:cursor-not-allowed transition-all uppercase tracking-widest shadow-lg shadow-amber-500/20"
                 >
-                  Assign Ref →
+                  Continue →
                 </button>
               </div>
             </div>

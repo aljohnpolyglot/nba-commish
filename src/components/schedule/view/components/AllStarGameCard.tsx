@@ -2,9 +2,11 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Play } from 'lucide-react';
 import { Game } from '../../../../types';
+import { didHomeTeamWin } from '../../../../utils/gameOutcome';
+import { ALL_STAR_ASSETS } from '../../../../services/allStar/AllStarSelectionService';
 
-const EAST_LOGO_URL = 'https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748';
-const WEST_LOGO_URL = 'https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726';
+const EAST_LOGO_URL = ALL_STAR_ASSETS.eastLogo;
+const WEST_LOGO_URL = ALL_STAR_ASSETS.westLogo;
 
 interface AllStarGameCardProps {
   game: Game;
@@ -41,12 +43,12 @@ export const AllStarGameCard: React.FC<AllStarGameCardProps> = ({ game, allStar,
       : 'Away';
 
   const homeLogo = game.homeTid === -1 
-    ? EAST_LOGO_URL
+    ? allStar?.bracket?.teams?.find((team: any) => team.tid === -1)?.logoUrl ?? EAST_LOGO_URL
     : game.homeTid === -3
       ? EAST_LOGO_URL  // rookies use east logo
       : '';
   const awayLogo = game.awayTid === -2
-    ? WEST_LOGO_URL
+    ? allStar?.bracket?.teams?.find((team: any) => team.tid === -2)?.logoUrl ?? WEST_LOGO_URL
     : game.awayTid === -4
       ? WEST_LOGO_URL  // sophs use west logo
       : '';
@@ -95,10 +97,17 @@ export const AllStarGameCard: React.FC<AllStarGameCardProps> = ({ game, allStar,
         
         <div className="flex flex-col items-center justify-center w-1/3">
           {game.played ? (
-            <div className="flex items-center gap-2">
-              <span className={`text-xl font-black font-mono tracking-tighter ${game.awayScore > game.homeScore ? 'text-white' : 'text-slate-700'}`}>{game.awayScore}</span>
-              <span className="text-slate-800 font-black text-sm">-</span>
-              <span className={`text-xl font-black font-mono tracking-tighter ${game.homeScore > game.awayScore ? 'text-white' : 'text-slate-700'}`}>{game.homeScore}</span>
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-2">
+                <span className={`text-xl font-black font-mono tracking-tighter ${!didHomeTeamWin(game) ? 'text-white' : 'text-slate-700'}`}>{game.awayScore}</span>
+                <span className="text-slate-800 font-black text-sm">-</span>
+                <span className={`text-xl font-black font-mono tracking-tighter ${didHomeTeamWin(game) ? 'text-white' : 'text-slate-700'}`}>{game.homeScore}</span>
+              </div>
+              {game.tiebreaker?.type === 'shootout' && (
+                <span className="text-[8px] font-black uppercase tracking-widest text-violet-300">
+                  SO {game.tiebreaker.awayScore}-{game.tiebreaker.homeScore}
+                </span>
+              )}
             </div>
           ) : (
             <div className="text-lg font-black text-slate-800 italic tracking-tighter">VS</div>

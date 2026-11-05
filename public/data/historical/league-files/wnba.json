@@ -1,0 +1,4628 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "wnba-league-file.572477322769336",
+  "competitionKey": "wnba",
+  "competitionName": "WNBA",
+  "leagueKey": "wnba",
+  "generatedAt": "2026-07-30T01:42:14.875Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "wnba-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/wnba/stats/2026/Averages/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/wnba/wnba-2026-bbgm.json",
+        "sourceHash": "fe734c42381f4a60933d070982246934ed5087ea502be63c82a4674456383078",
+        "fetchedAt": "2026-07-30T01:42:14.875Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 1997,
+      "seasonLabel": "1997",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Houston Comets",
+        "canonicalKey": "wnba:houston-comets"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Houston Comets",
+          "canonicalKey": "wnba:houston-comets"
+        },
+        "won": 18,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cynthia Cooper",
+                "canonicalKey": "person:cynthia-cooper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cynthia Cooper",
+                "canonicalKey": "person:cynthia-cooper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Teresa Weatherspoon",
+                "canonicalKey": "person:teresa-weatherspoon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Teresa Weatherspoon",
+                "canonicalKey": "person:teresa-weatherspoon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 1998,
+      "seasonLabel": "1998",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Houston Comets",
+        "canonicalKey": "wnba:houston-comets"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Houston Comets",
+          "canonicalKey": "wnba:houston-comets"
+        },
+        "won": 27,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cynthia Cooper",
+                "canonicalKey": "person:cynthia-cooper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cynthia Cooper",
+                "canonicalKey": "person:cynthia-cooper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Teresa Weatherspoon",
+                "canonicalKey": "person:teresa-weatherspoon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tracy Reid",
+                "canonicalKey": "person:tracy-reid"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Charlotte Sting",
+                "canonicalKey": "wnba:charlotte-sting"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Teresa Weatherspoon",
+                "canonicalKey": "person:teresa-weatherspoon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tracy Reid",
+                "canonicalKey": "person:tracy-reid"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Charlotte Sting",
+                "canonicalKey": "wnba:charlotte-sting"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 1999,
+      "seasonLabel": "1999",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Houston Comets",
+        "canonicalKey": "wnba:houston-comets"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Houston Comets",
+          "canonicalKey": "wnba:houston-comets"
+        },
+        "won": 26,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yolanda Griffith",
+                "canonicalKey": "person:yolanda-griffith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Monarchs",
+                "canonicalKey": "wnba:sacramento-monarchs"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cynthia Cooper",
+                "canonicalKey": "person:cynthia-cooper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yolanda Griffith",
+                "canonicalKey": "person:yolanda-griffith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Monarchs",
+                "canonicalKey": "wnba:sacramento-monarchs"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chamique Holdsclaw",
+                "canonicalKey": "person:chamique-holdsclaw"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Mystics",
+                "canonicalKey": "wnba:washington-mystics"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yolanda Griffith",
+                "canonicalKey": "person:yolanda-griffith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Monarchs",
+                "canonicalKey": "wnba:sacramento-monarchs"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chamique Holdsclaw",
+                "canonicalKey": "person:chamique-holdsclaw"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Mystics",
+                "canonicalKey": "wnba:washington-mystics"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2000,
+      "seasonLabel": "2000",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Houston Comets",
+        "canonicalKey": "wnba:houston-comets"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Los Angeles Sparks",
+          "canonicalKey": "wnba:los-angeles-sparks"
+        },
+        "won": 28,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sheryl Swoopes",
+                "canonicalKey": "person:sheryl-swoopes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cynthia Cooper",
+                "canonicalKey": "person:cynthia-cooper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sheryl Swoopes",
+                "canonicalKey": "person:sheryl-swoopes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Betty Lennox",
+                "canonicalKey": "person:betty-lennox"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tari Phillips",
+                "canonicalKey": "person:tari-phillips"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sheryl Swoopes",
+                "canonicalKey": "person:sheryl-swoopes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Betty Lennox",
+                "canonicalKey": "person:betty-lennox"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2001,
+      "seasonLabel": "2001",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Los Angeles Sparks",
+        "canonicalKey": "wnba:los-angeles-sparks"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Los Angeles Sparks",
+          "canonicalKey": "wnba:los-angeles-sparks"
+        },
+        "won": 28,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lisa Leslie",
+                "canonicalKey": "person:lisa-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lisa Leslie",
+                "canonicalKey": "person:lisa-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Debbie Black",
+                "canonicalKey": "person:debbie-black"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Miami Sol",
+                "canonicalKey": "wnba:miami-sol"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jackie Stiles",
+                "canonicalKey": "person:jackie-stiles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Fire (2000)",
+                "canonicalKey": "wnba:portland-fire-2000"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Janeth Arcain",
+                "canonicalKey": "person:janeth-arcain"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Debbie Black",
+                "canonicalKey": "person:debbie-black"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Miami Sol",
+                "canonicalKey": "wnba:miami-sol"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jackie Stiles",
+                "canonicalKey": "person:jackie-stiles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Fire (2000)",
+                "canonicalKey": "wnba:portland-fire-2000"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2002,
+      "seasonLabel": "2002",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Los Angeles Sparks",
+        "canonicalKey": "wnba:los-angeles-sparks"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Los Angeles Sparks",
+          "canonicalKey": "wnba:los-angeles-sparks"
+        },
+        "won": 25,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sheryl Swoopes",
+                "canonicalKey": "person:sheryl-swoopes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lisa Leslie",
+                "canonicalKey": "person:lisa-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sheryl Swoopes",
+                "canonicalKey": "person:sheryl-swoopes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Coco Miller",
+                "canonicalKey": "person:coco-miller"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Mystics",
+                "canonicalKey": "wnba:washington-mystics"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sheryl Swoopes",
+                "canonicalKey": "person:sheryl-swoopes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2003,
+      "seasonLabel": "2003",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Detroit Shock",
+        "canonicalKey": "wnba:detroit-shock"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Detroit Shock",
+          "canonicalKey": "wnba:detroit-shock"
+        },
+        "won": 25,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lauren Jackson",
+                "canonicalKey": "person:lauren-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ruth Riley",
+                "canonicalKey": "person:ruth-riley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Shock",
+                "canonicalKey": "wnba:detroit-shock"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sheryl Swoopes",
+                "canonicalKey": "person:sheryl-swoopes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cheryl Ford",
+                "canonicalKey": "person:cheryl-ford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Shock",
+                "canonicalKey": "wnba:detroit-shock"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Michelle Snow",
+                "canonicalKey": "person:michelle-snow"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sheryl Swoopes",
+                "canonicalKey": "person:sheryl-swoopes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cheryl Ford",
+                "canonicalKey": "person:cheryl-ford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Shock",
+                "canonicalKey": "wnba:detroit-shock"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2004,
+      "seasonLabel": "2004",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Seattle Storm",
+        "canonicalKey": "wnba:seattle-storm"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Los Angeles Sparks",
+          "canonicalKey": "wnba:los-angeles-sparks"
+        },
+        "won": 25,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lisa Leslie",
+                "canonicalKey": "person:lisa-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Betty Lennox",
+                "canonicalKey": "person:betty-lennox"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lisa Leslie",
+                "canonicalKey": "person:lisa-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Diana Taurasi",
+                "canonicalKey": "person:diana-taurasi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kelly Miller",
+                "canonicalKey": "person:kelly-miller"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lisa Leslie",
+                "canonicalKey": "person:lisa-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Diana Taurasi",
+                "canonicalKey": "person:diana-taurasi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2005,
+      "seasonLabel": "2005",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Sacramento Monarchs",
+        "canonicalKey": "wnba:sacramento-monarchs"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Connecticut Sun",
+          "canonicalKey": "wnba:connecticut-sun"
+        },
+        "won": 26,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sheryl Swoopes",
+                "canonicalKey": "person:sheryl-swoopes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yolanda Griffith",
+                "canonicalKey": "person:yolanda-griffith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Monarchs",
+                "canonicalKey": "wnba:sacramento-monarchs"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Temeka Johnson",
+                "canonicalKey": "person:temeka-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Mystics",
+                "canonicalKey": "wnba:washington-mystics"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nicole Powell",
+                "canonicalKey": "person:nicole-powell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Monarchs",
+                "canonicalKey": "wnba:sacramento-monarchs"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Temeka Johnson",
+                "canonicalKey": "person:temeka-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Mystics",
+                "canonicalKey": "wnba:washington-mystics"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Detroit Shock",
+        "canonicalKey": "wnba:detroit-shock"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Connecticut Sun",
+          "canonicalKey": "wnba:connecticut-sun"
+        },
+        "won": 26,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lisa Leslie",
+                "canonicalKey": "person:lisa-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Deanna Nolan",
+                "canonicalKey": "person:deanna-nolan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Shock",
+                "canonicalKey": "wnba:detroit-shock"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Seimone Augustus",
+                "canonicalKey": "person:seimone-augustus"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Erin Perperoglou",
+                "canonicalKey": "person:erin-perperoglou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Monarchs",
+                "canonicalKey": "wnba:sacramento-monarchs"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Seimone Augustus",
+                "canonicalKey": "person:seimone-augustus"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Phoenix Mercury",
+        "canonicalKey": "wnba:phoenix-mercury"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Detroit Shock",
+          "canonicalKey": "wnba:detroit-shock"
+        },
+        "won": 24,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lauren Jackson",
+                "canonicalKey": "person:lauren-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cappie Pondexter",
+                "canonicalKey": "person:cappie-pondexter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lauren Jackson",
+                "canonicalKey": "person:lauren-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Armintie Herrington",
+                "canonicalKey": "person:armintie-herrington"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Janel McCarville",
+                "canonicalKey": "person:janel-mccarville"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lauren Jackson",
+                "canonicalKey": "person:lauren-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Armintie Herrington",
+                "canonicalKey": "person:armintie-herrington"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Detroit Shock",
+        "canonicalKey": "wnba:detroit-shock"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "San Antonio Silver Stars",
+          "canonicalKey": "wnba:san-antonio-silver-stars"
+        },
+        "won": 24,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Candace Parker",
+                "canonicalKey": "person:candace-parker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Katie Smith",
+                "canonicalKey": "person:katie-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Shock",
+                "canonicalKey": "wnba:detroit-shock"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lisa Leslie",
+                "canonicalKey": "person:lisa-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Candace Parker",
+                "canonicalKey": "person:candace-parker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ebony Hoffman",
+                "canonicalKey": "person:ebony-hoffman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lisa Leslie",
+                "canonicalKey": "person:lisa-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Candace Parker",
+                "canonicalKey": "person:candace-parker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Phoenix Mercury",
+        "canonicalKey": "wnba:phoenix-mercury"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Phoenix Mercury",
+          "canonicalKey": "wnba:phoenix-mercury"
+        },
+        "won": 23,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Diana Taurasi",
+                "canonicalKey": "person:diana-taurasi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Diana Taurasi",
+                "canonicalKey": "person:diana-taurasi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Angel McCoughtry",
+                "canonicalKey": "person:angel-mccoughtry"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Dream",
+                "canonicalKey": "wnba:atlanta-dream"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Crystal Langhorne",
+                "canonicalKey": "person:crystal-langhorne"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Mystics",
+                "canonicalKey": "wnba:washington-mystics"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Angel McCoughtry",
+                "canonicalKey": "person:angel-mccoughtry"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Dream",
+                "canonicalKey": "wnba:atlanta-dream"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Seattle Storm",
+        "canonicalKey": "wnba:seattle-storm"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Seattle Storm",
+          "canonicalKey": "wnba:seattle-storm"
+        },
+        "won": 28,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lauren Jackson",
+                "canonicalKey": "person:lauren-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lauren Jackson",
+                "canonicalKey": "person:lauren-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tina Charles",
+                "canonicalKey": "person:tina-charles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Leilani Mitchell",
+                "canonicalKey": "person:leilani-mitchell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tina Charles",
+                "canonicalKey": "person:tina-charles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Minnesota Lynx",
+        "canonicalKey": "wnba:minnesota-lynx"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Minnesota Lynx",
+          "canonicalKey": "wnba:minnesota-lynx"
+        },
+        "won": 27,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Seimone Augustus",
+                "canonicalKey": "person:seimone-augustus"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maya Moore",
+                "canonicalKey": "person:maya-moore"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kia Vaughn",
+                "canonicalKey": "person:kia-vaughn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maya Moore",
+                "canonicalKey": "person:maya-moore"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Indiana Fever",
+        "canonicalKey": "wnba:indiana-fever"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Minnesota Lynx",
+          "canonicalKey": "wnba:minnesota-lynx"
+        },
+        "won": 27,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tina Charles",
+                "canonicalKey": "person:tina-charles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nneka Ogwumike",
+                "canonicalKey": "person:nneka-ogwumike"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kristi Toliver",
+                "canonicalKey": "person:kristi-toliver"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tamika Catchings",
+                "canonicalKey": "person:tamika-catchings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nneka Ogwumike",
+                "canonicalKey": "person:nneka-ogwumike"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Minnesota Lynx",
+        "canonicalKey": "wnba:minnesota-lynx"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Minnesota Lynx",
+          "canonicalKey": "wnba:minnesota-lynx"
+        },
+        "won": 26,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Candace Parker",
+                "canonicalKey": "person:candace-parker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maya Moore",
+                "canonicalKey": "person:maya-moore"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Elena Delle Donne",
+                "canonicalKey": "person:elena-delle-donne"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shavonte Zellous",
+                "canonicalKey": "person:shavonte-zellous"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Elena Delle Donne",
+                "canonicalKey": "person:elena-delle-donne"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Phoenix Mercury",
+        "canonicalKey": "wnba:phoenix-mercury"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Phoenix Mercury",
+          "canonicalKey": "wnba:phoenix-mercury"
+        },
+        "won": 29,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maya Moore",
+                "canonicalKey": "person:maya-moore"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Diana Taurasi",
+                "canonicalKey": "person:diana-taurasi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brittney Griner",
+                "canonicalKey": "person:brittney-griner"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chiney Ogwumike",
+                "canonicalKey": "person:chiney-ogwumike"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Skylar Diggins",
+                "canonicalKey": "person:skylar-diggins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Tulsa Shock",
+                "canonicalKey": "wnba:tulsa-shock"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brittney Griner",
+                "canonicalKey": "person:brittney-griner"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chiney Ogwumike",
+                "canonicalKey": "person:chiney-ogwumike"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Minnesota Lynx",
+        "canonicalKey": "wnba:minnesota-lynx"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "New York Liberty",
+          "canonicalKey": "wnba:new-york-liberty"
+        },
+        "won": 23,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Elena Delle Donne",
+                "canonicalKey": "person:elena-delle-donne"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brittney Griner",
+                "canonicalKey": "person:brittney-griner"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jewell Loyd",
+                "canonicalKey": "person:jewell-loyd"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kelsey Bone",
+                "canonicalKey": "person:kelsey-bone"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brittney Griner",
+                "canonicalKey": "person:brittney-griner"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jewell Loyd",
+                "canonicalKey": "person:jewell-loyd"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Los Angeles Sparks",
+        "canonicalKey": "wnba:los-angeles-sparks"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Minnesota Lynx",
+          "canonicalKey": "wnba:minnesota-lynx"
+        },
+        "won": 28,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nneka Ogwumike",
+                "canonicalKey": "person:nneka-ogwumike"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Candace Parker",
+                "canonicalKey": "person:candace-parker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Breanna Stewart",
+                "canonicalKey": "person:breanna-stewart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Elizabeth Williams",
+                "canonicalKey": "person:elizabeth-williams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Dream",
+                "canonicalKey": "wnba:atlanta-dream"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Breanna Stewart",
+                "canonicalKey": "person:breanna-stewart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Minnesota Lynx",
+        "canonicalKey": "wnba:minnesota-lynx"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Minnesota Lynx",
+          "canonicalKey": "wnba:minnesota-lynx"
+        },
+        "won": 27,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alana Beard",
+                "canonicalKey": "person:alana-beard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Allisha Gray",
+                "canonicalKey": "person:allisha-gray"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Wings",
+                "canonicalKey": "wnba:dallas-wings"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jonquel Jones",
+                "canonicalKey": "person:jonquel-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alana Beard",
+                "canonicalKey": "person:alana-beard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Allisha Gray",
+                "canonicalKey": "person:allisha-gray"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Wings",
+                "canonicalKey": "wnba:dallas-wings"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Seattle Storm",
+        "canonicalKey": "wnba:seattle-storm"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Seattle Storm",
+          "canonicalKey": "wnba:seattle-storm"
+        },
+        "won": 26,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Breanna Stewart",
+                "canonicalKey": "person:breanna-stewart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Breanna Stewart",
+                "canonicalKey": "person:breanna-stewart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alana Beard",
+                "canonicalKey": "person:alana-beard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Natasha Howard",
+                "canonicalKey": "person:natasha-howard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alana Beard",
+                "canonicalKey": "person:alana-beard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Washington Mystics",
+        "canonicalKey": "wnba:washington-mystics"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Washington Mystics",
+          "canonicalKey": "wnba:washington-mystics"
+        },
+        "won": 26,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Elena Delle Donne",
+                "canonicalKey": "person:elena-delle-donne"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Mystics",
+                "canonicalKey": "wnba:washington-mystics"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Emma Meesseman",
+                "canonicalKey": "person:emma-meesseman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Mystics",
+                "canonicalKey": "wnba:washington-mystics"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Natasha Howard",
+                "canonicalKey": "person:natasha-howard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Napheesa Collier",
+                "canonicalKey": "person:napheesa-collier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Leilani Mitchell",
+                "canonicalKey": "person:leilani-mitchell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Natasha Howard",
+                "canonicalKey": "person:natasha-howard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Napheesa Collier",
+                "canonicalKey": "person:napheesa-collier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Seattle Storm",
+        "canonicalKey": "wnba:seattle-storm"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Las Vegas Aces",
+          "canonicalKey": "wnba:las-vegas-aces"
+        },
+        "won": 18,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Breanna Stewart",
+                "canonicalKey": "person:breanna-stewart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Candace Parker",
+                "canonicalKey": "person:candace-parker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Crystal Dangerfield",
+                "canonicalKey": "person:crystal-dangerfield"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Betnijah Laney-Hamilton",
+                "canonicalKey": "person:betnijah-laney-hamilton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Dream",
+                "canonicalKey": "wnba:atlanta-dream"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Candace Parker",
+                "canonicalKey": "person:candace-parker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Sparks",
+                "canonicalKey": "wnba:los-angeles-sparks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Crystal Dangerfield",
+                "canonicalKey": "person:crystal-dangerfield"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Chicago Sky",
+        "canonicalKey": "wnba:chicago-sky"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Connecticut Sun",
+          "canonicalKey": "wnba:connecticut-sun"
+        },
+        "won": 26,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Breanna Stewart",
+                "canonicalKey": "person:breanna-stewart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kahleah Copper",
+                "canonicalKey": "person:kahleah-copper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Michaela Onyenwere",
+                "canonicalKey": "person:michaela-onyenwere"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brionna Jones",
+                "canonicalKey": "person:brionna-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvia Fowles",
+                "canonicalKey": "person:sylvia-fowles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Michaela Onyenwere",
+                "canonicalKey": "person:michaela-onyenwere"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Las Vegas Aces",
+        "canonicalKey": "wnba:las-vegas-aces"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Chicago Sky",
+          "canonicalKey": "wnba:chicago-sky"
+        },
+        "won": 26,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chelsea Gray",
+                "canonicalKey": "person:chelsea-gray"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rhyne Howard",
+                "canonicalKey": "person:rhyne-howard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Dream",
+                "canonicalKey": "wnba:atlanta-dream"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jackie Young",
+                "canonicalKey": "person:jackie-young"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rhyne Howard",
+                "canonicalKey": "person:rhyne-howard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Dream",
+                "canonicalKey": "wnba:atlanta-dream"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Las Vegas Aces",
+        "canonicalKey": "wnba:las-vegas-aces"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Las Vegas Aces",
+          "canonicalKey": "wnba:las-vegas-aces"
+        },
+        "won": 34,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Breanna Stewart",
+                "canonicalKey": "person:breanna-stewart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aliyah Boston",
+                "canonicalKey": "person:aliyah-boston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Satou Sabally",
+                "canonicalKey": "person:satou-sabally"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Wings",
+                "canonicalKey": "wnba:dallas-wings"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aliyah Boston",
+                "canonicalKey": "person:aliyah-boston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "New York Liberty",
+        "canonicalKey": "wnba:new-york-liberty"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "New York Liberty",
+          "canonicalKey": "wnba:new-york-liberty"
+        },
+        "won": 32,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jonquel Jones",
+                "canonicalKey": "person:jonquel-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Napheesa Collier",
+                "canonicalKey": "person:napheesa-collier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Caitlin Clark",
+                "canonicalKey": "person:caitlin-clark"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DiJonai Carrington",
+                "canonicalKey": "person:dijonai-carrington"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Napheesa Collier",
+                "canonicalKey": "person:napheesa-collier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Caitlin Clark",
+                "canonicalKey": "person:caitlin-clark"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Las Vegas Aces",
+        "canonicalKey": "wnba:las-vegas-aces"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Minnesota Lynx",
+          "canonicalKey": "wnba:minnesota-lynx"
+        },
+        "won": 34,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A'ja Wilson",
+                "canonicalKey": "person:a-ja-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alanna Smith",
+                "canonicalKey": "person:alanna-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paige Bueckers",
+                "canonicalKey": "person:paige-bueckers"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Wings",
+                "canonicalKey": "wnba:dallas-wings"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Veronica Burton",
+                "canonicalKey": "person:veronica-burton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Valkyries",
+                "canonicalKey": "wnba:golden-state-valkyries"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alanna Smith",
+                "canonicalKey": "person:alanna-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paige Bueckers",
+                "canonicalKey": "person:paige-bueckers"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Wings",
+                "canonicalKey": "wnba:dallas-wings"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Minnesota Lynx",
+          "canonicalKey": "wnba:minnesota-lynx"
+        },
+        "won": 23,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Breanna Stewart",
+                "canonicalKey": "person:breanna-stewart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

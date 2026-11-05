@@ -1,0 +1,1859 @@
+{
+  "schemaVersion": 2,
+  "source": "Logopedia / Fandom",
+  "rootPage": {
+    "title": "Euroleague Basketball",
+    "url": "https://logos.fandom.com/wiki/Euroleague_Basketball"
+  },
+  "scrapedAt": "2026-08-01T06:05:04.585Z",
+  "settings": {
+    "followedNavboxLinks": true,
+    "linkContainerSelector": ".mw-parser-output .navbox, #mw-content-text .navbox",
+    "extractedPalettes": true,
+    "paletteSize": 3
+  },
+  "summary": {
+    "pagesQueued": 9,
+    "pagesSaved": 8,
+    "failedPages": 1,
+    "totalLogos": 36
+  },
+  "pages": [
+    {
+      "title": "Euroleague Basketball",
+      "linkText": "Euroleague Basketball",
+      "pageUrl": "https://logos.fandom.com/wiki/Euroleague_Basketball",
+      "isRootPage": true,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "Unspecified",
+          "startYear": null,
+          "endYear": null,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "EuroLeague",
+          "imageName": "EuroLeague.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/5/58/EuroLeague.svg/revision/latest?cb=20260322185834",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/5/58/EuroLeague.svg/revision/latest/scale-to-width-down/350?cb=20260322185834",
+          "palette": [
+            "#FF5000",
+            "#102020"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FF5000",
+              "rgb": [
+                255,
+                80,
+                0
+              ],
+              "pixelShare": 42.7
+            },
+            {
+              "hex": "#102020",
+              "rgb": [
+                16,
+                32,
+                32
+              ],
+              "pixelShare": 36.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "Unspecified",
+          "startYear": null,
+          "endYear": null,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "with \"Turkish Airlines\"",
+          "imageName": "Euroleague Basketball logo.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/fb/Euroleague_Basketball_logo.svg/revision/latest?cb=20241029083009",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/fb/Euroleague_Basketball_logo.svg/revision/latest/scale-to-width-down/160?cb=20241029083009",
+          "palette": [
+            "#001020",
+            "#FF5000"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#001020",
+              "rgb": [
+                0,
+                16,
+                32
+              ],
+              "pixelShare": 69.6
+            },
+            {
+              "hex": "#FF5000",
+              "rgb": [
+                255,
+                80,
+                0
+              ],
+              "pixelShare": 30.4
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Anadolu Efes SK",
+      "linkText": "Anadolu Efes",
+      "pageUrl": "https://logos.fandom.com/wiki/Anadolu_Efes_SK",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "????-2018[]",
+          "startYear": 2018,
+          "endYear": 2018,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Anadolu Efes SK old",
+          "imageName": "Anadolu Efes SK old.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/2/2a/Anadolu_Efes_SK_old.png/revision/latest?cb=20210824182602",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/2/2a/Anadolu_Efes_SK_old.png/revision/latest/scale-to-width-down/200?cb=20210824182602",
+          "palette": [
+            "#0B5494",
+            "#C0D0E3",
+            "#F0361A"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0B5494",
+              "rgb": [
+                11,
+                84,
+                148
+              ],
+              "pixelShare": 73.1
+            },
+            {
+              "hex": "#C0D0E3",
+              "rgb": [
+                192,
+                208,
+                227
+              ],
+              "pixelShare": 24.1
+            },
+            {
+              "hex": "#F0361A",
+              "rgb": [
+                240,
+                54,
+                26
+              ],
+              "pixelShare": 2.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2018-present[]",
+          "startYear": 2018,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2018
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Anadolu Efes SK 2018",
+          "imageName": "Anadolu Efes SK 2018.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/0/09/Anadolu_Efes_SK_2018.svg/revision/latest?cb=20210824182320",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/0/09/Anadolu_Efes_SK_2018.svg/revision/latest/scale-to-width-down/200?cb=20210824182320",
+          "palette": [
+            "#223252",
+            "#23A1CA",
+            "#C63033"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#223252",
+              "rgb": [
+                34,
+                50,
+                82
+              ],
+              "pixelShare": 70.8
+            },
+            {
+              "hex": "#23A1CA",
+              "rgb": [
+                35,
+                161,
+                202
+              ],
+              "pixelShare": 26.9
+            },
+            {
+              "hex": "#C63033",
+              "rgb": [
+                198,
+                48,
+                51
+              ],
+              "pixelShare": 2.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "AS Monaco Basketball",
+      "linkText": "AS Monaco",
+      "pageUrl": "https://logos.fandom.com/wiki/AS_Monaco_Basketball",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "Unspecified",
+          "startYear": null,
+          "endYear": null,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logo AS Monaco Basket",
+          "imageName": "Logo AS Monaco Basket.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/ff/Logo_AS_Monaco_Basket.svg/revision/latest?cb=20241020112037",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/ff/Logo_AS_Monaco_Basket.svg/revision/latest/scale-to-width-down/300?cb=20241020112037",
+          "palette": [
+            "#BA4833",
+            "#14110D",
+            "#DCC4BC"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#BA4833",
+              "rgb": [
+                186,
+                72,
+                51
+              ],
+              "pixelShare": 62.2
+            },
+            {
+              "hex": "#14110D",
+              "rgb": [
+                20,
+                17,
+                13
+              ],
+              "pixelShare": 20.3
+            },
+            {
+              "hex": "#DCC4BC",
+              "rgb": [
+                220,
+                196,
+                188
+              ],
+              "pixelShare": 12.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "FC Barcelona Bàsquet",
+      "linkText": "Barcelona",
+      "pageUrl": "https://logos.fandom.com/wiki/FC_Barcelona_B%C3%A0squet",
+      "isRootPage": false,
+      "logoCount": 16,
+      "logos": [
+        {
+          "eraLabel": "1926-1936[]",
+          "startYear": 1926,
+          "endYear": 1936,
+          "present": false,
+          "specificYears": [
+            1920
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "FC Barcelona 1920",
+          "imageName": "FC Barcelona 1920.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a5/FC_Barcelona_1920.png/revision/latest?cb=20180403023513",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a5/FC_Barcelona_1920.png/revision/latest/scale-to-width-down/200?cb=20180403023513",
+          "palette": [
+            "#E6D017",
+            "#CA363F",
+            "#4E556D"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#E6D017",
+              "rgb": [
+                230,
+                208,
+                23
+              ],
+              "pixelShare": 46.3
+            },
+            {
+              "hex": "#CA363F",
+              "rgb": [
+                202,
+                54,
+                63
+              ],
+              "pixelShare": 26.9
+            },
+            {
+              "hex": "#4E556D",
+              "rgb": [
+                78,
+                85,
+                109
+              ],
+              "pixelShare": 24
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1926-1936[]",
+          "startYear": 1926,
+          "endYear": 1936,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1936-1941[]",
+          "startYear": 1936,
+          "endYear": 1941,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "640x360 historia escut.1317115158 02.v1392032464 - copia",
+          "imageName": "640x360 historia escut.1317115158 02.v1392032464 - copia.jpg",
+          "fileExtension": "jpg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/6/6a/640x360_historia_escut.1317115158_02.v1392032464_-_copia.jpg/revision/latest?cb=20180819191335",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/6/6a/640x360_historia_escut.1317115158_02.v1392032464_-_copia.jpg/revision/latest?cb=20180819191335",
+          "palette": [
+            "#140E1B",
+            "#923213",
+            "#D0B979"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#140E1B",
+              "rgb": [
+                20,
+                14,
+                27
+              ],
+              "pixelShare": 26.7
+            },
+            {
+              "hex": "#923213",
+              "rgb": [
+                146,
+                50,
+                19
+              ],
+              "pixelShare": 24
+            },
+            {
+              "hex": "#D0B979",
+              "rgb": [
+                208,
+                185,
+                121
+              ],
+              "pixelShare": 20.7
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1941-1949[]",
+          "startYear": 1941,
+          "endYear": 1949,
+          "present": false,
+          "specificYears": [
+            1941
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "FC Barcelona 1941",
+          "imageName": "FC Barcelona 1941.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/fb/FC_Barcelona_1941.png/revision/latest?cb=20180403024004",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/fb/FC_Barcelona_1941.png/revision/latest/scale-to-width-down/200?cb=20180403024004",
+          "palette": [
+            "#CFA02E",
+            "#1A162A",
+            "#BE0101"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#CFA02E",
+              "rgb": [
+                207,
+                160,
+                46
+              ],
+              "pixelShare": 41.2
+            },
+            {
+              "hex": "#1A162A",
+              "rgb": [
+                26,
+                22,
+                42
+              ],
+              "pixelShare": 30.4
+            },
+            {
+              "hex": "#BE0101",
+              "rgb": [
+                190,
+                1,
+                1
+              ],
+              "pixelShare": 27.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1949-1960[]",
+          "startYear": 1949,
+          "endYear": 1960,
+          "present": false,
+          "specificYears": [
+            1949
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "FC Barcelona 1949",
+          "imageName": "FC Barcelona 1949.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/6/64/FC_Barcelona_1949.png/revision/latest?cb=20260531193422",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/6/64/FC_Barcelona_1949.png/revision/latest/scale-to-width-down/200?cb=20260531193422",
+          "palette": [
+            "#BF3949",
+            "#2D3C54",
+            "#FCCE63"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#BF3949",
+              "rgb": [
+                191,
+                57,
+                73
+              ],
+              "pixelShare": 40.5
+            },
+            {
+              "hex": "#2D3C54",
+              "rgb": [
+                45,
+                60,
+                84
+              ],
+              "pixelShare": 34.5
+            },
+            {
+              "hex": "#FCCE63",
+              "rgb": [
+                252,
+                206,
+                99
+              ],
+              "pixelShare": 24.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1960-1974[]",
+          "startYear": 1960,
+          "endYear": 1974,
+          "present": false,
+          "specificYears": [
+            1960
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "FC Barcelona 1960",
+          "imageName": "FC Barcelona 1960.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/3/39/FC_Barcelona_1960.png/revision/latest?cb=20260531193518",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/3/39/FC_Barcelona_1960.png/revision/latest/scale-to-width-down/200?cb=20260531193518",
+          "palette": [
+            "#8D435A",
+            "#F6C769",
+            "#090404"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#8D435A",
+              "rgb": [
+                141,
+                67,
+                90
+              ],
+              "pixelShare": 47.8
+            },
+            {
+              "hex": "#F6C769",
+              "rgb": [
+                246,
+                199,
+                105
+              ],
+              "pixelShare": 40.2
+            },
+            {
+              "hex": "#090404",
+              "rgb": [
+                9,
+                4,
+                4
+              ],
+              "pixelShare": 11.2
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1974-1975[]",
+          "startYear": 1974,
+          "endYear": 1975,
+          "present": false,
+          "specificYears": [
+            1974
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "FC Barcelona 1974",
+          "imageName": "FC Barcelona 1974.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/bc/FC_Barcelona_1974.png/revision/latest?cb=20260531193446",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/bc/FC_Barcelona_1974.png/revision/latest/scale-to-width-down/200?cb=20260531193446",
+          "palette": [
+            "#941B21",
+            "#2E0B54",
+            "#C3A452"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#941B21",
+              "rgb": [
+                148,
+                27,
+                33
+              ],
+              "pixelShare": 42
+            },
+            {
+              "hex": "#2E0B54",
+              "rgb": [
+                46,
+                11,
+                84
+              ],
+              "pixelShare": 29.9
+            },
+            {
+              "hex": "#C3A452",
+              "rgb": [
+                195,
+                164,
+                82
+              ],
+              "pixelShare": 28.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1975-2002[]",
+          "startYear": 1975,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [
+            1975
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "FC Barcelona 1975",
+          "imageName": "FC Barcelona 1975.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/8/8b/FC_Barcelona_1975.svg/revision/latest?cb=20211129145402",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/8/8b/FC_Barcelona_1975.svg/revision/latest/scale-to-width-down/200?cb=20211129145402",
+          "palette": [
+            "#E7D051",
+            "#C82930",
+            "#293B4C"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#E7D051",
+              "rgb": [
+                231,
+                208,
+                81
+              ],
+              "pixelShare": 41.1
+            },
+            {
+              "hex": "#C82930",
+              "rgb": [
+                200,
+                41,
+                48
+              ],
+              "pixelShare": 30.3
+            },
+            {
+              "hex": "#293B4C",
+              "rgb": [
+                41,
+                59,
+                76
+              ],
+              "pixelShare": 26.2
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1975-2002[]",
+          "startYear": 1975,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [
+            1992,
+            2001
+          ],
+          "logoType": "alternate",
+          "caption": "Alternate logo (1992-2001)",
+          "imageName": "FC Barcelona 1992 basket.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0b/FC_Barcelona_1992_basket.png/revision/latest?cb=20251227103714",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0b/FC_Barcelona_1992_basket.png/revision/latest/scale-to-width-down/100?cb=20251227103714",
+          "palette": [
+            "#EB2E30",
+            "#145791",
+            "#F4D25F"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#EB2E30",
+              "rgb": [
+                235,
+                46,
+                48
+              ],
+              "pixelShare": 52.1
+            },
+            {
+              "hex": "#145791",
+              "rgb": [
+                20,
+                87,
+                145
+              ],
+              "pixelShare": 38.7
+            },
+            {
+              "hex": "#F4D25F",
+              "rgb": [
+                244,
+                210,
+                95
+              ],
+              "pixelShare": 4.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2002-present[]",
+          "startYear": 2002,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2002
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "FC Barcelona 2002",
+          "imageName": "FC Barcelona 2002.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a9/FC_Barcelona_2002.svg/revision/latest?cb=20260215213148",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a9/FC_Barcelona_2002.svg/revision/latest/scale-to-width-down/200?cb=20260215213148",
+          "palette": [
+            "#EBBF03",
+            "#0B2D4F",
+            "#BA1032"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#EBBF03",
+              "rgb": [
+                235,
+                191,
+                3
+              ],
+              "pixelShare": 39.2
+            },
+            {
+              "hex": "#0B2D4F",
+              "rgb": [
+                11,
+                45,
+                79
+              ],
+              "pixelShare": 29.7
+            },
+            {
+              "hex": "#BA1032",
+              "rgb": [
+                186,
+                16,
+                50
+              ],
+              "pixelShare": 29.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2002-present[]",
+          "startYear": 2002,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2004,
+            2007
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Sponsored logo (2004-2007)",
+          "imageName": "FC Barcelona 2004 basket.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/ba/FC_Barcelona_2004_basket.png/revision/latest?cb=20251227103827",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/ba/FC_Barcelona_2004_basket.png/revision/latest/scale-to-width-down/100?cb=20251227103827",
+          "palette": [
+            "#211921",
+            "#D17B29",
+            "#8F8E8D"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#211921",
+              "rgb": [
+                33,
+                25,
+                33
+              ],
+              "pixelShare": 51
+            },
+            {
+              "hex": "#D17B29",
+              "rgb": [
+                209,
+                123,
+                41
+              ],
+              "pixelShare": 17.6
+            },
+            {
+              "hex": "#8F8E8D",
+              "rgb": [
+                143,
+                142,
+                141
+              ],
+              "pixelShare": 11.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2002-present[]",
+          "startYear": 2002,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2007,
+            2008
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Sponsored logo (2007-2008)",
+          "imageName": "FC Barcelona 2007 basket.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/4/47/FC_Barcelona_2007_basket.png/revision/latest?cb=20251227104139",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/4/47/FC_Barcelona_2007_basket.png/revision/latest/scale-to-width-down/100?cb=20251227104139",
+          "palette": [
+            "#DB8C1B",
+            "#664D6C",
+            "#1C1A15"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#DB8C1B",
+              "rgb": [
+                219,
+                140,
+                27
+              ],
+              "pixelShare": 37.9
+            },
+            {
+              "hex": "#664D6C",
+              "rgb": [
+                102,
+                77,
+                108
+              ],
+              "pixelShare": 32
+            },
+            {
+              "hex": "#1C1A15",
+              "rgb": [
+                28,
+                26,
+                21
+              ],
+              "pixelShare": 23.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2002-present[]",
+          "startYear": 2002,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2008,
+            2011
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Sponsored logo (2008-2011)",
+          "imageName": "FC Barcelona 2008 basket.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/75/FC_Barcelona_2008_basket.png/revision/latest?cb=20251227104304",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/75/FC_Barcelona_2008_basket.png/revision/latest/scale-to-width-down/100?cb=20251227104304",
+          "palette": [
+            "#3C262B",
+            "#DB9525",
+            "#245691"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#3C262B",
+              "rgb": [
+                60,
+                38,
+                43
+              ],
+              "pixelShare": 43
+            },
+            {
+              "hex": "#DB9525",
+              "rgb": [
+                219,
+                149,
+                37
+              ],
+              "pixelShare": 37.7
+            },
+            {
+              "hex": "#245691",
+              "rgb": [
+                36,
+                86,
+                145
+              ],
+              "pixelShare": 13
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2002-present[]",
+          "startYear": 2002,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2011,
+            2015
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Sponsored logo (2011-2015)",
+          "imageName": "FC Barcelona 2011 basket.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b7/FC_Barcelona_2011_basket.png/revision/latest?cb=20251227104425",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b7/FC_Barcelona_2011_basket.png/revision/latest/scale-to-width-down/100?cb=20251227104425",
+          "palette": [
+            "#202B3A",
+            "#EEC30C",
+            "#B3313D"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#202B3A",
+              "rgb": [
+                32,
+                43,
+                58
+              ],
+              "pixelShare": 47.9
+            },
+            {
+              "hex": "#EEC30C",
+              "rgb": [
+                238,
+                195,
+                12
+              ],
+              "pixelShare": 25.5
+            },
+            {
+              "hex": "#B3313D",
+              "rgb": [
+                179,
+                49,
+                61
+              ],
+              "pixelShare": 25.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2002-present[]",
+          "startYear": 2002,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2015,
+            2018
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Sponsored logo (2015-2018)",
+          "imageName": "FC Barcelona 2015 basket.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/c/cd/FC_Barcelona_2015_basket.png/revision/latest?cb=20251227104502",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/c/cd/FC_Barcelona_2015_basket.png/revision/latest/scale-to-width-down/100?cb=20251227104502",
+          "palette": [
+            "#223042",
+            "#DBBB38",
+            "#C20B3A"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#223042",
+              "rgb": [
+                34,
+                48,
+                66
+              ],
+              "pixelShare": 38.1
+            },
+            {
+              "hex": "#DBBB38",
+              "rgb": [
+                219,
+                187,
+                56
+              ],
+              "pixelShare": 35.6
+            },
+            {
+              "hex": "#C20B3A",
+              "rgb": [
+                194,
+                11,
+                58
+              ],
+              "pixelShare": 15.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2002-present[]",
+          "startYear": 2002,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2018
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Sponsored logo (2018-present)",
+          "imageName": "FC Barcelona 2018 basket.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/c/c1/FC_Barcelona_2018_basket.png/revision/latest?cb=20251227104539",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/c/c1/FC_Barcelona_2018_basket.png/revision/latest/scale-to-width-down/68?cb=20251227104539",
+          "palette": [
+            "#231F2D",
+            "#E1AB34",
+            "#B7333E"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#231F2D",
+              "rgb": [
+                35,
+                31,
+                45
+              ],
+              "pixelShare": 53.5
+            },
+            {
+              "hex": "#E1AB34",
+              "rgb": [
+                225,
+                171,
+                52
+              ],
+              "pixelShare": 23.4
+            },
+            {
+              "hex": "#B7333E",
+              "rgb": [
+                183,
+                51,
+                62
+              ],
+              "pixelShare": 19.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Olympiacos BC",
+      "linkText": "Olympiacos",
+      "pageUrl": "https://logos.fandom.com/wiki/Olympiacos_BC",
+      "isRootPage": false,
+      "logoCount": 3,
+      "logos": [
+        {
+          "eraLabel": "1993-2004[]",
+          "startYear": 1993,
+          "endYear": 2004,
+          "present": false,
+          "specificYears": [
+            1993,
+            2004
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Olympiacos BC logo (1993-2004)",
+          "imageName": "Olympiacos BC logo (1993-2004).svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/1/16/Olympiacos_BC_logo_%281993-2004%29.svg/revision/latest?cb=20141104215233",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/1/16/Olympiacos_BC_logo_%281993-2004%29.svg/revision/latest/scale-to-width-down/200?cb=20141104215233",
+          "palette": [
+            "#DC2223",
+            "#2E2222",
+            "#DFB2B3"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#DC2223",
+              "rgb": [
+                220,
+                34,
+                35
+              ],
+              "pixelShare": 55.3
+            },
+            {
+              "hex": "#2E2222",
+              "rgb": [
+                46,
+                34,
+                34
+              ],
+              "pixelShare": 30.4
+            },
+            {
+              "hex": "#DFB2B3",
+              "rgb": [
+                223,
+                178,
+                179
+              ],
+              "pixelShare": 14.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2004-2009[]",
+          "startYear": 2004,
+          "endYear": 2009,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Olympiacos logo",
+          "imageName": "Olympiacos logo.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0b/Olympiacos_logo.svg/revision/latest?cb=20130210235850",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0b/Olympiacos_logo.svg/revision/latest/scale-to-width-down/200?cb=20130210235850",
+          "palette": [
+            "#E00615",
+            "#FAC6C9",
+            "#F0676F"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#E00615",
+              "rgb": [
+                224,
+                6,
+                21
+              ],
+              "pixelShare": 61.9
+            },
+            {
+              "hex": "#FAC6C9",
+              "rgb": [
+                250,
+                198,
+                201
+              ],
+              "pixelShare": 19.3
+            },
+            {
+              "hex": "#F0676F",
+              "rgb": [
+                240,
+                103,
+                111
+              ],
+              "pixelShare": 18.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2009-present[]",
+          "startYear": 2009,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2009
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Olympiacos BC logo (introduced 2009)",
+          "imageName": "Olympiacos BC logo (introduced 2009).svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/7c/Olympiacos_BC_logo_%28introduced_2009%29.svg/revision/latest?cb=20141104215246",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/7c/Olympiacos_BC_logo_%28introduced_2009%29.svg/revision/latest/scale-to-width-down/200?cb=20141104215246",
+          "palette": [
+            "#E21736",
+            "#F0798B",
+            "#FCD1D7"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#E21736",
+              "rgb": [
+                226,
+                23,
+                54
+              ],
+              "pixelShare": 59.6
+            },
+            {
+              "hex": "#F0798B",
+              "rgb": [
+                240,
+                121,
+                139
+              ],
+              "pixelShare": 21.7
+            },
+            {
+              "hex": "#FCD1D7",
+              "rgb": [
+                252,
+                209,
+                215
+              ],
+              "pixelShare": 18.7
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Paris Basketball",
+      "linkText": "Paris Basketball",
+      "pageUrl": "https://logos.fandom.com/wiki/Paris_Basketball",
+      "isRootPage": false,
+      "logoCount": 3,
+      "logos": [
+        {
+          "eraLabel": "2018-2019[]",
+          "startYear": 2018,
+          "endYear": 2019,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Paris Basketball Logo",
+          "imageName": "Paris Basketball Logo.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/8/89/Paris_Basketball_Logo.svg/revision/latest?cb=20241019200332",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/8/89/Paris_Basketball_Logo.svg/revision/latest/scale-to-width-down/250?cb=20241019200332",
+          "palette": [
+            "#352625",
+            "#BDB9B8",
+            "#057AF1"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#352625",
+              "rgb": [
+                53,
+                38,
+                37
+              ],
+              "pixelShare": 81.8
+            },
+            {
+              "hex": "#BDB9B8",
+              "rgb": [
+                189,
+                185,
+                184
+              ],
+              "pixelShare": 10.1
+            },
+            {
+              "hex": "#057AF1",
+              "rgb": [
+                5,
+                122,
+                241
+              ],
+              "pixelShare": 7.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2019-2024[]",
+          "startYear": 2019,
+          "endYear": 2024,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Paris Basketball (logo)",
+          "imageName": "Paris Basketball (logo).svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/bc/Paris_Basketball_%28logo%29.svg/revision/latest?cb=20241019200416",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/bc/Paris_Basketball_%28logo%29.svg/revision/latest/scale-to-width-down/250?cb=20241019200416",
+          "palette": [
+            "#030304",
+            "#8593B0",
+            "#CC4733"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#030304",
+              "rgb": [
+                3,
+                3,
+                4
+              ],
+              "pixelShare": 72.5
+            },
+            {
+              "hex": "#8593B0",
+              "rgb": [
+                133,
+                147,
+                176
+              ],
+              "pixelShare": 19.3
+            },
+            {
+              "hex": "#CC4733",
+              "rgb": [
+                204,
+                71,
+                51
+              ],
+              "pixelShare": 8.2
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2024-present[]",
+          "startYear": 2024,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2024
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logo Paris Basketball - 2024",
+          "imageName": "Logo Paris Basketball - 2024.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/4/41/Logo_Paris_Basketball_-_2024.svg/revision/latest?cb=20241019200510",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/4/41/Logo_Paris_Basketball_-_2024.svg/revision/latest/scale-to-width-down/250?cb=20241019200510",
+          "palette": [
+            "#020203",
+            "#5378E1",
+            "#F4060E"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#020203",
+              "rgb": [
+                2,
+                2,
+                3
+              ],
+              "pixelShare": 66.2
+            },
+            {
+              "hex": "#5378E1",
+              "rgb": [
+                83,
+                120,
+                225
+              ],
+              "pixelShare": 19.4
+            },
+            {
+              "hex": "#F4060E",
+              "rgb": [
+                244,
+                6,
+                14
+              ],
+              "pixelShare": 12.4
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Real Madrid Baloncesto",
+      "linkText": "Real Madrid",
+      "pageUrl": "https://logos.fandom.com/wiki/Real_Madrid_Baloncesto",
+      "isRootPage": false,
+      "logoCount": 6,
+      "logos": [
+        {
+          "eraLabel": "1931-1941[]",
+          "startYear": 1931,
+          "endYear": 1941,
+          "present": false,
+          "specificYears": [
+            1931
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Real Madrid Baloncesto 1931",
+          "imageName": "Real Madrid Baloncesto 1931.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/2/20/Real_Madrid_Baloncesto_1931.png/revision/latest?cb=20251108220708",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/2/20/Real_Madrid_Baloncesto_1931.png/revision/latest?cb=20251108220708",
+          "palette": [
+            "#D7A443",
+            "#8330CC",
+            "#F4EBE1"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#D7A443",
+              "rgb": [
+                215,
+                164,
+                67
+              ],
+              "pixelShare": 55.1
+            },
+            {
+              "hex": "#8330CC",
+              "rgb": [
+                131,
+                48,
+                204
+              ],
+              "pixelShare": 21.9
+            },
+            {
+              "hex": "#F4EBE1",
+              "rgb": [
+                244,
+                235,
+                225
+              ],
+              "pixelShare": 5.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1941-1977[]",
+          "startYear": 1941,
+          "endYear": 1977,
+          "present": false,
+          "specificYears": [
+            1941
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Real Madrid Baloncesto 1941",
+          "imageName": "Real Madrid Baloncesto 1941.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/9/92/Real_Madrid_Baloncesto_1941.png/revision/latest?cb=20251108220804",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/9/92/Real_Madrid_Baloncesto_1941.png/revision/latest?cb=20251108220804",
+          "palette": [
+            "#CB8A42",
+            "#8732D1",
+            "#F6EEDC"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#CB8A42",
+              "rgb": [
+                203,
+                138,
+                66
+              ],
+              "pixelShare": 50.1
+            },
+            {
+              "hex": "#8732D1",
+              "rgb": [
+                135,
+                50,
+                209
+              ],
+              "pixelShare": 11
+            },
+            {
+              "hex": "#F6EEDC",
+              "rgb": [
+                246,
+                238,
+                220
+              ],
+              "pixelShare": 8.7
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1977-2001[]",
+          "startYear": 1977,
+          "endYear": 2001,
+          "present": false,
+          "specificYears": [
+            1977
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Real Madrid Baloncesto 1977",
+          "imageName": "Real Madrid Baloncesto 1977.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f6/Real_Madrid_Baloncesto_1977.png/revision/latest?cb=20251108220835",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f6/Real_Madrid_Baloncesto_1977.png/revision/latest?cb=20251108220835",
+          "palette": [
+            "#CD9F4E",
+            "#153EAC",
+            "#F7F1E0"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#CD9F4E",
+              "rgb": [
+                205,
+                159,
+                78
+              ],
+              "pixelShare": 49
+            },
+            {
+              "hex": "#153EAC",
+              "rgb": [
+                21,
+                62,
+                172
+              ],
+              "pixelShare": 16
+            },
+            {
+              "hex": "#F7F1E0",
+              "rgb": [
+                247,
+                241,
+                224
+              ],
+              "pixelShare": 8.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2001-present[]",
+          "startYear": 2001,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Real Madrid Baloncesto",
+          "imageName": "Real Madrid Baloncesto.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/be/Real_Madrid_Baloncesto.png/revision/latest?cb=20251108220907",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/be/Real_Madrid_Baloncesto.png/revision/latest/scale-to-width-down/200?cb=20251108220907",
+          "palette": [
+            "#0A5195",
+            "#9E988A",
+            "#F3C112"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0A5195",
+              "rgb": [
+                10,
+                81,
+                149
+              ],
+              "pixelShare": 35.7
+            },
+            {
+              "hex": "#9E988A",
+              "rgb": [
+                158,
+                152,
+                138
+              ],
+              "pixelShare": 25.6
+            },
+            {
+              "hex": "#F3C112",
+              "rgb": [
+                243,
+                193,
+                18
+              ],
+              "pixelShare": 24.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2001-present[]",
+          "startYear": 2001,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "alternate",
+          "caption": "Alternate logo #1",
+          "imageName": "Real madrid04.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/79/Real_madrid04.png/revision/latest?cb=20251108221436",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/79/Real_madrid04.png/revision/latest?cb=20251108221436",
+          "palette": [
+            "#C8B13A",
+            "#204977",
+            "#A2ABA6"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#C8B13A",
+              "rgb": [
+                200,
+                177,
+                58
+              ],
+              "pixelShare": 31.9
+            },
+            {
+              "hex": "#204977",
+              "rgb": [
+                32,
+                73,
+                119
+              ],
+              "pixelShare": 20.3
+            },
+            {
+              "hex": "#A2ABA6",
+              "rgb": [
+                162,
+                171,
+                166
+              ],
+              "pixelShare": 16.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2001-present[]",
+          "startYear": 2001,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "alternate",
+          "caption": "Alternate logo #2",
+          "imageName": "Real Madrid CF.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/5/56/Real_Madrid_CF.svg/revision/latest?cb=20260315091247",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/5/56/Real_Madrid_CF.svg/revision/latest/scale-to-width-down/112?cb=20260315091247",
+          "palette": [
+            "#F9BE04",
+            "#105691",
+            "#A78E7E"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#F9BE04",
+              "rgb": [
+                249,
+                190,
+                4
+              ],
+              "pixelShare": 41.6
+            },
+            {
+              "hex": "#105691",
+              "rgb": [
+                16,
+                86,
+                145
+              ],
+              "pixelShare": 36.4
+            },
+            {
+              "hex": "#A78E7E",
+              "rgb": [
+                167,
+                142,
+                126
+              ],
+              "pixelShare": 18.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "EuroLeague Final Four",
+      "linkText": "EuroLeague Final Four",
+      "pageUrl": "https://logos.fandom.com/wiki/EuroLeague_Final_Four",
+      "isRootPage": false,
+      "logoCount": 3,
+      "logos": [
+        {
+          "eraLabel": "2002-2009[]",
+          "startYear": 2002,
+          "endYear": 2009,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2010[]",
+          "startYear": 2010,
+          "endYear": 2010,
+          "present": false,
+          "specificYears": [
+            2010
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Euroleague Final Four 2010",
+          "imageName": "Euroleague Final Four 2010.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/aa/Euroleague_Final_Four_2010.png/revision/latest?cb=20220114153117",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/aa/Euroleague_Final_Four_2010.png/revision/latest?cb=20220114153117",
+          "palette": [
+            "#010102",
+            "#745E74",
+            "#D8D8D8"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#010102",
+              "rgb": [
+                1,
+                1,
+                2
+              ],
+              "pixelShare": 88.6
+            },
+            {
+              "hex": "#745E74",
+              "rgb": [
+                116,
+                94,
+                116
+              ],
+              "pixelShare": 6.1
+            },
+            {
+              "hex": "#D8D8D8",
+              "rgb": [
+                216,
+                216,
+                216
+              ],
+              "pixelShare": 4.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2011[]",
+          "startYear": 2011,
+          "endYear": 2011,
+          "present": false,
+          "specificYears": [
+            2011
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Turkish Airlines Final Four Barcelona 2011",
+          "imageName": "Turkish Airlines Final Four Barcelona 2011.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/ae/Turkish_Airlines_Final_Four_Barcelona_2011.png/revision/latest?cb=20110117114427",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/ae/Turkish_Airlines_Final_Four_Barcelona_2011.png/revision/latest/scale-to-width-down/200?cb=20110117114427",
+          "palette": [
+            "#143032",
+            "#CA5E19",
+            "#CCCCCC"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#143032",
+              "rgb": [
+                20,
+                48,
+                50
+              ],
+              "pixelShare": 42.4
+            },
+            {
+              "hex": "#CA5E19",
+              "rgb": [
+                202,
+                94,
+                25
+              ],
+              "pixelShare": 33.6
+            },
+            {
+              "hex": "#CCCCCC",
+              "rgb": [
+                204,
+                204,
+                204
+              ],
+              "pixelShare": 14.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "title": "EuroLeague",
+      "pageUrl": "https://logos.fandom.com/wiki/EuroLeague",
+      "error": "HTTP 404 "
+    }
+  ]
+}

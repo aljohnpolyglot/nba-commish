@@ -8,6 +8,19 @@ import {
 } from '../../utils/dateUtils';
 import { getOffseasonState, type OffseasonPhase } from '../../services/offseason/offseasonState';
 import { isEuroVisibleScheduleGame } from '../../utils/euroLeagueDefaults';
+import { isDraftLotteryEnabled } from '../../lib/lotteryPresets';
+import { resolveCompetitionSeason } from '../../services/competition/competitionResolver';
+import { selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
+import {
+  getPbaConferenceCalendarForSeason,
+  resolvePbaSeasonDate,
+} from '../../services/pba/calendar';
+import {
+  competitionSeasonForBox,
+  isPbaRegularPhase,
+  PBA_POSTSEASON_PHASES,
+} from '../../services/pba/competitionGames';
+import { resolveLeagueSeasonLifecycle } from '../../services/lifecycle/leagueSeasonLifecycle';
 
 export type SimPhase =
   | 'preseason'
@@ -53,17 +66,30 @@ export function getSimPhase(state: any): SimPhase {
   const currentDate = new Date(`${norm}T00:00:00Z`);
   const leagueStats = state.leagueStats;
   const seasonYear: number = leagueStats?.year ?? currentDate.getUTCFullYear();
+  const lotteryEnabled = isDraftLotteryEnabled(leagueStats?.draftType);
   const draftLotteryDate = getDraftLotteryDate(seasonYear, leagueStats);
   const draftDate = getDraftDate(seasonYear, leagueStats);
   const hasPlayIn = (state.playoffs?.playInGames ?? []).some((game: any) => !game.winner);
   const hasActivePlayoffs = (state.playoffs?.series ?? []).some((series: any) => series.status !== 'complete');
   const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
+  const draftComplete = resolveLeagueSeasonLifecycle(state).draft.draft === 'complete';
   const offseasonState = getOffseasonState(state.date, leagueStats, state.schedule, {
-    draftComplete: !!state.draftComplete,
+    draftComplete,
     playoffsActive: hasActivePlayoffs,
   });
-  const fromOrchestrator = offseasonPhaseToSimPhase(offseasonState.phase, !!state.draftComplete);
+  const fromOrchestrator = offseasonPhaseToSimPhase(offseasonState.phase, draftComplete);
   const playoffsBlockOrchestrator = hasActivePlayoffs || draftBlockedByPlayoffs;
+  const firstRegularSeasonDate = findFirstRegularSeasonDate(state);
+  const lastUnplayedRegularSeasonDate = findLastRegSeasonDate(state);
+
+  if (hasActivePlayoffs || draftBlockedByPlayoffs) return 'playoffs';
+  if (hasPlayIn && !hasActivePlayoffs) return 'playin';
+  if (
+    firstRegularSeasonDate
+    && lastUnplayedRegularSeasonDate
+    && norm >= firstRegularSeasonDate
+    && norm <= lastUnplayedRegularSeasonDate
+  ) return 'regular-season';
 
   if (
     fromOrchestrator &&
@@ -73,22 +99,22 @@ export function getSimPhase(state: any): SimPhase {
     return fromOrchestrator;
   }
 
-  if (state.draftComplete) return 'after-draft';
-  if (hasActivePlayoffs || draftBlockedByPlayoffs) return 'playoffs';
-  if (hasPlayIn && !hasActivePlayoffs) return 'playin';
+  if (firstRegularSeasonDate && norm < firstRegularSeasonDate) return 'preseason';
+  if (lastUnplayedRegularSeasonDate && norm <= lastUnplayedRegularSeasonDate) return 'regular-season';
+  if (draftComplete) return 'after-draft';
   if (currentDate > draftDate) return 'after-draft';
-  if (toISODateString(draftDate) === norm) return state.draftComplete ? 'after-draft' : 'draft';
-  if (currentDate >= draftLotteryDate) return 'draft-lottery';
+  if (toISODateString(draftDate) === norm) return draftComplete ? 'after-draft' : 'draft';
+  if (lotteryEnabled && currentDate >= draftLotteryDate) return 'draft-lottery';
   return 'regular-season';
 }
 
-export function getPhaseLabel(phase: SimPhase, seasonYear: number, calYear: number): string {
+export function getPhaseLabel(phase: SimPhase, seasonYear: number, calYear: number, lotteryComplete = false): string {
   switch (phase) {
     case 'preseason':      return `${calYear} preseason`;
     case 'regular-season': return `${seasonYear} regular season`;
     case 'playin':         return `${seasonYear} play-in`;
     case 'playoffs':       return `${seasonYear} playoffs`;
-    case 'draft-lottery':  return `${seasonYear} draft lottery`;
+    case 'draft-lottery':  return lotteryComplete ? `${seasonYear} pre-draft` : `${seasonYear} draft lottery`;
     case 'draft':          return `${seasonYear} draft`;
     case 'after-draft':    return `${seasonYear} offseason`;
     case 'free-agency':    return `${seasonYear} free agency`;
@@ -100,10 +126,16 @@ export function getEuroPhaseLabel(state: any, seasonYear: number): string {
     game.competitionId &&
     !game.played &&
     isEuroVisibleScheduleGame(state, game),
-  );
-  if (unplayedCompetitionGames.some((game: any) => game.competitionPhase === 'play-in')) return `${seasonYear} EuroLeague play-in`;
-  if (unplayedCompetitionGames.some((game: any) => ['qf', 'sf', 'final'].includes(game.competitionPhase))) return `${seasonYear} European playoffs`;
-  if (unplayedCompetitionGames.some((game: any) => game.competitionPhase === 'group' || game.competitionPhase?.startsWith('r'))) return `${seasonYear} European season`;
+  ).sort((left: any, right: any) => normalizeDate(left.date).localeCompare(normalizeDate(right.date)));
+  const next = unplayedCompetitionGames[0];
+  if (!next) return `${seasonYear} European offseason`;
+  const spec = (state.activeCompetitions ?? []).find((competition: any) => competition.id === next.competitionId);
+  const label = competitionDisplayLabel(spec);
+  if (next.competitionPhase === 'play-in') return `${seasonYear} ${label} play-in`;
+  if (next.competitionPhase === 'qf') return `${seasonYear} ${label} quarterfinals`;
+  if (next.competitionPhase === 'sf') return `${seasonYear} ${label} semifinals`;
+  if (next.competitionPhase === 'final') return `${seasonYear} ${label} final`;
+  if (next.competitionPhase === 'group' || next.competitionPhase?.startsWith('r')) return `${seasonYear} ${label}`;
   return `${seasonYear} European offseason`;
 }
 
@@ -223,6 +255,36 @@ export function competitionRegularComplete(state: any, competitionId: string): b
   );
 }
 
+export function getPbaConferencePlayState(state: any, spec: any, seasonYear: number) {
+  const isCurrentSeason = (game: any) =>
+    game?.competitionId === spec.id && competitionSeasonForBox(spec, game) === seasonYear;
+  const currentSchedule = (state.schedule ?? []).filter(isCurrentSeason);
+  const currentBoxScores = (state.boxScores ?? []).filter(isCurrentSeason);
+  const currentRows = [...currentSchedule, ...currentBoxScores];
+  const unplayedGames = currentSchedule
+    .filter((game: any) => !game.played)
+    .sort((left: any, right: any) => normalizeDate(left.date).localeCompare(normalizeDate(right.date)));
+  const unplayedRegularGames = unplayedGames.filter((game: any) => isPbaRegularPhase(game.competitionPhase));
+  const unplayedPostseasonGames = unplayedGames.filter((game: any) =>
+    PBA_POSTSEASON_PHASES.has(String(game.competitionPhase ?? '')),
+  );
+  const hasRegularSeasonMaterial = currentRows.some((game: any) => isPbaRegularPhase(game.competitionPhase));
+  const postseasonMaterialized = currentRows.some((game: any) =>
+    PBA_POSTSEASON_PHASES.has(String(game.competitionPhase ?? '')),
+  );
+  return {
+    currentSchedule,
+    currentBoxScores,
+    unplayedGames,
+    unplayedRegularGames,
+    unplayedPostseasonGames,
+    hasCurrentCompetitionMaterial: currentRows.length > 0,
+    hasRegularSeasonMaterial,
+    regularComplete: hasRegularSeasonMaterial && unplayedRegularGames.length === 0,
+    postseasonMaterialized,
+  };
+}
+
 export function competitionRoundDate(
   state: any,
   seasonYear: number,
@@ -232,6 +294,12 @@ export function competitionRoundDate(
 ): string | null {
   const spec = (state.activeCompetitions ?? []).find((competition: any) => competition.id === competitionId);
   const round = spec?.playoffFormat?.rounds?.find((entry: any) => phases.includes(entry.phase));
+  if (competitionId.startsWith('pba-') && round?.phase) {
+    const calendar = getPbaConferenceCalendarForSeason(competitionId, seasonYear);
+    const phase = round.phase as 'qf' | 'sf' | 'final';
+    const pbaDate = calendar.playoffs?.[phase]?.[edge];
+    if (pbaDate) return resolvePbaSeasonDate(seasonYear, pbaDate);
+  }
   const date = round?.[edge];
   if (!date) return null;
   const year = date.month >= 9 ? seasonYear - 1 : seasonYear;
@@ -249,7 +317,7 @@ export function clampToToday(date: string, today: string): string {
 }
 
 function competitionDisplayLabel(spec: any): string {
-  return spec?.shortName || spec?.displayName || spec?.name || 'competition';
+  return spec?.displayName || spec?.name || spec?.shortName || 'competition';
 }
 
 function relatedUserTeamIds(state: any): Set<number> {
@@ -262,21 +330,31 @@ function relatedUserTeamIds(state: any): Set<number> {
 }
 
 function euroRoundSpecEndDate(state: any, seasonYear: number, competitionId: string, phase: string): string | null {
-  return competitionRoundDate(state, seasonYear, competitionId, [phase], 'end');
+  const aliases = phase === 'qf'
+    ? ['qf', 'quarterfinals']
+    : phase === 'sf'
+      ? ['sf', 'semifinals', 'final-four']
+      : [phase];
+  return competitionRoundDate(state, seasonYear, competitionId, aliases, 'end');
 }
 
 export function getEuroCompetitionTarget(state: any, seasonYear: number, norm: string, currentView?: Tab | null) {
   const relatedTeams = relatedUserTeamIds(state);
   const visibleCompetitions = (state.activeCompetitions ?? []).filter((spec: any) => spec.id !== 'nba');
   const priorityView = typeof currentView === 'string' ? currentView.toLowerCase() : '';
+  const participatingByNextDate = visibleCompetitions
+    .map((spec: any) => ({
+      spec,
+      nextDate: minScheduledDate((state.schedule ?? []).filter((game: any) =>
+        game.competitionId === spec.id
+        && !game.played
+        && (relatedTeams.has(game.homeTid) || relatedTeams.has(game.awayTid)),
+      )),
+    }))
+    .filter((entry: any) => !!entry.nextDate)
+    .sort((left: any, right: any) => left.nextDate.localeCompare(right.nextDate));
   const targetSpec = visibleCompetitions.find((spec: any) => priorityView.includes(spec.id))
-    ?? visibleCompetitions.find((spec: any) =>
-      (state.schedule ?? []).some((game: any) =>
-        game.competitionId === spec.id &&
-        !game.played &&
-        (relatedTeams.has(game.homeTid) || relatedTeams.has(game.awayTid)),
-      ),
-    )
+    ?? participatingByNextDate[0]?.spec
     ?? visibleCompetitions[0];
 
   if (!targetSpec) return null;
@@ -291,12 +369,41 @@ export function getEuroCompetitionTarget(state: any, seasonYear: number, norm: s
     ? euroRoundSpecEndDate(state, seasonYear, targetSpec.id, nextPostseasonGame.competitionPhase)
     : null;
   const postseasonStart = findFirstCompetitionDate(state, targetSpec.id, EURO_POSTSEASON_PHASES);
-  const postseasonEnd = findLastCompetitionDate(state, targetSpec.id, EURO_POSTSEASON_PHASES)
-    ?? euroRoundSpecEndDate(state, seasonYear, targetSpec.id, 'final')
-    ?? competitionRoundDate(state, seasonYear, targetSpec.id, ['final-four'], 'end')
-    ?? competitionRoundDate(state, seasonYear, targetSpec.id, ['qf', 'quarterfinals'], 'start');
+  const postseasonEnd = [
+    findLastCompetitionDate(state, targetSpec.id, EURO_POSTSEASON_PHASES),
+    euroRoundSpecEndDate(state, seasonYear, targetSpec.id, 'final'),
+    competitionRoundDate(state, seasonYear, targetSpec.id, ['final-four'], 'end'),
+    competitionRoundDate(state, seasonYear, targetSpec.id, ['qf', 'quarterfinals'], 'start'),
+  ].filter((date): date is string => !!date).sort().at(-1) ?? null;
   const regularComplete = competitionRegularComplete(state, targetSpec.id);
-  const postseasonActive = !!nextPostseasonGame || (regularComplete && !!postseasonEnd && (!postseasonStart || norm >= postseasonStart));
+  const participantTids = selectCompetitionTeamTids(targetSpec, state);
+  const resolution = resolveCompetitionSeason(
+    targetSpec,
+    state.boxScores ?? [],
+    seasonYear,
+    participantTids,
+  );
+  const competitionResolved = resolution?.championTid != null;
+  const firstPostseasonPhase = String(targetSpec.playoffFormat?.rounds?.[0]?.phase ?? 'qf');
+  const minimumPostseasonParticipants = firstPostseasonPhase === 'final'
+    ? 2
+    : firstPostseasonPhase === 'sf' || firstPostseasonPhase === 'semifinals' || firstPostseasonPhase === 'final-four'
+      ? 4
+      : 8;
+  const postseasonMaterialized = (state.schedule ?? []).some((game: any) =>
+    game.competitionId === targetSpec.id && isEuroPostseasonPhase(game.competitionPhase),
+  ) || (state.boxScores ?? []).some((game: any) =>
+    game.competitionId === targetSpec.id && isEuroPostseasonPhase(game.competitionPhase),
+  );
+  const postseasonSeedError = !competitionResolved
+    && regularComplete
+    && !!postseasonEnd
+    && norm >= (postseasonStart ?? competitionRoundDate(state, seasonYear, targetSpec.id, ['qf', 'quarterfinals', 'final-four'], 'start') ?? postseasonEnd)
+    && !postseasonMaterialized
+    && (participantTids.length < minimumPostseasonParticipants || !resolution);
+  const postseasonActive = !competitionResolved && (
+    !!nextPostseasonGame || (regularComplete && !!postseasonEnd && (!postseasonStart || norm >= postseasonStart))
+  );
 
   return {
     id: targetSpec.id as string,
@@ -305,6 +412,8 @@ export function getEuroCompetitionTarget(state: any, seasonYear: number, norm: s
     roundEndDate: roundEnd,
     postseasonEndDate: postseasonEnd,
     postseasonActive,
+    competitionResolved,
+    postseasonSeedError,
   };
 }
 

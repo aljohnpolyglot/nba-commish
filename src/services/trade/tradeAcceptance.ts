@@ -10,16 +10,19 @@ import type { NBAPlayer, NBATeam, DraftPick, LeagueStats } from '../../types';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, getPickTV, type PickValueContext,
   calcCashTV, CASH_TRADE_CAP_USD,
-  isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, isWalkingExpiring, isRecentlySignedLocked, type TeamMode,
+  isContenderChampionshipCore, isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, isWalkingExpiring, isRecentlySignedLocked, type TeamMode,
   getTradeGapTolerance, getTradeOvershootMargin, getTradeRatioThreshold, getTradeValueFloor, type TVContext,
 } from './tradeValueEngine';
 import { DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
 import { effectiveRecord, seasonLabelToYear, contractToUSD } from '../../utils/salaryUtils';
+import { getTwoWayRosterLimit } from '../../utils/rosterLimits';
+import { hasTwoWayContractMarker, isNonGuaranteedContract, isTwoWayContract, normalizeContractOptionKind } from '../../utils/contractTypes';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { formatPickLabel } from '../draft/draftClassStrength';
 import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 import { isInPostDeadlinePreFAWindow } from '../../utils/dateUtils';
 import { roleToMode } from './tradeFinderShared';
+import { gmPerceivedValue } from '../staff/gmAttributes';
 
 export interface EvaluateAcceptanceInput {
   /** Team initiating the trade (user in GM mode). */
@@ -49,6 +52,8 @@ export interface EvaluateAcceptanceInput {
   allPlayers?: NBAPlayer[];
   fromCashUSD?: number;
   toCashUSD?: number;
+  aiGmOverall?: number;
+  perceptionSeed?: string;
 }
 
 export interface AcceptanceResult {
@@ -102,18 +107,27 @@ export function projectTrimDeadMoneyUSD(
   outgoingPlayerIds: Set<string>,
   currentYear: number,
   maxRoster = 15,
+  leagueStats?: LeagueStats,
 ): number {
+  const twoWayActive = leagueStats ? getTwoWayRosterLimit(leagueStats as any) > 0 : currentYear >= 2018;
+  const nonGuaranteedActive = leagueStats?.nonGuaranteedContractsEnabled !== false;
+  const isActiveTwoWay = (player: NBAPlayer) => twoWayActive && (leagueStats
+    ? isTwoWayContract(player, leagueStats)
+    : hasTwoWayContractMarker(player));
+  const isActiveNonGuaranteed = (player: NBAPlayer) => nonGuaranteedActive && (leagueStats
+    ? isNonGuaranteedContract(player, leagueStats)
+    : isNonGuaranteedContract(player));
   // Project post-trade roster (existing minus outgoing plus incoming, std only).
   const postTrade = [
-    ...currentRoster.filter(p => !outgoingPlayerIds.has(p.internalId) && !(p as any).twoWay),
-    ...incomingPlayers.filter(p => !(p as any).twoWay),
+    ...currentRoster.filter(p => !outgoingPlayerIds.has(p.internalId) && !isActiveTwoWay(p)),
+    ...incomingPlayers.filter(p => !isActiveTwoWay(p)),
   ];
   const overflow = postTrade.length - maxRoster;
   if (overflow <= 0) return 0;
 
   // Project the cut order (lowest-OVR among guaranteed) and sum their remaining guaranteed USD.
   const cutCandidates = [...postTrade]
-    .filter(p => !(p as any).twoWay && !(p as any).nonGuaranteed)
+    .filter(p => !isActiveTwoWay(p) && !isActiveNonGuaranteed(p))
     .sort((a, b) => (a.overallRating ?? 0) - (b.overallRating ?? 0));
 
   let deadUSD = 0;
@@ -122,9 +136,10 @@ export function projectTrimDeadMoneyUSD(
     const cy = (p as any).contractYears as Array<{ season: string; guaranteed: number; option?: string }> | undefined;
     if (Array.isArray(cy) && cy.length > 0) {
       deadUSD += cy
-        .filter(y =>
-          seasonLabelToYear(y.season) >= currentYear && y.option !== 'team' && y.option !== 'player'
-        )
+        .filter(y => {
+          const option = normalizeContractOptionKind(y.option);
+          return seasonLabelToYear(y.season) >= currentYear && option !== 'team' && option !== 'player';
+        })
         .reduce((s, y) => s + (y.guaranteed || 0), 0);
     } else {
       const exp = (p.contract?.exp ?? currentYear);
@@ -185,6 +200,7 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
     powerRanks, teamOutlooks, tvContext, tradeDifficulty,
     classStrengthByYear, lotterySlotByTid, toTeamRoster, maxRoster,
     leagueStats, currentDate, allPlayers, fromCashUSD = 0, toCashUSD = 0,
+    aiGmOverall, perceptionSeed = `${fromTid}:${toTid}:${currentYear}`,
   } = input;
 
   const fromMode = roleToMode(teamOutlooks.get(fromTid)?.role ?? 'neutral');
@@ -212,12 +228,18 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
     classStrengthByYear,
     lotterySlotByTid,
   );
+  const perceivedOfferValue = aiGmOverall === undefined
+    ? offerValue
+    : gmPerceivedValue(offerValue, aiGmOverall, `${perceptionSeed}:incoming`);
+  const perceivedReturnVal = aiGmOverall === undefined
+    ? returnVal
+    : gmPerceivedValue(returnVal, aiGmOverall, `${perceptionSeed}:outgoing`);
 
   if (currentDate && isInPostDeadlinePreFAWindow(currentDate, currentYear, leagueStats as any)) {
     const walkingPlayers = [...fromItems, ...toItems]
       .filter((i): i is { type: 'player'; player: NBAPlayer } => i.type === 'player' && !!i.player)
       .map(i => i.player)
-      .filter(p => isWalkingExpiring(p, currentYear, true));
+      .filter(p => isWalkingExpiring(p, currentYear, true, tvContext?.credibleResignExpiringIds));
     if (walkingPlayers.length > 0) {
       const names = walkingPlayers.slice(0, 3).map(p => p.name).join(', ');
       const suffix = walkingPlayers.length > 3 ? ` and ${walkingPlayers.length - 3} more` : '';
@@ -233,6 +255,68 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
         reason: `${subject} on an expiring contract that reaches free agency before an acquiring team can use him.`,
       };
     }
+  }
+
+  const aiRoster = toTeamRoster ?? allPlayers?.filter(player => player.tid === toTid) ?? [];
+  const protectedAiPlayers = toItems
+    .filter((item): item is { type: 'player'; player: NBAPlayer } => item.type === 'player' && !!item.player)
+    .map(item => item.player)
+    .filter(player =>
+      isUntouchable(player, toMode, currentYear, tvContext?.mvpRank)
+      || isContenderChampionshipCore(player, aiRoster, toMode, currentYear, tvContext?.mvpRank)
+    );
+  if (protectedAiPlayers.length > 0) {
+    const names = protectedAiPlayers.slice(0, 2).map(player => player.name).join(', ');
+    const suffix = protectedAiPlayers.length > 2 ? ` and ${protectedAiPlayers.length - 2} more` : '';
+    const verb = protectedAiPlayers.length === 1 ? 'is' : 'are';
+    return {
+      accepted: false,
+      offerValue,
+      returnVal,
+      expectedReturn: offerValue,
+      shortfall: Math.max(0, returnVal - offerValue),
+      ratio: 999,
+      ratioThreshold: 0,
+      reason: `${names}${suffix} ${verb} part of their core and not realistically available.`,
+    };
+  }
+
+  const outgoingAiFirsts = toItems
+    .filter((item): item is { type: 'pick'; pick: DraftPick } => item.type === 'pick' && item.pick?.round === 1)
+    .map(item => item.pick);
+  const incomingFirsts = fromItems.filter(item => item.type === 'pick' && item.pick?.round === 1);
+  const incomingPlayers = fromItems
+    .filter((item): item is { type: 'player'; player: NBAPlayer } => item.type === 'player' && !!item.player)
+    .map(item => item.player);
+  const hasPremiumFirstRoundReturn = incomingFirsts.length > 0 || incomingPlayers.some(player =>
+    calcOvr2K(player) >= 75 ||
+    calcPot2K(player, currentYear) >= 82 ||
+    calcPlayerTV(player, fromMode, currentYear, tvContext) >= 30
+  );
+  const protectedLotteryPick = outgoingAiFirsts.find(pick => {
+    const slot = pick.season === currentYear ? lotterySlotByTid?.get(pick.originalTid) : undefined;
+    if (!slot || slot > 14 || incomingFirsts.length > 0) return false;
+    return offerValue < getPickTV(pick, {
+      currentYear,
+      totalTeams: teams.length,
+      powerRanks,
+      classStrengthByYear,
+      lotterySlotByTid,
+    }) * 1.2;
+  });
+  if ((outgoingAiFirsts.length >= 2 && !hasPremiumFirstRoundReturn) || protectedLotteryPick) {
+    return {
+      accepted: false,
+      offerValue,
+      returnVal,
+      expectedReturn: offerValue,
+      shortfall: Math.max(0, returnVal - offerValue),
+      ratio: 999,
+      ratioThreshold: 0,
+      reason: protectedLotteryPick
+        ? 'That lottery pick needs a premium young player, star, or comparable first-round pick in return.'
+        : 'We are not moving multiple first-round picks without a premium player or first-round pick coming back.',
+    };
   }
 
   if (leagueStats && currentDate && allPlayers) {
@@ -293,14 +377,15 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
     const outgoingIds = new Set(
       toItems.filter(i => i.type === 'player' && i.player).map(i => i.player!.internalId)
     );
-    const trimDeadUSD = projectTrimDeadMoneyUSD(toTeamRoster, incomingPlayers, outgoingIds, currentYear, maxRoster ?? 15);
+    const trimDeadUSD = projectTrimDeadMoneyUSD(toTeamRoster, incomingPlayers, outgoingIds, currentYear, maxRoster ?? 15, leagueStats);
     trimDeadTV = (trimDeadUSD / 1_000_000) * 0.6;
   }
 
   // expectedReturn can go negative when toxic contracts + trim cost dominate —
   // that's the "you need to attach more picks" demand.
-  const expectedReturn = (offerValue - difficultyBias) - fromAbsorb - trimDeadTV + toAbsorb;
-  const totalVal = Math.max(Math.max(getTradeValueFloor(offerValue), expectedReturn), returnVal);
+  const awareness = aiGmOverall === undefined ? 1 : 0.4 + ((Math.max(25, Math.min(99, aiGmOverall)) - 25) / 74) * 0.6;
+  const expectedReturn = (perceivedOfferValue - difficultyBias) - (fromAbsorb + trimDeadTV - toAbsorb) * awareness;
+  const totalVal = Math.max(Math.max(getTradeValueFloor(perceivedOfferValue), expectedReturn), perceivedReturnVal);
   // Mirrors generateCounterOffers: relaxed for franchise-tier targets where
   // picks can't close the TV gap perfectly.
   const ratioThreshold = getTradeRatioThreshold(totalVal);
@@ -308,12 +393,12 @@ export function evaluateTradeAcceptance(input: EvaluateAcceptanceInput): Accepta
   // Asymmetric gate: AI only refuses when THEY would be overpaying relative to
   // expectedReturn (which already accounts for toxic-contract absorption demand).
   // Cap legality + roster space are enforced upstream by salaryViolation.
-  const aiOverpaying = returnVal > expectedReturn;
-  const ratio = aiOverpaying ? returnVal / Math.max(1, expectedReturn) : 1;
+  const aiOverpaying = perceivedReturnVal > expectedReturn;
+  const ratio = aiOverpaying ? perceivedReturnVal / Math.max(1, expectedReturn) : 1;
   const accepted = !aiOverpaying || ratio <= ratioThreshold;
   // Shortfall = how much MORE value user must add to clear AI's bar.
-  const shortfall = Math.max(0, returnVal - expectedReturn);
-  const netToAI = offerValue - returnVal - fromAbsorb + toAbsorb; // post-toxicity
+  const shortfall = Math.max(0, perceivedReturnVal - expectedReturn);
+  const netToAI = perceivedOfferValue - perceivedReturnVal - (fromAbsorb - toAbsorb) * awareness;
 
   let reason: string;
   if (accepted) {

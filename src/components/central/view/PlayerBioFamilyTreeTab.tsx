@@ -3,6 +3,12 @@ import { Users, Heart, Crown, Sparkles } from 'lucide-react';
 import { NBAPlayer } from '../../../types';
 import { useGame } from '../../../store/GameContext';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { isFamilyRelationVisible, resolveFamilyRelative } from '../../../utils/familyTies';
+import { getPlayerImage } from '../../../utils/playerImage';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { convertTo2KRating } from '../../../utils/helpers';
+import { isHistoricalNbaWhatIfTimeline, timelineInputFromState } from '../../../utils/historicalTimeline';
 
 interface PlayerBioFamilyTreeTabProps {
   player: NBAPlayer;
@@ -17,6 +23,7 @@ interface RelativeEntry {
   teamLabel: string;
   teamColor: string | null;
   sameTeam: boolean;
+  lineageLabel?: string;
 }
 
 type Kinship = 'parent' | 'sibling' | 'child';
@@ -31,7 +38,21 @@ function kinshipOf(type: string): Kinship {
 }
 
 function formatRelation(t: string): string {
-  return t.charAt(0).toUpperCase() + t.slice(1);
+  const labels: Record<string, string> = {
+    father: 'Father', mother: 'Mother', son: 'Son', daughter: 'Daughter',
+    brother: 'Brother', sister: 'Sister', twin: 'Twin',
+  };
+  return labels[t] ?? (t.charAt(0).toUpperCase() + t.slice(1));
+}
+
+function lineageLabel(name: string): string | undefined {
+  const suffix = name.trim().match(/\s+(Jr\.?|II|III|IV|V|VI)$/i)?.[1]?.replace('.', '').toUpperCase();
+  if (suffix === 'JR' || suffix === 'II') return 'Second generation';
+  if (suffix === 'III') return 'Third generation';
+  if (suffix === 'IV') return 'Fourth generation';
+  if (suffix === 'V') return 'Fifth generation';
+  if (suffix === 'VI') return 'Sixth generation';
+  return undefined;
 }
 
 // ─── Node card (used for every relative; size varies) ────────────────────────
@@ -53,8 +74,8 @@ const RelativeNode: React.FC<NodeProps> = ({ entry, teamColor, size, onClick }) 
       type="button"
       disabled={!clickable}
       onClick={onClick}
-      className={`relative text-left bg-black/30 border rounded-xl px-3 py-3 transition-all ${clickable ? 'hover:bg-black/50 cursor-pointer' : 'cursor-default'}`}
-      style={{ borderColor, boxShadow: shadow, minWidth: size === 'sm' ? 180 : 220 }}
+      className={`relative w-full ${size === 'sm' ? 'max-w-[180px]' : 'max-w-[220px]'} text-left bg-black/30 border rounded-xl px-3 py-3 transition-all ${clickable ? 'hover:bg-black/50 cursor-pointer' : 'cursor-default'}`}
+      style={{ borderColor, boxShadow: shadow }}
     >
       <div className="absolute -top-2 left-3 px-2 py-0.5 bg-black border rounded-full text-[9px] font-bold uppercase tracking-widest"
            style={{ borderColor, color: entry.sameTeam ? teamColor : '#cbd5e1' }}>
@@ -64,7 +85,7 @@ const RelativeNode: React.FC<NodeProps> = ({ entry, teamColor, size, onClick }) 
       <div className="flex items-center gap-3">
         <div className="rounded-full overflow-hidden border flex-shrink-0" style={{ borderColor, width: portraitSize, height: portraitSize }}>
           {entry.match ? (
-            <PlayerPortrait imgUrl={entry.match.imgURL} face={(entry.match as any).face} playerName={entry.match.name} size={portraitSize} />
+            <PlayerPortrait imgUrl={getPlayerImage(entry.match)} face={(entry.match as any).face} playerName={entry.match.name} size={portraitSize} />
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-slate-800 text-slate-500">
               <Users size={18} />
@@ -74,6 +95,9 @@ const RelativeNode: React.FC<NodeProps> = ({ entry, teamColor, size, onClick }) 
         <div className="flex-1 min-w-0">
           <div className={`font-bold truncate ${size === 'sm' ? 'text-xs' : 'text-sm'}`}>{entry.name}</div>
           <div className="text-[10px] text-slate-400 uppercase tracking-wider truncate mt-0.5">{entry.teamLabel}</div>
+          {entry.lineageLabel && (
+            <div className="text-[9px] text-amber-300/80 uppercase tracking-wider truncate mt-1">{entry.lineageLabel}</div>
+          )}
           {entry.match && (
             <div className="flex items-center gap-1.5 mt-1">
               {entry.match.pos && (
@@ -82,7 +106,11 @@ const RelativeNode: React.FC<NodeProps> = ({ entry, teamColor, size, onClick }) 
               {entry.match.overallRating > 0 && (
                 <span className="text-[9px] px-1.5 py-0.5 rounded font-mono font-bold"
                       style={{ backgroundColor: `${borderColor}25`, color: borderColor === 'rgba(255,255,255,0.12)' ? '#94a3b8' : borderColor }}>
-                  OVR {Math.round(0.88 * entry.match.overallRating + 31)}
+                  OVR {convertTo2KRating(
+                    entry.match.overallRating,
+                    entry.match.ratings?.slice(-1)[0]?.hgt ?? 50,
+                    entry.match.ratings?.slice(-1)[0]?.tp,
+                  )}
                 </span>
               )}
             </div>
@@ -107,12 +135,17 @@ export const PlayerBioFamilyTreeTab: React.FC<PlayerBioFamilyTreeTabProps> = ({
   onPlayerClick,
 }) => {
   const { state } = useGame();
-  const { players, teams } = state;
+  const { players, teams, nonNBATeams } = state;
+  const currentYear = state.leagueStats?.year ?? new Date().getUTCFullYear();
+  const historicalWhatIf = isHistoricalNbaWhatIfTimeline(timelineInputFromState(state));
 
   const entries: RelativeEntry[] = useMemo(() => {
     const rel = player.relatives ?? [];
-    return rel.map(r => {
-      const match = players.find(p => p.name === r.name) ?? null;
+    return rel.flatMap(r => {
+      const match = resolveFamilyRelative(r, players) ?? null;
+      if (!isFamilyRelationVisible(r, match ?? undefined, currentYear)) return [];
+      if (!match && historicalWhatIf) return [];
+
       let teamLabel = 'Not in league';
       let teamColorStr: string | null = null;
       let sameTeam = false;
@@ -121,12 +154,12 @@ export const PlayerBioFamilyTreeTab: React.FC<PlayerBioFamilyTreeTabProps> = ({
         const isProspect = match.tid === -2 || match.status === 'Draft Prospect' || match.status === 'Prospect';
         if (match.tid === player.tid && match.tid >= 0) {
           sameTeam = true;
-          const team = teams.find(t => t.id === match.tid);
-          teamLabel = team?.name ?? 'Same Team';
+          const team = resolveAnyTeam(match.tid, teams, nonNBATeams);
+          teamLabel = team ? getTeamFullName(team) : 'Same Team';
           teamColorStr = team?.colors?.[0] ?? null;
         } else if (match.tid >= 0) {
-          const team = teams.find(t => t.id === match.tid);
-          teamLabel = team?.name ?? 'NBA';
+          const team = resolveAnyTeam(match.tid, teams, nonNBATeams);
+          teamLabel = team ? getTeamFullName(team) : 'Pro Basketball';
           teamColorStr = team?.colors?.[0] ?? null;
         } else if (isProspect) {
           const dy = match.draft?.year;
@@ -140,9 +173,17 @@ export const PlayerBioFamilyTreeTab: React.FC<PlayerBioFamilyTreeTabProps> = ({
         }
       }
 
-      return { type: r.type, name: r.name, match, teamLabel, teamColor: teamColorStr, sameTeam };
+      return [{
+        type: r.type,
+        name: match?.name ?? r.name,
+        match,
+        teamLabel,
+        teamColor: teamColorStr,
+        sameTeam,
+        lineageLabel: lineageLabel(match?.name ?? r.name),
+      }];
     });
-  }, [player, players, teams]);
+  }, [currentYear, historicalWhatIf, nonNBATeams, player, players, teams]);
 
   const parents = entries.filter(e => kinshipOf(e.type) === 'parent');
   const siblings = entries.filter(e => kinshipOf(e.type) === 'sibling');
@@ -150,11 +191,14 @@ export const PlayerBioFamilyTreeTab: React.FC<PlayerBioFamilyTreeTabProps> = ({
   const sameTeamEntries = entries.filter(e => e.sameTeam);
   const sameTeamCount = sameTeamEntries.length;
   const sameTeamKinds = new Set(sameTeamEntries.map(e => kinshipOf(e.type)));
+  const hasTwinOnTeam = sameTeamEntries.some(e => e.type === 'twin');
   const sameTeamBlurb = (() => {
     if (sameTeamCount === 0) return '';
     const hasParent = sameTeamKinds.has('parent');
     const hasChild = sameTeamKinds.has('child');
     const hasSibling = sameTeamKinds.has('sibling');
+    if (hasTwinOnTeam)
+      return 'Twins sharing a locker room get a morale anchor and stay off the trading block when their family pairing is protected.';
     if (hasParent && hasChild)
       return 'Parents and children sharing a locker room anchor each other\u2019s morale and stay off the trading block when a core family member is protected.';
     if (hasParent || hasChild)
@@ -170,8 +214,8 @@ export const PlayerBioFamilyTreeTab: React.FC<PlayerBioFamilyTreeTabProps> = ({
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-500 italic">
         <Users size={48} className="mb-4 opacity-20" />
-        <p>No family ties on file for {player.name}.</p>
-        <p className="text-xs mt-2 text-slate-600">BBGM rosters list relatives for dynasty players (Antetokounmpo, Ball, Holiday, Curry…)</p>
+        <p>No visible family ties for {player.name} in {currentYear}.</p>
+        <p className="text-xs mt-2 text-slate-600">Future relatives stay hidden until they are born and, for prospects, until their draft class year arrives.</p>
       </div>
     );
   }
@@ -233,17 +277,22 @@ export const PlayerBioFamilyTreeTab: React.FC<PlayerBioFamilyTreeTabProps> = ({
 
           {/* Main player — bigger, centered */}
           <div
-            className="relative flex flex-col items-center bg-gradient-to-b from-white/10 to-transparent border-2 rounded-2xl px-6 py-5 min-w-[260px]"
+            className="relative flex w-full max-w-[260px] min-w-0 flex-col items-center bg-gradient-to-b from-white/10 to-transparent border-2 rounded-2xl px-6 py-5"
             style={{ borderColor: teamColor, boxShadow: `0 0 32px ${teamColor}55` }}
           >
             <div className="w-28 h-28 rounded-full overflow-hidden border-2 mb-3" style={{ borderColor: teamColor }}>
-              <PlayerPortrait imgUrl={player.imgURL} face={(player as any).face} playerName={player.name} size={112} />
+              <PlayerPortrait imgUrl={getPlayerImage(player)} face={(player as any).face} playerName={player.name} size={112} />
             </div>
             <div className="font-bold text-base text-center">{player.name}</div>
             <div className="text-[10px] text-slate-400 uppercase tracking-widest mt-1 flex items-center gap-1">
               <Crown size={11} style={{ color: teamColor }} />
               You are here
             </div>
+            {lineageLabel(player.name) && (
+              <div className="text-[10px] text-amber-300/80 uppercase tracking-widest mt-2">
+                {lineageLabel(player.name)}
+              </div>
+            )}
           </div>
 
           {/* Right-side siblings (other half) */}

@@ -1,0 +1,178 @@
+{
+  "version": "2026-07-30",
+  "sourceCutoffYear": 2026,
+  "talent": [
+    {
+      "id": "jim-barnett",
+      "name": "Jim Barnett",
+      "aliases": [],
+      "role": "Color Analyst",
+      "outlet": "Golden State broadcasts",
+      "activeSpans": [{ "from": 1985 }],
+      "sourceUrl": "https://www.nba.com/news/jim-barnett-warriors-tv-analyst-qa"
+    },
+    {
+      "id": "steve-jones",
+      "name": "Steve Jones",
+      "aliases": ["Steve \"Snapper\" Jones"],
+      "role": "Color Analyst",
+      "outlet": "National and Portland broadcasts",
+      "activeSpans": [{ "from": 1977, "to": 2008 }],
+      "sourceUrl": "https://www.nba.com/news/former-aba-all-star-steve-snapper-jones-dead-75"
+    },
+    {
+      "id": "kevin-mchale",
+      "name": "Kevin McHale",
+      "aliases": [],
+      "role": "Game and Studio Analyst",
+      "outlet": "Minnesota, NBA TV and national broadcasts",
+      "activeSpans": [{ "from": 1993, "to": 2011 }, { "from": 2016 }],
+      "sourceUrl": "https://www.nba.com/news/kevin-mchale-turner-sports-nba-analyst"
+    },
+    {
+      "id": "brad-daugherty",
+      "name": "Brad Daugherty",
+      "aliases": [],
+      "role": "Studio Analyst",
+      "outlet": "Cleveland and national broadcasts",
+      "activeSpans": [{ "from": 1999 }],
+      "sourceUrl": "https://espnpressroom.com/press-release/brad-daugherty-to-remain-with-espn-as-nba-and-college-basketball-analyst/"
+    },
+    {
+      "id": "brian-grant",
+      "name": "Brian Grant",
+      "aliases": [],
+      "role": "Radio Analyst",
+      "outlet": "Portland broadcasts",
+      "activeSpans": [{ "from": 2017, "to": 2017 }],
+      "sourceUrl": "https://www.nba.com/news/brian-grant-new-career-portland-trail-blazers-radio-analyst"
+    },
+    {
+      "id": "kenny-smith",
+      "name": "Kenny Smith",
+      "aliases": ["Kenneth Smith"],
+      "role": "Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 1998 }],
+      "sourceUrl": "https://press.wbd.com/na/media-release/tnt-sports/warner-bros-discovery-sports-has-reached-long-term-contract-extensions-ernie-johnson"
+    },
+    {
+      "id": "charles-barkley",
+      "name": "Charles Barkley",
+      "aliases": [],
+      "role": "Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2000 }],
+      "sourceUrl": "https://press.wbd.com/us/media-release/charles-barkley-tnt-sports-announce-continued-long-term-commitment"
+    },
+    {
+      "id": "shaquille-oneal",
+      "name": "Shaquille O'Neal",
+      "aliases": ["Shaquille O’Neal", "Shaq O'Neal"],
+      "role": "Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2011 }],
+      "sourceUrl": "https://press.wbd.com/us/media-release/tnt-sports/shaq-big-renewal"
+    },
+    {
+      "id": "steve-kerr",
+      "name": "Steve Kerr",
+      "aliases": ["Stephen Kerr"],
+      "role": "Game Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2003, "to": 2007 }, { "from": 2010, "to": 2014 }],
+      "sourceUrl": "https://ak-static-int.nba.com/wp-content/uploads/sites/3/2016/10/2016-17-Media-Guide-Warriors.pdf"
+    },
+    {
+      "id": "reggie-miller",
+      "name": "Reggie Miller",
+      "aliases": ["Reginald Miller"],
+      "role": "Game Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2005 }]
+    },
+    {
+      "id": "chris-webber",
+      "name": "Chris Webber",
+      "aliases": ["Christopher Webber"],
+      "role": "Game Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2008, "to": 2021 }]
+    },
+    {
+      "id": "grant-hill",
+      "name": "Grant Hill",
+      "aliases": [],
+      "role": "Game and Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2013 }]
+    },
+    {
+      "id": "dwyane-wade",
+      "name": "Dwyane Wade",
+      "aliases": ["Dwayne Wade"],
+      "role": "Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2019, "to": 2022 }]
+    },
+    {
+      "id": "paul-pierce",
+      "name": "Paul Pierce",
+      "aliases": [],
+      "role": "Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2017, "to": 2021 }]
+    },
+    {
+      "id": "jj-redick",
+      "name": "JJ Redick",
+      "aliases": ["J.J. Redick", "Jonathan Redick"],
+      "role": "Game and Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2021, "to": 2024 }]
+    },
+    {
+      "id": "vince-carter",
+      "name": "Vince Carter",
+      "aliases": ["Vincent Carter"],
+      "role": "Game and Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2020 }]
+    },
+    {
+      "id": "richard-jefferson",
+      "name": "Richard Jefferson",
+      "aliases": [],
+      "role": "Game and Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2019 }],
+      "sourceUrl": "https://espnpressroom.com/us/bios/richard-jefferson/"
+    },
+    {
+      "id": "kendrick-perkins",
+      "name": "Kendrick Perkins",
+      "aliases": [],
+      "role": "Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2019 }]
+    },
+    {
+      "id": "danny-green",
+      "name": "Danny Green",
+      "aliases": ["Daniel Green"],
+      "role": "Game and Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2024 }],
+      "sourceUrl": "https://www.nba.com/news/qa-former-nba-player-danny-green"
+    },
+    {
+      "id": "iman-shumpert",
+      "name": "Iman Shumpert",
+      "aliases": [],
+      "role": "Studio Analyst",
+      "outlet": "National broadcasts",
+      "activeSpans": [{ "from": 2025 }],
+      "sourceUrl": "https://espnpressroom.com/bio/236980/"
+    }
+  ]
+}

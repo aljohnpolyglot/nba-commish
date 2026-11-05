@@ -1,4 +1,5 @@
 import type { NBAPlayer, NBAGMStat } from '../../types';
+import { readJsonResponse } from '../utils/jsonResponse';
 
 const PBA_STATS_URL = 'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbastatscomplete';
 
@@ -39,6 +40,11 @@ interface RawPbaStatsPayload {
 export type PbaStatsByPlayer = Map<string, NBAGMStat[]>;
 
 let archivePromise: Promise<RawPbaStatsRow[]> | null = null;
+
+interface LoadPbaStatsOptions {
+  maxSeason?: number;
+  excludeSeasons?: Iterable<number>;
+}
 
 const numberValue = (value: unknown): number => {
   const raw = String(value ?? '').replace(/[%*,]/g, '').trim();
@@ -105,6 +111,17 @@ function leagueTag(rows: RawPbaStatsRow[]): { tag: string; title: string } {
   return { tag: 'MIX', title: values.join(' / ') };
 }
 
+function teamAbbrev(rows: RawPbaStatsRow[]): string | undefined {
+  const values = Array.from(new Set(
+    rows
+      .map(row => String(row.team ?? '').trim())
+      .filter(value => value && value !== 'All Teams')
+  ));
+  if (values.length === 0) return undefined;
+  if (values.length > 1) return 'TOT';
+  return values[0].replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 6) || undefined;
+}
+
 function weightedTotal(rows: RawPbaStatsRow[], field: keyof RawPbaStatsRow): number {
   return rows.reduce((sum, row) => sum + numberValue(row[field]) * numberValue(row.gp), 0);
 }
@@ -118,6 +135,7 @@ function buildStatRow(rows: RawPbaStatsRow[], player: NBAPlayer, season: number)
   const ft = weightedTotal(rows, 'ftm');
   const fta = weightedTotal(rows, 'fta');
   const league = leagueTag(rows);
+  const abbrev = teamAbbrev(rows);
   const min = weightedTotal(rows, 'min');
   const pts = weightedTotal(rows, 'pts');
   const poss = fga + 0.44 * fta;
@@ -151,6 +169,7 @@ function buildStatRow(rows: RawPbaStatsRow[], player: NBAPlayer, season: number)
     tsPct: poss > 0 ? (pts / (2 * poss)) * 100 : 0,
     efgPct: fga > 0 ? ((fg + 0.5 * tp) / fga) * 100 : 0,
     ...(league as any),
+    ...(abbrev ? { abbrev, teamAbbrev: abbrev, tm: abbrev } : {}),
     _archiveCompetitionId: competitionIdForLeague(rows[0]?.league),
     _seasonLabel: seasonLabel(rows[0]?.season),
     _source: 'pba-stats-archive',
@@ -160,10 +179,7 @@ function buildStatRow(rows: RawPbaStatsRow[], player: NBAPlayer, season: number)
 async function fetchArchiveRows(): Promise<RawPbaStatsRow[]> {
   if (!archivePromise) {
     archivePromise = fetch(`${PBA_STATS_URL}?t=${Date.now()}`)
-      .then(response => {
-        if (!response.ok) throw new Error(`PBA stats fetch failed: ${response.status}`);
-        return response.json() as Promise<RawPbaStatsPayload>;
-      })
+      .then(response => readJsonResponse<RawPbaStatsPayload>(response, 'PBA stats archive'))
       .then(payload => payload.rows ?? [])
       .catch(error => {
         console.warn('[PBAStats] Could not load archive', error);
@@ -173,9 +189,10 @@ async function fetchArchiveRows(): Promise<RawPbaStatsRow[]> {
   return archivePromise;
 }
 
-export async function loadPbaStatsForPlayers(players: NBAPlayer[]): Promise<PbaStatsByPlayer> {
+export async function loadPbaStatsForPlayers(players: NBAPlayer[], options: LoadPbaStatsOptions = {}): Promise<PbaStatsByPlayer> {
   const archiveRows = await fetchArchiveRows();
   const rowsByNameKey = new Map<string, RawPbaStatsRow[]>();
+  const excludedSeasons = new Set(options.excludeSeasons ?? []);
 
   for (const row of archiveRows) {
     if (!row.player_name || row.team === 'All Teams' || row.league === 'All Leagues') continue;
@@ -194,6 +211,8 @@ export async function loadPbaStatsForPlayers(players: NBAPlayer[]): Promise<PbaS
     for (const row of matchedRows) {
       const year = seasonYear(row.season);
       if (!year || numberValue(row.gp) <= 0) continue;
+      if (options.maxSeason != null && year > options.maxSeason) continue;
+      if (excludedSeasons.has(year)) continue;
       const competitionId = competitionIdForLeague(row.league) ?? `league:${String(row.league ?? '').trim() || 'unknown'}`;
       const key = `${year}|${competitionId}`;
       if (!bySeasonCompetition.has(key)) bySeasonCompetition.set(key, []);

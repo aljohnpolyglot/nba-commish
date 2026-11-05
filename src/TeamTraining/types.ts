@@ -86,6 +86,8 @@ export type Player = {
   id: string;
   name: string;
   imgURL?: string;
+  srID?: string;
+  slug?: string;
   /** facesjs face descriptor — rendered when imgURL is absent. Only generated prospects carry this. */
   face?: any;
   age: number;

@@ -3,10 +3,10 @@ import { convertTo2KRating } from '../helpers';
 import { resolveBirdRights } from '../playerBirdRights';
 import type { CapThresholds } from './salaryCapUtils';
 
-export function effectiveRecord(team: any, currentYear: number): { wins: number; losses: number } {
+export function effectiveRecord(team: any, currentYear: number, preferCurrent = false): { wins: number; losses: number } {
   const wins = team.wins ?? 0;
   const losses = team.losses ?? 0;
-  if (wins + losses >= 10) return { wins, losses };
+  if (preferCurrent || wins + losses >= 10) return { wins, losses };
   const lastSeason = (team.seasons as any[] | undefined)?.find(s => s.season === currentYear - 1);
   if (lastSeason && (lastSeason.won + lastSeason.lost) > 0) {
     return { wins: lastSeason.won, losses: lastSeason.lost };
@@ -45,19 +45,28 @@ export const MANUAL_STATUS_LABEL: Record<TeamStatus, string> = {
   development: 'Development',
 };
 
-export function manualStatusOutlook(status: TeamStatus): TradeOutlook {
-  return MANUAL_STATUS_OUTLOOK[status];
+export function getManualStatusLabel(status: TeamStatus, playInEnabled = true): string {
+  if (status === 'play_in_push' && !playInEnabled) return 'Playoff Push';
+  return MANUAL_STATUS_LABEL[status];
+}
+
+export function manualStatusOutlook(status: TeamStatus, playInEnabled = true): TradeOutlook {
+  const outlook = MANUAL_STATUS_OUTLOOK[status];
+  return status === 'play_in_push' && !playInEnabled
+    ? { ...outlook, label: 'Playoff Push' }
+    : outlook;
 }
 
 export function resolveManualOutlook(
   team: Pick<NBATeam, 'id' | 'manualTeamStatus'>,
   gameMode: string | undefined,
   userTeamId: number | undefined | null,
+  playInEnabled = true,
 ): TradeOutlook | undefined {
   if (gameMode !== 'gm') return undefined;
   if (userTeamId == null || team.id !== userTeamId) return undefined;
   if (!team.manualTeamStatus) return undefined;
-  return MANUAL_STATUS_OUTLOOK[team.manualTeamStatus];
+  return manualStatusOutlook(team.manualTeamStatus, playInEnabled);
 }
 
 export function topNAvgK2(players: NBAPlayer[], teamId: number, n = 3): number {

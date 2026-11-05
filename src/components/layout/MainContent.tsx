@@ -1,72 +1,82 @@
 import React from 'react';
-import { normalizeDate } from '../../utils/helpers';
-import { getDraftDate, getRolloverDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../../utils/dateUtils';
 import { useGame } from '../../store/GameContext';
-import { Inbox } from '../Inbox';
-import { MessagesView } from '../MessagesView';
-import { NewsFeed } from '../NewsFeed';
-import { SocialFeed } from '../SocialFeed';
 import { NBACentral } from '../central/view/NBACentral';
-import { PlayerStatsView } from '../central/view/PlayerStatsView';
-import { CommissionerView } from '../commissioner/CommissionerView';
-import RulesView from '../commissioner/rules/view/RulesView';
-import ActionsView from '../actions/view/ActionsView';
-import { PersonalView } from '../personal/PersonalView';
-import { ScheduleView } from '../schedule/view/ScheduleView';
-import { AwardRacesView } from '../view/AwardRacesView';
-import { EuroAwardRacesView } from '../view/EuroAwardRacesView';
-import { PBAAwardRacesView } from '../view/PBAAwardRacesView';
-import { PlayersView } from '../players/PlayersView';
-import { FreeAgentsView } from '../players/view/FreeAgentsView';
-import { TransactionsView } from '../central/view/TransactionsView';
-import { LeagueEvent } from '../central/view/LeagueEvent';
-import { TradeMachineView } from '../central/view/TradeMachineView';
-import { TradeProposalsView } from '../central/view/TradeProposalsView';
-import { TeamStatsView } from '../team-stats/TeamStatsView';
-import { AllStarView } from '../allstar/AllStarView';
-import NBACupView from '../central/view/NBACupView';
-import { PlayoffView } from '../playoffs/PlayoffView';
-import { LeagueOfficeView } from '../league-office/LeagueOfficeView';
-import { LeagueLeadersView } from '../central/view/LeagueLeadersView';
-import { StatisticalFeatsView } from '../central/view/StatisticalFeatsView';
-import { StandingsView } from '../central/view/StandingsView';
-import { InjuriesView } from '../central/view/InjuriesView';
-import { BroadcastingView } from '../operations/BroadcastingView.tsx';
 import { TwitterLayout } from './Twitterlayout';
-import { LeagueFinancesView } from '../central/view/LeagueFinancesView';
-import { TeamFinancesViewDetailed } from '../central/view/TeamFinancesViewDetailed';
-import { DraftScoutingView } from '../central/view/DraftScoutingView';
-import { DraftLotteryView } from '../draft/DraftLotteryView';
-import { SeasonPreviewView } from '../seasonPreview/SeasonPreviewView';
-import { DraftSimulatorView } from '../draft/DraftSimulatorView';
-import { DraftHistoryView } from '../draft/DraftHistoryView';
-import Dashboard from '../commissioner/Dashboard';
-import ViewershipTab from '../commissioner/ViewershipTab';
-import CommishStore from '../central/view/CommishStore';
-import RealStern from '../central/view/RealStern';
-import SportsBookView from '../central/view/SportsBookView';
-import SeasonalView from '../seasonal/SeasonalView';
-import { PlayerRatingsView } from '../central/view/PlayerRatingsView';
-import { PlayerCreatorView } from '../central/view/PlayerCreatorView';
-import { LeagueHistoryView } from '../central/view/LeagueHistoryView';
-import { PlayerBiosView } from '../central/view/PlayerBiosView';
-import { PlayerComparisonView } from '../central/view/PlayerComparison';
-import { TeamHistoryView } from '../central/view/TeamHistoryView';
-import { PowerRankingsView } from '../central/view/PowerRankingsView';
-import { TradeFinderView } from '../central/view/TradeFinderView';
-import { TeamOfficeView } from '../central/view/TeamOffice/TeamOfficeView';
-import { CoachingHubView } from '../central/view/Coaching/CoachingHubView';
-import { TrainingCenterView } from '../training/TrainingCenterView';
-import HallofFameView from '../central/view/HallOfFame/HallofFameView';
 import { InternationalLeagueHub, HUB_TAB_TO_LEAGUE } from '../international/InternationalLeagueHub';
-import { FrontOfficeView } from '../central/view/FrontOfficeView';
-import { EuroTransferMarketView } from '../transferMarket/EuroTransferMarketView';
-import { CompetitionCentralView } from '../competition/CompetitionCentralView';
 import { CompetitionHubLayout } from '../competition/CompetitionHubLayout';
+import { CompetitionBracketView } from '../competition/CompetitionBracketView';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { isNoDraftLeague } from '../../services/offseason/offseasonState';
+import { shouldShowLiveDraftBoard } from '../../services/draft/draftBoardAccess';
 import { isPbaTradeWindowOpen } from '../../services/pba/tradeWindow';
+import { getConferenceSpec } from '../../services/pba/conferenceTransition';
+import { getEffectivePbaConference } from '../../services/pba/importManager';
 import { Tab } from '../../types';
+import { isTwitterAvailable } from '../../utils/mediaTimeline';
+import { isFranchiseExperienceAvailable } from '../../services/franchises/franchiseState';
+
+const Inbox = React.lazy(() => import('../Inbox').then(module => ({ default: module.Inbox })));
+const MessagesView = React.lazy(() => import('../MessagesView').then(module => ({ default: module.MessagesView })));
+const NewsFeed = React.lazy(() => import('../NewsFeed').then(module => ({ default: module.NewsFeed })));
+const PlayerStatsView = React.lazy(() => import('../central/view/PlayerStatsView').then(module => ({ default: module.PlayerStatsView })));
+const CommissionerView = React.lazy(() => import('../commissioner/CommissionerView').then(module => ({ default: module.CommissionerView })));
+const RulesView = React.lazy(() => import('../commissioner/rules/view/RulesView'));
+const ActionsView = React.lazy(() => import('../actions/view/ActionsView'));
+const PersonalView = React.lazy(() => import('../personal/PersonalView').then(module => ({ default: module.PersonalView })));
+const ScheduleView = React.lazy(() => import('../schedule/view/ScheduleView').then(module => ({ default: module.ScheduleView })));
+const AwardRacesView = React.lazy(() => import('../view/AwardRacesView').then(module => ({ default: module.AwardRacesView })));
+const EuroAwardRacesView = React.lazy(() => import('../view/EuroAwardRacesView').then(module => ({ default: module.EuroAwardRacesView })));
+const PBAAwardRacesView = React.lazy(() => import('../view/PBAAwardRacesView').then(module => ({ default: module.PBAAwardRacesView })));
+const PlayersView = React.lazy(() => import('../players/PlayersView').then(module => ({ default: module.PlayersView })));
+const FreeAgentsView = React.lazy(() => import('../players/view/FreeAgentsView').then(module => ({ default: module.FreeAgentsView })));
+const TransactionsView = React.lazy(() => import('../central/view/TransactionsView').then(module => ({ default: module.TransactionsView })));
+const LeagueEvent = React.lazy(() => import('../central/view/LeagueEvent').then(module => ({ default: module.LeagueEvent })));
+const TradeMachineView = React.lazy(() => import('../central/view/TradeMachineView').then(module => ({ default: module.TradeMachineView })));
+const TradeProposalsView = React.lazy(() => import('../central/view/TradeProposalsView').then(module => ({ default: module.TradeProposalsView })));
+const TeamStatsView = React.lazy(() => import('../team-stats/TeamStatsView').then(module => ({ default: module.TeamStatsView })));
+const AllStarView = React.lazy(() => import('../allstar/AllStarView').then(module => ({ default: module.AllStarView })));
+const NBACupView = React.lazy(() => import('../central/view/NBACupView'));
+const FibaInternationalHub = React.lazy(() => import('../international/FibaInternationalHub').then(module => ({ default: module.FibaInternationalHub })));
+const SummerLeagueHub = React.lazy(() => import('../summerLeague/SummerLeagueHub').then(module => ({ default: module.SummerLeagueHub })));
+const PlayoffView = React.lazy(() => import('../playoffs/PlayoffView').then(module => ({ default: module.PlayoffView })));
+const LeagueOfficeView = React.lazy(() => import('../league-office/LeagueOfficeView').then(module => ({ default: module.LeagueOfficeView })));
+const LeagueLeadersView = React.lazy(() => import('../central/view/LeagueLeadersView').then(module => ({ default: module.LeagueLeadersView })));
+const StatisticalFeatsView = React.lazy(() => import('../central/view/StatisticalFeatsView').then(module => ({ default: module.StatisticalFeatsView })));
+const StandingsView = React.lazy(() => import('../central/view/StandingsView').then(module => ({ default: module.StandingsView })));
+const InjuriesView = React.lazy(() => import('../central/view/InjuriesView').then(module => ({ default: module.InjuriesView })));
+const BroadcastingView = React.lazy(() => import('../operations/BroadcastingView').then(module => ({ default: module.BroadcastingView })));
+const LeagueFinancesView = React.lazy(() => import('../central/view/LeagueFinancesView').then(module => ({ default: module.LeagueFinancesView })));
+const TeamFinancesViewDetailed = React.lazy(() => import('../central/view/TeamFinancesViewDetailed').then(module => ({ default: module.TeamFinancesViewDetailed })));
+const DraftScoutingView = React.lazy(() => import('../central/view/DraftScoutingView').then(module => ({ default: module.DraftScoutingView })));
+const DraftLotteryView = React.lazy(() => import('../draft/DraftLotteryView').then(module => ({ default: module.DraftLotteryView })));
+const SeasonPreviewView = React.lazy(() => import('../seasonPreview/SeasonPreviewView').then(module => ({ default: module.SeasonPreviewView })));
+const DraftSimulatorView = React.lazy(() => import('../draft/DraftSimulatorView').then(module => ({ default: module.DraftSimulatorView })));
+const FantasyDraftView = React.lazy(() => import('../fantasyDraft/FantasyDraftView').then(module => ({ default: module.FantasyDraftView })));
+const DraftHistoryView = React.lazy(() => import('../draft/DraftHistoryView').then(module => ({ default: module.DraftHistoryView })));
+const Dashboard = React.lazy(() => import('../commissioner/Dashboard'));
+const ViewershipTab = React.lazy(() => import('../commissioner/ViewershipTab'));
+const CommishStore = React.lazy(() => import('../central/view/CommishStore'));
+const RealStern = React.lazy(() => import('../central/view/RealStern'));
+const SportsBookView = React.lazy(() => import('../central/view/SportsBookView'));
+const CommissionerTasksView = React.lazy(() => import('../commissioner-tasks/CommissionerTasksView').then(module => ({ default: module.CommissionerTasksView })));
+const PlayerRatingsView = React.lazy(() => import('../central/view/PlayerRatingsView').then(module => ({ default: module.PlayerRatingsView })));
+const PlayerCreatorView = React.lazy(() => import('../central/view/PlayerCreatorView').then(module => ({ default: module.PlayerCreatorView })));
+const LeagueHistoryView = React.lazy(() => import('../central/view/LeagueHistoryView').then(module => ({ default: module.LeagueHistoryView })));
+const PlayerBiosView = React.lazy(() => import('../central/view/PlayerBiosView').then(module => ({ default: module.PlayerBiosView })));
+const PlayerComparisonView = React.lazy(() => import('../central/view/PlayerComparison').then(module => ({ default: module.PlayerComparisonView })));
+const TeamHistoryView = React.lazy(() => import('../central/view/TeamHistoryView').then(module => ({ default: module.TeamHistoryView })));
+const PowerRankingsView = React.lazy(() => import('../central/view/PowerRankingsView').then(module => ({ default: module.PowerRankingsView })));
+const TradeFinderView = React.lazy(() => import('../central/view/TradeFinderView').then(module => ({ default: module.TradeFinderView })));
+const TeamOfficeView = React.lazy(() => import('../central/view/TeamOffice/TeamOfficeView').then(module => ({ default: module.TeamOfficeView })));
+const CoachingHubView = React.lazy(() => import('../central/view/Coaching/CoachingHubView').then(module => ({ default: module.CoachingHubView })));
+const TrainingCenterView = React.lazy(() => import('../training/TrainingCenterView').then(module => ({ default: module.TrainingCenterView })));
+const HallofFameView = React.lazy(() => import('../central/view/HallOfFame/HallofFameView'));
+const FrontOfficeView = React.lazy(() => import('../central/view/FrontOfficeView').then(module => ({ default: module.FrontOfficeView })));
+const EuroTransferMarketView = React.lazy(() => import('../transferMarket/EuroTransferMarketView').then(module => ({ default: module.EuroTransferMarketView })));
+const EuroScoutingView = React.lazy(() => import('../euroScouting/EuroScoutingView').then(module => ({ default: module.EuroScoutingView })));
+const YouthAcademyView = React.lazy(() => import('../euroScouting/YouthAcademyView').then(module => ({ default: module.YouthAcademyView })));
+const FranchisesView = React.lazy(() => import('../franchises/FranchisesView').then(module => ({ default: module.FranchisesView })));
+const DeepLinkedEntityView = React.lazy(() => import('../navigation/DeepLinkedEntityView').then(module => ({ default: module.DeepLinkedEntityView })));
 
 interface MainContentProps {
   currentView: Tab;
@@ -74,15 +84,20 @@ interface MainContentProps {
 }
 
 export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewChange }) => {
-  const { state } = useGame();
+  const { state, navigationRoute } = useGame();
   const euroIsolated = isEuroIsolatedMode(state);
   const pbaIsolated = isPbaIsolatedMode(state);
   const tradesDisabled = state.leagueStats?.tradesAllowed === false;
   const pbaTradeWindowClosed = pbaIsolated && !isPbaTradeWindowOpen(state);
+  const socialFeedAvailable = isTwitterAvailable(state.date, state.leagueStats?.year);
   const tradeClosedMessage = pbaTradeWindowClosed
     ? 'PBA trades are closed during the current phase.'
     : 'This competition is built around signings, loans and free agency rather than trades.';
   const noDraft = isNoDraftLeague(state.leagueStats as any);
+  const euroPrimaryCompetitionId = state.euroPrimaryCompetitionId ?? 'endesa';
+  const pbaPrimaryCompetitionId = getConferenceSpec(getEffectivePbaConference(state.leagueStats as any)).id;
+
+  if (navigationRoute && navigationRoute.kind !== 'home') return <DeepLinkedEntityView />;
 
   switch (currentView) {
     case 'Inbox':
@@ -96,7 +111,13 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
         </div>
       );
     case 'Social Feed':
-      return <TwitterLayout />;
+      return socialFeedAvailable ? (
+        <TwitterLayout />
+      ) : (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <NewsFeed />
+        </div>
+      );
     case 'League News':
       return (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
@@ -121,13 +142,31 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
           <NBACupView />
         </div>
       );
+    case 'Summer League':
+      if (euroIsolated || pbaIsolated) return null;
+      return (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <SummerLeagueHub />
+        </div>
+      );
+    case 'International':
+      return (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <FibaInternationalHub
+            tournament={state.internationalTournament}
+            onExit={() => onViewChange('NBA Cup')}
+          />
+        </div>
+      );
     case 'Playoffs':
       return euroIsolated
-        ? <CompetitionHubLayout specId="endesa" />
+        ? <CompetitionHubLayout specId={euroPrimaryCompetitionId} />
+        : pbaIsolated
+          ? <CompetitionBracketView specId={pbaPrimaryCompetitionId} />
         : <PlayoffView />;
     case 'NBA Central':
       return euroIsolated
-        ? <CompetitionHubLayout specId="endesa" />
+        ? <CompetitionHubLayout specId={euroPrimaryCompetitionId} />
         : pbaIsolated
           ? <NBACentral />
         : <NBACentral />;
@@ -157,7 +196,7 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
           <div className="max-w-6xl mx-auto h-full overflow-y-auto custom-scrollbar">
             <div className="mb-8">
               <h2 className="text-3xl font-black text-white uppercase tracking-tight">Active League Rules</h2>
-              <p className="text-slate-500 font-medium">Modify the fundamental laws of the NBA</p>
+              <p className="text-slate-500 font-medium">Modify the fundamental laws of the {state.leagueType === 'fictional' ? 'league' : 'NBA'}</p>
             </div>
             <RulesView />
           </div>
@@ -173,14 +212,10 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
           <ActionsView />
         </div>
       );
-    case 'Seasonal':
-      if (euroIsolated) return <CompetitionHubLayout specId="euroleague" />;
-      if (pbaIsolated) return <NBACentral />;
-      return (
-        <div className="h-full overflow-hidden flex flex-col">
-          <SeasonalView />
-        </div>
-      );
+    case 'Commissioner Tasks':
+      return state.gameMode === 'gm'
+        ? <div className="p-8 text-slate-500">Commissioner Tasks is available in commissioner mode.</div>
+        : <CommissionerTasksView onNavigate={onViewChange} />;
     case 'Personal':
       return <PersonalView />;
     case 'League Office':
@@ -249,32 +284,37 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
     case 'Draft Lottery':
       if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
       return <DraftLotteryView />;
-    case 'Draft Board':
     case 'Draft History': {
-      if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
-      // On draft day (and draft not yet complete) → show the live simulator
-      // Otherwise → show draft history (past draft classes)
-      const _ls = state?.leagueStats ?? {} as any;
-      const _yr = (_ls as any).year ?? new Date().getFullYear();
-      const _draftDate = toISODateString(getDraftDate(_yr, _ls));
-      const _rolloverDate = toISODateString(getRolloverDate(_yr, _ls, state?.schedule as any));
-      const _today = state?.date ? normalizeDate(state.date) : '';
-      const _isDraftDay = _today >= _draftDate && _today <= _rolloverDate;
-      const _isDraftDone = !!(state as any)?.draftComplete;
-      const _pbaDraftStatus = state.offseasonChecklist?.pbaDraft;
-      const _isPbaDraftTaskOpen = pbaIsolated
-        && !_isDraftDone
-        && (_pbaDraftStatus === 'pending' || _pbaDraftStatus === 'in-progress')
-        && (state.leagueStats as any)?.pbaConferencePhase === 'offseason';
-      const showSimulator = pbaIsolated
-        ? _isPbaDraftTaskOpen
-        : _isDraftDay && !_isDraftDone && !isDraftBlockedByUnresolvedPlayoffs(state);
+      const hasFantasyHistory = (state.fantasyDraftHistory?.length ?? 0) > 0
+        || (state.leagueStats.openingRosterMode === 'fantasy_draft' && state.leagueStats.openingFantasyDraftCompleted !== true);
+      if (noDraft && !hasFantasyHistory) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
       return (
         <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
-          {showSimulator
-            ? <DraftSimulatorView onViewChange={onViewChange} />
-            : <DraftHistoryView />
-          }
+          <DraftHistoryView />
+        </div>
+      );
+    }
+    case 'Draft Board': {
+      const _isFantasyDraft = state.gameMode === 'gm' && ((state.leagueStats.openingRosterMode === 'fantasy_draft'
+        && state.leagueStats.openingFantasyDraftCompleted !== true)
+        || (state.leagueType === 'fictional'
+          && state.leagueStats.fictionalRosterMode === 'fantasy_draft'
+          && state.leagueStats.fictionalFantasyDraftCompleted !== true));
+      if (_isFantasyDraft) {
+        return <FantasyDraftView onViewChange={onViewChange} />;
+      }
+      if (noDraft) return <div className="p-8 text-slate-500">This league signs and develops players without a draft.</div>;
+      const showSimulator = shouldShowLiveDraftBoard(state);
+      if (!showSimulator) {
+        return (
+          <div className="h-full min-h-0 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+            <DraftHistoryView />
+          </div>
+        );
+      }
+      return (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <DraftSimulatorView onViewChange={onViewChange} />
         </div>
       );
     }
@@ -330,6 +370,13 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
           <TrainingCenterView />
         </div>
       );
+    case 'Franchises':
+      if (!isFranchiseExperienceAvailable(state)) return null;
+      return (
+        <div className="h-full overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+          <FranchisesView />
+        </div>
+      );
     case 'Hall of Fame':
       if (euroIsolated) return <div className="p-8 text-slate-500">European legacy tracking will appear here after club history has enough seasons.</div>;
       if (pbaIsolated) return <div className="p-8 text-slate-500">PBA legacy tracking lives in League History and Team History.</div>;
@@ -340,6 +387,10 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return <FrontOfficeView initialSection="finances" />;
     case 'Front Office Sponsorships':
       return <FrontOfficeView initialSection="sponsorships" />;
+    case 'Front Office Commercial':
+      return <FrontOfficeView initialSection="commercial" />;
+    case 'Front Office Bank':
+      return <FrontOfficeView initialSection="bank" />;
     case 'Front Office Medical':
       return <FrontOfficeView initialSection="medical" />;
     case 'Front Office Facilities':
@@ -348,6 +399,10 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
       return <FrontOfficeView initialSection="staff" />;
     case 'Front Office Transfer Market':
       return <EuroTransferMarketView />;
+    case 'Euro Scouting':
+      return <EuroScoutingView />;
+    case 'Youth Academy':
+      return <YouthAcademyView />;
     case 'Euroleague Hub':
       return euroIsolated
         ? <CompetitionHubLayout specId="euroleague" />
@@ -359,9 +414,13 @@ export const MainContent: React.FC<MainContentProps> = ({ currentView, onViewCha
               </div>
             ) : null;
           })();
+    case 'EuroCup Hub':
+      return euroIsolated
+        ? <CompetitionHubLayout specId="eurocup" />
+        : null;
     case 'Endesa Hub':
       return euroIsolated
-        ? <CompetitionHubLayout specId="endesa" />
+        ? <CompetitionHubLayout specId={euroPrimaryCompetitionId} />
         : (() => {
             const league = HUB_TAB_TO_LEAGUE[currentView];
             return league ? (

@@ -5,6 +5,13 @@ import { resolveAnyTeam } from '../../utils/teamLookup';
 import { formatCurrencyWithCode } from '../../utils/helpers';
 import { isEuroIsolatedMode } from '../../utils/uiMode';
 
+const formatRecapDate = (value: string): string => {
+  const date = new Date(`${value.slice(0, 10)}T12:00:00Z`);
+  return Number.isNaN(date.getTime())
+    ? value
+    : date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+};
+
 export const FinanceRecapModal: React.FC = () => {
   const { state, applyTycoonMutation, setCurrentView } = useGame() as any;
   if (!isEuroIsolatedMode(state) || state.gameMode !== 'gm') return null;
@@ -29,16 +36,18 @@ export const FinanceRecapModal: React.FC = () => {
     <div className="fixed inset-0 z-[140] bg-black/75 backdrop-blur-sm flex items-center justify-center p-4">
       <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-emerald-400/30 bg-slate-950 text-white shadow-2xl">
         <div className="flex items-start justify-between gap-3 border-b border-slate-800 p-4 sm:p-5">
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <div className="w-11 h-11 rounded-xl border border-emerald-400/40 bg-emerald-400/10 flex items-center justify-center text-emerald-200">
               <Landmark size={22} />
             </div>
-            <div>
+            <div className="min-w-0">
               <div className="text-xs font-black uppercase tracking-widest text-emerald-300">Finance Recap</div>
-              <div className="text-sm text-slate-400">{recap.startDate} to {recap.endDate}</div>
+              <div className="whitespace-normal break-words text-sm leading-snug text-slate-400">
+                {formatRecapDate(recap.startDate)} – {formatRecapDate(recap.endDate)}
+              </div>
             </div>
           </div>
-          <button onClick={() => close()} className="w-10 h-10 rounded-xl border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><X size={18} /></button>
+          <button onClick={() => close()} className="h-10 w-10 shrink-0 rounded-xl border border-slate-800 flex items-center justify-center text-slate-400 hover:text-white"><X size={18} /></button>
         </div>
         <div className="space-y-5 overflow-y-auto p-4 sm:p-5">
           <div className="grid sm:grid-cols-4 gap-3">

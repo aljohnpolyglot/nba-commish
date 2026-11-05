@@ -55,6 +55,7 @@ export function normalizeTeamJerseyNumbers(
     history?: Array<string | HistoryEntry>;
     leagueStartYear?: number;
     targetTeamIds?: Iterable<number>;
+    rng?: () => number;
   } = {},
 ): NBAPlayer[] {
   const teamMap = new Map(teams.map(t => [t.id, t]));
@@ -89,7 +90,7 @@ export function normalizeTeamJerseyNumbers(
       return player;
     }
 
-    const next = pickJerseyNumber(new Set([...unavailable, ...used]));
+    const next = pickJerseyNumber(new Set([...unavailable, ...used]), opts.rng);
     used.add(next);
     return next === current ? player : { ...player, jerseyNumber: next };
   });

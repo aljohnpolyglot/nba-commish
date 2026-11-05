@@ -1,7 +1,11 @@
 import React, { useState } from 'react';
 import { GameState, CommissionerLogEntry, SocialPost, NBAPlayer } from '../types';
 import { calculatePlayerOverallForYear } from '../utils/playerRatings';
-import { invalidatePlayerRatingCache } from './playerRatingStore';
+import { getTeamFullName } from '../utils/teamNames';
+import { calculateOverallFromRating, invalidatePlayerRatingCache } from './playerRatingStore';
+import { normalizeK2DetailOffsets } from '../services/simulation/k2DetailRatings';
+import type { PlayerRatingsUpdateOptions } from './gameContextCore';
+import { applyTycoonMutationToState } from './applyTycoonMutation';
 
 export const useGameActions = (setState: React.Dispatch<React.SetStateAction<GameState>>, getState: () => GameState) => {
   const [isGeneratingReplies, setIsGeneratingReplies] = useState<Record<string, boolean>>({});
@@ -12,8 +16,25 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
     }));
   };
 
+  const addEmail = (email: import('../types').Email) => {
+    setState(prev => prev.inbox.some(existing => existing.id === email.id)
+      ? prev
+      : { ...prev, inbox: [email, ...prev.inbox] });
+  };
+
+  const dismissEmail = (id: string) => {
+    setState(prev => ({ ...prev, inbox: prev.inbox.filter(email => email.id !== id) }));
+  };
+
   const clearOutcome = () => {
-    setState(prev => ({ ...prev, lastOutcome: null, lastConsequence: null, isProcessing: false }));
+    setState(prev => ({
+      ...prev,
+      lastOutcome: null,
+      lastConsequence: null,
+      lastActionEffect: null,
+      processingAction: undefined,
+      isProcessing: false,
+    }));
   };
 
   const saveSocialThread = (postId: string, replies: any[]) => {
@@ -98,36 +119,69 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
     }));
   };
 
-  const updatePlayerRatings = (playerId: string, season: number, ratings: Record<string, number>) => {
+  const updatePlayerRatings = (
+    playerId: string,
+    season: number,
+    ratings: Record<string, number>,
+    options?: PlayerRatingsUpdateOptions,
+  ) => {
+    if (getState().godModeEnabled !== true) return;
     invalidatePlayerRatingCache();
-    setState(prev => ({
-      ...prev,
-      players: prev.players.map(p => {
-        if (p.internalId !== playerId) return p;
-        const updatedRatings = p.ratings?.map((r: any) =>
-          r.season === season ? { ...r, ...ratings } : r
-        ) ?? [];
-        const hasMatch = p.ratings?.some((r: any) => r.season === season);
-        const newRatings = hasMatch ? updatedRatings : p.ratings?.map((r: any, i: number) =>
-          i === (p.ratings!.length - 1) ? { ...r, ...ratings } : r
-        ) ?? [];
-        // Recalculate overallRating immediately so UI reflects the change without waiting for next-day sim
-        const updatedPlayer = { ...p, ratings: newRatings } as any;
-        const newOvr = calculatePlayerOverallForYear(updatedPlayer, season);
-        return { ...updatedPlayer, overallRating: newOvr };
-      }),
-    }));
+    setState(prev => {
+      if (prev.godModeEnabled !== true) return prev;
+      const normalizedDetails = normalizeK2DetailOffsets(options?.k2DetailOffsets);
+      const savedDetails = Object.keys(normalizedDetails).length > 0 ? normalizedDetails : undefined;
+      const mergeRating = (rating: any) => {
+        const merged = {
+          ...rating,
+          ...ratings,
+          k2DetailOffsets: savedDetails,
+        };
+        const ovr = calculateOverallFromRating(merged);
+        return {
+          ...merged,
+          ovr,
+          pot: Math.max(ovr, Number(merged.pot) || ovr),
+        };
+      };
+      const clampOptional = (value: number | undefined) => (
+        value == null ? undefined : Math.max(0, Math.min(99, Math.round(value)))
+      );
+      return {
+        ...prev,
+        players: prev.players.map(p => {
+          if (p.internalId !== playerId) return p;
+          const updatedRatings = p.ratings?.map((r: any) =>
+            r.season === season ? mergeRating(r) : r
+          ) ?? [];
+          const hasMatch = p.ratings?.some((r: any) => r.season === season);
+          const newRatings = hasMatch ? updatedRatings : p.ratings?.map((r: any, i: number) =>
+            i === (p.ratings!.length - 1) ? mergeRating(r) : r
+          ) ?? [];
+          const updatedPlayer = {
+            ...p,
+            ratings: newRatings,
+            ...(options?.durability != null ? { durability: clampOptional(options.durability) } : {}),
+            ...(options?.standingDunk != null ? { standingDunk: clampOptional(options.standingDunk) } : {}),
+            ...(options?.drivingDunk != null ? { drivingDunk: clampOptional(options.drivingDunk) } : {}),
+          } as any;
+          const newOvr = calculatePlayerOverallForYear(updatedPlayer, season);
+          return { ...updatedPlayer, overallRating: newOvr };
+        }),
+      };
+    });
   };
 
   const createPlayer = (player: NBAPlayer) => {
     setState(prev => {
+      if (prev.godModeEnabled !== true) return prev;
       const team = prev.teams.find(t => t.id === player.tid)
         ?? (prev.nonNBATeams ?? []).find((t: any) => t.tid === player.tid);
       const isProspect = player.tid === -2 || player.status === 'Draft Prospect';
       const isFreeAgent = player.tid === -1 || player.status === 'Free Agent';
       const isRetired = player.status === 'Retired';
       const teamName = team
-        ? `${(team as any).region ? `${(team as any).region} ` : ''}${team.name}`.trim()
+        ? getTeamFullName(team)
         : isProspect ? `the ${player.draft?.year ?? prev.leagueStats?.year ?? ''} draft pool`.trim()
         : isFreeAgent ? 'free agency'
         : isRetired ? 'the retired player archive'
@@ -138,6 +192,7 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
         date: prev.date,
         type: isProspect ? 'Draft' : 'Signing',
         playerIds: [player.internalId],
+        tid: team ? Number((team as any).id ?? (team as any).tid) : undefined,
       };
 
       return {
@@ -240,6 +295,7 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
 
   const healPlayer = (playerId: string) => {
     setState(prev => {
+      if (prev.godModeEnabled !== true) return prev;
       const player = prev.players.find(p => p.internalId === playerId);
       if (!player) return prev;
 
@@ -277,26 +333,15 @@ export const useGameActions = (setState: React.Dispatch<React.SetStateAction<Gam
    * The callback is given direct access to the team; mutate fields in place,
    * and this wrapper handles the immutable shell around the teams array.
    */
-  const applyTycoonMutation = (teamId: number, mutator: (team: any) => void) => {
-    setState(prev => {
-      const nbaTeam = prev.teams.find((t: any) => (t.id ?? t.tid) === teamId);
-      if (nbaTeam) {
-        mutator(nbaTeam);
-        return { ...prev, teams: [...prev.teams] };
-      }
-      const nonNBATeams: any[] = (prev as any).nonNBATeams ?? [];
-      const euroTeam = nonNBATeams.find((t: any) => (t.id ?? t.tid) === teamId);
-      if (euroTeam) {
-        mutator(euroTeam);
-        return { ...prev, nonNBATeams: [...nonNBATeams] };
-      }
-      return prev;
-    });
-  };
+  const applyTycoonMutation = React.useCallback((teamId: number, mutator: (team: any) => void) => {
+    setState(prev => applyTycoonMutationToState(prev, teamId, mutator));
+  }, [setState]);
 
   return {
     applyTycoonMutation,
     markEmailRead,
+    addEmail,
+    dismissEmail,
     clearOutcome,
     saveSocialThread,
     toggleLike,

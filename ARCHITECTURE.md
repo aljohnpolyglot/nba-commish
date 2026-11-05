@@ -1,199 +1,204 @@
-# Architecture: NBA Commish Sim
+# Architecture — NBA Commish Sim
 
-## System Overview
+Stand: 17. August 2026.
 
-Browser-only React + TypeScript + Vite SPA. Single in-memory `GameState` (`src/types.ts`); kein Server, kein Backend. Persistenz läuft gzipped durch `SaveManager.ts` in IndexedDB unter `keyval-store`. Zwei Spielmodi (Commissioner / GM) teilen sich denselben State + Sim-Engine — der Modus ist ein Flag (`gameMode`) plus eine `userTeamId` (`-999` für Commissioner-Sentinel). Zusätzlich gibt es zwei Liga-Typen: `leagueType: 'modded' | 'fictional'`. LLM-Narrative über Gemini ist optional und im Code als Side-Effect-Layer modelliert (Sim läuft auch ohne API-Key).
+## System
+
+Browser-only React + TypeScript + Vite SPA. Es gibt kein Gameplay-Backend. Der kanonische Save State ist `GameState` aus `src/types/`; Save/Load läuft gzip-komprimiert über `src/services/SaveManager.ts` und `src/services/saveCodec.ts` in IndexedDB.
+
+Commissioner und GM teilen State, Simulation und Rules. `gameMode`, `userTeamId`, `leagueType`, `moddedLeagueBase`, `uiMode`, League-/Competition-IDs und TID-Bereiche bestimmen Verantwortung und Routing. LLM-Narrative ist ein optionaler Side-Effect-Layer und darf keine Gameplay-Entscheidung besitzen.
 
 ## Codemap
 
-```
+```text
 src/
-  components/         React-UI
-    actions/          Commissioner-Action-UI (suspensionen, force-trades, etc.)
-    central/view/     Hauptansichten (PlayerBio, TradeFinder, TradeProposals, …)
-    central/view/Coaching/  CoachingHubView — Top-Level Coaching-Surface (Sidebar)
-    commissioner/     Dashboard, Rules-Editor (useRulesState), Viewership
-    draft/            DraftSimulatorView + DraftScoutingView
-    layout/           MainContent.tsx (Tab-Routing)
-    modals/           TradeMachineModal, SettingsModal, BoxScoreModal, …
-    offseason/        OffseasonAufgaben.tsx (2K-Aufgaben-Sidebar + Phase-Badge)
-    playoffs/         PlayoffView, BracketLayout
-    schedule/         ScheduleView, AllStarDayView, DayView
-    sidebar/          NavigationMenu
-    shared/           PlayerPortrait, MyFace (faces.js wrapper), reusable UI
-    team-stats/       TeamStatsView
-    training/         TrainingCenterView, TrainingDayView, TrainingDayOverlay
-    allstar/          AllStarView, ThroneContestView, contest UIs
+  components/
+    central/view/          Player Bio, League/Team Office, Franchises, Transactions
+    commissioner/          League Rules, Economy, Events, Proposals
+    commissioner-tasks/    Aufgaben-Portale zu bestehenden Zieloberflächen
+    offseason/             Checklist, Reviews und Season-Handoff
+    schedule/              Day View, Schedule, Event-Gates
+    summerLeague/          source-faithful Summer History/Detail/Roster UI
+    international/         FIBA/EuroBasket Views
+    pba/                   Muse und PBA-spezifische UI
+    allstar/               All-Star Hub und Wettbewerbe
+    shared/                gemeinsame Modals, Portraits und Animation Primitives
+  minigames/
+    pbadance/              gemeinsamer Dance-Contest-Runtime; PBA Save-Adapter + NBA Sandbox-Selector
+    dunk/                  Dunk Contest Runtime
   services/
-    offseason/        offseasonState, offseasonPlan ([OSPLAN] SSoT)
-    simulation/       GameSim-Engine, StatGenerator, knobs
-    logic/            seasonRollover, lazySimRunner, autoResolvers, gameLogic
-    playerDevelopment/ ProgressionEngine, retirementChecker, breakouts
-    allStar/          AllStarWeekendOrchestrator, throneOrchestrator,
-                      AllStar*Sim (Dunk/3PT/Throne/HORSE/Shooting/Skills/1v1)
-    trade/            tradeValueEngine, inboundProposalGenerator, cbaTradeRules
-    llm/              Gemini prompts + generators
-    social/           Social-Media-Posts (Charania-Tweets, etc.)
-    staff/            GM attributes shared helpers (gmAttributes.ts)
-    AIFreeAgentHandler.ts  5-Pass-Signing-System
-    AITradeHandler.ts      AI-AI trade evaluation + execution
-    SaveManager.ts         gzip + IndexedDB I/O
-    fictionalLeagueGenerator.ts  lokale Fictional-League-Generierung
-    fictionalStaffGenerator.ts   lokale Fictional-Staff/Ref-Generierung
-    externalSigningRouter.ts  Auslandsligen-Routing am 1. Oktober
-    faMarketTicker.ts      Daily FA-Bid-Markt
-    rosterService.ts       Roster + external-team Sync
-    TeamTraining/          Team-Training-Engine (Familiarity, Defensive Aura)
-    realPlayerDataFetcher.ts  Photos + ZenGM bio fetch
-    bioCache.ts            Player-Image + Bio Cache
-    imageCache.ts          IndexedDB blob cache for portraits
+    lifecycle/             kanonischer liga-spezifischer Season-/Event-Owner
+    simulation/            Fast/Realistic Engine, Rotation, Team Modifiers
+    offseason/             Offseason State und Day Plan
+    logic/                 Day Tick, Lazy Sim, Rollover, Auto Resolver
+    freeAgency/            Bird Rights und AI-Pässe
+    staff/                 Staff Careers, Gameplay Effects, NBA/PBA/Euro Lifecycle
+    referees/              gespeicherte, era-/mode-sichere Referee-Roster
+    broadcasting/          gespeicherte Post-Retirement Broadcast Careers
+    summerLeague/          Tournament State, Games, History, Awards, Stats
+    fiba/                  FIBA/EuroBasket Calendar, Roster, Tournament Lifecycle
+    pba/                   Conferences, Muse, Dance, Governors Board und PBA Rules
+    franchises/            Valuation und Franchise State
+    playerDevelopment/     Progression, Retirement, HOF, Jerseys, Lineages
+    trade/                 Trade Value, Finder und CBA Validation
+    training/              Plan, Familiarity, Fatigue und Effects
+    SaveManager.ts         IndexedDB Save I/O
+    saveCodec.ts           gzip encode/decode
   store/
-    GameContext.tsx        State-Store, Action-Dispatch, LOAD_GAME, Reducer
-    gameplanStore.ts       Save-scoped Gameplan-Persistenz
-    defenseGameplanStore.ts     Team-Defense-Base (Phase 1: UI+Persist; Sim TBD)
-    defenderDetailStore.ts      Per-Defender-Baseline-Coverage (Phase 1)
-    rivalGameplanStore.ts       Per-Opp-Targeting + auto-reconcile (Phase 1)
-    matchupAssignmentsStore.ts  Lockdown/Hide-Picks (Phase 1)
-    logic/                 gameLogic, initialization, actionProcessor,
-                           statUpdater, simulationHandler, playerActions
-  utils/                   dateUtils, salaryUtils, ratingUtils, helpers
-  hooks/                   useExpiringResignGate, useRosterComplianceGate, …
-  types.ts                 Alle TypeScript-Interfaces (GameState, NBAPlayer, etc.)
-  constants.ts             Liga-Konstanten, EXTERNAL_SALARY_SCALE, TID-Offsets
-scripts/                   Browser-DevTools-Audit-Scripts (auto-load newest save)
+    GameContext.tsx        Provider-Fassade
+    gameContext/           Direct/Offseason/FA/Transfer/Load Actions
+    providers/             Lifecycle Effects und Hydration
+    logic/                 Simulation und Action Processing
+    *Store.ts              save-scoped UI/Gameplan Side Stores
+  types/                   GameState, Player, Team, Rules und Competition Types
+  utils/                   Dates, Salary/CBA, Ratings, Team Names, Countries
+data/sources/              Read-only Source-Provenance
+public/data/               Runtime-Snapshots
+scripts/                   DevTools-/Audit-Scripts
 ```
 
-Subsystem-Ownership:
-- **State:** `store/GameContext.tsx` ist die einzige Stelle, die `GameState` mutiert (Reducer-Pattern). Alle anderen Files berechnen Patches, dispatchen via `dispatch({type, payload})`.
-- **Sim:** `services/logic/simulationHandler.ts` orchestriert pro Tag; ruft `services/simulation/GameSim` für Spiele und `services/logic/lazySimRunner.ts` für Multi-Day-Skips.
-- **Offseason:** `services/offseason/offseasonPlan.ts` ist die Single-Source-of-Truth ab Session 5 — alle Dispatches lesen `getOffseasonDayPlan(state).actions.X === 'fire'` statt parallel zu rechnen.
+## State Ownership
 
-## Main Flows
+- `state.players` ist die kanonische Personen-/Player-Liste; Teamzugehörigkeit läuft über `player.tid`.
+- `state.teams` hält NBA-/Fictional-Hauptteams; `state.nonNBATeams` hält externe/isolierte Clubs. Competition-Teilnahme darf keine zweite Club- oder Roster-Identität erzeugen.
+- `state.schedule`, `boxScores`, `playoffs`, Tournament-/Competition-State und Histories gehören dem Save.
+- `state.seasonLifecycle` ist die persistierte Wahrheit für completed/active/display season, Offseason-/Draft-Zyklus, Lottery/Draft/History/Rookie-Contracts und den autorisierten nächsten Saisonwechsel. `leagueStats.year`, Kalenderdatum, Route und Taskstatus sind Consumer oder Evidenz, keine konkurrierenden Owner.
+- Historische Spielgesetze gehören dem gespeicherten `LeagueStats`-Snapshot. `src/services/era/basketballEraRules.ts` liefert neue Fictional-/Historical-Defaults und saisonale Übergänge; `buildLeagueBaseKnobs()` projiziert denselben Vertrag in Fast und Realistic. Eine Commissioner-Anpassung setzt den Customization-Marker und verhindert, dass spätere Era-Defaults die bewusste Regelwahl überschreiben.
+- Commissioner-Finanzen verwenden `stats.leagueReserve` als akkumulierte Treasury und `stats.availableBudget` als saisonale Spending Authority; `stats.leagueFunds` bleibt nur der Save-kompatible Budget-Spiegel.
+- Mutationen laufen über GameContext Actions und die dazugehörigen `store/gameContext/`-/`store/logic/`-Handler. Services berechnen neue Objekte/Patches; sie mutieren keinen fremden League Bucket.
+- Side Stores für Gameplan, Rotation, Coach Systems oder UI-Persistenz müssen den aktiven `saveId` verwenden. Globaler editierbarer Local-Storage-State ist verboten.
 
-### Day Tick (regulärer Saisonalltag)
-1. User klickt PlayButton → `processTurn` Action.
-2. `simulationHandler` läuft: liest Date, schaut welche Calendar-Events fällig sind.
-3. Für jeden Game-Day: `GameSim.runGame` pro geplantem Spiel → `boxScore` Push, `player.stats` Update, Mood-Drift.
-4. Reducer schreibt neuen State; UI re-rendered.
-5. Ein Tag = `state.date` + 1.
+## Kanonische Save-, Entity- und Navigationsgrenzen
 
-### Multi-Day-Skip (>30 Tage)
-1. User klickt "Sim to Trade Deadline" o.ä.
-2. `runLazySim` iteriert Tag für Tag, ruft denselben Code wie Day Tick aber UI-frei.
-3. `buildAutoResolveEvents` setzt Hooks für Calendar-Boundaries (Lottery, Rollover, Throne-Phasen, etc.).
-4. Progress-Overlay zeigt Day-Counter; bei Critical-Event (Trade auf User-Team, Injury auf Star) `stopBefore: true` Pause.
+- `simulationSeed` ist deterministische Eingabe; `saveId` ist die unveränderliche Identität eines Universums. Normal Save/Reload/Restore behält die ID, Clone/Branch erhält eine neue ID plus Parent-Provenance.
+- `sourceIds` sind namespaced Aliase einer kanonischen `personId`; ein Source-Record, Name, Slug, Portrait, Geburtsjahr oder Team+Name-Fuzzy-Match ist niemals allein die Person. Ambiguität bleibt getrennt.
+- Normale Personenauflösung verwendet den zentralen `personId`-Index aus `src/utils/playerIdentity.ts`. Der Index ist an die immutable `state.players`-Array-Referenz gebunden und wird bei deren Ersatz neu aufgebaut; globale Name-Scans in Renderpfaden sind verboten.
+- Gleiche Person bedeutet nicht, dass spätere Real-Life-Fakten im Historical What-if sichtbar werden. Career-Fakten bleiben cutoff-, saison- und competition-scoped.
+- `src/services/nbaEraPortraitCatalog.ts` besitzt den gemeinsamen chronologischen Portraitvertrag. `portrait quality never overrides chronological applicability`. Datierte Kandidaten werden nach kanonischer Person und Source-Anker geordnet; für Jahr Y gilt der jüngste gültige Anker `<= Y`, mit vorherigen Ankern als Asset-Fallback. `if the requested historical/prospect year predates every valid dated portrait, the earliest identity-safe portrait may be used as visual fallback only; it grants no future career facts`. Undatierte Bilder sind Fallbacks, keine Era-Transitions; Portraitquellen dürfen niemals Team, Rating, Draftresultat, Status, Jersey, Vertrag oder andere Karrierefakten übertragen.
+- Portrait-Loadfehler ändern keine Personenidentität. Bekannte tote Hosts und bereits fehlgeschlagene exakte URLs werden ohne Retry übersprungen; der Resolver fällt innerhalb derselben kanonischen Timeline zurück. Eine spätere Asset-Recovery darf nur Provenienz ergänzen und keinen zweiten Identity-/Portraitowner schaffen.
+- `franchiseId` bezeichnet die Lineage; `teamIdentityId` die datierte Präsentation. Background↔Native-Materialisierung darf weder eine zweite Person noch eine zweite Franchise erzeugen.
+- Deep Links auf generated Background-Personen lösen zuerst native Save-Personen und danach den gespeicherten Background-Personenbestand auf. Retirement oder Wechsel der Simulationsebene darf einen bereits gespeicherten Personenlink nicht ungültig machen.
+- Persistente Ansichten verwenden `src/services/navigation/gameDeepLinks.ts`: `/game/:saveId/{player|franchise|team|competition|game|draft|history}/:canonicalId`. Der optionale Slug ist nur Präsentation. GameState besitzt Basketball-State; die URL besitzt nur die betrachtete Ansicht.
+- Game-Routen verwenden einen competition-/league- und season-scoped Schlüssel plus `gid`, damit gleiche numerische IDs aus parallelen Ligen nicht kollidieren. Array-Indizes sind keine persistente Game-Identität.
+- `SaveManager` serialisiert Writes, prüft monotone `saveRevision` und meldet externe Updates/Löschungen per `BroadcastChannel`. Eine externe Meldung aktualisiert nicht die vom Tab beobachtete Revision: Der Tab suspendiert Autosave und muss den neueren Save laden, bevor er wieder schreiben darf.
+- Mehrere Reader sind zulässig; ein stale Writer darf niemals still neuere Persistenz überschreiben. Long-Sim-, Replace-/Delete- und echte Multi-Tab-Browser-Acceptance bleibt im Canonical-Multiverse-Plan offen.
 
-### Start-Flow nach Liga-Typ
-1. Setup schreibt `leagueType` in `pendingStartPayload`.
-2. `handleStartGame()` brancht:
-3. `modded` → `getRosterData()` + Historical Awards + External-Roster-Fetches.
-4. `fictional` → `generateFictionalLeague()` + `generateFictionalStaff()` + `generateFictionalReferees()`, keine External-Roster-Fetches.
-5. Der Fictional-Pfad nutzt einen Seed, damit Setup-Preview und gestarteter Save dieselbe generierte Liga verwenden.
+## Kernflüsse
 
-### Free Agency (Multi-Pass)
-`AIFreeAgentHandler.runAIFreeAgencyRound` läuft tagsgenau:
-1. **Pass 1** Best-Fit-Signings (Cap + MLE).
-2. **Pass 2** Two-Way-Contracts (≤60 BBGM OVR).
-3. **Pass 3** Non-Guaranteed Training-Camp (Jul 1 – Oct 21).
-4. **Pass 4** Min-Roster-Enforcement (Fill auf 15-Mann).
-5. **Pass 5** Floor-Enforcement (nur bei offenen Roster-Slots — siehe Limit).
+### Start und Load
 
-Reihenfolge ist nicht verhandelbar (siehe `CLAUDE.md`).
+1. Setup speichert Mode, League Source, Start Year, UI Mode und Rules.
+2. NBA/Modded lädt native/historical Roster und nur cutoff-sichere Enrichment Sources.
+3. Fictional generiert lokal Teams, Branding, Spieler, Staff und Referees und überspringt externe Roster-Fetches.
+4. PBA/Euro isolated materialisieren nur den aktiven League Bucket und notwendige Background-Competitions.
+5. Load decodiert zuerst den vollständigen gzip-Save, führt versionierte Healer/Migrationen aus und hydratisiert danach optionale Archive. Fehlende optionale Coach-/Executive-/FIBA-Dateien dürfen den Save nicht abbrechen.
 
-### Trade
-1. UI: TradeMachineModal sammelt Spieler + Picks + Cash.
-2. `cbaTradeRules.checkIncoming/checkOutgoing` validiert pro Team (Cap-Room, Apron, Salary-Match).
-3. `TradeSummaryModal` zeigt Validity-State + GM-vs-Commissioner-Override-Buttons.
-4. Bestätigung dispatcht `EXECUTE_TRADE` → `actionProcessor` swappt `player.tid`, transferiert `draftPicks`, schreibt `history`.
+Ein frischer modded NBA-Start kanonisiert Draft-Prospect-Identitäten vor dem ersten Save und vor der Historical-Person-Materialisierung mit demselben Owner wie der Load-Pfad. Ein erster Reload darf deshalb weder Personen entfernen noch Duplikate als vermeintliche Migration zusammenführen.
 
-### Offseason GM-Aufgaben (Session 53)
-1. Calendar erreicht Jun 15 → Auto-Init useEffect minted `state.offseasonChecklist`.
-2. `OffseasonAufgabenSidebar` rendert 8 Rows; jede mit Enter / Skip Button.
-3. User klickt Row → Modal-Stack oder eingebettete View.
-4. Engine-Signals (z.B. `draftComplete = true`) auto-marken Rows done via `OFFSEASON_COMPLETE_PHASE`.
-5. FA-Tag-Counter: 1/13 → 13/13, jeder Step = ~5 Tage `SIMULATE_TO_DATE` mit `stopBefore: true`.
-6. "Auto-Resolve all" → `OFFSEASON_AUTO_RESOLVE_ALL` → `runLazySim` mit `assistantGM=true` bis Opening Night.
+### Day Tick und Lazy Sim
 
-## Architectural Invariants
+1. PlayButton löst einen Tag oder ein Ziel aus.
+2. Offseason-/Calendar Resolver bestimmen fällige Events.
+3. Spiele werden über Fast oder Realistic simuliert; beide lesen gemeinsame Rules, Rotation Plans und Team Modifiers.
+4. Postprocessing schreibt Boxscores, Stats, Standings, Fatigue, Injuries, News und Event-Fortschritt.
+5. Lazy Sim iteriert denselben Tagespfad mit Progress State und stoppt an entscheidungspflichtigen Gates.
 
-1. **State-Mutation läuft nur durch `GameContext`-Reducer.** Direkter Mutate von `state.players[i].xyz` außerhalb ist verboten.
-2. **`team.players` existiert nicht.** Spieler-Team-Link ist immer `player.tid`.
-3. **`state.players` ist die einzige Spielerquelle.** Kein parallel array für Retired / Prospects / External — alles dort.
-4. **Save-Scoped Persistenz.** Side-Stores (Gameplan, Rotation-Presets, Image-Cache) MÜSSEN auf `state.saveId` skopt sein.
-5. **Pipeline-Reihenfolge in `runAIFreeAgencyRound` ist fix.** Pass 2 vor Pass 4, sonst hungert der Two-Way-Pool aus.
-6. **Rollover MUSS `schedule: []` zurückgeben.** Sonst leaken alte Spiele in die neue Saison.
-7. **Family-Ties-Protection in jedem Trim/Cut.** `hasFamilyOnRoster` Check bevor `canCut` true wird.
-8. **Offseason-Dispatch läuft durch `getOffseasonDayPlan`.** Inline-Date-Checks für Rollover/FA-Pass/Bird-Rights sind seit Session 5 verboten.
-9. **Rating-Skalen nicht verwechseln.** BBGM raw (35–82) vs K2 (66–99); jede Schwelle ≥85 BBGM ist tot.
-10. **Fictional ist derzeit NBA-only.** Wenn `leagueType === 'fictional'`, bleiben `nonNBATeams` und alle externen League-Fetches leer; Code darf dort keine Auslandsliga-Daten voraussetzen.
+`performance maxxing = lower latency / less blocking / fewer redundant computations with identical deterministic basketball state`. Startup- und Long-Sim-Prozentwerte beruhen auf abgeschlossener Arbeit: Schätzwerte bleiben unter dem nächsten echten Checkpoint. Long Sim committed denselben kanonischen Batch-State wie der ununterbrochene Lauf und streamt nur einen leichten Datum-/Tage-/Phasen-Snapshot an den Ladebildschirm; Batchgröße, RNG-Reihenfolge und Writer-Ownership werden für UI-Fortschritt nicht verändert.
 
-## Boundaries & External Dependencies
+### Offseason
 
-| Boundary | Detail |
-|----------|--------|
-| **IndexedDB (`keyval-store`)** | Save-Persistenz via `idb-keyval`. Saves sind gzipped — `{__gz, data: ArrayBuffer}` Wrapper. |
-| **Gemini API** | LLM-Generation. Optional; alle Generators no-op-en wenn Key fehlt. |
-| **NBA-CDN (`cdn.nba.com`)** | Player-Photos. Fallback nach `player.imgURL` (BBGM gist), dann faces.js, dann Initialen. |
-| **Public Gists (ZenGM, custom)** | Real-Player-Data, Bios, Awards, External-League-Rosters, Names, Country-Pools, College-Pools, Contracts. Alle gefetcht zur Init oder per Demand. |
-| **localStorage** | Save-scoped Side-Stores nur (Gameplan, Settings). Niemals globaler Key für editierbare Per-Save-Settings. |
+`src/services/lifecycle/leagueSeasonLifecycle.ts` löst den gespeicherten Liga-Lifecycle auf. NBA, WNBA, PBA, Euro und Fictional implementieren ihre Kalender-, Draft- und Transition-Regeln hinter diesem Vertrag; ein NBA-shaped Jahreshelper mit Mode-Ausnahmen ist kein zulässiger Lifecycle-Owner. `src/services/offseason/offseasonState.ts` leitet daraus das Tagesfenster ab. `offseasonPlan.ts` entscheidet, wann Season Transition, Market Tick, AI Free Agency und Bird Rights feuern. GM-/Commissioner-Checklist-Zeilen öffnen vorhandene Draft-, Free-Agency-, Import-, League-Settings- oder Review-Ziele; Task-Completion ist gespeicherter Portalstatus, kein zweites Gameplay-System.
 
-Fictional-League-Start ist die Ausnahme: dort wird die External-Data-Boundary beim Init bewusst vollständig umgangen.
+Lottery/Draft-Events verwenden `src/services/lifecycle/eventArrivalPolicy.ts`: Ankunft am Ereignistag ist eine manuelle Review-Chance; erst ein späterer Tag darf einen verpassten Event genau einmal auflösen. Draft Completion verlangt den kanonischen Selection Ledger. Draft History und Player-Transaktionen werden aus diesen Selections geschrieben; Rookie Contracts dürfen nicht vor dieser Evidenz laufen. Der formale Saisonwechsel besitzt pro Mode genau einen Owner und muss bei Wiederholung ein No-op sein.
 
-Alle Daten-Boundaries validieren Schema vor Cache-Write — siehe `nameDataFetcher.ts` für das Pattern.
+NBA Opening Rosters baut die International-Preseason-Fixtures während der kanonischen Snapshot-Schedule-Erstellung über denselben idempotenten Scheduler für GM und Commissioner. Nur der GM-Notice-Writer ist rollenabhängig. Ein Commissioner-Opening beginnt mit der prebuilt Slate und einem abgeschlossenen aktuellen Offseason-Fenster; Commissioner-Tasks werden erst im nächsten Lifecycle-Zyklus wieder aktiv. Zukünftige Task-Records dürfen das abgeschlossene aktuelle Fenster nicht erneut sichtbar machen. WNBA, PBA, Euro und Fictional erben diesen NBA-Eventpfad nicht.
 
-## Cross-Cutting Concerns
+### Free Agency und Verträge
 
-### Configuration
-- `constants.ts` — Liga-Konstanten, Salary-Skalen, External-League-TIDs.
-- `state.leagueStats` — Editierbare Liga-Settings (Cap, Regeln, MLE-Tier-Modes, etc.). Persistiert im Save.
-- `useRulesState.ts` — Single-Source-of-Truth für Commissioner-Regel-Editor; Save-Flow-Audit (Session 27) deckt jedes UI-Field auf Persist-Lücken ab.
-- `.env.local` — `GEMINI_API_KEY` für LLM-Calls.
+1. Market/Signing UI erstellt ein legales Angebot mit Salary, Term, Option und Funding Source.
+2. Gemeinsame Salary/CBA Helpers prüfen Cap Space, Bird Rights, MLE, BAE, Aprons und Hard Caps.
+3. AI Markets und Signing Passes reservieren verfügbare Exceptions und revalidieren bei Resolution.
+4. RFA Offer Sheets erzeugen ein gespeichertes `pendingMatch`-Fenster.
+5. Akzeptanz schreibt Vertrag, Player Ownership, Exception Ledger, History und News genau einmal.
 
-### Logging & Drift-Tracking
-`[OSPLAN]`-Tag in DevTools-Konsole filtern → vollständige Offseason-Dispatch-Timeline (Plan-Computation, Fire, Drift-Warning, Shadow-Disagreement). Eingeführt Session 5.
+### Wettbewerbe
 
-### Persistence
-`SaveManager.ts` ist die kanonische Ein-/Ausgabestelle. Audit-Scripts in `scripts/` zeigen das Decompress-Pattern.
+- NBA Cup, Summer League und FIBA/EuroBasket besitzen aktuell getrennten State und getrennte Präsentation.
+- Games und Boxscores tragen Competition-Kennzeichen; nur ausdrücklich offizielle League Games verändern die jeweilige Domestic Standings-Tabelle.
+- Euro-Clubs besitzen eine kanonische Club-/Roster-Identität und können parallel in Domestic, Cup, EuroLeague oder EuroCup antreten.
+- National-Team-Teilnahme referenziert Player Identity, ersetzt aber keine Club Ownership.
 
-### Error Handling
-Trust internal code; validate at boundaries. Kein try/catch um interne Function-Calls. Render-Errors fängt React-Boundary; Sim-Errors fallen durch und sind Bugs.
+### Staff, Referees und Post-Career
 
-### Image Caching
-`services/imageCache.ts` pre-downloaded alle Portraits zur Init in IndexedDB-Blob-Cache. In Settings → Performance toggle-bar (Heavy-User können es deaktivieren).
+- Staff Career Stints, Verträge, Retirement und Hiring werden gespeichert und über gemeinsame Career Helpers angezeigt.
+- Referee Pools werden pro Mode/Era erzeugt oder geladen; reale Personen bleiben source-neutral, fiktive Pools dürfen Gameplay-Traits besitzen.
+- Broadcasting Talent wird aus cutoff-sicheren historischen Rows und neuen Branch-Retirees aufgebaut; aktive/exited Zustände werden im Save geführt.
 
-## How To Extend The System Safely
+### Multi-League-Lifecycle-Projektion
 
-### Neuen Calendar-Event hinzufügen
-1. Date-Helper in `utils/dateUtils.ts` ergänzen.
-2. Event-Hook in `buildAutoResolveEvents()` (`services/logic/lazySimRunner.ts`) registrieren.
-3. Wenn Offseason-relevant: Plan-Action in `services/offseason/offseasonPlan.ts` ergänzen + `[OSPLAN]`-Trace.
-4. Auto-News-Template in `buildAutoNews` falls User-sichtbar.
+- `src/utils/playerLeagueScope.ts` ist die kanonische Zuordnung eines Players zu NBA, WNBA, PBA, Euro oder Fictional. Status, TID-Footprint, gespeicherte Source-Identität und aktive Team-IDs werden gemeinsam ausgewertet; neue lokale String-/TID-Heuristiken in Lifecycle-Consumern sind nicht zulässig.
+- `src/services/logic/seasonRollover/leagueScope.ts` projiziert vor dem Jahreswechsel ausschließlich den aktiven Liga-Bucket für Players, Teams, Draft Picks, Staff Free Agents, Schedule, Boxscores, Bets, FA Markets, RFA Matches und Special Games. Der Rollover arbeitet nur auf dieser Projektion und führt sein Ergebnis anschließend stabil mit den unveränderten Hintergrundzeilen zusammen.
+- Load-time Contract-Season-Synchronisierung verwendet dieselbe aktive Player-/Team-Projektion; der aktive NBA-Jahreswert darf keinen Euro-/CBA-/PBA-/WNBA-Background-Vertrag fortschreiben. Frische Saves speichern `canonicalPlayerIdentityVersion`; Cross-League-/PBA-Identity-Konsolidierung ist eine versionierte einmalige Legacy-Migration und kein bei jedem Reload wiederholter Healer.
+- Ein aktiver Rollover darf `backgroundUniverse` nicht vorsimulieren. Background-Simulation ist ein ausdrücklich separat aufgerufener Prozess; ein NBA-/WNBA-/PBA-/Euro-/Fictional-Jahreswechsel ist dafür kein impliziter Trigger.
+- Neue Rollover-Felder werden entweder in die Projektion plus Merge aufgenommen oder als nachweislich liga-global dokumentiert. Ein Feld still auf dem vollständigen Multi-League-State zu verarbeiten ist kein zulässiger Fallback.
+- Die dauerhafte Regression ist `npm run qa:season-rollover-scope`; Exact-Save-Audits ergänzen sie für reale gemischte Identitäten und zwei Rollover über Save/Reload.
 
-### Neue Auslandsliga hinzufügen
-Voller Pfad in `EXTERNAL_ROSTERS.md`. Stichpunkte: TID-Offset in `constants.ts`, Salary-Mult, Bio-Gist-URL, Ratings-Gist-URL, Preseason-Schedule-Block in `autoResolvers.ts`.
+### Competition-/Season-Identität
 
-### Neuer All-Star-Satellite-Event
-1. Sim-Service unter `services/allStar/AllStar*Sim.ts`.
-2. Result-Type auf `AllStarState`.
-3. Toggle + Settings in `commissioner/rules/view/all-star/AllStarEventsSection.tsx`.
-4. Gating in `AllStarWeekendOrchestrator.simulateWeekend`.
-5. Per-Event-UI-Pass: DayView-Card + News-Template + Awards-Write-Back + History-Spalte + Contestants-Announce-Date (siehe `NEW_FEATURES.md` Satellite-Checkliste).
+- Gespeicherte Schedule-, Boxscore- und Postseason-Zeilen sind nur dann aktuelles Lifecycle-Material, wenn `competitionId` **und** die kanonische Competition-Saison übereinstimmen. Eine alte Conference-/Competition-Zeile darf weder einen neuen Bracket-Aufbau unterdrücken noch den aktiven Saisonheader zurückstufen.
+- In einem aktiven PBA-Jahr ist `leagueStats.year` kanonisch, sobald Schedule- oder Boxscore-Material für genau dieses Conference-Jahr existiert. Größere Mengen aufbewahrter Vorjahreszeilen sind Historie und keine Mehrheitsabstimmung über die aktuelle Saison.
+- Ein nominales Conference-/Saison-Enddatum darf laufende Playoffs nicht abschneiden. Der nächste Wettbewerb beginnt nach einem Überlauf am tatsächlichen Startdatum und erzeugt weiterhin seinen vollständigen Spielumfang.
+- Neue PBA-Spiel-IDs werden oberhalb aller vorhandenen Schedule- **und** gespeicherten Boxscore-IDs vergeben. GIDs bleiben damit auch über aufbewahrte Saisons und parallele League-Buckets eindeutig.
+- Der Euro-GM-Übergang von vollständig entschiedenen Wettbewerben zu Season Review und neuem Jahr ist der pure Service `prepareCompletedEuroSeasonRollover()`. React-Lifecycle und Headless-QA verwenden denselben Übergang; QA simuliert verschobene Finaltermine bis zum tatsächlichen Abschluss statt einen fixen Kalenderstichtag als Champion-Beweis zu behandeln.
 
-### Neue Per-Save-Persistenz
-1. Store-File mit `setActiveSaveId()` Pattern (siehe `gameplanStore.ts`).
-2. localStorage-Key als `<feature-name>::<saveId>`.
-3. `GameContext` rehydrate-Hook auf `state.saveId` Watch.
+## Invariants
 
-### Neuer Action-Type
-1. Type in `types.ts` `ActionType` ergänzen.
-2. Reducer-Case in `GameContext.tsx`.
-3. Wenn complex: Helper in `store/logic/actionProcessor.ts` oder `playerActions.ts`.
+1. **Multi-League-Isolation:** Kein Fix darf Player, Teams, Schedule, Awards, Standings, Playoffs, FA oder Rollover einer anderen Liga still verändern.
+2. **Historical What-if:** Nach Startdatum sind Branch-Resultate autoritativ. Spätere reale Fakten dürfen nur vor dem Branch abgeschlossene Geschichte anreichern. Historische Vertragssnapshots ergänzen ausschließlich cutoff-sichere `salaries[]`-Zeilen und überschreiben niemals den laufenden `contract`.
+3. **Club Identity ≠ Competition Identity:** Ein Club und sein Roster werden nicht pro Wettbewerb geklont.
+4. **Youth Ownership ≠ Senior Roster:** Unpromotete Academy-Spieler bleiben aus Senior Rotation, Payroll, Stats und Spielberechtigung.
+5. **Team Name:** sichtbare Teamnamen über `getTeamFullName(team)`.
+6. **Country/Flag:** Nationalität über den gemeinsamen Parser, Flaggen über `CountryFlag`.
+7. **Rating:** Sim-Rating und sichtbare K2-Skala nicht vermischen; gescoutete UI nutzt den gemeinsamen Fuzz-/Display-Helper.
+8. **PBA/External OVR:** `computeLeagueOvr()`/League Multipliers sind kanonisch, kein UI-Cap als Reparatur.
+9. **FA-Reihenfolge:** Two-Way und Non-Guaranteed-Pässe dürfen nicht durch vorzeitiges Minimum-Filling ausgehungert werden.
+10. **Save Scope:** editierbare Side Stores und externe Persistenz immer mit `saveId`.
+11. **Rollover:** alte Schedule-/Competition-Objekte werden nur im eigenen Bucket beendet oder neu erzeugt.
+12. **Prototype Port:** lokaler User-Prototype ist Read-only-Präsentationsquelle; nur runtime-notwendige Dateien werden source-faithful in die bestehende App eingeordnet.
+13. **Treasury:** Einnahmen erhöhen nicht automatisch das Saisonbudget. Jede League-Ausgabe reduziert Reserve und Budget genau einmal; Rollover autorisiert das nächste Budget.
+14. **Cross-Mode-Blast-Radius:** Gemeinsame State-, Lifecycle-, Simulations-, Schedule-, Identity-, History-, Rating-, Portrait-, Draft-, Offseason- und Save/Load-Pfade werden nie aus nur einem Modus heraus geändert oder freigegeben. Jeder Fix dokumentiert seine Mode-Gates, testet den betroffenen Modus plus NBA-Baseline, einen weiteren externen Modus und fictional und prüft GM/Commissioner getrennt, wenn Rollenlogik berührt ist. Liga-spezifische Fixes besitzen eine negative Isolation-Gegenprobe für einen nicht betroffenen Modus oder Background-League-Bucket.
 
-## Open Questions
+## External Boundaries
 
-- Soll `leagueType === 'fictional'` langfristig ein eigenes External-/Feeder-League-Subsystem bekommen oder architektonisch bewusst leer bleiben?
-- Soll `state.phase` zum gespeicherten Field promoted werden, jetzt wo der Plan Single-SoT ist? (Bricht Save-Forward-Compat — worth?)
-- Wie viel `[OSPLAN]`-Coverage braucht `autoResolvers` (Lottery/Draft/HOF)? Aktuell loggen sie nicht in die Unified Timeline.
-- Pass-5-Shortfall-Distribution: NBA-genau (Bonus-Pools je Player nach FA-Tier) oder simpler Spread?
-- Hard-Cap-Konzept (CBA #9): per-team Flag (`hardCapForSeason`) oder per-action computed?
-- Lohnt sich ein In-App-Debug-Panel für `[OSPLAN]`-Drift, oder reicht DevTools-Filter?
+- Roster-, History-, Logo-, Portrait- und Venue-Quellen sind untrusted Input und werden an Loader-/Parser-Grenzen validiert.
+- `data/sources/` bewahrt Provenance; Runtime liest nur geprüfte Snapshots oder explizite optionale Fetcher.
+- Fehlende optionale Enrichment Sources degradieren zu leerer Anreicherung, nicht zu einem abgebrochenen Save Load.
+- Remote Portraits und Logos benötigen Fallbacks; ihre Ausfälle dürfen Simulation und Save nicht beeinflussen.
+- Gemini/API-Konfiguration bleibt lokal; Tokens gehören nie in Source, Docs oder importierte Prototypes.
+
+## Sicher erweitern
+
+### Neue liga-spezifische Funktion
+
+1. Aktiven League-/Competition-Bucket bestimmen.
+2. Bestehenden Resolver und Zielscreen suchen.
+3. State-Feld im eigenen Bucket speichern und Load/Rollover definieren.
+4. Background-Ligen unverändert lassen.
+5. Save/Load-, Historical-Cutoff-, Phone- und Multi-League-Acceptance dokumentieren.
+6. Mode-Blast-Radius und Aufrufer prüfen; betroffenen Modus, NBA-Baseline, weiteren externen Modus, fictional und relevante Rollen testen, inklusive negativer Isolation-Gegenprobe.
+
+### Neues Event
+
+1. Enablement/Rules speichern.
+2. Calendar Date und Eligibility aus kanonischen Helpers ableiten.
+3. Watch/Pass/Auto-Resolve müssen denselben Result Writer verwenden.
+4. Ergebnis, Awards, News und History idempotent schreiben.
+5. Lazy Sim und bereits vergangene Event-Daten abdecken.
+
+### Neue Source
+
+1. User-Source und eingebettete Kommentare vollständig lesen.
+2. Schema, Cutoffs, IDs, Duplikate, Portraits und Secret-Muster auditieren.
+3. Provenance und Runtime Snapshot trennen.
+4. Keine zweite App-Shell, Build Config, Env oder Wegwerfskripte importieren.
+5. Source-Priorität und Fallback explizit dokumentieren.

@@ -2,9 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { BarChart2 } from 'lucide-react';
 import { NBAPlayer } from '../../types';
-import { PlayerHoverCard } from './PlayerHoverCard';
 import { PlayerHoverCardK2 } from './PlayerHoverCardK2';
-import { SettingsManager } from '../../services/SettingsManager';
 
 interface Props {
   player: NBAPlayer;
@@ -89,9 +87,7 @@ export const PlayerNameWithHover: React.FC<Props> = ({ player, children, classNa
             transform: 'translate(-50%, -50%)',
           }}
         >
-          {SettingsManager.getSettings().tooltipStyle === 'simple'
-            ? <PlayerHoverCard player={player} />
-            : <PlayerHoverCardK2 player={player} />}
+          <PlayerHoverCardK2 player={player} />
         </div>,
         document.body,
       )}

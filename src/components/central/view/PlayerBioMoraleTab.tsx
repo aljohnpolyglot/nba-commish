@@ -1,10 +1,9 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { computeMoodScore, moodLabel, normalizeMoodTraits } from '../../../utils/mood/moodScore';
-import { retireProb } from '../../../services/playerDevelopment/retirementChecker';
 import type { NBAPlayer } from '../../../types';
 import type { MoodTrait } from '../../../utils/mood/moodTypes';
-import { getDisplayAge } from '../../../store/playerRatingStore';
+import { filterAwardsToVisibleTimeline } from '../../../utils/awardHistory';
 import {
   classifyResignIntent,
   computeResignProbability,
@@ -16,6 +15,9 @@ import {
   RetiredCareerSummary,
   TRAIT_CONFIG,
 } from './playerBioMoraleShared';
+import { getHistoricalNbaCompletedSeasonCutoff } from '../../../services/playerDevelopment/hofHistoryWindow';
+import { getEurostashRightsTid } from '../../../services/freeAgency/eurostashRights';
+import { getTeamFullName } from '../../../utils/teamNames';
 
 interface PlayerBioMoraleTabProps {
   player: NBAPlayer;
@@ -26,6 +28,16 @@ export { classifyResignIntent, computeResignProbability } from './playerBioMoral
 export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }) => {
   const { state } = useGame();
   const currentYear = state.leagueStats.year;
+  const maxVisibleSeason = getHistoricalNbaCompletedSeasonCutoff({
+    currentYear,
+    leagueType: state.leagueType,
+    moddedLeagueBase: state.moddedLeagueBase,
+    nbaStartYear: state.nbaStartYear,
+  }) ?? currentYear;
+  const visiblePlayer = useMemo(
+    () => ({ ...player, awards: filterAwardsToVisibleTimeline(player.awards ?? [], maxVisibleSeason) }),
+    [maxVisibleSeason, player],
+  );
 
   const team = useMemo(() => state.teams.find(t => t.id === player.tid), [state.teams, player.tid]);
 
@@ -45,8 +57,20 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
   }, [player, team, state.date, state.players]);
 
   const contractThoughts = useMemo(
-    () => getContractThoughts(player, traits, moodScore, currentYear, teamWinPct),
-    [player, traits, moodScore, currentYear, teamWinPct],
+    () => {
+      const rightsTid = getEurostashRightsTid(player, new Set(state.teams.map(candidate => Number(candidate.id))));
+      const rightsTeam = state.teams.find(candidate => candidate.id === rightsTid);
+      return getContractThoughts(
+        player,
+        traits,
+        moodScore,
+        currentYear,
+        teamWinPct,
+        state.leagueStats,
+        rightsTeam ? getTeamFullName(rightsTeam) : undefined,
+      );
+    },
+    [player, traits, moodScore, currentYear, teamWinPct, state.leagueStats, state.teams],
   );
 
   const resign = useMemo(
@@ -58,19 +82,6 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
   const coreBBGMTraits = traits.filter(t => ['DIVA', 'LOYAL', 'MERCENARY', 'COMPETITOR'].includes(t));
   const dramaTraits = traits.filter(t => ['VOLATILE', 'AMBASSADOR', 'DRAMA_MAGNET'].includes(t));
   const isFarewellTour = !!(player as any).farewellTour;
-
-  const retirementRisk = useMemo(() => {
-    if (isFarewellTour || player.status === 'Retired') return null;
-    const age = getDisplayAge(player, currentYear);
-    if (age < 34) return null;
-    const prob = retireProb(age, player.overallRating ?? 60);
-    if (prob <= 0) return null;
-    const pct = Math.round(prob * 100);
-    if (pct < 5) return null;
-    const label = pct >= 70 ? 'Very Likely' : pct >= 40 ? 'Likely' : pct >= 20 ? 'Possible' : 'Low';
-    const color = pct >= 70 ? '#f43f5e' : pct >= 40 ? '#f97316' : pct >= 20 ? '#eab308' : '#94a3b8';
-    return { age, pct, label, color };
-  }, [currentYear, isFarewellTour, player]);
 
   return (
     <div className="p-4 md:p-8 space-y-5 max-w-xl mx-auto">
@@ -180,7 +191,13 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
                   <div className="h-full rounded-full transition-all duration-500" style={{ width: `${resign.score}%`, backgroundColor: rColor }} />
                 </div>
                 <div className="flex items-center justify-between mb-3">
-                  <span className="text-[11px] font-bold" style={{ color: rColor }}>{resignLabel(resign.score)}</span>
+                  <span className="text-[11px] font-bold" style={{ color: rColor }}>
+                    {resign.retirementStatus === 'retiring'
+                      ? 'Retiring'
+                      : resign.retirementStatus === 'considering'
+                        ? 'Considering Retirement'
+                        : resignLabel(resign.score)}
+                  </span>
                 </div>
 
                 {resign.factors.length > 0 ? (
@@ -205,7 +222,7 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
       ) : (
         <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5">
           <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-1">Career Summary</p>
-          <RetiredCareerSummary player={player} traits={traits} currentYear={currentYear} />
+          <RetiredCareerSummary player={visiblePlayer} traits={traits} currentYear={currentYear} />
         </div>
       )}
 
@@ -229,30 +246,6 @@ export const PlayerBioMoraleTab: React.FC<PlayerBioMoraleTabProps> = ({ player }
         </div>
       )}
 
-      {retirementRisk && (
-        <div className="bg-slate-800/40 border border-slate-700/50 rounded-2xl p-5">
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Retirement Watch</p>
-            <span className="text-[10px] font-black uppercase tracking-wider px-2 py-0.5 rounded-full" style={{ color: retirementRisk.color, backgroundColor: `${retirementRisk.color}18`, border: `1px solid ${retirementRisk.color}40` }}>
-              {retirementRisk.label}
-            </span>
-          </div>
-          <div className="h-2 bg-slate-700 rounded-full overflow-hidden mb-2">
-            <div className="h-full rounded-full transition-all duration-500" style={{ width: `${retirementRisk.pct}%`, backgroundColor: retirementRisk.color }} />
-          </div>
-          <div className="flex items-center justify-between text-[10px]">
-            <span className="text-slate-500">Age {retirementRisk.age} — retirement probability this offseason</span>
-            <span className="font-black" style={{ color: retirementRisk.color }}>{retirementRisk.pct}%</span>
-          </div>
-          <p className="text-xs text-slate-500 mt-3 leading-relaxed">
-            {retirementRisk.pct >= 70
-              ? `At ${retirementRisk.age}, it's increasingly unlikely that teams continue offering contracts. This offseason could be the last.`
-              : retirementRisk.pct >= 40
-              ? `Age and declining production are starting to factor in. This player faces a real chance of retiring at the end of this season.`
-              : `Still viable, but the window is narrowing. A strong season lowers the odds considerably.`}
-          </p>
-        </div>
-      )}
     </div>
   );
 };

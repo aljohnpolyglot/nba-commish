@@ -1,4 +1,5 @@
 import { Possession, PlayerPool, TeamId, Period } from './possessionTypes';
+import type { GameRuleConfig } from '../../types';
 import { 
   generateMadeNarrative, generateMissNarrative, generateBlockNarrative, 
   generateReboundNarrative, generateTovNarrative, generateFoulOutNarrative,
@@ -16,7 +17,7 @@ export interface PlayLine {
   gs: number;
   pts: number;
   desc: string;
-  type: 'jumpball' | 'made' | 'miss' | 'blk' | 'reb' | 'tov' | 'stl' | 'foul' | 'ft' | 'sub' | 'gameOver' | 'injury' | 'fight';
+  type: 'jumpball' | 'made' | 'miss' | 'blk' | 'reb' | 'tov' | 'stl' | 'foul' | 'ft' | 'sub' | 'gameOver' | 'injury' | 'fight' | 'rule' | 'ejection' | 'tiebreaker';
   player?: PlayerPool;
   cs: number;
   ds: number;
@@ -34,8 +35,13 @@ export interface PlayLine {
   comingIn?: PlayerPool[];
   goingOut?: PlayerPool[];
   isGameWinner?: boolean;  // walkoff shot
+  isHeave?: boolean;
+  heaveProtected?: boolean;
   isOT?: boolean;          // OT period play
   otNum?: number;          // 1, 2, 3 for OT1/2/3
+  shotLocation?: 'paint' | 'midrange' | 'three' | 'four';
+  shotValue?: number;
+  sequenceIndex?: number;
 }
 
 export function renderPossession(
@@ -44,17 +50,35 @@ export function renderPossession(
   awayScore: number,
   homeLineup: PlayerPool[],
   awayLineup: PlayerPool[],
+  gameRules: GameRuleConfig,
 ): { lines: PlayLine[]; newHomeScore: number; newAwayScore: number } {
+  const normalizedPoss = poss.ballState === 'out_of_bounds' && poss.rebounder
+    ? { ...poss, rebounder: undefined, isOffReb: undefined }
+    : poss.outcome === 'FOUL_TRIP' && poss.shotValue === 3 && (poss.fts?.length ?? 0) < 3 && poss.victim
+      ? {
+          ...poss,
+          freeThrowsAwarded: 3,
+          fts: [
+            ...(poss.fts ?? []),
+            ...Array.from({ length: 3 - (poss.fts?.length ?? 0) }, () => ({ isMake: false, shooter: poss.victim! })),
+          ],
+        }
+      : poss;
+  poss = normalizedPoss;
   const lines: PlayLine[] = [];
   let cs = homeScore;
   let ds = awayScore;
+  const quarter = Number.isFinite(poss.quarter) ? poss.quarter : 1;
+  const period = poss.period ?? String(quarter);
+  const clock = typeof poss.clock === 'string' && poss.clock.trim() ? poss.clock : '12:00';
+  const gs = Number.isFinite(poss.gs) ? poss.gs! : 0;
   
   const base = {
-    period: poss.period!,
-    q: poss.quarter,
-    clock: poss.clock!,
-    time: `${poss.period} ${poss.clock}`,
-    gs: poss.gs!,
+    period,
+    q: quarter,
+    clock,
+    time: `${period} ${clock}`,
+    gs,
     cs, ds,
     possession: poss.team,
     lineupHOME: homeLineup,
@@ -64,24 +88,83 @@ export function renderPossession(
   const makeId = (suffix: string) => `${poss.id}-${suffix}`;
 
   switch (poss.outcome) {
+    case 'PENALTY_GOAL': {
+      const scorer = poss.scorer;
+      if (!scorer) break;
+      if (scorer.tm === 'HOME') cs += poss.pts; else ds += poss.pts;
+      lines.push({
+        ...base,
+        id: makeId('penalty-goal'),
+        tm: scorer.tm,
+        possession: scorer.tm,
+        pts: poss.pts,
+        desc: `Three consecutive team fouls — a goal is awarded to ${scorer.n}'s side.`,
+        type: 'made',
+        player: scorer,
+        cs,
+        ds,
+      });
+      if (gameRules.madeBasketRestart === 'center_jump') {
+        lines.push({
+          ...base,
+          id: makeId('penalty-restart'),
+          tm: scorer.tm,
+          possession: scorer.tm,
+          pts: 0,
+          desc: 'The teams return to center for the next jump ball.',
+          type: 'jumpball',
+          cs,
+          ds,
+          gs: gs + 0.01,
+        });
+      }
+      break;
+    }
     case 'MADE_2':
     case 'MADE_3':
     case 'MADE_4': {
       const scorer = poss.scorer;
       if (!scorer) break;
-      const oppLineup = poss.team === 'HOME' ? awayLineup : homeLineup;
-      const desc = generateMadeNarrative(scorer, poss.pts, poss.assister ?? null, false, oppLineup);
+      const scoringTeam = scorer.tm;
+      const oppLineup = scoringTeam === 'HOME' ? awayLineup : homeLineup;
+      const desc = gameRules.dribbleRule !== 'continuous'
+        ? generateEarlyMadeNarrative(scorer, poss.assister, gameRules.dribbleRule)
+        : poss.isHeave
+        ? `${scorer.n} launches a ${poss.heaveDistanceFeet ?? 40}-foot heave from the backcourt at the horn — IT'S GOOD! It counts as a standard three.`
+        : poss.isDunk
+        ? poss.pts === 3
+          ? `${scorer.n} throws it down — the dunk counts for THREE!`
+          : `${scorer.n} attacks the rim and throws it down!`
+        : generateMadeNarrative(scorer, poss.pts, poss.assister ?? null, false, oppLineup);
       
-      if (poss.team === 'HOME') cs += poss.pts; else ds += poss.pts;
+      if (scoringTeam === 'HOME') cs += poss.pts; else ds += poss.pts;
       
       lines.push({
-        ...base, id: makeId('made'), tm: poss.team,
+        ...base, id: makeId('made'), tm: scoringTeam, possession: scoringTeam,
         pts: poss.pts, desc, type: 'made', player: scorer,
         cs, ds,
         is3: poss.is3,
         is4: poss.is4,
+        isHeave: poss.isHeave,
+        heaveProtected: poss.heaveProtected,
         astPlayer: poss.assister ?? undefined
+        ,shotLocation: poss.shotLocation
+        ,shotValue: poss.pts
       });
+      if (gameRules.madeBasketRestart === 'center_jump') {
+        lines.push({
+          ...base,
+          id: makeId('restart'),
+          tm: scoringTeam,
+          possession: scoringTeam,
+          pts: 0,
+          desc: 'The teams return to center for the next jump ball.',
+          type: 'jumpball',
+          cs,
+          ds,
+          gs: gs + 0.01,
+        });
+      }
       break;
     }
 
@@ -93,17 +176,30 @@ export function renderPossession(
     case 'MISS_4_ORB': {
       const shooter = poss.scorer;
       if (!shooter) break;
+      const shootingTeam = shooter.tm;
       const is3 = poss.is3 ?? false;
       const is4 = poss.is4 ?? false;
-      const oppLineup = poss.team === 'HOME' ? awayLineup : homeLineup;
-      const missDesc = generateMissNarrative(shooter, is3 || is4, oppLineup, poss.passPlayer ?? undefined);
+      const oppLineup = shootingTeam === 'HOME' ? awayLineup : homeLineup;
+      const missDesc = gameRules.dribbleRule !== 'continuous'
+        ? generateEarlyMissNarrative(shooter, poss.passPlayer, gameRules.dribbleRule)
+        : poss.isHeave
+        ? poss.heaveProtected
+          ? `${shooter.n} launches a ${poss.heaveDistanceFeet ?? 40}-foot heave from the backcourt at the horn — off the mark. It is recorded as a team attempt, not an individual miss.`
+          : `${shooter.n} launches a ${poss.heaveDistanceFeet ?? 40}-foot heave from the backcourt at the horn — off the mark. It counts as an individual field-goal attempt.`
+        : poss.basketInterference
+        ? `${shooter.n}'s shot drops, but basket interference is called — no basket.`
+        : poss.blocker
+          ? `${shooter.n} puts up the shot.`
+          : generateMissNarrative(shooter, is3 || is4, oppLineup, poss.passPlayer ?? undefined);
       
       lines.push({
-        ...base, id: makeId('miss'), tm: poss.team,
+        ...base, id: makeId('miss'), tm: shootingTeam, possession: shootingTeam,
         pts: 0, desc: missDesc, type: 'miss', player: shooter,
         cs, ds,
         is3: poss.is3,
-        is4: poss.is4
+        is4: poss.is4,
+        isHeave: poss.isHeave,
+        heaveProtected: poss.heaveProtected,
       });
 
       if (poss.blocker) {
@@ -115,9 +211,11 @@ export function renderPossession(
         });
       }
 
-      if (poss.rebounder) {
+      if (poss.rebounder && !poss.basketInterference) {
         const isRecovered = !!poss.blocker;
-        const rebDesc = generateReboundNarrative(poss.rebounder, !!poss.isOffReb, isRecovered && poss.rebounder.tm !== poss.team);
+        const rebDesc = gameRules.dribbleRule === 'continuous'
+          ? generateReboundNarrative(poss.rebounder, !!poss.isOffReb, isRecovered && poss.rebounder.tm !== shootingTeam)
+          : `${poss.rebounder.n} recovers the missed shot.`;
         lines.push({
           ...base, id: makeId('reb'), tm: poss.rebounder.tm,
           pts: 0, desc: rebDesc, type: 'reb', player: poss.rebounder,
@@ -131,10 +229,35 @@ export function renderPossession(
     case 'TOV': {
       const handler = poss.handler;
       if (!handler) break;
-      const tovDesc = generateTovNarrative(handler, poss.stealer ?? null);
+      const seconds = Math.max(1, Math.round(poss.callTimerSeconds ?? 0));
+      const tovDesc = poss.turnoverCall === 'shot_clock'
+        ? `${handler.n} cannot get a shot away — ${seconds}-second shot-clock violation.`
+        : poss.turnoverCall === 'inbound'
+          ? `${handler.n}'s team cannot inbound the ball — ${seconds}-second violation.`
+          : poss.turnoverCall === 'traveling'
+            ? `${handler.n} is called for traveling.`
+            : poss.turnoverCall === 'double_dribble'
+              ? `${handler.n} loses the possession on a double dribble.`
+              : poss.turnoverCall === 'backcourt'
+                ? `${handler.n}'s team fails to cross in ${seconds} seconds — backcourt violation.`
+                : poss.turnoverCall === 'offensive_three_seconds'
+                  ? `${handler.n} stays in the lane too long — ${seconds}-second offensive violation.`
+                  : poss.turnoverCall === 'back_to_basket'
+                    ? `${handler.n} exceeds the ${seconds}-second back-to-basket count.`
+                    : poss.turnoverCall === 'out_of_bounds'
+                      ? poss.restartLocation === 'corner'
+                        ? `${handler.n} loses it along the baseline. The defense will inbound from the corner.`
+                        : `${handler.n} steps out of bounds.`
+                      : poss.turnoverCall === 'kicked_ball'
+                        ? `${handler.n}'s team turns it over after a kicked-ball call.`
+                        : gameRules.dribbleRule === 'continuous'
+                          ? generateTovNarrative(handler, poss.stealer ?? null)
+                          : poss.stealer
+                            ? `${handler.n}'s pass is intercepted by ${poss.stealer.n}.`
+                            : `${handler.n}'s pass goes astray.`;
       
       lines.push({
-        ...base, id: makeId('tov'), tm: poss.team,
+        ...base, id: makeId('tov'), tm: handler.tm, possession: handler.tm,
         pts: 0, desc: tovDesc, type: 'tov', player: handler,
         cs, ds,
       });
@@ -155,25 +278,30 @@ export function renderPossession(
       
       const fouler = poss.fouler;
       const victim = poss.victim;
+      const shootingTeam = victim.tm;
       const fts = poss.fts;
-      const oppLineup = poss.team === 'HOME' ? awayLineup : homeLineup;
+      const oppLineup = shootingTeam === 'HOME' ? awayLineup : homeLineup;
 
       // Generate a shot attempt desc for the victim
       // This does NOT consume fg2/fg3/m2/m3 budget
       // It is purely narrative flavor
-      const shotAttemptDesc = generateShotAttemptNarrative(victim, oppLineup);
+      const shotAttemptDesc = generateShotAttemptNarrative(victim, oppLineup, gameRules);
 
       // Push shot attempt line first
       lines.push({
         ...base,
         id: makeId('foul_attempt'),
-        tm: poss.team,           // victim's team
+        tm: shootingTeam,
+        possession: shootingTeam,
         pts: 0,
         desc: shotAttemptDesc,
         type: 'miss',            // treated as miss for UI
         player: victim,
         cs, ds,
         gs: poss.gs! - 0.1,     // fires just before foul
+        is3: poss.shotValue === 3,
+        shotLocation: poss.shotLocation,
+        shotValue: poss.shotValue,
       });
       
       let foulDesc: string;
@@ -202,7 +330,7 @@ export function renderPossession(
         const isLast = ftIdx === fts.length - 1;
         let ftDesc: string;
         
-        const [minStr, secStr] = (poss.clock ?? '12:00').split(':');
+        const [minStr, secStr] = clock.split(':');
         const timeLeft = parseInt(minStr) * 60 + parseInt(secStr);
         const isVeryLate = (poss.quarter === 4 || poss.quarter >= 5) && timeLeft <= 60;
         
@@ -238,15 +366,15 @@ export function renderPossession(
         // Pick rebounder
         const isOffReb = Math.random() < 0.25;
         const rebLineup = isOffReb 
-          ? (poss.team === 'HOME' ? homeLineup : awayLineup)
-          : (poss.team === 'HOME' ? awayLineup : homeLineup);
+          ? (shootingTeam === 'HOME' ? homeLineup : awayLineup)
+          : (shootingTeam === 'HOME' ? awayLineup : homeLineup);
         const rebounder = rebLineup[
           ~~(Math.random() * rebLineup.length)
         ];
         
         if (rebounder) {
-          const rebTm = isOffReb ? poss.team 
-            : (poss.team === 'HOME' ? 'AWAY' : 'HOME');
+          const rebTm = isOffReb ? shootingTeam
+            : (shootingTeam === 'HOME' ? 'AWAY' : 'HOME');
           const rebDesc = generateReboundNarrative(
             rebounder, isOffReb, false
           );
@@ -268,15 +396,115 @@ export function renderPossession(
     }
   }
 
+  if (poss.challenge) {
+    const challenge = poss.challenge;
+    const teamLabel = challenge.team === 'HOME' ? 'Home team' : 'Away team';
+    const callIndex = lines.findIndex(line =>
+      challenge.trigger === 'Challenge of Called Foul'
+        ? line.type === 'foul'
+        : challenge.trigger === 'Challenge OOB'
+          ? line.type === 'tov'
+          : line.type === 'miss',
+    );
+    const insertAt = callIndex >= 0 ? callIndex + 1 : lines.length;
+    const anchor = lines[Math.max(0, insertAt - 1)];
+    const resultLabel = challenge.successful ? 'Successful' : 'Unsuccessful';
+    const inventoryCopy = challenge.reimbursed
+      ? `The challenge is reimbursed; ${challenge.remaining} remain.`
+      : `${challenge.remaining} challenge${challenge.remaining === 1 ? '' : 's'} remain.`;
+    lines.splice(insertAt, 0,
+      {
+        ...base,
+        id: makeId('challenge'),
+        tm: challenge.team,
+        pts: 0,
+        desc: `${teamLabel} challenges. ${challenge.trigger}: ${challenge.initialCall}. Review is triggered.`,
+        type: 'rule',
+        player: anchor?.player,
+        cs: anchor?.cs ?? cs,
+        ds: anchor?.ds ?? ds,
+        gs: gs + 0.01,
+      },
+      {
+        ...base,
+        id: makeId('challenge_result'),
+        tm: challenge.team,
+        pts: 0,
+        desc: `${challenge.finalRuling}: ${challenge.rulingDescription}. Challenge ${resultLabel}. ${inventoryCopy}`,
+        type: 'rule',
+        player: anchor?.player,
+        cs: anchor?.cs ?? cs,
+        ds: anchor?.ds ?? ds,
+        gs: gs + 0.02,
+      },
+    );
+  }
+
+  if (poss.timeout) {
+    const timeout = poss.timeout;
+    const teamLabel = timeout.team === 'HOME' ? 'Home team' : 'Away team';
+    const anchor = lines[lines.length - 1];
+    const clutchCopy = timeout.isClutch
+      ? ` ${timeout.clutchRemaining} remain available in the final two minutes.`
+      : '';
+    lines.push({
+      ...base,
+      id: makeId('timeout'),
+      tm: timeout.team,
+      pts: 0,
+      desc: `${teamLabel} timeout. ${timeout.remaining} timeout${timeout.remaining === 1 ? '' : 's'} remain.${clutchCopy}`,
+      type: 'rule',
+      player: anchor?.player,
+      cs: anchor?.cs ?? cs,
+      ds: anchor?.ds ?? ds,
+      gs: Math.max(gs, ...lines.map(line => line.gs ?? gs)) + 0.01,
+    });
+  }
+
   return { lines, newHomeScore: cs, newAwayScore: ds };
+}
+
+function generateEarlyMadeNarrative(
+  scorer: PlayerPool,
+  assister: PlayerPool | undefined,
+  dribbleRule: GameRuleConfig['dribbleRule'],
+): string {
+  if (dribbleRule === 'none') {
+    return assister
+      ? `${assister.n} passes to ${scorer.n}, who shoots from the catch — goal!`
+      : `${scorer.n} receives the ball in position and shoots — goal!`;
+  }
+  return assister
+    ? `${assister.n} finds ${scorer.n}; one bounce creates room for the shot — good!`
+    : `${scorer.n} takes one bounce, sets, and sends the shot home!`;
+}
+
+function generateEarlyMissNarrative(
+  shooter: PlayerPool,
+  passer: PlayerPool | undefined,
+  dribbleRule: GameRuleConfig['dribbleRule'],
+): string {
+  if (dribbleRule === 'none') {
+    return passer
+      ? `${passer.n} passes to ${shooter.n}, whose catch-and-shoot attempt misses.`
+      : `${shooter.n} shoots without advancing and misses.`;
+  }
+  return `${shooter.n} takes the permitted bounce, sets, and misses the shot.`;
 }
 
 function generateShotAttemptNarrative(
   victim: PlayerPool,
-  oppLineup: PlayerPool[]
+  oppLineup: PlayerPool[],
+  gameRules: GameRuleConfig,
 ): string {
   const pick = (a: string[]) => a[~~(Math.random() * a.length)];
-  const is3 = Math.random() < 0.30; // 30% fouled on 3PT
+  if (gameRules.dribbleRule === 'none') {
+    return `${victim.n} shoots immediately from the catch —`;
+  }
+  if (gameRules.dribbleRule === 'single_bounce_no_shot') {
+    return `${victim.n} sets after the permitted bounce and shoots —`;
+  }
+  const is3 = gameRules.threePointLineEnabled && Math.random() < 0.30;
   
   if (is3) {
     return pick([

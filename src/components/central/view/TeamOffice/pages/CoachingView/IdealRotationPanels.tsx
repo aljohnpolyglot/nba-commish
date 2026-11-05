@@ -1,10 +1,11 @@
 import type { CSSProperties, FocusEventHandler, PointerEventHandler, RefObject } from 'react';
-import { GripVertical, Pencil, RotateCcw, Sparkles } from 'lucide-react';
+import { GripVertical, Pencil, RotateCcw } from 'lucide-react';
 import { PlayerPortrait } from '../../../../../shared/PlayerPortrait';
 import { PlayerNameWithHover } from '../../../../../shared/PlayerNameWithHover';
-import { getDisplayOverall } from '../../../../../../utils/playerRatings';
+import { getScoutedDisplayOverall } from '../../../../../../utils/scoutingFuzz';
 import type { NBAPlayer } from '../../../../../../types';
-import { STARTER_POS_ORDER } from './idealRotationBaseline';
+import { useGame } from '../../../../../../store/GameContext';
+import { getCourtSlotLabels } from '../../../../../../services/simulation/courtSize';
 
 export function IdealRotationHeader({
   canEdit,
@@ -14,8 +15,8 @@ export function IdealRotationHeader({
   remaining,
   targetMinutes,
   totalMinutes,
-  onReseed,
-  onToggleLock,
+  onCustomize,
+  onUseAuto,
 }: {
   canEdit: boolean;
   headerMinutesRef: RefObject<HTMLDivElement | null>;
@@ -24,8 +25,8 @@ export function IdealRotationHeader({
   remaining: number;
   targetMinutes: number;
   totalMinutes: number;
-  onReseed: () => void;
-  onToggleLock: () => void;
+  onCustomize: () => void;
+  onUseAuto: () => void;
 }) {
   return (
     <div className="flex items-center justify-between">
@@ -41,28 +42,18 @@ export function IdealRotationHeader({
       </div>
       <div className="flex items-center gap-2 text-xs">
         {canEdit && (
-          <>
-            <button
-              onClick={onReseed}
-              className="flex items-center gap-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 hover:border-amber-500/50 px-2 py-1 rounded font-black uppercase tracking-widest text-[10px] text-amber-300 hover:text-amber-200 transition-colors"
-              title="Reseed rotation from a team outlook"
-            >
-              <Sparkles className="w-3 h-3" />
-              Reseed
-            </button>
-            <button
-              onClick={onToggleLock}
-              className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-black uppercase transition-colors ${
-                locked
-                  ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
-                  : 'bg-sky-500 text-black hover:bg-sky-400'
-              }`}
-              title={locked ? 'Clear the custom plan and go back to the auto baseline' : 'Start a custom plan you can edit'}
-            >
-              {locked ? <RotateCcw size={12} /> : <Pencil size={12} />}
-              {locked ? 'Use Auto' : 'Customize'}
-            </button>
-          </>
+          <button
+            onClick={locked ? onUseAuto : onCustomize}
+            className={`flex items-center gap-1 px-2 py-1 rounded text-[10px] font-black uppercase transition-colors ${
+              locked
+                ? 'bg-slate-800 text-slate-300 hover:bg-slate-700 border border-slate-700'
+                : 'bg-sky-500 text-black hover:bg-sky-400'
+            }`}
+            title={locked ? 'Choose an automatic rotation template' : 'Start a custom plan you can edit'}
+          >
+            {locked ? <RotateCcw size={12} /> : <Pencil size={12} />}
+            {locked ? 'Use Auto' : 'Customize'}
+          </button>
         )}
         <div
           ref={headerMinutesRef}
@@ -91,27 +82,39 @@ export function IdealRotationSwapHint({ selectedId, onCancel }: { selectedId: st
 }
 
 export function IdealRotationStartersPanel({
+  currentYear,
   dragStyle,
   onCardClick,
   onCardPointerDown,
   selectedId,
   starterPlayers,
   writable,
+  playersOnCourt,
 }: {
+  currentYear: number;
   dragStyle: (id: string, source: 'starter' | 'rotation') => CSSProperties | undefined;
   onCardClick: (id: string) => void;
   onCardPointerDown: (id: string, source: 'starter' | 'rotation') => PointerEventHandler<HTMLElement>;
   selectedId: string | null;
   starterPlayers: NBAPlayer[];
   writable: boolean;
+  playersOnCourt: number;
 }) {
+  const { state } = useGame();
+  const starterSlots = getCourtSlotLabels(playersOnCourt);
+  const courtGridStyle = {
+    '--court-columns': Math.min(5, playersOnCourt),
+  } as CSSProperties;
   return (
     <div className="bg-black/40 border border-slate-800 rounded-lg p-3">
       <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
-        Starting Five {!writable && <span className="ml-2 text-[9px] text-slate-500">read-only</span>}
+        Starting Lineup ({playersOnCourt}) {!writable && <span className="ml-2 text-[9px] text-slate-500">read-only</span>}
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-        {STARTER_POS_ORDER.map((pos, i) => {
+      <div
+        className="grid grid-cols-2 sm:grid-cols-3 lg:[grid-template-columns:repeat(var(--court-columns),minmax(0,1fr))] gap-2"
+        style={courtGridStyle}
+      >
+        {starterSlots.map((pos, i) => {
           const player = starterPlayers[i];
           if (!player) {
             return (
@@ -121,6 +124,7 @@ export function IdealRotationStartersPanel({
             );
           }
           const isSelected = selectedId === player.internalId;
+          const displayOvr = getScoutedDisplayOverall(state, player, currentYear);
           return (
             <div
               key={player.internalId}
@@ -144,7 +148,7 @@ export function IdealRotationStartersPanel({
                 </div>
               )}
               <div className="flex flex-col items-center gap-1 mt-2">
-                <PlayerPortrait imgUrl={player.imgURL} face={(player as any).face} playerName={player.name} size={72} overallRating={player.overallRating} />
+                <PlayerPortrait imgUrl={player.imgURL} face={(player as any).face} playerName={player.name} size={72} ovrLabel={String(displayOvr)} />
                 <div className="text-[11px] font-bold text-white text-center line-clamp-1 w-full">
                   <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>
                 </div>
@@ -166,6 +170,7 @@ export function IdealRotationTwoWayPanel({
   isPlayoffSeason: boolean;
   players: NBAPlayer[];
 }) {
+  const { state } = useGame();
   if (!isPlayoffSeason || players.length === 0) return null;
   return (
     <div className="bg-slate-900/40 border border-slate-700/40 rounded-lg p-3 opacity-60">
@@ -176,6 +181,7 @@ export function IdealRotationTwoWayPanel({
       <div className="flex flex-col gap-1">
         {players.map(player => {
           const age = player.born?.year ? currentYear - player.born.year : (player as any).age;
+          const displayOvr = getScoutedDisplayOverall(state, player, currentYear);
           return (
             <div
               key={player.internalId}
@@ -183,13 +189,13 @@ export function IdealRotationTwoWayPanel({
             >
               <GripVertical className="w-3 h-3 text-slate-700 shrink-0" />
               <div className="grayscale opacity-50">
-                <PlayerPortrait imgUrl={player.imgURL} face={(player as any).face} playerName={player.name} size={36} overallRating={player.overallRating} />
+                <PlayerPortrait imgUrl={player.imgURL} face={(player as any).face} playerName={player.name} size={36} ovrLabel={String(displayOvr)} />
               </div>
               <div className="flex flex-col min-w-0 flex-1">
                 <PlayerNameWithHover player={player} className="text-xs font-bold text-slate-500 truncate">{player.name}</PlayerNameWithHover>
                 <span className="text-[10px] text-sky-500/70 font-bold">TWO WAY{age ? ` | ${age}y` : ''}</span>
               </div>
-              <span className="text-center text-xs font-black tabular-nums text-slate-600">{getDisplayOverall(player)}</span>
+              <span className="text-center text-xs font-black tabular-nums text-slate-600">{displayOvr}</span>
             </div>
           );
         })}
@@ -240,6 +246,7 @@ export function IdealRotationPanel({
   selectedId,
   starterPlayers,
   writable,
+  playersOnCourt,
 }: {
   benchPlayers: NBAPlayer[];
   currentYear: number;
@@ -255,7 +262,9 @@ export function IdealRotationPanel({
   selectedId: string | null;
   starterPlayers: NBAPlayer[];
   writable: boolean;
+  playersOnCourt: number;
 }) {
+  const { state } = useGame();
   return (
     <div className="bg-black/40 border border-slate-800 rounded-lg p-3">
       <div className="flex items-center justify-between mb-2">
@@ -267,9 +276,9 @@ export function IdealRotationPanel({
       <div className="flex flex-col gap-1">
         {[...starterPlayers, ...benchPlayers].map((player, idx) => {
           const displayMins = draggingSlider?.id === player.internalId ? draggingSlider.value : (minutes[player.internalId] ?? 0);
-          const isStarter = idx < 5;
+          const isStarter = idx < playersOnCourt;
           const isSelected = selectedId === player.internalId;
-          const ovr = getDisplayOverall(player);
+          const ovr = getScoutedDisplayOverall(state, player, currentYear);
           const ovrColor = ovr >= 90 ? 'text-blue-300' : ovr >= 85 ? 'text-emerald-300' : ovr >= 78 ? 'text-amber-300' : 'text-slate-400';
           const age = player.born?.year ? currentYear - player.born.year : (player as any).age;
 

@@ -1,9 +1,19 @@
 import { Dispatch, MutableRefObject, SetStateAction } from 'react';
-import { GameState, UserAction } from '../../types';
+import { GameLoadProgress, GameState, UserAction } from '../../types';
 import { SettingsManager } from '../../services/SettingsManager';
 import { initImageCache } from '../../services/imageCache';
+import { SaveManager, type SaveMetadata } from '../../services/SaveManager';
 import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getTeamFullName } from '../../utils/teamNames';
 import { loadGameState } from './loadGameState';
+import {
+  addAllStarSelectionAward,
+  applyAllStarInjuryReplacement,
+  finalizeAllStarReplacementInbox,
+  getOutstandingAllStarInjuries,
+} from '../../services/allStar/allStarInjuryReplacements';
+import { buildContestResultNews } from '../../services/allStar/contestResultNews';
+import { resolveRigGameOffer } from '../../services/referees/rigGame';
 
 type SetGameState = Dispatch<SetStateAction<GameState>>;
 
@@ -32,6 +42,36 @@ export async function handleDirectDispatchAction({
 
   if (action.type === 'SAVE_SOCIAL_THREAD') {
     actions.saveSocialThread(action.payload.postId, action.payload.replies);
+    return true;
+  }
+
+  if (action.type === 'AUTOFILL_ROSTER_COMPLIANCE') {
+    const { applyRosterComplianceAutoFill } = await import('./rosterComplianceAutoFill');
+    const teamId = Number(action.payload?.teamId);
+    const playerIds = Array.isArray(action.payload?.playerIds) ? action.payload.playerIds : [];
+    const next = await applyRosterComplianceAutoFill(stateRef.current, teamId, playerIds);
+    stateRef.current = next;
+    setState(next);
+    return true;
+  }
+
+  if (action.type === 'ASSISTANT_RESIGN_EXPIRING_CONTRACTS') {
+    const { applyAssistantResignOffers } = await import('../../services/freeAgency/assistantResign');
+    const teamId = Number(action.payload?.teamId);
+    const offers = Array.isArray(action.payload?.offers) ? action.payload.offers : [];
+    const reviewedPlayerIds = Array.isArray(action.payload?.reviewedPlayerIds)
+      ? [...new Set<string>(action.payload.reviewedPlayerIds.map((id: unknown) => String(id)))]
+      : [];
+    const next = await applyAssistantResignOffers(stateRef.current, teamId, offers);
+    const reviewed = {
+      ...next,
+      expiringPlayersReview: {
+        season: Number(action.payload?.season ?? next.leagueStats?.year ?? new Date().getFullYear()),
+        playerIds: reviewedPlayerIds,
+      },
+    };
+    stateRef.current = reviewed;
+    setState(reviewed);
     return true;
   }
 
@@ -75,7 +115,7 @@ export async function handleDirectDispatchAction({
         Object.entries((team.trainingCalendar as any) ?? {}).filter(([, plan]: [string, any]) => plan?.auto === false),
       );
       const startISO = normalizeAutofillDate(prev.date);
-      const calendar = autoGenerateTrainingCalendar(prev.schedule || [], teamId, startISO, 365, preservedUserPlans as any);
+      const calendar = autoGenerateTrainingCalendar(prev.schedule || [], teamId, startISO, 365, preservedUserPlans as any, 240, prev.leagueStats);
       return {
         ...prev,
         teams: prev.teams.map(item => item.id === teamId ? { ...item, trainingCalendar: calendar } : item),
@@ -120,6 +160,7 @@ export async function handleDirectDispatchAction({
   if (action.type === 'RESET_PLAYER_FAMILIARITY') return true;
 
   if (action.type === 'ADD_PENDING_HYPNOSIS') {
+    if (stateRef.current.godModeEnabled !== true) return true;
     setState(prev => ({
       ...prev,
       pendingHypnosis: [...(prev.pendingHypnosis || []), action.payload],
@@ -182,6 +223,7 @@ export async function handleDirectDispatchAction({
         leagueStats.year,
         allStar.roster ?? [],
         leagueStats,
+        players,
       );
       allStar = { ...allStar, gamesInjected: true };
     }
@@ -196,11 +238,23 @@ export async function handleDirectDispatchAction({
       } as GameState,
       { friday: false, saturday: true, sunday: true },
     );
-    const finalAllStar = patch.allStar ?? allStar;
+    const simulatedAllStar = patch.allStar ?? allStar;
+    const { simulatePbaDanceContest } = await import('../../services/pba/danceContest');
+    const danceContest = leagueStats.pbaAllStarDanceContestEnabled !== false
+      ? simulatedAllStar.danceContest ?? simulatePbaDanceContest(simulatedAllStar.roster ?? [])
+      : undefined;
+    const finalAllStar = danceContest
+      ? { ...simulatedAllStar, danceContest }
+      : simulatedAllStar;
     const finalPlayers = backfillPbaAllStarAwards(
       { ...stateForSim, leagueStats, players, allStar: finalAllStar } as GameState,
       players,
       finalAllStar,
+    );
+    const danceNews = buildContestResultNews(
+      { ...stateForSim, leagueStats, players: finalPlayers, allStar: finalAllStar } as GameState,
+      'dance',
+      danceContest,
     );
     setState(current => ({
       ...current,
@@ -208,6 +262,9 @@ export async function handleDirectDispatchAction({
       schedule: patch.schedule ?? schedule,
       boxScores: patch.boxScores ?? stateForSim.boxScores,
       players: finalPlayers,
+      news: danceNews && !(current.news ?? []).some(item => item.id === danceNews.id)
+        ? [danceNews, ...(current.news ?? [])].slice(0, 200)
+        : current.news,
       allStar: finalAllStar,
     }));
     return true;
@@ -217,6 +274,7 @@ export async function handleDirectDispatchAction({
     const { contest, result, contestants } = action.payload;
     setState(prev => {
       if (!prev.allStar) return prev;
+      if (contest === 'dance' && prev.allStar.danceContest?.complete) return prev;
       const season = prev.leagueStats?.year;
       const awardEntries: Array<{ playerId?: string; playerName?: string; awardType: string }> = [];
       if (contest === 'dunk' && result?.winnerId) {
@@ -224,6 +282,12 @@ export async function handleDirectDispatchAction({
       }
       if (contest === 'three' && result?.winnerId) {
         awardEntries.push({ playerId: result.winnerId, playerName: result.winnerName, awardType: 'Three-Point Contest Winner' });
+      }
+      if (contest === 'dance' && result?.winnerTeamId) {
+        const winnerTeam = result.teams?.find((team: any) => team.teamId === result.winnerTeamId);
+        (winnerTeam?.playerIds ?? []).forEach((playerId: string, index: number) => {
+          awardEntries.push({ playerId, playerName: winnerTeam.playerNames?.[index], awardType: 'All-Star Dance Contest Champion' });
+        });
       }
       if (contest === 'shooting-stars' && result?.winnerTeamId) {
         const winnerTeam = result.teams?.find((team: any) => team.teamId === result.winnerTeamId);
@@ -255,15 +319,20 @@ export async function handleDirectDispatchAction({
         : contest === 'skills' ? 90007
         : contest === 'horse' ? 90008
         : null;
+      const contestNews = contest === 'dance' || contest === 'shooting-stars' || contest === 'skills' || contest === 'horse'
+        ? buildContestResultNews(prev, contest, result)
+        : null;
 
       return {
         ...prev,
         players,
+        news: contestNews ? [contestNews, ...(prev.news ?? [])].slice(0, 200) : prev.news,
         schedule: scheduleGid == null ? prev.schedule : prev.schedule.map((game: any) => game.gid === scheduleGid ? { ...game, played: true } : game),
         allStar: {
           ...prev.allStar,
           ...(contest === 'dunk' ? { dunkContest: result } : {}),
           ...(contest === 'three' ? { threePointContest: result } : {}),
+          ...(contest === 'dance' ? { danceContest: result } : {}),
           ...(contest === 'shooting-stars' ? { shootingStars: result, shootingStarsContestants: contestants ?? (prev.allStar as any).shootingStarsContestants, shootingStarsAnnounced: true } : {}),
           ...(contest === 'skills' ? { skillsChallenge: result, skillsChallengeContestants: contestants ?? (prev.allStar as any).skillsChallengeContestants, skillsChallengeAnnounced: true } : {}),
           ...(contest === 'horse' ? { horseTournament: result, horseContestants: contestants ?? (prev.allStar as any).horseContestants, horseAnnounced: true } : {}),
@@ -299,31 +368,56 @@ export async function handleDirectDispatchAction({
 
   if (action.type === 'RECORD_WATCHED_GAME') {
     const { gameId, result } = action.payload;
-    setState(prev => {
-      const watchedGame = prev.schedule.find((game: any) => game.gid === gameId);
-      const newSchedule = prev.schedule.map((game: any) =>
-        game.gid === gameId ? { ...game, played: true, homeScore: result.homeScore, awayScore: result.awayScore } : game,
-      );
-      const boxScoreEntry = {
-        ...result,
-        gameId,
-        date: prev.date,
-        season: prev.leagueStats?.year,
-        competitionId: watchedGame?.competitionId ?? result.competitionId,
-        competitionPhase: watchedGame?.competitionPhase ?? result.competitionPhase,
-      };
-      const existing = (prev.boxScores || []).findIndex((box: any) => box.gameId === gameId);
-      const newBoxScores = existing >= 0
-        ? (prev.boxScores || []).map((box: any, index: number) => index === existing ? boxScoreEntry : box)
-        : [...(prev.boxScores || []), boxScoreEntry];
-      return { ...prev, schedule: newSchedule, boxScores: newBoxScores };
-    });
+    const current = stateRef.current;
+    const watchedGame = current.schedule.find((game: any) => game.gid === gameId);
+    const newSchedule = current.schedule.map((game: any) =>
+      game.gid === gameId ? {
+        ...game,
+        played: true,
+        homeScore: result.homeScore,
+        awayScore: result.awayScore,
+        winnerId: result.winnerId,
+        tiebreaker: result.tiebreaker,
+      } : game,
+    );
+    const boxScoreEntry = {
+      ...result,
+      gameId,
+      date: current.date,
+      season: current.leagueStats?.year,
+      isPreseason: watchedGame?.isPreseason ?? result.isPreseason,
+      isPlayoff: watchedGame?.isPlayoff ?? result.isPlayoff,
+      isEliminationGame: watchedGame?.isEliminationGame ?? result.isEliminationGame,
+      isPlayIn: watchedGame?.isPlayIn ?? result.isPlayIn,
+      competitionId: watchedGame?.competitionId ?? result.competitionId,
+      competitionPhase: watchedGame?.competitionPhase ?? result.competitionPhase,
+    };
+    const existing = (current.boxScores || []).findIndex((box: any) => box.gameId === gameId);
+    const newBoxScores = existing >= 0
+      ? (current.boxScores || []).map((box: any, index: number) => index === existing ? boxScoreEntry : box)
+      : [...(current.boxScores || []), boxScoreEntry];
+    const next = { ...current, schedule: newSchedule, boxScores: newBoxScores };
+    stateRef.current = next;
+    setState(next);
 
-    const watchedHome = resolveAnyTeam(result.homeTeamId, stateRef.current.teams, stateRef.current.nonNBATeams ?? []);
-    const watchedAway = resolveAnyTeam(result.awayTeamId, stateRef.current.teams, stateRef.current.nonNBATeams ?? []);
+    const watchedHome = resolveAnyTeam(result.homeTeamId, next.teams, next.nonNBATeams ?? []);
+    const watchedAway = resolveAnyTeam(result.awayTeamId, next.teams, next.nonNBATeams ?? []);
     if (watchedHome && watchedAway) {
-      import('../../services/ImagnPhotoService').then(({ fetchGamePhotos }) => {
-        fetchGamePhotos({ homeTeam: watchedHome, awayTeam: watchedAway }).catch(() => {});
+      Promise.all([
+        import('../../services/ImagnPhotoService'),
+        import('../../services/social/photoEnricherHelpers'),
+      ]).then(([{ fetchGamePhotos }, { buildGamePhotoInfo }]) => {
+        const info = buildGamePhotoInfo(boxScoreEntry, watchedHome, watchedAway, next);
+        fetchGamePhotos({
+          homeTeam: watchedHome,
+          awayTeam: watchedAway,
+          date: info.date,
+          season: info.season,
+          league: info.league,
+          competitionId: info.competitionId,
+          uiMode: info.uiMode,
+          branchCutoffDate: info.branchCutoffDate,
+        }).catch(() => {});
       });
     }
     return true;
@@ -338,6 +432,43 @@ export async function handleDirectDispatchAction({
         personalWealth: Math.max(0, Number((prev.stats.personalWealth - amountMillion).toFixed(4))),
       },
     }));
+    return true;
+  }
+
+  if (action.type === 'SETTLE_RIG_GAME_OFFER') {
+    const { gameId, refereeId, favoredTid } = action.payload as {
+      gameId: number;
+      refereeId: string;
+      favoredTid: number;
+    };
+    setState(prev => {
+      const referee = (prev.refereePool ?? prev.staff?.referees ?? [])
+        .find(candidate => candidate.id === refereeId);
+      const offer = resolveRigGameOffer(prev, gameId, referee, favoredTid);
+      if (!offer.eligible || !offer.canAfford || !offer.settlement) {
+        return { ...prev, lastOutcome: offer.error ?? 'The offer could not be made.' };
+      }
+      const settlement = offer.settlement;
+      const existing = prev.rigGameSettlements?.[settlement.attemptKey];
+      if (existing) {
+        return { ...prev, lastOutcome: existing.message };
+      }
+      return {
+        ...prev,
+        stats: {
+          ...prev.stats,
+          personalWealth: Math.max(
+            0,
+            Number((prev.stats.personalWealth - settlement.chargedAmountMillion).toFixed(4)),
+          ),
+        },
+        rigGameSettlements: {
+          ...(prev.rigGameSettlements ?? {}),
+          [settlement.attemptKey]: settlement,
+        },
+        lastOutcome: settlement.message,
+      };
+    });
     return true;
   }
 
@@ -386,45 +517,99 @@ export async function handleDirectDispatchAction({
     const { injuredId, replacementId, conference } = action.payload as any;
     setState(prev => {
       if (!prev.allStar) return prev;
-      const replacementPlayer = prev.players.find(player => player.internalId === replacementId);
-      const replacementTeam = prev.teams.find(team => team.id === replacementPlayer?.tid);
-      const updatedRoster = prev.allStar.roster.map(player =>
-        player.playerId === injuredId ? { ...player, isInjuredDNP: true } : player,
-      );
-      const alreadyIn = updatedRoster.some(player => player.playerId === replacementId);
-      if (!alreadyIn && replacementPlayer) {
-        updatedRoster.push({
-          playerId: replacementPlayer.internalId,
-          playerName: replacementPlayer.name,
-          teamAbbrev: replacementTeam?.abbrev ?? '',
-          nbaId: null,
-          teamNbaId: null,
-          conference: conference || (replacementTeam?.conference ?? 'East'),
-          isStarter: false,
-          position: replacementPlayer.pos ?? 'F',
-          category: (replacementPlayer.pos?.includes('G') ? 'Guard' : 'Frontcourt') as 'Guard' | 'Frontcourt',
-          ovr: replacementPlayer.overallRating,
-          isInjuryReplacement: true,
-          injuredPlayerId: injuredId,
-        });
-      }
-      return { ...prev, allStar: { ...prev.allStar, roster: updatedRoster } };
+      const updatedRoster = applyAllStarInjuryReplacement(prev, injuredId, replacementId, conference);
+      if (updatedRoster === prev.allStar.roster) return prev;
+      const next = {
+        ...prev,
+        players: addAllStarSelectionAward(prev.players, replacementId, prev.allStar.season ?? prev.leagueStats.year),
+        allStar: { ...prev.allStar, roster: updatedRoster },
+      };
+      return getOutstandingAllStarInjuries(next).length === 0
+        ? { ...next, inbox: finalizeAllStarReplacementInbox(next, updatedRoster, 'commissioner') }
+        : next;
     });
     return true;
   }
 
   if (action.type === 'LOAD_GAME') {
-    const loaded = action.payload as any;
-    const { nextState, imageCachePlayers } = await loadGameState(loaded);
-    setState(nextState);
-    if (SettingsManager.getSettings().enableImageCache && imageCachePlayers.length > 0) {
-      initImageCache(imageCachePlayers).catch(() => {});
+    const payload = action.payload as SaveMetadata | GameState;
+    const suppliedState = Array.isArray((payload as GameState)?.players)
+      ? payload as GameState
+      : undefined;
+    const saveId = suppliedState?.saveId ?? (payload as SaveMetadata)?.id;
+    const gameDate = suppliedState?.date ?? (payload as SaveMetadata)?.gameDate ?? '';
+    const reportProgress = (progress: GameLoadProgress) => {
+      const displayedProgress = suppliedState
+        ? {
+            ...progress,
+            percentComplete: Math.min(99, Math.max(52, 50 + progress.percentComplete / 2)),
+          }
+        : progress;
+      console.info('[LOAD_GAME_PROGRESS]', {
+        step: displayedProgress.stepsComplete,
+        total: displayedProgress.stepsTotal,
+        percent: displayedProgress.percentComplete,
+        phase: displayedProgress.currentPhase,
+      });
+      setState(prev => ({
+        ...prev,
+        isProcessing: true,
+        lazySimProgress: {
+          kind: 'save-load',
+          currentDate: gameDate,
+          targetDate: gameDate,
+          daysComplete: displayedProgress.stepsComplete,
+          daysTotal: displayedProgress.stepsTotal,
+          currentPhase: displayedProgress.currentPhase,
+          percentComplete: displayedProgress.percentComplete,
+        },
+      }));
+    };
+
+    try {
+      if (!saveId && !suppliedState) throw new Error('Save file is missing its identifier.');
+      const stored = suppliedState
+        ? undefined
+        : await SaveManager.loadGameWithMetadata(saveId!, reportProgress);
+      const loaded = suppliedState ?? stored?.state;
+      if (!loaded) throw new Error('Save file is corrupted or missing.');
+      const { nextState, imageCachePlayers } = await loadGameState(loaded, reportProgress);
+      stateRef.current = nextState;
+      setState(nextState);
+      if (SettingsManager.getSettings().enableImageCache && imageCachePlayers.length > 0) {
+        const userTeamPlayers = nextState.userTeamId == null
+          ? []
+          : imageCachePlayers.filter(player => player.tid === nextState.userTeamId);
+        const warmupPlayers = (userTeamPlayers.length > 0
+          ? userTeamPlayers
+          : imageCachePlayers.filter(player => player.status === 'Active').slice(0, 36));
+        const startWarmup = () => initImageCache(warmupPlayers).catch(() => {});
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(startWarmup, { timeout: 4_000 });
+        } else {
+          globalThis.setTimeout(startWarmup, 500);
+        }
+      }
+    } catch (caught) {
+      const error = caught instanceof Error ? caught : new Error('The saved league could not be loaded.');
+      setState(prev => ({
+        ...prev,
+        isProcessing: false,
+        lazySimProgress: undefined,
+        lastOutcome: `Could not load the saved league. ${error.message}`,
+      }));
+      throw error;
     }
     return true;
   }
 
   if (action.type === 'UPDATE_STATE') {
-    setState(prev => ({ ...prev, ...action.payload }));
+    stateRef.current = { ...stateRef.current, ...action.payload };
+    setState(prev => {
+      const next = { ...prev, ...action.payload };
+      stateRef.current = next;
+      return next;
+    });
     return true;
   }
 
@@ -506,7 +691,7 @@ export async function handleDirectDispatchAction({
         reason: payload.reason,
         tier: payload.tier,
       };
-      const teamDisplayName = [team.region, team.name].filter(Boolean).join(' ');
+      const teamDisplayName = getTeamFullName(team);
       const accoladeBits: string[] = [];
       if (payload.allStarAppearances > 0) accoladeBits.push(`${payload.allStarAppearances}x All-Star`);
       if (payload.championships > 0) accoladeBits.push(`${payload.championships}x Champion`);

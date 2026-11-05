@@ -1,4 +1,4 @@
-import { formatDistance, isValid, formatDistanceToNow } from 'date-fns';
+import { isValid } from 'date-fns';
 import type { Game } from '../types';
 
 /**
@@ -12,12 +12,32 @@ export function computeAge(player: { age?: number; born?: { year?: number } }, s
   return 25; // fallback
 }
 
+export function getPlayerAgeReferenceYear(
+  player: {
+    status?: string;
+    retiredYear?: number;
+    diedYear?: number;
+  },
+  simYear: number,
+): number {
+  const diedYear = Number(player.diedYear);
+  if (Number.isFinite(diedYear) && diedYear > 0) return Math.min(simYear, diedYear);
+  const retiredYear = Number(player.retiredYear);
+  if (
+    String(player.status ?? '').toLowerCase() === 'retired'
+    && Number.isFinite(retiredYear)
+    && retiredYear > 0
+  ) return Math.min(simYear, retiredYear);
+  return simYear;
+}
+
 export function getOwnTeamId(state: { gameMode?: string; userTeamId?: number }): number | null {
   return state.gameMode === 'gm' && typeof state.userTeamId === 'number' ? state.userTeamId : null;
 }
-import { SEASON_DATES } from '../constants';
-import { GamePhase, NBATeam } from '../types';
-import { getRatedCelebrityNames } from '../data/celebrities';
+import { GamePhase, LeagueStats, NBATeam } from '../types';
+import { getRatedCelebrityNames, type RatedCelebrity } from '../data/celebrities';
+import { getLeagueCalendarDates, getLeagueSeasonForDate, isLeaguePostseasonWindow, isLeaguePreseasonWindow, isLeagueRegularSeasonWindow, isLeagueTrainingCampWindow } from '../services/leagueCalendar';
+import { getTradeDeadlineDate, parseGameDate, resolveSeasonDate } from './dateUtils';
 
 export const formatTwitterDate = (dateStr: string, gameDateStr: string) => {
     try {
@@ -48,87 +68,103 @@ export const formatGameRelativeDate = (dateStr: string, gameDateStr: string) => 
         
         if (!isValid(date) || !isValid(gameDate)) return dateStr;
         
-        // If it's the same day, show "Today"
-        if (date.toDateString() === gameDate.toDateString()) return 'Today';
-        
-        // Calculate distance relative to game date
-        return formatDistance(date, gameDate, { addSuffix: true });
+        const dateDay = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+        const gameDay = Date.UTC(gameDate.getUTCFullYear(), gameDate.getUTCMonth(), gameDate.getUTCDate());
+        const daysAgo = Math.round((gameDay - dateDay) / 86_400_000);
+        const hasClockTime = /T(?!00:00(?::00(?:\.000)?Z?)?$)/.test(dateStr);
+
+        if (daysAgo === 0) {
+            return hasClockTime
+                ? date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })
+                : 'Today';
+        }
+        if (daysAgo === 1) return 'Yesterday';
+        return date.toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            ...(date.getUTCFullYear() === gameDate.getUTCFullYear() ? {} : { year: 'numeric' }),
+            timeZone: 'UTC',
+        });
     } catch (e) {
         return dateStr;
     }
 };
 
-export const getGamePhase = (dateString: string): GamePhase => {
-  const date = new Date(dateString);
-  const month = date.getMonth() + 1; // 1-12
-  const day = date.getDate();
+export const formatGameDateSeparator = (dateStr: string, gameDateStr: string): string => {
+    try {
+        const date = new Date(dateStr);
+        const gameDate = new Date(gameDateStr);
+        if (!isValid(date) || !isValid(gameDate)) return dateStr;
+        const dateDay = Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+        const gameDay = Date.UTC(gameDate.getUTCFullYear(), gameDate.getUTCMonth(), gameDate.getUTCDate());
+        const daysAgo = Math.round((gameDay - dateDay) / 86_400_000);
+        if (daysAgo === 0) return 'Today';
+        if (daysAgo === 1) return 'Yesterday';
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });
+    } catch {
+        return dateStr;
+    }
+};
 
-  // October
-  if (month === 10) {
-      if (day < 22) return 'Preseason';
-      return 'Opening Week';
+export const getGamePhase = (dateString: string, leagueStats?: LeagueStats): GamePhase => {
+  const current = parseGameDate(dateString);
+  if (!Number.isFinite(current.getTime())) return 'Offseason';
+  const season = getLeagueSeasonForDate(dateString, leagueStats) || leagueStats?.year || current.getUTCFullYear();
+  const dates = getLeagueCalendarDates(season, leagueStats);
+  const currentDay = current.toISOString().slice(0, 10);
+  const sameDay = (value?: Date) => !!value && value.toISOString().slice(0, 10) === currentDay;
+
+  const candidateSeasons = [...new Set([season - 1, season, season + 1, leagueStats?.year, (leagueStats?.year ?? season) - 1])]
+    .filter((value): value is number => Number.isFinite(value));
+  for (const candidateSeason of candidateSeasons) {
+    const candidate = getLeagueCalendarDates(candidateSeason, leagueStats);
+    if (sameDay(candidate.scheduleRelease)) return 'Schedule Release';
+    if (sameDay(candidate.draftDate)) return 'Draft';
+    if (candidate.freeAgencyStart) {
+      const freeAgencyEnd = candidate.freeAgencyStart < candidate.regularSeasonStart
+        ? candidate.trainingCampStart ?? candidate.preseasonStart ?? candidate.regularSeasonStart
+        : getLeagueCalendarDates(candidateSeason + 1, leagueStats).trainingCampStart
+          ?? getLeagueCalendarDates(candidateSeason + 1, leagueStats).preseasonStart
+          ?? getLeagueCalendarDates(candidateSeason + 1, leagueStats).regularSeasonStart;
+      if (current >= candidate.freeAgencyStart && current < freeAgencyEnd) return 'Free Agency';
+    }
   }
 
-  // November - December
-  if (month === 11 || month === 12) {
-      return 'Regular Season (Early)';
+  if (isLeagueTrainingCampWindow(current, leagueStats)) return 'Training Camp';
+  if (isLeaguePreseasonWindow(current, leagueStats)) return 'Preseason';
+
+  if (isLeagueRegularSeasonWindow(current, leagueStats)) {
+    const allStarGame = dates.allStarGame ?? resolveSeasonDate(season, 2, 3, 'Sun');
+    const allStarStart = dates.allStarStart ?? new Date(allStarGame.getTime() - 3 * 86_400_000);
+    const allStarEnd = dates.allStarEnd ?? new Date(allStarGame.getTime() + 86_400_000);
+    if (leagueStats?.allStarGameEnabled !== false && current >= allStarStart && current <= allStarEnd) return 'All-Star Break';
+    if (sameDay(getTradeDeadlineDate(season, leagueStats))) return 'Trade Deadline';
+    const elapsed = current.getTime() - dates.regularSeasonStart.getTime();
+    const duration = Math.max(1, dates.regularSeasonEnd.getTime() - dates.regularSeasonStart.getTime());
+    const progress = elapsed / duration;
+    if (progress <= 0.06) return 'Opening Week';
+    if (progress < 0.34) return 'Regular Season (Early)';
+    if (progress < 0.68) return 'Regular Season (Mid)';
+    return 'Regular Season (Late)';
   }
 
-  // January
-  if (month === 1) {
-      return 'Regular Season (Mid)';
+  if (isLeaguePostseasonWindow(current, leagueStats)) {
+    if (leagueStats?.playIn !== false && current < dates.playoffStart) return 'Play-In Tournament';
+    const days = Math.max(0, Math.floor((current.getTime() - dates.playoffStart.getTime()) / 86_400_000));
+    if (days < 14) return 'Playoffs (Round 1)';
+    if (days < 28) return 'Playoffs (Round 2)';
+    if (days < 42) return 'Conference Finals';
+    return 'NBA Finals';
   }
 
-  // February
-  if (month === 2) {
-      if (day < 14) return 'Regular Season (Mid)';
-      if (day >= 14 && day <= 19) return 'All-Star Break';
-      if (day === 20) return 'Trade Deadline';
-      return 'Regular Season (Late)';
-  }
-
-  // March
-  if (month === 3) {
-      return 'Regular Season (Late)';
-  }
-
-  // April
-  if (month === 4) {
-      if (day < 14) return 'Regular Season (Late)';
-      if (day >= 14 && day <= 17) return 'Play-In Tournament';
-      return 'Playoffs (Round 1)';
-  }
-
-  // May
-  if (month === 5) {
-      if (day < 10) return 'Playoffs (Round 1)';
-      if (day < 25) return 'Playoffs (Round 2)';
-      return 'Conference Finals';
-  }
-
-  // June
-  if (month === 6) {
-      if (day < 22) return 'NBA Finals';
-      return 'Draft';
-  }
-
-  // July
-  if (month === 7) {
-      return 'Free Agency';
-  }
-
-  // August - September
-  if (month === 8 || month === 9) {
-      return 'Offseason';
-  }
-
-  return 'Regular Season (Mid)'; // Fallback
+  return 'Offseason';
 };
 
 export function getSeasonPhase(state: {
   schedule: Game[];
   date: string;
   teams: { seasons?: any[] }[];
+  leagueStats?: LeagueStats;
 }): 'preseason' | 'regular' | 'playoffs' | 'offseason' {
   const anyPOPlayed = state.schedule.some(g => g.played && (g.isPlayoff || g.isPlayIn));
   const anyRSPlayed = state.schedule.some(g => g.played && !g.isPlayoff && !g.isPlayIn && !g.isPreseason && !g.isAllStar && !g.isExhibition);
@@ -136,17 +172,10 @@ export function getSeasonPhase(state: {
   if (anyPOPlayed) return 'playoffs';
   if (anyRSPlayed) return 'regular';
 
-  const d = new Date(state.date);
-  const month = d.getMonth() + 1;
-  const day = d.getDate();
-
-  // Jun through Oct 23 with 0 RS/PO games = post-rollover offseason
-  if (month >= 6 && (month < 10 || (month === 10 && day < 24))) {
-    const hasHistory = state.teams.some(t => (t.seasons?.length ?? 0) > 0);
-    return hasHistory ? 'offseason' : 'preseason';
-  }
-
-  return 'preseason';
+  if (isLeagueRegularSeasonWindow(state.date, state.leagueStats)) return 'regular';
+  if (isLeaguePostseasonWindow(state.date, state.leagueStats)) return 'playoffs';
+  if (isLeagueTrainingCampWindow(state.date, state.leagueStats) || isLeaguePreseasonWindow(state.date, state.leagueStats)) return 'preseason';
+  return 'offseason';
 }
 
 export const selectRandom = <T>(array: T[], count: number): T[] => {
@@ -208,7 +237,21 @@ export const convertTo2KRating = (
   return Math.min(99, rating);
 };
 
+export const getTimelineK2Rating = (
+  snapshot: { ovr: number; displayScale?: 'k2' },
+  hgtAttribute: number = 50,
+  eliteSkillRating?: number,
+): number => snapshot.displayScale === 'k2'
+  ? Math.round(snapshot.ovr)
+  : convertTo2KRating(snapshot.ovr, hgtAttribute, eliteSkillRating);
+
 export const calculateSocialEngagement = (handle: string, content: string, playerRating?: number) => {
+    // Keep this hot helper synchronous. The optional diagnostic hook is not
+    // persisted and cannot affect the generated engagement values.
+    const mediaDiagnostics = (globalThis as typeof globalThis & {
+        __recordMediaRuntimeCall?: (key: 'engagementCalls') => void;
+    }).__recordMediaRuntimeCall;
+    mediaDiagnostics?.('engagementCalls');
     const engagementKeywords = ["breaking", "trade", "fine", "suspended", "scandal", "rigged", "hypnosis", "expansion", "draft", "lottery", "official", "leak", "trophy", "award", "finalizing", "sources", "report"];
     const bigAccounts = ["@wojespn", "@shamscharania", "@stephenasmith", "@thesteinline", "@rachel__nichols", "@nba", "@nbapr"];
     
@@ -349,6 +392,8 @@ export const getCountryCode = (countryName: string): string => {
     'Ecuador': 'ec',
     'Peru': 'pe',
     'Bolivia': 'bo',
+    'French Guiana': 'gf',
+    'Guadeloupe': 'gp',
     'Lebanon': 'lb',
     'Jordan': 'jo',
     'Iran': 'ir',
@@ -413,6 +458,9 @@ export const getCountryCode = (countryName: string): string => {
     'Mauritius': 'mu',
     'Seychelles': 'sc',
     'Comoros': 'km',
+    'Moldova': 'md',
+    'Uzbekistan': 'uz',
+    'Virgin Islands': 'vi',
   };
 
   return mapping[countryName] || '';
@@ -423,6 +471,7 @@ export const getCountryCode = (countryName: string): string => {
  * Base unit is assumed to be Millions if isBaseMillions is true.
  */
 export const formatCurrency = (value: number, isBaseMillions: boolean = true): string => {
+  if (!Number.isFinite(value)) return '—';
   const absoluteValue = Math.abs(value);
   
   // If base is millions, multiply by 1M to get actual dollar amount for standard formatting
@@ -454,6 +503,7 @@ export const formatCurrencyWithCode = (
   currencyCode: string = 'USD',
   isBaseMillions: boolean = true,
 ): string => {
+  if (!Number.isFinite(value)) return '—';
   const amount = isBaseMillions ? value * 1000000 : value;
   const absAmount = Math.abs(amount);
   const sign = amount < 0 ? '-' : '';
@@ -719,8 +769,8 @@ export function getTeamForGame(teamId: number, teams: NBATeam[] = []): any {
           teamId === -14 ? 'RS Team B' :
           teamId === -15 ? 'RS Team C' :
           teamId === -16 ? 'G League' : 'Exhibition Team',
-    abbrev: teamId === -1 ? 'EST' :
-            teamId === -2 ? 'WST' :
+    abbrev: teamId === -1 ? 'EAST' :
+            teamId === -2 ? 'WEST' :
             teamId === -3 ? 'USA' :
             teamId === -4 ? 'WLD' :
             teamId === -5 ? 'SHA' :
@@ -743,14 +793,20 @@ export function getTeamForGame(teamId: number, teams: NBATeam[] = []): any {
   return mockTeam;
 }
 
-export function getPlayersForExhibitionTeam(game: any, isHome: boolean, allStar: any, players: any[] = []): any[] {
+export function getPlayersForExhibitionTeam(
+  game: any,
+  isHome: boolean,
+  allStar: any,
+  players: any[] = [],
+  leagueType?: 'fictional' | 'modded',
+): any[] {
   if (!allStar) return [];
   
   if (game.isAllStar) {
     const wantConf = isHome ? 'East' : 'West';
     const rosterIds = new Set(
       (allStar.roster || [])
-        .filter((p: any) => p.conference === wantConf)
+        .filter((p: any) => p.conference === wantConf && !p.isInjuredDNP)
         .map((p: any) => p.playerId)
     );
     return players
@@ -775,8 +831,12 @@ export function getPlayersForExhibitionTeam(game: any, isHome: boolean, allStar:
     const roster = allStar.celebrityRoster || [];
     const teamRoster = isHome ? roster.slice(0, 10) : roster.slice(10, 20);
     const tid = isHome ? -5 : -6;
-    const ratedData = getRatedCelebrityNames();
-    const ratedMap = new Map(ratedData.map(c => [c.name.toLowerCase(), c]));
+    const ratedData: RatedCelebrity[] = allStar.celebrityRosterProfiles?.length
+      ? allStar.celebrityRosterProfiles
+      : leagueType === 'fictional'
+        ? []
+        : getRatedCelebrityNames();
+    const ratedMap = new Map<string, RatedCelebrity>(ratedData.map(c => [c.name.toLowerCase(), c]));
     return teamRoster.map((name: string, idx: number) => {
       const r = ratedMap.get(name.toLowerCase());
       // Exact same structure as AllStarCelebrityGameSim.toFakePlayer
@@ -795,7 +855,7 @@ export function getPlayersForExhibitionTeam(game: any, isHome: boolean, allStar:
           ? { ...r, ovr: overallRating, pot: 40 }
           : { hgt: 50, stre: 50, spd: 50, jmp: 50, endu: 50, ins: 40, dnk: 40, ft: 50, fg: 45, tp: 40, diq: 40, oiq: 45, drb: 50, pss: 45, reb: 45, ovr: overallRating, pot: 40 }
         ],
-        imgURL: `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a1a2e&color=fff&size=100`,
+        imgURL: r?.imgUrl ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1a1a2e&color=fff&size=100`,
         injury: { type: 'Healthy', gamesRemaining: 0 },
         stats: [],
         status: 'Active',

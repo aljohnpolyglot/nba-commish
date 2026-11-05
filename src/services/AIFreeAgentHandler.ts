@@ -6,7 +6,15 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam } from '../types';
-import { getCapThresholds, getTeamCapProfileFromState, computeContractOffer, getMLEAvailability, getContractLimits, contractToUSD } from '../utils/salaryUtils';
+import {
+  computeContractOffer,
+  contractToUSD,
+  getBiannualExceptionAvailability,
+  getCapThresholds,
+  getContractLimits,
+  getMLEAvailability,
+  getTeamCapProfileFromState,
+} from '../utils/salaryUtils';
 import type { MleType } from '../utils/salaryUtils';
 import { SettingsManager } from './SettingsManager';
 import { computeMoodScore } from '../utils/mood/moodScore';
@@ -16,22 +24,24 @@ import { getGMAttributes, clampSpendOffer, workEthicSignProb } from './staff/gmA
 import { resolveTeamStrategyProfile, type TeamStrategyProfile } from '../utils/teamStrategy';
 import { isRfaMatchingEnabled } from '../utils/ruleFlags';
 import { computeTradeEligibleDate } from '../utils/signingMoratorium';
-import { getTrainingCampDate, parseGameDate } from '../utils/dateUtils';
+import { getGameDateParts, getTrainingCampDate, parseGameDate } from '../utils/dateUtils';
 import { getOffseasonState, logOffseasonDrift } from './offseason/offseasonState';
 import { projectYearEndCash, computeAnnualBudget } from './tycoon/budgetEngine';
 import { getDeclinedTeamOptionInfo } from './freeAgencyBidding';
+import { getStandardRosterLimit, getTrainingCampRosterLimit, getTwoWayRosterLimit } from '../utils/rosterLimits';
+import { isTwoWayContract } from '../utils/contractTypes';
+import { isFutureDraftClassPlayer, isUnavailableInternationalTournamentPlayer } from '../utils/prospectUtils';
 import {
   clampOfferForDate,
-  defaultMaxRoster,
   getActiveFAMarketPlayerIds,
   getBestFit,
   getK2Ovr,
   getLoyalPriorTid,
   getMinSalaryUSD,
   isLoyalBlocked,
+  isFreshWaiver,
   isPlayerRFA,
   isRecentWaiverByTeam,
-  isTwoWayOriginEligible,
   pickContractLabel,
   playerAge,
   resolveUserTeamId,
@@ -39,7 +49,7 @@ import {
   sharesPosition,
   withNbaBackgroundEconomy,
 } from './freeAgency/aiFreeAgencyHelpers';
-import { createCampInviteEvaluator, createRoundSigner, getProjectedApronHardBlock, type FreeAgencyRoundContext } from './freeAgency/roundShared';
+import { createCampInviteEvaluator, createRoundSigner, getProjectedApronHardBlock, getStandardRosterTargetAfterMarketReservations, type FreeAgencyRoundContext } from './freeAgency/roundShared';
 import type {
   BirdRightsResignResult,
   ExtensionResult,
@@ -53,6 +63,17 @@ import { runAIMidSeasonExtensionsPass, runAISeasonEndExtensionsPass } from './fr
 import { runAIBirdRightsResignsPass } from './freeAgency/birdRightsResignPass';
 import { runAIMleUpgradeSwapsPass } from './freeAgency/mleSwapPass';
 import { runRosterCompletionPasses, runTwoWayAndCampPasses } from './freeAgency/roundRosterFillPasses';
+import { getLeagueCalendarDates } from './leagueCalendar';
+import {
+  getCentralDailyTeamSigningLimit,
+  getCentralFreeAgencyEligiblePlayerIds,
+  isCentralFreeAgencyCampMarket,
+  isCentralFreeAgencyQualityEligible,
+  shouldRunCentralRosterCompletion,
+  type CentralFreeAgencyCadence,
+} from './freeAgency/freeAgencyDecisionTiming';
+import { simDebug } from '../utils/simDebug';
+export { runEuroAIFreeAgencyRound } from './freeAgency/euroAiFreeAgency';
 
 // ── §3c: Main signing round ───────────────────────────────────────────────────
 export type {
@@ -68,7 +89,10 @@ export type {
  * Run one round of AI FA signings.
  * Returns mutations to apply to state.players (set tid for each signed player).
  */
-export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
+export function runAIFreeAgencyRound(
+  state: GameState,
+  centralCadence?: CentralFreeAgencyCadence,
+): SigningResult[] {
   if (!SettingsManager.getSettings().allowAIFreeAgency) return [];
   state = withNbaBackgroundEconomy(state);
 
@@ -89,7 +113,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   const results: SigningResult[] = [];
   const userTeamId = resolveUserTeamId(state);
   if (state.gameMode === 'gm' && userTeamId === -999) {
-    console.warn('[AI-FA] GM mode userTeamId missing; cannot exclude user team from AI free agency.');
+    simDebug('free-agency', () => '[AI-FA] GM mode userTeamId missing; AI free agency did not run.');
     return [];
   }
   const isUserTeam = (teamId: number) =>
@@ -98,9 +122,28 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   // Players with an active FA bidding market are reserved by `faMarketTicker` —
   // the round must not poach them on a non-resolution day.
   const marketPendingIds = getActiveFAMarketPlayerIds(state);
+  const marketEligibilityYear = state.date ? getGameDateParts(state.date).year : state.leagueStats.year;
   let pool = state.players
-    .filter(p => p.tid < 0 && p.status === 'Free Agent' && !((p as any).draft?.year >= state.leagueStats.year))
+    .filter(p => p.tid < 0 && p.status === 'Free Agent' && !isUnavailableInternationalTournamentPlayer(p) && !isFutureDraftClassPlayer(p, marketEligibilityYear))
+    .filter(p => !isFreshWaiver(p, state.date))
     .filter(p => !marketPendingIds.has(p.internalId));
+  if (centralCadence) {
+    const priorityPool = [...pool].sort((left, right) =>
+      getK2Ovr(right) - getK2Ovr(left)
+      || (right.potential ?? 0) - (left.potential ?? 0)
+      || left.internalId.localeCompare(right.internalId)
+    );
+    pool = pool.filter(player => isCentralFreeAgencyQualityEligible(getK2Ovr(player), centralCadence));
+    const eligibleIds = getCentralFreeAgencyEligiblePlayerIds(
+      priorityPool
+        .filter(player => isCentralFreeAgencyQualityEligible(getK2Ovr(player), centralCadence))
+        .map(player => player.internalId),
+      state.leagueStats.year,
+      centralCadence.day,
+      centralCadence.totalDays,
+    );
+    pool = pool.filter(player => eligibleIds.has(player.internalId));
+  }
   if (pool.length === 0) return [];
 
   const strategyByTeam = new Map<number, TeamStrategyProfile>();
@@ -123,7 +166,7 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
   const sortedAITeams = [...state.teams]
     .filter(t => {
       if (!isUserTeam(t.id)) return true;
-      console.warn('[AI-FA] SKIPPING user team fill');
+      simDebug('free-agency', () => '[AI-FA] Skipping user-team roster fill.', { teamId: t.id });
       return false;
     })
     .sort((a, b) =>
@@ -131,44 +174,63 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       (((b as any).wins ?? 0) - ((a as any).wins ?? 0))
     );
 
-  // Pass 1/4 always cap at 15; slots 16–21 belong to Pass 2 (2W) and Pass 3 (NG).
-  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? state.leagueStats.maxPlayersPerTeam ?? defaultMaxRoster(state.leagueStats);
+  const maxStandard = getStandardRosterLimit(state.leagueStats as any);
+  const twoWayRosterActive = getTwoWayRosterLimit(state.leagueStats as any) > 0;
+  const isActiveTwoWay = (playerOrSigning: any): boolean => twoWayRosterActive && isTwoWayContract(playerOrSigning, state.leagueStats);
 
   // Track MLE spend within this round so a team can't double-spend before state updates
   const localMleUsed = new Map<number, { type: MleType; usedUSD: number }>();
+  const localBaeUsed = new Map<number, number>();
 
   const thresholds = getCapThresholds(state.leagueStats as any);
 
   const currentYear = state.leagueStats.year;
+  const standardSigningLimit = getCentralDailyTeamSigningLimit(centralCadence);
 
   // ── Preseason window check (used by Two-way + NG passes + camp-invite) ──
   const ngEnabled = (state.leagueStats as any).nonGuaranteedContractsEnabled ?? true;
-  const maxCampRoster = state.leagueStats.maxTrainingCampRoster ?? 21;
+  const maxCampRoster = getTrainingCampRosterLimit(state.leagueStats as any);
   const simDate = state.date ? parseGameDate(state.date) : null;
   const trainingCampStart = getTrainingCampDate(state.leagueStats.year, state.leagueStats as any);
   const trainingCampEnd = new Date(trainingCampStart.getTime() + 21 * 86_400_000);
   const isPreseasonWindow = ngEnabled && !!simDate && simDate >= trainingCampStart && simDate < trainingCampEnd;
+  const isLateCentralCampMarket = ngEnabled && isCentralFreeAgencyCampMarket(centralCadence);
+  const calendarDates = getLeagueCalendarDates(currentYear, state.leagueStats);
+  const isRegularSeasonRosterWindow = !!simDate
+    && simDate >= calendarDates.regularSeasonStart
+    && simDate <= calendarDates.regularSeasonEnd;
+  const maxTotalRoster = isRegularSeasonRosterWindow && !centralCadence
+    ? maxStandard + getTwoWayRosterLimit(state.leagueStats as any)
+    : maxCampRoster;
   const roundContext = {
     state,
     currentYear,
     thresholds,
     maxStandard,
+    maxTotalRoster,
     sortedAITeams,
     results,
     pool,
     localMleUsed,
+    localBaeUsed,
     marketPendingIds,
     isUserTeam,
-    signPlayer: (() => {}) as FreeAgencyRoundContext['signPlayer'],
+    signPlayer: (() => false) as FreeAgencyRoundContext['signPlayer'],
     isCampInvite: (() => false) as FreeAgencyRoundContext['isCampInvite'],
   } satisfies FreeAgencyRoundContext;
-  roundContext.isCampInvite = createCampInviteEvaluator(state, thresholds, isPreseasonWindow, ngEnabled);
+  roundContext.isCampInvite = createCampInviteEvaluator(
+    state,
+    thresholds,
+    isPreseasonWindow || isLateCentralCampMarket,
+    ngEnabled,
+  );
   roundContext.signPlayer = createRoundSigner(roundContext);
 
   // ── Pass 1: Best-fit signings via cap space + MLE; loops until roster full or cap exhausted.
   for (const team of sortedAITeams) {
-    const rosterSizeStart = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length;
-    if (rosterSizeStart >= maxStandard) continue;
+    const standardTarget = getStandardRosterTargetAfterMarketReservations(state, team.id, maxStandard);
+    const rosterSizeStart = state.players.filter(p => p.tid === team.id && !isActiveTwoWay(p)).length;
+    if (rosterSizeStart >= standardTarget) continue;
 
     // work_ethic: lazy GMs sometimes skip a round of non-mandatory signings.
     // Fires ONCE per team per round (gates the whole fill loop, not each signing).
@@ -180,16 +242,21 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
     while (signedThisIteration) {
       signedThisIteration = false;
 
+      const signedForTeamThisRound = results.filter(result =>
+        result.teamId === team.id && !isActiveTwoWay(result)
+      ).length;
+      if (signedForTeamThisRound >= standardSigningLimit) break;
+
       // Recompute roster + roundSpent each iteration
-      const rosterSize = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length
-                       + results.filter(r => r.teamId === team.id && !(r as any).twoWay).length;
-      if (rosterSize >= maxStandard) break;
+      const rosterSize = state.players.filter(p => p.tid === team.id && !isActiveTwoWay(p)).length
+                       + results.filter(r => r.teamId === team.id && !isActiveTwoWay(r)).length;
+      if (rosterSize >= standardTarget) break;
 
       const roundSpentUSD = results
         .filter(r => r.teamId === team.id)
         .reduce((s, r) => s + r.salaryUSD, 0);
 
-      const best = getBestFit(team, roundContext.pool, state, strategy, localMleUsed, roundSpentUSD);
+      const best = getBestFit(team, roundContext.pool, state, strategy, localMleUsed, localBaeUsed, roundSpentUSD);
       if (!best) break;
 
       // Date-clamp before the spending overlay so post-Oct-21 length/salary cuts apply first.
@@ -226,20 +293,22 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
 
       // Financial discipline: at 13+/15, multi-year mid-money to fringe K2 → stop and let Pass 3 fill.
       {
-        const stdRosterCount = state.players.filter(p => p.tid === team.id && !(p as any).twoWay).length
-          + results.filter(r => r.teamId === team.id && !(r as any).twoWay).length;
+        const stdRosterCount = state.players.filter(p => p.tid === team.id && !isActiveTwoWay(p)).length
+          + results.filter(r => r.teamId === team.id && !isActiveTwoWay(r)).length;
         const k2 = getK2Ovr(best);
-        const seasonCap = (thresholds as any).salaryCap ?? 140_000_000;
+        const seasonCap = Number.isFinite((thresholds as any).salaryCap)
+          ? (thresholds as any).salaryCap
+          : Number((state.leagueStats as any).historicalContractScaleCap ?? 140_000_000);
         const offerPctOfCap = offer.salaryUSD / seasonCap;
 
         if (stdRosterCount >= 13 && offer.years > 1 && offerPctOfCap > 0.025 && k2 < 75) break;
 
         const samePosRotation = state.players
-          .filter(p => p.tid === team.id && !(p as any).twoWay
+          .filter(p => p.tid === team.id && !isActiveTwoWay(p)
             && sharesPosition(p.pos, best.pos)
             && (p.overallRating ?? 0) >= 65).length
           + results.filter(r => {
-            if (r.teamId !== team.id || (r as any).twoWay) return false;
+            if (r.teamId !== team.id || isActiveTwoWay(r)) return false;
             const sp = state.players.find(p => p.internalId === r.playerId);
             return sp ? sharesPosition(sp.pos, best.pos) : false;
           }).length;
@@ -255,28 +324,94 @@ export function runAIFreeAgencyRound(state: GameState): SigningResult[] {
       const isViaCap = offer.salaryUSD <= effectiveCapSpace;
       let mleTypeUsed: MleType = null;
       let mleAmountUSD = 0;
+      let baeAmountUSD = 0;
+      const priorBaeUsed = localBaeUsed.get(team.id) ?? 0;
+      const priorMleEntry = localMleUsed.get(team.id);
 
       if (!isViaCap) {
-        // Signing is via MLE — figure out which type and record it locally
         const localEntry = localMleUsed.get(team.id);
-        const effectiveLS = localEntry
-          ? { ...state.leagueStats, mleUsage: { ...(state.leagueStats as any).mleUsage, [team.id]: localEntry } }
-          : state.leagueStats;
+        const localBaeUsage = priorBaeUsed > 0
+          ? {
+              ...(state.leagueStats.capExceptionUsage?.[team.id] ?? { season: currentYear }),
+              season: currentYear,
+              hardCapLevel: 'first' as const,
+            }
+          : undefined;
+        const effectiveLS = {
+          ...state.leagueStats,
+          ...(localEntry ? {
+            mleUsage: { ...(state.leagueStats as any).mleUsage, [team.id]: localEntry },
+          } : {}),
+          ...(localBaeUsage ? {
+            capExceptionUsage: {
+              ...(state.leagueStats.capExceptionUsage ?? {}),
+              [team.id]: localBaeUsage,
+            },
+          } : {}),
+        };
         const mleAvail = getMLEAvailability(team.id, effectivePayroll, offer.salaryUSD, thresholds, effectiveLS as any);
-        if (!mleAvail.blocked && mleAvail.type) {
+        const baeAvail = getBiannualExceptionAvailability({
+          teamId: team.id,
+          payrollUSD: effectivePayroll,
+          signingUSD: offer.salaryUSD,
+          contractSeasons: offer.years,
+          acquisitionType: 'signing',
+          season: currentYear,
+          currentDate: state.date,
+          schedule: state.schedule,
+          thresholds,
+          leagueStats: effectiveLS,
+        });
+        const canUseBae = !isPlayerRFA(best)
+          && offer.years <= 2
+          && !baeAvail.blocked
+          && offer.salaryUSD <= Math.max(0, baeAvail.available - priorBaeUsed);
+        const shouldUseBae = canUseBae
+          && (mleAvail.blocked || mleAvail.type === 'non_taxpayer')
+          && getK2Ovr(best) < 80;
+        if (shouldUseBae) {
+          baeAmountUSD = offer.salaryUSD;
+          localBaeUsed.set(team.id, priorBaeUsed + offer.salaryUSD);
+        } else if (!mleAvail.blocked && mleAvail.type) {
           mleTypeUsed = mleAvail.type;
           mleAmountUSD = offer.salaryUSD;
           const prevUsed = localEntry?.usedUSD ?? 0;
           localMleUsed.set(team.id, { type: mleAvail.type, usedUSD: prevUsed + offer.salaryUSD });
+        } else if (canUseBae) {
+          baeAmountUSD = offer.salaryUSD;
+          localBaeUsed.set(team.id, priorBaeUsed + offer.salaryUSD);
+        } else {
+          break;
         }
       }
 
-      roundContext.signPlayer(best, team, offer, mleTypeUsed, mleAmountUSD, false, roundContext.isCampInvite(best, offer));
-      signedThisIteration = true;
+      signedThisIteration = roundContext.signPlayer(
+        best,
+        team,
+        offer,
+        mleTypeUsed,
+        mleAmountUSD,
+        false,
+        roundContext.isCampInvite(best, offer),
+        baeAmountUSD,
+      );
+      if (!signedThisIteration) {
+        if (priorMleEntry) localMleUsed.set(team.id, priorMleEntry);
+        else localMleUsed.delete(team.id);
+        if (priorBaeUsed > 0) localBaeUsed.set(team.id, priorBaeUsed);
+        else localBaeUsed.delete(team.id);
+      }
     }
   }
-  runTwoWayAndCampPasses(roundContext, isPreseasonWindow, maxCampRoster);
-  runRosterCompletionPasses(roundContext);
+  runTwoWayAndCampPasses(
+    roundContext,
+    isPreseasonWindow || isLateCentralCampMarket,
+    maxCampRoster,
+    isLateCentralCampMarket ? 1 : Number.POSITIVE_INFINITY,
+  );
+  if (shouldRunCentralRosterCompletion(centralCadence)) {
+    runRosterCompletionPasses(roundContext);
+  }
 
   return results;
 }

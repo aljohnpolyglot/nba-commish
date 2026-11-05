@@ -1,7 +1,9 @@
-import type { Game, GameResult, NBACupState, PlayoffBracket } from '../types';
+import type { Game, GameResult, LeagueStats, NBACupState, PlayoffBracket } from '../types';
 import { getOpeningNightDate } from './dateUtils';
+import { getLeagueSeasonForDate } from '../services/leagueCalendar';
 
 type LeagueCalendarLike = {
+  leagueCalendar?: LeagueStats['leagueCalendar'];
   uiMode?: string | null;
 };
 
@@ -33,10 +35,17 @@ export interface GameClassification {
   excludeFromRecord: boolean;
 }
 
-export function getGameSeasonYear(dateStr?: string, fallbackYear = new Date().getFullYear()): number {
+export function getGameSeasonYear(
+  dateStr?: string,
+  fallbackYear = new Date().getFullYear(),
+  leagueStats?: LeagueCalendarLike,
+): number {
   const d = new Date(dateStr ?? '');
   if (isNaN(d.getTime())) return fallbackYear;
-  return d.getMonth() < 9 ? d.getFullYear() : d.getFullYear() + 1;
+  return getLeagueSeasonForDate(
+    d.toISOString().slice(0, 10),
+    leagueStats as Pick<LeagueStats, 'leagueCalendar' | 'uiMode'> | undefined,
+  ) || fallbackYear;
 }
 
 function samePair(game: GameLike, tid1?: number, tid2?: number): boolean {
@@ -110,7 +119,7 @@ export function classifyBoxScoreGame(
   const competitionPhase = game.competitionPhase ?? sched?.competitionPhase;
   const isCompetitionGame = !!competitionId;
   const isCompetitionPostseason = isCompetitionGame && isCompetitionPostseasonPhase(competitionPhase);
-  const seasonYear = Number(game.season) || getGameSeasonYear(game.date, fallbackYear);
+  const seasonYear = Number(game.season) || getGameSeasonYear(game.date, fallbackYear, leagueStats);
   const cup = cupForYear(seasonYear, nbaCup, nbaCupHistory);
   const cupRound = inferCupRound({ ...game, nbaCupRound: game.nbaCupRound ?? sched?.nbaCupRound }, cup);
 

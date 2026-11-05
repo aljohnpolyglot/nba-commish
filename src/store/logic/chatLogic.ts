@@ -13,8 +13,15 @@ export const addUserMessage = (state: GameState, payload: any): { chats: Chat[],
       id: chatId || `chat-${Date.now()}`,
       participants: ['commissioner', targetId],
       participantDetails: [
-        { id: 'commissioner', name: state.commissionerName, role: 'Commissioner' },
-        { id: targetId, name: targetName, role: targetRole, avatarUrl: payload.avatarUrl } // Assuming avatarUrl is passed or we find it
+        { id: 'commissioner', name: state.commissionerName, role: state.gameMode === 'gm' ? 'General Manager' : 'Commissioner' },
+        {
+          id: targetId,
+          name: targetName,
+          role: targetRole,
+          avatarUrl: payload.avatarUrl,
+          teamLogoUrl: payload.teamLogoUrl,
+          organization: targetOrg,
+        },
       ],
       messages: [],
       unreadCount: 0,

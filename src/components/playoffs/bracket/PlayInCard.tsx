@@ -12,6 +12,7 @@ interface PlayInCardProps {
   onClick: () => void;
   label: string;
   delay?: number;
+  ownTid?: number | null;
 }
 
 // ── TeamRow (play-in variant) ────────────────────────────────────────────────
@@ -21,15 +22,19 @@ const PITeamRow = ({
   isTop,
   isWinner,
   isLoser,
+  isOwn,
 }: {
   team: NBATeam | null | undefined;
   score?: number;
   isTop?: boolean;
   isWinner?: boolean;
   isLoser?: boolean;
+  isOwn?: boolean;
 }) => (
   <div
-    className={`flex items-center justify-between p-2.5 bg-[#131823] ${isTop ? 'border-b border-slate-800' : ''} ${isLoser ? 'opacity-35' : ''}`}
+    className={`flex items-center justify-between p-2.5 ${
+      isOwn ? 'bg-violet-500/15 border-l-2 border-l-violet-400' : 'bg-[#131823]'
+    } ${isTop ? 'border-b border-slate-800' : ''} ${isLoser ? 'opacity-35' : ''}`}
   >
     <div className="flex items-center gap-3">
       {team ? (
@@ -51,6 +56,7 @@ const PITeamRow = ({
       >
         {team?.abbrev ?? 'TBD'}
       </span>
+      {isOwn && <span className="text-[8px] font-black uppercase tracking-wider bg-violet-500/20 text-violet-200 px-1 py-0.5 rounded border border-violet-400/40">You</span>}
     </div>
     {score !== undefined && (
       <span
@@ -72,6 +78,7 @@ export const PlayInCard: React.FC<PlayInCardProps> = ({
   onClick,
   label,
   delay = 0,
+  ownTid,
 }) => {
   if (!pig) {
     return (
@@ -94,10 +101,15 @@ export const PlayInCard: React.FC<PlayInCardProps> = ({
   let t1 = t1Tid !== -1 ? teams.find(t => t.id === t1Tid) : null;
   let t2 = t2Tid !== -1 ? teams.find(t => t.id === t2Tid) : null;
   // Fallback: if game exists and team still not found, resolve via game's home/away TIDs
-  if (game && !t1 && game.homeTid !== -1) t1 = teams.find(t => t.id === game.homeTid) ?? null;
-  if (game && !t2 && game.awayTid !== -1) t2 = teams.find(t => t.id === game.awayTid) ?? null;
+  const gameHomeTid = game ? Number(game.homeTid) : null;
+  const gameAwayTid = game ? Number(game.awayTid) : null;
+  if (game && !t1 && gameHomeTid !== -1) t1 = teams.find(t => t.id === gameHomeTid) ?? null;
+  if (game && !t2 && gameAwayTid !== -1) t2 = teams.find(t => t.id === gameAwayTid) ?? null;
   const isToday = game ? normalizeDate(game.date) === normalizeDate(stateDate) : false;
-  const winner = pig.played && pig.winnerId ? teams.find(t => t.id === pig.winnerId) : null;
+  const winnerTid = pig.winnerId == null ? null : Number(pig.winnerId);
+  const hasWinner = pig.played && winnerTid != null;
+  const winner = hasWinner ? teams.find(t => t.id === winnerTid) : null;
+  const hasOwnTeam = ownTid != null && (t1Tid === ownTid || t2Tid === ownTid || gameHomeTid === ownTid || gameAwayTid === ownTid);
 
   let resultText = '';
   if (pig.played && winner) {
@@ -123,25 +135,29 @@ export const PlayInCard: React.FC<PlayInCardProps> = ({
       className={`flex flex-col rounded-lg overflow-hidden border ${
         isSelected
           ? 'border-indigo-400/60'
+          : hasOwnTeam
+          ? 'border-violet-400/60'
           : pig.played
           ? 'border-slate-700/40'
           : 'border-indigo-500/30 shadow-[0_0_10px_rgba(99,102,241,0.05)]'
       } bg-[#0f131c] transition-all duration-300 hover:border-slate-400 hover:shadow-xl w-48 shrink-0 text-left ${
         isSelected ? 'ring-1 ring-inset ring-indigo-400/20' : ''
-      } ${isToday && !pig.played ? 'shadow-[0_0_12px_rgba(99,102,241,0.15)]' : 'shadow-md'}`}
+      } ${hasOwnTeam ? 'shadow-[0_0_14px_rgba(139,92,246,0.18)]' : isToday && !pig.played ? 'shadow-[0_0_12px_rgba(99,102,241,0.15)]' : 'shadow-md'}`}
     >
       <PITeamRow
         team={t1}
         score={pig.played && game ? game.homeScore : undefined}
         isTop
-        isWinner={pig.played && pig.winnerId === pig.team1Tid}
-        isLoser={pig.played && pig.winnerId !== pig.team1Tid}
+        isWinner={hasWinner && winnerTid === t1Tid}
+        isLoser={hasWinner && winnerTid !== t1Tid}
+        isOwn={ownTid != null && t1?.id === ownTid}
       />
       <PITeamRow
         team={t2}
         score={pig.played && game ? game.awayScore : undefined}
-        isWinner={pig.played && pig.winnerId === pig.team2Tid}
-        isLoser={pig.played && pig.winnerId !== pig.team2Tid}
+        isWinner={hasWinner && winnerTid === t2Tid}
+        isLoser={hasWinner && winnerTid !== t2Tid}
+        isOwn={ownTid != null && t2?.id === ownTid}
       />
       <div
         className={`text-center py-1 border-t border-slate-700/60 ${

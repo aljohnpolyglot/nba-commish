@@ -1,6 +1,6 @@
 import React from 'react';
 import { useGame } from '../../store/GameContext';
-import type { GameState } from '../../types';
+import type { GameState, OffseasonChecklistRow } from '../../types';
 import { ALL_SLOTS, type SponsorshipSlot } from '../../types/tycoon';
 import { normalizeDate } from '../../utils/helpers';
 import {
@@ -11,12 +11,11 @@ import {
   parseGameDate,
   toISODateString,
 } from '../../utils/dateUtils';
-import { getTransferMarketSettings, isInTransferWindow } from '../../utils/transferWindow';
 import { getTeamFullName } from '../../utils/teamNames';
 import { computeDraftSeasonYear, computeUpcomingSeasonYear } from '../../services/offseason/offseasonState';
 import { getCoachContractSnapshot, getTeamStaff } from '../../services/staffService';
-import { getHOFCeremonyDateString } from '../../services/playerDevelopment/hofChecker';
 import { isSponsorDueForRenewal } from '../../services/tycoon/sponsorshipEngine';
+import { getActiveTeamStaffMembers, hasPersistedStaffRoster } from '../../services/staff/activeStaffContracts';
 
 const ENDORSEMENT_SLOT_CAP = 4;
 const COACHING_ROLES = ['Head Coach', 'Assistant Coach', 'Assistant Coach 2', 'Assistant Coach 3'];
@@ -37,7 +36,28 @@ const canonicalStaffRole = (role: unknown): string => {
   return String(role ?? '').trim();
 };
 
-type LeagueYearState = Pick<GameState, 'date' | 'leagueStats' | 'offseasonChecklist' | 'schedule'>;
+const staffIdentityKey = (person: any): string => {
+  const sourcePlayerId = String(person?.sourcePlayerId ?? '').trim();
+  if (sourcePlayerId) return `player:${sourcePlayerId}`;
+  const name = String(person?.name ?? '').trim().toLowerCase();
+  if (name) return `name:${name}`;
+  const id = String(person?.id ?? '').trim();
+  return id ? `id:${id}` : '';
+};
+
+type LeagueYearState = Pick<GameState, 'date' | 'leagueStats' | 'offseasonChecklist' | 'schedule' | 'internationalTournament' | 'summerLeagueTournament'>;
+
+const INTERNATIONAL_REVIEW_DAY_OFFSETS: Partial<Record<OffseasonChecklistRow, number>> = {
+  retiredPlayersReview: -4,
+  staffRetirements: -3,
+  staffSignings: -2,
+};
+
+function addDaysISO(date: string, days: number): string {
+  const next = parseGameDate(date);
+  next.setUTCDate(next.getUTCDate() + days);
+  return toISODateString(next);
+}
 
 export function lsYearOf(state: { leagueStats?: { year?: number } | null }): number {
   return state.leagueStats?.year ?? new Date().getFullYear();
@@ -53,18 +73,49 @@ export function getUpcomingTrainingCampISO(state: {
   if (ls?.uiMode === 'pba_isolated') return todayNorm;
   const currentMonth = state.date ? parseGameDate(state.date).getUTCMonth() + 1 : 7;
   const currentYear = state.date ? parseGameDate(state.date).getUTCFullYear() : lsYear;
-  let seasonYear = computeUpcomingSeasonYear(currentMonth, currentYear, lsYear);
-  let campISO = toISODateString(getTrainingCampDate(seasonYear, ls));
-  if (todayNorm && campISO < todayNorm) {
-    seasonYear = Math.max(seasonYear + 1, currentYear + 1);
-    campISO = toISODateString(getTrainingCampDate(seasonYear, ls));
-  }
-  return campISO;
+  const currentDay = state.date ? parseGameDate(state.date).getUTCDate() : 1;
+  const seasonYear = computeUpcomingSeasonYear(currentMonth, currentYear, lsYear, ls, currentDay);
+  return toISODateString(getTrainingCampDate(seasonYear, ls));
 }
 
 export function getOffseasonCalendarYear(state: { date?: string; leagueStats?: { year?: number } | null }): number {
   if (state.date) return parseGameDate(state.date).getUTCFullYear();
   return state.leagueStats?.year ?? new Date().getFullYear();
+}
+
+export function getRetirementClassYear(state: {
+  date?: string;
+  leagueStats?: { year?: number; uiMode?: string } | null;
+}): number {
+  // The retirement class belongs to the offseason calendar year. Once the
+  // next-season label has advanced (for example 2016-17 on July 5, 2016),
+  // leagueStats.year is already one year ahead of the players' retiredYear.
+  return getOffseasonCalendarYear(state);
+}
+
+export function isPlayerInRetirementClass(
+  player: { internalId: string; retiredYear?: number },
+  announcedPlayerIds: ReadonlySet<string>,
+  visibleClassYears: ReadonlySet<number>,
+): boolean {
+  const retiredYear = Number(player.retiredYear);
+  if (Number.isFinite(retiredYear) && retiredYear > 0) return visibleClassYears.has(retiredYear);
+  return announcedPlayerIds.has(player.internalId);
+}
+
+export function getInternationalSummerReviewDateISO(
+  state: LeagueYearState,
+  row: OffseasonChecklistRow,
+): string | undefined {
+  const offset = INTERNATIONAL_REVIEW_DAY_OFFSETS[row];
+  const tournament = state.internationalTournament;
+  const calendarYear = getOffseasonCalendarYear(state);
+  const isCurrentSummerTournament = tournament?.games.some(game =>
+    Number(game.date.slice(0, 4)) === calendarYear,
+  );
+  if (offset === undefined || !tournament || !isCurrentSummerTournament) return undefined;
+  if (state.offseasonChecklist?.internationalTournament === 'skipped') return undefined;
+  return addDaysISO(getUpcomingTrainingCampISO(state), offset);
 }
 
 export function getEffectivePlayerExpYear(player: any, currentYear: number): number {
@@ -97,12 +148,29 @@ export function getNextPostFaTargetISO(state: LeagueYearState): string {
   const campStartISO = getUpcomingTrainingCampISO(state);
   const todayNorm = state.date ? normalizeDate(state.date) : '';
   const offseasonYear = getOffseasonCalendarYear(state);
+  const summerLeagueStatus = state.offseasonChecklist?.summerLeague;
+  if (summerLeagueStatus === 'pending' || summerLeagueStatus === 'in-progress') {
+    const nextSummerLeagueDate = state.summerLeagueTournament?.games
+      .filter(game => !game.played)
+      .map(game => game.date)
+      .sort()[0];
+    if (nextSummerLeagueDate && nextSummerLeagueDate < campStartISO) {
+      return nextSummerLeagueDate > todayNorm ? nextSummerLeagueDate : todayNorm;
+    }
+  }
+  const tournamentStatus = state.offseasonChecklist?.internationalTournament;
+  if (tournamentStatus === 'pending' || tournamentStatus === 'in-progress') {
+    const nextTournamentDate = state.internationalTournament?.games
+      .filter(game => !game.played)
+      .map(game => game.date)
+      .sort()[0];
+    if (nextTournamentDate && nextTournamentDate < campStartISO) {
+      return nextTournamentDate > todayNorm ? nextTournamentDate : todayNorm;
+    }
+  }
   const candidates: string[] = [];
   if (state.offseasonChecklist?.retiredPlayersReview !== 'done') {
-    candidates.push(`${offseasonYear}-07-01`);
-  }
-  if (state.offseasonChecklist?.hofCeremony !== 'done') {
-    candidates.push(getHOFCeremonyDateString(offseasonYear));
+    candidates.push(getInternationalSummerReviewDateISO(state, 'retiredPlayersReview') ?? `${offseasonYear}-07-01`);
   }
   const nextLegacyEvent = candidates
     .filter(d => todayNorm && d > todayNorm && d < campStartISO)
@@ -135,7 +203,9 @@ export function getSponsorCoverage(team: any, currentYear: number): { dueCount: 
 }
 
 export function getStaffOpenByGroup(team: any, staff: any, currentYear: number): { coaching: number; support: number } {
-  const members: any[] = team?.tycoon?.staffMembers ?? [];
+  if (!team) return { coaching: 0, support: 0 };
+  const persistedStaffRosterExists = hasPersistedStaffRoster(team);
+  const members: any[] = getActiveTeamStaffMembers(team, currentYear);
   const fired = new Set<string>(((team?.tycoon?.firedStaffRoles ?? []) as string[]).map(canonicalStaffRole));
   const teamName: string | undefined = team?.name;
   const teamFullName = team ? getTeamFullName(team) : teamName;
@@ -146,12 +216,15 @@ export function getStaffOpenByGroup(team: any, staff: any, currentYear: number):
   const headCoach = (staff?.coaches ?? []).find(
     (s: any) => (s.team === teamName || s.team === teamFullName) && ((s.position ?? s.jobTitle ?? s.role) === 'Head Coach'),
   );
+  const gm = (staff?.gms ?? []).find((s: any) => s.team === teamName || s.team === teamFullName);
+  const activeHeadCoachName = String(persistedByRole.get('Head Coach')?.name ?? headCoach?.name ?? '').trim().toLowerCase();
   const realTeamCoaches = getTeamStaff(teamName ?? '').concat(teamFullName && teamFullName !== teamName ? getTeamStaff(teamFullName) : []);
-  const realAssistantSlots = realTeamCoaches
+  const realAssistantSlots = (persistedStaffRosterExists ? [] : realTeamCoaches)
     .filter((s: any) => {
       const pos = String(s.position ?? s.jobTitle ?? s.role ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
       return pos === 'assistant coach' || pos === 'lead assistant coach';
     })
+    .filter((s: any) => String(s.name ?? '').trim().toLowerCase() !== activeHeadCoachName)
     .filter((s: any) => !members.some(m => m.name === s.name));
   const missingAssistantRoles = COACHING_ROLES
     .filter(role => role.startsWith('Assistant Coach'))
@@ -169,50 +242,40 @@ export function getStaffOpenByGroup(team: any, staff: any, currentYear: number):
     if (Number.isFinite(expYear)) return Math.max(0, Math.round(expYear - currentYear));
     return null;
   };
-  const isOpenOrExpiring = (role: string) => {
+  const personForRole = (role: string) => {
     const canonicalRole = canonicalStaffRole(role);
-    if (fired.has(canonicalRole)) return true;
+    if (fired.has(canonicalRole)) return null;
     const persisted = persistedByRole.get(role);
-    if (persisted) return (yearsLeftFor(persisted) ?? 0) <= 0;
-    if (role === 'Head Coach') {
-      if (!headCoach) return true;
-      return (yearsLeftFor(headCoach) ?? 1) <= 0;
-    }
-    if (role.startsWith('Assistant Coach')) {
-      const assistant = autoFilledAssistants.get(role);
-      if (!assistant) return true;
-      return (yearsLeftFor(assistant) ?? 1) <= 0;
-    }
-    return true;
+    if (persisted) return persisted;
+    if (role === 'Head Coach') return persistedStaffRosterExists ? null : headCoach ?? null;
+    if (role.startsWith('Assistant Coach')) return autoFilledAssistants.get(role) ?? null;
+    if (role === 'Chief Scout') return persistedStaffRosterExists ? null : gm ?? { name: 'General Manager', contractYears: 2 };
+    return null;
   };
+  const dueCounts = { coaching: 0, support: 0 };
+  const seenPeople = new Set<string>();
+  const addDueForRoles = (roles: readonly string[], group: keyof typeof dueCounts) => {
+    for (const role of roles) {
+      const canonicalRole = canonicalStaffRole(role);
+      const person = personForRole(role);
+      const key = staffIdentityKey(person);
+      const duplicate = !!key && seenPeople.has(key);
+      if (key && !duplicate) seenPeople.add(key);
+      const persisted = persistedByRole.get(role);
+      const yearsLeft = person ? yearsLeftFor(person) : null;
+      const due = fired.has(canonicalRole)
+        || !person
+        || duplicate
+        || ((persisted ? (yearsLeft ?? 0) : (yearsLeft ?? 1)) <= 0);
+      if (due) dueCounts[group] += 1;
+    }
+  };
+  addDueForRoles(COACHING_ROLES, 'coaching');
+  addDueForRoles(SUPPORT_ROLES, 'support');
   return {
-    coaching: COACHING_ROLES.filter(isOpenOrExpiring).length,
-    support: SUPPORT_ROLES.filter(isOpenOrExpiring).length,
+    coaching: dueCounts.coaching,
+    support: dueCounts.support,
   };
-}
-
-export function getTransferWindowProgress(date: string | Date | undefined, leagueStats: any): { current: number; total: number; isLast: boolean; todayIso: string; closeIso: string } | null {
-  if (!date) return null;
-  const ws = isInTransferWindow(date, leagueStats);
-  if (!ws.open || !ws.currentClose || !ws.window) return null;
-
-  const todayIso = typeof date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(date)
-    ? date
-    : new Date(date as any).toISOString().slice(0, 10);
-  const closeIso = ws.currentClose.toISOString().slice(0, 10);
-  const settings = getTransferMarketSettings(leagueStats);
-  const startMMDD = ws.window === 'summer' ? settings.summerStart : settings.winterStart;
-  const [startMonth, startDay] = startMMDD.split('-').map((n: string) => parseInt(n, 10));
-  const todayDate = new Date(`${todayIso}T00:00:00Z`);
-  const closeDate = new Date(`${closeIso}T00:00:00Z`);
-  let startDate = new Date(Date.UTC(closeDate.getUTCFullYear(), startMonth - 1, startDay));
-  if (startDate.getTime() > closeDate.getTime()) {
-    startDate = new Date(Date.UTC(closeDate.getUTCFullYear() - 1, startMonth - 1, startDay));
-  }
-  const msPerDay = 86_400_000;
-  const total = Math.max(1, Math.round((closeDate.getTime() - startDate.getTime()) / msPerDay) + 1);
-  const current = Math.max(1, Math.min(total, Math.round((todayDate.getTime() - startDate.getTime()) / msPerDay) + 1));
-  return { current, total, isLast: current >= total, todayIso, closeIso };
 }
 
 export function useCalendarRowSignals() {
@@ -225,8 +288,9 @@ export function useCalendarRowSignals() {
     const cParsed = parseGameDate(state.date);
     const cMonth = cParsed.getUTCMonth() + 1;
     const cYear = cParsed.getUTCFullYear();
-    const draftSeasonYear = computeDraftSeasonYear(cMonth, cYear, lsYear);
-    const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, cYear, lsYear);
+    const cDay = cParsed.getUTCDate();
+    const draftSeasonYear = computeDraftSeasonYear(cMonth, cYear, lsYear, ls, cDay);
+    const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, cYear, lsYear, ls, cDay);
     const draftStr = toISODateString(getDraftDate(draftSeasonYear, ls));
     const lotteryStr = toISODateString(getDraftLotteryDate(draftSeasonYear, ls));
     const campStr = toISODateString(getTrainingCampDate(upcomingSeasonYear, ls));

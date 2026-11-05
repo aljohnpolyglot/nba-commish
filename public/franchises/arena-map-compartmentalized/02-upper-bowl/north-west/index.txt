@@ -1,0 +1,7 @@
+Upper Bowl — north-west
+=======================
+
+201	sections/201-north-west.svg
+202	sections/202-north-west.svg
+203	sections/203-north-west.svg
+204	sections/204-north-west.svg

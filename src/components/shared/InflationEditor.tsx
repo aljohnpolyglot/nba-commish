@@ -1,6 +1,7 @@
 import React from 'react';
 import { TrendingUp } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
+import { DEFAULT_CAP_INFLATION_AVERAGE } from '../../constants';
 
 interface InflationEditorProps {
   /** Compact inline layout (used inside SettingsModal). Default false = full panel. */
@@ -14,7 +15,7 @@ export const InflationEditor: React.FC<InflationEditorProps> = ({ compact = fals
   const enabled = ls.inflationEnabled ?? true;
   const min     = ls.inflationMin     ?? 0;
   const max     = ls.inflationMax     ?? 10;
-  const avg     = ls.inflationAverage ?? 5.5;
+  const avg     = ls.inflationAverage ?? DEFAULT_CAP_INFLATION_AVERAGE;
   const std     = ls.inflationStdDev  ?? 2.0;
 
   const update = (patch: Partial<typeof ls>) => {

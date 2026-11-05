@@ -2,6 +2,7 @@ import type { NBAPlayer, NBATeam, TeamStatus } from '../types';
 import {
   effectiveRecord,
   getCapThresholds,
+  getTeamPayrollUSD,
   getTradeOutlook,
   resolveManualOutlook,
   topNAvgK2,
@@ -9,7 +10,7 @@ import {
   type TradeRole,
 } from './salaryUtils';
 import type { TeamMode } from '../services/trade/tradeValueEngine';
-import { getDisplayAge } from '../store/playerRatingStore';
+import { getDisplayAge, getDisplayOverall } from '../store/playerRatingStore';
 
 const EXTERNAL = new Set([
   'WNBA',
@@ -232,8 +233,18 @@ const PRESETS: Record<TeamStrategyKey, StrategyPreset> = {
 };
 
 export function tradeRoleToTeamMode(role: string): TeamMode {
-  if (role === 'heavy_buyer' || role === 'buyer') return 'contend';
-  if (role === 'rebuilding') return 'presti';
+  const normalized = String(role ?? '').trim().toLowerCase().replace(/\s+/g, '_');
+  if (
+    normalized === 'heavy_buyer'
+    || normalized === 'buyer'
+    || normalized === 'contending'
+    || normalized === 'win-now'
+    || normalized === 'win_now'
+    || normalized === 'play-in_push'
+    || normalized === 'playoff_push'
+    || normalized === 'play_in_push'
+  ) return 'contend';
+  if (normalized === 'rebuilding' || normalized === 'development' || normalized === 'presti') return 'presti';
   return 'rebuild';
 }
 
@@ -251,8 +262,20 @@ function inferStrategyKey(args: {
   confRank?: number;
   wins: number;
   losses: number;
+  pbaTeamStrengthPercentile?: number;
 }): TeamStrategyKey {
-  const { outlook, manualStatus, roster, payrollUSD, currentYear, thresholds, confRank, wins, losses } = args;
+  const {
+    outlook,
+    manualStatus,
+    roster,
+    payrollUSD,
+    currentYear,
+    thresholds,
+    confRank,
+    wins,
+    losses,
+    pbaTeamStrengthPercentile,
+  } = args;
 
   if (manualStatus === 'contending') return 'contending';
   if (manualStatus === 'win_now') return 'win_now';
@@ -265,17 +288,25 @@ function inferStrategyKey(args: {
   const avgAge = roster.length > 0
     ? roster.reduce((sum, player) => sum + ageOf(player, currentYear), 0) / roster.length
     : 27;
-  const star = [...roster].sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))[0];
+  const star = [...roster].sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a))[0];
   const starAge = star ? ageOf(star, currentYear) : 27;
   const winPct = (wins + losses) > 0 ? wins / (wins + losses) : 0.5;
   const isOverTax = thresholds ? payrollUSD >= thresholds.luxuryTax : false;
   const hasRecord = wins + losses >= 5;
-  const topOvr = star?.overallRating ?? 0;
+  const topOvr = star ? getDisplayOverall(star) : 0;
 
   // Offseason / no-record fallback must run before standings-derived outlook
   // roles. Otherwise an arbitrary no-record conference rank can label a bad
   // roster as a buyer and bypass rebuilding FA discipline.
   if (!hasRecord) {
+    if (pbaTeamStrengthPercentile !== undefined) {
+      if (pbaTeamStrengthPercentile >= 0.85) return 'contending';
+      if (pbaTeamStrengthPercentile >= (2 / 3)) return 'win_now';
+      if (pbaTeamStrengthPercentile <= (1 / 3)) {
+        return avgAge <= 25.5 ? 'development' : 'rebuilding';
+      }
+      return avgAge <= 25.5 ? 'development' : 'retooling';
+    }
     if (topOvr < 60 && avgAge <= 25.5) return 'development';
     if (topOvr < 60) return 'rebuilding';
     if (topOvr < 65 && avgAge >= 28) return 'rebuilding';
@@ -308,6 +339,8 @@ export function getStrategyProfileFromOutlook(args: {
   confRank?: number;
   wins: number;
   losses: number;
+  playInEnabled?: boolean;
+  pbaTeamStrengthPercentile?: number;
 }): TeamStrategyProfile {
   const key = inferStrategyKey({
     outlook: args.outlook,
@@ -319,11 +352,13 @@ export function getStrategyProfileFromOutlook(args: {
     confRank: args.confRank,
     wins: args.wins,
     losses: args.losses,
+    pbaTeamStrengthPercentile: args.pbaTeamStrengthPercentile,
   });
   const preset = PRESETS[key];
+  const label = key === 'play_in_push' && args.playInEnabled === false ? 'Playoff Push' : preset.label;
   return {
     key,
-    label: preset.label,
+    label,
     outlook: args.outlook,
     tradeRole: args.outlook.role,
     teamMode: preset.teamMode,
@@ -356,13 +391,14 @@ export function resolveTeamStrategyProfile(args: {
   userTeamId?: number | null;
 }): TeamStrategyProfile {
   const currentYear = args.currentYear ?? args.leagueStats?.year ?? new Date().getFullYear();
+  const allowExternalRoster =
+    args.leagueStats?.uiMode === 'pba_isolated'
+    || args.leagueStats?.uiMode === 'euro_isolated';
   const roster = args.players.filter(p =>
     p.tid === args.team.id &&
-    !EXTERNAL.has(p.status ?? ''),
+    (allowExternalRoster || !EXTERNAL.has(p.status ?? '')),
   );
-  const payrollUSD = roster
-    .filter(p => !(p as any).twoWay)
-    .reduce((sum, player) => sum + ((player.contract?.amount ?? 0) * 1_000), 0);
+  const payrollUSD = getTeamPayrollUSD(args.players, args.team.id, args.team, currentYear, args.leagueStats);
   const expiringCount = roster.filter(player => (player.contract?.exp ?? 0) <= currentYear).length;
   const thresholds = getCapThresholds(args.leagueStats);
   const rec = effectiveRecord(args.team, currentYear);
@@ -377,7 +413,24 @@ export function resolveTeamStrategyProfile(args: {
     ? undefined
     : Math.max(0, (((leader?.rec.wins ?? 0) - rec.wins) + (rec.losses - (leader?.rec.losses ?? 0))) / 2);
   const topThreeAvgK2 = topNAvgK2(args.players, args.team.id, 3);
-  const manualOutlook = resolveManualOutlook(args.team, args.gameMode, args.userTeamId);
+  const pbaTeamStrengthPercentile = args.leagueStats?.uiMode === 'pba_isolated'
+    ? (() => {
+      const strengths = args.teams
+        .map(team => ({ id: team.id, value: topNAvgK2(args.players, team.id, 3) }))
+        .filter(entry => entry.value > 0)
+        .sort((left, right) => left.value - right.value);
+      if (strengths.length <= 1) return 1;
+      const targetIndex = strengths.findIndex(entry => entry.id === args.team.id);
+      if (targetIndex < 0) return undefined;
+      let start = targetIndex;
+      let end = targetIndex;
+      while (start > 0 && Math.abs(strengths[start - 1].value - strengths[targetIndex].value) < 0.001) start--;
+      while (end + 1 < strengths.length && Math.abs(strengths[end + 1].value - strengths[targetIndex].value) < 0.001) end++;
+      return ((start + end) / 2) / (strengths.length - 1);
+    })()
+    : undefined;
+  const playInEnabled = args.leagueStats?.playIn !== false;
+  const manualOutlook = resolveManualOutlook(args.team, args.gameMode, args.userTeamId, playInEnabled);
   const outlook = manualOutlook ?? getTradeOutlook(
     payrollUSD,
     rec.wins,
@@ -399,5 +452,7 @@ export function resolveTeamStrategyProfile(args: {
     confRank,
     wins: rec.wins,
     losses: rec.losses,
+    playInEnabled,
+    pbaTeamStrengthPercentile,
   });
 }

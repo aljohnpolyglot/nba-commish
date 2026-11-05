@@ -1,0 +1,28 @@
+{
+  "scrapedAt": "2026-08-15T00:00:00.000Z",
+  "players": [
+    {
+      "name": "Ally Wilson",
+      "imgURL": "https://cdn.wnba.com/headshots/wnba/latest/1040x760/1642775.png"
+    },
+    {
+      "name": "Sha Carter",
+      "imgURL": "https://cdn.wnba.com/headshots/wnba/latest/1040x760/1643487.png"
+    },
+    {
+      "name": "Eliska Hamzova",
+      "aliases": [
+        "Eliska Joklova"
+      ],
+      "imgURL": "https://cdn.wnba.com/headshots/wnba/latest/1040x760/1643490.png"
+    },
+    {
+      "name": "Han Xu",
+      "imgURL": "https://cdn.wnba.com/headshots/wnba/latest/1040x760/1629566.png"
+    },
+    {
+      "name": "Li Yueru",
+      "imgURL": "https://cdn.wnba.com/headshots/wnba/latest/1040x760/1629574.png"
+    }
+  ]
+}

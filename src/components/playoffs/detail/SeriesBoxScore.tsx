@@ -18,8 +18,9 @@ export const SeriesBoxScore: React.FC<SeriesBoxScoreProps> = ({
 }) => {
   const [viewingTeam, setViewingTeam] = useState<'home' | 'away'>('home');
 
-  const homeWon = result.winnerId === homeTeam.id;
-  const awayWon = result.winnerId === awayTeam.id;
+  const winnerId = Number(result.winnerId);
+  const homeWon = winnerId === homeTeam.id;
+  const awayWon = winnerId === awayTeam.id;
 
   const quarters = result.quarterScores
     ? result.quarterScores

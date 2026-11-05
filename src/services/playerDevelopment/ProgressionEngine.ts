@@ -27,15 +27,27 @@
  */
 
 import { NBAPlayer, NBATeam } from '../../types';
-import { calculatePlayerOverallForYear } from '../../utils/playerRatings';
+import {
+  calculateOverallFromRating,
+  calculatePlayerOverallForYear,
+  getDisplayOverall,
+  getDisplayPotential,
+  resolvePotentialBbgm,
+} from '../../utils/playerRatings';
 import { applyLeagueDisplayScale, LEAGUE_DISPLAY_MULTIPLIERS } from '../../hooks/useLeagueScaledRatings';
 import { calculateLeagueOverall } from '../logic/leagueOvr';
 import { convertTo2KRating, normalizeDate } from '../../utils/helpers';
-import { EXTERNAL_LEAGUE_OVR_CAP, YOUTH_EXTERNAL_OVR_CAP } from '../../constants';
+import { EXTERNAL_LEAGUE_OVR_CAP, EXTERNAL_MENS_LEAGUE_STATUSES, YOUTH_EXTERNAL_OVR_CAP } from '../../constants';
 import { getFocusWeights, ARCHETYPE_PROFILES } from '../../TeamTraining/constants/trainingarchetypes';
 import { calculateMentorExp } from '../training/mentorScore';
 import type { TrainingParadigm, Allocations } from '../../TeamTraining/types';
-import { getTeamDevelopmentMultiplier } from '../staff/staffGameplayEffects';
+import { getTeamAcademyDevelopmentMultiplier, getTeamDevelopmentMultiplier } from '../staff/staffGameplayEffects';
+import { SettingsManager } from '../SettingsManager';
+import { getCachedHistoricalRealRating } from '../zengmHistoricalRoster';
+import { progressGeneratedEuroYouthProjection } from '../euroScouting/prospectRatings';
+import { appendOverallTimelineSnapshot } from './progressionTimeline';
+import { getBasketballEraRules } from '../era/basketballEraRules';
+import { isSimulationPerfEnabled, recordSimulationPerf } from '../simulation/simulationPerfDebug';
 
 // ─── Conditioning maintenance modifier (the ONLY thing in team training that
 // touches K2 ratings). Per docs/training.md §3 — biometric team training is
@@ -49,6 +61,44 @@ import { getTeamDevelopmentMultiplier } from '../staff/staffGameplayEffects';
 // Offense/Defense/Recovery allocations do NOT touch K2 ratings — they are pure
 // team-meter reps (system familiarity / defensive aura / fatigue clearance).
 const PHYSICAL_ATTRS_SET = new Set(['spd', 'jmp', 'stre', 'endu', 'dnk']);
+const IQ_ATTRS_SET = new Set(['oiq', 'diq']);
+
+type DailyProgressionProfile = {
+  ratingPreparationMs: number;
+  baseModelMs: number;
+  playerContextMs: number;
+  attributeLoopMs: number;
+  physicalProjectionMs: number;
+  realPlayerAnchorMs: number;
+  ratingSummaryMs: number;
+  playerRebuildMs: number;
+  overallCalculationMs: number;
+  leagueCapMs: number;
+  timelineMs: number;
+  ratingRowsScanned: number;
+  awardRowsScanned: number;
+  attributesEvaluated: number;
+  baseModelCalls: number;
+  potentialResolutionCalls: number;
+  repeatedPotentialResolutionInputs: number;
+  playerContextBuilds: number;
+  mentorLookups: number;
+  teamContextLookups: number;
+  realPlayerAnchorCalls: number;
+  realPlayerSettingsLookups: number;
+  realPlayerRatingLookups: number;
+  realCurveDateNormalizations: number;
+  overallCalculationCalls: number;
+  ratingsArraysCopied: number;
+  ratingRowsCopied: number;
+  playerObjectsRebuilt: number;
+  estimatedTemporaryBytes: number;
+};
+
+const progressionPerfNow = () =>
+  typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
 function conditioningAttrMod(
   attr: string,
   delta: number,
@@ -69,14 +119,15 @@ interface TeamPlanForDay {
 // External league players have pre-scaled attrs at fetch time.
 // calculatePlayerOverallForYear on scaled attrs floors at Math.max(40,...) → display 66.
 // Use calculateLeagueOverall (calcRawOvr, no floor, no extra mult) for their OVR instead.
-const EXTERNAL_LEAGUE_STATUSES = new Set([
-  'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa', 'China CBA', 'NBL Australia',
-]);
+const EXTERNAL_LEAGUE_STATUSES = new Set(EXTERNAL_MENS_LEAGUE_STATUSES);
 
 function clampPbaDraftRookieOverall(player: NBAPlayer, overall: number, currentYear: number, rating?: any): number {
-  if (player.status !== 'PBA') return overall;
   const version = String((player as any).pbaDraftTunedVersion ?? '');
   if (!version.startsWith('pba-draft-')) return overall;
+  const tid = Number(player.tid);
+  const status = String(player.status ?? '');
+  const inPbaPlayerMarket = status === 'PBA' || status === 'Free Agent' || (Number.isFinite(tid) && tid >= 2000 && tid < 3000);
+  if (!inPbaPlayerMarket) return overall;
   const draftYear = Number((player as any).draft?.year);
   if (!Number.isFinite(draftYear) || draftYear < currentYear - 3) return overall;
   const seasonsSinceDraft = Math.max(0, currentYear - draftYear);
@@ -96,7 +147,7 @@ function clampPbaDraftRookieOverall(player: NBAPlayer, overall: number, currentY
 
 function isYouthExternalProspect(player: NBAPlayer, age: number): boolean {
   return age < 19
-    && EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
+    && ((player as any).euroAcademyPlayer === true || EXTERNAL_LEAGUE_STATUSES.has(player.status ?? ''))
     && !(player as any).promotedFromAcademy;
 }
 
@@ -129,11 +180,16 @@ function getPlayerAge(player: NBAPlayer, currentYear: number): number {
 
 // ─── Seeded RNG ────────────────────────────────────────────────────────────────
 
-function seededHash(seed: string): number {
-  let hash = 0;
+function seededHashRaw(seed: string, initialHash = 0): number {
+  let hash = initialHash;
   for (let i = 0; i < seed.length; i++) {
     hash = ((hash << 5) - hash + seed.charCodeAt(i)) | 0;
   }
+  return hash;
+}
+
+function seededHash(seed: string): number {
+  const hash = seededHashRaw(seed);
   return Math.abs(hash);
 }
 
@@ -152,6 +208,33 @@ function seededUniform(seed: string, lo: number, hi: number): number {
   return lo + seededRand(seed) * (hi - lo);
 }
 
+function seededUniformFromPrefix(prefixHash: number, suffix: string, lo: number, hi: number): number {
+  const hash = Math.abs(seededHashRaw(suffix, prefixHash));
+  return lo + ((hash % 100000) / 100000) * (hi - lo);
+}
+
+function getRealPlayerDeterminism(): number {
+  try {
+    const percent = Math.max(0, Math.min(100, Number(SettingsManager.getSettings().realPlayerDeterminism ?? 0)));
+    return Math.pow(percent / 100, 2);
+  } catch {
+    return 0;
+  }
+}
+
+function isHistoricalRealPlayer(player: NBAPlayer): boolean {
+  return typeof (player as any).srID === 'string' || typeof (player as any).slug === 'string';
+}
+
+function resolveDevelopmentPotentialBbgm(player: NBAPlayer, rating: any, age: number): number {
+  const currentOvr = Number(rating?.ovr ?? player.overallRating ?? 60);
+  const storedPot = Number(rating?.pot ?? (player as any)?.potential);
+  if (!isHistoricalRealPlayer(player)) {
+    return Number.isFinite(storedPot) && storedPot > 0 ? storedPot : 70;
+  }
+  return resolvePotentialBbgm(currentOvr, age, undefined);
+}
+
 // ─── BBGM calcBaseChange ───────────────────────────────────────────────────────
 // One shared base value for the whole season. Young players get heavy positive +
 // wide Gaussian noise (potential busts AND breakouts). Older players get steady
@@ -164,7 +247,13 @@ function seededUniform(seed: string, lo: number, hi: number): number {
 //   pot >= 85 at age 32+: decline × 0.78
 // Below pot 85: normal BBGM decline curve.
 
-export function calcBaseChange(age: number, seed: string, pot: number = 70): number {
+export function calcBaseChange(
+  age: number,
+  seed: string,
+  pot: number = 70,
+  eraYear: number = 2026,
+  fatherTimeDeclineMultiplier?: number,
+): number {
   let val: number;
 
   // Reduced ~40% from prior values — old rates produced K2 +17/5yr for avg players,
@@ -198,6 +287,10 @@ export function calcBaseChange(age: number, seed: string, pot: number = 70): num
   if      (age <= 23) val += Math.max(-3, Math.min(8, gauss * 3));
   else if (age <= 25) val += Math.max(-3, Math.min(5, gauss * 3));
   else                val += Math.max(-2, Math.min(3, gauss * 2));
+
+  if (val < 0) {
+    val *= fatherTimeDeclineMultiplier ?? getBasketballEraRules(eraYear).fatherTimeDeclineMultiplier;
+  }
 
   return val;
 }
@@ -300,6 +393,85 @@ export const ATTR_FORMULAS: Record<string, AttrFormula> = {
 };
 
 const ALL_ATTRS = Object.keys(ATTR_FORMULAS);
+const REAL_PLAYER_ANCHOR_ATTRS = ['hgt', ...ALL_ATTRS];
+type AttrAgeMetadata = {
+  attr: string;
+  formula: AttrFormula;
+  ageModifier: number | undefined;
+  limMin: number;
+  limMax: number;
+};
+const ATTR_AGE_METADATA = new Map<number, readonly AttrAgeMetadata[]>();
+
+function getAttrAgeMetadata(age: number): readonly AttrAgeMetadata[] {
+  const cached = ATTR_AGE_METADATA.get(age);
+  if (cached) return cached;
+  const metadata = ALL_ATTRS.map(attr => {
+    const formula = ATTR_FORMULAS[attr];
+    const [limMin, limMax] = formula.changeLimits(age);
+    return {
+      attr,
+      formula,
+      ageModifier: attr === 'endu' ? undefined : formula.ageModifier(age),
+      limMin,
+      limMax,
+    };
+  });
+  ATTR_AGE_METADATA.set(age, metadata);
+  return metadata;
+}
+
+function getRemainingRealCurveDays(date: string, currentYear: number): number {
+  try {
+    const iso = normalizeDate(date);
+    const current = new Date(`${iso}T00:00:00Z`).getTime();
+    const seasonEnd = Date.UTC(currentYear, 5, 30);
+    if (!Number.isFinite(current)) return 365;
+    if (current >= seasonEnd) return 1;
+    return Math.max(1, Math.ceil((seasonEnd - current) / 86_400_000) + 1);
+  } catch {
+    return 365;
+  }
+}
+
+function applyRealPlayerDeterminismAnchor(
+  player: NBAPlayer,
+  rating: any,
+  age: number,
+  currentYear: number,
+  date: string,
+  profile?: DailyProgressionProfile,
+  dailyContext?: {
+    realPlayerDeterminism: number;
+    remainingRealCurveDays: number;
+  },
+): void {
+  if (profile) profile.realPlayerAnchorCalls += 1;
+  if (!isHistoricalRealPlayer(player)) return;
+  if (profile && !dailyContext) profile.realPlayerSettingsLookups += 1;
+  const determinism = dailyContext?.realPlayerDeterminism ?? getRealPlayerDeterminism();
+  if (determinism <= 0) return;
+
+  const slug = (player as any).slug ?? (player as any).srID;
+  const bornYear = Number(player.born?.year ?? currentYear - age);
+  if (!slug || !Number.isFinite(bornYear)) return;
+
+  if (profile) profile.realPlayerRatingLookups += 1;
+  const realRating = getCachedHistoricalRealRating(slug, bornYear + age);
+  if (!realRating) return;
+
+  if (profile && !dailyContext) profile.realCurveDateNormalizations += 1;
+  const dailyBlend = Math.min(
+    1,
+    determinism / (dailyContext?.remainingRealCurveDays ?? getRemainingRealCurveDays(date, currentYear)),
+  );
+  for (const attr of REAL_PLAYER_ANCHOR_ATTRS) {
+    const current = Number(rating[attr]);
+    const target = Number((realRating as any)[attr]);
+    if (!Number.isFinite(current) || !Number.isFinite(target)) continue;
+    rating[attr] = Math.min(99, Math.max(20, current + (target - current) * dailyBlend));
+  }
+}
 
 // No position or archetype overrides — pure BBGM algorithm.
 // changeLimits + calcBaseChange + ageModifier already produce realistic outcomes.
@@ -326,14 +498,24 @@ function progressPlayer(
   mentorLookup?: Map<string, NBAPlayer>,
   teamPlan?: TeamPlanForDay,
   devMultiplier: number = 1,
+  profile?: DailyProgressionProfile,
+  recordTimelineSnapshot = true,
+  dailyContext?: {
+    fatherTimeDeclineMultiplier: number;
+    realPlayerDeterminism: number;
+    remainingRealCurveDays: number;
+  },
 ): NBAPlayer {
   if (!player.ratings || player.ratings.length === 0) return player;
 
+  let leafStart = profile ? progressionPerfNow() : 0;
+  if (profile) profile.ratingRowsScanned += player.ratings.length;
   const ratingIdx = (() => {
     const i = player.ratings.findIndex((r: any) => r.season === currentYear);
     return i !== -1 ? i : player.ratings.length - 1;
   })();
   const rating: any = { ...player.ratings[ratingIdx] };
+  if (profile) profile.estimatedTemporaryBytes += Math.max(64, Object.keys(rating).length * 16);
 
   // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
   const age = getPlayerAge(player, currentYear);
@@ -342,11 +524,19 @@ function progressPlayer(
   const isYouthExternal = isYouthExternalProspect(player, age);
   const pos = player.pos ?? 'F';
 
-  if (age < 19 && !isYouthExternal) {
+  if (age < 19 && !isYouthExternal && !(player as any).promotedFromAcademy) {
     return player;
   }
 
-  const pot: number = rating.pot ?? 70;
+  const pot = resolveDevelopmentPotentialBbgm(player, rating, age);
+  if (profile) profile.potentialResolutionCalls += 1;
+  if (isHistoricalRealPlayer(player) && Number(rating.pot ?? 0) !== pot) {
+    rating.pot = pot;
+  }
+  if (profile) {
+    profile.ratingPreparationMs += progressionPerfNow() - leafStart;
+    leafStart = progressionPerfNow();
+  }
 
   // Per-player developmental fingerprint: stable offset seeded ONLY by pid (not year).
   // Shifts each player's effective age curve — some 26-year-olds are still improving,
@@ -356,9 +546,13 @@ function progressPlayer(
   // MVP count — computed once and reused for both base dampening and per-attr softening.
   // Awards are stored as 'Most Valuable Player' (via PLAYER_AWARD_TYPE_MAP in autoResolvers).
   // Cap at 4; beyond that the math is already very forgiving.
-  const mvpCount = Math.min(4, ((player as any).awards ?? []).filter(
-    (a: any) => a.type === 'Most Valuable Player' || a.type === 'MVP',
-  ).length);
+  const awards = (player as any).awards ?? [];
+  let mvpCount = 0;
+  for (const award of awards) {
+    if (award.type === 'Most Valuable Player' || award.type === 'MVP') mvpCount += 1;
+  }
+  mvpCount = Math.min(4, mvpCount);
+  if (profile) profile.awardRowsScanned += awards.length;
 
   // Annual base change for this player this season (deterministic per pid+year)
   // Divide by 365 for daily application. pot passed for wine-aging modifier.
@@ -367,9 +561,16 @@ function progressPlayer(
   // tilts positive growth — decline years (negative base) shouldn't be softened
   // for slow developers.
   const devSpeed: number = rating.devSpeed ?? 1.0;
+  if (profile) profile.baseModelCalls += 1;
   let baseRaw = isYouthExternal
     ? calcYouthExternalBaseChange(age, pid + currentYear, devSpeed)
-    : calcBaseChange(age, pid + currentYear, pot);
+    : calcBaseChange(
+      age,
+      pid + currentYear,
+      pot,
+      currentYear,
+      dailyContext?.fatherTimeDeclineMultiplier,
+    );
 
   // MVP aging resistance — only kicks in at 38+, where the real cliff starts.
   // Curry/LeBron types get a modest dampen; still decline, just slower.
@@ -399,6 +600,10 @@ function progressPlayer(
 
   // Skip attribute delta if base is exactly 0 and not overseas (peak-age NBA player)
   const skipDelta = dailyBase === 0 && !isOverseasPlayer;
+  if (profile) {
+    profile.baseModelMs += progressionPerfNow() - leafStart;
+    leafStart = progressionPerfNow();
+  }
 
   if (!skipDelta) {
     const currentOvr: number = rating.ovr ?? player.overallRating ?? 60;
@@ -420,17 +625,6 @@ function progressPlayer(
     const focus = useFunnel ? getFocusWeights(devFocus!) : null;
     // funnelMult(attr) — uses raw weight directly. Weight 0.20 → 1.8× growth /
     // 0.68× regression. Weight 0.05 → 1.2× / 0.92×. Weight 0.01 → 1.04× / 0.984×.
-    const funnelGrowthMult = (attr: string): number => {
-      if (!focus) return 1.0;
-      const w = (focus.rawWeights as any)[attr] ?? 0;
-      return 1.0 + Math.max(0, w) * 4; // boost only — never reduces non-focused
-    };
-    const funnelRegressMult = (attr: string): number => {
-      if (!focus) return 1.0;
-      const w = (focus.rawWeights as any)[attr] ?? 0;
-      // Focused attrs regress less (anti-Korver-loses-shooting). Cap at 60% reduction.
-      return 1.0 - Math.min(0.6, Math.max(0, w) * 1.6);
-    };
 
     // Mentor multiplier per docs/mentorship.md §3 + Hakeem-Dwight Rule:
     //   - Mentee age gate: ONLY U-26 players absorb mentor effects. Older mentees
@@ -443,6 +637,10 @@ function progressPlayer(
     //     LeBron↔Reaves model — marginal at the threshold, real at the top end.
     //   - Skill/physical attrs ignore mentor entirely (Hakeem-Dwight rule).
     const mentor = mentorLookup && (player as any).mentorId ? mentorLookup.get((player as any).mentorId) : undefined;
+    if (profile) {
+      profile.playerContextBuilds += 1;
+      profile.mentorLookups += (player as any).mentorId ? 1 : 0;
+    }
     const mentorExp = mentor ? calculateMentorExp(mentor).exp : 0;
     const menteeAgeOk = age <= 25;
     const mentorMitigation = menteeAgeOk ? Math.min(0.3, mentorExp / 6666) : 0;
@@ -467,18 +665,22 @@ function progressPlayer(
     // for teams that invest in performance science.
     const fatigue = Math.max(0, Math.min(100, (player as any).trainingFatigue ?? 0));
     const fatigueDampen = 1 - (fatigue / 100) * 0.2;
-    const IQ_ATTRS = new Set(['oiq', 'diq']);
+    if (profile) {
+      profile.playerContextMs += progressionPerfNow() - leafStart;
+      leafStart = progressionPerfNow();
+    }
 
-    for (const attr of ALL_ATTRS) {
+    const dailyAttributeSeedPrefix = seededHashRaw(pid + date);
+    for (const metadata of getAttrAgeMetadata(age)) {
+      const { attr, formula, limMin, limMax } = metadata;
       if (rating[attr] == null) continue;
 
-      const formula = ATTR_FORMULAS[attr];
-      if (!formula) continue;
+      if (profile) profile.attributesEvaluated += 1;
 
       // ageModifier for endu needs the seed
       let mod = attr === 'endu'
         ? (ATTR_FORMULAS.endu.ageModifier as any)(age, pid + currentYear + 'endu')
-        : formula.ageModifier(age);
+        : metadata.ageModifier!;
 
       // MVP veterans 38+ retain attribute quality slightly better.
       if (mod < 0 && mvpCount > 0 && age >= 38) {
@@ -493,19 +695,22 @@ function progressPlayer(
       const effectiveDaily = dailyCombined > 0 ? dailyCombined * pm : dailyCombined;
 
       // BBGM: multiply by uniform(0.4, 1.4) per attr — deterministic here
-      const unifMult = seededUniform(pid + date + attr, 0.4, 1.4);
+      const unifMult = seededUniformFromPrefix(dailyAttributeSeedPrefix, attr, 0.4, 1.4);
       let delta = effectiveDaily * unifMult;
 
       // Funnel — weight-driven multiplier. Skipped for Balanced (default).
       if (focus && delta !== 0) {
-        delta *= delta > 0 ? funnelGrowthMult(attr) : funnelRegressMult(attr);
+        const weight = (focus.rawWeights as any)[attr] ?? 0;
+        delta *= delta > 0
+          ? 1.0 + Math.max(0, weight) * 4
+          : 1.0 - Math.min(0.6, Math.max(0, weight) * 1.6);
       }
 
       // Mentor effect — anti-regression on all attrs, small IQ-only growth bonus.
       if (mentorMitigation > 0 && delta < 0) {
         delta *= (1 - mentorMitigation);
       }
-      if (mentorIQBonus > 0 && delta > 0 && IQ_ATTRS.has(attr)) {
+      if (mentorIQBonus > 0 && delta > 0 && IQ_ATTRS_SET.has(attr)) {
         delta *= (1 + mentorIQBonus);
       }
 
@@ -538,13 +743,16 @@ function progressPlayer(
       }
 
       // Apply changeLimits (annual, divide by 365 for daily clamp)
-      const [limMin, limMax] = formula.changeLimits(age);
       const capMult = devCapMultiplier(pos, rating, attr);
       const dailyMin = isFinite(limMin) ? limMin / 365 : -Infinity;
       const dailyMax = isFinite(limMax) ? limMax / 365 * capMult : Infinity;
       delta = Math.max(dailyMin, Math.min(dailyMax, delta));
 
       rating[attr] = Math.min(99, Math.max(20, rating[attr] + delta));
+    }
+    if (profile) {
+      profile.attributeLoopMs += progressionPerfNow() - leafStart;
+      leafStart = progressionPerfNow();
     }
 
     // Strength → Weight loop (docs/training.md + simulation.ts brainstorm).
@@ -561,18 +769,54 @@ function progressPlayer(
       // Mutate via the returned `updatedPlayer` below — capture target weight here.
       (rating as any).__projectedWeight = Math.min(cap, proposed);
     }
+    if (profile) profile.physicalProjectionMs += progressionPerfNow() - leafStart;
 
-    // Sync rating.ovr so potMod sees the real gap as attrs grow.
-    // Generated prospects enter with a frozen nerfed value (e.g. 29) — without this
-    // potMod is always 1.0 and they grow unconstrained past their pot ceiling.
-    const ovrSum = ALL_ATTRS.reduce((s, a) => s + (rating[a] ?? 0), 0);
-    rating.ovr = Math.round(ovrSum / ALL_ATTRS.length);
+  }
+
+  leafStart = profile ? progressionPerfNow() : 0;
+  applyRealPlayerDeterminismAnchor(
+    player,
+    rating,
+    age,
+    currentYear,
+    date,
+    profile,
+    dailyContext,
+  );
+  if (profile) {
+    profile.realPlayerAnchorMs += progressionPerfNow() - leafStart;
+    leafStart = progressionPerfNow();
+  }
+
+  // Sync rating.ovr so potMod sees the real gap as attrs grow.
+  // Generated prospects enter with a frozen nerfed value (e.g. 29) — without this
+  // potMod is always 1.0 and they grow unconstrained past their pot ceiling.
+  let ovrSum = 0;
+  for (const attr of ALL_ATTRS) ovrSum += rating[attr] ?? 0;
+  rating.ovr = Math.round(ovrSum / ALL_ATTRS.length);
+  const finalPot = resolveDevelopmentPotentialBbgm(player, rating, age);
+  if (profile) {
+    profile.potentialResolutionCalls += 1;
+    profile.repeatedPotentialResolutionInputs += 1;
+  }
+  if (isHistoricalRealPlayer(player) && Number(rating.pot ?? 0) !== finalPot) {
+    rating.pot = finalPot;
+  }
+  if (profile) {
+    profile.ratingSummaryMs += progressionPerfNow() - leafStart;
+    leafStart = progressionPerfNow();
   }
 
   // Rebuild ratings array
   const projectedWeight: number | undefined = (rating as any).__projectedWeight;
   if (projectedWeight !== undefined) delete (rating as any).__projectedWeight;
-  const newRatings = player.ratings.map((r: any, i: number) => i === ratingIdx ? rating : r);
+  const newRatings = [...player.ratings];
+  newRatings[ratingIdx] = rating;
+  if (profile) {
+    profile.ratingsArraysCopied += 1;
+    profile.ratingRowsCopied += player.ratings.length;
+    profile.estimatedTemporaryBytes += Math.max(32, player.ratings.length * 8);
+  }
 
   const updatedPlayer: NBAPlayer = {
     ...player,
@@ -582,16 +826,38 @@ function progressPlayer(
       origWeight: player.origWeight ?? player.weight,
     } : {}),
   };
+  if (profile) {
+    profile.playerObjectsRebuilt += 1;
+    profile.estimatedTemporaryBytes += Math.max(128, Object.keys(player).length * 16);
+  }
+  if (profile) {
+    profile.playerRebuildMs += progressionPerfNow() - leafStart;
+    leafStart = progressionPerfNow();
+  }
 
   // External league players: attrs are pre-scaled at fetch (e.g. G-League ×0.75).
   // calculatePlayerOverallForYear on those scaled attrs floors at Math.max(40,...) → display 66.
   // Use calculateLeagueOverall (no extra mult, no NBA-calibrated floor) to keep their OVR correct.
-  if (EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')) {
+  if (isYouthExternal || EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')) {
     updatedPlayer.overallRating = calculateLeagueOverall(rating);
   } else {
-    updatedPlayer.overallRating = calculatePlayerOverallForYear(updatedPlayer, currentYear);
+    let selectedRating: any;
+    let selectedSeason = -Infinity;
+    for (const candidate of newRatings) {
+      const season = Number(candidate?.season ?? 0);
+      if (season <= currentYear && season > selectedSeason) {
+        selectedRating = candidate;
+        selectedSeason = season;
+      }
+    }
+    updatedPlayer.overallRating = selectedRating ? calculateOverallFromRating(selectedRating) : 50;
   }
+  if (profile) profile.overallCalculationCalls += 1;
   updatedPlayer.overallRating = clampPbaDraftRookieOverall(player, updatedPlayer.overallRating, currentYear, rating);
+  if (profile) {
+    profile.overallCalculationMs += progressionPerfNow() - leafStart;
+    leafStart = progressionPerfNow();
+  }
 
   // Fix 8: cap adult external-league progression at the league's OVR ceiling.
   // Prevents NBA-boosted returners (e.g. high-OVR cut player returning to B-League)
@@ -617,25 +883,101 @@ function progressPlayer(
       );
     }
   }
+  if (profile) {
+    profile.leagueCapMs += progressionPerfNow() - leafStart;
+    leafStart = progressionPerfNow();
+  }
 
-  // Weekly OVR snapshot — record every Sunday so the 1Y chart has ~52 data points
-  // Store raw BBGM float so sub-1pt weekly trends are visible in the chart
-  try {
-    const dateISO = normalizeDate(date); // "Apr 20, 2026" → "2026-04-20"
-    const d = new Date(dateISO + 'T00:00:00Z');
-    if (d.getUTCDay() === 0) { // 0 = Sunday
-      const snap = { date: dateISO, ovr: updatedPlayer.overallRating };
-      const prev = updatedPlayer.ovrTimeline ?? [];
-      if (prev.length === 0 || prev[prev.length - 1].date !== dateISO) {
-        updatedPlayer.ovrTimeline = [...prev, snap].slice(-56);
-      }
-    }
-  } catch (_) { /* never block progression for chart bookkeeping */ }
+  if (recordTimelineSnapshot) {
+    try {
+      const result = appendOverallTimelineSnapshot(updatedPlayer, date, updatedPlayer.overallRating);
+      if (profile) profile.timelineMs += progressionPerfNow() - leafStart;
+      return result;
+    } catch (_) {}
+  }
+
+  if (profile) profile.timelineMs += progressionPerfNow() - leafStart;
 
   return updatedPlayer;
 }
 
 // ─── Public API ────────────────────────────────────────────────────────────────
+
+export function progressEuroAcademyPlayer(
+  player: NBAPlayer,
+  team: NBATeam | null,
+  currentYear: number,
+  date: string,
+  mentorLookup?: Map<string, NBAPlayer>,
+): NBAPlayer {
+  if (!player.ratings?.length || player.status === 'Retired') return player;
+  const initialAcademyOverall = Number.isFinite(Number((player as any).academyOverall))
+    ? Number((player as any).academyOverall)
+    : getDisplayOverall(player, currentYear);
+  const initialAcademyPotential = Number.isFinite(Number((player as any).academyPotential))
+    ? Number((player as any).academyPotential)
+    : getDisplayPotential(player, currentYear, currentYear, { floorAtEstimated: true });
+  const academyPlayer = {
+    ...player,
+    academyOverall: initialAcademyOverall,
+    academyBaseOverall: Number.isFinite(Number(player.academyBaseOverall))
+      ? Number(player.academyBaseOverall)
+      : initialAcademyOverall,
+    academyDevelopmentForm: Number.isFinite(Number(player.academyDevelopmentForm))
+      ? Number(player.academyDevelopmentForm)
+      : 0,
+    academyPotential: Math.max(initialAcademyOverall, initialAcademyPotential),
+  } as NBAPlayer;
+  const developmentMultiplier = getTeamAcademyDevelopmentMultiplier(team as any);
+  const mentor = academyPlayer.mentorId ? mentorLookup?.get(academyPlayer.mentorId) : undefined;
+  const mentorMultiplier = mentor
+    ? 1 + Math.min(0.08, calculateMentorExp(mentor).exp / 100_000)
+    : 1;
+  let progressed = progressGeneratedEuroYouthProjection(progressPlayer(
+    academyPlayer,
+    currentYear,
+    date,
+    mentorLookup,
+    undefined,
+    developmentMultiplier,
+  ), developmentMultiplier * mentorMultiplier, normalizeDate(date));
+  try {
+    const dateISO = normalizeDate(date);
+    if (new Date(`${dateISO}T00:00:00Z`).getUTCDay() === 0) {
+      const visibleOverall = Number((progressed as any).academyOverall);
+      if (Number.isFinite(visibleOverall) && visibleOverall > 0) {
+        const snapshot = { date: dateISO, ovr: visibleOverall, displayScale: 'k2' as const };
+        const previous = progressed.ovrTimeline ?? [];
+        progressed = {
+          ...progressed,
+          ovrTimeline: previous.some(item => item.date === dateISO)
+            ? previous.map(item => item.date === dateISO ? snapshot : item).slice(-56)
+            : [...previous, snapshot].slice(-56),
+        };
+      }
+    }
+  } catch {
+    // Timeline bookkeeping must not block player development.
+  }
+  const age = getPlayerAge(progressed, currentYear);
+  const annualGrowth = age <= 14 ? 2.6 : age === 15 ? 1.9 : age === 16 ? 1.15 : age === 17 ? 0.55 : age === 18 ? 0.18 : 0;
+  if (annualGrowth <= 0 || seededRand(`${progressed.internalId}:${date}:height`) >= annualGrowth / 365) {
+    return { ...progressed, age };
+  }
+  const growth = seededRand(`${progressed.internalId}:${date}:spurt`) < 0.08 ? 2 : 1;
+  const nextHeight = Math.min(92, Number(progressed.hgt ?? 76) + growth);
+  const heightRating = Math.round(Math.max(0, Math.min(99, ((nextHeight - 68) / 22) * 99)));
+  const latestIndex = progressed.ratings.length - 1;
+  const ratings = progressed.ratings.map((rating, index) => index === latestIndex ? { ...rating, hgt: heightRating } : rating);
+  const weightScale = nextHeight / Math.max(1, Number(progressed.hgt ?? nextHeight));
+  return {
+    ...progressed,
+    age,
+    hgt: nextHeight,
+    weight: Math.round(Number(progressed.weight ?? 180) * weightScale),
+    ratings,
+  };
+}
 
 export function applyDailyProgression(
   players: NBAPlayer[],
@@ -646,26 +988,76 @@ export function applyDailyProgression(
 ): NBAPlayer[] {
   if (isPlayoffs) return players;
 
+  const perfEnabled = isSimulationPerfEnabled();
+  const totalStart = perfEnabled ? progressionPerfNow() : 0;
+  const profile: DailyProgressionProfile | undefined = perfEnabled ? {
+    ratingPreparationMs: 0,
+    baseModelMs: 0,
+    playerContextMs: 0,
+    attributeLoopMs: 0,
+    physicalProjectionMs: 0,
+    realPlayerAnchorMs: 0,
+    ratingSummaryMs: 0,
+    playerRebuildMs: 0,
+    overallCalculationMs: 0,
+    leagueCapMs: 0,
+    timelineMs: 0,
+    ratingRowsScanned: 0,
+    awardRowsScanned: 0,
+    attributesEvaluated: 0,
+    baseModelCalls: 0,
+    potentialResolutionCalls: 0,
+    repeatedPotentialResolutionInputs: 0,
+    playerContextBuilds: 0,
+    mentorLookups: 0,
+    teamContextLookups: 0,
+    realPlayerAnchorCalls: 0,
+    realPlayerSettingsLookups: 0,
+    realPlayerRatingLookups: 0,
+    realCurveDateNormalizations: 0,
+    overallCalculationCalls: 0,
+    ratingsArraysCopied: 0,
+    ratingRowsCopied: 0,
+    playerObjectsRebuilt: 0,
+    estimatedTemporaryBytes: 0,
+  } : undefined;
+
   // Build per-team plan lookup once per day. Empty when teams aren't passed
   // (legacy call site / external simulators) — paradigm modifier silently
   // no-ops, so behavior is identical to before for unwired callers.
   const planByTid = new Map<number, TeamPlanForDay>();
   const devMultByTid = new Map<number, number>();
+  const teamSetupStart = perfEnabled ? progressionPerfNow() : 0;
+  let normalizedDate = '';
+  try { normalizedDate = normalizeDate(date); } catch { normalizedDate = ''; }
+  const recordTimelineSnapshot = normalizedDate !== ''
+    && new Date(`${normalizedDate}T00:00:00Z`).getUTCDay() === 0;
   if (teams && teams.length) {
-    let iso = '';
-    try { iso = normalizeDate(date); } catch { iso = ''; }
     for (const t of teams) {
       devMultByTid.set(t.id, getTeamDevelopmentMultiplier(t as any));
     }
-    if (iso) {
+    if (normalizedDate) {
       for (const t of teams) {
         const cal = (t as any).trainingCalendar as Record<string, TeamPlanForDay> | undefined;
-        const plan = cal?.[iso];
+        const plan = cal?.[normalizedDate];
         if (plan?.paradigm && plan.allocations) {
           planByTid.set(t.id, { paradigm: plan.paradigm, allocations: plan.allocations });
         }
       }
     }
+  }
+  const teamSetupMs = perfEnabled ? progressionPerfNow() - teamSetupStart : 0;
+  const realPlayerDeterminism = getRealPlayerDeterminism();
+  const dailyContext = {
+    fatherTimeDeclineMultiplier: getBasketballEraRules(currentYear).fatherTimeDeclineMultiplier,
+    realPlayerDeterminism,
+    remainingRealCurveDays: realPlayerDeterminism > 0
+      ? getRemainingRealCurveDays(date, currentYear)
+      : 365,
+  };
+  if (profile) {
+    profile.realPlayerSettingsLookups += 1;
+    profile.realCurveDateNormalizations += realPlayerDeterminism > 0 ? 1 : 0;
   }
 
   // Young international prospects (age < 19 in foreign men's leagues) freeze
@@ -673,36 +1065,105 @@ export function applyDailyProgression(
   // they progress past K2 85 in Hokkaido / FCB / etc. before ever declaring,
   // creating a generation of foreign-born talent that never reaches the league.
   // Age 19+ triggers auto-declare-for-draft in seasonRollover.
-  const EXTERNAL_MENS_LEAGUES = new Set([
-    'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia',
-  ]);
-
   // Build mentor lookup once per day so each progressPlayer call can resolve
   // its mentor in O(1). Only includes players who are SOMEONE'S mentor — most
   // entries unused, but the map is a few hundred entries max.
   const mentorIds = new Set<string>();
+  const mentorIdStart = perfEnabled ? progressionPerfNow() : 0;
   for (const p of players) {
     const mid = (p as any).mentorId;
     if (mid) mentorIds.add(mid);
   }
+  const mentorIdScanMs = perfEnabled ? progressionPerfNow() - mentorIdStart : 0;
   const mentorLookup = new Map<string, NBAPlayer>();
+  const mentorLookupStart = perfEnabled ? progressionPerfNow() : 0;
   for (const p of players) {
     if (mentorIds.has(p.internalId)) mentorLookup.set(p.internalId, p);
   }
+  const mentorLookupMs = perfEnabled ? progressionPerfNow() - mentorLookupStart : 0;
 
-  return players.map(player => {
-    if (!player.ratings || player.ratings.length === 0) return player;
-    if ((player as any).diedYear) return player;
-    if (player.status === 'Retired') return player;
-    if (player.tid === -2) return player; // future draft prospect — ratings frozen until drafted
+  let noRatings = 0;
+  let deadPlayers = 0;
+  let retiredPlayers = 0;
+  let futureProspects = 0;
+  let progressedPlayers = 0;
+  let changedPlayerReferences = 0;
+  let changedRatingReferences = 0;
+  let changedTimelineReferences = 0;
+  const playerDurations: number[] = [];
+  const playerLoopStart = perfEnabled ? progressionPerfNow() : 0;
+  const result = players.map(player => {
+    if (!player.ratings || player.ratings.length === 0) { noRatings += 1; return player; }
+    if ((player as any).diedYear) { deadPlayers += 1; return player; }
+    if (player.status === 'Retired') { retiredPlayers += 1; return player; }
+    if (player.tid === -2) { futureProspects += 1; return player; } // future draft prospect — ratings frozen until drafted
     try {
+      const playerStart = perfEnabled ? progressionPerfNow() : 0;
       const teamPlan = planByTid.get(player.tid);
       const devMultiplier = devMultByTid.get(player.tid) ?? 1;
-      return progressPlayer(player, currentYear, date, mentorLookup, teamPlan, devMultiplier);
+      if (profile) profile.teamContextLookups += 2;
+      const progressed = progressPlayer(
+        player,
+        currentYear,
+        date,
+        mentorLookup,
+        teamPlan,
+        devMultiplier,
+        profile,
+        recordTimelineSnapshot,
+        dailyContext,
+      );
+      progressedPlayers += 1;
+      if (progressed !== player) changedPlayerReferences += 1;
+      if (progressed.ratings !== player.ratings) changedRatingReferences += 1;
+      if (progressed.ovrTimeline !== player.ovrTimeline) changedTimelineReferences += 1;
+      if (perfEnabled) playerDurations.push(progressionPerfNow() - playerStart);
+      return progressed;
     } catch (_) {
       return player;
     }
   });
+  const playerLoopMs = perfEnabled ? progressionPerfNow() - playerLoopStart : 0;
+  if (perfEnabled && profile) {
+    const sortedPlayerDurations = [...playerDurations].sort((a, b) => a - b);
+    const percentile = (fraction: number): number => sortedPlayerDurations.length === 0
+      ? 0
+      : sortedPlayerDurations[Math.min(
+        sortedPlayerDurations.length - 1,
+        Math.max(0, Math.ceil(sortedPlayerDurations.length * fraction) - 1),
+      )];
+    const leafMs = profile.ratingPreparationMs + profile.baseModelMs + profile.playerContextMs
+      + profile.attributeLoopMs + profile.physicalProjectionMs + profile.realPlayerAnchorMs
+      + profile.ratingSummaryMs + profile.playerRebuildMs + profile.overallCalculationMs
+      + profile.leagueCapMs + profile.timelineMs;
+    recordSimulationPerf({
+      engine: 'daily-progression-forensics',
+      date: normalizeDate(date),
+      totalMs: progressionPerfNow() - totalStart,
+      teamSetupMs,
+      mentorIdScanMs,
+      mentorLookupMs,
+      playerLoopMs,
+      playerLoopOtherMs: Math.max(0, playerLoopMs - leafMs),
+      playerMedianMs: percentile(0.5),
+      playerP95Ms: percentile(0.95),
+      playerSamples: playerDurations.length,
+      ...profile,
+      playersScanned: players.length,
+      teamsScanned: teams?.length ?? 0,
+      noRatings,
+      deadPlayers,
+      retiredPlayers,
+      futureProspects,
+      progressedPlayers,
+      changedPlayerReferences,
+      changedRatingReferences,
+      changedTimelineReferences,
+      mutations: changedPlayerReferences,
+      noOp: changedPlayerReferences === 0,
+    });
+  }
+  return result;
 }
 
 // ─── Seasonal Events ──────────────────────────────────────────────────────────
@@ -782,7 +1243,7 @@ export function applySeasonalBreakouts(
 
     // Bust: 19–23, high pot, 3% NBA / ~1.3% outside
     if (!event && age >= 19 && age <= 23) {
-      const pot: number = rating.pot ?? 99;
+      const pot = resolveDevelopmentPotentialBbgm(player, rating, age);
       if (pot >= 75 && seededRand(pSeed + 'bust' + currentYear) < 0.03 * hitRate) {
         const attrList = [...BUST_ATTRS];
         const attr = attrList[seededInt(pSeed + 'buattr' + currentYear, 0, attrList.length - 1)];

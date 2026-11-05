@@ -2,16 +2,20 @@ import { GameResult, PlayerGameStats } from '../simulation/StatGenerator';
 import { NBAPlayer, NBATeam, SocialPost, PlayoffBracket, Game } from '../../types';
 import { getSocialHandles } from '../../data/social/handles';
 import { SOCIAL_TEMPLATES } from './SocialRegistry';
-import { SocialContext } from './types';
+import { SocialContext, SocialTemplate } from './types';
 import { TEAM_ARENAS } from '../../data/arenas';
 import { TEAM_HANDLES } from '../../data/teamHandles';
 import { fetchAvatarData, getAvatarByHandle } from '../avatarService';
 import { SettingsManager } from '../SettingsManager';
 import { generatePlayoffPosts } from './generatePlayoffPosts';
+import { EURO_SOCIAL_TEMPLATES, generateEuroPlayoffPosts } from './templates/euroLeague';
+import { getPrimaryInsiderKey, isTwitterAvailable } from '../../utils/mediaTimeline';
+import { recordMediaRuntimeCall } from '../media/mediaRuntimeDiagnostics';
+import { EURO_BASKETBALL_SOURCE_ARCHIVES, EUROLEAGUE_2026_SOURCE } from '../../data/euroBasketballSources';
 
 // Handles whose injury/news templates are suppressed when LLM is active
 // (the LLM generates richer, more contextual versions of these posts)
-const LLM_OWNED_HANDLES = new Set(['shams', 'woj']);
+const LLM_OWNED_HANDLES = new Set(['shams', 'woj', 'euro_insider', 'euro_newsdesk']);
 
 // ─────────────────────────────────────────────────────────────────────────────
 // HOW MANY POSTS PER HANDLE PER GAME (max)
@@ -27,16 +31,109 @@ const HANDLE_POST_CAPS: Record<string, number> = {
     nba_official:    2,
     underdog_nba:    4, // injury/lineup utility — more is fine
     shams:           2,
+    woj:             2,
     nba_centel:      1,
     nba_memes:       1,
+    euro_official:   2,
+    euro_central:    2,
+    euro_broadcast:  2,
+    euro_insider:    2,
+    euro_newsdesk:   2,
 };
 const DEFAULT_CAP = 2;
+
+type SocialTemplateEntry = {
+  template: SocialTemplate;
+  index: number;
+  priority: number;
+};
+
+type SocialTemplateSet = {
+  staticTemplates: SocialTemplateEntry[];
+  dynamicTemplates: Array<{ template: SocialTemplate; index: number }>;
+};
+
+const buildTemplateSet = (templates: SocialTemplate[]): SocialTemplateSet => ({
+  staticTemplates: templates
+    .flatMap((template, index) => typeof template.priority === 'function'
+      ? []
+      : [{ template, index, priority: template.priority ?? 0 }])
+    .sort((left, right) => right.priority - left.priority || left.index - right.index),
+  dynamicTemplates: templates
+    .flatMap((template, index) => typeof template.priority === 'function' ? [{ template, index }] : []),
+});
+
+const NBA_TEMPLATE_SET = buildTemplateSet(SOCIAL_TEMPLATES);
+const EURO_TEMPLATE_SET = buildTemplateSet(EURO_SOCIAL_TEMPLATES);
+
+const getOrderedSocialTemplates = (ctx: SocialContext, templateSet: SocialTemplateSet): SocialTemplateEntry[] => {
+  const dynamic = templateSet.dynamicTemplates
+    .map(({ template, index }) => ({
+      template,
+      index,
+      priority: typeof template.priority === 'function' ? template.priority(ctx) : (template.priority ?? 0),
+    }))
+    .sort((left, right) => right.priority - left.priority || left.index - right.index);
+  const ordered: SocialTemplateEntry[] = [];
+  let staticIndex = 0;
+  let dynamicIndex = 0;
+  while (staticIndex < templateSet.staticTemplates.length || dynamicIndex < dynamic.length) {
+    const staticEntry = templateSet.staticTemplates[staticIndex];
+    const dynamicEntry = dynamic[dynamicIndex];
+    if (!dynamicEntry || (staticEntry && (
+      staticEntry.priority > dynamicEntry.priority
+      || (staticEntry.priority === dynamicEntry.priority && staticEntry.index < dynamicEntry.index)
+    ))) {
+      ordered.push(staticEntry);
+      staticIndex += 1;
+    } else {
+      ordered.push(dynamicEntry);
+      dynamicIndex += 1;
+    }
+  }
+  return ordered;
+};
+
+const EURO_COMPETITION_IDS = new Set([
+  EUROLEAGUE_2026_SOURCE.competitionId,
+  ...EURO_BASKETBALL_SOURCE_ARCHIVES.map(source => source.competitionId),
+  'endesa',
+].map(id => id.toLowerCase()));
+const EURO_TEAM_LEAGUES = new Set([
+  EUROLEAGUE_2026_SOURCE.leagueStatus,
+  ...EURO_BASKETBALL_SOURCE_ARCHIVES.map(source => source.leagueStatus),
+  'Endesa',
+].map(league => league.toLowerCase()));
+
+const inferSocialUiMode = (gameResults: GameResult[], teams: NBATeam[]): string | undefined => {
+  const hasEuroCompetition = gameResults.some(result => (
+    result.competitionId != null && EURO_COMPETITION_IDS.has(String(result.competitionId).toLowerCase())
+  ));
+  const externalTeams = teams.filter(team => (
+    Number(team.id) >= 1000
+    && EURO_TEAM_LEAGUES.has(String((team as any).league ?? '').toLowerCase())
+  ));
+  if (externalTeams.length === 0) return undefined;
+  const gameTeamIds = new Set(gameResults.flatMap(result => [result.homeTeamId, result.awayTeamId]));
+  const euroResultTeamIds = new Set(gameResults
+    .filter(result => result.competitionId != null && EURO_COMPETITION_IDS.has(String(result.competitionId).toLowerCase()))
+    .flatMap(result => [result.homeTeamId, result.awayTeamId]));
+  const allGameTeamsAreEuro = [...gameTeamIds].every(id => (
+    externalTeams.some(team => team.id === id) || euroResultTeamIds.has(id)
+  ));
+  return gameTeamIds.size > 0 && allGameTeamsAreEuro && (hasEuroCompetition || externalTeams.some(team => gameTeamIds.has(team.id)))
+    ? 'euro_isolated'
+    : undefined;
+};
 
 export class SocialEngine {
 
   private _leagueType?: string;
+  private _uiMode?: string;
 
-  constructor() {}
+  constructor() {
+    recordMediaRuntimeCall('socialEngineConstructors');
+  }
 
   async generateDailyPosts(
     gameResults: GameResult[],
@@ -46,19 +143,35 @@ export class SocialEngine {
     daysToSimulate: number = 1,
     playoffs?: PlayoffBracket | null,
     schedule?: Game[],
-    leagueType?: string
+    leagueType?: string,
+    options?: { fetchAvatars?: boolean; uiMode?: string | null },
   ): Promise<SocialPost[]> {
+    recordMediaRuntimeCall('socialPresentationCalls');
     this._leagueType = leagueType;
-    console.log(`[SocialEngine] ENTER generateDailyPosts — games=${gameResults.length}, players=${players.length}, date=${date}`);
+    this._uiMode = options?.uiMode ?? inferSocialUiMode(gameResults, teams);
     const posts: SocialPost[] = [];
+    if (!isTwitterAvailable(date)) {
+      return posts;
+    }
     if (gameResults.length === 0) {
-      console.log('[SocialEngine] offseason/no-game early exit');
       return posts;
     }
     const dayOfWeek = new Date(date).toLocaleDateString('en-US', { weekday: 'long' });
-    console.log(`[SocialEngine] before await fetchAvatarData`);
-    const avatars = await fetchAvatarData();
-    console.log(`[SocialEngine] after fetchAvatarData — avatars=${avatars?.length ?? 0}`);
+    // Long simulations build presentation output in batches. The app already
+    // preloads avatar data, so those batches must never wait on an external
+    // avatar request before the simulation can commit. Handle fallbacks still
+    // provide the correct account avatar when the cache is not hydrated yet.
+    const avatars = leagueType === 'fictional' || options?.fetchAvatars === false
+      ? []
+      : await fetchAvatarData();
+    const playerById = new Map(players.map(player => [player.internalId, player]));
+    const teamById = new Map(teams.map(team => [team.id, team]));
+    const playoffGameIds = playoffs && schedule
+      ? new Set(schedule.filter(game => game.isPlayoff || game.isPlayIn).map(game => game.gid))
+      : undefined;
+    const handlesById = new Map(Object.values(getSocialHandles(this._leagueType, this._uiMode)).map(handle => [handle.id, handle]));
+    const llmEnabled = SettingsManager.getSettings().enableLLM;
+    const templateSet = this._uiMode === 'euro_isolated' ? EURO_TEMPLATE_SET : NBA_TEMPLATE_SET;
 
     const multiplier = daysToSimulate <= 1 ? 1.0 : Math.max(0.05, 1.0 / daysToSimulate);
 
@@ -75,16 +188,14 @@ export class SocialEngine {
         // key: handleId → count
         const handlePostCount: Record<string, number> = {};
 
-        const homeTeam = teams.find(t => t.id === result.homeTeamId);
-        const awayTeam = teams.find(t => t.id === result.awayTeamId);
+        const homeTeam = teamById.get(result.homeTeamId);
+        const awayTeam = teamById.get(result.awayTeamId);
         if (!homeTeam || !awayTeam) continue;
 
         // During playoffs, skip regular-season game-recap templates for playoff games
         // (generatePlayoffPosts handles those with proper series context). Only injury
         // context still fires so Shams injury posts work during playoffs.
-        const isPlayoffGame = playoffs && schedule
-          ? schedule.some(g => g.gid === result.gameId && (g.isPlayoff || g.isPlayIn))
-          : false;
+        const isPlayoffGame = playoffGameIds?.has(result.gameId) ?? false;
 
         const baseCtx = { game: result, date, dayOfWeek, players, teams };
 
@@ -92,18 +203,18 @@ export class SocialEngine {
           // 1. Team Contexts (no player — game recap posts)
           this.processContext(posts, {
               ...baseCtx, team: homeTeam, opponent: awayTeam, stats: null
-          }, usedTemplateIds, handlePlayerUsed, handlePostCount, avatars, multiplier);
+          }, usedTemplateIds, handlePlayerUsed, handlePostCount, avatars, multiplier, handlesById, llmEnabled, templateSet);
 
           this.processContext(posts, {
               ...baseCtx, team: awayTeam, opponent: homeTeam, stats: null
-          }, usedTemplateIds, handlePlayerUsed, handlePostCount, avatars, multiplier);
+          }, usedTemplateIds, handlePlayerUsed, handlePostCount, avatars, multiplier, handlesById, llmEnabled, templateSet);
 
           // 2. Player Contexts — sorted by gameScore desc so stars get priority
           const allStats = [...result.homeStats, ...result.awayStats]
               .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
 
           for (const stat of allStats) {
-              const player = players.find(p => p.internalId === stat.playerId);
+              const player = playerById.get(stat.playerId);
               if (!player) continue;
 
               const team     = player.tid === homeTeam.id ? homeTeam : awayTeam;
@@ -111,46 +222,45 @@ export class SocialEngine {
 
               this.processContext(posts, {
                   ...baseCtx, player, team, opponent, stats: stat
-              }, usedTemplateIds, handlePlayerUsed, handlePostCount, avatars, multiplier);
+              }, usedTemplateIds, handlePlayerUsed, handlePostCount, avatars, multiplier, handlesById, llmEnabled, templateSet);
           }
 
           // 3. Injury Contexts (regular season only — Shams handles injuries during playoffs)
           if (result.injuries) {
               for (const injury of result.injuries) {
-                  const player = players.find(p => p.internalId === injury.playerId);
-                  if (!player || ['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) continue;
+                  const player = playerById.get(injury.playerId);
+                  if (!player || (this._uiMode !== 'euro_isolated'
+                    && ['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || ''))) continue;
 
                   const team     = player.tid === homeTeam.id ? homeTeam : awayTeam;
                   const opponent = player.tid === homeTeam.id ? awayTeam : homeTeam;
 
                   this.processContext(posts, {
                       ...baseCtx, player, team, opponent, injury
-                  }, usedTemplateIds, handlePlayerUsed, handlePostCount, avatars, multiplier);
+                  }, usedTemplateIds, handlePlayerUsed, handlePostCount, avatars, multiplier, handlesById, llmEnabled, templateSet);
               }
           }
         } // end !isPlayoffGame
     }
 
-    console.log(`[SocialEngine] after for-loop — posts=${posts.length}, playoffs=${!!playoffs}, schedule=${!!schedule}`);
-
     // Playoff-specific social posts — fire when series context is available
     if (playoffs && schedule) {
-      const avatars = await fetchAvatarData();
-      const playoffPosts = generatePlayoffPosts({
-        avatars,
-        date,
-        daysToSimulate,
-        gameResults,
-        leagueType: this._leagueType,
-        players,
-        playoffs,
-        schedule,
-        teams,
-      });
+      const playoffPosts = this._uiMode === 'euro_isolated'
+        ? generateEuroPlayoffPosts({ avatars, date, daysToSimulate, gameResults, players, playoffs, schedule, teams })
+        : generatePlayoffPosts({
+            avatars,
+            date,
+            daysToSimulate,
+            gameResults,
+            leagueType: this._leagueType,
+            players,
+            playoffs,
+            schedule,
+            teams,
+          });
       posts.push(...playoffPosts);
     }
 
-    console.log(`[SocialEngine] RETURN — total posts=${posts.length}`);
     return posts;
   }
 
@@ -161,20 +271,18 @@ export class SocialEngine {
       handlePlayerUsed: Set<string>,
       handlePostCount: Record<string, number>,
       avatars: any[],
-      multiplier: number = 1.0
+      multiplier: number,
+      handlesById: Map<string, ReturnType<typeof getSocialHandles>[string]>,
+      llmEnabled: boolean,
+      templateSet: SocialTemplateSet,
   ) {
-      // Sort by priority desc so highest-priority templates get first shot
-      const sortedTemplates = [...SOCIAL_TEMPLATES].sort((a, b) => {
-          const pa = typeof a.priority === 'function' ? a.priority(ctx) : (a.priority ?? 0);
-          const pb = typeof b.priority === 'function' ? b.priority(ctx) : (b.priority ?? 0);
-          return pb - pa;
-      });
+      const sortedTemplates = getOrderedSocialTemplates(ctx, templateSet);
 
-      const llmEnabled = SettingsManager.getSettings().enableLLM;
-
-      for (const template of sortedTemplates) {
+      for (const entry of sortedTemplates) {
+          const { template } = entry;
           try {
-              const handleId = template.handle;
+              const rawHandleId = template.handle;
+              const handleId = rawHandleId === 'shams' ? getPrimaryInsiderKey(ctx.date) : rawHandleId;
 
               // ── LLM override: skip injury/news templates for LLM-owned handles ──
               // When LLM is ON it generates richer versions; templates would duplicate.
@@ -197,14 +305,11 @@ export class SocialEngine {
               if (!template.condition(ctx)) continue;
 
               // ── Priority / probability gate ────────────────────────────────
-              let priority = typeof template.priority === 'function'
-                  ? template.priority(ctx)
-                  : (template.priority ?? 0);
-              priority = priority * multiplier;
+              const priority = entry.priority * multiplier;
               if (Math.random() * 100 > priority) continue;
 
               // ── Handle lookup ──────────────────────────────────────────────
-              const handle = Object.values(getSocialHandles(this._leagueType)).find(h => h.id === handleId);
+              const handle = handlesById.get(handleId);
               if (!handle) continue;
 
               // ── Content generation ─────────────────────────────────────────
@@ -301,7 +406,15 @@ export class SocialEngine {
                   date:                 postDate.toISOString(),
                   source:               'TwitterX',
                   category:             'GAME_EVENT',
-                  data:                 { gameId: ctx.game.gameId, templateId: template.id, ...extraData },
+                  data: {
+                    gameId: ctx.game.gameId,
+                    templateId: template.id,
+                    ...extraData,
+                    ...(this._uiMode === 'euro_isolated' ? { league: 'euro', leagueId: 'euro' } : {}),
+                    ...(this._uiMode === 'euro_isolated' && ctx.game.competitionId
+                      ? { competitionId: ctx.game.competitionId }
+                      : {}),
+                  },
                   mediaUrl:             mediaUrl || undefined,
                   mediaBackgroundColor: mediaBackgroundColor || undefined,
                   isNew:                true,

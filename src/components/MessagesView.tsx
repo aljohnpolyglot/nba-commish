@@ -5,12 +5,14 @@ import { MessageSquarePlus, Search } from 'lucide-react';
 import { ChatList } from './messages/ChatList';
 import { ChatWindow } from './messages/ChatWindow';
 import { NewChatModal } from './messages/NewChatModal';
+import type { NewChatContact } from '../services/messages/newChatContacts';
 
 export const MessagesView: React.FC = () => {
-  const { state, dispatchAction, markChatRead } = useGame();
+  const { state, dispatchAction, markChatRead, navigateToPlayer } = useGame();
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [isNewChatModalOpen, setIsNewChatModalOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [draftContact, setDraftContact] = useState<NewChatContact | null>(null);
 
   let selectedChat = state.chats.find(c => c.id === selectedChatId);
   
@@ -24,21 +26,23 @@ export const MessagesView: React.FC = () => {
   React.useEffect(() => {
     if (selectedChat && selectedChatId?.startsWith('new-')) {
       setSelectedChatId(selectedChat.id);
+      setDraftContact(null);
     }
   }, [selectedChat, selectedChatId]);
 
   React.useEffect(() => {
-    if (selectedChatId && !selectedChatId.startsWith('new-')) {
+    if (selectedChatId && !selectedChatId.startsWith('new-') && (selectedChat?.unreadCount ?? 0) > 0) {
       markChatRead(selectedChatId);
     }
-  }, [selectedChatId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [selectedChatId, selectedChat?.unreadCount]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelectChat = (chatId: string) => {
     setSelectedChatId(chatId);
+    setDraftContact(null);
     setSearchTerm('');
   };
 
-  const handleStartNewChat = (contact: any) => {
+  const handleStartNewChat = (contact: NewChatContact) => {
     // Check if chat already exists
     const existingChat = state.chats.find(c => 
       c.participants.includes(contact.id) && c.participants.includes('commissioner')
@@ -46,11 +50,35 @@ export const MessagesView: React.FC = () => {
 
     if (existingChat) {
       setSelectedChatId(existingChat.id);
+      setDraftContact(null);
     } else {
       setSelectedChatId(`new-${contact.id}`);
+      setDraftContact(contact);
     }
     setIsNewChatModalOpen(false);
   };
+
+  React.useEffect(() => {
+    const pending = state.pendingFreeAgentAgentContact;
+    if (!pending) return;
+    const player = state.players.find(candidate => candidate.internalId === pending.playerId);
+    if (player) {
+      handleStartNewChat({
+        id: `fa-agent:${player.internalId}`,
+        name: `${player.name}'s Agent`,
+        role: 'Agent',
+        org: 'Free Agency',
+        league: 'Free Agent',
+        kind: 'agent',
+        avatarUrl: player.imgURL,
+        ovr: 0,
+      });
+    }
+    dispatchAction({
+      type: 'UPDATE_STATE',
+      payload: { pendingFreeAgentAgentContact: undefined },
+    } as any);
+  }, [state.pendingFreeAgentAgentContact]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="h-full flex bg-slate-950 overflow-hidden">
@@ -98,7 +126,12 @@ export const MessagesView: React.FC = () => {
           <ChatWindow 
             chat={selectedChat} 
             draftContactId={selectedChatId.startsWith('new-') ? selectedChatId.replace('new-', '') : undefined}
-            onBack={() => setSelectedChatId(null)}
+            draftContact={draftContact ?? undefined}
+            onBack={() => {
+              setSelectedChatId(null);
+              setDraftContact(null);
+            }}
+            onViewPlayerBio={navigateToPlayer}
           />
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-slate-500">

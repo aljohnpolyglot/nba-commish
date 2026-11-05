@@ -1,5 +1,6 @@
 import { NBATeam, NBAPlayer, TradeException, TransactionDto } from '../types';
 import { getCapThresholds, contractToUSD } from './salaryUtils';
+import { parseGameDate, toISODateString } from './dateUtils';
 
 const TPE_TTL_DAYS = 365;
 
@@ -7,6 +8,28 @@ const addDaysISO = (iso: string, days: number): string => {
   const d = new Date(iso);
   d.setUTCDate(d.getUTCDate() + days);
   return d.toISOString();
+};
+
+const hashTradeExceptionIdentity = (value: string): string => {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+};
+
+const buildTransactionIdentity = (transaction: TransactionDto, currentDate: string): string => {
+  const date = toISODateString(parseGameDate(currentDate));
+  const directedAssets = Object.entries(transaction.teams)
+    .map(([teamId, assets]) => {
+      const players = assets.playersSent.map(player => player.internalId).sort().join(',');
+      const picks = assets.picksSent.map(pick => pick.dpid).sort((a, b) => a - b).join(',');
+      return `${teamId}:players=${players}:picks=${picks}:cash=${assets.cashSentUSD ?? 0}`;
+    })
+    .sort()
+    .join('|');
+  return `${date}|${directedAssets}`;
 };
 
 /** Active = not yet expired AND amount > 0. */
@@ -87,6 +110,7 @@ export const generateTPEsFromTrade = (
   players: NBAPlayer[],
   leagueStats: Parameters<typeof isTpeUsableUnderApron>[2],
   currentDate: string,
+  semanticTradeIdentity?: string,
 ): NBATeam[] => {
   const teamIds = Object.keys(transaction.teams).map(Number);
   if (teamIds.length !== 2) return teams;
@@ -98,6 +122,8 @@ export const generateTPEsFromTrade = (
   const thresholds = getCapThresholds(leagueStats);
   const year = leagueStats.year ?? new Date().getFullYear();
   const expiresDate = addDaysISO(currentDate, TPE_TTL_DAYS);
+  const transactionIdentity = semanticTradeIdentity || buildTransactionIdentity(transaction, currentDate);
+  const existingIds = new Set(teams.flatMap(team => (team.tradeExceptions ?? []).map(tpe => tpe.id)));
 
   const tpeSource: TradeException['source'] = (transaction as any).isSignAndTrade
     ? 'sign-and-trade'
@@ -113,13 +139,21 @@ export const generateTPEsFromTrade = (
     // Allocate the diff across outgoing players, weighted by their salary.
     // One TPE per outgoing player, as the real CBA generates.
     const tpes: TradeException[] = [];
-    for (const p of sentPlayers) {
+    for (const [playerIndex, p] of sentPlayers.entries()) {
       const pUSD = contractToUSD(p.contract?.amount || 0);
       if (pUSD <= 0) continue;
       const share = Math.round((pUSD / salaryOut) * diff);
       if (share <= 0) continue;
+      const identity = `${transactionIdentity}|team=${team.id}|player=${p.internalId}|index=${playerIndex}|amount=${share}`;
+      let id = `tpe-${team.id}-${hashTradeExceptionIdentity(identity)}`;
+      let collisionIndex = 1;
+      while (existingIds.has(id)) {
+        id = `tpe-${team.id}-${hashTradeExceptionIdentity(`${identity}|collision=${collisionIndex}`)}`;
+        collisionIndex += 1;
+      }
+      existingIds.add(id);
       tpes.push({
-        id: `tpe-${team.id}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        id,
         amountUSD: share,
         createdDate: currentDate,
         expiresDate,

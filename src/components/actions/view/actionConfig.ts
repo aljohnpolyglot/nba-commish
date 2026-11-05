@@ -1,6 +1,7 @@
-import { Mic, Users, Syringe, Dna, DollarSign, Eye, Utensils, Gavel, Globe, HandCoins, Ban, Star, Map, Zap, Plane, MessageSquare, Music, Trophy, AlertTriangle, UserX } from 'lucide-react';
+import { DollarSign, Utensils, Globe, HandCoins, Zap, Plane, Music } from 'lucide-react';
 import { GameState } from '../../../types';
 import type { LucideIcon } from 'lucide-react';
+import { SettingsManager } from '../../../services/SettingsManager';
 
 export interface ActionItem {
   id: string;
@@ -15,153 +16,16 @@ export interface ActionItem {
 }
 
 export interface ActionsConfig {
-  executive: ActionItem[];
-  season: ActionItem[];
   personal: ActionItem[];
   covert: ActionItem[];
 }
 
 export const getActionsConfig = (state: GameState, callbacks: {
-    setAnnouncementModalOpen: (open: boolean) => void;
     openPersonSelector: (type: any) => void;
-    setCitySelectorOpen: (open: boolean) => void;
-    setCitySelectorType: (type: 'expansion') => void;
-    setCelebrityModalOpen: (open: boolean) => void;
-    setTradeModalOpen: (open: boolean) => void;
     setTravelModalOpen: (open: boolean) => void;
     setVisitNonNBAModalOpen: (open: boolean) => void;
-    setSignFreeAgentModalOpen: (open: boolean) => void;
-    setInvitePerformanceModalOpen: (open: boolean, event?: string) => void;
     setTransferFundsModalOpen: (open: boolean) => void;
-    setChristmasModalOpen: (open: boolean) => void;
-    setGlobalGamesModalOpen: (open: boolean) => void;
-    setPreseasonInternationalModalOpen: (open: boolean) => void;
-    setRigLotteryModalOpen: (open: boolean) => void;
-    confirmAction: (type: string, title: string, desc: string) => void;
 }): ActionsConfig => ({
-    executive: [
-      {
-        id: 'PUBLIC_ANNOUNCEMENT',
-        title: "Public Announcement",
-        description: "Bypass team PR and speak directly to the world. Issue official league communications with the full weight of the commissioner's office.",
-        cost: "None",
-        benefit: "+Authority / +Clarity",
-        icon: Mic,
-        color: "sky",
-        onClick: () => callbacks.setAnnouncementModalOpen(true)
-      },
-      {
-        id: 'FINE_PERSON',
-        title: "Levy Fine",
-        description: "Issue a formal monetary fine to any player, coach, or team. All fines flow directly into league operational funds.",
-        cost: "None",
-        benefit: "+League Funds / +Discipline",
-        icon: Ban,
-        color: "rose",
-        onClick: () => callbacks.openPersonSelector('fine')
-      },
-      {
-        id: 'SUSPEND_PERSON',
-        title: "Suspend Personnel",
-        description: "Issue an immediate suspension without pay. Suspended personnel miss games and face heavy media scrutiny.",
-        cost: "-Approval (Target Group)",
-        benefit: "+Authority / +League Integrity",
-        icon: Gavel,
-        color: "rose",
-        onClick: () => callbacks.openPersonSelector('suspension')
-      },
-      {
-        id: 'DRUG_TEST',
-        title: "Mandatory Drug Test",
-        description: "Order a 'randomly selected' drug test. A positive result triggers automatic suspension and a career-altering scandal.",
-        cost: "-Player Approval / -Union Trust",
-        benefit: "+Legacy (Tough on Crime)",
-        icon: Syringe,
-        color: "emerald",
-        onClick: () => callbacks.openPersonSelector('drug_test')
-      },
-      ...((state.leagueStats?.uiMode === 'euro_isolated' || state.leagueStats?.uiMode === 'pba_isolated') ? [] : [(() => {
-        const sched = state.expansionSchedule;
-        const lsYear = state.leagueStats?.year;
-        const isDueNow = !!sched && lsYear != null && sched.year === lsYear;
-        const isScheduledFuture = !!sched && lsYear != null && sched.year > lsYear;
-        const titleText = isDueNow
-          ? `League Expansion — ${sched!.year} (due now)`
-          : isScheduledFuture
-            ? `League Expansion (scheduled for ${sched!.year})`
-            : 'League Expansion';
-        const descText = isDueNow
-          ? `Run the expansion draft for the ${sched!.teams.length} scheduled franchise${sched!.teams.length === 1 ? '' : 's'} this offseason.`
-          : 'Authorize new NBA franchises and permanently reshape the competitive landscape. ZenGM-style: setup teams, realignment, schedule for any future year.';
-        const confirmDesc = isDueNow
-          ? 'Open player protection for the scheduled expansion. AI teams are pre-filled.'
-          : 'Plan a new expansion draft. You\'ll set up the new franchises, realignment, and protection rules in the next step.';
-        return {
-          id: 'EXPANSION_DRAFT',
-          title: titleText,
-          description: descText,
-          cost: "-$500M League Funds (Per Franchise)",
-          benefit: "+++Revenue / ++Legacy",
-          icon: Map,
-          color: "indigo",
-          // Disabled nur bei Future-Schedule (Grace-Period läuft). Now-Due erlaubt
-          // Klick → öffnet direkt das Protect-Modal (Setup wird übersprungen).
-          disabled: isScheduledFuture,
-          onClick: () => callbacks.confirmAction('EXPANSION_DRAFT', titleText, confirmDesc),
-        };
-      })()]),
-      {
-        id: 'ENDORSE_HOF',
-        title: "Endorse for Hall of Fame",
-        description: "Formally endorse a retired player for Hall of Fame induction. Your endorsement carries significant institutional weight.",
-        cost: "None",
-        benefit: "+Legacy / +Relationship with Player/Family",
-        icon: Trophy,
-        color: "amber",
-        onClick: () => callbacks.openPersonSelector('endorse_hof')
-      },
-      {
-        id: 'SIGN_FREE_AGENT',
-        title: "Sign Free Agent",
-        description: "Place a free agent with any team. The commissioner's offer is always accepted — you still pick salary, length, and option.",
-        cost: "None (Covert)",
-        benefit: "Roster Control / +International Diplomacy",
-        icon: Users,
-        color: "indigo",
-        onClick: () => callbacks.setSignFreeAgentModalOpen(true)
-      },
-      {
-        id: 'EXECUTIVE_TRADE',
-        title: "Executive Trade",
-        description: "Force a trade between any two teams, bypassing GM approval and salary caps. Owners will not forget — and neither will the public.",
-        cost: "-Legacy / -Owner Approval / -GM Trust",
-        benefit: "Total Roster Control",
-        icon: Gavel,
-        color: "indigo",
-        onClick: () => callbacks.setTradeModalOpen(true)
-      },
-      {
-        id: 'WAIVE_PLAYER',
-        title: "Waive Player",
-        description: "Force a team to immediately release a player to the waiver wire. Powerful for breaking roster logjams.",
-        cost: "-Player Approval / -Team Relationship",
-        benefit: "Roster Control / +Free Agent Market Activity",
-        icon: UserX,
-        color: "rose",
-        onClick: () => callbacks.openPersonSelector('waive')
-      },
-      {
-        id: 'FIRE_PERSONNEL',
-        title: "Fire Personnel",
-        description: "Immediately terminate a GM, coach, owner, or referee. This sends a clear message — but triggers sharp backlash from their peers.",
-        cost: "-Approval (Target's Peer Group) / -Public Trust",
-        benefit: "+Authority / +Standards Enforcement",
-        icon: UserX,
-        color: "rose",
-        onClick: () => callbacks.openPersonSelector('fire')
-      }
-    ],
-    season: [],
     personal: [
       {
         id: 'TRANSFER_FUNDS',
@@ -216,22 +80,12 @@ export const getActionsConfig = (state: GameState, callbacks: {
       {
         id: 'VISIT_NON_NBA',
         title: "Visit Non-NBA Team",
-        description: "Fly out to an international club — Euroleague, PBA, B-League, or WNBA. Build diplomatic bridges and signal the NBA's global commitment.",
+        description: "Fly out to an international club — Euroleague, PBA, B-League, or another supported men's league. Build diplomatic bridges and signal the NBA's global commitment.",
         cost: "-$10k Personal Wealth",
-        benefit: "+Scouting Access / ++Diplomacy / +International Signing Pipeline",
+        benefit: "+Scouting Access / ++Diplomacy / +International Signing Reach",
         icon: Plane,
         color: "sky",
         onClick: () => callbacks.setVisitNonNBAModalOpen(true)
-      },
-      {
-        id: 'CONTACT_PERSON',
-        title: "Direct Message",
-        description: "Send a direct personal message to anyone in basketball. A line from the commissioner's desk carries enormous weight.",
-        cost: "None",
-        benefit: "+Influence / +Relationship / Conversation Starter",
-        icon: MessageSquare,
-        color: "emerald",
-        onClick: () => callbacks.openPersonSelector('contact')
       },
       {
         id: 'GO_TO_CLUB',
@@ -245,7 +99,7 @@ export const getActionsConfig = (state: GameState, callbacks: {
       }
     ],
     covert: [
-      {
+      ...(state.godModeEnabled === true && SettingsManager.getSettings().enableLLM ? [{
         id: 'HYPNOTIZE',
         title: "Hypnotize",
         description: "Deploy psychological influence to compel a target to perform a specific action — no traceable link back to you. High success rate. High suspicion risk.",
@@ -254,47 +108,6 @@ export const getActionsConfig = (state: GameState, callbacks: {
         icon: Zap,
         color: "violet",
         onClick: () => callbacks.openPersonSelector('hypnotize')
-      },
-      {
-        id: 'SABOTAGE_PLAYER',
-        title: "Sabotage Player",
-        description: "Arrange for a player to suffer a 'natural' injury. Extremely difficult to trace. Extremely dangerous if discovered.",
-        cost: "None (Covert) / -Morality / High Detection Risk",
-        benefit: "Targeted Roster Disruption",
-        icon: AlertTriangle,
-        color: "rose",
-        onClick: () => callbacks.openPersonSelector('sabotage')
-      },
-      {
-        id: 'BRIBE_PERSON',
-        title: "Offer Bribe",
-        description: "Deliver a financial incentive in exchange for a specific outcome. Illegal under any jurisdiction. Extraordinarily effective if buried.",
-        cost: "-Personal Wealth (Variable) / Criminal Exposure Risk",
-        benefit: "++Influence / +Guaranteed Outcome",
-        icon: HandCoins,
-        color: "emerald",
-        onClick: () => callbacks.openPersonSelector('bribe')
-      },
-      {
-        id: 'LEAK_SCANDAL',
-        title: "Leak Scandal",
-        description: "Anonymously surface damaging information about a target. The story hijacks the news cycle. Your fingerprints will never appear.",
-        cost: "-Legacy (If Attributed) / -Moral Standing",
-        benefit: "+Viewership / +Distraction Effect / -Target's Reputation",
-        icon: Eye,
-        color: "rose",
-        onClick: () => callbacks.openPersonSelector('leak_scandal')
-      },
-      {
-        id: 'RIG_LOTTERY',
-        title: "Fix the Lottery",
-        description: "Manipulate the Draft Lottery to deliver the #1 pick to the team of your choosing. If this ever leaks, your legacy burns.",
-        cost: "-Legacy (Catastrophic if Exposed) / Criminal Risk",
-        benefit: "+Owner Approval (Beneficiary) / Total Draft Control",
-        icon: Dna,
-        color: "violet",
-        disabled: !!(state as any).draftLotteryResult,
-        onClick: () => callbacks.setRigLotteryModalOpen(true)
-      }
+      }] : [])
     ]
 });

@@ -32,10 +32,12 @@ export class LiveGameEngine {
   
   homeRatings: any;
   awayRatings: any;
+  playersOnCourt: number;
 
-  constructor(homeTeam: NBATeam, awayTeam: NBATeam, players: NBAPlayer[]) {
+  constructor(homeTeam: NBATeam, awayTeam: NBATeam, players: NBAPlayer[], playersOnCourt = 5) {
     this.homeTeam = homeTeam;
     this.awayTeam = awayTeam;
+    this.playersOnCourt = Math.max(1, Math.floor(playersOnCourt));
     
     this.homePlayers = players.filter(p => p.tid === homeTeam.id);
     this.awayPlayers = players.filter(p => p.tid === awayTeam.id);
@@ -102,17 +104,17 @@ export class LiveGameEngine {
     const timeElapsed = Math.floor(Math.random() * 14) + 10; // 10-24 seconds
     this.clock = Math.max(0, this.clock - timeElapsed);
     
-    // Add seconds to random 5 players (simplified)
+    // Add seconds to the active lineup (simplified)
     const addSecs = (players: NBAPlayer[], stats: Record<string, LivePlayerStat>) => {
-      for (let i = 0; i < 5 && i < players.length; i++) {
+      for (let i = 0; i < this.playersOnCourt && i < players.length; i++) {
         stats[players[i].internalId].sec += timeElapsed;
       }
     };
     addSecs(this.homePlayers, this.homeStats);
     addSecs(this.awayPlayers, this.awayStats);
     
-    const offense = this.homePossession ? this.homePlayers : this.awayPlayers;
-    const defense = this.homePossession ? this.awayPlayers : this.homePlayers;
+    const offense = (this.homePossession ? this.homePlayers : this.awayPlayers).slice(0, this.playersOnCourt);
+    const defense = (this.homePossession ? this.awayPlayers : this.homePlayers).slice(0, this.playersOnCourt);
     const offStats = this.homePossession ? this.homeStats : this.awayStats;
     const defStats = this.homePossession ? this.awayStats : this.homeStats;
     const offTeam = this.homePossession ? this.homeTeam : this.awayTeam;

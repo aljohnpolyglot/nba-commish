@@ -1,0 +1,235 @@
+﻿{
+    "version":  64,
+    "gameAttributes":  {
+                           "lid":  0,
+                           "name":  "PBA Fictional Food League",
+                           "numGames":  82,
+                           "numPlayoffRounds":  4,
+                           "conferences":  [
+                                               {
+                                                   "cid":  0,
+                                                   "name":  "Philippine Food Conference"
+                                               }
+                                           ],
+                           "divisions":  [
+                                             {
+                                                 "did":  0,
+                                                 "cid":  0,
+                                                 "name":  "Fictional Brands"
+                                             }
+                                         ]
+                       },
+    "teams":  [
+                  {
+                      "tid":  0,
+                      "cid":  0,
+                      "did":  0,
+                      "region":  "Boy Bawang",
+                      "name":  "Cornicks",
+                      "abbrev":  "BBC",
+                      "pop":  1,
+                      "stadiumCapacity":  10000,
+                      "colors":  [
+                                     "#0b3f8f",
+                                     "#f7d23b",
+                                     "#ffffff"
+                                 ],
+                      "imgURL":  "/data/pba/fictional-expansion/logos/boy_bawang_cornicks.png",
+                      "imgURLSmall":  "/data/pba/fictional-expansion/logos/boy_bawang_cornicks.png",
+                      "jersey":  "default",
+                      "brand":  {
+                                    "sponsor":  "Boy Bawang",
+                                    "nickname":  "Cornicks",
+                                    "fullName":  "Boy Bawang Cornicks",
+                                    "sourceFile":  "boybawangcornicks.png",
+                                    "normalizedLogo":  "boy_bawang_cornicks.png",
+                                    "concept":  "Fictional Filipino food-brand PBA team"
+                                }
+                  },
+                  {
+                      "tid":  1,
+                      "cid":  0,
+                      "did":  0,
+                      "region":  "Burger Machine",
+                      "name":  "Ultimate Burgers",
+                      "abbrev":  "BMU",
+                      "pop":  1,
+                      "stadiumCapacity":  10000,
+                      "colors":  [
+                                     "#0a6b3a",
+                                     "#fff0c9",
+                                     "#111827"
+                                 ],
+                      "imgURL":  "/data/pba/fictional-expansion/logos/burger_machine_ultimate_burgers.png",
+                      "imgURLSmall":  "/data/pba/fictional-expansion/logos/burger_machine_ultimate_burgers.png",
+                      "jersey":  "default",
+                      "brand":  {
+                                    "sponsor":  "Burger Machine",
+                                    "nickname":  "Ultimate Burgers",
+                                    "fullName":  "Burger Machine Ultimate Burgers",
+                                    "sourceFile":  "burgermachineultimateburgers.png",
+                                    "normalizedLogo":  "burger_machine_ultimate_burgers.png",
+                                    "concept":  "Fictional Filipino food-brand PBA team"
+                                }
+                  },
+                  {
+                      "tid":  2,
+                      "cid":  0,
+                      "did":  0,
+                      "region":  "Chooks-to-Go",
+                      "name":  "Uling Roasters",
+                      "abbrev":  "CTG",
+                      "pop":  1,
+                      "stadiumCapacity":  10000,
+                      "colors":  [
+                                     "#e00000",
+                                     "#ffd400",
+                                     "#111111"
+                                 ],
+                      "imgURL":  "/data/pba/fictional-expansion/logos/chooks_to_go_uling_roasters.png",
+                      "imgURLSmall":  "/data/pba/fictional-expansion/logos/chooks_to_go_uling_roasters.png",
+                      "jersey":  "default",
+                      "brand":  {
+                                    "sponsor":  "Chooks-to-Go",
+                                    "nickname":  "Uling Roasters",
+                                    "fullName":  "Chooks-to-Go Uling Roasters",
+                                    "sourceFile":  "chookstogoulingroasters.png",
+                                    "normalizedLogo":  "chooks_to_go_uling_roasters.png",
+                                    "concept":  "Fictional Filipino food-brand PBA team"
+                                }
+                  },
+                  {
+                      "tid":  3,
+                      "cid":  0,
+                      "did":  0,
+                      "region":  "Dunkin",
+                      "name":  "Dunkers",
+                      "abbrev":  "DDK",
+                      "pop":  1,
+                      "stadiumCapacity":  10000,
+                      "colors":  [
+                                     "#ff671f",
+                                     "#ec3c96",
+                                     "#4b2408"
+                                 ],
+                      "imgURL":  "/data/pba/fictional-expansion/logos/dunkin_dunkers.png",
+                      "imgURLSmall":  "/data/pba/fictional-expansion/logos/dunkin_dunkers.png",
+                      "jersey":  "default",
+                      "brand":  {
+                                    "sponsor":  "Dunkin",
+                                    "nickname":  "Dunkers",
+                                    "fullName":  "Dunkin Dunkers",
+                                    "sourceFile":  "dunkindunkers.png",
+                                    "normalizedLogo":  "dunkin_dunkers.png",
+                                    "concept":  "Fictional Filipino food-brand PBA team"
+                                }
+                  },
+                  {
+                      "tid":  4,
+                      "cid":  0,
+                      "did":  0,
+                      "region":  "Jollibee",
+                      "name":  "Yumburgers",
+                      "abbrev":  "JYB",
+                      "pop":  1,
+                      "stadiumCapacity":  10000,
+                      "colors":  [
+                                     "#d71920",
+                                     "#f7c600",
+                                     "#0b6b3a"
+                                 ],
+                      "imgURL":  "/data/pba/fictional-expansion/logos/jollibee_yumburgers.png",
+                      "imgURLSmall":  "/data/pba/fictional-expansion/logos/jollibee_yumburgers.png",
+                      "jersey":  "default",
+                      "brand":  {
+                                    "sponsor":  "Jollibee",
+                                    "nickname":  "Yumburgers",
+                                    "fullName":  "Jollibee Yumburgers",
+                                    "sourceFile":  "jollibeeyumburgers.png",
+                                    "normalizedLogo":  "jollibee_yumburgers.png",
+                                    "concept":  "Fictional Filipino food-brand PBA team"
+                                }
+                  },
+                  {
+                      "tid":  5,
+                      "cid":  0,
+                      "did":  0,
+                      "region":  "Mang Juan",
+                      "name":  "Kropeks",
+                      "abbrev":  "MJK",
+                      "pop":  1,
+                      "stadiumCapacity":  10000,
+                      "colors":  [
+                                     "#e91e63",
+                                     "#f7941d",
+                                     "#111111"
+                                 ],
+                      "imgURL":  "/data/pba/fictional-expansion/logos/mang_juan_kropeks.png",
+                      "imgURLSmall":  "/data/pba/fictional-expansion/logos/mang_juan_kropeks.png",
+                      "jersey":  "default",
+                      "brand":  {
+                                    "sponsor":  "Mang Juan",
+                                    "nickname":  "Kropeks",
+                                    "fullName":  "Mang Juan Kropeks",
+                                    "sourceFile":  "mangjuankropeks.png",
+                                    "normalizedLogo":  "mang_juan_kropeks.png",
+                                    "concept":  "Fictional Filipino food-brand PBA team"
+                                }
+                  },
+                  {
+                      "tid":  6,
+                      "cid":  0,
+                      "did":  0,
+                      "region":  "Mercury",
+                      "name":  "Druglords",
+                      "abbrev":  "MDR",
+                      "pop":  1,
+                      "stadiumCapacity":  10000,
+                      "colors":  [
+                                     "#e31b23",
+                                     "#ffffff",
+                                     "#111111"
+                                 ],
+                      "imgURL":  "/data/pba/fictional-expansion/logos/mercury_druglords.png",
+                      "imgURLSmall":  "/data/pba/fictional-expansion/logos/mercury_druglords.png",
+                      "jersey":  "default",
+                      "brand":  {
+                                    "sponsor":  "Mercury",
+                                    "nickname":  "Druglords",
+                                    "fullName":  "Mercury Druglords",
+                                    "sourceFile":  "mercurydruglords.png",
+                                    "normalizedLogo":  "mercury_druglords.png",
+                                    "concept":  "Fictional Filipino food-brand PBA team"
+                                }
+                  },
+                  {
+                      "tid":  7,
+                      "cid":  0,
+                      "did":  0,
+                      "region":  "Pancit Canton",
+                      "name":  "Chilimansis",
+                      "abbrev":  "PCM",
+                      "pop":  1,
+                      "stadiumCapacity":  10000,
+                      "colors":  [
+                                     "#0f5a33",
+                                     "#d71920",
+                                     "#f7d23b"
+                                 ],
+                      "imgURL":  "/data/pba/fictional-expansion/logos/pancit_canton_chilimansis.png",
+                      "imgURLSmall":  "/data/pba/fictional-expansion/logos/pancit_canton_chilimansis.png",
+                      "jersey":  "default",
+                      "brand":  {
+                                    "sponsor":  "Pancit Canton",
+                                    "nickname":  "Chilimansis",
+                                    "fullName":  "Pancit Canton Chilimansis",
+                                    "sourceFile":  "pancitcantonchilimansis.png",
+                                    "normalizedLogo":  "pancit_canton_chilimansis.png",
+                                    "concept":  "Fictional Filipino food-brand PBA team"
+                                }
+                  }
+              ],
+    "players":  [
+
+                ]
+}

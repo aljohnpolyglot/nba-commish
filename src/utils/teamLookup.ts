@@ -1,6 +1,47 @@
 import type { NBATeam, NonNBATeam } from '../types';
 import { getTeamForGame } from './helpers';
-import { getResolvedTeamLogoUrl } from './teamAssets';
+import { getHistoricalTeamSnapshot, getResolvedTeamLogoUrl } from './teamAssets';
+import { EXTERNAL_LEAGUE_STATUSES } from '../constants';
+import { getTeamFullName } from './teamNames';
+
+const normalizeTeamIdentity = (value: unknown): string => String(value ?? '')
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '')
+  .toLowerCase()
+  .replace(/[^a-z0-9]+/g, ' ')
+  .trim();
+
+export function resolveTeamByHistoricalName<T extends object>(
+  teams: T[],
+  rawName: unknown,
+  season?: number,
+): T | undefined {
+  const targets = String(rawName ?? '').split('/').map(normalizeTeamIdentity).filter(Boolean);
+  if (targets.length === 0) return undefined;
+  return teams.find(team => {
+    const candidate = team as Record<string, unknown>;
+    const snapshots = season == null
+      ? [candidate, ...((candidate.identitySeasons as Array<Record<string, unknown>> | undefined) ?? [])]
+      : [getHistoricalTeamSnapshot(team, season)];
+    return snapshots.some(snapshot => {
+      const keys = [
+        getTeamFullName(snapshot),
+        snapshot.name,
+        snapshot.region,
+        snapshot.abbrev,
+        snapshot.abbreviation,
+      ].map(normalizeTeamIdentity).filter(Boolean);
+      return targets.some(target => keys.some(key => key === target || (key.length >= 5 && target.includes(key))));
+    });
+  });
+}
+
+function externalTeamAbbrev(team: NonNBATeam): string {
+  const saved = String(team.abbrev ?? '').trim().toUpperCase();
+  if (saved.length >= 3) return saved;
+  const recognizable = String(team.name ?? '').replace(/[^A-Za-z0-9]/g, '').slice(0, 3).toUpperCase();
+  return recognizable || saved || 'CLB';
+}
 
 /**
  * Resolve any tid to an NBATeam-shaped object — handles all three scopes:
@@ -23,12 +64,25 @@ export function resolveAnyTeam(
   if (tid >= 100) {
     const nonNBA = nonNBATeams.find(t => t.tid === tid);
     if (nonNBA) {
+      const record = nonNBA as NonNBATeam & {
+        wins?: number;
+        losses?: number;
+        won?: number;
+        lost?: number;
+        streak?: NBATeam['streak'];
+        strength?: number;
+      };
       return {
         id: tid,
         name: nonNBA.name,
-        abbrev: nonNBA.abbrev || nonNBA.name.substring(0, 3).toUpperCase(),
+        abbrev: externalTeamAbbrev(nonNBA),
         logoUrl: getResolvedTeamLogoUrl(nonNBA),
-        wins: 0, losses: 0, city: '', state: '', pop: nonNBA.pop ?? 0, region: nonNBA.region ?? '',
+        wins: Number(record.wins ?? record.won ?? 0),
+        losses: Number(record.losses ?? record.lost ?? 0),
+        streak: record.streak,
+        strength: record.strength,
+        city: '', state: '', pop: nonNBA.pop ?? 0, region: nonNBA.region ?? '',
+        league: nonNBA.league,
         conference: nonNBA.league, division: '',
         primaryColor: nonNBA.colors?.[0] ?? '', secondaryColor: nonNBA.colors?.[1] ?? '',
         arena: '', capacity: nonNBA.stadiumCapacity ?? 0, championships: 0, playoffAppearances: 0,
@@ -59,8 +113,7 @@ export function isNonNBATid(tid: number): boolean {
  *  status at all (legacy NBA data). */
 const ROSTER_LEAGUE_STATUSES = new Set([
   'Active',
-  'Euroleague', 'Endesa', 'PBA', 'WNBA',
-  'B-League', 'G-League', 'China CBA', 'NBL Australia',
+  ...EXTERNAL_LEAGUE_STATUSES,
 ]);
 
 /**
@@ -84,7 +137,19 @@ export function getActiveLeagueTeams(state: {
   teams: NBATeam[];
   nonNBATeams?: NonNBATeam[];
   userTeamId?: number | null;
+  leagueStats?: { uiMode?: string };
 }): NBATeam[] {
+  if (state.leagueStats?.uiMode === 'pba_isolated') {
+    const pbaTeams = (state.nonNBATeams ?? []).filter(team =>
+      String(team.league ?? '').toLowerCase().includes('pba')
+      || (team.tid >= 2000 && team.tid < 3000)
+    );
+    if (pbaTeams.length > 0) {
+      return pbaTeams
+        .map(team => resolveAnyTeam(team.tid, state.teams, state.nonNBATeams ?? []))
+        .filter((team): team is NBATeam => team !== null);
+    }
+  }
   const uid = state.userTeamId;
   if (uid == null || uid < 100) return state.teams;
   const userTeam = (state.nonNBATeams ?? []).find(t => t.tid === uid);
@@ -110,7 +175,9 @@ export function getActiveLeagueTeams(state: {
  *  - status is missing entirely (legacy NBA data with `undefined` status —
  *    keep the previous tolerance so we don't regress existing saves).
  */
-export function isOnRoster(player: { status?: string }): boolean {
+export function isOnRoster(player: { status?: string; euroAcademyPlayer?: boolean; euroReservePlayer?: boolean; promotedFromAcademy?: boolean }): boolean {
+  if (player.euroReservePlayer) return false;
+  if (player.euroAcademyPlayer && !player.promotedFromAcademy) return false;
   if (!player.status) return true;
   return ROSTER_LEAGUE_STATUSES.has(player.status);
 }

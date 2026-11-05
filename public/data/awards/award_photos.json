@@ -1,0 +1,3552 @@
+{
+  "soccer": [
+    {
+      "name": "AFC Asian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/v9cnxy1650657032.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5beu3q1701100201.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/559-afc-asian-cup"
+    },
+    {
+      "name": "AFC Challenge League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qmcv281747112739.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/q1kqm71747118258.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3278-afc-challenge-league"
+    },
+    {
+      "name": "AFC Champions League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rngjps1650462305.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5d2kf71701795499.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/530-afc-champions-league"
+    },
+    {
+      "name": "AFC Champions League Elite",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3mte4q1747120550.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/k9ycaa1747120551.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3279-afc-champions-league-elite"
+    },
+    {
+      "name": "AFC Champions League Two",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/epno6k1747120732.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/d6y5dn1747120731.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3280-afc-champions-league-two"
+    },
+    {
+      "name": "AFC Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/bkrdok1650462329.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/l1a0sk1650462219.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/531-afc-cup"
+    },
+    {
+      "name": "AFC Womens Asian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cixc861726409274.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/43x38v1726409101.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2481-afc-womens-asian-cup"
+    },
+    {
+      "name": "AFC Womens Champions League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/lscsfy1758322577.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/redlw41758322577.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3473-afc-womens-champions-league"
+    },
+    {
+      "name": "Africa Cup of Nations",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jrr33o1665078413.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/l8eg3q1701102731.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/558-africa-cup-of-nations"
+    },
+    {
+      "name": "Africa Cup of Nations Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1d6erv1672834276.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/usgk3b1672834287.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1890-africa-cup-of-nations-golden-boot"
+    },
+    {
+      "name": "African Footballer of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/oc60d81702398996.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/18z2fe1702395912.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2081-african-footballer-of-the-year"
+    },
+    {
+      "name": "African Womens Footballer of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/f7f9241698782346.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ws55f41698782181.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2043-african-womens-footballer-of-the-year"
+    },
+    {
+      "name": "Albanian Kategoria Superiore",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/kx2olc1677347658.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/bf5xlz1677347554.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1928-albanian-kategoria-superiore"
+    },
+    {
+      "name": "Algarve Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/67x34u1653328539.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9wb46f1653596887.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1557-algarve-cup"
+    },
+    {
+      "name": "Algerian Ligue 1",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/srd3jy1714900280.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/gikf0e1714900263.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2159-algerian-ligue-1"
+    },
+    {
+      "name": "American MLS Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/u20nzw1651581398.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/a9a6mp1651581480.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1103-american-mls-cup"
+    },
+    {
+      "name": "American MLS Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/taoq211661590070.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fcxg231661590079.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1687-american-mls-golden-boot"
+    },
+    {
+      "name": "American MLS MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wvdp321661685690.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/w41js31661685698.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1704-american-mls-mvp"
+    },
+    {
+      "name": "American MLS Supporters Shield",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qr896p1655030019.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5ayg8c1655029989.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1104-american-mls-supporters-shield"
+    },
+    {
+      "name": "American NASL",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wnvi871650461801.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8r3een1650461859.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/746-american-nasl"
+    },
+    {
+      "name": "American NWSL Best XI",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/d10evp1656875012.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/a4f7vc1653727670.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1553-american-nwsl-best-xi"
+    },
+    {
+      "name": "American NWSL Challenge Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/gi6tgj1653327664.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/r9qw611653327604.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1550-american-nwsl-challenge-cup"
+    },
+    {
+      "name": "American NWSL Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vuizw61653122486.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/aylbtt1699782063.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1423-american-nwsl-championship"
+    },
+    {
+      "name": "American NWSL Community Shield",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/aeqhlf1656796288.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9axrip1656796395.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1549-american-nwsl-community-shield"
+    },
+    {
+      "name": "American NWSL Defender of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/otmymp1656796308.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/v5h3h81653727617.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1554-american-nwsl-defender-of-the-year"
+    },
+    {
+      "name": "American NWSL Goalkeeper of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/k7q97y1656796304.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3l0ty31653727632.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1555-american-nwsl-goalkeeper-of-the-year"
+    },
+    {
+      "name": "American NWSL Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/du2yuk1656796300.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/c8a3gl1653727641.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1551-american-nwsl-golden-boot"
+    },
+    {
+      "name": "American NWSL MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ztt1hn1656796296.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/01ousg1732443793.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1552-american-nwsl-mvp"
+    },
+    {
+      "name": "American NWSL Rookie of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/kns7i31656796292.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/vn8eoy1653727656.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1556-american-nwsl-rookie-of-the-year"
+    },
+    {
+      "name": "American NWSL Shield",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0f3tgd1655029788.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zur8q01732443635.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1548-american-nwsl-shield"
+    },
+    {
+      "name": "American USL Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/p0lvf51751389307.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wdu02x1751389381.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3328-american-usl-championship"
+    },
+    {
+      "name": "American USL League One",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/fk8qi61751396547.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/57k3sc1751396541.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3329-american-usl-league-one"
+    },
+    {
+      "name": "Arabian Gulf Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/brxlid1661584847.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/rtctvc1661584758.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1683-arabian-gulf-cup"
+    },
+    {
+      "name": "Argentinian Copa de la Liga Profesional",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5f2bia1716498018.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/q7n7m51716497981.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2224-argentinian-copa-de-la-liga-profesional"
+    },
+    {
+      "name": "Argentinian Primera B Nacional",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hlrju21764334700.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nzycu91764335206.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3531-argentinian-primera-b-nacional"
+    },
+    {
+      "name": "Argentinian Primera Division",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/94yft21650835480.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/aokrp41777273124.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/764-argentinian-primera-division"
+    },
+    {
+      "name": "Argentinian Supercopa Argentina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ljlzm61661628351.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/dhkekb1661628518.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1696-argentinian-supercopa-argentina"
+    },
+    {
+      "name": "Arnold Clark Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/si65w41659035125.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9rveha1659035245.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1654-arnold-clark-cup"
+    },
+    {
+      "name": "Australia Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qf17ul1759629699.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kx49cd1759629699.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3515-australia-cup"
+    },
+    {
+      "name": "Australian A-League Champions",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8xu13m1650456855.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5e5dd41650457275.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1101-australian-a-league-champions"
+    },
+    {
+      "name": "Australian A-League Coach of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1b6kbh1658772766.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qj6sxb1658777740.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1571-australian-a-league-coach-of-the-year"
+    },
+    {
+      "name": "Australian A-League Goal of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/n3xj0d1658772776.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qri6ln1658777601.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1567-australian-a-league-goal-of-the-year"
+    },
+    {
+      "name": "Australian A-League Goalkeeper of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/09fova1658772784.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/pb7f7q1658777579.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1570-australian-a-league-goalkeeper-of-the-year"
+    },
+    {
+      "name": "Australian A-League Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/7k7eni1658772793.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/581i5g1658777167.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1566-australian-a-league-golden-boot"
+    },
+    {
+      "name": "Australian A-League Joe Marston Medal",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/j5z6i51658772802.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ub1r061658776269.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1565-australian-a-league-joe-marston-medal"
+    },
+    {
+      "name": "Australian A-League Johnny Warren Medal",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/k78pg51658772810.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/624g8u1658775747.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1568-australian-a-league-johnny-warren-medal"
+    },
+    {
+      "name": "Australian A-League Premiers",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/64h2721658772817.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ambllz1650463834.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/747-australian-a-league-premiers"
+    },
+    {
+      "name": "Australian A-League Women Champions",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/xbadp91661605652.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/t6p6y71659529760.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1579-australian-a-league-women-champions"
+    },
+    {
+      "name": "Australian A-League Women Premiers",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/30lzu51661605672.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cru3rt1661605682.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1578-australian-a-league-women-premiers"
+    },
+    {
+      "name": "Australian A-League Young Footballer of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1erav31658772825.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7wqvo81658777376.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1569-australian-a-league-young-footballer-of-the-year"
+    },
+    {
+      "name": "Australian Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/h39i7t1768752598.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nbvhrk1768752598.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3565-australian-championship"
+    },
+    {
+      "name": "Austrian Bundesliga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/o6g8th1650888830.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3zp1ju1650888936.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1105-austrian-bundesliga"
+    },
+    {
+      "name": "Austrian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qerp9b1661626856.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4r2jd51779212718.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1693-austrian-cup"
+    },
+    {
+      "name": "Austrian Super Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/atnt5u1685123459.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/f8q3oy1685123460.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1959-austrian-super-cup"
+    },
+    {
+      "name": "Belarusian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/n5r1jd1694167369.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/40a9ty1694167388.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2008-belarusian-cup"
+    },
+    {
+      "name": "Belgian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/x1pjmb1771168628.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/tdmheb1771168629.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3572-belgian-cup"
+    },
+    {
+      "name": "Belgian Pro League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/uvd6sp1651311330.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7vtwlw1651311242.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/748-belgian-pro-league"
+    },
+    {
+      "name": "Bosnia-Herzegovina Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z384yc1715177314.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/etz64o1715177223.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2165-bosnia-herzegovina-cup"
+    },
+    {
+      "name": "Bosnia-Herzegovina Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8fm6ai1715177243.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qt5d621715177235.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2164-bosnia-herzegovina-premier-league"
+    },
+    {
+      "name": "Bravo Award",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zd3oty1650576516.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/179jyu1650576482.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/586-bravo-award"
+    },
+    {
+      "name": "Brazilian Brasileirao",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/12kv161766787216.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xzspl21650460217.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/749-brazilian-brasileirao"
+    },
+    {
+      "name": "Brazilian Brasileirao B",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hsekrl1749547368.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5m4lm11766785402.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3319-brazilian-brasileirao-b"
+    },
+    {
+      "name": "Brazilian Copa Do Brasil",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/bvu0px1651315679.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/dn1f2q1773714824.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/837-brazilian-copa-do-brasil"
+    },
+    {
+      "name": "Brazilian Recopa Gaúcha",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/gx1pcq1662731121.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/krygb11662730848.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1748-brazilian-recopa-ga%c3%bacha"
+    },
+    {
+      "name": "Brazilian Supercopa do Brasil",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/lguu6s1659111893.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1ws6jr1659111966.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1573-brazilian-supercopa-do-brasil"
+    },
+    {
+      "name": "Bulgarian First League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/quhvth1650913323.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/o9xrtj1650913296.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1106-bulgarian-first-league"
+    },
+    {
+      "name": "CAF Champions League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/p51f581650731995.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/elh0rb1782708713.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/475-caf-champions-league"
+    },
+    {
+      "name": "CAF Confederation Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qn5m9k1650731817.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/t44v6q1751673347.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/485-caf-confederation-cup"
+    },
+    {
+      "name": "CAF Super Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/osp2na1650913525.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nm4u371650913416.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/498-caf-super-cup"
+    },
+    {
+      "name": "Campeonato Baiano",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/if12yt1753288910.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/d93xm41753288835.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3409-campeonato-baiano"
+    },
+    {
+      "name": "Campeonato Carioca",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/i1mbui1651083154.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cv24571651082868.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1139-campeonato-carioca"
+    },
+    {
+      "name": "Campeonato Catarinense",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/x14it61756635819.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6fhj9x1664991900.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1785-campeonato-catarinense"
+    },
+    {
+      "name": "Campeonato Cearense",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/k4uid61766790512.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9vwmws1766790521.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3543-campeonato-cearense"
+    },
+    {
+      "name": "Campeonato Gaúcho",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4689fa1662722644.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/09afs71662722445.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1747-campeonato-ga%c3%bacho"
+    },
+    {
+      "name": "Campeonato Mineiro",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/53uxv21651083316.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/bbffjw1651083229.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1140-campeonato-mineiro"
+    },
+    {
+      "name": "Campeonato Paranaense",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/h8pq851651083413.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9d73p11651314794.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1141-campeonato-paranaense"
+    },
+    {
+      "name": "Campeonato Paulista",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/het0sf1651311964.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/gum3741651312014.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/835-campeonato-paulista"
+    },
+    {
+      "name": "Campeonato Pernambucano",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jqjg0k1653726675.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/prmqhs1651320412.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1142-campeonato-pernambucano"
+    },
+    {
+      "name": "Campeones Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/yojzq21662224596.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ml786j1662224547.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1738-campeones-cup"
+    },
+    {
+      "name": "Campionato Sammarinese",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qvog7o1779235722.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/hnr53e1779235722.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3591-campionato-sammarinese"
+    },
+    {
+      "name": "Canadian Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/l02r2q1661677019.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/vaqfxf1661677026.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1697-canadian-championship"
+    },
+    {
+      "name": "Canadian Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/i4disk1784004645.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3u1usy1784004639.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/4109-canadian-premier-league"
+    },
+    {
+      "name": "Chile Campeonato Nacional Futbol Femenino",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/a8xcby1720266565.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/oa950v1720266465.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2254-chile-campeonato-nacional-futbol-femenino"
+    },
+    {
+      "name": "Chile Primera B",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/clble61747155580.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/o1378e1732073441.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2503-chile-primera-b"
+    },
+    {
+      "name": "Chile Primera Division",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ctfcpz1747155569.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4fovsy1747119113.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2007-chile-primera-division"
+    },
+    {
+      "name": "Chile Segunda Divisin",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/u9n4uu1747155594.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/j2gy151747155594.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3281-chile-segunda-divisin"
+    },
+    {
+      "name": "Chilean Copa de la Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/d5mnzo1783921620.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/tz6kkj1783921619.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/4108-chilean-copa-de-la-liga"
+    },
+    {
+      "name": "Chilean Supercopa",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jr5ngi1757891423.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/hjwitq1757891233.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3470-chilean-supercopa"
+    },
+    {
+      "name": "Chinese FA Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/fjwn1x1693376168.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/37o1zb1747538940.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2000-chinese-fa-cup"
+    },
+    {
+      "name": "Chinese Super League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/oyfs1t1651005339.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jh0qcq1651005273.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/750-chinese-super-league"
+    },
+    {
+      "name": "Colombian Categoria Primera A",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/65irm91651778717.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zd9i2h1651778848.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1107-colombian-categoria-primera-a"
+    },
+    {
+      "name": "CONCACAF Champions League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/iaz2ip1748927456.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/bzju481780186399.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/552-concacaf-champions-league"
+    },
+    {
+      "name": "CONCACAF Gold Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/xotlix1650835381.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/rb4gl11702273134.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/560-concacaf-gold-cup"
+    },
+    {
+      "name": "CONCACAF Gold Cup Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hcsoi31662127653.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/s5gfyg1662127666.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1729-concacaf-gold-cup-golden-boot"
+    },
+    {
+      "name": "CONCACAF League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rcbje51653597439.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2vv0d61653597333.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1108-concacaf-league"
+    },
+    {
+      "name": "CONCACAF Nations League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/bbiusp1661602456.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/dgn8a71661602517.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1690-concacaf-nations-league"
+    },
+    {
+      "name": "CONCACAF W Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jhb8lk1653122919.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0wn2h81653122991.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1426-concacaf-w-championship"
+    },
+    {
+      "name": "CONCACAF W Gold Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z5csdx1717924486.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/m3xkk61717924449.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2242-concacaf-w-gold-cup"
+    },
+    {
+      "name": "CONMEBOL Liga de Naciones Femenina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/opq16v1781760626.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fsjyhs1781760626.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/4099-conmebol-liga-de-naciones-femenina"
+    },
+    {
+      "name": "CONMEBOL Pre-Olympic Tournament",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/e5ih8i1707310283.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/pfdziq1707310242.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2122-conmebol-pre-olympic-tournament"
+    },
+    {
+      "name": "CONMEBOL Recopa Sudamericana",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rmlpv61651316760.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nl3h2r1651316822.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/836-conmebol-recopa-sudamericana"
+    },
+    {
+      "name": "CONMEBOL Sudamericana",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dcgl6m1651006462.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/bmx40o1651006251.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/920-conmebol-sudamericana"
+    },
+    {
+      "name": "CONMEBOL-UEFA Cup of Champions",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0hkdho1671392959.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cvyhj41671393007.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1875-conmebol-uefa-cup-of-champions"
+    },
+    {
+      "name": "Copa America",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dmch4z1650889134.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/erc45h1701101340.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/607-copa-america"
+    },
+    {
+      "name": "Copa América Femenina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/95wqnm1663408585.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/56j9w61754259893.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1758-copa-am%c3%a9rica-femenina"
+    },
+    {
+      "name": "Copa Argentina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ga9mzz1661681345.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kcxstl1735693591.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1699-copa-argentina"
+    },
+    {
+      "name": "Copa AUF Uruguay",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/yi64qz1761789024.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0f89231761789023.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3523-copa-auf-uruguay"
+    },
+    {
+      "name": "Copa Centroamericana",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/muibio1653726822.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/lh8pzs1653598307.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/561-copa-centroamericana"
+    },
+    {
+      "name": "Copa Chile",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jhf1w91732152965.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8qr1hp1732152974.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2508-copa-chile"
+    },
+    {
+      "name": "Copa de la Liga AUF",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/atm3em1770506358.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/tsgexw1770506338.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3569-copa-de-la-liga-auf"
+    },
+    {
+      "name": "Copa de la Reina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6a0o441651349309.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/r59wv71651349454.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1429-copa-de-la-reina"
+    },
+    {
+      "name": "Copa do Nordeste",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/kpbh2p1753289457.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zmit3z1773714692.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3410-copa-do-nordeste"
+    },
+    {
+      "name": "Copa Ecuador",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/u7xqwi1752343636.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xoms2n1752343402.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3344-copa-ecuador"
+    },
+    {
+      "name": "Copa Libertadores",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5y8ybo1651083657.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wuo2p41696615728.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/553-copa-libertadores"
+    },
+    {
+      "name": "Copa Libertadores Femenina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1hsneh1759704349.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qys3ff1759705131.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1886-copa-libertadores-femenina"
+    },
+    {
+      "name": "Copa Libertadores U20",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hb8gtb1774453843.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/l6q9ee1774453842.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3579-copa-libertadores-u20"
+    },
+    {
+      "name": "Copa Paraguay",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/c8vqwl1763397526.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9h3ci31763397624.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3529-copa-paraguay"
+    },
+    {
+      "name": "Copa Verde",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/83yjxv1753294581.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/j9oadt1753294518.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3411-copa-verde"
+    },
+    {
+      "name": "Costa-Rica Liga FPD",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0hyaid1716291958.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kblilm1716291914.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2220-costa-rica-liga-fpd"
+    },
+    {
+      "name": "Croatian Football Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/r2e7ex1715855393.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2t085o1714630569.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2154-croatian-football-cup"
+    },
+    {
+      "name": "Croatian Prva Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/xpvi4b1657047813.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/b3wnt41656777308.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1109-croatian-prva-liga"
+    },
+    {
+      "name": "Cypriot First Division",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0e9h7f1715260857.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/53w3p91715260863.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2166-cypriot-first-division"
+    },
+    {
+      "name": "Cyprus Womens Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/xtwygy1659110380.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/je31eb1659110278.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1655-cyprus-womens-cup"
+    },
+    {
+      "name": "Czech Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/2tmxcu1715855440.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mupnyj1685971676.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1965-czech-cup"
+    },
+    {
+      "name": "Czech First League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/pd6wj41656796243.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/f8ue9k1655063002.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1110-czech-first-league"
+    },
+    {
+      "name": "Czech Super Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/lkstek1715855702.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xddlmb1685973571.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1968-czech-super-cup"
+    },
+    {
+      "name": "Czechoslovak Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/xn77o21715855778.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nn1fxg1685974676.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1969-czechoslovak-cup"
+    },
+    {
+      "name": "Czechoslovak First League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3nadp21715864062.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/hbflca1715864099.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2207-czechoslovak-first-league"
+    },
+    {
+      "name": "Damallsvenskan",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qfs6761671873391.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7dy5yi1671873415.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1884-damallsvenskan"
+    },
+    {
+      "name": "Danish Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/sjfhai1661627244.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/20oyda1755711870.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1694-danish-cup"
+    },
+    {
+      "name": "Danish Superliga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dykfow1662208571.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/v8ezm31662208629.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1733-danish-superliga"
+    },
+    {
+      "name": "Dutch Eerste Divisie",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/e67tsu1656796086.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/z98dfl1656796176.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1112-dutch-eerste-divisie"
+    },
+    {
+      "name": "Dutch Eredivisie",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ep88e71650461457.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/c6scml1650461543.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/751-dutch-eredivisie"
+    },
+    {
+      "name": "Dutch KNVB Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/fegof71650657271.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/eu1i5h1650657235.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/768-dutch-knvb-cup"
+    },
+    {
+      "name": "Dutch KNVB Womens Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cb38sq1750678644.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/v1bafv1717842945.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2239-dutch-knvb-womens-cup"
+    },
+    {
+      "name": "Ecuadorian Serie A",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/nsg8o01716301860.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kq3mtd1716301856.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2221-ecuadorian-serie-a"
+    },
+    {
+      "name": "Egypt Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cr5vpq1715855893.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/r0dpk71676204096.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1909-egypt-cup"
+    },
+    {
+      "name": "Egyptian Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/w435j51676203508.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/519rfb1676203465.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1908-egyptian-premier-league"
+    },
+    {
+      "name": "Egyptian Super Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/a3jmw81715856074.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/enp6m71676204332.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1910-egyptian-super-cup"
+    },
+    {
+      "name": "El Salvador Primera Division",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6zxgtw1716304454.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/f10pb51716304450.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2222-el-salvador-primera-division"
+    },
+    {
+      "name": "Emir of Qatar Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/aem11v1707589714.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2tbke41781368852.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2124-emir-of-qatar-cup"
+    },
+    {
+      "name": "English Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zsqbf81651494831.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/tz1vj91650460404.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/620-english-championship"
+    },
+    {
+      "name": "English EFL Championship Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/10nh3e1699185527.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/n4ee4b1699185468.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2045-english-efl-championship-golden-boot"
+    },
+    {
+      "name": "English EFL Trophy",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z40uk81699762878.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/sbx8op1651007188.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1113-english-efl-trophy"
+    },
+    {
+      "name": "English FA Community Shield",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rsammg1650834256.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/b8dncd1650834238.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/609-english-fa-community-shield"
+    },
+    {
+      "name": "English FA Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/87gth21650834128.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6go3jj1755713117.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/606-english-fa-cup"
+    },
+    {
+      "name": "English FA Trophy",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/mbbnsz1776360848.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/b7c25f1776360432.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3274-english-fa-trophy"
+    },
+    {
+      "name": "English FA Womens League Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ytpd0h1742546792.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qct4f21659111699.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1576-english-fa-womens-league-cup"
+    },
+    {
+      "name": "English FA Womens Super League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6mfknl1653244474.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xkeanb1653244602.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/923-english-fa-womens-super-league"
+    },
+    {
+      "name": "English FA Youth Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z27ofu1654939172.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mehvg21654939302.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/767-english-fa-youth-cup"
+    },
+    {
+      "name": "English Football League 1",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/evdppb1651494659.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/b7q60x1651494962.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/621-english-football-league-1"
+    },
+    {
+      "name": "English Football League 2",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ohnwcd1651494844.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5ntxcd1651494975.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/623-english-football-league-2"
+    },
+    {
+      "name": "English Football League Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/eutfwi1650894579.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/q630p91650894797.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/565-english-football-league-cup"
+    },
+    {
+      "name": "English Football League First Division",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6s2pz51738244251.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2kfjrk1738243974.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3178-english-football-league-first-division"
+    },
+    {
+      "name": "English National League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/acwbrb1715160442.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/se8ot51715160415.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2161-english-national-league"
+    },
+    {
+      "name": "English PFA Championship Team of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/t0qxit1650891423.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/eh1qzu1650891416.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/765-english-pfa-championship-team-of-the-year"
+    },
+    {
+      "name": "English PFA Players Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1rcqgm1650891434.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/j907sz1693386067.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/585-english-pfa-players-player-of-the-year"
+    },
+    {
+      "name": "English PFA Premier League Team of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/penpfv1738245534.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/lzpbx21738245510.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3179-english-pfa-premier-league-team-of-the-year"
+    },
+    {
+      "name": "English PFA Womens Players Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3h9eml1693386128.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ju674y1693386142.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2001-english-pfa-womens-players-player-of-the-year"
+    },
+    {
+      "name": "English PFA Young Players Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/gc6spw1650891439.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/bqrzkw1650894540.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/719-english-pfa-young-players-player-of-the-year"
+    },
+    {
+      "name": "English Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jdftcx1650642018.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6nw7za1650642103.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/564-english-premier-league"
+    },
+    {
+      "name": "English Premier League Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/q8musu1650830790.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/vtauyn1650830753.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1136-english-premier-league-golden-boot"
+    },
+    {
+      "name": "English Premier League Golden Glove",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/iqw6vn1684770634.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/h344s41684770621.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1955-english-premier-league-golden-glove"
+    },
+    {
+      "name": "English Premier League Hall of Fame",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/fq2xvx1711378829.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xmx1lr1711378639.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2134-english-premier-league-hall-of-fame"
+    },
+    {
+      "name": "English Premier League Player of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/00cjkf1652874247.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/yr0h1k1651311135.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/582-english-premier-league-player-of-the-season"
+    },
+    {
+      "name": "English Premier League Young Player of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z51jzc1716134680.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/uhk3jb1716134689.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2215-english-premier-league-young-player-of-the-season"
+    },
+    {
+      "name": "Estonian Meistriliiga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/eo3vt01693591440.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/v8znry1693591630.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2002-estonian-meistriliiga"
+    },
+    {
+      "name": "European Golden Shoe",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/nqumdm1656875631.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ntofu71650829888.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/556-european-golden-shoe"
+    },
+    {
+      "name": "FA Womens Challenge Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/tksr4h1659110504.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9x0yec1659110633.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1577-fa-womens-challenge-cup"
+    },
+    {
+      "name": "FA Womens Community Shield",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dmx0281662129480.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9ehx2x1662129418.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1732-fa-womens-community-shield"
+    },
+    {
+      "name": "FIFA African Asian Pacific Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6e2b4y1781370221.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/uu2wgs1781369932.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/4094-fifa-african-asian-pacific-cup"
+    },
+    {
+      "name": "FIFA Arab Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/izycx71714637511.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nt003j1761235473.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2155-fifa-arab-cup"
+    },
+    {
+      "name": "FIFA Ballon d Or",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/oubng01650480763.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/octewt1650480648.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/554-fifa-ballon-d-or"
+    },
+    {
+      "name": "FIFA Best Young Player Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/175wg41692538070.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ohl7c01692537894.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1990-fifa-best-young-player-women"
+    },
+    {
+      "name": "FIFA Challenger Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/pwiul81781392566.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7mrcxu1781392566.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/4097-fifa-challenger-cup"
+    },
+    {
+      "name": "FIFA Club World Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z575hw1650575861.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/a9owwp1750014610.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/427-fifa-club-world-cup"
+    },
+    {
+      "name": "FIFA Confederations Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4g8h3z1650461609.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1mklyi1650461652.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/562-fifa-confederations-cup"
+    },
+    {
+      "name": "FIFA Confederations Cup Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z6o6qy1662127266.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ndugq01662127275.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1728-fifa-confederations-cup-golden-boot"
+    },
+    {
+      "name": "FIFA Derby of the Americas",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5v6aaw1781373487.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/de55ym1781373487.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/4095-fifa-derby-of-the-americas"
+    },
+    {
+      "name": "FIFA FIFPro World XI",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4k5dfz1650481082.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mbqubl1650481207.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/632-fifa-fifpro-world-xi"
+    },
+    {
+      "name": "FIFA Golden Ball",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ctx7l51692538525.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/e203aj1692538535.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1992-fifa-golden-ball"
+    },
+    {
+      "name": "FIFA Golden Ball Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/2fyfzj1692539033.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/lxao881692539018.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1993-fifa-golden-ball-women"
+    },
+    {
+      "name": "FIFA Intercontinental Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/svgug11766160303.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/j9ik5a1766160273.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3472-fifa-intercontinental-cup"
+    },
+    {
+      "name": "FIFA Puskás Award",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/iespvb1650890553.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cose6h1650890428.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/557-fifa-pusk%c3%a1s-award"
+    },
+    {
+      "name": "FIFA The Best",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6x30z21650463477.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/d4yc5x1650463359.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/629-fifa-the-best"
+    },
+    {
+      "name": "FIFA U 17 World Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zss1931743095878.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zn0d8w1743095919.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3232-fifa-u-17-world-cup"
+    },
+    {
+      "name": "FIFA U17 Womens World Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6yi52x1761168559.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0nypjb1761168559.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3517-fifa-u17-womens-world-cup"
+    },
+    {
+      "name": "FIFA U17 World Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dcp0zq1776447626.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8iqzd61776447596.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3233-fifa-u17-world-cup"
+    },
+    {
+      "name": "FIFA U20 World Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ssyi731751440411.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/i16wq91751440125.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3330-fifa-u20-world-cup"
+    },
+    {
+      "name": "FIFA Womens Champions Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/a29pm71770010162.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1aqlsn1770010162.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3568-fifa-womens-champions-cup"
+    },
+    {
+      "name": "FIFA Womens World Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z6jr261652628753.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/gswbrr1774565474.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/919-fifa-womens-world-cup"
+    },
+    {
+      "name": "FIFA Womens World Cup Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/yr42ih1692540101.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7s56j71692540115.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1994-fifa-womens-world-cup-golden-boot"
+    },
+    {
+      "name": "FIFA Womens World Cup Golden Glove",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/gxxmv31692538143.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4uusyc1692538154.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1991-fifa-womens-world-cup-golden-glove"
+    },
+    {
+      "name": "FIFA World Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1slnhh1662051765.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/n0mwq71650790783.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/580-fifa-world-cup"
+    },
+    {
+      "name": "FIFA World Cup Golden Boot",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1e8tqn1662051753.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/35yj9g1662051560.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1720-fifa-world-cup-golden-boot"
+    },
+    {
+      "name": "FIFA World Cup Golden Glove",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4ai6g81671719174.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/l4jz0t1671719181.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1877-fifa-world-cup-golden-glove"
+    },
+    {
+      "name": "FIFA Young Player",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rea2cb1671720876.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/26wchf1671720923.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1878-fifa-young-player"
+    },
+    {
+      "name": "Finnish Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/pztd9f1781758068.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8tj29c1781758067.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/4098-finnish-cup"
+    },
+    {
+      "name": "Finnish Veikkausliiga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/esmwsw1773716475.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jov6iu1773716208.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1114-finnish-veikkausliiga"
+    },
+    {
+      "name": "Football League Young Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/r10tfu1656876383.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3kx9fp1656876291.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/766-football-league-young-player-of-the-year"
+    },
+    {
+      "name": "French Coupe de France",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/66c9981656796200.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qeuhc01779493971.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/573-french-coupe-de-france"
+    },
+    {
+      "name": "French Coupe de France feminine",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1qgosb1653247064.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/dpjb5t1653245753.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1425-french-coupe-de-france-feminine"
+    },
+    {
+      "name": "French Coupe de la Ligue",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jpg8ry1656796227.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4g56xm1650790500.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/574-french-coupe-de-la-ligue"
+    },
+    {
+      "name": "French Division 1 Feminine",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vzueln1653236278.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ow9vlv1740223759.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1424-french-division-1-feminine"
+    },
+    {
+      "name": "French Ligue 1",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/nwezdi1650891037.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/oj1nt71650790210.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/572-french-ligue-1"
+    },
+    {
+      "name": "French Ligue 1 Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/q9bpim1717170697.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9wsnn91717170490.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2231-french-ligue-1-player-of-the-year"
+    },
+    {
+      "name": "French Ligue 1 Young Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/nwezdi1650891037.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/v4nrbz1716204754.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2218-french-ligue-1-young-player-of-the-year"
+    },
+    {
+      "name": "French Ligue 2",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/kodyc81715850572.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/aoda7x1715850558.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2206-french-ligue-2"
+    },
+    {
+      "name": "French Trophée des Championnes",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/erh45p1673774243.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/hl83rf1673774177.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1893-french-troph%c3%a9e-des-championnes"
+    },
+    {
+      "name": "French Trophée des Champions",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wg9emw1656875150.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kvqxr51650790371.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/575-french-troph%c3%a9e-des-champions"
+    },
+    {
+      "name": "FWA Footballer of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ewtitf1656875563.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/a31e1h1651310553.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/584-fwa-footballer-of-the-year"
+    },
+    {
+      "name": "GCC Champions League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8vdo1e1656876076.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5mk75h1656876067.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/551-gcc-champions-league"
+    },
+    {
+      "name": "Georgian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/n2sp3n1715590376.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/uba6so1715590370.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1842-georgian-cup"
+    },
+    {
+      "name": "Georgian Erovnuli Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/mpyd2q1715590347.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jted9a1715590303.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2168-georgian-erovnuli-liga"
+    },
+    {
+      "name": "Georgian Supercup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ltqh5y1715590391.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/yg5a9x1715590383.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2169-georgian-supercup"
+    },
+    {
+      "name": "Gerd Muller Trophy",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/gblqzo1725472598.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0z0rq31725472608.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2461-gerd-muller-trophy"
+    },
+    {
+      "name": "German 2. Bundesliga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/v0pcy71656853790.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fdian51656853789.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1115-german-2.-bundesliga"
+    },
+    {
+      "name": "German 3 Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vrcb5i1732421914.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/g115q91732421922.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2509-german-3-liga"
+    },
+    {
+      "name": "German Bundesliga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ektcit1650460013.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2h65bk1650459989.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/569-german-bundesliga"
+    },
+    {
+      "name": "German Bundesliga Player of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ncfp3t1660744617.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6ihgfk1660744402.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1656-german-bundesliga-player-of-the-season"
+    },
+    {
+      "name": "German Bundesliga Rookie of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/y487rr1660744796.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5neukn1660744632.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1657-german-bundesliga-rookie-of-the-season"
+    },
+    {
+      "name": "German Bundesliga Torjagerkanone",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ii007l1650829531.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wcksmy1650829541.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1138-german-bundesliga-torjagerkanone"
+    },
+    {
+      "name": "German DFB Supercup Frauen",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/484bry1746116400.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/g29mba1746116411.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3252-german-dfb-supercup-frauen"
+    },
+    {
+      "name": "German DFB-Pokal",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/tiscyu1650460437.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/y3j8971697171355.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/570-german-dfb-pokal"
+    },
+    {
+      "name": "German DFB-Pokal Frauen",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/j7mrlz1659083319.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/dfm8h61659083384.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1575-german-dfb-pokal-frauen"
+    },
+    {
+      "name": "German DFL Supercup Frauen",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/bojf8u1746116258.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jt7z871746116189.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3251-german-dfl-supercup-frauen"
+    },
+    {
+      "name": "German DFL-Ligapokal",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/id0rsj1650460799.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/13ecrl1650460604.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1111-german-dfl-ligapokal"
+    },
+    {
+      "name": "German DFL-Supercup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/atfug51711034111.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wbad3r1699540493.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/571-german-dfl-supercup"
+    },
+    {
+      "name": "German Frauen-Bundesliga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/e2jx6b1659083062.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/pmr4ko1659083247.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1574-german-frauen-bundesliga"
+    },
+    {
+      "name": "German Frauen-Bundesliga Torjagerkanone",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/auvnb71691419010.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3nb5q31691419046.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1985-german-frauen-bundesliga-torjagerkanone"
+    },
+    {
+      "name": "Ghanaian Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z67v221758093226.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5kdulg1758093214.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3471-ghanaian-premier-league"
+    },
+    {
+      "name": "Greek Football Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zagr5q1770504963.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/euyc8b1770504950.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1762-greek-football-cup"
+    },
+    {
+      "name": "Greek Superleague",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3cnb731651314472.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/earia61651314444.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1116-greek-superleague"
+    },
+    {
+      "name": "Hungarian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ge4mhb1715606716.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/lp2i031715606753.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2170-hungarian-cup"
+    },
+    {
+      "name": "Hungarian League Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/sbv8t41715606764.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/il30yv1715606770.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2172-hungarian-league-cup"
+    },
+    {
+      "name": "Hungarian NB I",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8gjjx31656853923.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/rci1rk1771086442.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1117-hungarian-nb-i"
+    },
+    {
+      "name": "Hungarian Supercup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/fvx8ny1715606784.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/02r8fv1715606804.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2171-hungarian-supercup"
+    },
+    {
+      "name": "Icelandic Besta deild karla",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5ylktu1715670560.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/i57bmc1715670516.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2173-icelandic-besta-deild-karla"
+    },
+    {
+      "name": "Icelandic Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1nyfs91715670526.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fn0jrj1715670533.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2174-icelandic-cup"
+    },
+    {
+      "name": "Icelandic League Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/9k9j851715670457.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/rns4ab1715670491.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2175-icelandic-league-cup"
+    },
+    {
+      "name": "Icelandic Supercup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/l7ppu01715670424.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wxvm4l1715670433.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2176-icelandic-supercup"
+    },
+    {
+      "name": "Intercontinental Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/it1t2c1683276124.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mrb7dn1683275976.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1939-intercontinental-cup"
+    },
+    {
+      "name": "Irish FAI Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/syddsb1715675801.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fnf7661750743658.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2178-irish-fai-cup"
+    },
+    {
+      "name": "Irish League of Ireland Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/yuwx011715675731.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cfbc3y1715676014.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2179-irish-league-of-ireland-cup"
+    },
+    {
+      "name": "Irish Premier Division",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/sfz27m1715675774.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/eezoai1715675949.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2177-irish-premier-division"
+    },
+    {
+      "name": "Israeli Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/u1ork61656853967.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/o67di41715685058.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1118-israeli-premier-league"
+    },
+    {
+      "name": "Israeli State Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3i7kaf1715684886.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2520nl1715684899.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2197-israeli-state-cup"
+    },
+    {
+      "name": "Israeli Supercup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8jiyv01715684892.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qr0phi1715684937.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2198-israeli-supercup"
+    },
+    {
+      "name": "Italian Coppa Italia",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qa27ob1656796058.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/dtafyo1701383950.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/608-italian-coppa-italia"
+    },
+    {
+      "name": "Italian Coppa Italia Femminile",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/p9ncqv1694156333.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/piotk71694156601.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2006-italian-coppa-italia-femminile"
+    },
+    {
+      "name": "Italian Coppa Italia Serie C",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0ly1d61738512214.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wh754j1738512195.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3192-italian-coppa-italia-serie-c"
+    },
+    {
+      "name": "Italian Football Hall of Fame",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wik9571715961901.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/rnaal31715961838.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2212-italian-football-hall-of-fame"
+    },
+    {
+      "name": "Italian Serie A",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/u8mvt61650643014.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ulm5h21650642920.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/576-italian-serie-a"
+    },
+    {
+      "name": "Italian Serie A Capocannoniere",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0wxgvo1656854207.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ntytkn1651311827.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1137-italian-serie-a-capocannoniere"
+    },
+    {
+      "name": "Italian Serie A Femminile",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vofmhx1694113246.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1eocri1694113201.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2005-italian-serie-a-femminile"
+    },
+    {
+      "name": "Italian Serie A Womens Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/szckle1783156085.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4fj0jm1783155962.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/4105-italian-serie-a-womens-cup"
+    },
+    {
+      "name": "Italian Serie B",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0722lq1656853974.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/obadli1778366823.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1119-italian-serie-b"
+    },
+    {
+      "name": "Italian Supercoppa Italiana",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/serdib1650642732.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/q7qam61705509442.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/610-italian-supercoppa-italiana"
+    },
+    {
+      "name": "Italian Supercoppa Italiana Femminile",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/134wsh1694112047.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/omiayf1694112002.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2004-italian-supercoppa-italiana-femminile"
+    },
+    {
+      "name": "Japanese Emperors Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ethb3d1751166248.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ua372l1751166248.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1684-japanese-emperors-cup"
+    },
+    {
+      "name": "Japanese J League Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/oy6c5k1751606547.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zxqvk21751606547.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3331-japanese-j-league-cup"
+    },
+    {
+      "name": "Japanese J-League 1",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/tooqtu1655894420.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/p97twq1655894364.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1120-japanese-j-league-1"
+    },
+    {
+      "name": "Japanese Super Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vzyywk1661586313.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/of7swp1661586203.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1685-japanese-super-cup"
+    },
+    {
+      "name": "JFA Empresss Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cl0fqp1726412187.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0a8vl21726412095.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2482-jfa-empresss-cup"
+    },
+    {
+      "name": "Johan Cruijff Schaal",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ezhn541656854500.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/gmn5vw1651312197.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1121-johan-cruijff-schaal"
+    },
+    {
+      "name": "Kazakh Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6m4esz1753420707.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/raix031715694659.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2200-kazakh-cup"
+    },
+    {
+      "name": "Kazakh Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/p4vpii1753420847.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/o38hq01715694624.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2199-kazakh-premier-league"
+    },
+    {
+      "name": "Kazakh Supercup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rw34xa1770505375.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/n4pa0s1770505374.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2201-kazakh-supercup"
+    },
+    {
+      "name": "Kopa Trophy",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/36l9mc1698777661.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/g36tj21698777679.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2042-kopa-trophy"
+    },
+    {
+      "name": "Korean FA Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8th7l71714593806.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/sc05r81751439351.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2153-korean-fa-cup"
+    },
+    {
+      "name": "Korean K-League 1",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wu7cd01656854019.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ghauif1656854019.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1122-korean-k-league-1"
+    },
+    {
+      "name": "Kosovan Superleague",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/g17n2y1715780286.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/if28dz1715780247.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2202-kosovan-superleague"
+    },
+    {
+      "name": "Kosovar Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ah1uwv1715780295.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fnqj191715780303.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2203-kosovar-cup"
+    },
+    {
+      "name": "Kosovar Supercup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4112h21715780308.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/y9swjg1715780314.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2204-kosovar-supercup"
+    },
+    {
+      "name": "Lamar Hunt US Open Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/j8inww1655030089.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ux8kje1655030140.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1123-lamar-hunt-us-open-cup"
+    },
+    {
+      "name": "Latvian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cmuda41761169482.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/oeih871761169482.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3518-latvian-cup"
+    },
+    {
+      "name": "Leagues Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/mkkb3a1692181926.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/33jpss1692181896.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1987-leagues-cup"
+    },
+    {
+      "name": "Lithuanian Football Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ouyzws1754670856.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xupv3a1754670855.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3412-lithuanian-football-cup"
+    },
+    {
+      "name": "Lithuanian Supercup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/gc6bd51776814164.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zzu8721776814163.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3583-lithuanian-supercup"
+    },
+    {
+      "name": "Luxembourg National Division",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/e170xf1751870787.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ohanxo1751870786.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3343-luxembourg-national-division"
+    },
+    {
+      "name": "Malaysia Super League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vj3siv1751132203.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/vv5p441751132202.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3326-malaysia-super-league"
+    },
+    {
+      "name": "Mexican Copa MX",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cfzwpd1662126467.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/tdz78y1662126404.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1726-mexican-copa-mx"
+    },
+    {
+      "name": "Mexican Liga MX Femenil",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/gausqf1717850750.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/c8vg051717850724.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2240-mexican-liga-mx-femenil"
+    },
+    {
+      "name": "Mexican Primera League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/aec5b01656854108.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zx3bq11656854053.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/756-mexican-primera-league"
+    },
+    {
+      "name": "Mexican Supercopa MX",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hq2tqm1662226969.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1m2kuf1662226905.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1739-mexican-supercopa-mx"
+    },
+    {
+      "name": "Norwegian Cupen",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/um612q1751133965.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/he6ffg1751133965.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3327-norwegian-cupen"
+    },
+    {
+      "name": "Norwegian Eliteserien",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/if0poi1656854087.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/d7dcw01768689504.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1124-norwegian-eliteserien"
+    },
+    {
+      "name": "OFC Champions League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vak9x61656795980.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9q7kf91755713207.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1125-ofc-champions-league"
+    },
+    {
+      "name": "OFC Mens Nations Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/7lu1cb1780025902.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/dc960s1780025901.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3644-ofc-mens-nations-cup"
+    },
+    {
+      "name": "OFC Pro League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vxb3um1780025443.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/bmdfe01780025443.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3643-ofc-pro-league"
+    },
+    {
+      "name": "Onze d Or",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qnugq61661539385.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6b5yuc1661539375.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1677-onze-d-or"
+    },
+    {
+      "name": "Paraguayan Primera División",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rd0qza1664989308.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kyskwi1664989333.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1784-paraguayan-primera-divisi%c3%b3n"
+    },
+    {
+      "name": "Polish Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1jryto1772249975.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/v9jnug1772249975.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3577-polish-cup"
+    },
+    {
+      "name": "Polish Ekstraklasa",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ngsipm1650461249.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/li3e7g1772253517.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/754-polish-ekstraklasa"
+    },
+    {
+      "name": "Portuguese Campeonato Nacional Feminino",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/687n2i1717923236.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qrx1p41717923196.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2241-portuguese-campeonato-nacional-feminino"
+    },
+    {
+      "name": "Portuguese Primeira Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dpux9i1651313519.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kn8lcb1726462032.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/755-portuguese-primeira-liga"
+    },
+    {
+      "name": "Portuguese Supertaca de Portugal Feminina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4tsgc01717926479.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/t6kked1717926355.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2245-portuguese-supertaca-de-portugal-feminina"
+    },
+    {
+      "name": "Portuguese Taça da Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/unuo401651312408.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2q4wh01651312341.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/578-portuguese-ta%c3%a7a-da-liga"
+    },
+    {
+      "name": "Portuguese Taça da Liga Feminina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wjkm2h1764408052.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ca10zs1764408100.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2243-portuguese-ta%c3%a7a-da-liga-feminina"
+    },
+    {
+      "name": "Portuguese Taca da Liga Feminina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/480hob1717925768.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/01r7651717925675.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2244-portuguese-taca-da-liga-feminina"
+    },
+    {
+      "name": "Portuguese Taca de Portugal",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zt75lz1651319406.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/n6xp1q1651313641.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1133-portuguese-taca-de-portugal"
+    },
+    {
+      "name": "Portuguese Taca de Portugal Feminina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3jh73m1663408161.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/luf6831717923744.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1757-portuguese-taca-de-portugal-feminina"
+    },
+    {
+      "name": "President of Irelands Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/x19h871715675807.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/neibgu1722613207.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2180-president-of-irelands-cup"
+    },
+    {
+      "name": "Primera Division Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/50hjt71654341951.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7r0exr1651859535.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1428-primera-division-women"
+    },
+    {
+      "name": "Primera Federacion Group 1",
+      "logo": "https://www.thesportsdb.com/images/no_thumb.png",
+      "trophy": "https://www.thesportsdb.com/images/no_thumb.png",
+      "url": "https://www.thesportsdb.com/honour/3666-primera-federacion-group-1"
+    },
+    {
+      "name": "Qatar Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dwvcuc1707590408.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/t44fn01707590313.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2125-qatar-cup"
+    },
+    {
+      "name": "Qatar Sheikh Jassim Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/09ib511715855540.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/n4ic0h1707591060.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2127-qatar-sheikh-jassim-cup"
+    },
+    {
+      "name": "Qatar Stars League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/g3c6u11707589265.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/z9zir41707589274.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2123-qatar-stars-league"
+    },
+    {
+      "name": "Qatar Stars League Top Goalscorer",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/t0cum41707591822.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wn88ed1707591653.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2128-qatar-stars-league-top-goalscorer"
+    },
+    {
+      "name": "Qatari Stars Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/v7fdhk1707590843.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/e7n6zq1707590675.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2126-qatari-stars-cup"
+    },
+    {
+      "name": "Romanian Liga I",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1funou1656854177.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zvtx451770653246.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1126-romanian-liga-i"
+    },
+    {
+      "name": "Russian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/v8gq1n1780026587.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/lj93n41780026588.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1127-russian-cup"
+    },
+    {
+      "name": "Russian Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z04v5q1651317935.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fm5yw31651317867.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/757-russian-premier-league"
+    },
+    {
+      "name": "Russian Super Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wa26ca1661500442.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/r524vt1661500524.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1679-russian-super-cup"
+    },
+    {
+      "name": "Saudi Crown Prince Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/msz2im1715855328.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qs2fou1676209218.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1911-saudi-crown-prince-cup"
+    },
+    {
+      "name": "Saudi King Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/shbkr31754244457.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8bemyo1754244467.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1912-saudi-king-cup"
+    },
+    {
+      "name": "Saudi Pro League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/w73pu71661542993.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/71r6nh1747536339.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1681-saudi-pro-league"
+    },
+    {
+      "name": "Saudi Super Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/upgzj81754246416.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0fwoba1661584645.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1682-saudi-super-cup"
+    },
+    {
+      "name": "Scottish Challenge Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1f85fd1651816838.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/32tdsg1651816912.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1544-scottish-challenge-cup"
+    },
+    {
+      "name": "Scottish Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jm5g8v1776848763.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/t6spjy1776848880.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3584-scottish-championship"
+    },
+    {
+      "name": "Scottish Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/f21uxu1656875077.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/t2h92l1776706407.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1128-scottish-cup"
+    },
+    {
+      "name": "Scottish League 1",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/kkupvk1776849002.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/iy39ea1776848988.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3585-scottish-league-1"
+    },
+    {
+      "name": "Scottish League 2",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/nu6me01776849100.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/res30l1776849096.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3586-scottish-league-2"
+    },
+    {
+      "name": "Scottish League Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/99m0hz1651816575.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8lgt9k1776707111.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1543-scottish-league-cup"
+    },
+    {
+      "name": "Scottish Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/q6pdzb1651609447.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/yrr96s1651609607.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1129-scottish-premier-league"
+    },
+    {
+      "name": "Serbian Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4g9ncn1662213544.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4hsjfa1662213504.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1737-serbian-cup"
+    },
+    {
+      "name": "Serbian Super Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/owobkg1654982736.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/magcyy1654982673.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1130-serbian-super-liga"
+    },
+    {
+      "name": "SheBelieves Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/tvpgsz1653328435.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3ctm3n1677698317.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1558-shebelieves-cup"
+    },
+    {
+      "name": "Slovak Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/emi7xt1715670985.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8i9roo1685971571.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1967-slovak-cup"
+    },
+    {
+      "name": "Slovak Super Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/38k2591715670951.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2dysjn1716314720.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1966-slovak-super-liga"
+    },
+    {
+      "name": "Slovenian Prva Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/m0mfs31776704821.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/n0ex2p1776704820.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3582-slovenian-prva-liga"
+    },
+    {
+      "name": "Soccer Asian Games Bronze",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/49y1251733512398.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/yupg6o1733512424.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2603-soccer-asian-games-bronze"
+    },
+    {
+      "name": "Soccer Asian Games Bronze Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/gfu4rg1726316650.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7ke8f01726316658.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2478-soccer-asian-games-bronze-women"
+    },
+    {
+      "name": "Soccer Asian Games Gold",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0e3gws1733512436.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cxgdiq1733512443.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2601-soccer-asian-games-gold"
+    },
+    {
+      "name": "Soccer Asian Games Gold Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3hcvs61726316696.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fpacw31726316706.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2479-soccer-asian-games-gold-women"
+    },
+    {
+      "name": "Soccer Asian Games Silver",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zoshfk1733512452.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fthyaf1733512460.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2602-soccer-asian-games-silver"
+    },
+    {
+      "name": "Soccer Asian Games Silver Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/uv3m301726316721.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/grbmah1726316729.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2480-soccer-asian-games-silver-women"
+    },
+    {
+      "name": "Soccer Olympics Bronze",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/168zh91723792475.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/w47q0g1723792489.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2423-soccer-olympics-bronze"
+    },
+    {
+      "name": "Soccer Olympics Bronze Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/23p8ug1732446764.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ztb44v1732446775.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2512-soccer-olympics-bronze-women"
+    },
+    {
+      "name": "Soccer Olympics Gold",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ibe03b1723230429.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/h6q5dp1723230443.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2381-soccer-olympics-gold"
+    },
+    {
+      "name": "Soccer Olympics Gold Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6bif9i1732446672.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qa9uqm1732446688.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2510-soccer-olympics-gold-women"
+    },
+    {
+      "name": "Soccer Olympics Silver",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/e3v2oy1723369231.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9evdwr1723369241.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2382-soccer-olympics-silver"
+    },
+    {
+      "name": "Soccer Olympics Silver Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6zyq2e1732446725.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ik1qhz1732446736.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2511-soccer-olympics-silver-women"
+    },
+    {
+      "name": "Soccer Pan American Games Bronze",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qkuo121732525726.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/p85hjb1732525744.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2515-soccer-pan-american-games-bronze"
+    },
+    {
+      "name": "Soccer Pan American Games Bronze Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/l166xf1724082302.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8vltrh1724082519.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2428-soccer-pan-american-games-bronze-women"
+    },
+    {
+      "name": "Soccer Pan American Games Gold",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vwsngh1732525763.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/k45er91732525773.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2514-soccer-pan-american-games-gold"
+    },
+    {
+      "name": "Soccer Pan American Games Gold Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/2b41471724143116.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7k2ftc1724143133.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2429-soccer-pan-american-games-gold-women"
+    },
+    {
+      "name": "Soccer Pan American Games Silver",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/96yo6j1732525787.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xuuicz1732525799.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2516-soccer-pan-american-games-silver"
+    },
+    {
+      "name": "Soccer Pan American Games Silver Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zh2l811724143156.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wbv1q21724143165.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2430-soccer-pan-american-games-silver-women"
+    },
+    {
+      "name": "Socrates Award",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/yax2jf1725472780.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ufvxao1725472829.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2462-socrates-award"
+    },
+    {
+      "name": "South African Premier Division",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/irhmof1716216428.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/e1kqdg1716216419.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2219-south-african-premier-division"
+    },
+    {
+      "name": "Soviet Top League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/2ahhcu1656854245.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xtiwtf1656854245.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1131-soviet-top-league"
+    },
+    {
+      "name": "Spanish Copa de la Liga Profesional",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0c1iee1679052833.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xt63b31679052870.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1930-spanish-copa-de-la-liga-profesional"
+    },
+    {
+      "name": "Spanish Copa del Rey",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zq6z771650576214.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4f9dox1650576268.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/567-spanish-copa-del-rey"
+    },
+    {
+      "name": "Spanish Copa Federacion",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/2m5xz01778447828.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ohqjw01778447805.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3588-spanish-copa-federacion"
+    },
+    {
+      "name": "Spanish La Liga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/f83x5q1725095441.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nco20w1650642293.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/566-spanish-la-liga"
+    },
+    {
+      "name": "Spanish La Liga 2",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/og2gox1780876929.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/89je211780876928.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3669-spanish-la-liga-2"
+    },
+    {
+      "name": "Spanish La Liga African Player of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/7xex561769156052.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nya0pv1769156066.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3567-spanish-la-liga-african-player-of-the-season"
+    },
+    {
+      "name": "Spanish La Liga Goal of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/myy9su1725095409.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1mu9q81725095377.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2458-spanish-la-liga-goal-of-the-season"
+    },
+    {
+      "name": "Spanish La Liga Player of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qwl1qe1660744928.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jbtfyn1724957758.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1659-spanish-la-liga-player-of-the-season"
+    },
+    {
+      "name": "Spanish La Liga Team of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ogl2hm1660745339.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ti23hg1660745162.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1658-spanish-la-liga-team-of-the-season"
+    },
+    {
+      "name": "Spanish La Liga Trofeo Pichichi",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5pw7ee1725095452.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mpnuj21651311495.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1135-spanish-la-liga-trofeo-pichichi"
+    },
+    {
+      "name": "Spanish Primera Federacion Group 1",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ouptof1780875931.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6t7h3r1780875930.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3667-spanish-primera-federacion-group-1"
+    },
+    {
+      "name": "Spanish Primera Federacion Group 2",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1pbxad1780876298.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/hatzjg1780876297.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3668-spanish-primera-federacion-group-2"
+    },
+    {
+      "name": "Spanish Supercopa de Espana",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/x58kka1650575711.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/tz1fzo1650575682.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/568-spanish-supercopa-de-espana"
+    },
+    {
+      "name": "Spanish Supercopa de Espana Femenina",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qrm1ry1663407232.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3s5knc1663407360.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1756-spanish-supercopa-de-espana-femenina"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 1",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/tbedzo1780184483.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/04mdyh1780184482.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3648-spanish-tercera-federacion-group-1"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 10",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/f07ozy1780198361.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/llbhly1780198360.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3657-spanish-tercera-federacion-group-10"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 11",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4vmx9s1780198777.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/01cs0s1780198776.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3658-spanish-tercera-federacion-group-11"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 12",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/c1z8uw1780199449.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/g5u1ix1780199448.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3659-spanish-tercera-federacion-group-12"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 13",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/bjruuz1780204237.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/lnw3v81780204236.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3660-spanish-tercera-federacion-group-13"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 14",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/uhsgww1780205435.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/swf24c1780205434.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3661-spanish-tercera-federacion-group-14"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 15",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vhj7191780206169.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/teh6mg1780206169.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3662-spanish-tercera-federacion-group-15"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 16",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3duv741780206433.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/392n8t1780206433.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3663-spanish-tercera-federacion-group-16"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 17",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/c6mra01780206652.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/tedfk61780206652.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3664-spanish-tercera-federacion-group-17"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 18",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ry94ab1780206983.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zx84nr1780206983.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3665-spanish-tercera-federacion-group-18"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 2",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/14uqrb1780184873.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4q683i1780184873.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3649-spanish-tercera-federacion-group-2"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 3",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z1juah1780185298.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5bjadr1780185298.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3650-spanish-tercera-federacion-group-3"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 4",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/iimvxc1780185642.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/g4vb4r1780185623.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3651-spanish-tercera-federacion-group-4"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 5",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hurbpi1780195299.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8q58wr1780195299.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3652-spanish-tercera-federacion-group-5"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 6",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/45y6081780195730.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/i3znbr1780195730.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3653-spanish-tercera-federacion-group-6"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 7",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/lchdqn1780196764.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2dfow21780196764.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3654-spanish-tercera-federacion-group-7"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 8",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/sao6ku1780197472.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jyhwyk1780197471.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3655-spanish-tercera-federacion-group-8"
+    },
+    {
+      "name": "Spanish Tercera Federacion Group 9",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/je8z1a1780197874.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9pcqg31780197874.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3656-spanish-tercera-federacion-group-9"
+    },
+    {
+      "name": "Superliga Colombiana",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wdpyyy1769119497.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/21hzo01769119497.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3566-superliga-colombiana"
+    },
+    {
+      "name": "Supertaça Cândido de Oliveira",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/sqlu8f1651310807.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0cyawo1651310666.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/579-superta%c3%a7a-c%c3%a2ndido-de-oliveira"
+    },
+    {
+      "name": "Swedish Allsvenskan",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/oyjm901650459803.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/loehxf1685023622.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/759-swedish-allsvenskan"
+    },
+    {
+      "name": "Swedish Superettan",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/re3kgq1650458800.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/hkzyz41650459278.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/760-swedish-superettan"
+    },
+    {
+      "name": "Swedish Svenska Cupen",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cathsp1685022832.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ikem691779557606.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1957-swedish-svenska-cupen"
+    },
+    {
+      "name": "Swedish Svenska Cupen Damer",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/mhnv4m1671874244.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1x910n1671874394.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1885-swedish-svenska-cupen-damer"
+    },
+    {
+      "name": "Swedish Svenska Supercupen",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/j7sn9o1685023134.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ao89ha1685022797.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1958-swedish-svenska-supercupen"
+    },
+    {
+      "name": "Swiss Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/h0iajw1752515771.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ikq2w01752515771.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3347-swiss-cup"
+    },
+    {
+      "name": "Swiss Super League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ss4la51651492579.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/07lyt71779213212.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1132-swiss-super-league"
+    },
+    {
+      "name": "Turkish Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/telpqw1714303813.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/db71n41776826421.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2147-turkish-cup"
+    },
+    {
+      "name": "Turkish Super Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6s8k9l1714304286.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9cb7di1714304373.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2148-turkish-super-cup"
+    },
+    {
+      "name": "Turkish Super Lig",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/9xy50v1651315484.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/61tliv1651315359.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/761-turkish-super-lig"
+    },
+    {
+      "name": "UAE League Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4fe6591715952861.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/v09pfl1715952985.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2211-uae-league-cup"
+    },
+    {
+      "name": "UAE Pro League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jpvglv1715952834.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/trznev1715952825.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2210-uae-pro-league"
+    },
+    {
+      "name": "UEFA Best Player in Europe Award",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/e0j4oc1656875295.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/e835zx1650643286.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/555-uefa-best-player-in-europe-award"
+    },
+    {
+      "name": "UEFA Champions League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/j6vteo1700068998.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jkil3z1747884991.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/428-uefa-champions-league"
+    },
+    {
+      "name": "UEFA Champions League Player of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/kadx3e1660745519.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nfhhj61660745943.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1660-uefa-champions-league-player-of-the-season"
+    },
+    {
+      "name": "UEFA Champions League Team of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8yi3c71715866702.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mr2ryk1715867129.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2208-uefa-champions-league-team-of-the-season"
+    },
+    {
+      "name": "UEFA Champions League Young Player of the Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3crejs1717425402.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/u3hq411715867138.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2209-uefa-champions-league-young-player-of-the-season"
+    },
+    {
+      "name": "UEFA Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/51s39x1650576590.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/w6y9ig1650576676.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/773-uefa-cup"
+    },
+    {
+      "name": "UEFA Cup Winners Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/atqgye1651319893.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/f5w3jl1651320033.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1134-uefa-cup-winners-cup"
+    },
+    {
+      "name": "UEFA Europa Conference League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jo0eol1686203138.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/lfijaf1747885599.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1572-uefa-europa-conference-league"
+    },
+    {
+      "name": "UEFA Europa Conference League Player Of The Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/33ceo01748592545.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3vk3ac1748592567.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3314-uefa-europa-conference-league-player-of-the-season"
+    },
+    {
+      "name": "UEFA Europa League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/28kqjb1650642437.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cmqrd51747884363.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/455-uefa-europa-league"
+    },
+    {
+      "name": "UEFA Europa League Player Of The Season",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ae6on31699192008.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7b8ea01699192075.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2048-uefa-europa-league-player-of-the-season"
+    },
+    {
+      "name": "UEFA European Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5v5zt21651310446.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/o84t5d1651310378.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/581-uefa-european-championship"
+    },
+    {
+      "name": "UEFA European Championship Player of the Tournament",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1yiyf81764408428.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/daghme1721053720.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2262-uefa-european-championship-player-of-the-tournament"
+    },
+    {
+      "name": "UEFA European Championship Top Scorer",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/e5pstp1764408435.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fgk2361721053240.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2261-uefa-european-championship-top-scorer"
+    },
+    {
+      "name": "UEFA European Championship Young Player of the Tournament",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/9pqbff1764408440.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wr6d011721053907.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2263-uefa-european-championship-young-player-of-the-tournament"
+    },
+    {
+      "name": "UEFA European Under 19 Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/tyfm191750783637.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0w6m291750783624.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3325-uefa-european-under-19-championship"
+    },
+    {
+      "name": "UEFA European Under-21 Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vpjv7i1655034490.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cfa3ln1655034404.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1404-uefa-european-under-21-championship"
+    },
+    {
+      "name": "UEFA Intertoto Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/2i9lg71651778563.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zlsr7y1651778642.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/611-uefa-intertoto-cup"
+    },
+    {
+      "name": "UEFA Nations League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/xcswuo1651310234.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1dhbz31702273403.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/918-uefa-nations-league"
+    },
+    {
+      "name": "UEFA Nations League Top Scorer",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/71psc41699191568.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/679zmy1699191580.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2047-uefa-nations-league-top-scorer"
+    },
+    {
+      "name": "UEFA Super Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hnwmdk1650576007.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ns3wj81650576108.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/457-uefa-super-cup"
+    },
+    {
+      "name": "UEFA Team of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/df0b611656875317.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/q7m4hd1650577219.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/642-uefa-team-of-the-year"
+    },
+    {
+      "name": "UEFA Womens Champions League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/uy7tan1651858894.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fpjs2p1782190268.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1422-uefa-womens-champions-league"
+    },
+    {
+      "name": "UEFA Womens Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0ickoy1659112203.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xb9u271782190798.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1653-uefa-womens-championship"
+    },
+    {
+      "name": "UEFA Womens Europa Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/y84j2d1777740363.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nkg1re1777740362.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3587-uefa-womens-europa-cup"
+    },
+    {
+      "name": "UEFA Womens Nations League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/x3gjh41698487436.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6en2w51698487402.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2040-uefa-womens-nations-league"
+    },
+    {
+      "name": "UEFA Womens Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4cryma1653237023.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/n2auvw1653236960.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1427-uefa-womens-player-of-the-year"
+    },
+    {
+      "name": "UEFA Youth League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zp93ni1652553768.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/h0ru9m1652553817.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1405-uefa-youth-league"
+    },
+    {
+      "name": "Ukrainian Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dx0z1e1654450646.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4ssnbo1654450585.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/762-ukrainian-premier-league"
+    },
+    {
+      "name": "UNFP Ligue 1 Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hdxxw31656854557.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cqn8j21650790587.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/583-unfp-ligue-1-player-of-the-year"
+    },
+    {
+      "name": "UNFP Ligue 1 Young Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/uk8ezv1656854559.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/t9zgij1650790680.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/587-unfp-ligue-1-young-player-of-the-year"
+    },
+    {
+      "name": "Uruguayan Primera Division",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/7e2alk1655026523.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8raklg1702965170.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/763-uruguayan-primera-division"
+    },
+    {
+      "name": "Venezuelan Liga FUTVE",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dd59g11768319706.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ri2y9b1768319706.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3564-venezuelan-liga-futve"
+    },
+    {
+      "name": "Womens Africa Cup of Nations",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/16et601691345366.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5t8sam1785084425.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1983-womens-africa-cup-of-nations"
+    },
+    {
+      "name": "Womens Finalissima",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/60ewip1702802891.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/780as81702802788.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2082-womens-finalissima"
+    },
+    {
+      "name": "Womens International Champions Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/52otom1653327819.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/pymi331653327917.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1559-womens-international-champions-cup"
+    },
+    {
+      "name": "Yashin Trophy",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/k2jra81725471874.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/beuyzf1725471924.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2459-yashin-trophy"
+    }
+  ],
+  "basketball": [
+    {
+      "name": "3x3 Basketball Commonwealth Games Bronze Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/sfm7mk1727515709.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/caesq71727515741.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2483-3x3-basketball-commonwealth-games-bronze-women"
+    },
+    {
+      "name": "3x3 Basketball Olympics Bronze Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/914wrk1738486787.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/pp9bl91738486801.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3191-3x3-basketball-olympics-bronze-women"
+    },
+    {
+      "name": "3x3 Basketball Olympics Gold Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8lgiww1732560672.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mfcux41732560682.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2522-3x3-basketball-olympics-gold-women"
+    },
+    {
+      "name": "3x3 Basketball Pan American Games Gold Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/v4jype1732460876.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/vb50z11732460898.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2513-3x3-basketball-pan-american-games-gold-women"
+    },
+    {
+      "name": "ABA League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8d5gyu1650477136.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kbhge51650477288.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1087-aba-league"
+    },
+    {
+      "name": "All EuroLeague Women First Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vja4fw1744548654.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/oevj141744548684.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3234-all-euroleague-women-first-team"
+    },
+    {
+      "name": "All NBA First Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cle0gw1650622513.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/v6snjh1650477873.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/824-all-nba-first-team"
+    },
+    {
+      "name": "All-EuroLeague First Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ymmutd1666551460.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ejvbmp1666551519.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1801-all-euroleague-first-team"
+    },
+    {
+      "name": "All-NBA G League First Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/y8h43o1674410898.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/uhhb2y1674410407.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1898-all-nba-g-league-first-team"
+    },
+    {
+      "name": "All-Tournament Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/xxuwb91702324441.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5k6ad31702324465.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2080-all-tournament-team"
+    },
+    {
+      "name": "All-WNBA First Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3b4ycq1659112863.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cpaajz1659112873.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1593-all-wnba-first-team"
+    },
+    {
+      "name": "Asian Games Basketball Gold",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ibkzb81708694668.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0ku7e51708694675.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2131-asian-games-basketball-gold"
+    },
+    {
+      "name": "Asian Games Basketball Women Bronze",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/x7mq5r1732962366.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/x57gb21732962388.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2549-asian-games-basketball-women-bronze"
+    },
+    {
+      "name": "Asian Games Basketball Women Gold",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/52z8f01708693874.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cl2r9w1708693884.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2130-asian-games-basketball-women-gold"
+    },
+    {
+      "name": "Asian Games Basketball Women Silver",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/tmnnxs1732962399.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ks6rqm1732962407.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2550-asian-games-basketball-women-silver"
+    },
+    {
+      "name": "Australian NBL",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/h6atuo1725979309.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/4rtc1o1725979253.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2475-australian-nbl"
+    },
+    {
+      "name": "Australian WNBL",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/si2ks71733479452.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cpk4xy1733479421.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2555-australian-wnbl"
+    },
+    {
+      "name": "Basketball Bundesliga",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/o47mkz1663959166.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/l9of311663959254.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1764-basketball-bundesliga"
+    },
+    {
+      "name": "Basketball Champions League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/f2mmuj1650610524.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jowh8j1650610587.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1089-basketball-champions-league"
+    },
+    {
+      "name": "Basketball Champions League Americas",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cm1gbw1746349565.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fe7exv1746349544.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3258-basketball-champions-league-americas"
+    },
+    {
+      "name": "Basketball Commonwealth Games Gold",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5wgb121733475958.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/k2ilaq1733475976.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2554-basketball-commonwealth-games-gold"
+    },
+    {
+      "name": "Basketball Commonwealth Games Gold Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/nt1wks1731251858.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/y7ftmh1731251876.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2495-basketball-commonwealth-games-gold-women"
+    },
+    {
+      "name": "Basketball Hall of Fame",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/lt2zm51650568727.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fuw67d1650568828.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/825-basketball-hall-of-fame"
+    },
+    {
+      "name": "Basketball Olympics Best Coach",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/srcflj1723450623.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ptj8i21723450630.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2390-basketball-olympics-best-coach"
+    },
+    {
+      "name": "Basketball Olympics Bronze",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/btfve11723398024.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/c75o4p1723398036.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2387-basketball-olympics-bronze"
+    },
+    {
+      "name": "Basketball Olympics Bronze Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ygxucm1723398054.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wbsy7b1723398061.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2388-basketball-olympics-bronze-women"
+    },
+    {
+      "name": "Basketball Olympics Gold",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/i7igun1723398072.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/gfbip71723398080.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2383-basketball-olympics-gold"
+    },
+    {
+      "name": "Basketball Olympics Gold Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3psziu1723398096.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/b2hh9k1723398103.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2384-basketball-olympics-gold-women"
+    },
+    {
+      "name": "Basketball Olympics Rising Star",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zqbvag1723449307.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/w2vxj51723449330.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2389-basketball-olympics-rising-star"
+    },
+    {
+      "name": "Basketball Olympics Silver",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/tiv7dh1723398114.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xi0vuk1723398120.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2385-basketball-olympics-silver"
+    },
+    {
+      "name": "Basketball Olympics Silver Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cbrbxy1723398133.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ab0ykr1723398139.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2386-basketball-olympics-silver-women"
+    },
+    {
+      "name": "Basketball Pan American Games Bronze",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/bu3xsz1732526531.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/j4clgh1732526543.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2519-basketball-pan-american-games-bronze"
+    },
+    {
+      "name": "Basketball Pan American Games Bronze Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ful90l1732560321.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6ozkba1732560344.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2520-basketball-pan-american-games-bronze-women"
+    },
+    {
+      "name": "Basketball Pan American Games Gold",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rk33rf1732526556.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ab7rqf1732526567.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2517-basketball-pan-american-games-gold"
+    },
+    {
+      "name": "Basketball Pan American Games Gold Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/epui9a1731248398.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cfophf1731248425.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2494-basketball-pan-american-games-gold-women"
+    },
+    {
+      "name": "Basketball Pan American Games Silver",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rlxtgp1732526580.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zk90mw1732526591.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2518-basketball-pan-american-games-silver"
+    },
+    {
+      "name": "Basketball Pan American Games Silver Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cfxpba1732560359.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zb7aue1732560369.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2521-basketball-pan-american-games-silver-women"
+    },
+    {
+      "name": "Basketbol Super Ligi",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/uwe4gf1650610631.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/n6a6a31650610699.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1091-basketbol-super-ligi"
+    },
+    {
+      "name": "BBL Pokal MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/lk0fih1745081659.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/s1hrf41745081670.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3238-bbl-pokal-mvp"
+    },
+    {
+      "name": "BBL-Pokal",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/7ib91j1663958893.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5ubagl1663958784.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1763-bbl-pokal"
+    },
+    {
+      "name": "Big Ten Mens Basketball Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rowzo81666270930.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fw4ypb1666270607.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1792-big-ten-mens-basketball-championship"
+    },
+    {
+      "name": "Big Ten Mens Basketball Tournament Championship",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ir7ucr1666270940.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/c88i8c1666270880.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1793-big-ten-mens-basketball-tournament-championship"
+    },
+    {
+      "name": "Copa de la Reina de Baloncesto",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hpd12z1692358980.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6uadf21692359120.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1989-copa-de-la-reina-de-baloncesto"
+    },
+    {
+      "name": "Copa del Rey de Baloncesto MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/s5zvo71695061758.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5xa8541695061770.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2013-copa-del-rey-de-baloncesto-mvp"
+    },
+    {
+      "name": "Coppa Italiana di Pallacanestro",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ah2qwr1664383395.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/vzb4131664383501.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1777-coppa-italiana-di-pallacanestro"
+    },
+    {
+      "name": "Coupe de France de Basket",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/eb1puz1685188000.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/k3mf3u1685188072.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1960-coupe-de-france-de-basket"
+    },
+    {
+      "name": "EuroLeague",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/u827671650628073.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/co7qac1650612433.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/655-euroleague"
+    },
+    {
+      "name": "EuroLeague Best Defender",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/iztanh1666635287.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/s1ivgw1666635317.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1804-euroleague-best-defender"
+    },
+    {
+      "name": "EuroLeague Coach of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rnfudj1780131385.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2d5fx51780131392.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3647-euroleague-coach-of-the-year"
+    },
+    {
+      "name": "EuroLeague Final Four MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/7dk67w1666550787.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/dchrk71666550831.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1799-euroleague-final-four-mvp"
+    },
+    {
+      "name": "EuroLeague MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ne75ft1684580445.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xmvmyn1684580454.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1952-euroleague-mvp"
+    },
+    {
+      "name": "EuroLeague Rising Star",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/pgwcu31666634834.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/qeai9s1666634823.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1803-euroleague-rising-star"
+    },
+    {
+      "name": "EuroLeague steals leader",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6uigtj1745081471.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/lao60z1745081488.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3237-euroleague-steals-leader"
+    },
+    {
+      "name": "EuroLeague Top Scorer",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/skxjxu1666551403.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/bfojbe1666551394.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1800-euroleague-top-scorer"
+    },
+    {
+      "name": "EuroLeague Women Defensive Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4nphl71744549449.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/bokxax1744549463.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3236-euroleague-women-defensive-player-of-the-year"
+    },
+    {
+      "name": "EuroLeague Women Final Four MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qxd5kd1745476894.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3v21b51745476907.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3242-euroleague-women-final-four-mvp"
+    },
+    {
+      "name": "EuroLeague Women MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/j47ipx1744548830.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jvpnds1744548848.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3235-euroleague-women-mvp"
+    },
+    {
+      "name": "FIBA AfroBasket",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/iwcbdk1676051617.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/q7mye41676051491.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1905-fiba-afrobasket"
+    },
+    {
+      "name": "FIBA AmeriCup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/bghkqb1662489952.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/g3ta451662490019.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1744-fiba-americup"
+    },
+    {
+      "name": "FIBA Asia Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/2ff39a1706965715.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/vafuss1706965649.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2121-fiba-asia-cup"
+    },
+    {
+      "name": "FIBA EuroBasket",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ulowoh1650613842.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kfrkgr1650613746.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/654-fiba-eurobasket"
+    },
+    {
+      "name": "FIBA EuroBasket Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1vun981686939341.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mooyob1686939186.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1972-fiba-eurobasket-women"
+    },
+    {
+      "name": "FIBA EuroCup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/eodgho1657955283.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jxe1kl1657955335.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1090-fiba-eurocup"
+    },
+    {
+      "name": "FIBA EuroCup Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/8tyzre1732565169.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0g1asp1785351958.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1766-fiba-eurocup-women"
+    },
+    {
+      "name": "FIBA EuroLeague Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0ecdi81659113046.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6rv0kc1659113114.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1596-fiba-euroleague-women"
+    },
+    {
+      "name": "FIBA Hall of Fame",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1snz4a1776494805.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ex4bmx1732957488.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2548-fiba-hall-of-fame"
+    },
+    {
+      "name": "FIBA Intercontinental Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zv89pu1662229363.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0rn47a1662229316.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1740-fiba-intercontinental-cup"
+    },
+    {
+      "name": "FIBA Korać Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ybdqyi1670500049.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jt2zek1670500016.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1870-fiba-kora%c4%87-cup"
+    },
+    {
+      "name": "FIBA Saporta Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/84ykep1670411034.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/m159en1670410942.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1867-fiba-saporta-cup"
+    },
+    {
+      "name": "FIBA West Asia Super League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/oiw7ns1746274712.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/q4b7g01746274731.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3257-fiba-west-asia-super-league"
+    },
+    {
+      "name": "FIBA Womens AmeriCup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/juw6t71688935248.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/r6jvob1688935156.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1981-fiba-womens-americup"
+    },
+    {
+      "name": "FIBA Womens Asia Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4s70ya1704638911.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7xajtz1751188175.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2109-fiba-womens-asia-cup"
+    },
+    {
+      "name": "FIBA Womens World Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/qym7gc1686509302.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/sbmczo1686509941.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1970-fiba-womens-world-cup"
+    },
+    {
+      "name": "FIBA World Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/9ypbbd1650628160.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/r01k991650479772.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/656-fiba-world-cup"
+    },
+    {
+      "name": "Gatorade Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/37bxjz1650626835.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wln7jo1650626974.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/774-gatorade-player-of-the-year"
+    },
+    {
+      "name": "Greek Basket League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/suz7lw1670494147.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/67qwpt1670494131.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1868-greek-basket-league"
+    },
+    {
+      "name": "Greek Basketball Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5zqh0d1670494368.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/addbwy1670494225.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1869-greek-basketball-cup"
+    },
+    {
+      "name": "Israeli Basketball Premier League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6524ct1672312685.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ei35rz1672312649.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1889-israeli-basketball-premier-league"
+    },
+    {
+      "name": "Israeli Basketball State Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0fd0i21737215877.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kprd441737215982.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3177-israeli-basketball-state-cup"
+    },
+    {
+      "name": "Jordan Brand Classic co-MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/7icmvx1655319035.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wed4kt1655319223.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/628-jordan-brand-classic-co-mvp"
+    },
+    {
+      "name": "Lega Basket",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ds1gzg1650627090.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/w2nurj1684057166.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1088-lega-basket"
+    },
+    {
+      "name": "Liga ACB",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/bqf1tg1650477402.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xsrb0b1650477551.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/779-liga-acb"
+    },
+    {
+      "name": "Liga ACB MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/siha0w1715783540.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/xpqmzu1715783548.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2205-liga-acb-mvp"
+    },
+    {
+      "name": "Liga Femenina de Baloncesto",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/h4rs501692358596.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8jlmq71692358414.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1988-liga-femenina-de-baloncesto"
+    },
+    {
+      "name": "Ligue Féminine de Basketball",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5x04mn1687004458.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/sgm9x31687004303.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1974-ligue-f%c3%a9minine-de-basketball"
+    },
+    {
+      "name": "Lithuanian King Mindaugas Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ftzmom1745082061.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mp9imd1745082279.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3239-lithuanian-king-mindaugas-cup"
+    },
+    {
+      "name": "Lithuanian LKL",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/9ke4fv1745083636.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/n4bcfo1745083650.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3240-lithuanian-lkl"
+    },
+    {
+      "name": "LNB",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6za3c21650477677.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5l9phe1650641042.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1086-lnb"
+    },
+    {
+      "name": "LNB Pro A MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wpo84i1683374049.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ermd521683374005.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1940-lnb-pro-a-mvp"
+    },
+    {
+      "name": "Naismith College Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/x81te91666811080.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ef4oan1666810980.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1805-naismith-college-player-of-the-year"
+    },
+    {
+      "name": "NBA",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/xw7nay1650622218.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zhmg0p1655536475.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/619-nba"
+    },
+    {
+      "name": "NBA 75th Anniversary Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/nugo8n1667040905.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7btprz1667040816.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1808-nba-75th-anniversary-team"
+    },
+    {
+      "name": "NBA All Star",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/9keeyv1650614411.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8afltl1650478243.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/612-nba-all-star"
+    },
+    {
+      "name": "NBA All Star MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/d3h8te1650614519.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/f2osci1650478095.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/613-nba-all-star-mvp"
+    },
+    {
+      "name": "NBA assists leader",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vapx1v1666271014.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zli64m1666271019.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/828-nba-assists-leader"
+    },
+    {
+      "name": "NBA blocks leader",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hqsw1n1654939697.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/luupcf1654939704.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/829-nba-blocks-leader"
+    },
+    {
+      "name": "NBA Clutch Player Of The Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/0gsnwb1671018729.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/7863tm1671018690.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1874-nba-clutch-player-of-the-year"
+    },
+    {
+      "name": "NBA Coach of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/snv7ql1674405054.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/gqlgy71674405006.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1896-nba-coach-of-the-year"
+    },
+    {
+      "name": "NBA Defensive Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/choy5a1650622351.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/iu5wke1671017331.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/775-nba-defensive-player-of-the-year"
+    },
+    {
+      "name": "NBA Eastern Conference Champion",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/yo1fu41659113199.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/3mhp8e1659113350.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1585-nba-eastern-conference-champion"
+    },
+    {
+      "name": "NBA Eastern Conference Finals MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/v433qp1659116235.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/pjqn0z1659116228.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1587-nba-eastern-conference-finals-mvp"
+    },
+    {
+      "name": "NBA Finals MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3tnh8w1650627845.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wv49ei1655536555.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/614-nba-finals-mvp"
+    },
+    {
+      "name": "NBA G League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/bj34iq1674407016.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/f1yyc41674406961.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1897-nba-g-league"
+    },
+    {
+      "name": "NBA G League Finals MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/z7af921674411756.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/apgcd91674411744.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1901-nba-g-league-finals-mvp"
+    },
+    {
+      "name": "NBA G League MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4oduyg1674410866.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/f5gcby1674410763.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1900-nba-g-league-mvp"
+    },
+    {
+      "name": "NBA G League Rookie of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/o35mm01674410886.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/5bbxnh1674410601.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1899-nba-g-league-rookie-of-the-year"
+    },
+    {
+      "name": "NBA G League Showcase Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/32q9ba1703697217.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/msy47w1703697175.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2093-nba-g-league-showcase-cup"
+    },
+    {
+      "name": "NBA In-Season Tournament",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vwiv9l1702319232.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1autas1702319250.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2079-nba-in-season-tournament"
+    },
+    {
+      "name": "NBA In-Season Tournament MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/vzu6941702318986.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/z7uutl1702318999.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2078-nba-in-season-tournament-mvp"
+    },
+    {
+      "name": "NBA Most Improved Player",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/j2s8591650627637.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/smquu11671017203.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/776-nba-most-improved-player"
+    },
+    {
+      "name": "NBA MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cfhlyr1650622769.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/q6avhd1671016853.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/615-nba-mvp"
+    },
+    {
+      "name": "NBA rebounding leader",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/asjkui1654939726.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/pr3ogj1654939732.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/830-nba-rebounding-leader"
+    },
+    {
+      "name": "NBA Rising Stars MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/junvbr1708161547.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/432kf91708160610.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2129-nba-rising-stars-mvp"
+    },
+    {
+      "name": "NBA Rookie of the year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zl41un1650627535.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/rdzale1671017095.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/616-nba-rookie-of-the-year"
+    },
+    {
+      "name": "NBA scoring champion",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/kuryzi1654939754.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/kekxoq1654939760.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/831-nba-scoring-champion"
+    },
+    {
+      "name": "NBA Sixth Man of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/jc8p0m1650627425.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8i9aiw1671016981.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/777-nba-sixth-man-of-the-year"
+    },
+    {
+      "name": "NBA Slam Dunk Contest",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/evwsfx1654944992.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/q1o2xj1650478466.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/617-nba-slam-dunk-contest"
+    },
+    {
+      "name": "NBA steals leader",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/6oh34a1654939772.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9efi2i1654939777.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1397-nba-steals-leader"
+    },
+    {
+      "name": "NBA Summer League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/cqiv821709734560.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/imh0v71709734549.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2133-nba-summer-league"
+    },
+    {
+      "name": "NBA Summer League MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/oe7dwu1709734380.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/i8764z1709734262.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2132-nba-summer-league-mvp"
+    },
+    {
+      "name": "NBA Three-Point Contest",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/j9pkhc1654945136.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/v6hwbh1650478616.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/618-nba-three-point-contest"
+    },
+    {
+      "name": "NBA Western Conference Champion",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/gj9yp91659116055.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/wu4dah1659116134.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1584-nba-western-conference-champion"
+    },
+    {
+      "name": "NBA Western Conference Finals MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/haai2b1659116033.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6cbktz1659115827.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1586-nba-western-conference-finals-mvp"
+    },
+    {
+      "name": "NCAA Basketball",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1yoni81659116515.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ebijau1659116644.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1583-ncaa-basketball"
+    },
+    {
+      "name": "NCAA Basketball Women",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/5obgf51659116547.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/29dj1w1659117145.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1597-ncaa-basketball-women"
+    },
+    {
+      "name": "Russian Basketball Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/ld08e01763483727.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/tq3mry1763483607.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3530-russian-basketball-cup"
+    },
+    {
+      "name": "Spanish Copa del Rey de Baloncesto",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/v7rspu1650610766.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6y5m7c1718522807.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/826-spanish-copa-del-rey-de-baloncesto"
+    },
+    {
+      "name": "Spanish Supercopa de Espana de Baloncesto",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1h8c801650622143.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/2mpe3w1650622073.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/832-spanish-supercopa-de-espana-de-baloncesto"
+    },
+    {
+      "name": "Supercopa de Espana de Baloncesto MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/w19yee1695061840.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mixnah1695061831.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2012-supercopa-de-espana-de-baloncesto-mvp"
+    },
+    {
+      "name": "Supercoppa Italiana di Pallacanestro",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/red2a31664383671.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ft0v1h1684057445.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1778-supercoppa-italiana-di-pallacanestro"
+    },
+    {
+      "name": "Turkish Basketball Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/3bnocj1730243813.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/8749wc1731268131.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2011-turkish-basketball-cup"
+    },
+    {
+      "name": "Turkish Basketball Presidential Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/7ynx941731266266.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mndb8l1731266286.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2499-turkish-basketball-presidential-cup"
+    },
+    {
+      "name": "USA Basketball Male Athlete of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/1pj8ui1650622843.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/nd38us1650480100.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/720-usa-basketball-male-athlete-of-the-year"
+    },
+    {
+      "name": "VTB United League",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/96fj7m1666633944.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/fofwa11666634053.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1802-vtb-united-league"
+    },
+    {
+      "name": "WCBA",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/g1oyiu1704657286.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/vn6cmn1704657238.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2110-wcba"
+    },
+    {
+      "name": "WNBA",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/hpe6yo1659116384.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/29gyjp1686517480.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1588-wnba"
+    },
+    {
+      "name": "WNBA 10th Anniversary Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/pvzdo71758470160.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/6akrfq1758470169.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3474-wnba-10th-anniversary-team"
+    },
+    {
+      "name": "WNBA 15th Anniversary Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/eua6711758470331.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/ehy80j1758470348.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3475-wnba-15th-anniversary-team"
+    },
+    {
+      "name": "WNBA 20th Anniversary Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/zo3rm31758470628.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zfktdv1758470637.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3476-wnba-20th-anniversary-team"
+    },
+    {
+      "name": "WNBA 25th Anniversary Team",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/wlajss1758470740.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/hdriij1758470748.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/3477-wnba-25th-anniversary-team"
+    },
+    {
+      "name": "WNBA All Star",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/d4omsr1650568599.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/9mwvvd1654945179.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1406-wnba-all-star"
+    },
+    {
+      "name": "WNBA All Star Game MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/xbkxjc1659117834.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mp8y7i1659117422.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1591-wnba-all-star-game-mvp"
+    },
+    {
+      "name": "WNBA blocks leader",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/2fwu4t1688925372.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/0znx0s1688925386.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1979-wnba-blocks-leader"
+    },
+    {
+      "name": "WNBA Commissioners Cup",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/7z0y7c1686510310.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/splub41686517468.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1971-wnba-commissioners-cup"
+    },
+    {
+      "name": "WNBA Defensive Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/mwe8j81659117990.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/lr5meh1659118187.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1590-wnba-defensive-player-of-the-year"
+    },
+    {
+      "name": "WNBA Finals MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4nnlej1659118376.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/pxrgax1713543607.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1589-wnba-finals-mvp"
+    },
+    {
+      "name": "WNBA Most Improved Player",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/4t0ov31688924153.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/bh27nl1688924165.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1977-wnba-most-improved-player"
+    },
+    {
+      "name": "WNBA MVP",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/npm57g1688923136.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/jeuu2z1713543988.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1976-wnba-mvp"
+    },
+    {
+      "name": "WNBA peak performer",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/2pebiq1659118485.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/mdmqjj1688924306.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1595-wnba-peak-performer"
+    },
+    {
+      "name": "WNBA rebounding leader",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/x6tm481659118557.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/cf72kk1659118563.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1594-wnba-rebounding-leader"
+    },
+    {
+      "name": "WNBA Rookie of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/9xmz471659118679.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/h7gdp71728210192.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1592-wnba-rookie-of-the-year"
+    },
+    {
+      "name": "WNBA scoring champion",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/rf8tkh1688925539.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/vl77v01688925548.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1980-wnba-scoring-champion"
+    },
+    {
+      "name": "WNBA Sixth Player of the Year",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/r8vthm1688924608.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/1jaxkq1738498322.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/1978-wnba-sixth-player-of-the-year"
+    },
+    {
+      "name": "WNBA steals leader",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/b3u6tr1731248055.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/thsijm1731248067.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/2493-wnba-steals-leader"
+    },
+    {
+      "name": "WNBA Three Point Contest",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/i55cq31785019804.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/media/honour/trophy/zki44t1785019627.png/tiny",
+      "url": "https://www.thesportsdb.com/honour/4154-wnba-three-point-contest"
+    },
+    {
+      "name": "Womens Basketball Hall of Fame",
+      "logo": "https://www.thesportsdb.com/images/media/honour/logo/dog09m1782641106.png/tiny",
+      "trophy": "https://www.thesportsdb.com/images/no_thumb.png",
+      "url": "https://www.thesportsdb.com/honour/4101-womens-basketball-hall-of-fame"
+    }
+  ]
+}

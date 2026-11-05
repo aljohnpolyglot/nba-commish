@@ -3,14 +3,17 @@ import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions'
 import { generateForCompetition, selectCompetitionTeamTids } from '../competition/competitionScheduler';
 import { injectCompetitionPostseasonGames, resolveCompetitionSeason } from '../competition/competitionResolver';
 import { dateForCompetitionSeason } from '../competition/competitionSeasonState';
-import { initialPbaEndOfSeasonChecklist, initialPbaInterConferenceChecklist } from '../offseason/offseasonState';
+import { getDraftSeasonYearForState, initialPbaEndOfSeasonChecklist, initialPbaInterConferenceChecklist } from '../offseason/offseasonState';
 import { getTeamFullName } from '../../utils/teamNames';
 import { resolveAnyTeam } from '../../utils/teamLookup';
 import { isPbaActiveConferencePhase } from '../../utils/uiMode';
 import { buildPbaLiveAwardPatch, buildPbaSeasonAwardPatch } from './awards';
 import { autoManagePbaImports } from './importAutomation';
 import { normalizeDate } from '../../utils/helpers';
-import { selectCountedPbaRegularBoxScores } from './competitionGames';
+import { competitionSeasonForBox, selectCountedPbaRegularBoxScores } from './competitionGames';
+import { buildPbaGovernorsBoardMeeting } from './governorsBoard';
+import { trimPbaOversizedRosters } from './rosterTrim';
+import { carryPbaDraftClassForward, isPbaDraftHeldInYear } from './draftCalendar';
 
 export type PbaConference = 'philippine' | 'commissioners' | 'governors';
 
@@ -21,13 +24,27 @@ const isPbaPostseasonGame = (game: any) => PBA_POSTSEASON_PHASES.has(String(game
 
 const isPbaRegularSeasonGame = (game: any) => !isPbaPostseasonGame(game);
 
-export function getNextConference(current: PbaConference): PbaConference | null {
+const hasPbaRegularScheduleCollisions = (games: any[]): boolean => {
+  const appearances = new Set<string>();
+  for (const game of games) {
+    const date = normalizeDate(game.date);
+    for (const tid of [Number(game.homeTid), Number(game.awayTid)]) {
+      const key = `${date}:${tid}`;
+      if (appearances.has(key)) return true;
+      appearances.add(key);
+    }
+  }
+  return false;
+};
+
+export function getNextConference(current: PbaConference, seasonYear?: number): PbaConference | null {
   const idx = CONFERENCE_ORDER.indexOf(current);
   return idx < CONFERENCE_ORDER.length - 1 ? CONFERENCE_ORDER[idx + 1] : null;
 }
 
-export function getConferenceSpec(conf: PbaConference) {
+export function getConferenceSpec(conf: PbaConference, seasonYear?: number) {
   const map: Record<PbaConference, number> = { philippine: 0, commissioners: 1, governors: 2 };
+  void seasonYear;
   return PBA_COMPETITIONS[map[conf]];
 }
 
@@ -42,35 +59,15 @@ export function clearConferenceImports(players: NBAPlayer[], conference: PbaConf
         importConference: undefined,
         importTeamId: undefined,
         pbaImportContract: undefined,
+        contract: undefined,
+        recentlyWaivedBy: undefined,
+        recentlyWaivedDate: undefined,
+        signedDate: undefined,
+        tradeEligibleDate: undefined,
       } as any;
     }
     return p;
   });
-}
-
-function advancePbaStaffContractsForOffseason(nonNBATeams: GameState['nonNBATeams'] | undefined): GameState['nonNBATeams'] {
-  if (!Array.isArray(nonNBATeams)) return nonNBATeams;
-  return nonNBATeams.map((team: any) => {
-    if (team?.league !== 'PBA' || !Array.isArray(team?.tycoon?.staffMembers)) return team;
-    const nextMembers = team.tycoon.staffMembers.map((member: any) => {
-      const currentYears = Number(member?.contractYears);
-      if (!Number.isFinite(currentYears)) return member;
-      return {
-        ...member,
-        contractYears: Math.max(0, Math.round(currentYears) - 1),
-        yearsWithTeam: Number.isFinite(Number(member?.yearsWithTeam))
-          ? Number(member.yearsWithTeam) + 1
-          : member?.yearsWithTeam,
-      };
-    });
-    return {
-      ...team,
-      tycoon: {
-        ...(team.tycoon ?? {}),
-        staffMembers: nextMembers,
-      },
-    };
-  }) as any;
 }
 
 export function recordConferenceChampion(
@@ -101,14 +98,13 @@ export function generateNextConferenceSchedule(
   state: GameState,
   nextConf: PbaConference,
 ): any[] {
-  const spec = getConferenceSpec(nextConf);
   const ls = state.leagueStats as any;
   const seasonYear = ls?.year ?? new Date().getFullYear();
-  const calYear = nextConf === 'philippine' && spec.seasonStart.month >= 7 ? seasonYear - 1 : seasonYear;
-  const start = new Date(Date.UTC(calYear, spec.seasonStart.month - 1, spec.seasonStart.day));
+  const spec = getConferenceSpec(nextConf, seasonYear);
+  const start = new Date(`${getEffectiveConferenceStartIso(nextConf, seasonYear, state.date)}T00:00:00Z`);
   const source = { nonNBATeams: (state as any).nonNBATeams, userTeamId: state.userTeamId };
   const tids = selectCompetitionTeamTids(spec, source);
-  const gidBase = nextConf === 'commissioners' ? 810_000 : 820_000;
+  const gidBase = getNextPbaScheduleGid(state, nextConf);
   return generateForCompetition(spec, tids.map(tid => ({ tid })), start, gidBase);
 }
 
@@ -118,21 +114,101 @@ export function getConferenceStartDate(conf: PbaConference, seasonYear: number):
 }
 
 export function getConferenceStartIso(conf: PbaConference, seasonYear: number): string {
-  const spec = getConferenceSpec(conf);
+  const spec = getConferenceSpec(conf, seasonYear);
   const calYear = conf === 'philippine' && spec.seasonStart.month >= 7 ? seasonYear - 1 : seasonYear;
   const month = String(spec.seasonStart.month).padStart(2, '0');
   const day = String(spec.seasonStart.day).padStart(2, '0');
   return `${calYear}-${month}-${day}`;
 }
 
+function getEffectiveConferenceStartIso(conf: PbaConference, seasonYear: number, currentDate: string): string {
+  const scheduled = getConferenceStartIso(conf, seasonYear);
+  const current = normalizeDate(currentDate);
+  return current > scheduled ? current : scheduled;
+}
+
+function pbaSeasonYearForDatedRow(spec: ReturnType<typeof getConferenceSpec>, row: any): number | null {
+  const savedSeason = Number(row?.season ?? row?.seasonYear);
+  if (Number.isFinite(savedSeason) && savedSeason > 0) return savedSeason;
+  const date = new Date(row?.date ?? '');
+  if (Number.isNaN(date.getTime())) return null;
+  const month = date.getUTCMonth() + 1;
+  const year = date.getUTCFullYear();
+  const crossesCalendarYear =
+    spec.seasonStart.month > spec.seasonEnd.month ||
+    (spec.seasonStart.month === spec.seasonEnd.month && spec.seasonStart.day > spec.seasonEnd.day);
+  return crossesCalendarYear && month >= spec.seasonStart.month ? year + 1 : year;
+}
+
+function mostCommonPbaSeasonYear(years: Array<number | null | undefined>, fallback: number): number {
+  const counts = new Map<number, number>();
+  years.forEach(year => {
+    if (!Number.isFinite(Number(year))) return;
+    const key = Number(year);
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  });
+  if (counts.size === 0) return fallback;
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1] || b[0] - a[0])[0][0];
+}
+
+export function inferPbaConferenceSeasonYear(
+  state: Pick<GameState, 'date' | 'schedule' | 'boxScores' | 'leagueStats'>,
+  conference?: PbaConference,
+): number {
+  const leagueStats = state.leagueStats as any;
+  const currentConference = (conference ?? leagueStats?.pbaConference ?? 'philippine') as PbaConference;
+  const position = getPbaCalendarPosition(state.date);
+  const leagueYear = Number(leagueStats?.year);
+  const fallback = position.conference === currentConference
+    ? position.seasonYear
+    : Number.isFinite(leagueYear)
+      ? leagueYear
+      : position.seasonYear;
+  const spec = getConferenceSpec(currentConference, Number.isFinite(leagueYear) ? leagueYear : fallback);
+  const competitionRows = [
+    ...(state.schedule ?? []).filter((game: any) => game?.competitionId === spec.id),
+    ...(state.boxScores ?? []).filter((game: any) => game?.competitionId === spec.id),
+  ];
+  if (
+    Number.isFinite(leagueYear) &&
+    competitionRows.some(row => pbaSeasonYearForDatedRow(spec, row) === leagueYear)
+  ) return leagueYear;
+  const unplayedScheduledYears = (state.schedule ?? [])
+    .filter((game: any) => game?.competitionId === spec.id && !game.played)
+    .map((game: any) => pbaSeasonYearForDatedRow(spec, game));
+  if (unplayedScheduledYears.length > 0) return mostCommonPbaSeasonYear(unplayedScheduledYears, fallback);
+  const allYears = competitionRows.map((game: any) => pbaSeasonYearForDatedRow(spec, game));
+  return mostCommonPbaSeasonYear(allYears, fallback);
+}
+
 function getConferenceDateIso(conf: PbaConference, seasonYear: number, month: number, day: number): string {
-  return dateForCompetitionSeason(getConferenceSpec(conf), seasonYear, month, day).slice(0, 10);
+  return dateForCompetitionSeason(getConferenceSpec(conf, seasonYear), seasonYear, month, day).slice(0, 10);
 }
 
 function getConferencePlayoffStartIso(conf: PbaConference, seasonYear: number): string | null {
-  const round = getConferenceSpec(conf).playoffFormat?.rounds[0];
+  const round = getConferenceSpec(conf, seasonYear).playoffFormat?.rounds[0];
   if (!round) return null;
   return getConferenceDateIso(conf, seasonYear, round.start.month, round.start.day);
+}
+
+export function getPbaFirstPlayoffDate(
+  state: Pick<GameState, 'date' | 'schedule' | 'boxScores' | 'leagueStats'>,
+  conference?: PbaConference,
+): string | null {
+  const currentConference = (conference ?? (state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference;
+  const seasonYear = inferPbaConferenceSeasonYear(state, currentConference);
+  const competitionId = getConferenceSpec(currentConference, seasonYear).id;
+  const scheduled = (state.schedule ?? [])
+    .filter((game: any) =>
+      game?.competitionId === competitionId
+      && !game.played
+      && ['qf', 'sf', 'final'].includes(String(game?.competitionPhase ?? '')),
+    )
+    .map((game: any) => normalizeDate(game.date))
+    .filter(Boolean)
+    .sort()[0];
+  return scheduled ?? getConferencePlayoffStartIso(currentConference, seasonYear);
 }
 
 function isBeforeConferencePlayoffs(state: GameState, conf: PbaConference, seasonYear: number): boolean {
@@ -152,7 +228,7 @@ function prunePrematurePbaPostseason(
     (normalizeDate(state.date) < playoffStart || leagueStats?.pbaConferencePhase === 'regularSeason');
   if (!shouldPrune) return state;
 
-  const spec = getConferenceSpec(conf);
+  const spec = getConferenceSpec(conf, seasonYear);
   const schedule = (state.schedule ?? []).filter((game: any) =>
     game.played ||
     game.competitionId !== spec.id ||
@@ -172,12 +248,74 @@ function getPbaGidBase(conf: PbaConference): number {
   return 800_000;
 }
 
+export function getNextPbaScheduleGid(
+  state: Pick<GameState, 'schedule' | 'boxScores'>,
+  conference: PbaConference,
+): number {
+  const ids = [
+    ...(state.schedule ?? []).map(game => Number(game.gid) || 0),
+    ...(state.boxScores ?? []).map(game => Number((game as any).gameId ?? (game as any).gid) || 0),
+  ];
+  return Math.max(getPbaGidBase(conference) - 1, 0, ...ids) + 1;
+}
+
 function expectedPbaRegularSeasonGames(spec: ReturnType<typeof getConferenceSpec>, teamCount: number): number {
   if (teamCount < 2) return 0;
   const gamesPerTeam = Math.floor(Number(spec.gamesPerTeam ?? teamCount - 1));
   if (gamesPerTeam > 0 && gamesPerTeam < teamCount - 1) return Math.floor((teamCount * gamesPerTeam) / 2);
   const singleRoundRobin = (teamCount * (teamCount - 1)) / 2;
   return (spec.gamesPerTeam ?? 0) >= (teamCount - 1) * 2 ? singleRoundRobin * 2 : singleRoundRobin;
+}
+
+function applySavedPbaOpeningNight(
+  state: GameState,
+  schedule: GameState['schedule'],
+  conference: PbaConference,
+  seasonYear: number,
+): GameState['schedule'] {
+  if (
+    conference !== 'philippine'
+    || state.leagueStats.globalGamesScheduledYear !== seasonYear
+    || !state.globalGames?.[0]
+  ) return schedule;
+  const selection = state.globalGames[0];
+  const competitionId = getConferenceSpec(conference, seasonYear).id;
+  const regularGames = schedule
+    .filter(game =>
+      game.competitionId === competitionId
+      && !game.played
+      && isPbaRegularSeasonGame(game),
+    )
+    .sort((left, right) => left.date.localeCompare(right.date) || left.gid - right.gid);
+  const selected = regularGames.find(game =>
+    (game.homeTid === selection.homeTid && game.awayTid === selection.awayTid)
+    || (game.homeTid === selection.awayTid && game.awayTid === selection.homeTid),
+  );
+  const first = regularGames[0];
+  if (!selected || !first) return schedule;
+  if (
+    selected.gid === first.gid
+    && selected.city === selection.city
+    && selected.country === selection.country
+    && selected.venue === selection.venue
+  ) return schedule;
+  return schedule
+    .map(game => {
+      if (game.gid === selected.gid) {
+        return {
+          ...game,
+          date: first.date,
+          city: selection.city,
+          country: selection.country,
+          venue: selection.venue,
+        };
+      }
+      if (first.gid !== selected.gid && game.gid === first.gid) {
+        return { ...game, date: selected.date };
+      }
+      return game;
+    })
+    .sort((left, right) => left.date.localeCompare(right.date) || left.gid - right.gid);
 }
 
 function ensureActivePbaConferenceSchedule(
@@ -187,7 +325,7 @@ function ensureActivePbaConferenceSchedule(
   seasonYear: number,
 ): GameState {
   if (leagueStats?.pbaConferencePhase !== 'regularSeason') return state;
-  const spec = getConferenceSpec(conference);
+  const spec = getConferenceSpec(conference, seasonYear);
   const today = normalizeDate(state.date);
   const playoffStart = getConferencePlayoffStartIso(conference, seasonYear);
   if (playoffStart && today >= playoffStart) return state;
@@ -208,7 +346,8 @@ function ensureActivePbaConferenceSchedule(
   const participants = new Set(regularCurrent.flatMap((game: any) => [Number(game.homeTid), Number(game.awayTid)]));
   const isSparse = expected > 0 && (
     regularCurrent.length < Math.floor(expected * 0.8) ||
-    tids.some((tid: number) => !participants.has(tid))
+    tids.some((tid: number) => !participants.has(tid)) ||
+    hasPbaRegularScheduleCollisions(regularCurrent.filter((game: any) => !game.played))
   );
   const hasFutureRegular = schedule.some((game: any) =>
     game.competitionId === spec.id &&
@@ -216,18 +355,21 @@ function ensureActivePbaConferenceSchedule(
     isPbaRegularSeasonGame(game) &&
     normalizeDate(game.date) >= today,
   );
-  if (hasFutureRegular && !isSparse) return state;
+  if (hasFutureRegular && !isSparse) {
+    const adjusted = applySavedPbaOpeningNight(state, schedule, conference, seasonYear);
+    return adjusted === schedule ? state : { ...state, schedule: adjusted };
+  }
 
   const playedKeys = new Set(
     schedule
       .filter((game: any) => game.competitionId === spec.id && game.played && isPbaRegularSeasonGame(game))
       .map(regularGameKey),
   );
-  const nextGid = Math.max(getPbaGidBase(conference), ...schedule.map((game: any) => Number(game.gid) || 0)) + 1;
+  const nextGid = getNextPbaScheduleGid({ ...state, schedule }, conference);
   const generated = generateForCompetition(
     spec,
     tids.map((tid: number) => ({ tid })),
-    new Date(`${getConferenceStartIso(conference, seasonYear)}T00:00:00Z`),
+    new Date(`${getEffectiveConferenceStartIso(conference, seasonYear, state.date)}T00:00:00Z`),
     nextGid,
   ).filter((game: any) =>
     normalizeDate(game.date) >= today &&
@@ -242,10 +384,11 @@ function ensureActivePbaConferenceSchedule(
     isPbaPostseasonGame(game) ||
     (!isSparse && normalizeDate(game.date) >= today),
   );
+  const nextSchedule = [...cleanedSchedule, ...generated]
+    .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.gid - b.gid);
   return {
     ...state,
-    schedule: [...cleanedSchedule, ...generated]
-      .sort((a: any, b: any) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.gid - b.gid),
+    schedule: applySavedPbaOpeningNight(state, nextSchedule, conference, seasonYear),
   };
 }
 
@@ -295,7 +438,7 @@ function cleanBadPbaRolloverNews(news: any[] | undefined): any[] | undefined {
   return changed ? filtered : news;
 }
 
-function disablePbaSalaryCapFields(leagueStats: any): any {
+export function disablePbaSalaryCapFields(leagueStats: any): any {
   const next = {
     ...leagueStats,
     salaryCapEnabled: false,
@@ -304,6 +447,7 @@ function disablePbaSalaryCapFields(leagueStats: any): any {
     apronsEnabled: false,
     minimumPayrollEnabled: false,
     mleEnabled: false,
+    maxContractType: 'none',
   };
   return (
     leagueStats?.salaryCapEnabled === false &&
@@ -311,7 +455,8 @@ function disablePbaSalaryCapFields(leagueStats: any): any {
     leagueStats?.luxuryTaxEnabled === false &&
     leagueStats?.apronsEnabled === false &&
     leagueStats?.minimumPayrollEnabled === false &&
-    leagueStats?.mleEnabled === false
+    leagueStats?.mleEnabled === false &&
+    leagueStats?.maxContractType === 'none'
   ) ? leagueStats : next;
 }
 
@@ -326,39 +471,49 @@ function ensurePbaOffseasonChecklist(state: GameState, conference: PbaConference
   return {
     ...state,
     offseasonChecklist: conference === 'governors'
-      ? initialPbaEndOfSeasonChecklist()
+      ? initialPbaEndOfSeasonChecklist(state.gameMode === 'gm')
       : initialPbaInterConferenceChecklist(conference),
   };
 }
 
-function hasConferencePostseasonMaterial(state: GameState, competitionId: string): boolean {
+function hasConferencePostseasonMaterial(
+  state: GameState,
+  spec: ReturnType<typeof getConferenceSpec>,
+  season: number,
+): boolean {
   return [
     ...(state.schedule ?? []),
     ...(state.boxScores ?? []),
   ].some((game: any) =>
-    game?.competitionId === competitionId &&
-    ['qf', 'sf', 'final'].includes(String(game?.competitionPhase ?? '')),
+    game?.competitionId === spec.id &&
+    ['qf', 'sf', 'final'].includes(String(game?.competitionPhase ?? '')) &&
+    competitionSeasonForBox(spec, game) === season,
   );
 }
 
 function injectReadyPbaPostseason(state: GameState, leagueStats: any, conference: PbaConference, season: number): GameState | null {
   if (!isPbaActiveConferencePhase(leagueStats?.pbaConferencePhase)) return null;
   if (isBeforeConferencePlayoffs(state, conference, season)) return null;
-  const spec = getConferenceSpec(conference);
+  const spec = getConferenceSpec(conference, season);
   const schedule = state.schedule ?? [];
-  const currentGames = schedule.filter((game: any) => game.competitionId === spec.id);
+  const currentGames = schedule.filter((game: any) =>
+    game.competitionId === spec.id && competitionSeasonForBox(spec, game) === season,
+  );
   if (currentGames.length === 0) return null;
   const teamTids = selectCompetitionTeamTids(spec, state as any);
   const expectedRegular = expectedPbaRegularSeasonGames(spec, teamTids.length);
   if (expectedRegular > 0 && selectCountedPbaRegularBoxScores(state.boxScores ?? [], spec, season).length < expectedRegular) return null;
-  if (hasConferencePostseasonMaterial(state, spec.id)) return null;
-  const scheduleForPostseason = schedule.filter((game: any) =>
-    game.competitionId !== spec.id ||
-    game.played ||
-    isPbaPostseasonGame(game),
-  );
+  const hasPostseasonMaterial = hasConferencePostseasonMaterial(state, spec, season);
+  const scheduleForPostseason = hasPostseasonMaterial
+    ? schedule
+    : schedule.filter((game: any) =>
+        game.competitionId !== spec.id ||
+        game.played ||
+        isPbaPostseasonGame(game),
+      );
   const nextSchedule = injectCompetitionPostseasonGames({ ...state, leagueStats, schedule: scheduleForPostseason } as any, [spec] as any, season);
-  if (nextSchedule.length <= scheduleForPostseason.length) return null;
+  const changed = nextSchedule.length !== scheduleForPostseason.length || nextSchedule.some((game, index) => game !== scheduleForPostseason[index]);
+  if (!changed) return null;
   return {
     ...state,
     schedule: nextSchedule,
@@ -376,21 +531,41 @@ export function repairPbaConferenceForDate(state: GameState): GameState {
   const currentConference = (leagueStats?.pbaConference ?? 'philippine') as PbaConference;
   const currentPhase = leagueStats?.pbaConferencePhase;
   const cleanedNews = cleanBadPbaRolloverNews(state.news as any);
-  const currentSeason = Number(leagueStats?.year ?? position.seasonYear);
   const preparedYearEndSeason = Number(leagueStats?.pbaYearEndRolloverPreparedSeason);
+  if (
+    currentConference === 'governors'
+    && currentPhase === 'offseason'
+    && Number.isFinite(preparedYearEndSeason)
+    && Number(leagueStats?.year) === preparedYearEndSeason + 1
+  ) {
+    return ensurePbaOffseasonChecklist(
+      cleanedNews !== state.news || leagueStats !== state.leagueStats
+        ? { ...state, leagueStats, news: cleanedNews as any }
+        : state,
+      currentConference,
+    );
+  }
+  const currentSeason = inferPbaConferenceSeasonYear(state, currentConference);
   const completedConferenceSeason = Number.isFinite(preparedYearEndSeason) ? preparedYearEndSeason : position.seasonYear;
-  const currentSpec = getConferenceSpec(currentConference);
-  const currentGames = (state.schedule ?? []).filter((game: any) => game.competitionId === currentSpec.id);
-  const currentBoxes = (state.boxScores ?? []).filter((game: any) => game.competitionId === currentSpec.id);
+  const currentSpec = getConferenceSpec(currentConference, currentSeason);
+  const currentGames = (state.schedule ?? []).filter((game: any) =>
+    game.competitionId === currentSpec.id && competitionSeasonForBox(currentSpec, game) === currentSeason,
+  );
+  const currentBoxes = (state.boxScores ?? []).filter((game: any) =>
+    game.competitionId === currentSpec.id && competitionSeasonForBox(currentSpec, game) === currentSeason,
+  );
   const shouldKeepCompletedCurrentConference =
     currentConference === position.conference &&
     currentPhase === 'offseason' &&
     hasRecordedConferenceChampion(leagueStats, currentConference, completedConferenceSeason);
   const shouldKeepUnresolvedCurrentConference =
-    currentConference !== position.conference &&
     isPbaActiveConferencePhase(currentPhase) &&
     (currentGames.length > 0 || currentBoxes.length > 0) &&
-    !hasRecordedConferenceChampion(leagueStats, currentConference, currentSeason);
+    !hasRecordedConferenceChampion(leagueStats, currentConference, currentSeason) &&
+    (
+      currentConference !== position.conference ||
+      position.phase === 'offseason'
+    );
   if (shouldKeepCompletedCurrentConference) {
     position = {
       conference: currentConference,
@@ -402,7 +577,7 @@ export function repairPbaConferenceForDate(state: GameState): GameState {
     position = {
       conference: currentConference,
       seasonYear: currentSeason,
-      phase: hasConferencePostseasonMaterial(state, currentSpec.id) ? 'playoffs' : currentPhase,
+      phase: hasConferencePostseasonMaterial(state, currentSpec, currentSeason) ? 'playoffs' : currentPhase,
     };
   }
   if (
@@ -428,7 +603,7 @@ export function repairPbaConferenceForDate(state: GameState): GameState {
     return baseState;
   }
 
-  const spec = getConferenceSpec(position.conference);
+  const spec = getConferenceSpec(position.conference, position.seasonYear);
   const targetCompetitionId = spec.id;
   const norm = normalizeDate(state.date);
   const pbaSchedule = state.schedule ?? [];
@@ -443,8 +618,8 @@ export function repairPbaConferenceForDate(state: GameState): GameState {
     : generateForCompetition(
         spec,
         tids.map((tid: number) => ({ tid })),
-        new Date(`${getConferenceStartIso(position.conference, position.seasonYear)}T00:00:00Z`),
-        position.conference === 'philippine' ? 800_000 : position.conference === 'commissioners' ? 810_000 : 820_000,
+        new Date(`${getEffectiveConferenceStartIso(position.conference, position.seasonYear, state.date)}T00:00:00Z`),
+        getNextPbaScheduleGid(state, position.conference),
       );
   const generated = generatedAll.filter((game: any) => normalizeDate(game.date) >= norm);
   const cleanedSchedule = pbaSchedule.filter((game: any) => {
@@ -492,18 +667,26 @@ export function applyPbaConferenceLifecycle(
   const leagueStats = state.leagueStats as any;
   if (!isPbaActiveConferencePhase(leagueStats?.pbaConferencePhase)) return {};
   const current: PbaConference = leagueStats?.pbaConference ?? 'philippine';
-  const importManagedState = current === 'commissioners' || current === 'governors'
+  const importCandidateState = current === 'commissioners' || current === 'governors'
     ? autoManagePbaImports(state, current, {
         allowInjuryReplacements: true,
         excludeUserTeam: state.gameMode === 'gm',
         fillMissingTeams: true,
       })
     : state;
+  const importRosterTrim = trimPbaOversizedRosters(importCandidateState, importCandidateState.players);
+  const importManagedState = importRosterTrim.trimmed.length > 0
+    ? {
+        ...importCandidateState,
+        players: importRosterTrim.players,
+        history: [...(importCandidateState.history ?? []), ...importRosterTrim.history],
+      }
+    : importCandidateState;
   const basePatch: Partial<GameState> = importManagedState !== state
     ? { players: importManagedState.players, history: importManagedState.history }
     : {};
-  const spec = getConferenceSpec(current);
   const season = (importManagedState.leagueStats as any)?.year ?? new Date().getFullYear();
+  const spec = getConferenceSpec(current, season);
   const regularSeasonGuardState = prunePrematurePbaPostseason(
     importManagedState,
     importManagedState.leagueStats,
@@ -521,11 +704,15 @@ export function applyPbaConferenceLifecycle(
   const hasCurrentConference = schedule.some((game: any) => game.competitionId === spec.id);
   if (!hasCurrentConference) return basePatch;
 
-  const currentGames = schedule.filter((game: any) => game.competitionId === spec.id);
+  const currentGames = schedule.filter((game: any) =>
+    game.competitionId === spec.id && competitionSeasonForBox(spec, game) === season,
+  );
   const hasPostseasonMaterial =
     currentGames.some((game: any) => ['qf', 'sf', 'final'].includes(String(game.competitionPhase))) ||
     [...(importManagedState.boxScores ?? []), ...pendingBoxScores].some((game: any) =>
-      game.competitionId === spec.id && ['qf', 'sf', 'final'].includes(String(game.competitionPhase)),
+      game.competitionId === spec.id &&
+      ['qf', 'sf', 'final'].includes(String(game.competitionPhase)) &&
+      competitionSeasonForBox(spec, game) === season,
     );
   if (!hasPostseasonMaterial) {
     if (isBeforeConferencePlayoffs(importManagedState, current, season)) {
@@ -571,7 +758,7 @@ export function applyPbaConferenceLifecycle(
     : null;
   const championName = champion ? getTeamFullName(champion as any) : `Team ${resolution.championTid}`;
   const runnerUpName = runnerUp ? getTeamFullName(runnerUp as any) : null;
-  const nextConference = getNextConference(current);
+  const nextConference = getNextConference(current, season);
   const awardPatch = buildPbaLiveAwardPatch(
     { ...importManagedState, boxScores } as GameState,
     current,
@@ -580,11 +767,32 @@ export function applyPbaConferenceLifecycle(
     resolution.runnerUpTid,
   );
   const awardMeta = awardPatch.conferenceAwardMeta ?? {};
+  const championRecord = boxScores
+    .filter((game: any) =>
+      game?.competitionId === spec.id
+      && Number(game?.season ?? season) === Number(season)
+      && (Number(game?.homeTeamId) === Number(resolution.championTid) || Number(game?.awayTeamId) === Number(resolution.championTid)),
+    )
+    .reduce((record: { won: number; lost: number; wins: number; losses: number }, game: any) => {
+      const isHome = Number(game.homeTeamId) === Number(resolution.championTid);
+      const teamScore = Number(isHome ? game.homeScore : game.awayScore);
+      const opponentScore = Number(isHome ? game.awayScore : game.homeScore);
+      if (!Number.isFinite(teamScore) || !Number.isFinite(opponentScore) || teamScore === opponentScore) return record;
+      if (teamScore > opponentScore) {
+        record.won += 1;
+        record.wins += 1;
+      } else {
+        record.lost += 1;
+        record.losses += 1;
+      }
+      return record;
+    }, { won: 0, lost: 0, wins: 0, losses: 0 });
   const recordedChampion = {
     season,
     conference: current,
     teamId: resolution.championTid,
     teamName: championName,
+    record: championRecord,
     ...awardMeta,
   };
   const nextChampions = alreadyRecorded
@@ -598,8 +806,10 @@ export function applyPbaConferenceLifecycle(
     ...importManagedState.leagueStats,
     pbaConferencePhase: 'offseason',
     pbaConferenceChampions: nextChampions,
+    pbaMuseSelected: nextConference ? importManagedState.leagueStats.pbaMuseSelected : false,
   } as any;
-  const clearedPlayers = clearConferenceImports(importManagedState.players, current);
+  const conferenceAwardPlayers = awardPatch.players ?? importManagedState.players;
+  const clearedPlayers = clearConferenceImports(conferenceAwardPlayers, current);
 
   const historyEntry = {
     text: `${championName} won the ${spec.displayName}${runnerUpName ? ` over ${runnerUpName}` : ''}.`,
@@ -612,25 +822,67 @@ export function applyPbaConferenceLifecycle(
     : [...(importManagedState.history ?? []), historyEntry as any];
 
   if (!nextConference) {
-    const nextNonNBATeams = advancePbaStaffContractsForOffseason(importManagedState.nonNBATeams);
     const seasonAwardPatch = buildPbaSeasonAwardPatch({
       ...importManagedState,
       ...awardPatch,
       leagueStats: nextLeagueStats,
-      nonNBATeams: nextNonNBATeams,
       boxScores,
       history,
     } as GameState);
+    const yearEndPlayers = clearConferenceImports(
+      seasonAwardPatch.players ?? awardPatch.players ?? importManagedState.players,
+      current,
+    );
+    const completedSchedule = schedule.filter((game: any) => game.competitionId !== spec.id || game.played);
+    const draftYear = getDraftSeasonYearForState(importManagedState);
+    const draftHeld = isPbaDraftHeldInYear(draftYear);
+    const completedState = {
+      ...importManagedState,
+      ...basePatch,
+      ...awardPatch,
+      ...seasonAwardPatch,
+      players: draftHeld
+        ? yearEndPlayers
+        : carryPbaDraftClassForward(yearEndPlayers, draftYear, importManagedState.leagueStats),
+      leagueStats: nextLeagueStats,
+      schedule: completedSchedule,
+      boxScores,
+      offseasonChecklist: initialPbaEndOfSeasonChecklist(importManagedState.gameMode === 'gm', importManagedState.gameMode === 'gm', draftHeld),
+      history: draftHeld ? history : [...history, {
+        text: `The ${draftYear} PBA Draft was not held. Eligible players will enter the ${draftYear + 1} class.`,
+        date: importManagedState.date,
+        type: 'PBA',
+      } as any],
+      draftComplete: draftHeld ? undefined : true,
+      draftLotteryResult: undefined,
+      activeDraftPicks: undefined,
+      activeDraftPassedPicks: undefined,
+      activeDraftOrder: undefined,
+    } as GameState;
+    const pendingGovernorsBoardMeeting = buildPbaGovernorsBoardMeeting(completedState);
     return {
       ...basePatch,
       ...awardPatch,
       ...seasonAwardPatch,
-      players: clearedPlayers,
-      nonNBATeams: nextNonNBATeams,
-      leagueStats: nextLeagueStats,
-      schedule: schedule.filter((game: any) => game.competitionId !== spec.id || game.played),
-      offseasonChecklist: initialPbaEndOfSeasonChecklist(),
-      history,
+      players: completedState.players,
+      nonNBATeams: completedState.nonNBATeams,
+      draftPicks: completedState.draftPicks,
+      historicalPba: completedState.historicalPba,
+      leagueStats: {
+        ...completedState.leagueStats,
+        pbaYearEndRolloverPreparedSeason: undefined,
+        pbaDraftComplete: !draftHeld,
+        pbaDraftCompleteSeason: draftHeld ? undefined : completedState.leagueStats.year,
+      },
+      schedule: completedState.schedule,
+      offseasonChecklist: completedState.offseasonChecklist,
+      history: completedState.history,
+      draftComplete: draftHeld ? undefined : true,
+      draftLotteryResult: undefined,
+      activeDraftPicks: undefined,
+      activeDraftPassedPicks: undefined,
+      activeDraftOrder: undefined,
+      pendingGovernorsBoardMeeting,
     };
   }
 

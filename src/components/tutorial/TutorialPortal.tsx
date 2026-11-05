@@ -287,7 +287,7 @@ export const TutorialPortal: React.FC<TutorialPortalProps> = ({ isOpen, onClose 
             <>
             <section className="grid gap-6 lg:grid-cols-[1.05fr_0.95fr]">
               <div className="flex flex-col justify-center py-4 sm:py-8">
-                <p className="text-[10px] font-black uppercase tracking-[0.38em] text-sky-300">Built On BBGM Foundations</p>
+                <p className="text-[10px] font-black uppercase tracking-[0.38em] text-sky-300">Built For Long-Running Leagues</p>
                 <h1 className="mt-4 max-w-3xl text-4xl font-black leading-[0.95] tracking-tight text-white sm:text-6xl">
                   A complete free basketball sim.
                 </h1>

@@ -2,6 +2,16 @@ export type SocialSource = 'TwitterX' | 'Feddit';
 
 export type Conference = 'East' | 'West';
 
+export type NbaGmStartMode =
+  | 'fixed_preseason'
+  | 'full_offseason'
+  | 'international'
+  | 'draft_order'
+  | 'free_agency'
+  | 'preseason'
+  | 'opening_rosters'
+  | 'opening_day';
+
 export type GamePhase =
   | 'Preseason'
   | 'Opening Week'
@@ -41,6 +51,8 @@ export type Tab =
   | 'Team Stats'
   | 'All-Star'
   | 'NBA Cup'
+  | 'Summer League'
+  | 'International'
   | 'Playoffs'
   | 'League Office'
   | 'League Leaders'
@@ -54,11 +66,15 @@ export type Tab =
   | 'Front Office'
   | 'Front Office Finances'
   | 'Front Office Sponsorships'
+  | 'Front Office Commercial'
+  | 'Front Office Bank'
   | 'Front Office Travel'
   | 'Front Office Medical'
   | 'Front Office Facilities'
   | 'Front Office Staff'
   | 'Front Office Transfer Market'
+  | 'Euro Scouting'
+  | 'Youth Academy'
   | 'Draft Scouting'
   | 'Draft Lottery'
   | 'Standings'
@@ -69,7 +85,7 @@ export type Tab =
   | 'Trade Proposals'
   | 'Commish Store'
   | 'Events'
-  | 'Seasonal'
+  | 'Commissioner Tasks'
   | 'Real Stern'
   | 'Sports Book'
   | 'Player Ratings'
@@ -85,10 +101,12 @@ export type Tab =
   | 'Team Office'
   | 'Coaching'
   | 'Training Center'
+  | 'Franchises'
   | 'Hall of Fame'
   | 'Euroleague'
   | 'Liga Endesa'
   | 'Euroleague Hub'
+  | 'EuroCup Hub'
   | 'Endesa Hub'
   | 'G-League Hub'
   | 'WNBA Hub'

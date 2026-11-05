@@ -1,12 +1,13 @@
 import React from 'react';
-import { ArrowLeftRight, Inbox, ListChecks, Search } from 'lucide-react';
+import { ArrowLeftRight, FileKey2, Handshake, Inbox, ListChecks, Search } from 'lucide-react';
 import type { BidStatus, ClauseStatus, MockClub, MockPlayer } from './mockData';
 import { useTransferMarketContext } from './state';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { CountryFlag } from '../shared/CountryFlag';
 import type { NBAPlayer } from '../../types';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 
-export type TabKey = 'listings' | 'inbox' | 'browse' | 'clauses';
+export type TabKey = 'listings' | 'inbox' | 'browse' | 'loans' | 'clauses';
 
 export type OpenMarketPlayer = (player: MockPlayer) => void;
 
@@ -91,8 +92,9 @@ export const PlayerCell: React.FC<{ p: MockPlayer; small?: boolean; onOpen?: Ope
       ) : (
         <div className={`${small ? 'text-[11px]' : 'text-xs'} font-bold text-white truncate`}>{p.name}</div>
       )}
-      <div className="text-[9px] text-slate-500 truncate">
-        {p.flag} {p.position} · {p.age}y · {p.contractYearsLeft}y left
+      <div className="flex items-center gap-1 text-[9px] text-slate-500 truncate">
+        <CountryFlag country={p.nationality} className="inline-flex h-3 w-4 rounded-[2px]" />
+        <span>{p.position} · {p.age}y · {p.contractYearsLeft}y left</span>
       </div>
     </div>
   </div>
@@ -145,7 +147,10 @@ export const ClubChip: React.FC<{ c: MockClub; small?: boolean }> = ({ c, small 
       )}
       <div className="min-w-0">
         <div className={`${small ? 'text-[10px]' : 'text-[11px]'} font-bold text-white truncate`}>{c.name}</div>
-        <div className="text-[9px] text-slate-500 truncate">{c.flag} {c.league}</div>
+        <div className="flex items-center gap-1 text-[9px] text-slate-500 truncate">
+          {c.country ? <CountryFlag country={c.country} iso2={c.countryIso2} className="inline-flex h-3 w-4 rounded-[2px]" /> : null}
+          <span>{c.league}</span>
+        </div>
       </div>
     </div>
   );
@@ -160,7 +165,7 @@ export const StatusPill: React.FC<{ children: React.ReactNode; tone: string }> =
 export const HeaderStrip: React.FC = () => {
   const { club, budget, window: w } = useTransferMarketContext();
   return (
-    <div className="bg-slate-900/60 border-b border-slate-800/60 px-4 sm:px-6 py-3 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+    <div className="flex flex-col gap-3 border-b border-slate-800/60 bg-slate-900/60 px-4 py-3 sm:px-6 lg:flex-row lg:items-center lg:justify-between">
       <div className="flex items-start gap-3 min-w-0">
         <div className="w-10 h-10 rounded-xl flex items-center justify-center text-xs font-black text-white border-2 border-white/20" style={{ background: club.colorHex }}>
           {club.logoUrl ? (
@@ -170,21 +175,21 @@ export const HeaderStrip: React.FC = () => {
           )}
         </div>
         <div className="min-w-0">
-          <div className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">{club.name} · Front Office</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{club.name} · Front Office</div>
           <h1 className="text-lg font-black text-white flex flex-wrap items-center gap-2">
             <ArrowLeftRight size={18} className="text-amber-400" />
             Transfer Market
-            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Auction hub for player transfers</span>
           </h1>
+          <div className="mt-0.5 text-xs text-slate-500">Sell players, answer offers, and strengthen the squad.</div>
         </div>
       </div>
-      <div className="grid grid-cols-3 gap-3 sm:gap-4 text-[11px] w-full lg:w-auto">
+      <div className="grid w-full grid-cols-3 gap-3 text-[11px] sm:gap-4 lg:w-auto">
         <div className="flex flex-col items-start lg:items-end">
           <span className="text-[9px] uppercase tracking-wider text-slate-500">Cash</span>
           <span className="font-black text-emerald-300">{fmtEUR(budget.cashEUR)}</span>
         </div>
         <div className="flex flex-col items-start lg:items-end">
-          <span className="text-[9px] uppercase tracking-wider text-slate-500">Payroll Space</span>
+          <span className="text-[9px] uppercase tracking-wider text-slate-500">Payroll Room</span>
           <span className="font-black text-blue-300">{fmtEUR(budget.payrollSpaceEUR)}</span>
         </div>
         <div className="flex flex-col items-start lg:items-end">
@@ -198,11 +203,13 @@ export const HeaderStrip: React.FC = () => {
   );
 };
 
-export const TabsRow: React.FC<{ active: TabKey; onChange: (k: TabKey) => void; counts: Record<TabKey, number> }> = ({ active, onChange, counts }) => {
+export const TabsRow: React.FC<{ active: TabKey; onChange: (k: TabKey) => void; counts: Record<TabKey, number>; showLoans?: boolean }> = ({ active, onChange, counts, showLoans = false }) => {
   const tabs: Array<{ key: TabKey; label: string; icon: React.ComponentType<{ size?: number }> }> = [
-    { key: 'listings', label: 'My Listings', icon: ListChecks },
-    { key: 'inbox', label: 'Inbox', icon: Inbox },
-    { key: 'browse', label: 'Browse Market', icon: Search },
+    { key: 'listings', label: 'Sell', icon: ListChecks },
+    { key: 'inbox', label: 'Offers', icon: Inbox },
+    { key: 'browse', label: 'Buy', icon: Search },
+    ...(showLoans ? [{ key: 'loans' as const, label: 'Loan Finder', icon: Handshake }] : []),
+    { key: 'clauses', label: 'Clauses', icon: FileKey2 },
   ];
   return (
     <div className="px-4 sm:px-6 pt-4 border-b border-slate-800/60 flex items-center gap-1 bg-slate-900/40 overflow-x-auto scrollbar-hide">
@@ -219,9 +226,7 @@ export const TabsRow: React.FC<{ active: TabKey; onChange: (k: TabKey) => void; 
           >
             <Icon size={14} />
             {t.label}
-            <span className={`ml-1 px-1.5 py-0.5 rounded text-[9px] ${isActive ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>
-              {counts[t.key]}
-            </span>
+            {counts[t.key] > 0 && <span className={`ml-1 rounded px-1.5 py-0.5 text-[9px] ${isActive ? 'bg-amber-500/20 text-amber-300' : 'bg-slate-800 text-slate-500'}`}>{counts[t.key]}</span>}
           </button>
         );
       })}

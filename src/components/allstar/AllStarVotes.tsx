@@ -2,8 +2,11 @@ import React from 'react';
 import { Target } from 'lucide-react';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { useGame } from '../../store/GameContext';
-import { getPlayerHeadshot, getTeamLogo, extractTeamId } from '../../utils/helpers';
+import { getTeamLogo } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
+import { getHistoricalTeamSnapshot, getResolvedTeamLogoUrl } from '../../utils/teamAssets';
+import { ALL_STAR_ASSETS } from '../../services/allStar/AllStarSelectionService';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
 
 interface AllStarVotesProps {
   allStar: any;
@@ -12,7 +15,7 @@ interface AllStarVotesProps {
 
 export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar, ownTid }) => {
   const { state } = useGame();
-  const teams = state.teams;
+  const teams = state.teams.map(team => getHistoricalTeamSnapshot(team, state.leagueStats.year));
 
   if (!allStar?.votes?.length) {
     return (
@@ -40,10 +43,11 @@ export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar, ownTid }) =
       </div>
       <div className="space-y-2">
         {players.map((v, i) => {
-          const team = teams.find(t => t.abbrev === v.teamAbbrev);
-          const teamId = v.teamNbaId || (team ? extractTeamId(team.logoUrl, v.teamAbbrev) : null) || 1610612737;
-          const teamColor = team?.colors?.[0] || '#64748b';
           const fullPlayer = state.players?.find((p: any) => p.internalId === v.playerId);
+          const team = teams.find(t => t.abbrev === v.teamAbbrev)
+            ?? teams.find(t => Number(t.id ?? t.tid) === Number(fullPlayer?.tid));
+          const teamColor = team?.colors?.[0] || '#64748b';
+          const teamLogoUrl = team ? getResolvedTeamLogoUrl(team, state.leagueStats.year) : getTeamLogo(v.teamNbaId || 1610612737);
           const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
 
           return (
@@ -57,24 +61,13 @@ export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar, ownTid }) =
               </span>
               
               <div className="relative shrink-0">
-                <div 
-                  className="w-9 h-9 rounded-full overflow-hidden bg-slate-800 border-2"
-                  style={{ borderColor: `${teamColor}40` }}
-                >
-                  <img
-                    src={(() => { const pl = state.players?.find((p: any) => p.internalId === v.playerId); return (pl && getPlayerImage(pl)) || getPlayerHeadshot(v.playerId, v.nbaId); })()}
-                    className="w-full h-full object-cover"
-                    alt={v.playerName}
-                    referrerPolicy="no-referrer"
-                    onError={(e) => {
-                      const img = e.target as HTMLImageElement;
-                      if (!img.dataset.triedCdn) {
-                        img.dataset.triedCdn = '1';
-                        img.src = getPlayerHeadshot(v.playerId, v.nbaId);
-                      } else {
-                        img.src = `https://picsum.photos/seed/${v.playerId}/100/100`;
-                      }
-                    }}
+                <div style={{ borderColor: `${teamColor}40` }}>
+                  <PlayerPortrait
+                    imgUrl={fullPlayer ? getPlayerImage(fullPlayer) : undefined}
+                    face={fullPlayer?.face}
+                    playerName={v.playerName}
+                    teamLogoUrl={teamLogoUrl}
+                    size={36}
                   />
                 </div>
               </div>
@@ -88,7 +81,7 @@ export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar, ownTid }) =
                         : v.playerName}
                     </span>
                     <img 
-                      src={getTeamLogo(teamId)}
+                      src={teamLogoUrl}
                       className="w-3.5 h-3.5 object-contain shrink-0"
                       alt={v.teamAbbrev}
                       referrerPolicy="no-referrer"
@@ -147,8 +140,8 @@ export const AllStarVotes: React.FC<AllStarVotesProps> = ({ allStar, ownTid }) =
 
   return (
     <div className="space-y-16">
-      {renderConference('East', "https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748")}
-      {renderConference('West', "https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726")}
+      {renderConference('East', ALL_STAR_ASSETS.eastLogo)}
+      {renderConference('West', ALL_STAR_ASSETS.westLogo)}
     </div>
   );
 };

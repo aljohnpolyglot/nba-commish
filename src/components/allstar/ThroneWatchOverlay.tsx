@@ -19,6 +19,9 @@ const ROUND_LABELS: Record<number, string> = {
   4: 'The Final',
 };
 
+const initialsFromName = (name: unknown) =>
+  String(name ?? '').trim().split(/\s+/).filter(Boolean).map((part) => part[0]).join('') || '?';
+
 /**
  * Read-only replay of a pre-simulated Throne tournament.
  * Progressively reveals matches; show champion when all matches consumed.
@@ -93,6 +96,7 @@ export const ThroneWatchOverlay: React.FC<ThroneWatchOverlayProps> = ({ throne, 
   const champPlayer = champ ? players.find(p => p.internalId === champ.playerId) : null;
   const champPortrait = champPlayer ? getPlayerImage(champPlayer) : null;
   const totalPD = champ ? (throne.cumulativePDs?.[champ.playerId] ?? 0) : 0;
+  const champName = typeof champ?.playerName === 'string' && champ.playerName.trim() ? champ.playerName : 'TBD';
 
   return (
     <motion.div
@@ -190,16 +194,16 @@ export const ThroneWatchOverlay: React.FC<ThroneWatchOverlayProps> = ({ throne, 
                 <div className="relative w-32 h-32 mx-auto mb-4">
                   <div className="w-full h-full rounded-full overflow-hidden border-4 border-yellow-400 shadow-[0_0_60px_rgba(250,204,21,0.5)]">
                     {champPortrait ? (
-                      <img src={champPortrait} alt={champ.playerName} className="w-full h-full object-cover object-top" />
+                      <img src={champPortrait} alt={champName} className="w-full h-full object-cover object-top" />
                     ) : (
                       <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-400 font-black text-3xl">
-                        {champ.playerName.split(' ').map((n: string) => n[0]).join('')}
+                        {initialsFromName(champName)}
                       </div>
                     )}
                   </div>
                   <Crown className="absolute -top-3 left-1/2 -translate-x-1/2 w-8 h-8 text-yellow-400 fill-yellow-400 drop-shadow-[0_0_10px_rgba(250,204,21,1)]" />
                 </div>
-                <h2 className="text-3xl font-black italic tracking-tighter text-white">{champ.playerName}</h2>
+                <h2 className="text-3xl font-black italic tracking-tighter text-white">{champName}</h2>
                 <p className="text-xs text-yellow-400/80 mt-2 mb-6 tracking-wider font-bold">CHAMPION · CUMULATIVE PD +{totalPD}</p>
                 <button
                   onClick={onClose}

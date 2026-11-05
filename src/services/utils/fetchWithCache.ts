@@ -1,6 +1,8 @@
 // IDB-backed fetch helper: retry (4 attempts, 0/500ms/1s/2s) + 24h cache.
 // Separate 'gist-cache' DB — isolated from keyval-store saves.
 
+import { readJsonResponse } from './jsonResponse';
+
 const GC_DB = 'gist-cache';
 const GC_STORE = 'entries';
 
@@ -94,7 +96,9 @@ export async function fetchWithCache<T>(
       const res = await fetch(url, { signal: controller.signal });
       clearTimeout(timeoutId);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: T = parse === 'json' ? await res.json() : (await res.text()) as unknown as T;
+      const data: T = parse === 'json'
+        ? await readJsonResponse<T>(res, key)
+        : await res.text() as unknown as T;
       try { await gcSet(key, { data, lastFetched: Date.now() }); } catch { /* non-fatal */ }
       return data;
     } catch {

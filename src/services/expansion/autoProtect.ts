@@ -11,7 +11,7 @@
 
 import type { NBAPlayer } from '../../types';
 import { hasFamilyOnRoster } from '../../utils/familyTies';
-import { getDisplayAge, getDisplayOverall } from '../../store/playerRatingStore';
+import { getDisplayAge, getDisplayOverall, getDisplayPotential } from '../../store/playerRatingStore';
 
 export type TeamPhase = 'rebuilding' | 'contending' | 'middle';
 
@@ -42,16 +42,6 @@ export function getTeamPhase(roster: NBAPlayer[]): TeamPhase {
 
 // ─── Score-Berechnung ──────────────────────────────────────────────────────
 
-/** Heuristische POT-Approximation. Repo hat keinen exportierten potEstimator,
- *  also: BBGM-OVR + Restjugend-Bonus. Ein 24-jähriger 65-OVR-Spieler kommt auf
- *  ~67 POT, ein 35-jähriger 80-OVR auf ~80 (kein Wachstum mehr). */
-function estimatePot(player: NBAPlayer, currentYear: number): number {
-  const ovr = player.overallRating ?? 60;
-  const age = getDisplayAge(player, currentYear);
-  const youthBonus = Math.max(0, 26 - age) * 0.5;
-  return ovr + youthBonus;
-}
-
 function getYearsRemaining(player: NBAPlayer, currentYear: number): number {
   const exp = player.contract?.exp;
   if (!exp) return 0;
@@ -75,7 +65,7 @@ function hasNegativeMood(player: NBAPlayer): boolean {
 /** Score in [0, 100]. Höher = wichtiger zu schützen. Phase-abhängig gewichtet. */
 export function computeProtectScore(player: NBAPlayer, ctx: ScoreContext): number {
   const ovrK2 = getDisplayOverall(player);
-  const potK2 = getDisplayOverall({ ...player, overallRating: estimatePot(player, ctx.currentYear) });
+  const potK2 = getDisplayPotential(player, ctx.currentYear);
   const age = getDisplayAge(player, ctx.currentYear);
   const yearsLeft = getYearsRemaining(player, ctx.currentYear);
   const isStar = isStarByAwards(player);
@@ -127,7 +117,7 @@ export function autoSelectProtections(
   // 1. Family-Lock: Spieler mit Verwandten AUF DEMSELBEN ROSTER sind unkündbar.
   //    Match per Name (BBGM pid != internalId), siehe utils/familyTies.ts.
   const familyProtected = roster
-    .filter(p => hasFamilyOnRoster(p, roster))
+    .filter(p => hasFamilyOnRoster(p, roster, currentYear))
     .map(p => p.internalId);
 
   // 2. Score-sortierte verbleibende Slots

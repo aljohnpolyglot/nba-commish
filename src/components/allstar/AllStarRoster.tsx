@@ -1,17 +1,21 @@
 import React from 'react';
 import { Trophy, Zap, ArrowRight } from 'lucide-react';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
-import { normalizeDate, getCountryFromLoc, getCountryCode } from '../../utils/helpers';
+import { normalizeDate } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
-import { ALL_STAR_ASSETS } from '../../services/allStar/AllStarSelectionService';
 import { AllStarRosterPanels, buildAllStarRosterPanels } from './AllStarRosterPanels';
 import { findBoxScoreForGame } from '../../utils/boxScoreLookup';
-
-const EAST_LOGO  = ALL_STAR_ASSETS.eastLogo;
-const WEST_LOGO  = ALL_STAR_ASSETS.westLogo;
-const USA_LOGO   = ALL_STAR_ASSETS.usaLogo;
-const WORLD_LOGO = ALL_STAR_ASSETS.worldLogo;
+import { getHistoricalTeamSnapshot, getTeamPrimaryColor } from '../../utils/teamAssets';
+import { getAllStarPlayerEligibility, normalizeAllStarRoster } from '../../services/allStar/allStarSelectionHelpers';
+import { getAllStarSelectionSeasons } from '../../utils/awardHistory';
+import { buildPbaAllStarLeagueStats, isPbaLocalAllStarEligible } from '../../services/pba/allStar';
+import { didHomeTeamWin } from '../../utils/gameOutcome';
+import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
+import { AllStarFinalHeader } from './PbaAllStarFinalHeader';
+import { resolveLegendCaptains } from '../../services/allStar/captainPool';
+import { getPrimaryPlayerCountry } from '../../utils/playerNationality';
+import { getScoutedDisplayOverall } from '../../utils/scoutingFuzz';
 
 interface AllStarRosterProps {
   allStar: any;
@@ -26,6 +30,10 @@ interface AllStarRosterProps {
 export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, teams: providedTeams, ownTid, onWatchGame, onViewBoxScore, onPlayerClick }) => {
   const teams = providedTeams ?? state.teams;
   const isPba = state.leagueStats?.uiMode === 'pba_isolated';
+  const allStarLeagueStats = isPba ? buildPbaAllStarLeagueStats(state.leagueStats) : state.leagueStats;
+  const dates = getAllStarWeekendDates(state.leagueStats.year, allStarLeagueStats);
+  const startersDateLabel = dates.startersAnnounced.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const reservesDateLabel = dates.reservesAnnounced.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
   const playerById = React.useMemo(
     () => new Map<string, any>((state.players ?? []).map((p: any) => [p.internalId, p])),
     [state.players],
@@ -62,56 +70,61 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
   const isToday = game && normalizeDate(game.date) === normalizeDate(state.date);
   const canWatch = isToday && !game?.played;
   const gameModeLabel = game?.gameFormat === 'target_score'
-    ? `First to ${game.targetScore ?? state.leagueStats?.allStarGameTargetScore ?? 40}`
+    ? `First to ${game.targetScore ?? allStarLeagueStats?.allStarGameTargetScore ?? 40}`
     : game?.gameFormat === 'elam_ending'
-      ? `Elam Ending · +${state.leagueStats?.allStarOvertimeTargetPoints ?? 24}`
+      ? `Elam Ending · +${allStarLeagueStats?.allStarOvertimeTargetPoints ?? 24}`
       : 'Timed Game';
 
   const homeFinalName = boxScore?.homeTeamName ?? homeBracket?.name ?? (isPba ? 'Team A' : 'East All-Stars');
   const awayFinalName = boxScore?.awayTeamName ?? awayBracket?.name ?? (isPba ? 'Team B' : 'West All-Stars');
-  const finalHomeScore = boxScore?.homeScore ?? finalBracketGame?.homeScore ?? game?.homeScore ?? 0;
-  const finalAwayScore = boxScore?.awayScore ?? finalBracketGame?.awayScore ?? game?.awayScore ?? 0;
-
-  // Captains_draft: swap East/West logos for the captains' portraits.
-  const formatEarly = state.leagueStats?.allStarFormat ?? 'east_vs_west';
-  const isCaptainsDraftFormat = formatEarly === 'captains_draft';
-  const homeBucketKey = game?.homeTid === -1 ? 'East' : 'West';
-  const awayBucketKey = game?.awayTid === -2 ? 'West' : 'East';
-  const homeCaptain = isCaptainsDraftFormat ? allStar.roster?.find((r: any) => r.conference === homeBucketKey && r.isCaptain) : null;
-  const awayCaptain = isCaptainsDraftFormat ? allStar.roster?.find((r: any) => r.conference === awayBucketKey && r.isCaptain) : null;
-  const homeCaptainPlayer = homeCaptain ? playerById.get(homeCaptain.playerId) : null;
-  const awayCaptainPlayer = awayCaptain ? playerById.get(awayCaptain.playerId) : null;
-  const homeCaptainImg = homeCaptainPlayer ? getPlayerImage(homeCaptainPlayer) : null;
-  const awayCaptainImg = awayCaptainPlayer ? getPlayerImage(awayCaptainPlayer) : null;
-
   if (!allStar?.startersAnnounced) {
-    return <div className="text-center py-12 text-slate-500">Starters announced Jan 22.</div>;
+    return <div className="text-center py-12 text-slate-500">Starters announced {startersDateLabel}.</div>;
   }
 
-  const format = state.leagueStats?.allStarFormat ?? 'east_vs_west';
+  const normalizedRoster = normalizeAllStarRoster(
+    allStar.roster ?? [],
+    state.players ?? [],
+    isPba
+      ? player => isPbaLocalAllStarEligible(player, state)
+      : getAllStarPlayerEligibility(state.leagueStats, teams),
+  );
+  const activeRoster = normalizedRoster.filter((p: any) => !p.isInjuredDNP);
+  const format = allStarLeagueStats?.allStarFormat ?? 'east_vs_west';
   const isUsaWorld = format === 'usa_vs_world';
   const isCaptainsDraft = format === 'captains_draft';
 
   const buildPlayerData = (p: any) => {
     const team = teams.find((t: any) => t.abbrev === p.teamAbbrev)
       ?? teams.find((t: any) => t.id === playerById.get(p.playerId)?.tid);
-    const teamColor = team?.colors?.[0] ?? '#64748b';
     const fullPlayer = playerById.get(p.playerId) ?? null;
-    const imgUrl = (fullPlayer && getPlayerImage(fullPlayer)) || undefined;
     const currentSeason = state.leagueStats?.year;
-    const pastAllStars = fullPlayer?.awards?.filter((a: any) => a.type === 'All-Star').length ?? 0;
-    const alreadyAwarded = fullPlayer?.awards?.some((a: any) => a.type === 'All-Star' && a.season === currentSeason);
-    const allStarCount = alreadyAwarded ? pastAllStars : pastAllStars + 1;
-    const country = getCountryFromLoc(fullPlayer?.born?.loc);
-    const cc = country && country !== 'Unknown' ? getCountryCode(country) : '';
-    // Twemoji PNG — emoji-style flag that renders on every OS (Windows native flag emoji don't).
-    const flagUrl = isUsaWorld && cc ? `https://flagcdn.com/w40/${cc}.png` : null;
-    return { team, teamColor, fullPlayer, imgUrl, allStarCount, flagUrl, country };
+    const teamSnapshot = team ? getHistoricalTeamSnapshot(team, currentSeason) : null;
+    const teamColor = teamSnapshot ? getTeamPrimaryColor(teamSnapshot) : '#64748b';
+    const imgUrl = (fullPlayer && getPlayerImage(fullPlayer)) || undefined;
+    const allStarSeasons = getAllStarSelectionSeasons(fullPlayer?.awards, currentSeason);
+    const alreadyAwarded = allStarSeasons.includes(currentSeason);
+    const allStarCount = alreadyAwarded ? allStarSeasons.length : allStarSeasons.length + 1;
+    const country = isUsaWorld ? getPrimaryPlayerCountry(fullPlayer ?? {}) : 'Unknown';
+    const displayOverall = fullPlayer ? getScoutedDisplayOverall(state, fullPlayer, currentSeason) : undefined;
+    return { team: teamSnapshot ?? team, teamColor, teamLogoUrl: teamSnapshot?.logoUrl, fullPlayer, imgUrl, allStarCount, country, displayOverall };
   };
 
-  const replacements = allStar.roster.filter((p: any) => p.isInjuryReplacement);
-  const dnps         = allStar.roster.filter((p: any) => p.isInjuredDNP);
-  const panels = buildAllStarRosterPanels(allStar.roster, isCaptainsDraft, playerById);
+  const replacements = normalizedRoster.filter((p: any) => p.isInjuryReplacement);
+  const dnps         = normalizedRoster.filter((p: any) => p.isInjuredDNP);
+  const legendCaptains = allStarLeagueStats?.allStarCaptainType === 'legend'
+    ? resolveLegendCaptains(allStarLeagueStats.allStarLegendCaptainIds, state.players ?? [])
+    : [];
+  const panels = buildAllStarRosterPanels(
+    activeRoster,
+    isCaptainsDraft,
+    playerById,
+    legendCaptains,
+    allStarLeagueStats?.allStarTeamNames ?? [],
+    isPba ? {} : {
+      East: bracket?.teams?.find((team: any) => team.bucketKey === 'East')?.logoUrl,
+      West: bracket?.teams?.find((team: any) => team.bucketKey === 'West')?.logoUrl,
+    },
+  );
 
   const isBracketTournament = bracket?.games?.length > 1;
   const playedBracketGames = bracket?.games
@@ -125,6 +138,19 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
     <div className="space-y-8">
 
       {/* ── Game result or Watch prompt ───────────────────────────────────── */}
+      {(boxScore || finalBracketGame?.played || game?.played) && (
+        <AllStarFinalHeader
+          allStar={allStar}
+          state={state}
+          showDanceResult={isPba}
+          onViewBoxScore={selectedGame => onViewBoxScore?.({
+            ...selectedGame,
+            expectedHomeTeamName: homeBracket?.name,
+            expectedAwayTeamName: awayBracket?.name,
+          })}
+        />
+      )}
+
       {isBracketTournament && playedBracketGames.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {playedBracketGames.map((g: any) => {
@@ -139,13 +165,13 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
                 </div>
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex-1 text-center">
-                    <div className={`text-3xl font-black mb-1 ${g.homeScore >= g.awayScore ? 'text-white' : 'text-slate-600'}`}>{g.homeScore}</div>
+                    <div className={`text-3xl font-black mb-1 ${didHomeTeamWin(g) ? 'text-white' : 'text-slate-600'}`}>{g.homeScore}</div>
                     <div className="text-[10px] text-sky-400 font-black uppercase tracking-widest leading-tight">{homeT?.name ?? homeFinalName}</div>
                     {homeT?.coachName && <div className="text-[8px] text-slate-500 mt-0.5">Coach {homeT.coachName.split(' ').pop()}</div>}
                   </div>
                   <div className="text-lg font-black text-slate-700 italic">VS</div>
                   <div className="flex-1 text-center">
-                    <div className={`text-3xl font-black mb-1 ${g.awayScore > g.homeScore ? 'text-white' : 'text-slate-600'}`}>{g.awayScore}</div>
+                    <div className={`text-3xl font-black mb-1 ${!didHomeTeamWin(g) ? 'text-white' : 'text-slate-600'}`}>{g.awayScore}</div>
                     <div className="text-[10px] text-emerald-400 font-black uppercase tracking-widest leading-tight">{awayT?.name ?? awayFinalName}</div>
                     {awayT?.coachName && <div className="text-[8px] text-slate-500 mt-0.5">Coach {awayT.coachName.split(' ').pop()}</div>}
                   </div>
@@ -170,60 +196,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
             );
           })}
         </div>
-      ) : boxScore || finalBracketGame?.played ? (
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">
-            Sunday Night · Final Score
-          </div>
-          <div className="flex items-center justify-center gap-12 md:gap-24 mb-8">
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-3 overflow-hidden">
-                {isCaptainsDraftFormat && homeCaptainImg ? (
-                  <img src={homeCaptainImg} className="w-full h-full object-cover" alt="Home Captain" referrerPolicy="no-referrer" />
-                ) : (
-                  <img src={EAST_LOGO} className="w-8 h-8 object-contain" alt="Home" />
-                )}
-              </div>
-              <div className={`text-5xl font-black mb-1 ${finalHomeScore > finalAwayScore ? 'text-white' : 'text-slate-600'}`}>
-                {finalHomeScore}
-              </div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">{homeFinalName}</div>
-            </div>
-            <div className="text-4xl font-black text-slate-800">VS</div>
-            <div className="text-center">
-              <div className="w-16 h-16 rounded-full bg-purple-600/20 border border-purple-500/30 flex items-center justify-center mx-auto mb-3 overflow-hidden">
-                {isCaptainsDraftFormat && awayCaptainImg ? (
-                  <img src={awayCaptainImg} className="w-full h-full object-cover" alt="Away Captain" referrerPolicy="no-referrer" />
-                ) : (
-                  <img src={WEST_LOGO} className="w-8 h-8 object-contain" alt="Away" />
-                )}
-              </div>
-              <div className={`text-5xl font-black mb-1 ${finalAwayScore > finalHomeScore ? 'text-white' : 'text-slate-600'}`}>
-                {finalAwayScore}
-              </div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">{awayFinalName}</div>
-            </div>
-          </div>
-          <div className="flex flex-col items-center gap-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-slate-800 rounded-full text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              <Trophy size={12} className="text-amber-400" />
-              Final
-            </div>
-            {game && (
-              <button
-                onClick={() => onViewBoxScore?.({
-                  ...game,
-                  expectedHomeTeamName: homeBracket?.name,
-                  expectedAwayTeamName: awayBracket?.name,
-                })}
-                className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-bold transition-all"
-              >
-                View Box Score
-              </button>
-            )}
-          </div>
-        </div>
-      ) : canWatch && game ? (
+      ) : (boxScore || finalBracketGame?.played) ? null : canWatch && game ? (
         <div className="bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
           <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">All-Star Game</h3>
           <p className="text-slate-400 text-sm mb-6">The main event · {gameModeLabel}</p>
@@ -239,7 +212,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
 
       {!allStar.reservesAnnounced && (
         <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-3 text-xs text-amber-400">
-          ★ = Fan vote starters · Reserves announced Jan 29
+          ★ = Fan vote starters · Reserves announced {reservesDateLabel}
         </div>
       )}
 
@@ -274,6 +247,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
                     face={(fullPlayer as any)?.face}
                     playerName={g.mvpName}
                     overallRating={fullPlayer?.overallRating}
+                    ovrLabel={fullPlayer ? String(getScoutedDisplayOverall(state, fullPlayer, state.leagueStats.year)) : undefined}
                     ratings={fullPlayer?.ratings}
                     size={36}
                   />
@@ -343,6 +317,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
                           face={(repData.fullPlayer as any)?.face}
                           playerName={replacement.playerName}
                           overallRating={repData.fullPlayer?.overallRating}
+                          ovrLabel={repData.displayOverall != null ? String(repData.displayOverall) : undefined}
                           ratings={repData.fullPlayer?.ratings}
                           size={36}
                         />
@@ -373,6 +348,7 @@ export const AllStarRoster: React.FC<AllStarRosterProps> = ({ allStar, state, te
                       face={(rData.fullPlayer as any)?.face}
                       playerName={r.playerName}
                       overallRating={rData.fullPlayer?.overallRating}
+                      ovrLabel={rData.displayOverall != null ? String(rData.displayOverall) : undefined}
                       ratings={rData.fullPlayer?.ratings}
                       size={36}
                     />

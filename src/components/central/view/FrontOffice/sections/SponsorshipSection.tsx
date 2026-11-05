@@ -1,244 +1,239 @@
-import React, { useState } from 'react';
-import { Briefcase } from 'lucide-react';
+import React from 'react';
+import {
+  CalendarClock,
+  ChevronRight,
+  CircleDollarSign,
+  Gift,
+  Plus,
+  Users,
+} from 'lucide-react';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
 import { ALL_SLOTS, type OneTimePayout, type SponsorshipSlot, type TycoonState } from '../../../../../types/tycoon';
-import { Line, SectionTitle } from '../shared/helpers';
 import { SponsorLogo } from '../../../../tycoon/SponsorLogo';
-import { getIndustryLabel } from '../../../../../utils/sponsorLogos';
-import { getBrandMeta } from '../../../../../data/sponsorCatalogFetcher';
-import type { NegotiationMode } from '../../../../tycoon/SponsorshipNegotiationModal';
-import { getSponsorContractEndYear, isSponsorDueForRenewal } from '../../../../../services/tycoon/sponsorshipEngine';
+import { getBrandMeta, type LeagueKey } from '../../../../../data/sponsorCatalogFetcher';
+import {
+  getSponsorContractEndYear,
+  isSponsorExpiringNextRollover,
+} from '../../../../../services/tycoon/sponsorshipEngine';
+import {
+  ENDORSEMENT_SLOT_CAP,
+  getCoreSponsorPerk,
+  getEndorsementPerk,
+  SPONSOR_SLOT_CONFIG,
+} from '../../../../tycoon/sponsorshipRevampConfig';
 
-const SPONSOR_SLOT_LABELS: Record<SponsorshipSlot, string> = {
-  kit: 'Kit Sponsor',
-  sleeve: 'Sleeve Sponsor',
-  back: 'Back of Shirt',
-  shorts: 'Shorts Sponsor',
-  training: 'Training Kit',
-  court: 'Court Logo',
-  stadium: 'Arena Naming',
-  practice: 'Practice Facility',
-};
-
-const SLOT_GRADES: Record<SponsorshipSlot, string> = {
-  kit: 'A',
-  sleeve: 'B',
-  back: 'B+',
-  shorts: 'B+',
-  training: 'B',
-  court: 'B',
-  stadium: 'A',
-  practice: 'B',
-};
-
-const ENDORSEMENT_SLOT_CAP = 4;
+type CoreAction = 'details' | 'find-new';
 
 export const SponsorshipSection: React.FC<{
   tycoon: TycoonState;
   currency: string;
+  sponsorLeague: LeagueKey;
   currentYear: number;
-  avgOpponentPrestige: number;
-  marqueeOpponents: string[];
-  onAction: (slot: SponsorshipSlot, mode: NegotiationMode) => void;
-  onTicketMultChange: (mult: number) => void;
-}> = ({ tycoon, currency, currentYear, avgOpponentPrestige, marqueeOpponents, onAction, onTicketMultChange: _onTicketMultChange }) => {
-  const [selectedSlot, setSelectedSlot] = useState<SponsorshipSlot>('kit');
-  const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
+  onCoreAction: (slot: SponsorshipSlot, action: CoreAction) => void;
+  onOpenEndorsement: () => void;
+  onEndorsementDetails: (endorsement: OneTimePayout) => void;
+}> = ({
+  tycoon,
+  currency,
+  sponsorLeague,
+  currentYear,
+  onCoreAction,
+  onOpenEndorsement,
+  onEndorsementDetails,
+}) => {
+  const fmt = (value: number) => formatCurrencyWithCode(value, currency, false);
   const sponsorships = tycoon.sponsorships ?? {};
-  const deals = ALL_SLOTS.map((slot) => ({ slot, deal: sponsorships[slot] }));
-  const activeDeals = deals.filter((item) => item.deal);
-  const activeEndorsements = ((tycoon.oneTimePayouts ?? []) as OneTimePayout[])
-    .filter((p) => p.kind === 'endorsement')
-    .filter((p, index, arr) => {
-      const key = `${p.year}-${p.brand}-${p.amount}-${p.offerLabel ?? ''}`;
-      return arr.findIndex((other) => `${other.year}-${other.brand}-${other.amount}-${other.offerLabel ?? ''}` === key) === index;
+  const coreDeals = ALL_SLOTS.map(slot => ({ slot, deal: sponsorships[slot] }));
+  const activeCoreDeals = coreDeals.filter(item => item.deal);
+  const endorsements = ((tycoon.oneTimePayouts ?? []) as OneTimePayout[])
+    .filter(payout => (
+      payout.kind === 'endorsement'
+      && payout.year <= currentYear
+      && (payout.expiresAfterYear ?? payout.year + 1) > currentYear
+    ))
+    .filter((payout, index, rows) => {
+      const key = payout.id ?? `${payout.year}-${payout.brand}-${payout.amount}`;
+      return rows.findIndex(other => (other.id ?? `${other.year}-${other.brand}-${other.amount}`) === key) === index;
     })
     .slice(0, ENDORSEMENT_SLOT_CAP);
-  const endorsementTotal = activeEndorsements.reduce((sum, item) => sum + (item.amount ?? 0), 0);
-  const totalAnnual = activeDeals.reduce((sum, item) => sum + (item.deal?.valuePerYear ?? 0), 0);
-  const totalValue = activeDeals.reduce((sum, item) => sum + (item.deal?.valuePerYear ?? 0) * Math.max(1, item.deal?.yearsRemaining ?? 1), 0) + endorsementTotal;
-  const nextRenewal = activeDeals.reduce<number | null>((min, item) => {
-    const years = item.deal?.yearsRemaining;
-    if (years === undefined) return min;
-    return min === null ? years : Math.min(min, years);
-  }, null);
-  const selected = sponsorships[selectedSlot];
-  const placeholderCount = Math.max(0, ENDORSEMENT_SLOT_CAP - activeEndorsements.length);
-  const firstOpenSlot = ALL_SLOTS.find((s) => !sponsorships[s]);
+  const annualRevenue = activeCoreDeals.reduce((sum, item) => sum + (item.deal?.valuePerYear ?? 0), 0)
+    + endorsements.reduce((sum, deal) => sum + deal.amount, 0);
+  const expiringSoon = activeCoreDeals.filter(item => (
+    isSponsorExpiringNextRollover(item.deal, currentYear)
+  )).length;
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col xl:flex-row xl:items-start xl:justify-between gap-5">
-        <SectionTitle icon={<Briefcase size={22} />} title="Sponsorships" subtitle="Manage partnerships, brand strength, renewals, and matchday sponsor exposure." />
-        <div className="grid sm:grid-cols-4 gap-3 xl:min-w-[760px]">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-500">Total Revenue</div>
-            <div className="mt-2 text-2xl font-black text-emerald-300 tabular-nums">{fmt(totalAnnual)}</div>
-            <div className="text-xs text-slate-400">per year</div>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-500">Active Deals</div>
-            <div className="mt-2 text-2xl font-black text-white tabular-nums">{activeDeals.length + activeEndorsements.length} / {ALL_SLOTS.length + ENDORSEMENT_SLOT_CAP}</div>
-            <div className="text-xs text-slate-400">sponsors + endorsements</div>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-500">Portfolio Value</div>
-            <div className="mt-2 text-2xl font-black text-violet-300 tabular-nums">{fmt(totalValue)}</div>
-            <div className="text-xs text-slate-400">contracted</div>
-          </div>
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-4">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-500">Next Renewals</div>
-            <div className="mt-2 text-2xl font-black text-amber-300 tabular-nums">{nextRenewal ?? 0}</div>
-            <div className="text-xs text-slate-400">years remaining</div>
-          </div>
+    <div className="space-y-5">
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(620px,1.35fr)] xl:items-center">
+        <div>
+          <h1 className="text-3xl font-black tracking-tight text-white sm:text-4xl">Sponsorships</h1>
+          <p className="mt-2 text-sm text-slate-400">Manage core partnerships and one-year endorsements.</p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-3">
+          <StatCard
+            icon={<CircleDollarSign size={20} />}
+            label="Annual Revenue"
+            value={fmt(annualRevenue)}
+            valueClass="text-emerald-300"
+          />
+          <StatCard
+            icon={<Users size={20} />}
+            label="Filled Slots"
+            value={`${activeCoreDeals.length} / ${ALL_SLOTS.length}`}
+          />
+          <StatCard
+            icon={<CalendarClock size={20} />}
+            label="Expiring Soon"
+            value={String(expiringSoon)}
+            valueClass="text-amber-300"
+          />
         </div>
       </div>
 
-      <div className="space-y-6">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-5">Sponsorship Portfolio</div>
-            <div className="grid md:grid-cols-2 2xl:grid-cols-4 gap-4">
-              {deals.map(({ slot, deal }) => {
-                const active = selectedSlot === slot;
-                const dueThisYear = isSponsorDueForRenewal(deal, currentYear);
-                const contractEndYear = getSponsorContractEndYear(deal);
-                return (
-                  <button
-                    key={slot}
-                    onClick={() => {
-                      setSelectedSlot(slot);
-                      onAction(slot, deal ? 'details' : 'find-new');
-                    }}
-                    className={`min-h-[190px] rounded-xl border p-4 text-left transition ${
-                      dueThisYear
-                        ? 'border-rose-500/50 bg-rose-500/10 hover:border-rose-400'
-                        : active
-                          ? 'border-amber-400 bg-amber-400/10'
-                          : 'border-slate-800 bg-slate-950/60 hover:border-slate-600'
-                    }`}
-                  >
-                    <div className="flex items-start justify-between">
-                      <div className="text-xs font-black uppercase tracking-widest text-slate-400">{SPONSOR_SLOT_LABELS[slot]}</div>
-                      <span className={`w-3 h-3 rounded-full ${dueThisYear ? 'bg-rose-400' : deal ? 'bg-emerald-400' : 'bg-amber-300'}`} />
-                    </div>
-                    <div className="mt-4 flex items-start gap-3">
-                      {deal ? (
-                        <SponsorLogo
-                          name={deal.sponsor}
-                          meta={getBrandMeta('spain', deal.sponsor)}
-                          industry={deal.industry ?? 'generic'}
-                          size={56}
-                        />
-                      ) : (
-                        <div className="w-14 h-14 rounded-lg border border-dashed border-slate-700 flex items-center justify-center text-slate-500 text-2xl">+</div>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="text-base font-bold text-white leading-tight line-clamp-2 break-words">
-                          {deal?.sponsor ?? 'Open Slot'}
-                        </div>
-                        <div className="text-xs text-slate-500 mt-0.5">
-                          {deal ? getIndustryLabel(deal.industry) : 'Available'}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                      <div>
-                        <div className="uppercase tracking-widest text-slate-500">Value</div>
-                        <div className="text-sm font-black text-white tabular-nums">{fmt(deal?.valuePerYear ?? 0)} / year</div>
-                      </div>
-                      <div>
-                        <div className="uppercase tracking-widest text-slate-500">Contract End</div>
-                        <div className={`text-sm font-black ${dueThisYear ? 'text-rose-300' : 'text-white'}`}>{deal ? String(contractEndYear ?? '') : 'Market'}</div>
-                      </div>
-                    </div>
-                    {dueThisYear && (
-                      <div className="mt-3 inline-flex h-7 items-center justify-center rounded-lg border border-rose-400/50 bg-rose-500/10 px-2 text-xs font-black uppercase tracking-widest text-rose-200">
-                        Expires This Year
-                      </div>
-                    )}
-                    <div className="mt-3 inline-flex h-7 min-w-7 items-center justify-center rounded-lg border border-amber-400/60 px-2 text-sm font-black text-amber-300">{SLOT_GRADES[slot]}</div>
-                  </button>
-                );
-              })}
-              {activeEndorsements.map((deal, i) => (
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/45 p-4 sm:p-6">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-black text-white">Core Partnerships</h2>
+          <span className="hidden text-xs text-slate-500 sm:block">Click a row for details</span>
+        </div>
+        <div className="grid gap-2 lg:grid-cols-2">
+          {coreDeals.map(({ slot, deal }) => {
+            const slotConfig = SPONSOR_SLOT_CONFIG[slot];
+            if (!deal) {
+              return (
                 <button
-                  key={`endorsement-${deal.id ?? `${deal.brand}-${i}`}`}
-                  onClick={() => onAction(firstOpenSlot ?? selectedSlot, 'find-new')}
-                  className="min-h-[190px] rounded-xl border border-emerald-500/40 bg-emerald-500/10 p-4 text-left transition hover:border-emerald-300"
+                  key={slot}
+                  type="button"
+                  onClick={() => onCoreAction(slot, 'find-new')}
+                  className="flex min-h-24 items-center gap-3 rounded-xl border border-dashed border-amber-400/35 bg-amber-400/[0.03] p-3 text-left transition hover:border-amber-300 hover:bg-amber-400/[0.07]"
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="text-xs font-black uppercase tracking-widest text-emerald-300">Extra Endorsement</div>
-                    <span className="w-3 h-3 rounded-full bg-emerald-400" />
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-xl border border-dashed border-amber-400/60 text-amber-300">
+                    <Plus size={23} />
                   </div>
-                  <div className="mt-4 flex items-start gap-3">
-                    <SponsorLogo
-                      name={deal.brand}
-                      meta={getBrandMeta('spain', deal.brand)}
-                      industry={deal.industry ?? 'generic'}
-                      size={56}
-                    />
-                    <div className="min-w-0 flex-1">
-                      <div className="text-base font-bold text-white leading-tight line-clamp-2 break-words">{deal.brand}</div>
-                      <div className="text-xs text-emerald-200/80 mt-0.5">{deal.offerLabel ?? 'One-Time Endorsement'}</div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-bold text-slate-400">{slotConfig.label}</div>
+                    <div className="mt-1 font-black text-white">Open slot</div>
+                    <div className="mt-1 text-xs text-slate-500">
+                      {slotConfig.description} · Payment multiplier ×{slotConfig.multiplier.toFixed(2)}
                     </div>
                   </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <div className="uppercase tracking-widest text-slate-500">Value</div>
-                      <div className="text-sm font-black text-white tabular-nums">{fmt(deal.amount)}</div>
-                    </div>
-                    <div>
-                      <div className="uppercase tracking-widest text-slate-500">Contract</div>
-                      <div className="text-sm font-black text-white">One Year</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 inline-flex h-7 items-center justify-center rounded-lg border border-emerald-400/50 px-2 text-xs font-black text-emerald-200">Signed</div>
+                  <span className="shrink-0 text-[10px] font-black uppercase tracking-widest text-amber-300">Find sponsor</span>
                 </button>
-              ))}
-              {Array.from({ length: placeholderCount }).map((_, i) => (
-                <button
-                  key={`available-${i}`}
-                  onClick={() => onAction(firstOpenSlot ?? selectedSlot, 'find-new')}
-                  title="Open market"
-                  className="min-h-[190px] rounded-xl border border-dashed border-slate-700 bg-slate-950/40 hover:border-amber-300 hover:bg-amber-400/5 p-4 text-left transition"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="text-xs font-black uppercase tracking-widest text-slate-500">Extra Endorsement</div>
-                    <span className="w-3 h-3 rounded-full bg-amber-300/60" />
-                  </div>
-                  <div className="mt-4 flex items-start gap-3">
-                    <div className="w-14 h-14 rounded-lg border border-dashed border-slate-700 flex items-center justify-center text-slate-500 text-2xl">+</div>
-                    <div className="min-w-0 flex-1">
-                      <div className="text-base font-bold text-slate-200 leading-tight">Open Market</div>
-                      <div className="text-xs text-slate-500 mt-0.5">One-year opportunity</div>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-2 gap-3 text-xs">
-                    <div>
-                      <div className="uppercase tracking-widest text-slate-500">Value</div>
-                      <div className="text-sm font-black text-slate-300">—</div>
-                    </div>
-                    <div>
-                      <div className="uppercase tracking-widest text-slate-500">Contract</div>
-                      <div className="text-sm font-black text-slate-300">One Year</div>
-                    </div>
-                  </div>
-                  <div className="mt-3 inline-flex h-7 items-center justify-center rounded-lg border border-slate-700 px-2 text-xs font-black text-slate-400">Browse</div>
-                </button>
-              ))}
-            </div>
-          </div>
+              );
+            }
 
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Sponsorship Insights</div>
-            <div className="space-y-2 text-sm text-slate-300">
-              <div className="text-emerald-300">✓ Kit deal ranks among the strongest current slots.</div>
-              <div className="text-emerald-300">✓ Marquee opponents support premium local activation.</div>
-              <div className="text-slate-300">Extra endorsements: {activeEndorsements.length}/{ENDORSEMENT_SLOT_CAP} signed this season.</div>
-            </div>
-            {marqueeOpponents.length > 0 && <div className="mt-2 text-xs text-slate-500">Marquee slate: {marqueeOpponents.slice(0, 3).join(', ')}</div>}
-          </div>
-      </div>
+            const endYear = getSponsorContractEndYear(deal, currentYear) ?? currentYear + deal.yearsRemaining;
+            const perk = getCoreSponsorPerk(deal, slot);
+            return (
+              <button
+                key={slot}
+                type="button"
+                onClick={() => onCoreAction(slot, 'details')}
+                className="grid min-h-24 min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/55 p-3 text-left transition hover:border-slate-600"
+              >
+                <SponsorLogo
+                  name={deal.sponsor}
+                  meta={getBrandMeta(sponsorLeague, deal.sponsor)}
+                  industry={deal.industry ?? 'generic'}
+                  size={56}
+                />
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-slate-400">{slotConfig.label}</div>
+                  <div className="mt-1 truncate text-base font-black text-white">{deal.sponsor}</div>
+                  <div className="mt-2 flex items-start gap-2 text-xs text-slate-400 lg:hidden">
+                    <Gift size={13} className="mt-0.5 shrink-0 text-amber-300" />
+                    <span className="truncate">{perk.label}</span>
+                  </div>
+                </div>
+                <div className="flex shrink-0 items-center">
+                  <div className="px-2 text-right sm:px-4">
+                    <div className="font-black tabular-nums text-emerald-300">
+                      {fmt(deal.valuePerYear)} <span className="font-medium text-slate-400">/ year</span>
+                    </div>
+                    <div className="mt-1 text-xs text-slate-500">Through {endYear}</div>
+                  </div>
+                  <div className="hidden max-w-48 items-center gap-2 border-l border-slate-700 px-4 text-xs text-slate-300 lg:flex">
+                    <Gift size={15} className="shrink-0 text-amber-300" />
+                    <span className="line-clamp-2">{perk.label}</span>
+                  </div>
+                  <ChevronRight size={18} className="ml-1 text-slate-500" />
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </section>
+
+      <section className="rounded-2xl border border-slate-800 bg-slate-900/45 p-4 sm:p-6">
+        <div className="mb-5 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-black text-white">One-Year Endorsements</h2>
+          <span className="text-xs font-black text-slate-500">{endorsements.length} / {ENDORSEMENT_SLOT_CAP}</span>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {Array.from({ length: ENDORSEMENT_SLOT_CAP }, (_, index) => {
+            const deal = endorsements[index];
+            if (!deal) {
+              return (
+                <button
+                  key={`open-${index}`}
+                  type="button"
+                  onClick={onOpenEndorsement}
+                  className="flex min-h-60 flex-col items-center justify-center rounded-xl border border-slate-700 bg-slate-950/35 p-4 text-center transition hover:border-amber-400/60 hover:bg-amber-400/[0.04]"
+                >
+                  <div className="flex h-16 w-16 items-center justify-center rounded-full border border-dashed border-amber-400 text-amber-300">
+                    <Plus size={27} />
+                  </div>
+                  <div className="mt-4 font-black text-white">Open endorsement slot</div>
+                  <div className="mt-2 text-sm leading-6 text-slate-500">Same sponsor storefront.<br />Fixed at 1 year.</div>
+                  <span className="mt-5 rounded-lg border border-amber-400/70 px-5 py-2 text-xs font-black uppercase tracking-widest text-amber-300">
+                    Open sponsor
+                  </span>
+                </button>
+              );
+            }
+
+            const perk = getEndorsementPerk(deal);
+            return (
+              <button
+                type="button"
+                key={deal.id ?? `${deal.brand}-${index}`}
+                onClick={() => onEndorsementDetails(deal)}
+                className="flex min-h-60 flex-col rounded-xl border border-slate-700 bg-slate-950/45 p-4 text-left transition hover:border-slate-500"
+              >
+                <SponsorLogo
+                  name={deal.brand}
+                  meta={getBrandMeta(sponsorLeague, deal.brand)}
+                  industry={deal.industry ?? 'generic'}
+                  size={52}
+                />
+                <div className="mt-4 text-xs font-bold text-slate-400">One-Year Endorsement</div>
+                <div className="mt-1 truncate text-lg font-black text-white">{deal.brand}</div>
+                <div className="mt-3 font-black tabular-nums text-emerald-300">{fmt(deal.amount)}</div>
+                <div className="mt-1 text-xs text-slate-500">Ends this season</div>
+                <div className="mt-auto flex items-start gap-2 border-t border-slate-800 pt-4 text-xs text-slate-300">
+                  <Gift size={14} className="mt-0.5 shrink-0 text-amber-300" />
+                  <span>{perk.label}</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        <div className="mt-4 text-xs text-slate-500">Click any open slot to browse eligible sponsor offers.</div>
+      </section>
     </div>
   );
 };
+
+const StatCard: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  valueClass?: string;
+}> = ({ icon, label, value, valueClass = 'text-white' }) => (
+  <div className="flex min-h-24 items-center gap-3 rounded-xl border border-slate-800 bg-slate-900/60 p-4">
+    <div className="text-amber-300">{icon}</div>
+    <div>
+      <div className="text-xs font-bold text-slate-400">{label}</div>
+      <div className={`mt-1 text-2xl font-black tabular-nums ${valueClass}`}>{value}</div>
+    </div>
+  </div>
+);

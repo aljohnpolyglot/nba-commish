@@ -33,7 +33,7 @@ export function pushCoachMessage(state: GameState, messageText: string): GameSta
             id: `chat-coach-${state.date}`,
             participants: ['commissioner', coach.name],
             participantDetails: [
-                { id: 'commissioner', name: state.commissionerName, role: 'Commissioner' },
+                { id: 'commissioner', name: state.commissionerName, role: 'General Manager' },
                 { id: coach.name, name: coach.name, role: 'Coach', avatarUrl: coach.playerPortraitUrl },
             ],
             messages: [coachMessage],

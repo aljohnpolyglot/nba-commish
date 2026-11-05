@@ -1,4 +1,5 @@
 import { PlayerGameStats } from '../types';
+import { calculateEwaFromPer, calibrateRawSimulatorPer } from '../../../utils/advancedStatCalibration';
 
 const LG_PER = 15.0;
 const LG_TS = 0.560;
@@ -22,6 +23,10 @@ export function pct(made: number, att: number): number {
 
 export function estimatePossessions(fga: number, fta: number, orb: number, tov: number): number {
   return safe(fga + FT_POSS_FACTOR * fta - orb + tov);
+}
+
+export function estimatePlayerPossessions(fga: number, fta: number, tov: number): number {
+  return safe(fga + FT_POSS_FACTOR * fta + tov);
 }
 
 export function calcTS(pts: number, fga: number, fta: number): number {
@@ -98,8 +103,7 @@ export function calcPER(s: PlayerGameStats, teamPoss: number): number {
     - tov * 53.897;
 
   const paceFactor = teamPoss > 0 ? MINUTES_PER_GAME / teamPoss : 1;
-  const PER_NORMALIZATION_FACTOR = 1.4;
-  return safe((uProd / min) * paceFactor * PER_NORMALIZATION_FACTOR);
+  return safe(calibrateRawSimulatorPer((uProd / min) * paceFactor));
 }
 
 export function calcGameScore(s: PlayerGameStats): number {
@@ -179,8 +183,7 @@ export function calcVORP(bpm: number, min: number): number {
 }
 
 export function calcEWA(per: number, min: number): number {
-  const PRL = 11;
-  return safe((per - PRL) * (min / MINUTES_PER_GAME) / 42);
+  return safe(calculateEwaFromPer(per, min));
 }
 
 export function tenPlusCategories(s: PlayerGameStats): number {

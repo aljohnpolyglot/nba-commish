@@ -1,0 +1,132 @@
+{
+  "version": 1,
+  "sourceGeneratedAt": "2026-08-01T05:55:28.502Z",
+  "totalPlayers": 5011,
+  "shards": {
+    "a": {
+      "file": "a.json.gz",
+      "players": 168,
+      "compressedBytes": 53683
+    },
+    "b": {
+      "file": "b.json.gz",
+      "players": 476,
+      "compressedBytes": 136422
+    },
+    "c": {
+      "file": "c.json.gz",
+      "players": 322,
+      "compressedBytes": 102168
+    },
+    "d": {
+      "file": "d.json.gz",
+      "players": 246,
+      "compressedBytes": 75451
+    },
+    "e": {
+      "file": "e.json.gz",
+      "players": 111,
+      "compressedBytes": 36065
+    },
+    "f": {
+      "file": "f.json.gz",
+      "players": 151,
+      "compressedBytes": 43427
+    },
+    "g": {
+      "file": "g.json.gz",
+      "players": 246,
+      "compressedBytes": 73209
+    },
+    "h": {
+      "file": "h.json.gz",
+      "players": 359,
+      "compressedBytes": 107746
+    },
+    "i": {
+      "file": "i.json.gz",
+      "players": 22,
+      "compressedBytes": 7368
+    },
+    "j": {
+      "file": "j.json.gz",
+      "players": 262,
+      "compressedBytes": 82578
+    },
+    "k": {
+      "file": "k.json.gz",
+      "players": 164,
+      "compressedBytes": 45677
+    },
+    "l": {
+      "file": "l.json.gz",
+      "players": 199,
+      "compressedBytes": 57322
+    },
+    "m": {
+      "file": "m.json.gz",
+      "players": 473,
+      "compressedBytes": 134611
+    },
+    "n": {
+      "file": "n.json.gz",
+      "players": 104,
+      "compressedBytes": 31420
+    },
+    "o": {
+      "file": "o.json.gz",
+      "players": 93,
+      "compressedBytes": 30210
+    },
+    "p": {
+      "file": "p.json.gz",
+      "players": 221,
+      "compressedBytes": 65205
+    },
+    "q": {
+      "file": "q.json.gz",
+      "players": 9,
+      "compressedBytes": 3856
+    },
+    "r": {
+      "file": "r.json.gz",
+      "players": 259,
+      "compressedBytes": 75628
+    },
+    "s": {
+      "file": "s.json.gz",
+      "players": 430,
+      "compressedBytes": 126374
+    },
+    "t": {
+      "file": "t.json.gz",
+      "players": 193,
+      "compressedBytes": 57804
+    },
+    "u": {
+      "file": "u.json.gz",
+      "players": 10,
+      "compressedBytes": 3922
+    },
+    "v": {
+      "file": "v.json.gz",
+      "players": 48,
+      "compressedBytes": 14833
+    },
+    "w": {
+      "file": "w.json.gz",
+      "players": 409,
+      "compressedBytes": 118607
+    },
+    "y": {
+      "file": "y.json.gz",
+      "players": 20,
+      "compressedBytes": 7801
+    },
+    "z": {
+      "file": "z.json.gz",
+      "players": 16,
+      "compressedBytes": 5306
+    }
+  }
+}

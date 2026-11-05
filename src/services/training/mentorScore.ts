@@ -88,11 +88,17 @@ export function calculateMentorExp(player: NBAPlayer): MentorExpBreakdown {
   };
 }
 
-/** Eligibility — 5+ NBA seasons of meaningful playing time per docs/mentorship.md §5. */
+export function countProfessionalSeasons(player: NBAPlayer): number {
+  const seasons = new Set((player.stats ?? [])
+    .filter(stat => !stat.playoffs && Number(stat.gp ?? 0) > 0 && Number.isFinite(Number(stat.season)))
+    .map(stat => Number(stat.season)));
+  if (seasons.size > 0) return seasons.size;
+  return Math.floor(fallbackRegularSeasonGames(player) / 65);
+}
+
+/** Eligibility — five distinct senior professional seasons in any supported league. */
 export function isEligibleMentor(player: NBAPlayer): boolean {
-  const rsSeasons = (player.stats ?? []).filter(s => !s.playoffs && (s.gp ?? 0) > 0).length;
-  if (rsSeasons >= 5) return true;
-  return fallbackRegularSeasonGames(player) >= 325;
+  return countProfessionalSeasons(player) >= 5;
 }
 
 /** Format an EXP integer for compact UI display (e.g. 2424 → "2.4K", 850 → "850"). */

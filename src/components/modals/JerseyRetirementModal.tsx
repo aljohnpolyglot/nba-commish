@@ -7,7 +7,7 @@ import {
   explainJerseyRetirementCandidates,
   type JerseyRetirementDebugRow,
 } from '../../services/playerDevelopment/jerseyRetirementChecker';
-import type { RetiredJerseyRecord } from '../../types';
+import type { NBAPlayer, RetiredJerseyRecord } from '../../types';
 
 interface Props {
   teamId: number;
@@ -15,6 +15,7 @@ interface Props {
   onClose: () => void;
   accent: string;
   findPlayerImg: (name: string) => string;
+  candidatePlayers?: readonly NBAPlayer[];
 }
 
 function tierLabel(tier: RetiredJerseyRecord['tier']): string {
@@ -50,7 +51,7 @@ function countAwardInSeasons(player: any, needle: string, seasons: Set<number>, 
 }
 
 export const JerseyRetirementModal: React.FC<Props> = ({
-  teamId, isOpen, onClose, accent, findPlayerImg,
+  teamId, isOpen, onClose, accent, findPlayerImg, candidatePlayers,
 }) => {
   const { state, dispatchAction } = useGame();
   const [showIneligible, setShowIneligible] = useState(false);
@@ -75,9 +76,9 @@ export const JerseyRetirementModal: React.FC<Props> = ({
 
     for (const r of autoRows) rows.set(r.playerId, r);
 
-    for (const player of state.players ?? []) {
-      if ((player as any).status !== 'Retired') continue;
-      if (!player.retiredYear || player.retiredYear < leagueStartYear) continue;
+    for (const player of candidatePlayers ?? state.players ?? []) {
+      const retiredYear = Number(player.retiredYear ?? 0);
+      if ((player as any).status !== 'Retired' && retiredYear <= 0) continue;
       if (existing.some(record => playerMatchesRetiredRecord(record, player))) continue;
 
       const regStats = ((player as any).stats ?? []).filter((s: any) => !s?.playoffs && Number(s?.tid) === teamId && (s?.gp ?? 0) > 0);
@@ -91,7 +92,7 @@ export const JerseyRetirementModal: React.FC<Props> = ({
         playerId: player.internalId,
         name: player.name,
         status: String((player as any).status ?? ''),
-        retiredYear: player.retiredYear,
+        retiredYear: retiredYear || undefined,
         teamId,
         teamName: team?.name ?? '',
         number,
@@ -108,7 +109,7 @@ export const JerseyRetirementModal: React.FC<Props> = ({
     }
 
     return Array.from(rows.values());
-  }, [isOpen, state.players, state.teams, currentYear, leagueStartYear, teamId]);
+  }, [candidatePlayers, isOpen, state.players, state.teams, currentYear, leagueStartYear, teamId]);
 
   const ready = candidates.filter(r =>
     r.outcome === 'candidate' && !r.scheduledYear

@@ -1,0 +1,7 @@
+Unclassified SVG Text
+=====================
+
+These labels were not included in the supplied seating-section rules.
+They remain untouched in the full organized SVG.
+
+text	direction	x	y	fontSize

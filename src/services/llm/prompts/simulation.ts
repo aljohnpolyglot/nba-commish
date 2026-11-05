@@ -1,39 +1,38 @@
 import { GameState } from "../../../types";
 import { SettingsManager } from "../../SettingsManager";
 import { getArenaForTeam } from "../../../utils/arenaData";
+import { didHomeTeamWin } from "../../../utils/gameOutcome";
+import { formatGameDateShort, getTradeDeadlineDate, parseGameDate } from "../../../utils/dateUtils";
+import { getLeagueCalendarDates, getLeagueSeasonForDate } from "../../leagueCalendar";
+import { getAllStarWeekendDates } from "../../allStar/allStarWeekendDates";
 
-function buildSeasonCalendarContext(dateString: string, gamePhase: string): string {
-    const d = new Date(dateString);
-    const month = d.getMonth() + 1;
-    const day = d.getDate();
-    const year = d.getFullYear();
-
-    const christmasPassed = month > 12 || (month === 12 && day > 25) || month < 12;
-    const tradePassed = month > 2 || (month === 2 && day > 20);
-    const allStarPassed = month > 2 || (month === 2 && day > 19);
-    const playoffsStarted = month >= 4 && day >= 15;
-
+function buildSeasonCalendarContext(state: GameState, gamePhase: string): string {
+    const current = parseGameDate(state.date);
+    const season = getLeagueSeasonForDate(state.date, state.leagueStats) || state.leagueStats.year;
+    const calendar = getLeagueCalendarDates(season, state.leagueStats);
+    const tradeDeadline = getTradeDeadlineDate(season, state.leagueStats);
+    const allStar = getAllStarWeekendDates(season, state.leagueStats);
     const notes: string[] = [];
+    if (current < calendar.regularSeasonStart) notes.push(`The regular season begins ${formatGameDateShort(calendar.regularSeasonStart)}.`);
+    else if (current <= calendar.regularSeasonEnd) notes.push(`The regular season is underway and ends ${formatGameDateShort(calendar.regularSeasonEnd)}.`);
+    else if (current < calendar.playoffStart) notes.push(`The regular season is complete. The postseason begins ${formatGameDateShort(calendar.playoffStart)}.`);
+    else if (current < calendar.rollover) notes.push("The postseason is underway.");
+    else notes.push("The league is between seasons.");
 
-    if (month === 10) notes.push("The NBA season just began (October).");
-    else if (month === 11) notes.push("The season is in its early stretch (November).");
-    else if (month === 12 && day <= 24) notes.push(`Christmas Day (Dec 25) is ${25 - day} day(s) away — Christmas games are scheduled.`);
-    else if (month === 12 && day === 25) notes.push("Today is Christmas Day — the marquee NBA Christmas games are being played.");
-    else if (month === 12 && day > 25) notes.push("Christmas has already passed. The season continues into the new year.");
-    else if (month === 1) notes.push("It is January — mid-season grind. Christmas games have already been played.");
-    else if (month === 2 && day < 14) notes.push("It is early February — the All-Star break is approaching in mid-February. Christmas games have already been played.");
-    else if (month === 2 && day >= 14 && day <= 19) notes.push("It is NBA All-Star Weekend (mid-February). Christmas has already passed.");
-    else if (month === 2 && day === 20) notes.push("Today is the NBA Trade Deadline. Christmas and All-Star weekend have already passed.");
-    else if (month === 2 && day > 20) notes.push("The trade deadline has passed. Christmas and All-Star weekend are over. The playoff push begins.");
-    else if (month === 3) notes.push("It is March — the playoff race is heating up. All major mid-season events (Christmas, All-Star, Trade Deadline) are in the past.");
-    else if (month >= 4 && !playoffsStarted) notes.push("It is early April — the regular season is in its final days.");
-    else if (playoffsStarted) notes.push("The NBA Playoffs are underway.");
+    if (state.leagueStats.allStarGameEnabled !== false) {
+        if (current < allStar.breakStart) notes.push(`All-Star Weekend begins ${formatGameDateShort(allStar.breakStart)}.`);
+        else if (current <= allStar.breakEnd) notes.push("All-Star Weekend is in progress.");
+        else notes.push("All-Star Weekend has already concluded.");
+    }
+    notes.push(current <= tradeDeadline
+        ? `The trade deadline is ${formatGameDateShort(tradeDeadline)}.`
+        : `The ${formatGameDateShort(tradeDeadline)} trade deadline has passed.`);
 
     return `SEASON CALENDAR AWARENESS:
-Current Date: ${dateString}
+Current Date: ${state.date}
 Current Phase: ${gamePhase}
 ${notes.join(' ')}
-CRITICAL: All characters (players, staff, media) must be aware of the current date. They MUST NOT reference future events (e.g., Christmas games, All-Star Weekend) as "upcoming" if those dates have already passed. They should only reference events that are genuinely in the future relative to ${dateString}.`;
+CRITICAL: All characters (players, staff, media) must be aware of the current date. They must describe an event as upcoming only when its saved league date is still in the future.`;
 }
 
 export const generateAdvanceDayPrompt = (
@@ -113,8 +112,9 @@ ${healEntries.map(e => `[${e.date}] MEDICAL CLEARANCE — ${e.subject}
         ${dailyResults.map(r => {
             const home = currentState.teams.find(t => t.id === r.homeTeamId);
             const away = currentState.teams.find(t => t.id === r.awayTeamId);
-            const winner = r.homeScore > r.awayScore ? home : away;
-            const loser = r.homeScore > r.awayScore ? away : home;
+            const homeWon = didHomeTeamWin(r);
+            const winner = homeWon ? home : away;
+            const loser = homeWon ? away : home;
             const topPerformer = r.homeStats.concat(r.awayStats).sort((a: any, b: any) => b.gameScore - a.gameScore)[0];
             const statLine = [
                 `${topPerformer?.pts} PTS`,
@@ -129,7 +129,7 @@ ${healEntries.map(e => `[${e.date}] MEDICAL CLEARANCE — ${e.subject}
             if (schedGame?.city && schedGame?.country) {
               venueStr = ` @ ${schedGame.city}, ${schedGame.country} (INTERNATIONAL)`;
             } else if (home) {
-              const arena = getArenaForTeam(home.name);
+              const arena = getArenaForTeam(home.abbrev ?? home.name);
               if (arena) venueStr = ` @ ${arena.arena_name}, ${arena.arena_location}`;
             }
             return `- [${r.date}] ${winner?.abbrev} def. ${loser?.abbrev} (${r.homeScore}-${r.awayScore})${venueStr}. Top Performer: ${topPerformer?.name} (${statLine})`;
@@ -214,7 +214,7 @@ ${dm.messages.map((m: any) => `  [${m.senderName}]: ${m.text}`).join('\n')}`).jo
         `;
     }
 
-    const seasonCalendarContext = buildSeasonCalendarContext(currentState.date, gamePhase);
+    const seasonCalendarContext = buildSeasonCalendarContext(currentState, gamePhase);
 
     return `
 CRITICAL FORMATTING RULE: Respond with ONLY raw JSON. No markdown, no backticks, no headers, no bullet points. Start your response with { and end with }. Nothing else.
@@ -300,7 +300,7 @@ export const generateLeaguePulsePrompt = (
     leagueContext: string,
     leagueSummaryContext: string = ""
 ): string => {
-    const seasonCalendarContext = buildSeasonCalendarContext(currentState.date, gamePhase);
+    const seasonCalendarContext = buildSeasonCalendarContext(currentState, gamePhase);
     return `
     ${leagueContext}
     ${leagueSummaryContext}

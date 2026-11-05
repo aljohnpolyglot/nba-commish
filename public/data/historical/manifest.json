@@ -1,0 +1,324 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "visible-history.5948179741477074398",
+  "generatedAt": "2026-08-01T22:49:29.680Z",
+  "capabilities": {
+    "completedCompetitionHistory": true,
+    "awards": true,
+    "allLeagueTeams": true,
+    "allStarHistory": true,
+    "activeSeasonSchedule": false,
+    "startTodayState": false,
+    "transactions": false
+  },
+  "consumerRules": {
+    "branchCutoffRequired": true,
+    "simulatedSeasonsRemainSaveOwned": true,
+    "leagueKeyIsolationRequired": true
+  },
+  "collections": {
+    "competitions": [
+      {
+        "key": "nba",
+        "path": "/data/historical/competitions/nba.json",
+        "datasetVersion": "nba-history.3036974416730020",
+        "generatedAt": "2026-08-01T22:07:46.556Z",
+        "seasons": 80
+      },
+      {
+        "key": "wnba",
+        "path": "/data/historical/competitions/wnba.json",
+        "datasetVersion": "wnba-history.149712535017605",
+        "generatedAt": "2026-08-01T21:52:50.246Z",
+        "seasons": 30
+      },
+      {
+        "key": "euroleague",
+        "path": "/data/historical/competitions/euroleague.json",
+        "datasetVersion": "euroleague-history.2709836775293923",
+        "generatedAt": "2026-08-01T21:54:23.991Z",
+        "seasons": 69
+      },
+      {
+        "key": "eurocup",
+        "path": "/data/historical/competitions/eurocup.json",
+        "datasetVersion": "eurocup-history.1524604708820623",
+        "generatedAt": "2026-08-01T21:55:01.807Z",
+        "seasons": 24
+      },
+      {
+        "key": "bleague",
+        "path": "/data/historical/competitions/bleague.json",
+        "datasetVersion": "bleague-history.1381429568742784",
+        "generatedAt": "2026-08-01T22:47:34.314Z",
+        "seasons": 10
+      },
+      {
+        "key": "china-cba",
+        "path": "/data/historical/competitions/china-cba.json",
+        "datasetVersion": "china-cba-history.1525466068649071",
+        "generatedAt": "2026-08-01T22:47:35.792Z",
+        "seasons": 31
+      },
+      {
+        "key": "gleague",
+        "path": "/data/historical/competitions/gleague.json",
+        "datasetVersion": "gleague-history.1950796889725386",
+        "generatedAt": "2026-08-01T22:47:37.134Z",
+        "seasons": 25
+      },
+      {
+        "key": "summer-league",
+        "path": "/data/historical/competitions/summer-league.json",
+        "datasetVersion": "summer-league-history.2144680981893627",
+        "generatedAt": "2026-08-01T22:47:38.378Z",
+        "seasons": 15
+      },
+      {
+        "key": "israeli-bsl",
+        "path": "/data/historical/competitions/israeli-bsl.json",
+        "datasetVersion": "israeli-bsl-history.3690118255389017",
+        "generatedAt": "2026-08-01T22:47:39.654Z",
+        "seasons": 73
+      },
+      {
+        "key": "nbl-australia",
+        "path": "/data/historical/competitions/nbl-australia.json",
+        "datasetVersion": "nbl-australia-history.859600241363954",
+        "generatedAt": "2026-08-01T22:49:29.680Z",
+        "seasons": 48
+      }
+    ],
+    "leagueFiles": [
+      {
+        "key": "wnba",
+        "path": "/data/historical/league-files/wnba.json",
+        "datasetVersion": "wnba-league-file.572477322769336",
+        "generatedAt": "2026-07-30T01:42:14.875Z",
+        "seasons": 30
+      },
+      {
+        "key": "pba",
+        "path": "/data/historical/league-files/pba.json",
+        "datasetVersion": "pba-league-file.1990010595170552",
+        "generatedAt": "2026-07-19T13:01:29.825Z",
+        "seasons": 33
+      },
+      {
+        "key": "euroleague",
+        "path": "/data/historical/league-files/euroleague.json",
+        "datasetVersion": "euroleague-league-file.2445302874191187",
+        "generatedAt": "2026-07-19T11:14:05.704Z",
+        "seasons": 26
+      },
+      {
+        "key": "eurocup",
+        "path": "/data/historical/league-files/eurocup.json",
+        "datasetVersion": "eurocup-league-file.1428911242298453",
+        "generatedAt": "2026-07-20T02:02:23.532Z",
+        "seasons": 24
+      },
+      {
+        "key": "bleague",
+        "path": "/data/historical/league-files/bleague.json",
+        "datasetVersion": "bleague-league-file.4466742127579829",
+        "generatedAt": "2026-07-24T07:51:44.801Z",
+        "seasons": 10
+      },
+      {
+        "key": "china-cba",
+        "path": "/data/historical/league-files/china-cba.json",
+        "datasetVersion": "china-cba-league-file.3868568588132932",
+        "generatedAt": "2026-07-24T08:11:07.669Z",
+        "seasons": 15
+      },
+      {
+        "key": "nbl-australia",
+        "path": "/data/historical/league-files/nbl-australia.json",
+        "datasetVersion": "nbl-australia-league-file.3200293897387859",
+        "generatedAt": "2026-07-24T08:18:46.820Z",
+        "seasons": 15
+      },
+      {
+        "key": "gleague",
+        "path": "/data/historical/league-files/gleague.json",
+        "datasetVersion": "gleague-league-file.1902304077247067",
+        "generatedAt": "2026-07-24T08:48:20.673Z",
+        "seasons": 25
+      },
+      {
+        "key": "summer-league",
+        "path": "/data/historical/league-files/summer-league.json",
+        "datasetVersion": "summer-league-league-file.4395734522135160",
+        "generatedAt": "2026-07-30T01:21:41.021Z",
+        "seasons": 21
+      },
+      {
+        "key": "french-jeep-elite",
+        "path": "/data/historical/league-files/french-jeep-elite.json",
+        "datasetVersion": "french-jeep-elite-league-file.589959325465733",
+        "generatedAt": "2026-07-19T12:03:28.098Z",
+        "seasons": 22
+      },
+      {
+        "key": "italian-serie-a",
+        "path": "/data/historical/league-files/italian-serie-a.json",
+        "datasetVersion": "italian-serie-a-league-file.3873676647202887",
+        "generatedAt": "2026-07-19T12:37:37.403Z",
+        "seasons": 23
+      },
+      {
+        "key": "german-bbl",
+        "path": "/data/historical/league-files/german-bbl.json",
+        "datasetVersion": "german-bbl-league-file.453945616613979",
+        "generatedAt": "2026-07-19T12:42:20.313Z",
+        "seasons": 23
+      },
+      {
+        "key": "greek-heba-a1",
+        "path": "/data/historical/league-files/greek-heba-a1.json",
+        "datasetVersion": "greek-heba-a1-league-file.3864174123613225",
+        "generatedAt": "2026-07-19T12:24:44.593Z",
+        "seasons": 15
+      },
+      {
+        "key": "turkish-bsl",
+        "path": "/data/historical/league-files/turkish-bsl.json",
+        "datasetVersion": "turkish-bsl-league-file.737215234626476",
+        "generatedAt": "2026-07-19T12:24:17.601Z",
+        "seasons": 21
+      },
+      {
+        "key": "lithuanian-lkl",
+        "path": "/data/historical/league-files/lithuanian-lkl.json",
+        "datasetVersion": "lithuanian-lkl-league-file.2963131250447897",
+        "generatedAt": "2026-07-19T12:45:45.986Z",
+        "seasons": 15
+      },
+      {
+        "key": "israeli-bsl",
+        "path": "/data/historical/league-files/israeli-bsl.json",
+        "datasetVersion": "israeli-bsl-league-file.1986257263302359",
+        "generatedAt": "2026-07-19T12:49:25.256Z",
+        "seasons": 15
+      },
+      {
+        "key": "vtb-united-league",
+        "path": "/data/historical/league-files/vtb-united-league.json",
+        "datasetVersion": "vtb-united-league-league-file.2289865425522118",
+        "generatedAt": "2026-07-19T12:59:01.405Z",
+        "seasons": 15
+      },
+      {
+        "key": "adriatic-league",
+        "path": "/data/historical/league-files/adriatic-league.json",
+        "datasetVersion": "adriatic-league-league-file.4438911338025547",
+        "generatedAt": "2026-07-19T21:41:06.325Z",
+        "seasons": 15
+      }
+    ],
+    "allStar": [
+      {
+        "key": "nba",
+        "path": "/data/historical/all-star/nba.json",
+        "datasetVersion": "nba-all-star.3368872125868289",
+        "generatedAt": "2026-08-01T21:31:43.581Z",
+        "seasons": 77
+      },
+      {
+        "key": "wnba",
+        "path": "/data/historical/all-star/wnba.json",
+        "datasetVersion": "wnba-all-star.3865595928586944",
+        "generatedAt": "2026-08-01T21:33:40.334Z",
+        "seasons": 28
+      },
+      {
+        "key": "pba",
+        "path": "/data/historical/all-star/pba.json",
+        "datasetVersion": "pba-all-star.570827087807672",
+        "generatedAt": "2026-08-01T22:15:48.946Z",
+        "seasons": 35
+      }
+    ],
+    "repositorySources": [
+      {
+        "key": "euroleague",
+        "path": "/data/historical/competition-sources/euroleague.json",
+        "sourceHash": "026af04aada5864ea4e43bbfaee4cbc4cb284499b71f09973e5a45d8177e1269",
+        "fetchedAt": "2026-08-01T22:42:47.106Z"
+      },
+      {
+        "key": "eurocup",
+        "path": "/data/historical/competition-sources/eurocup.json",
+        "sourceHash": "497c2c7d8ac0249c629970f535f5e5745b642f74159bc50ce495b3f5a521d074",
+        "fetchedAt": "2026-08-01T22:42:47.437Z"
+      },
+      {
+        "key": "endesa",
+        "path": "/data/historical/competition-sources/endesa.json",
+        "sourceHash": "f07aa10b13e4c759d7e44703545bb79b62f966602a060a895a91f7fd470499b8",
+        "fetchedAt": "2026-08-01T22:42:47.756Z"
+      },
+      {
+        "key": "french-jeep-elite",
+        "path": "/data/historical/competition-sources/french-jeep-elite.json",
+        "sourceHash": "9b7e3baddfc41fac38e6f4c4fa1b00efa8cf751adfc4a885eb481442b131df4c",
+        "fetchedAt": "2026-08-01T22:42:48.063Z"
+      },
+      {
+        "key": "greek-heba-a1",
+        "path": "/data/historical/competition-sources/greek-heba-a1.json",
+        "sourceHash": "3176190709c96f5e22ba3dea3b99ada84c528f9857f5adb75ef33aa40905cf5e",
+        "fetchedAt": "2026-08-01T22:42:48.395Z"
+      },
+      {
+        "key": "german-bbl",
+        "path": "/data/historical/competition-sources/german-bbl.json",
+        "sourceHash": "8cf79f68fe4561018c52e9a2f4dee38d303dd7f361537e2d3212e216ba67d7ef",
+        "fetchedAt": "2026-08-01T22:42:48.656Z"
+      },
+      {
+        "key": "lithuanian-lkl",
+        "path": "/data/historical/competition-sources/lithuanian-lkl.json",
+        "sourceHash": "8cb924727fb55bdd0ea3cb1d2e26f9d8b0e284d684ec604f7c036f6e92ac4da3",
+        "fetchedAt": "2026-08-01T22:42:48.962Z"
+      },
+      {
+        "key": "italian-serie-a",
+        "path": "/data/historical/competition-sources/italian-serie-a.json",
+        "sourceHash": "186aea76116a6150543199a454ede96ba84c54e661effb6d3c0c378a177d5b77",
+        "fetchedAt": "2026-08-01T22:42:49.288Z"
+      },
+      {
+        "key": "italian-champions",
+        "path": "/data/historical/competition-sources/italian-champions.json",
+        "sourceHash": "629a41f7d3dfe108d8c40194d31a8394bd948ff3fcb86d6064565460d2c3c74d",
+        "fetchedAt": "2026-08-01T22:42:49.619Z"
+      },
+      {
+        "key": "turkish-bsl",
+        "path": "/data/historical/competition-sources/turkish-bsl.json",
+        "sourceHash": "fc6864778ae2ca7c6e8ee041a0f311855adb4104dd84687ef5f46ea94f0870eb",
+        "fetchedAt": "2026-08-01T22:42:49.870Z"
+      },
+      {
+        "key": "vtb-united-league",
+        "path": "/data/historical/competition-sources/vtb-united-league.json",
+        "sourceHash": "97ff07df51d9b35620ad785e682a8fe8590f904a622284c6d7b38ecc1e8a1790",
+        "fetchedAt": "2026-08-01T22:42:50.217Z"
+      },
+      {
+        "key": "adriatic-league",
+        "path": "/data/historical/competition-sources/adriatic-league.json",
+        "sourceHash": "23f0b910417f4bb2361451b2401d653c3e8527c22f8470a9e71b6de11c5bb541",
+        "fetchedAt": "2026-08-01T22:42:50.472Z"
+      },
+      {
+        "key": "european-cups",
+        "path": "/data/historical/competition-sources/european-cups.json",
+        "sourceHash": "4b1da7a8ba65cb2a74902403a28a365227615a5522da6ba210ac9f81a0b2fbf0",
+        "fetchedAt": "2026-08-01T22:42:50.796Z"
+      }
+    ]
+  }
+}

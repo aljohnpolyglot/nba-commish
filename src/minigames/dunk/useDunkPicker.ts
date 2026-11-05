@@ -2,21 +2,27 @@ import { useEffect, useMemo, useState } from 'react';
 import { NBAPlayer } from '../../types';
 import { getRosterData } from '../../services/rosterService';
 import { loadRatings, getPlayerRealK2 } from '../../data/NBA2kRatings';
+import { useGame } from '../../store/GameContext';
+import { resolveMinigameNbaPlayers } from '../shared/minigameRoster';
+import { getDrivingDunk } from '../../services/allStar/allStarDunkContestHelpers';
 
 export const DUNK_MAX_PICKS = 4;
 export const DUNK_MIN_PICKS = 2;
 
 type View = 'LOADING' | 'PICK' | 'RUN';
 
-// Driving Dunk = IS.sub[2], fallback to raw dnk if gist not loaded
-const dunkScore = (p: NBAPlayer): number => {
+export const getDunkPickerRating = (p: NBAPlayer): number | null => {
+  const saved = p.drivingDunk == null ? Number.NaN : Number(p.drivingDunk);
+  if (Number.isFinite(saved)) return Math.max(0, Math.min(99, Math.round(saved)));
   const k2 = getPlayerRealK2(p.name);
-  if (k2?.IS?.[2] != null) return k2.IS[2];
-  const r = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : null;
-  return (r as any)?.dnk ?? 40;
+  const sourced = k2?.IS?.[2] == null ? Number.NaN : Number(k2.IS[2]);
+  if (Number.isFinite(sourced)) return Math.max(0, Math.min(99, Math.round(sourced)));
+  const fallback = Number(getDrivingDunk(p.name));
+  return Number.isFinite(fallback) ? Math.max(0, Math.min(99, Math.round(fallback))) : null;
 };
 
 export function useDunkPicker() {
+  const { state } = useGame();
   const [view, setView] = useState<View>('LOADING');
   const [players, setPlayers] = useState<NBAPlayer[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -29,9 +35,13 @@ export function useDunkPicker() {
     ])
       .then(([{ players: roster }]) => {
         if (cancelled) return;
-        const filtered = (roster as NBAPlayer[])
+        const filtered = resolveMinigameNbaPlayers(state.players, roster as NBAPlayer[])
           .filter((p: any) => p.tid >= 0 && p.tid < 100 && !p.retiredYear)
-          .sort((a, b) => dunkScore(b) - dunkScore(a));
+          .map(player => {
+            const drivingDunk = getDunkPickerRating(player);
+            return drivingDunk == null ? player : { ...player, drivingDunk };
+          })
+          .sort((a, b) => (getDunkPickerRating(b) ?? 0) - (getDunkPickerRating(a) ?? 0));
         setPlayers(filtered);
         setView('PICK');
       })
@@ -40,7 +50,7 @@ export function useDunkPicker() {
         if (!cancelled) setView('PICK');
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [state.players]);
 
   const toggle = (id: string) => {
     setSelectedIds(prev => {

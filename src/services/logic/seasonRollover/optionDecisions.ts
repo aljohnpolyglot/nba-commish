@@ -1,5 +1,8 @@
 import type { GameState, NBAPlayer } from '../../../types';
 import { computeContractOffer, formatContractUSD } from '../../../utils/salaryUtils';
+import { normalizeContractOptionKind } from '../../../utils/contractTypes';
+import { resolveOffseasonContractDecision } from '../../freeAgency/offseasonContractDecision';
+import { evaluateRetirementDecision } from '../../playerDevelopment/retirementChecker';
 
 type HistoryEntry = NonNullable<GameState['history']>[number];
 
@@ -50,87 +53,96 @@ export function resolveSeasonRolloverOptionDecisions({
   const isGM = state.gameMode === 'gm';
   const userTid = isGM ? state.userTeamId : undefined;
   const optionSeasonStr = `${currentYear}-${String(nextYear).slice(-2)}`;
+  const activeLeagueStats = leagueStats ?? state.leagueStats;
+  const playerOptionsEnabled = activeLeagueStats?.playerOptionsEnabled !== false;
+  const rookieTeamOptionsEnabled = (activeLeagueStats as any)?.rookieScaleType !== 'none'
+    && (activeLeagueStats as any)?.rookieTeamOptionsEnabled !== false;
   const optionSalaryUSD = (player: NBAPlayer): number => {
     const contractYears = (player as any).contractYears as Array<{ season?: string; guaranteed?: number; option?: string }> | undefined;
     const entry = Array.isArray(contractYears)
-      ? contractYears.find(cy => cy.season === optionSeasonStr && (cy.option ?? '').toLowerCase().includes('player'))
+      ? contractYears.find(cy => cy.season === optionSeasonStr && normalizeContractOptionKind(cy.option) === 'player')
       : undefined;
     const guaranteed = Number(entry?.guaranteed ?? 0);
     return guaranteed > 0 ? guaranteed : (player.contract?.amount ?? 0) * 1_000;
   };
 
-  for (const player of state.players) {
-    if (!(player as any).contract?.hasPlayerOption) continue;
-    if (!player.contract || (player.contract.exp ?? 0) !== nextYear) continue;
-    if (player.tid < 0 || player.tid >= 100) continue;
+  if (playerOptionsEnabled) {
+    for (const player of state.players) {
+      if (!(player as any).contract?.hasPlayerOption) continue;
+      if (!player.contract || (player.contract.exp ?? 0) !== nextYear) continue;
+      if (player.tid < 0 || player.tid >= 100) continue;
+      if (evaluateRetirementDecision(player, currentYear).willRetire) continue;
 
-    const offer = computeContractOffer(player, (leagueStats ?? state.leagueStats) as any);
-    const currentAmountUSD = optionSalaryUSD(player);
-    const team = state.teams.find(t => t.id === player.tid);
-    if (currentAmountUSD >= offer.salaryUSD * 0.9) {
-      playerOptInIds.add(player.internalId);
-      const text = `${player.name} has accepted his player option with the ${team?.name ?? 'team'}: ${formatContractUSD(currentAmountUSD)}`;
+      const offer = computeContractOffer(player, (leagueStats ?? state.leagueStats) as any);
+      const currentAmountUSD = optionSalaryUSD(player);
+      const team = state.teams.find(t => t.id === player.tid);
+      if (currentAmountUSD >= offer.salaryUSD * 0.9) {
+        playerOptInIds.add(player.internalId);
+        const text = `${player.name} has accepted his player option with the ${team?.name ?? 'team'}: ${formatContractUSD(currentAmountUSD)}`;
+        playerOptionNews.push(text);
+        playerOptionHistory.push({ text, date: optionDateStr, type: 'Contract Option', playerIds: [player.internalId], tid: player.tid } as unknown as HistoryEntry);
+        if (isGM && player.tid === userTid) {
+          pendingOptionToasts.push({
+            playerName: player.name,
+            teamName: team?.name ?? '',
+            pos: (player as any).pos ?? '',
+            decision: 'player-in',
+            amountM: +(currentAmountUSD / 1_000_000).toFixed(1),
+            amountUSD: currentAmountUSD,
+          });
+        }
+        continue;
+      }
+
+      playerOptOutIds.add(player.internalId);
+      const text = `${player.name} has declined his player option${team ? ` with the ${team.name}` : ''}, becoming a free agent.`;
       playerOptionNews.push(text);
-      playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [player.internalId], tid: player.tid } as unknown as HistoryEntry);
+      playerOptionHistory.push({ text, date: optionDateStr, type: 'Contract Option', playerIds: [player.internalId], tid: player.tid } as unknown as HistoryEntry);
       if (isGM && player.tid === userTid) {
         pendingOptionToasts.push({
           playerName: player.name,
           teamName: team?.name ?? '',
           pos: (player as any).pos ?? '',
-          decision: 'player-in',
-          amountM: +(currentAmountUSD / 1_000_000).toFixed(1),
-          amountUSD: currentAmountUSD,
+          decision: 'player-out',
         });
       }
-      continue;
-    }
-
-    playerOptOutIds.add(player.internalId);
-    const text = `${player.name} has declined his player option${team ? ` with the ${team.name}` : ''}, becoming a free agent.`;
-    playerOptionNews.push(text);
-    playerOptionHistory.push({ text, date: optionDateStr, type: 'Signing', playerIds: [player.internalId], tid: player.tid } as unknown as HistoryEntry);
-    if (isGM && player.tid === userTid) {
-      pendingOptionToasts.push({
-        playerName: player.name,
-        teamName: team?.name ?? '',
-        pos: (player as any).pos ?? '',
-        decision: 'player-out',
-      });
     }
   }
 
-  for (const player of state.players) {
-    if (!(player as any).contract?.hasTeamOption) continue;
-    const teamOptExp: number = (player as any).contract?.teamOptionExp ?? -1;
-    if (teamOptExp !== nextYear) continue;
-    if (player.tid < 0 || player.tid >= 100) continue;
-    if ((player as any).status === 'Retired') continue;
-
-    const team = state.teams.find(t => t.id === player.tid);
-    const exercise = (player.overallRating ?? 60) >= 50;
-    if (exercise) {
-      teamOptionExercisedIds.add(player.internalId);
-      teamOptionNews.push(`${team?.name ?? 'A team'} has exercised their team option on ${player.name}.`);
-      if (isGM && player.tid === userTid) {
-        pendingOptionToasts.push({
-          playerName: player.name,
-          teamName: team?.name ?? '',
-          pos: (player as any).pos ?? '',
-          decision: 'team-exercised',
-        });
+  if (rookieTeamOptionsEnabled) {
+    for (const player of state.players) {
+      const decision = resolveOffseasonContractDecision(player, state, currentYear);
+      if (decision.kind !== 'ROOKIE_TEAM_OPTION_DUE' && decision.kind !== 'TEAM_OPTION_DUE') continue;
+      if (evaluateRetirementDecision(player, currentYear).willRetire) continue;
+      if (player.tid < 0 || player.tid >= 100) continue;
+      if ((player as any).status === 'Retired') continue;
+      if (decision.optionEndYear === currentYear) {
+        const completedOptionService = (player.stats ?? []).some(row => (
+          row.playoffs !== true
+          && Number(row.season) === currentYear
+          && Number(row.tid) === Number(player.tid)
+          && Number(row.gp ?? 0) > 0
+        ));
+        if (completedOptionService) {
+          const team = state.teams.find(t => t.id === player.tid);
+          teamOptionExercisedIds.add(player.internalId);
+          teamOptionNews.push(`${team?.name ?? 'A team'} completed its exercised team-option season with ${player.name}.`);
+        }
+        continue;
       }
-      continue;
-    }
+      if (decision.optionEndYear !== nextYear) continue;
+      if (isGM && player.tid === userTid) continue;
 
-    teamOptionDeclinedIds.add(player.internalId);
-    teamOptionNews.push(`${team?.name ?? 'A team'} has declined their team option on ${player.name}, making him a restricted free agent.`);
-    if (isGM && player.tid === userTid) {
-      pendingOptionToasts.push({
-        playerName: player.name,
-        teamName: team?.name ?? '',
-        pos: (player as any).pos ?? '',
-        decision: 'team-declined',
-      });
+      const team = state.teams.find(t => t.id === player.tid);
+      const exercise = (player.overallRating ?? 60) >= 50;
+      if (exercise) {
+        teamOptionExercisedIds.add(player.internalId);
+        teamOptionNews.push(`${team?.name ?? 'A team'} has exercised their team option on ${player.name}.`);
+        continue;
+      }
+
+      teamOptionDeclinedIds.add(player.internalId);
+      teamOptionNews.push(`${team?.name ?? 'A team'} has declined their team option on ${player.name}, making him a restricted free agent.`);
     }
   }
 

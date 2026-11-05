@@ -8,6 +8,8 @@ import { calculateSocialEngagement } from '../../../utils/helpers';
 import { NewsGenerator } from '../../../services/news/NewsGenerator';
 import { buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { isTwitterAvailable } from '../../../utils/mediaTimeline';
 
 export const handleExecutiveTrade = async (stateWithSim: GameState, action: UserAction, executiveTradeTransactionRef: { current: any }, simResults: any[], recentDMs: any[]) => {
     const currentYear = stateWithSim.leagueStats?.year ?? new Date().getFullYear();
@@ -19,10 +21,23 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
             .filter(t => !stateWithSim.teams.some(nba => nba.id === t.id))),
     ];
     const lotterySlotByTid = buildFullDraftSlotMap((stateWithSim as any).draftLotteryResult, knownTeams);
-    const tradeResult = executeExecutiveTrade(action.payload, stateWithSim.players, knownTeams, stateWithSim.draftPicks, currentYear, lotterySlotByTid, stateWithSim.leagueType);
-    executiveTradeTransactionRef.current = tradeResult.transaction;
+    const preparedTransaction = executiveTradeTransactionRef.current;
+    const transaction = preparedTransaction ?? executeExecutiveTrade(
+        action.payload,
+        stateWithSim.players,
+        knownTeams,
+        stateWithSim.draftPicks,
+        currentYear,
+        lotterySlotByTid,
+        stateWithSim.leagueType,
+        stateWithSim.date,
+        stateWithSim.leagueStats?.uiMode,
+    ).transaction;
+    executiveTradeTransactionRef.current = transaction;
     const teamA = resolveAnyTeam(action.payload.teamAId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
     const teamB = resolveAnyTeam(action.payload.teamBId, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
+    const teamAName = teamA ? getTeamFullName(teamA as any) : 'Team A';
+    const teamBName = teamB ? getTeamFullName(teamB as any) : 'Team B';
     
     const playersA = stateWithSim.players.filter(p => action.payload.teamAPlayers.includes(p.internalId)).map(p => p.name);
     const playersB = stateWithSim.players.filter(p => action.payload.teamBPlayers.includes(p.internalId)).map(p => p.name);
@@ -52,15 +67,22 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
     const assetsB = joinAssets(playersB, picksB, cashB);
 
     const isCommishForced = !!action.payload.commissionerForced;
+    const pbaMode = stateWithSim.leagueStats?.uiMode === 'pba_isolated';
+    const tradeInsider = getInsiderHandle(
+        stateWithSim.leagueType,
+        stateWithSim.date,
+        stateWithSim.leagueStats?.year,
+        stateWithSim.leagueStats?.uiMode,
+    );
     const tradeSeed = isCommishForced
-        ? `COMMISSIONER-FORCED TRADE: ${stateWithSim.commissionerName} has overridden cap rules to push through a deal between the ${teamA?.name} and ${teamB?.name}. ` +
-          `${teamB?.name} receive: ${assetsA}. ${teamA?.name} receive: ${assetsB}. ` +
+        ? `COMMISSIONER-FORCED TRADE: ${stateWithSim.commissionerName} has overridden cap rules to push through a deal between the ${teamAName} and ${teamBName}. ` +
+          `${teamBName} receive: ${assetsA}. ${teamAName} receive: ${assetsB}. ` +
           `This is controversial — owners are furious, players feel like pawns, the union is making noise. ` +
-          `Generate shocked insider tweets (@ShamsCharania, @wojespn), outraged owner/player reactions, and analysts questioning the commissioner's power.`
-        : `BREAKING TRADE: The ${teamA?.name} and ${teamB?.name} have completed a trade. ` +
-          `${teamB?.name} receive: ${assetsA}. ${teamA?.name} receive: ${assetsB}. ` +
+          `Generate a shocked insider tweet from ${tradeInsider.atHandle}, outraged owner/player reactions, and analysts questioning the commissioner's power.`
+        : `BREAKING TRADE: The ${teamAName} and ${teamBName} have completed a trade. ` +
+          `${teamBName} receive: ${assetsA}. ${teamAName} receive: ${assetsB}. ` +
           `Generate immediate reactions — insider tweets breaking the trade, fan reactions, ` +
-          `analysts debating the winners and losers, and at least one post from @ShamsCharania or @wojespn.`;
+          `analysts debating the winners and losers, and at least one post from ${tradeInsider.atHandle}.`;
 
     const result = await advanceDay(stateWithSim, {
         type: 'EXECUTIVE_TRADE',
@@ -69,8 +91,8 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
             teamBId: action.payload.teamBId,
             commissionerForced: isCommishForced,
             outcomeText: isCommishForced
-                ? `Commissioner ${stateWithSim.commissionerName} has forced a trade between the ${teamA?.name} and ${teamB?.name}, overriding league cap rules. ${assetsA} are headed to ${teamB?.abbrev}; ${assetsB} to ${teamA?.abbrev}. The move is already drawing backlash.`
-                : `A trade has been finalized between the ${teamA?.name} and ${teamB?.name}. ${assetsA} have been moved to the ${teamB?.abbrev}, while ${assetsB} have been sent to the ${teamA?.abbrev}.`,
+                ? `Commissioner ${stateWithSim.commissionerName} has forced a trade between the ${teamAName} and ${teamBName}, overriding league cap rules. ${assetsA} are headed to ${teamB?.abbrev}; ${assetsB} to ${teamA?.abbrev}. The move is already drawing backlash.`
+                : `${teamAName} and ${teamBName} complete a trade. ${teamB?.abbrev} receive: ${assetsA}. ${teamA?.abbrev} receive: ${assetsB}.`,
         }
     } as any, [tradeSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
 
@@ -78,7 +100,7 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
     if (!result.outcomeText) {
         result.outcomeText = isCommishForced
             ? `${stateWithSim.commissionerName} forces a trade — ${teamA?.abbrev} and ${teamB?.abbrev} swap assets under commissioner override. Backlash expected.`
-            : `${teamA?.name} and ${teamB?.name} complete a trade. ${teamB?.abbrev} receive: ${assetsA}. ${teamA?.abbrev} receive: ${assetsB}.`;
+            : `${teamAName} and ${teamBName} complete a trade. ${teamB?.abbrev} receive: ${assetsA}. ${teamA?.abbrev} receive: ${assetsB}.`;
     }
 
     // Commissioner-forced trades carry morale/approval hits — magnitude scales with the
@@ -103,18 +125,24 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
     // Auto Charania trade post — injected directly into result.newSocialPosts
     // so it fires even when LLM is off (advanceDay early-return ignores payload.announcements)
     const shamsContent = buildShamsTradePost(
-        teamA?.name ?? teamA?.abbrev ?? 'Team A',
+        teamAName,
         teamA?.abbrev ?? 'TMA',
-        teamB?.name ?? teamB?.abbrev ?? 'Team B',
+        teamBName,
         teamB?.abbrev ?? 'TMB',
         [...playersA, ...picksA],
-        [...playersB, ...picksB]
+        [...playersB, ...picksB],
+        pbaMode ? 'pba' : 'nba',
     );
-    if (shamsContent) {
-        const insider = getInsiderHandle(stateWithSim.leagueType);
+    if (shamsContent && isTwitterAvailable(stateWithSim.date, stateWithSim.leagueStats?.year)) {
+        const insider = getInsiderHandle(
+            stateWithSim.leagueType,
+            stateWithSim.date,
+            stateWithSim.leagueStats?.year,
+            stateWithSim.leagueStats?.uiMode,
+        );
         const shamsEngagement = calculateSocialEngagement(insider.atHandle, shamsContent, 82);
         const shamsPost = {
-            id: `shams-trade-${Date.now()}`,
+            id: `insider-trade-${Date.now()}`,
             author: insider.name,
             handle: insider.atHandle,
             content: shamsContent,
@@ -129,8 +157,8 @@ export const handleExecutiveTrade = async (stateWithSim: GameState, action: User
 
     // Auto trade news item (fires regardless of LLM)
     const tradeNewsItem = NewsGenerator.generate('trade_confirmed', stateWithSim.date, {
-        teamAName: teamA?.name ?? teamA?.abbrev ?? 'Team A',
-        teamBName: teamB?.name ?? teamB?.abbrev ?? 'Team B',
+        teamAName,
+        teamBName,
         assetsToB: assetsA,
         assetsToA: assetsB,
     }, teamA?.logoUrl);

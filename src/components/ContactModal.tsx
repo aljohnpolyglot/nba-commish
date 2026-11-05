@@ -12,12 +12,11 @@ interface ContactModalProps {
 }
 
 const ContactModal: React.FC<ContactModalProps> = ({ contact, onClose }) => {
-  const { state } = useGame();
+  const { state, navigateToPlayer } = useGame();
 
   if (!contact) return null;
 
   const chat = state.chats.find(c => c.participants.includes(contact.id) && c.participants.includes('commissioner'));
-
   return (
     <AnimatePresence>
       <motion.div 
@@ -34,10 +33,14 @@ const ContactModal: React.FC<ContactModalProps> = ({ contact, onClose }) => {
           className="flex h-[calc(100vh-2rem)] w-full max-w-2xl flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl md:h-[700px] md:rounded-[2.5rem]"
           onClick={(e) => e.stopPropagation()}
         >
-          <ChatWindow 
-            chat={chat} 
-            draftContactId={contact.id} 
-            onBack={onClose} 
+          <ChatWindow
+            chat={chat}
+            draftContactId={contact.id}
+            onBack={onClose}
+            onViewPlayerBio={player => {
+              onClose();
+              navigateToPlayer(player);
+            }}
           />
         </motion.div>
       </motion.div>

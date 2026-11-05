@@ -48,24 +48,24 @@ function assignConference(
     return wb - wa;
   });
 
-  // 5 tiers × 3 teams each
+  // Seed tiers of up to three so historical/custom league sizes stay valid.
   const tiers: NBATeam[][] = [];
-  for (let t = 0; t < 5; t++) {
+  for (let t = 0; t < Math.ceil(ranked.length / 3); t++) {
     tiers.push(ranked.slice(t * 3, t * 3 + 3));
   }
 
   // 3 groups, each starting empty
   const groupTeamIds: number[][] = [[], [], []];
 
-  for (let t = 0; t < 5; t++) {
+  for (let t = 0; t < tiers.length; t++) {
     const shuffled = seededShuffle(tiers[t], `${baseSeed}_${conf}_tier${t}`);
-    for (let g = 0; g < 3; g++) {
+    for (let g = 0; g < shuffled.length; g++) {
       groupTeamIds[g].push(shuffled[g].id);
     }
   }
 
   const suffixes: GroupSuffix[] = ['A', 'B', 'C'];
-  return groupTeamIds.map((teamIds, idx) => ({
+  return groupTeamIds.filter(teamIds => teamIds.length > 0).map((teamIds, idx) => ({
     id: `${conf}-${suffixes[idx]}` as NBACupGroup['id'],
     conference: conf,
     teamIds,

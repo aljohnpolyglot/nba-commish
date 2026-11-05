@@ -3,6 +3,11 @@ import { NBAPlayer } from '../../types';
 import { K2_CATS } from '../../services/simulation/convert2kAttributes';
 import { useGame } from '../../store/GameContext';
 import { resolvePlayerRatingBundle } from '../../store/playerRatingStore';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential, getScoutedK2Data } from '../../utils/scoutingFuzz';
+import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getCalibratedEwa, getCalibratedPer } from '../../utils/advancedStatCalibration';
+import { formatHeight } from '../../utils/helpers';
+import { normalizePositionLabel } from '../../utils/positionUtils';
 
 const k2Color = (v: number) =>
   v >= 85 ? 'text-green-400' :
@@ -34,13 +39,19 @@ const CAT_COLORS: Record<string, string> = {
 export const PlayerHoverCardK2: React.FC<{ player: NBAPlayer }> = ({ player }) => {
   const { state } = useGame();
   const season = state.leagueStats?.year ?? new Date().getFullYear();
-  const team = state.teams.find(t => t.id === player.tid);
+  const team = resolveAnyTeam(player.tid, state.teams, state.nonNBATeams ?? []);
   const ratingBundle = resolvePlayerRatingBundle(player, season, season);
   const age = ratingBundle.age;
+  const metadata = [
+    player.hgt ? formatHeight(player.hgt) : '—',
+    normalizePositionLabel(player.pos, player.hgt),
+    team?.abbrev ?? 'FA',
+    age,
+  ].join(' | ');
 
-  const k2Ovr = ratingBundle.overall2k;
-  const pot = ratingBundle.potential2k;
-  const k2 = ratingBundle.displayK2;
+  const k2Ovr = getScoutedDisplayOverall(state, player, season);
+  const pot = getScoutedDisplayPotential(state, player, season, season);
+  const k2 = getScoutedK2Data(state, player, ratingBundle.displayK2);
 
   const stats = useMemo(() => {
     const all = ((player as any).stats ?? []) as any[];
@@ -57,7 +68,7 @@ export const PlayerHoverCardK2: React.FC<{ player: NBAPlayer }> = ({ player }) =
       <div className="flex items-center justify-between mb-2 pb-1.5 border-b border-slate-700/50">
         <div className="min-w-0 flex-1">
           <div className="font-black text-white text-xs truncate">{player.name}</div>
-          <div className="text-slate-400">{player.pos} · {team?.abbrev ?? 'FA'} · {age} yo</div>
+          <div className="text-slate-400">{metadata}</div>
         </div>
         <div className="flex gap-2.5 ml-2 shrink-0 text-center">
           <div>
@@ -72,7 +83,7 @@ export const PlayerHoverCardK2: React.FC<{ player: NBAPlayer }> = ({ player }) =
       </div>
 
       {/* K2 Categories — all sub-ratings */}
-      <div className="text-[8px] text-slate-500 font-bold mb-1.5">K2 Attributes</div>
+      <div className="text-[8px] text-slate-500 font-bold mb-1.5">Rating Attributes</div>
       <div className="space-y-2 mb-2">
         {K2_CATS.map(({ k, n, sub: subLabels }) => {
           const catData = (k2 as any)[k];
@@ -113,9 +124,9 @@ export const PlayerHoverCardK2: React.FC<{ player: NBAPlayer }> = ({ player }) =
             <StatRow label="PTS" val={f1(stats.pts / gp)} />
             <StatRow label="MP"  val={f1(stats.min / gp)} />
             <StatRow label="TRB" val={f1(trb)} />
-            <StatRow label="PER" val={f1(stats.per ?? 0)} />
+            <StatRow label="PER" val={f1(getCalibratedPer(stats))} />
             <StatRow label="AST" val={f1(stats.ast / gp)} />
-            <StatRow label="EWA" val={f1(stats.ewa ?? 0)} />
+            <StatRow label="EWA" val={f1(getCalibratedEwa(stats))} />
             <StatRow label="FG%" val={fpct(stats.fg, stats.fga)} />
             <StatRow label="FT%" val={fpct(stats.ft, stats.fta)} />
             <StatRow label="TS%" val={stats.tsPct ? `${(stats.tsPct).toFixed(1)}%` : '—'} />

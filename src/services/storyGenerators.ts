@@ -36,10 +36,10 @@ interface SponsorData {
 }
 
 // Simple cache to avoid fetching the data on every single story generation
-let cachedSponsorData: SponsorData | null = null;
+let cachedSponsorData: SponsorData | null | undefined;
 
 const getSponsorData = async (): Promise<SponsorData | null> => {
-    if (cachedSponsorData) {
+    if (cachedSponsorData !== undefined) {
         return cachedSponsorData;
     }
     try {
@@ -50,8 +50,8 @@ const getSponsorData = async (): Promise<SponsorData | null> => {
         const data: SponsorData = await response.json();
         cachedSponsorData = data;
         return data;
-    } catch (error) {
-        console.error("Failed to fetch sponsor data:", error);
+    } catch {
+        cachedSponsorData = null;
         return null;
     }
 };

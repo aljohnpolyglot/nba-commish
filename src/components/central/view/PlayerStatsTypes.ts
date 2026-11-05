@@ -1,7 +1,7 @@
 import { NBAPlayer } from '../../../types';
 
 export type StatType = 'perGame' | 'per36' | 'totals' | 'advanced' | 'shotLocations';
-export type Phase = 'regular' | 'playoffs' | 'combined' | 'cup';
+export type Phase = 'preseason' | 'regular' | 'playoffs' | 'combined' | 'cup';
 export type SeasonMode = number | 'career' | 'all';
 
 export type SortField =

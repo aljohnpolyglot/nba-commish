@@ -1,4 +1,5 @@
 import { NBAPlayer } from '../../types';
+import { isCurrentNbaPlayer } from './allStarSelectionHelpers';
 
 export interface SkillsChallengeEntry {
   playerId: string;
@@ -170,13 +171,7 @@ const simulateRun = (player: NBAPlayer, round: 1 | 2): SkillsChallengeRunLog => 
 
 export class AllStarSkillsChallengeSim {
   static selectContestants(players: NBAPlayer[], season: number, totalPlayers: number): NBAPlayer[] {
-    const ineligibleStatuses = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
-    const eligible = players.filter(p =>
-      p.tid >= 0 &&
-      p.tid < 100 &&
-      !ineligibleStatuses.has(p.status ?? '') &&
-      p.stats?.some(s => s.season === season && !s.playoffs && (s.gp ?? 0) > 0)
-    );
+    const eligible = players.filter(isCurrentNbaPlayer);
     return eligible.sort((a, b) => skillsInviteScore(b) - skillsInviteScore(a)).slice(0, totalPlayers);
   }
 

@@ -5,8 +5,17 @@
 
 import type { GameState } from '../../types';
 import { getOffseasonState, type OffseasonState } from './offseasonState';
-import { getGameDateParts, getRolloverDate, toISODateString } from '../../utils/dateUtils';
+import { daysBetweenGameDates, getRolloverDate, isRegularSeasonSigningOpen, toISODateString } from '../../utils/dateUtils';
+import { getLeagueSeasonForDate } from '../leagueCalendar';
 import { hasUnresolvedEuroSeasonCompetitions } from '../competition/competitionResolver';
+import { getTwoWayRosterLimit } from '../../utils/rosterLimits';
+import { isTwoWayContract } from '../../utils/contractTypes';
+import { isAssistantGMActive } from '../assistantGMFlag';
+import {
+  canActivateNextSeason,
+  resolveLeagueSeasonLifecycle,
+} from '../lifecycle/leagueSeasonLifecycle';
+import { simDebug } from '../../utils/simDebug';
 
 export type PlanAction = 'fire' | 'skip';
 
@@ -40,6 +49,7 @@ export interface OffseasonDayPlan {
     underMinRoster: boolean;
     birdRightsAlreadyRanThisYear: boolean;
     rolloverAlreadyHappened: boolean;
+    faUserEntryPending: boolean;
   };
 }
 
@@ -52,35 +62,34 @@ export interface OffseasonDayPlan {
  */
 export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
   const euroSeasonCompletionActive = hasUnresolvedEuroSeasonCompetitions(state as any);
+  const seasonLifecycle = resolveLeagueSeasonLifecycle(state);
   const os = getOffseasonState(
     state.date,
     state.leagueStats as any,
     state.schedule as any,
-    { playoffsActive: euroSeasonCompletionActive, draftComplete: !!state.draftComplete },
+    { playoffsActive: euroSeasonCompletionActive, draftComplete: seasonLifecycle.draft.draft === 'complete' },
   );
 
   const ls = state.leagueStats as any;
   const lsYear: number = ls?.year ?? new Date().getFullYear();
   const euroIsolated = ls?.uiMode === 'euro_isolated';
-  const { month: simMonth, day: simDayNum } = state.date
-    ? getGameDateParts(state.date)
-    : { month: 1, day: 1 };
-
-  // July daily → August biweekly → September weekly → off-season biweekly.
-  // Kept identical to the inline simulationHandler tapering.
+  const pbaIsolated = ls?.uiMode === 'pba_isolated';
+  const faElapsedDays = Math.max(0, Math.floor(daysBetweenGameDates(os.faStartStr, os.dateStr)));
   const faFrequency = (() => {
-    if (simMonth === 7) return 1;
-    if (simMonth === 8 && simDayNum <= 15) return 2;
-    if (simMonth === 8) return 4;
-    if (simMonth === 9) return 7;
+    if (os.phase === 'inSeason') return 14;
+    if (faElapsedDays <= 30) return 1;
+    if (faElapsedDays <= 45) return 2;
+    if (faElapsedDays <= 61) return 4;
+    if (os.phase === 'preCamp') return 7;
     return 14;
   })();
 
   // ── State-derived flags ──────────────────────────────────────────────
   const minRosterSetting: number = ls?.minPlayersPerTeam ?? 14;
+  const twoWayActive = getTwoWayRosterLimit(ls as any) > 0;
   const underMinRoster = (state.teams ?? []).some((t: any) => {
     const count = (state.players ?? []).filter(
-      (p: any) => p.tid === t.id && !p.twoWay,
+      (p: any) => p.tid === t.id && (!twoWayActive || !isTwoWayContract(p, state.leagueStats)),
     ).length;
     return count < minRosterSetting;
   });
@@ -99,18 +108,18 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
   //   (a) calendar date is at/past rolloverDate, AND
   //   (b) ls.year has not yet been bumped to the post-rollover value.
   // The post-rollover ls.year for THIS calendar offseason is cYear+1
-  // (since BBGM convention: ls.year = year season ENDS, and rollover at
-  // Jun 30 cYear ends the cYear-season, advancing ls.year to cYear+1).
+  // (leagueStats.year is the year the season ends; the configured transition
+  // ends that season and advances leagueStats.year to the next one).
   const rolloverDateStr = toISODateString(
     getRolloverDate(lsYear, ls, state.schedule as any),
   );
   // Calendar year from os.dateStr (YYYY-MM-DD) — the year the calendar
   // currently sits in. After rollover for THIS calendar's summer, ls.year
   // should have advanced to (cYear + 1).
-  const cYear = parseInt(os.dateStr.slice(0, 4), 10);
+  const calendarSeasonYear = getLeagueSeasonForDate(os.dateStr, ls) || lsYear;
   const rolloverAlreadyHappened = os.dateStr < rolloverDateStr
     ? false
-    : (lsYear >= (cYear + 1));
+    : lsYear >= calendarSeasonYear;
 
   // FA-season detection: matches `simulationHandler`'s `isFreeAgencySeason`
   // exactly. Summer = Jul-Sep (after effective FA start), in-season = Oct-Feb.
@@ -121,7 +130,7 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
     os.phase === 'birdRights' ||
     os.phase === 'openFA' ||
     os.phase === 'preCamp' ||
-    (os.phase === 'inSeason' && (simMonth >= 10 || simMonth <= 2));
+    (os.phase === 'inSeason' && isRegularSeasonSigningOpen(os.dateStr, lsYear, ls));
 
   const moratoriumActive = os.phase === 'moratorium';
 
@@ -131,8 +140,26 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
   // simulationHandler uses date arithmetic, we use the phase + state.day
   // throttle here.
   const dayCounter: number = (state as any)?.day ?? 0;
+  const faCounter: number = (state as any)?.faTagCounter ?? 0;
+  const checklistFA = (state as any)?.offseasonChecklist?.freeAgency;
+  const faUserEntryPending =
+    !isAssistantGMActive() &&
+    state.gameMode === 'gm' &&
+    !euroIsolated &&
+    !pbaIsolated &&
+    !!(state as any)?.offseasonChecklist &&
+    (checklistFA === 'pending' || checklistFA === 'in-progress') &&
+    faCounter <= 0;
+  const hasOpenInSeasonMarket = (state as any)?.faBidding?.markets?.some((market: any) =>
+    !market?.resolved && (market?.bids ?? []).some((bid: any) => bid?.status === 'active'),
+  ) ?? false;
+  const isOffseasonFreeAgency =
+    os.phase === 'moratorium' ||
+    os.phase === 'birdRights' ||
+    os.phase === 'openFA' ||
+    os.phase === 'preCamp';
 
-  const nbaFaActions: Pick<OffseasonDayPlan['actions'], 'tickFAMarkets' | 'runAIFAPass' | 'runBirdRightsPass'> = euroIsolated
+  const nbaFaActions: Pick<OffseasonDayPlan['actions'], 'tickFAMarkets' | 'runAIFAPass' | 'runBirdRightsPass'> = euroIsolated || pbaIsolated
     ? {
         tickFAMarkets: 'skip',
         runAIFAPass: 'skip',
@@ -142,21 +169,18 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
         // FA market ticks every day during FA-active window — including moratorium
         // (the ticker itself suppresses signings during moratorium, just opens
         // markets and resolves expired ones).
-        tickFAMarkets: isFreeAgencySeason ? 'fire' : 'skip',
+        tickFAMarkets: (isOffseasonFreeAgency || hasOpenInSeasonMarket) && !faUserEntryPending ? 'fire' : 'skip',
 
         // AI FA round = isFA && !moratorium && (cadence-met || underMinRoster).
         // Cadence: state.day % faFrequency === 0. Daily in July, biweekly off-season.
         // The underMinRoster bypass forces a fill regardless of cadence (immediate
         // refill after a salary-dump trade).
-        runAIFAPass: isFreeAgencySeason && !moratoriumActive && (dayCounter % faFrequency === 0 || underMinRoster)
+        runAIFAPass: isFreeAgencySeason && !faUserEntryPending && !moratoriumActive && (dayCounter % faFrequency === 0 || underMinRoster)
           ? 'fire'
           : 'skip',
 
-        // Bird Rights — fires once per league year on a July non-moratorium day.
-        // Inline gate: isFA && simMonth === 7 && !moratorium && passYear !== ls.year.
-        // Plan equivalent: month is July (phase 'birdRights' or early 'openFA' both
-        // qualify in July) AND not moratorium AND not yet ran this year.
-        runBirdRightsPass: isFreeAgencySeason && simMonth === 7 && !moratoriumActive && !birdRightsAlreadyRanThisYear
+        // Bird Rights fires once on the first legal signing day in the configured offseason.
+        runBirdRightsPass: isOffseasonFreeAgency && !faUserEntryPending && !moratoriumActive && !birdRightsAlreadyRanThisYear
           ? 'fire'
           : 'skip',
       };
@@ -165,14 +189,24 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
     // shouldFireRollover === (date >= rolloverDate) AND year not yet incremented.
     // Year-increment is implicit in `rolloverAlreadyHappened` (post-rollover, the
     // phase moves into moratorium/openFA based on the new year's calendar).
-    rollover: os.dateStr >= rolloverDateStr && !rolloverAlreadyHappened
+    rollover: !pbaIsolated
+      && !euroIsolated
+      && os.dateStr >= rolloverDateStr
+      && !rolloverAlreadyHappened
+      && canActivateNextSeason(state)
+      && (
+        !state.offseasonChecklist
+        || seasonLifecycle.transition.owner !== 'retiredPlayersReview'
+        || state.offseasonChecklist.retiredPlayersReview === 'in-progress'
+        || state.offseasonChecklist.retiredPlayersReview === 'done'
+      )
       ? 'fire'
       : 'skip',
     ...nbaFaActions,
   };
 
   const reason = `phase=${os.phase}, isFA=${isFreeAgencySeason}, moratorium=${moratoriumActive}, ` +
-    `underMin=${underMinRoster}, birdAlready=${birdRightsAlreadyRanThisYear}, freq=${faFrequency}, euro=${euroIsolated}`;
+    `underMin=${underMinRoster}, birdAlready=${birdRightsAlreadyRanThisYear}, faEntryPending=${faUserEntryPending}, freq=${faFrequency}, euro=${euroIsolated}`;
 
   // [OSPLAN] single-tag tracing — grep this prefix to see every offseason
   // dispatch decision in chronological order. Throttled per phase so daily
@@ -190,6 +224,7 @@ export function getOffseasonDayPlan(state: GameState): OffseasonDayPlan {
       underMinRoster,
       birdRightsAlreadyRanThisYear,
       rolloverAlreadyHappened,
+      faUserEntryPending,
     },
   };
 }
@@ -207,6 +242,7 @@ function emitPlanTrace(
   actions: OffseasonDayPlan['actions'],
   reason: string,
 ): void {
+  if (!(globalThis as any).__offseasonPlanTrace) return;
   // De-dup: only log when phase or date changes (suppress the "same plan twice
   // in one tick" noise from rollover-then-bird-rights chained calls).
   const key = `${phase}:${dateStr}:${actions.rollover}:${actions.tickFAMarkets}:${actions.runAIFAPass}:${actions.runBirdRightsPass}`;
@@ -218,7 +254,7 @@ function emitPlanTrace(
     .filter(([, v]) => v === 'fire')
     .map(([k]) => k)
     .join(',') || 'none';
-  console.log(`[OSPLAN] phase=${phase} date=${dateStr} fire=${fired} ${reason}`);
+  simDebug('lifecycle', () => `[OSPLAN] phase=${phase} date=${dateStr} fire=${fired} ${reason}`);
 }
 
 /** Log a one-off [OSPLAN] event from outside the plan — call this from any
@@ -226,5 +262,6 @@ function emitPlanTrace(
  *  Examples: lazySimRunner rollover dispatch, externalLeagueSustainer Oct 1
  *  routing, autoResolvers offseason events. */
 export function logPlanEvent(caller: string, action: 'fire' | 'skip', extra?: string): void {
-  console.log(`[OSPLAN] ${caller} ${action}${extra ? ' ' + extra : ''}`);
+  if (!(globalThis as any).__offseasonPlanTrace) return;
+  simDebug('lifecycle', () => `[OSPLAN] ${caller} ${action}${extra ? ' ' + extra : ''}`);
 }

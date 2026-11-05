@@ -1,0 +1,7 @@
+Boxes, Suites, and Tables — west
+================================
+
+B2	sections/b2-west.svg
+BR2	sections/br2-west.svg
+BR3	sections/br3-west.svg
+MC2	sections/mc2-west.svg

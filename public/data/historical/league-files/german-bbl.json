@@ -1,0 +1,2415 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "german-bbl-league-file.453945616613979",
+  "competitionKey": "german-bbl",
+  "competitionName": "Basketball Bundesliga",
+  "leagueKey": "german-bbl",
+  "generatedAt": "2026-07-19T12:42:20.313Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "german-bbl-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/15/German-BBL/stats/2026/Averages/Qualified/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/german-bbl/german-bbl-2026-bbgm.json",
+        "sourceHash": "0cf111477c1a576c97d26732d6c4bcb219efd19e78a7925307ceabc34b23fb7d",
+        "fetchedAt": "2026-07-19T12:42:20.313Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2004,
+      "seasonLabel": "2004",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fraport Skyliners",
+        "canonicalKey": "german-bbl:fraport-skyliners"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Brose Baskets Bamberg",
+        "canonicalKey": "german-bbl:brose-baskets-bamberg"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Alba Berlin",
+          "canonicalKey": "german-bbl:alba-berlin"
+        },
+        "won": 25,
+        "lost": 12
+      }
+    },
+    {
+      "season": 2005,
+      "seasonLabel": "2005",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Brose Baskets Bamberg",
+        "canonicalKey": "german-bbl:brose-baskets-bamberg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fraport Skyliners",
+        "canonicalKey": "german-bbl:fraport-skyliners"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Brose Baskets Bamberg",
+          "canonicalKey": "german-bbl:brose-baskets-bamberg"
+        },
+        "won": 30,
+        "lost": 12
+      }
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Rhein Stars Koeln",
+        "canonicalKey": "german-bbl:rhein-stars-koeln"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Alba Berlin",
+          "canonicalKey": "german-bbl:alba-berlin"
+        },
+        "won": 33,
+        "lost": 10
+      }
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Brose Baskets Bamberg",
+        "canonicalKey": "german-bbl:brose-baskets-bamberg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Artland Dragons",
+        "canonicalKey": "german-bbl:artland-dragons"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Alba Berlin",
+          "canonicalKey": "german-bbl:alba-berlin"
+        },
+        "won": 28,
+        "lost": 9
+      }
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Telekom Baskets Bonn",
+        "canonicalKey": "german-bbl:telekom-baskets-bonn"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Alba Berlin",
+          "canonicalKey": "german-bbl:alba-berlin"
+        },
+        "won": 36,
+        "lost": 9
+      }
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "EWE Baskets Oldenburg",
+        "canonicalKey": "german-bbl:ewe-baskets-oldenburg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Telekom Baskets Bonn",
+        "canonicalKey": "german-bbl:telekom-baskets-bonn"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "EWE Baskets Oldenburg",
+          "canonicalKey": "german-bbl:ewe-baskets-oldenburg"
+        },
+        "won": 34,
+        "lost": 12
+      }
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Brose Baskets Bamberg",
+        "canonicalKey": "german-bbl:brose-baskets-bamberg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fraport Skyliners",
+        "canonicalKey": "german-bbl:fraport-skyliners"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Brose Baskets Bamberg",
+          "canonicalKey": "german-bbl:brose-baskets-bamberg"
+        },
+        "won": 31,
+        "lost": 14
+      }
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Brose Baskets Bamberg",
+        "canonicalKey": "german-bbl:brose-baskets-bamberg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Brose Baskets Bamberg",
+          "canonicalKey": "german-bbl:brose-baskets-bamberg"
+        },
+        "won": 40,
+        "lost": 7
+      }
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Brose Baskets Bamberg",
+          "canonicalKey": "german-bbl:brose-baskets-bamberg"
+        },
+        "won": 39,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Bryant",
+                "canonicalKey": "person:john-bryant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "german-bbl:ratiopharm-ulm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "P.J. Tucker",
+                "canonicalKey": "person:p-j-tucker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anton Gavel",
+                "canonicalKey": "person:anton-gavel"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maik Zirbes",
+                "canonicalKey": "person:maik-zirbes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Gladiators Trier",
+                "canonicalKey": "german-bbl:gladiators-trier"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anton Gavel",
+                "canonicalKey": "person:anton-gavel"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maik Zirbes",
+                "canonicalKey": "person:maik-zirbes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Gladiators Trier",
+                "canonicalKey": "german-bbl:gladiators-trier"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Brose Baskets Bamberg",
+        "canonicalKey": "german-bbl:brose-baskets-bamberg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "EWE Baskets Oldenburg",
+        "canonicalKey": "german-bbl:ewe-baskets-oldenburg"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Brose Baskets Bamberg",
+          "canonicalKey": "german-bbl:brose-baskets-bamberg"
+        },
+        "won": 35,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Bryant",
+                "canonicalKey": "person:john-bryant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "german-bbl:ratiopharm-ulm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anton Gavel",
+                "canonicalKey": "person:anton-gavel"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anton Gavel",
+                "canonicalKey": "person:anton-gavel"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dennis Schroder",
+                "canonicalKey": "person:dennis-schroder"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Basketball Lowen Braunschweig",
+                "canonicalKey": "german-bbl:basketball-lowen-braunschweig"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Davin White",
+                "canonicalKey": "person:davin-white"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Hagen",
+                "canonicalKey": "german-bbl:phoenix-hagen"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anton Gavel",
+                "canonicalKey": "person:anton-gavel"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dennis Schroder",
+                "canonicalKey": "person:dennis-schroder"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Basketball Lowen Braunschweig",
+                "canonicalKey": "german-bbl:basketball-lowen-braunschweig"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "FC Bayern Munich",
+        "canonicalKey": "german-bbl:fc-bayern-munich"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "FC Bayern Munich",
+          "canonicalKey": "german-bbl:fc-bayern-munich"
+        },
+        "won": 38,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Malcolm Delaney",
+                "canonicalKey": "person:malcolm-delaney"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "german-bbl:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Malcolm Delaney",
+                "canonicalKey": "person:malcolm-delaney"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "german-bbl:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cliff Hammonds",
+                "canonicalKey": "person:cliff-hammonds"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Theis",
+                "canonicalKey": "person:daniel-theis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "german-bbl:ratiopharm-ulm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cliff Hammonds",
+                "canonicalKey": "person:cliff-hammonds"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Theis",
+                "canonicalKey": "person:daniel-theis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "german-bbl:ratiopharm-ulm"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Brose Baskets Bamberg",
+        "canonicalKey": "german-bbl:brose-baskets-bamberg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "FC Bayern Munich",
+        "canonicalKey": "german-bbl:fc-bayern-munich"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Brose Baskets Bamberg",
+          "canonicalKey": "german-bbl:brose-baskets-bamberg"
+        },
+        "won": 38,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jamel McLean",
+                "canonicalKey": "person:jamel-mclean"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brad Wanamaker",
+                "canonicalKey": "person:brad-wanamaker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cliff Hammonds",
+                "canonicalKey": "person:cliff-hammonds"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Johannes Voigtmann",
+                "canonicalKey": "person:johannes-voigtmann"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fraport Skyliners",
+                "canonicalKey": "german-bbl:fraport-skyliners"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cliff Hammonds",
+                "canonicalKey": "person:cliff-hammonds"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Johannes Voigtmann",
+                "canonicalKey": "person:johannes-voigtmann"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fraport Skyliners",
+                "canonicalKey": "german-bbl:fraport-skyliners"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Brose Baskets Bamberg",
+        "canonicalKey": "german-bbl:brose-baskets-bamberg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Ratiopharm Ulm",
+        "canonicalKey": "german-bbl:ratiopharm-ulm"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Brose Baskets Bamberg",
+          "canonicalKey": "german-bbl:brose-baskets-bamberg"
+        },
+        "won": 40,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brad Wanamaker",
+                "canonicalKey": "person:brad-wanamaker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brad Wanamaker",
+                "canonicalKey": "person:brad-wanamaker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Quantez Robertson",
+                "canonicalKey": "person:quantez-robertson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fraport Skyliners",
+                "canonicalKey": "german-bbl:fraport-skyliners"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paul Zipser",
+                "canonicalKey": "person:paul-zipser"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "german-bbl:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Quantez Robertson",
+                "canonicalKey": "person:quantez-robertson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fraport Skyliners",
+                "canonicalKey": "german-bbl:fraport-skyliners"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paul Zipser",
+                "canonicalKey": "person:paul-zipser"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "german-bbl:fc-bayern-munich"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Brose Baskets Bamberg",
+        "canonicalKey": "german-bbl:brose-baskets-bamberg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "EWE Baskets Oldenburg",
+        "canonicalKey": "german-bbl:ewe-baskets-oldenburg"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Brose Baskets Bamberg",
+          "canonicalKey": "german-bbl:brose-baskets-bamberg"
+        },
+        "won": 38,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Raymar Morgan",
+                "canonicalKey": "person:raymar-morgan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "german-bbl:ratiopharm-ulm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Fabien Causeur",
+                "canonicalKey": "person:fabien-causeur"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Theis",
+                "canonicalKey": "person:daniel-theis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ismet Akpinar",
+                "canonicalKey": "person:ismet-akpinar"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Theis",
+                "canonicalKey": "person:daniel-theis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ismet Akpinar",
+                "canonicalKey": "person:ismet-akpinar"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "FC Bayern Munich",
+        "canonicalKey": "german-bbl:fc-bayern-munich"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "FC Bayern Munich",
+          "canonicalKey": "german-bbl:fc-bayern-munich"
+        },
+        "won": 40,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luke Sikma",
+                "canonicalKey": "person:luke-sikma"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Danilo Barthel",
+                "canonicalKey": "person:danilo-barthel"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "german-bbl:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yorman Polas",
+                "canonicalKey": "person:yorman-polas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Telekom Baskets Bonn",
+                "canonicalKey": "german-bbl:telekom-baskets-bonn"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andreas Obst",
+                "canonicalKey": "person:andreas-obst"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BiG Oettinger Rockets Gotha",
+                "canonicalKey": "german-bbl:big-oettinger-rockets-gotha"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Philip Scrubb",
+                "canonicalKey": "person:philip-scrubb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fraport Skyliners",
+                "canonicalKey": "german-bbl:fraport-skyliners"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yorman Polas",
+                "canonicalKey": "person:yorman-polas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Telekom Baskets Bonn",
+                "canonicalKey": "german-bbl:telekom-baskets-bonn"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andreas Obst",
+                "canonicalKey": "person:andreas-obst"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BiG Oettinger Rockets Gotha",
+                "canonicalKey": "german-bbl:big-oettinger-rockets-gotha"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "FC Bayern Munich",
+        "canonicalKey": "german-bbl:fc-bayern-munich"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "FC Bayern Munich",
+          "canonicalKey": "german-bbl:fc-bayern-munich"
+        },
+        "won": 40,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Cummings",
+                "canonicalKey": "person:will-cummings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "EWE Baskets Oldenburg",
+                "canonicalKey": "german-bbl:ewe-baskets-oldenburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nihad Djedovic",
+                "canonicalKey": "person:nihad-djedovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "german-bbl:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yorman Polas",
+                "canonicalKey": "person:yorman-polas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Telekom Baskets Bonn",
+                "canonicalKey": "german-bbl:telekom-baskets-bonn"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Franz Wagner",
+                "canonicalKey": "person:franz-wagner"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Cummings",
+                "canonicalKey": "person:will-cummings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "EWE Baskets Oldenburg",
+                "canonicalKey": "german-bbl:ewe-baskets-oldenburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yorman Polas",
+                "canonicalKey": "person:yorman-polas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Telekom Baskets Bonn",
+                "canonicalKey": "german-bbl:telekom-baskets-bonn"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Franz Wagner",
+                "canonicalKey": "person:franz-wagner"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "MHP Riesen",
+        "canonicalKey": "german-bbl:mhp-riesen"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Alba Berlin",
+          "canonicalKey": "german-bbl:alba-berlin"
+        },
+        "won": 24,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marcos Knight",
+                "canonicalKey": "person:marcos-knight"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "MHP Riesen",
+                "canonicalKey": "german-bbl:mhp-riesen"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "FC Bayern Munich",
+        "canonicalKey": "german-bbl:fc-bayern-munich"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Alba Berlin",
+          "canonicalKey": "german-bbl:alba-berlin"
+        },
+        "won": 36,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jaleen Smith",
+                "canonicalKey": "person:jaleen-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "MHP Riesen",
+                "canonicalKey": "german-bbl:mhp-riesen"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jayson Granger",
+                "canonicalKey": "person:jayson-granger"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yorman Polas",
+                "canonicalKey": "person:yorman-polas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "MHP Riesen",
+                "canonicalKey": "german-bbl:mhp-riesen"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justus Hollatz",
+                "canonicalKey": "person:justus-hollatz"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Veolia Towers Hamburg",
+                "canonicalKey": "german-bbl:veolia-towers-hamburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Michal Michalak",
+                "canonicalKey": "person:michal-michalak"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Mitteldeutscher BC",
+                "canonicalKey": "german-bbl:mitteldeutscher-bc"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yorman Polas",
+                "canonicalKey": "person:yorman-polas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "MHP Riesen",
+                "canonicalKey": "german-bbl:mhp-riesen"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justus Hollatz",
+                "canonicalKey": "person:justus-hollatz"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Veolia Towers Hamburg",
+                "canonicalKey": "german-bbl:veolia-towers-hamburg"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "FC Bayern Munich",
+        "canonicalKey": "german-bbl:fc-bayern-munich"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Alba Berlin",
+          "canonicalKey": "german-bbl:alba-berlin"
+        },
+        "won": 36,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Parker Jackson-Cartwright",
+                "canonicalKey": "person:parker-jackson-cartwright"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Telekom Baskets Bonn",
+                "canonicalKey": "german-bbl:telekom-baskets-bonn"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Johannes Thiemann",
+                "canonicalKey": "person:johannes-thiemann"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Simon",
+                "canonicalKey": "person:justin-simon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "MHP Riesen",
+                "canonicalKey": "german-bbl:mhp-riesen"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "HARKO Merlins Crailsheim",
+                "canonicalKey": "german-bbl:harko-merlins-crailsheim"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Simon",
+                "canonicalKey": "person:justin-simon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "MHP Riesen",
+                "canonicalKey": "german-bbl:mhp-riesen"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Telekom Baskets Bonn",
+        "canonicalKey": "german-bbl:telekom-baskets-bonn"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Ratiopharm Ulm",
+        "canonicalKey": "german-bbl:ratiopharm-ulm"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Telekom Baskets Bonn",
+          "canonicalKey": "german-bbl:telekom-baskets-bonn"
+        },
+        "won": 38,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Telekom Baskets Bonn",
+                "canonicalKey": "german-bbl:telekom-baskets-bonn"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yago Dos Santos",
+                "canonicalKey": "person:yago-dos-santos"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "german-bbl:ratiopharm-ulm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Selom Mawugbe",
+                "canonicalKey": "person:selom-mawugbe"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Rostock Seawolves",
+                "canonicalKey": "german-bbl:rostock-seawolves"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Malte Delow",
+                "canonicalKey": "person:malte-delow"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dewayne Russell",
+                "canonicalKey": "person:dewayne-russell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "EWE Baskets Oldenburg",
+                "canonicalKey": "german-bbl:ewe-baskets-oldenburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Selom Mawugbe",
+                "canonicalKey": "person:selom-mawugbe"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Rostock Seawolves",
+                "canonicalKey": "german-bbl:rostock-seawolves"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Malte Delow",
+                "canonicalKey": "person:malte-delow"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "FC Bayern Munich",
+        "canonicalKey": "german-bbl:fc-bayern-munich"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "FC Bayern Munich",
+          "canonicalKey": "german-bbl:fc-bayern-munich"
+        },
+        "won": 37,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Otis Livingston II",
+                "canonicalKey": "person:otis-livingston-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "s.Oliver Baskets",
+                "canonicalKey": "german-bbl:s-oliver-baskets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Carsen Edwards",
+                "canonicalKey": "person:carsen-edwards"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "german-bbl:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Javon Bess",
+                "canonicalKey": "person:javon-bess"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "s.Oliver Baskets",
+                "canonicalKey": "german-bbl:s-oliver-baskets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Johann Gruenloh",
+                "canonicalKey": "person:johann-gruenloh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "SC Rasta Vechta",
+                "canonicalKey": "german-bbl:sc-rasta-vechta"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Otis Livingston II",
+                "canonicalKey": "person:otis-livingston-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "s.Oliver Baskets",
+                "canonicalKey": "german-bbl:s-oliver-baskets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Javon Bess",
+                "canonicalKey": "person:javon-bess"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "s.Oliver Baskets",
+                "canonicalKey": "german-bbl:s-oliver-baskets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Johann Gruenloh",
+                "canonicalKey": "person:johann-gruenloh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "SC Rasta Vechta",
+                "canonicalKey": "german-bbl:sc-rasta-vechta"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "FC Bayern Munich",
+        "canonicalKey": "german-bbl:fc-bayern-munich"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Ratiopharm Ulm",
+        "canonicalKey": "german-bbl:ratiopharm-ulm"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "FC Bayern Munich",
+          "canonicalKey": "german-bbl:fc-bayern-munich"
+        },
+        "won": 33,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jhivvan Jackson",
+                "canonicalKey": "person:jhivvan-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "s.Oliver Baskets",
+                "canonicalKey": "german-bbl:s-oliver-baskets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shabazz Napier",
+                "canonicalKey": "person:shabazz-napier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "german-bbl:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jhivvan Jackson",
+                "canonicalKey": "person:jhivvan-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "s.Oliver Baskets",
+                "canonicalKey": "german-bbl:s-oliver-baskets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sananda Fru",
+                "canonicalKey": "person:sananda-fru"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Basketball Lowen Braunschweig",
+                "canonicalKey": "german-bbl:basketball-lowen-braunschweig"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jarred Ogungbemi-Jackson",
+                "canonicalKey": "person:jarred-ogungbemi-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "MHP Riesen",
+                "canonicalKey": "german-bbl:mhp-riesen"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jhivvan Jackson",
+                "canonicalKey": "person:jhivvan-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "s.Oliver Baskets",
+                "canonicalKey": "german-bbl:s-oliver-baskets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sananda Fru",
+                "canonicalKey": "person:sananda-fru"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Basketball Lowen Braunschweig",
+                "canonicalKey": "german-bbl:basketball-lowen-braunschweig"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "german-bbl:alba-berlin"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "FC Bayern Munich",
+        "canonicalKey": "german-bbl:fc-bayern-munich"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "FC Bayern Munich",
+          "canonicalKey": "german-bbl:fc-bayern-munich"
+        },
+        "won": 37,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andreas Obst",
+                "canonicalKey": "person:andreas-obst"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "german-bbl:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Bean",
+                "canonicalKey": "person:justin-bean"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "E.J. Onu",
+                "canonicalKey": "person:e-j-onu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jack Kayil",
+                "canonicalKey": "person:jack-kayil"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "E.J. Onu",
+                "canonicalKey": "person:e-j-onu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "german-bbl:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jack Kayil",
+                "canonicalKey": "person:jack-kayil"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "german-bbl:alba-berlin"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

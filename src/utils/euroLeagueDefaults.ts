@@ -2,44 +2,86 @@ import type { CompetitionSpec } from '../services/competition/types';
 import type { NBATeam, NonNBATeam, Game } from '../types';
 import { selectEuroleagueParticipants } from './euroleagueQualification';
 import { resolveAnyTeam } from './teamLookup';
+import { EURO_BASKETBALL_SOURCE_ARCHIVES, EUROLEAGUE_2026_SOURCE } from '../data/euroBasketballSources';
+import { selectCompetitionTeamTids } from '../services/competition/competitionScheduler';
 
 interface MinimalState {
   activeCompetitions?: CompetitionSpec[];
-  leagueStats?: { uiMode?: string | null };
+  leagueStats?: { uiMode?: string | null; historicalEndesaEnabled?: boolean; year?: number };
   userTeamId?: number | null;
   gameMode?: string | null;
+  euroPrimaryCompetitionId?: string;
 }
 
-interface StateWithTeams extends MinimalState {
+export interface StateWithTeams extends MinimalState {
   teams: NBATeam[];
   nonNBATeams?: NonNBATeam[];
   schedule?: Game[];
   boxScores?: Array<{ competitionId?: string; gameId?: number; date?: string }>;
   clubAliasMap?: Record<number, number>;
+  euroleagueSeededTids?: number[];
+  euroleagueSeedSeason?: number;
+  euroCompetitionTeamTids?: Record<string, number[]>;
+}
+
+const PAN_EUROPEAN_COMPETITION_IDS = new Set(['euroleague', 'eurocup']);
+
+function competitionMembership(state: StateWithTeams, competition: CompetitionSpec): Set<number> {
+  const explicit = state.euroCompetitionTeamTids?.[competition.id];
+  const tids = explicit?.length
+    ? explicit
+    : selectCompetitionTeamTids(competition, state);
+  const expanded = tids.flatMap(tid => {
+    const alias = state.clubAliasMap?.[tid];
+    const reverseAliases = Object.entries(state.clubAliasMap ?? {})
+      .filter(([, target]) => Number(target) === tid)
+      .map(([source]) => Number(source));
+    return [tid, alias, ...reverseAliases].filter((value): value is number => value !== undefined && Number.isFinite(value));
+  });
+  return new Set(expanded);
+}
+
+export function getRelevantEuroCompetitions(state: StateWithTeams): CompetitionSpec[] {
+  const competitions = state.activeCompetitions ?? [];
+  const primaryId = state.euroPrimaryCompetitionId ?? 'endesa';
+  const primary = competitions.find(competition => competition.id === primaryId);
+  const domesticMembership = primary ? competitionMembership(state, primary) : new Set<number>();
+  return competitions.filter(competition => {
+    if (competition.id === primaryId || competition.domesticParentId === primaryId) return true;
+    if (!PAN_EUROPEAN_COMPETITION_IDS.has(competition.id)) return false;
+    if (domesticMembership.size === 0) return false;
+    const participants = competitionMembership(state, competition);
+    return [...participants].some(tid => domesticMembership.has(tid));
+  });
 }
 
 // spec.id → player.status. Future templates (Greece A1, France LNB, Germany BBL, …)
 // extend this map; views consume it via the getters below and need no edits.
-const COMPETITION_ID_TO_PLAYER_STATUS: Record<string, string> = {
-  endesa: 'Endesa',
-  euroleague: 'Euroleague',
-};
+const COMPETITION_ID_TO_PLAYER_STATUS: Record<string, string> = Object.fromEntries([
+  [EUROLEAGUE_2026_SOURCE.competitionId, EUROLEAGUE_2026_SOURCE.leagueStatus],
+  ...EURO_BASKETBALL_SOURCE_ARCHIVES.map(source => [source.competitionId, source.leagueStatus]),
+  ['endesa', 'Endesa'],
+]);
 
 // UniversalPlayerSearcher uses a separate league-id taxonomy (lower-case, no spaces).
 // Mirror it here so the searcher default stays datengetrieben.
-const COMPETITION_ID_TO_SEARCHER_ID: Record<string, string> = {
-  endesa: 'endesa',
-  euroleague: 'euroleague',
-};
+const COMPETITION_ID_TO_SEARCHER_ID: Record<string, string> = Object.fromEntries(
+  Object.keys(COMPETITION_ID_TO_PLAYER_STATUS).map(id => [id, id]),
+);
 
 export function getDomesticCompetition(state: MinimalState): CompetitionSpec | null {
   const list = state.activeCompetitions ?? [];
-  return list.find(c => c.format === 'regular-league') ?? null;
+  return list.find(c => c.id === state.euroPrimaryCompetitionId)
+    ?? list.find(c => c.format === 'regular-league' && c.backgroundOnly !== true)
+    ?? null;
 }
 
 export function getContinentalCompetition(state: MinimalState): CompetitionSpec | null {
   const list = state.activeCompetitions ?? [];
-  return list.find(c => c.format === 'group-knockout') ?? null;
+  return list.find(c => c.id === 'euroleague')
+    ?? list.find(c => c.id === 'eurocup')
+    ?? list.find(c => c.format === 'group-knockout')
+    ?? null;
 }
 
 export function getDomesticPlayerStatus(state: MinimalState): string | null {
@@ -100,7 +142,7 @@ export function getLeagueTabs(state: MinimalState): LeagueTab[] {
       league: COMPETITION_ID_TO_PLAYER_STATUS[con.id] as NonNBATeam['league'],
     });
   }
-  if (tabs.length > 0) tabs.push({ id: 'nba', label: 'NBA' });
+  if (tabs.length > 0 && state.leagueStats?.historicalEndesaEnabled !== true) tabs.push({ id: 'nba', label: 'NBA' });
   return tabs;
 }
 
@@ -114,10 +156,13 @@ export function getTeamsForLeagueTab(state: StateWithTeams, tabId: LeagueTabId):
   const tabs = getLeagueTabs(state);
   const tab = tabs.find(t => t.id === tabId);
   if (!tab || !tab.league) return [];
-  const tids = tab.id === 'continental' && tab.competitionId === 'euroleague'
-    ? selectEuroleagueParticipants(state, getContinentalCompetition(state)?.teamCount).tids
-    : (state.nonNBATeams ?? [])
-      .filter(t => t.league === tab.league)
+  const explicitTids = tab.competitionId ? state.euroCompetitionTeamTids?.[tab.competitionId] : undefined;
+  const tids = explicitTids?.length
+    ? explicitTids.flatMap(tid => [tid, state.clubAliasMap?.[tid]].filter((value): value is number => value !== undefined))
+    : tab.id === 'continental' && tab.competitionId === 'euroleague'
+      ? selectEuroleagueParticipants(state, getContinentalCompetition(state)?.teamCount).tids
+      : (state.nonNBATeams ?? [])
+      .filter(t => t.league === tab.league && (tab.league !== 'Endesa' || (t as any).endesaRelegated !== true))
       .flatMap(t => {
         const aliased = state.clubAliasMap?.[t.tid];
         return aliased !== undefined ? [t.tid, aliased] : [t.tid];
@@ -129,6 +174,10 @@ export function getTeamsForLeagueTab(state: StateWithTeams, tabId: LeagueTabId):
   return uniq
     .map(tid => resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []))
     .filter((t): t is NBATeam => !!t);
+}
+
+export function getCompetitionPlayerStatus(competitionId: string): string | null {
+  return COMPETITION_ID_TO_PLAYER_STATUS[competitionId] ?? null;
 }
 
 export function filterScheduleByLeagueTab<G extends { competitionId?: string }>(
@@ -155,20 +204,54 @@ export function userQualifiesForContinental(state: StateWithTeams): boolean {
   return conTeams.some(t => t.id === state.userTeamId);
 }
 
+export function userParticipatesInCompetition(state: StateWithTeams, competitionId: string): boolean {
+  if (state.gameMode !== 'gm' || state.userTeamId == null) return true;
+  if (competitionId === state.euroPrimaryCompetitionId) return true;
+  const scheduled = (state.schedule ?? []).filter(game => game.competitionId === competitionId);
+  if (scheduled.length > 0) {
+    return scheduled.some(game => game.homeTid === state.userTeamId || game.awayTid === state.userTeamId);
+  }
+  const spec = (state.activeCompetitions ?? []).find(competition => competition.id === competitionId);
+  if (spec?.format === 'knockout' && spec.qualificationRule === 'domestic-standings') {
+    return selectCompetitionTeamTids(spec, state).includes(state.userTeamId);
+  }
+  const explicit = state.euroCompetitionTeamTids?.[competitionId];
+  if (explicit?.length) return explicit.includes(state.userTeamId);
+  return (state.schedule ?? []).some(game => (
+    game.competitionId === competitionId
+    && (game.homeTid === state.userTeamId || game.awayTid === state.userTeamId)
+  ));
+}
+
+export function getManagedEuroCompetitions(state: StateWithTeams): CompetitionSpec[] {
+  return (state.activeCompetitions ?? []).filter(competition =>
+    userParticipatesInCompetition(state, competition.id),
+  );
+}
+
+export function getEuroHistoryCompetitions(state: StateWithTeams): CompetitionSpec[] {
+  const primaryId = state.euroPrimaryCompetitionId ?? 'endesa';
+  return getRelevantEuroCompetitions(state)
+    .sort((left, right) => {
+      const rank = (competition: CompetitionSpec) => (
+        competition.id === primaryId ? 0
+          : competition.domesticParentId === primaryId ? 1
+            : competition.id === 'euroleague' ? 2
+              : competition.id === 'eurocup' ? 3
+                : competition.domesticParentId ? 5
+                  : 4
+      );
+      return rank(left) - rank(right)
+        || left.seasonStart.month - right.seasonStart.month
+        || left.seasonStart.day - right.seasonStart.day;
+    });
+}
+
 export function isEuroVisibleScheduleGame(state: StateWithTeams, game: Game): boolean {
   if (game.competitionId) {
-    const allowedIds = new Set([
-      ...(state.activeCompetitions ?? []).map(c => c.id),
-      'endesa',
-      'euroleague',
-      'copa-del-rey',
-      'supercopa',
-    ]);
+    const allowedIds = new Set((state.activeCompetitions ?? []).map(c => c.id));
     if (!allowedIds.has(game.competitionId)) return false;
-
-    const con = getContinentalCompetition(state);
-    if (con?.id === game.competitionId && !userQualifiesForContinental(state)) return false;
-    return true;
+    return userParticipatesInCompetition(state, game.competitionId);
   }
 
   if ((game as any).isPreseason && (game.homeTid >= 100 || game.awayTid >= 100)) return true;

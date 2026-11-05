@@ -1,0 +1,1577 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "greek-heba-a1-league-file.3864174123613225",
+  "competitionKey": "greek-heba-a1",
+  "competitionName": "Greek Basket League",
+  "leagueKey": "greek-heba-a1",
+  "generatedAt": "2026-07-19T12:24:44.593Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "greek-heba-a1-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/8/Greek-HEBA-A1/stats/2026/Averages/Qualified/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/greek-heba-a1/greek-heba-a1-2026-bbgm.json",
+        "sourceHash": "91710c61d846c0599b2b3c61c3fe2c8f457b0218ea2985bb6dfe01c0636c66db",
+        "fetchedAt": "2026-07-19T12:24:44.593Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+        },
+        "won": 31,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Joey Dorsey",
+                "canonicalKey": "person:joey-dorsey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Papanikolaou",
+                "canonicalKey": "person:kostas-papanikolaou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Joey Dorsey",
+                "canonicalKey": "person:joey-dorsey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Papanikolaou",
+                "canonicalKey": "person:kostas-papanikolaou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+        },
+        "won": 30,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aris Midea Thessaloniki",
+                "canonicalKey": "greek-heba-a1:aris-midea-thessaloniki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aris Midea Thessaloniki",
+                "canonicalKey": "greek-heba-a1:aris-midea-thessaloniki"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Panathinaikos Athens",
+          "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+        },
+        "won": 33,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dimitris Diamantidis",
+                "canonicalKey": "person:dimitris-diamantidis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dimitris Diamantidis",
+                "canonicalKey": "person:dimitris-diamantidis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aris Midea Thessaloniki",
+                "canonicalKey": "greek-heba-a1:aris-midea-thessaloniki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aris Midea Thessaloniki",
+                "canonicalKey": "greek-heba-a1:aris-midea-thessaloniki"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+        },
+        "won": 33,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aris Midea Thessaloniki",
+                "canonicalKey": "greek-heba-a1:aris-midea-thessaloniki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryant Dunston",
+                "canonicalKey": "person:bryant-dunston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aris Midea Thessaloniki",
+                "canonicalKey": "greek-heba-a1:aris-midea-thessaloniki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryant Dunston",
+                "canonicalKey": "person:bryant-dunston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aris Midea Thessaloniki",
+                "canonicalKey": "greek-heba-a1:aris-midea-thessaloniki"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+        },
+        "won": 33,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ioannis Papapetrou",
+                "canonicalKey": "person:ioannis-papapetrou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ioannis Papapetrou",
+                "canonicalKey": "person:ioannis-papapetrou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Panathinaikos Athens",
+          "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+        },
+        "won": 31,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonios Koniaris",
+                "canonicalKey": "person:antonios-koniaris"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "PAOK BC",
+                "canonicalKey": "greek-heba-a1:paok-bc"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonios Koniaris",
+                "canonicalKey": "person:antonios-koniaris"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "PAOK BC",
+                "canonicalKey": "greek-heba-a1:paok-bc"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Panathinaikos Athens",
+          "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+        },
+        "won": 34,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonios Koniaris",
+                "canonicalKey": "person:antonios-koniaris"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "PAOK BC",
+                "canonicalKey": "greek-heba-a1:paok-bc"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonios Koniaris",
+                "canonicalKey": "person:antonios-koniaris"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "PAOK BC",
+                "canonicalKey": "greek-heba-a1:paok-bc"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "ASP Promitheas Patras",
+        "canonicalKey": "greek-heba-a1:asp-promitheas-patras"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Panathinaikos Athens",
+          "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+        },
+        "won": 31,
+        "lost": 2
+      }
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "AEK Athens",
+        "canonicalKey": "greek-heba-a1:aek-athens"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Panathinaikos Athens",
+          "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+        },
+        "won": 18,
+        "lost": 3
+      }
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "GS Lavrio",
+        "canonicalKey": "greek-heba-a1:gs-lavrio"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Panathinaikos Athens",
+          "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+        },
+        "won": 28,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ioannis Papapetrou",
+                "canonicalKey": "person:ioannis-papapetrou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ioannis Papapetrou",
+                "canonicalKey": "person:ioannis-papapetrou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Howard Sant-Roos",
+                "canonicalKey": "person:howard-sant-roos"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikos Chougkaz",
+                "canonicalKey": "person:nikos-chougkaz"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ionikos Nikaias BC",
+                "canonicalKey": "greek-heba-a1:ionikos-nikaias-bc"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Howard Sant-Roos",
+                "canonicalKey": "person:howard-sant-roos"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikos Chougkaz",
+                "canonicalKey": "person:nikos-chougkaz"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ionikos Nikaias BC",
+                "canonicalKey": "greek-heba-a1:ionikos-nikaias-bc"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+        },
+        "won": 31,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Sloukas",
+                "canonicalKey": "person:kostas-sloukas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Thomas Walkup",
+                "canonicalKey": "person:thomas-walkup"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Omer Netzipoglou",
+                "canonicalKey": "person:omer-netzipoglou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aris Midea Thessaloniki",
+                "canonicalKey": "greek-heba-a1:aris-midea-thessaloniki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Thomas Walkup",
+                "canonicalKey": "person:thomas-walkup"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Omer Netzipoglou",
+                "canonicalKey": "person:omer-netzipoglou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aris Midea Thessaloniki",
+                "canonicalKey": "greek-heba-a1:aris-midea-thessaloniki"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+        },
+        "won": 30,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Thomas Walkup",
+                "canonicalKey": "person:thomas-walkup"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lefteris Mantzoukas",
+                "canonicalKey": "person:lefteris-mantzoukas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lefteris Mantzoukas",
+                "canonicalKey": "person:lefteris-mantzoukas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Panathinaikos Athens",
+          "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+        },
+        "won": 33,
+        "lost": 3
+      }
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+        },
+        "won": 27,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Panathinaikos Athens",
+        "canonicalKey": "greek-heba-a1:panathinaikos-athens"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+        },
+        "won": 31,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Evan Fournier",
+                "canonicalKey": "person:evan-fournier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "greek-heba-a1:olympiacos-piraeus"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

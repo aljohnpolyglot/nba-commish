@@ -3,6 +3,7 @@ import { FileWarning } from 'lucide-react';
 import type { ClauseStatus, ReleaseClause } from './mockData';
 import { useTransferMarketContext } from './state';
 import { clauseStatusColor, ClubChip, fmtEUR, OpenMarketPlayer, OvrPotPair, PlayerCell, RatingBadge, StatusPill } from './EuroTransferMarketShared';
+import { CountryFlag } from '../shared/CountryFlag';
 
 export const ReleaseClausesTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = ({ onOpenPlayer }) => {
   const { clauses } = useTransferMarketContext();
@@ -104,7 +105,7 @@ export const ReleaseClausesTab: React.FC<{ onOpenPlayer: OpenMarketPlayer }> = (
               </div>
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-black text-white truncate">{selected.player.name}</div>
-                <div className="text-[10px] text-slate-500">{selected.player.flag} {selected.player.position} · {selected.player.age}y · {selected.player.contractYearsLeft}y left</div>
+                <div className="flex items-center gap-1 text-[10px] text-slate-500"><CountryFlag country={selected.player.nationality} className="inline-flex h-3 w-4 rounded-[2px]" /><span>{selected.player.position} · {selected.player.age}y · {selected.player.contractYearsLeft}y left</span></div>
                 <div className="mt-1"><OvrPotPair ovr={selected.player.ovr} pot={selected.player.pot} small /></div>
               </div>
             </div>

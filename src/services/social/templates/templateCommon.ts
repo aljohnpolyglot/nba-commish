@@ -1,4 +1,5 @@
 import type { SocialContext } from '../types';
+import { didHomeTeamWin } from '../../../utils/gameOutcome';
 
 export function gamesToTime(games: number): string {
   if (games <= 0) return 'day-to-day';
@@ -25,7 +26,7 @@ export function otSuffix(ctx: SocialContext): string {
 export function scores(ctx: SocialContext): { winner: number; loser: number; winName: string; loseName: string } {
   const g = ctx.game;
   if (!g) return { winner: 0, loser: 0, winName: '', loseName: '' };
-  const homeWon = g.homeScore > g.awayScore;
+  const homeWon = didHomeTeamWin(g);
   const homeName = teamName(ctx, g.homeTeamId);
   const awayName = teamName(ctx, g.awayTeamId);
   return {

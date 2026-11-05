@@ -43,8 +43,9 @@ export const JudgeRevealModal: React.FC<JudgeRevealModalProps> = ({
                   transition={{ delay: idx * 0.2 }}
                   className="flex flex-col items-center"
                 >
-                  <div className="w-16 h-24 bg-zinc-800 rounded-lg flex items-center justify-center mb-2 border border-zinc-700 shadow-inner">
-                    <span className="text-4xl font-black text-white">{score}</span>
+                  <div className="relative w-16 h-24 bg-zinc-800 rounded-lg flex items-center justify-center mb-2 border border-zinc-700 shadow-inner overflow-hidden">
+                    {judges[idx]?.imgURL && <img src={judges[idx].imgURL} alt="" className="absolute h-24 w-16 rounded-lg object-cover opacity-30" />}
+                    <span className="relative text-4xl font-black text-white">{score}</span>
                   </div>
                   <span className="text-[10px] text-zinc-500 uppercase font-medium truncate w-full">
                     {judges[idx]?.name || 'Judge'}

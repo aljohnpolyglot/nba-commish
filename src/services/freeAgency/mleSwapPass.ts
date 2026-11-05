@@ -5,6 +5,7 @@ import {
   getCapThresholds,
   getContractLimits,
   getMLEAvailability,
+  getTeamHardCapUSD,
   getTeamCapProfileFromState,
 } from '../../utils/salaryUtils';
 import type { MleType } from '../../utils/salaryUtils';
@@ -12,14 +13,17 @@ import { SettingsManager } from '../SettingsManager';
 import { calcPot2K } from '../trade/tradeValueEngine';
 import { getGMAttributes, clampSpendOffer } from '../staff/gmAttributes';
 import { hasFamilyOnRoster } from '../../utils/familyTies';
+import { getStandardRosterLimit, getTwoWayRosterLimit } from '../../utils/rosterLimits';
+import { isNonGuaranteedContract, isTwoWayContract } from '../../utils/contractTypes';
+import { isFutureDraftClassPlayer, isUnavailableInternationalTournamentPlayer } from '../../utils/prospectUtils';
 import { resolveTeamStrategyProfile } from '../../utils/teamStrategy';
 import {
   clampOfferForDate,
-  defaultMaxRoster,
   getActiveFAMarketPlayerIds,
   getK2Ovr,
   getMinSalaryUSD,
   getRemainingGuaranteedUSD,
+  isFreshWaiver,
   isLoyalBlocked,
   isRecentWaiverByTeam,
   isRecentlySignedWithinGrace,
@@ -38,14 +42,20 @@ export function runAIMleUpgradeSwapsPass(
   const userTeamId = resolveUserTeamId(state);
   const thresholds = getCapThresholds(state.leagueStats as any);
   const currentYear = state.leagueStats.year;
-  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? defaultMaxRoster(state.leagueStats);
+  const maxStandard = getStandardRosterLimit(state.leagueStats as any);
+  const twoWayRosterActive = getTwoWayRosterLimit(state.leagueStats as any) > 0;
+  const nonGuaranteedActive = state.leagueStats?.nonGuaranteedContractsEnabled !== false;
+  const isActiveTwoWay = (player: NBAPlayer): boolean => twoWayRosterActive && isTwoWayContract(player, state.leagueStats);
+  const isActiveNonGuaranteed = (player: NBAPlayer): boolean => nonGuaranteedActive && isNonGuaranteedContract(player, state.leagueStats);
   const minSalaryUSD = getMinSalaryUSD(state.leagueStats);
   const marketPendingIds = getActiveFAMarketPlayerIds(state);
 
   const freeAgents = state.players.filter(player =>
     player.status === 'Free Agent' &&
+    !isUnavailableInternationalTournamentPlayer(player) &&
+    !isFreshWaiver(player, state.date) &&
     !marketPendingIds.has(player.internalId) &&
-    !((player as any).draft?.year >= currentYear) &&
+    !isFutureDraftClassPlayer(player, currentYear) &&
     !player.hof
   );
 
@@ -76,25 +86,36 @@ export function runAIMleUpgradeSwapsPass(
     if (!mle.type || mle.blocked || mle.available < minSalaryUSD) continue;
 
     const guaranteedRoster = state.players.filter(player =>
-      player.tid === team.id && !(player as any).twoWay && !(player as any).nonGuaranteed && player.status === 'Active'
+      player.tid === team.id && !isActiveTwoWay(player) && !isActiveNonGuaranteed(player) && player.status === 'Active'
     );
     if (guaranteedRoster.length < maxStandard) continue;
+    const corePlayerIds = new Set(
+      [...guaranteedRoster]
+        .sort((left, right) => getK2Ovr(right) - getK2Ovr(left))
+        .slice(0, Math.min(5, guaranteedRoster.length))
+        .map(player => player.internalId),
+    );
 
     const sortScore = (player: NBAPlayer) =>
       (strategy.key === 'rebuilding' || strategy.key === 'development')
         ? calcPot2K(player, currentYear)
-        : (player.overallRating ?? 0);
+        : getK2Ovr(player);
 
     const swapCandidates = guaranteedRoster.filter(player => {
-      if (hasFamilyOnRoster(player, guaranteedRoster)) return false;
+      if (hasFamilyOnRoster(player, guaranteedRoster, currentYear)) return false;
+      if (corePlayerIds.has(player.internalId)) return false;
       if (isRecentlySignedWithinGrace(player, state.date)) return false;
-      if ((player.overallRating ?? 0) >= 75) return false;
+      if ((player.stats ?? []).some(entry =>
+        entry.season === currentYear && !entry.playoffs && (entry.gp ?? 0) > 0
+      )) return false;
+      const k2Overall = getK2Ovr(player);
+      if (k2Overall >= 75) return false;
       const draftYear = (player as any).draft?.year;
       if (typeof draftYear === 'number' && currentYear - draftYear <= 2) return false;
       if ((player as any).birdRightsResignedThisYear === currentYear) return false;
       const remaining = getRemainingGuaranteedUSD(player, currentYear);
       const age = playerAge(player, currentYear);
-      if (remaining > thresholds.salaryCap * 0.10 && !((player.overallRating ?? 0) < 60 && age >= 35)) return false;
+      if (remaining > thresholds.salaryCap * 0.10 && !(k2Overall < 60 && age >= 35)) return false;
       return true;
     });
 
@@ -123,6 +144,11 @@ export function runAIMleUpgradeSwapsPass(
     const baseOffer = clampOfferForDate(baseOfferRaw, state.date, currentYear, state.leagueStats, getK2Ovr(candidate));
     const limits = getContractLimits(candidate, state.leagueStats as any);
     const salaryUSD = Math.min(mle.available, clampSpendOffer(baseOffer.salaryUSD, gmSpending, limits.maxSalaryUSD));
+    const outgoingSalaryUSD = contractToUSD(weakest.contract?.amount ?? 0);
+    if (
+      profile.payrollUSD - outgoingSalaryUSD + salaryUSD >
+      getTeamHardCapUSD(state.leagueStats, thresholds, team.id, currentYear)
+    ) continue;
 
     results.push({
       sign: {

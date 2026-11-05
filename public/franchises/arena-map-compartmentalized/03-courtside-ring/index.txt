@@ -1,0 +1,48 @@
+Courtside Ring
+==============
+
+Detected sections: 32
+
+[east]
+C13	03-courtside-ring/east/sections/c13-east.svg	x=1870.90 y=1016.80 w=161.90 h=60.50
+C14	03-courtside-ring/east/sections/c14-east.svg	x=1870.90 y=979.60 w=174.70 h=62.60
+C15	03-courtside-ring/east/sections/c15-east.svg	x=2020.00 y=1042.30 w=96.50 h=79.30
+C16	03-courtside-ring/east/sections/c16-east.svg	x=2032.70 y=1007.40 w=111.40 h=89.20
+
+[north]
+C3	03-courtside-ring/north/sections/c3-north.svg	x=1192.40 y=1016.60 w=161.20 h=58.80
+C4	03-courtside-ring/north/sections/c4-north.svg	x=1179.70 y=979.60 w=173.80 h=61.00
+C5	03-courtside-ring/north/sections/c5-north.svg	x=1353.60 y=1016.80 w=152.30 h=37.20
+C6	03-courtside-ring/north/sections/c6-north.svg	x=1353.60 y=979.60 w=106.80 h=37.20
+C7	03-courtside-ring/north/sections/c7-north.svg	x=1505.90 y=1016.80 w=106.40 h=37.20
+C8	03-courtside-ring/north/sections/c8-north.svg	x=1505.80 y=979.60 w=106.50 h=37.20
+C9	03-courtside-ring/north/sections/c9-north.svg	x=1612.30 y=1016.80 w=152.00 h=37.20
+C10	03-courtside-ring/north/sections/c10-north.svg	x=1612.20 y=979.70 w=106.60 h=37.20
+C11	03-courtside-ring/north/sections/c11-north.svg	x=1764.40 y=1016.80 w=106.50 h=37.20
+C12	03-courtside-ring/north/sections/c12-north.svg	x=1764.40 y=979.60 w=106.50 h=37.10
+
+[south]
+C21	03-courtside-ring/south/sections/c21-south.svg	x=1718.80 y=1783.20 w=152.70 h=37.20
+C22	03-courtside-ring/south/sections/c22-south.svg	x=1764.40 y=1820.40 w=107.20 h=37.20
+C23	03-courtside-ring/south/sections/c23-south.svg	x=1612.30 y=1783.20 w=106.50 h=37.20
+C24	03-courtside-ring/south/sections/c24-south.svg	x=1612.30 y=1820.30 w=106.50 h=37.20
+C25	03-courtside-ring/south/sections/c25-south.svg	x=1460.30 y=1783.20 w=152.00 h=37.20
+C26	03-courtside-ring/south/sections/c26-south.svg	x=1505.80 y=1820.40 w=106.50 h=37.20
+C27	03-courtside-ring/south/sections/c27-south.svg	x=1352.50 y=1783.20 w=107.90 h=37.20
+C28	03-courtside-ring/south/sections/c28-south.svg	x=1352.50 y=1820.30 w=107.80 h=37.20
+C29	03-courtside-ring/south/sections/c29-south.svg	x=1187.70 y=1758.10 w=164.80 h=62.20
+C30	03-courtside-ring/south/sections/c30-south.svg	x=1176.30 y=1793.60 w=176.20 h=63.90
+
+[south-east]
+C17	03-courtside-ring/south-east/sections/c17-south-east.svg	x=2019.50 y=1719.00 w=102.30 h=74.90
+C18	03-courtside-ring/south-east/sections/c18-south-east.svg	x=2032.40 y=1746.60 w=115.30 h=81.70
+C19	03-courtside-ring/south-east/sections/c19-south-east.svg	x=1871.60 y=1758.80 w=160.80 h=62.96
+C20	03-courtside-ring/south-east/sections/c20-south-east.svg	x=1871.60 y=1793.90 w=173.50 h=65.84
+
+[south-west]
+C31	03-courtside-ring/south-west/sections/c31-south-west.svg	x=1106.70 y=1711.90 w=92.40 h=81.70
+C32	03-courtside-ring/south-west/sections/c32-south-west.svg	x=1081.10 y=1738.80 w=106.60 h=90.20
+
+[west]
+C1	03-courtside-ring/west/sections/c1-west.svg	x=1106.90 y=1040.70 w=98.20 h=77.40
+C2	03-courtside-ring/west/sections/c2-west.svg	x=1079.70 y=1005.70 w=112.50 h=86.20

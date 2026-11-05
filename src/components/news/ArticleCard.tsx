@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { NewsItem } from './types';
 import { motion } from 'motion/react';
 
@@ -9,7 +9,15 @@ interface ArticleCardProps {
   isLoading?: boolean;
 }
 
+const PhotoCredit = ({ value }: { value?: string }) => value ? (
+  <span className="absolute bottom-1 right-2 rounded bg-black/60 px-1.5 py-0.5 text-[9px] text-white/90">
+    {value}
+  </span>
+) : null;
+
 export default function ArticleCard({ article, variant = 'latest', onOpen, isLoading = false }: ArticleCardProps) {
+  const [failedImageUrl, setFailedImageUrl] = useState<string>();
+  const showImage = Boolean(article.imageUrl && article.imageUrl !== failedImageUrl);
   const handleClick = (e: React.MouseEvent) => {
     if (onOpen && !isLoading) {
       e.preventDefault();
@@ -37,21 +45,23 @@ export default function ArticleCard({ article, variant = 'latest', onOpen, isLoa
     return (
       <motion.a
         href={article.url}
+        data-media-item-id={article.id}
         onClick={handleClick}
         whileHover={{ y: -4 }}
         className="group block w-full overflow-hidden rounded-xl bg-white shadow-sm border border-gray-100 cursor-pointer"
       >
-        <div className="relative aspect-[16/9] overflow-hidden bg-gray-100">
+        {showImage && <div className="relative aspect-[16/9] overflow-hidden bg-gray-100">
           {article.imageUrl && (
             <img
               src={article.imageUrl}
               alt={article.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               referrerPolicy="no-referrer"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              onError={() => setFailedImageUrl(article.imageUrl)}
             />
           )}
-        </div>
+          <PhotoCredit value={article.photoCredit} />
+        </div>}
         <div className="p-8">
           <div className="flex items-center gap-2 mb-4">
             <span className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-600">
@@ -76,18 +86,19 @@ export default function ArticleCard({ article, variant = 'latest', onOpen, isLoa
 
   if (variant === 'related') {
     return (
-      <a href={article.url} onClick={handleClick} className="group flex flex-col space-y-3 cursor-pointer p-4 bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
-        <div className="aspect-[16/9] overflow-hidden rounded-lg bg-gray-100">
+      <a href={article.url} data-media-item-id={article.id} onClick={handleClick} className="group flex flex-col space-y-3 cursor-pointer p-4 bg-white rounded-xl shadow-sm border border-gray-100 transition-all hover:shadow-md">
+        {showImage && <div className="relative aspect-[16/9] overflow-hidden rounded-lg bg-gray-100">
           {article.imageUrl && (
             <img
               src={article.imageUrl}
               alt={article.title}
               className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               referrerPolicy="no-referrer"
-              onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              onError={() => setFailedImageUrl(article.imageUrl)}
             />
           )}
-        </div>
+          <PhotoCredit value={article.photoCredit} />
+        </div>}
         <div className="space-y-1">
           <h3 className="text-gray-900 font-bold text-base leading-snug group-hover:text-[#0078ff] transition-colors line-clamp-2">
             {article.title}
@@ -105,7 +116,7 @@ export default function ArticleCard({ article, variant = 'latest', onOpen, isLoa
 
   if (variant === 'bottom') {
     return (
-      <a href={article.url} onClick={handleClick} className="group block p-4 border-l-4 border-transparent hover:border-[#0078ff] hover:bg-gray-50 transition-all cursor-pointer">
+      <a href={article.url} data-media-item-id={article.id} onClick={handleClick} className="group block p-4 border-l-4 border-transparent hover:border-[#0078ff] hover:bg-gray-50 transition-all cursor-pointer">
         <span className="text-[9px] font-bold uppercase tracking-wider text-indigo-600 block mb-1">
           {article.category}
         </span>
@@ -124,6 +135,7 @@ export default function ArticleCard({ article, variant = 'latest', onOpen, isLoa
     return (
       <a
         href={article.url}
+        data-media-item-id={article.id}
         onClick={handleClick}
         className="group block py-6 px-4 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer"
       >
@@ -142,7 +154,7 @@ export default function ArticleCard({ article, variant = 'latest', onOpen, isLoa
 
   if (variant === 'sidebar') {
     return (
-      <a href={article.url} onClick={handleClick} className="group block py-6 border-b border-gray-100 last:border-0 cursor-pointer">
+      <a href={article.url} data-media-item-id={article.id} onClick={handleClick} className="group block py-6 border-b border-gray-100 last:border-0 cursor-pointer">
         <h4 className="text-gray-900 font-black text-sm group-hover:text-[#0078ff] transition-colors leading-tight uppercase mb-2 line-clamp-2">
           {article.title}
         </h4>
@@ -157,20 +169,22 @@ export default function ArticleCard({ article, variant = 'latest', onOpen, isLoa
   return (
     <a
       href={article.url}
+      data-media-item-id={article.id}
       onClick={handleClick}
       className="group flex space-x-6 p-6 bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md transition-all cursor-pointer"
     >
-      <div className="w-32 h-20 md:w-64 md:h-40 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
+      {showImage && <div className="relative w-32 h-20 md:w-64 md:h-40 flex-shrink-0 overflow-hidden rounded-lg bg-gray-100">
         {article.imageUrl && (
           <img
             src={article.imageUrl}
             alt={article.title}
             className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
             referrerPolicy="no-referrer"
-            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+            onError={() => setFailedImageUrl(article.imageUrl)}
           />
         )}
-      </div>
+        <PhotoCredit value={article.photoCredit} />
+      </div>}
       <div className="flex-grow flex flex-col justify-center space-y-3">
         <h3 className="text-gray-900 font-black text-sm md:text-2xl leading-tight group-hover:text-[#0078ff] transition-colors line-clamp-2 uppercase tracking-tight">
           {article.title}

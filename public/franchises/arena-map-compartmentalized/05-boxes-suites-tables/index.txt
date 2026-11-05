@@ -1,0 +1,22 @@
+Boxes, Suites, and Tables
+=========================
+
+Detected sections: 10
+
+[center]
+VALKYRIES	05-boxes-suites-tables/center/sections/valkyries-center.svg	x=1261.70 y=1182.70 w=704.00 h=37.20
+VIP	05-boxes-suites-tables/center/sections/vip-center.svg	x=1192.30 y=1182.70 w=842.80 h=471.87
+
+[north-west]
+MC3	05-boxes-suites-tables/north-west/sections/mc3-north-west.svg	x=2.20 y=792.60 w=142.10 h=287.40
+
+[south-west]
+B1	05-boxes-suites-tables/south-west/sections/b1-south-west.svg	x=39.40 y=1753.90 w=31.18 h=38.90
+BR1	05-boxes-suites-tables/south-west/sections/br1-south-west.svg	x=94.90 y=1753.90 w=86.30 h=124.70
+MC1	05-boxes-suites-tables/south-west/sections/mc1-south-west.svg	x=2.10 y=1773.10 w=144.60 h=282.00
+
+[west]
+B2	05-boxes-suites-tables/west/sections/b2-west.svg	x=37.78 y=1062.10 w=32.18 h=39.50
+BR2	05-boxes-suites-tables/west/sections/br2-west.svg	x=94.90 y=1090.60 w=37.20 h=671.00
+BR3	05-boxes-suites-tables/west/sections/br3-west.svg	x=95.00 y=950.50 w=91.70 h=147.30
+MC2	05-boxes-suites-tables/west/sections/mc2-west.svg	x=2.10 y=1072.70 w=55.80 h=708.10

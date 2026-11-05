@@ -1,4 +1,5 @@
 import type { NBATeam, StaffData, StaffMember } from '../../types';
+import { PBA_TEAM_DATA } from '../../data/templates/philippines/teamPopulations';
 
 function normalize(value?: string | null): string {
   return String(value ?? '')
@@ -71,17 +72,42 @@ function fallbackCoachName(team: NBATeam): string {
   return `${firstNames[seed % firstNames.length]} ${lastNames[(seed >>> 4) % lastNames.length]}`;
 }
 
-export function resolveHeadCoachName(team: NBATeam, staff?: StaffData | null, season?: number): string {
+function isPbaTeam(team: NBATeam): boolean {
+  const tid = Number((team as any).tid ?? team.id);
+  return (team as any).league === 'PBA' || (Number.isFinite(tid) && tid >= 2000 && tid < 2100);
+}
+
+function resolvePbaMetaCoach(team: NBATeam): string | undefined {
+  if (!isPbaTeam(team)) return undefined;
+  const keys = new Set(teamKeys(team));
+  const meta = PBA_TEAM_DATA.find(entry => {
+    const aliases = [entry.abbrev, entry.region, entry.name, ...entry.aliases].map(normalize).filter(Boolean);
+    return aliases.some(alias => keys.has(alias) || [...keys].some(key => key.includes(alias) || alias.includes(key)));
+  });
+  return meta?.coach;
+}
+
+export function resolveHeadCoachMember(team: NBATeam, staff?: StaffData | null): StaffMember | undefined {
   const tycoonHeadCoach = ((team as any).tycoon?.staffMembers ?? [])
     .find((member: StaffMember) => isHeadCoach(member) && member.name);
-  if (tycoonHeadCoach?.name) return tycoonHeadCoach.name;
+  if (tycoonHeadCoach?.name) return tycoonHeadCoach;
 
   const keys = teamKeys(team);
-  const staffCoach = staff?.coaches?.find(member => {
+  const matchesTeam = (member: StaffMember) => {
     if (!member?.name || isExplicitNonHeadCoach(member)) return false;
     return valuesMatchTeam([member.team, member.position, member.jobTitle], keys);
-  });
-  if (staffCoach?.name) return staffCoach.name;
+  };
+  return staff?.coaches?.find(member => isHeadCoach(member) && matchesTeam(member))
+    ?? staff?.coaches?.find(matchesTeam);
+}
+
+export function resolveHeadCoachName(team: NBATeam, staff?: StaffData | null, season?: number): string {
+  void season;
+  const member = resolveHeadCoachMember(team, staff);
+  if (member?.name) return member.name;
+
+  const pbaMetaCoach = resolvePbaMetaCoach(team);
+  if (pbaMetaCoach) return pbaMetaCoach;
 
   return fallbackCoachName(team);
 }

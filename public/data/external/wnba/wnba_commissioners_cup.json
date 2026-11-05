@@ -1,0 +1,242 @@
+{
+  "wnba_commissioners_cup": [
+    {
+      "year": 2026,
+      "championship_game": {
+        "date": "June 30, 2026",
+        "venue": "Barclays Center, New York City, New York",
+        "attendance": 15112,
+        "mvp": "Breanna Stewart",
+        "matchup": {
+          "winner": {
+            "team": "New York Liberty",
+            "score": 93,
+            "head_coach": "Chris DeMarco"
+          },
+          "runner_up": {
+            "team": "Las Vegas Aces",
+            "score": 85,
+            "head_coach": "Becky Hammon"
+          }
+        }
+      },
+      "standings": {
+        "eastern_conference": [
+          { "pos": 1, "team": "New York Liberty", "wins": 6, "losses": 0, "points_for": 555, "points_against": 486 },
+          { "pos": 2, "team": "Indiana Fever", "wins": 5, "losses": 1, "points_for": 548, "points_against": 502 },
+          { "pos": 3, "team": "Atlanta Dream", "wins": 4, "losses": 2, "points_for": 545, "points_against": 491 },
+          { "pos": 4, "team": "Washington Mystics", "wins": 3, "losses": 3, "points_for": 481, "points_against": 511 },
+          { "pos": 5, "team": "Toronto Tempo", "wins": 2, "losses": 4, "points_for": 526, "points_against": 568 },
+          { "pos": 6, "team": "Chicago Sky", "wins": 1, "losses": 5, "points_for": 501, "points_against": 547 },
+          { "pos": 7, "team": "Connecticut Sun", "wins": 0, "losses": 6, "points_for": 493, "points_against": 544 }
+        ],
+        "western_conference": [
+          { "pos": 1, "team": "Las Vegas Aces", "wins": 6, "losses": 1, "points_for": 621, "points_against": 597 },
+          { "pos": 2, "team": "Minnesota Lynx", "wins": 6, "losses": 1, "points_for": 689, "points_against": 562 },
+          { "pos": 3, "team": "Golden State Valkyries", "wins": 5, "losses": 2, "points_for": 590, "points_against": 539 },
+          { "pos": 4, "team": "Dallas Wings", "wins": 4, "losses": 3, "points_for": 603, "points_against": 563 },
+          { "pos": 5, "team": "Los Angeles Sparks", "wins": 3, "losses": 4, "points_for": 594, "points_against": 617 },
+          { "pos": 6, "team": "Phoenix Mercury", "wins": 2, "losses": 5, "points_for": 556, "points_against": 620 },
+          { "pos": 7, "team": "Portland Fire", "wins": 2, "losses": 5, "points_for": 562, "points_against": 646 },
+          { "pos": 8, "team": "Seattle Storm", "wins": 0, "losses": 7, "points_for": 527, "points_against": 598 }
+        ]
+      }
+    },
+    {
+      "year": 2025,
+      "championship_game": {
+        "date": "July 1, 2025",
+        "venue": "Target Center, Minneapolis, Minnesota",
+        "attendance": 12778,
+        "mvp": "Natasha Howard",
+        "matchup": {
+          "winner": {
+            "team": "Indiana Fever",
+            "score": 74,
+            "head_coach": "Stephanie White"
+          },
+          "runner_up": {
+            "team": "Minnesota Lynx",
+            "score": 59,
+            "head_coach": "Cheryl Reeve"
+          }
+        }
+      },
+      "standings": {
+        "eastern_conference": [
+          { "pos": 1, "team": "Indiana Fever", "wins": 4, "losses": 1, "points_for": 412, "points_against": 364 },
+          { "pos": 2, "team": "New York Liberty", "wins": 4, "losses": 1, "points_for": 445, "points_against": 379 },
+          { "pos": 3, "team": "Atlanta Dream", "wins": 3, "losses": 2, "points_for": 411, "points_against": 354 },
+          { "pos": 4, "team": "Washington Mystics", "wins": 2, "losses": 3, "points_for": 393, "points_against": 399 },
+          { "pos": 5, "team": "Chicago Sky", "wins": 1, "losses": 4, "points_for": 338, "points_against": 397 },
+          { "pos": 6, "team": "Connecticut Sun", "wins": 1, "losses": 4, "points_for": 340, "points_against": 446 }
+        ],
+        "western_conference": [
+          { "pos": 1, "team": "Minnesota Lynx", "wins": 5, "losses": 1, "points_for": 516, "points_against": 439 },
+          { "pos": 2, "team": "Seattle Storm", "wins": 4, "losses": 2, "points_for": 504, "points_against": 456 },
+          { "pos": 3, "team": "Phoenix Mercury", "wins": 4, "losses": 2, "points_for": 482, "points_against": 484 },
+          { "pos": 4, "team": "Golden State Valkyries", "wins": 3, "losses": 3, "points_for": 483, "points_against": 471 },
+          { "pos": 5, "team": "Los Angeles Sparks", "wins": 2, "losses": 4, "points_for": 496, "points_against": 541 },
+          { "pos": 6, "team": "Las Vegas Aces", "wins": 2, "losses": 4, "points_for": 452, "points_against": 498 },
+          { "pos": 7, "team": "Dallas Wings", "wins": 1, "losses": 5, "points_for": 465, "points_against": 509 }
+        ]
+      }
+    },
+    {
+      "year": 2024,
+      "championship_game": {
+        "date": "June 25, 2024",
+        "venue": "UBS Arena, Elmont, New York",
+        "attendance": 7015,
+        "mvp": "Napheesa Collier",
+        "matchup": {
+          "winner": {
+            "team": "Minnesota Lynx",
+            "score": 94,
+            "head_coach": "Cheryl Reeve"
+          },
+          "runner_up": {
+            "team": "New York Liberty",
+            "score": 89,
+            "head_coach": "Sandy Brondello"
+          }
+        }
+      },
+      "standings": {
+        "eastern_conference": [
+          { "pos": 1, "team": "New York Liberty", "wins": 5, "losses": 0, "points_for": 445, "points_against": 367 },
+          { "pos": 2, "team": "Connecticut Sun", "wins": 4, "losses": 1, "points_for": 392, "points_against": 338 },
+          { "pos": 3, "team": "Indiana Fever", "wins": 3, "losses": 2, "points_for": 387, "points_against": 430 },
+          { "pos": 4, "team": "Washington Mystics", "wins": 1, "losses": 4, "points_for": 388, "points_against": 401 },
+          { "pos": 5, "team": "Chicago Sky", "wins": 1, "losses": 4, "points_for": 379, "points_against": 402 },
+          { "pos": 6, "team": "Atlanta Dream", "wins": 1, "losses": 4, "points_for": 352, "points_against": 405 }
+        ],
+        "western_conference": [
+          { "pos": 1, "team": "Minnesota Lynx", "wins": 4, "losses": 1, "points_for": 436, "points_against": 369 },
+          { "pos": 2, "team": "Seattle Storm", "wins": 4, "losses": 1, "points_for": 409, "points_against": 373 },
+          { "pos": 3, "team": "Phoenix Mercury", "wins": 3, "losses": 2, "points_for": 426, "points_against": 421 },
+          { "pos": 4, "team": "Los Angeles Sparks", "wins": 2, "losses": 3, "points_for": 386, "points_against": 432 },
+          { "pos": 5, "team": "Las Vegas Aces", "wins": 2, "losses": 3, "points_for": 441, "points_against": 454 },
+          { "pos": 6, "team": "Dallas Wings", "wins": 0, "losses": 5, "points_for": 403, "points_against": 452 }
+        ]
+      }
+    },
+    {
+      "year": 2023,
+      "championship_game": {
+        "date": "August 15, 2023",
+        "venue": "Michelob Ultra Arena, Las Vegas, Nevada",
+        "attendance": 8967,
+        "mvp": "Jonquel Jones",
+        "matchup": {
+          "winner": {
+            "team": "New York Liberty",
+            "score": 82,
+            "head_coach": "Sandy Brondello"
+          },
+          "runner_up": {
+            "team": "Las Vegas Aces",
+            "score": 63,
+            "head_coach": "Becky Hammon"
+          }
+        }
+      },
+      "standings": {
+        "eastern_conference": [
+          { "pos": 1, "team": "New York Liberty", "wins": 7, "losses": 3 },
+          { "pos": 2, "team": "Connecticut Sun", "wins": 7, "losses": 3 },
+          { "pos": 3, "team": "Atlanta Dream", "wins": 6, "losses": 4 },
+          { "pos": 4, "team": "Washington Mystics", "wins": 5, "losses": 5 },
+          { "pos": 5, "team": "Chicago Sky", "wins": 3, "losses": 7 },
+          { "pos": 6, "team": "Indiana Fever", "wins": 2, "losses": 8 }
+        ],
+        "western_conference": [
+          { "pos": 1, "team": "Las Vegas Aces", "wins": 9, "losses": 1 },
+          { "pos": 2, "team": "Dallas Wings", "wins": 6, "losses": 4 },
+          { "pos": 3, "team": "Minnesota Lynx", "wins": 5, "losses": 5 },
+          { "pos": 4, "team": "Los Angeles Sparks", "wins": 5, "losses": 5 },
+          { "pos": 5, "team": "Seattle Storm", "wins": 4, "losses": 6 },
+          { "pos": 6, "team": "Phoenix Mercury", "wins": 1, "losses": 9 }
+        ]
+      }
+    },
+    {
+      "year": 2022,
+      "championship_game": {
+        "date": "July 26, 2022",
+        "venue": "Wintrust Arena, Chicago, Illinois",
+        "attendance": 8922,
+        "mvp": "Chelsea Gray",
+        "matchup": {
+          "winner": {
+            "team": "Las Vegas Aces",
+            "score": 93,
+            "head_coach": "Becky Hammon"
+          },
+          "runner_up": {
+            "team": "Chicago Sky",
+            "score": 83,
+            "head_coach": "James Wade"
+          }
+        }
+      },
+      "standings": {
+        "eastern_conference": [
+          { "pos": 1, "team": "Chicago Sky", "wins": 9, "losses": 1 },
+          { "pos": 2, "team": "New York Liberty", "wins": 6, "losses": 4 },
+          { "pos": 3, "team": "Connecticut Sun", "wins": 5, "losses": 5 },
+          { "pos": 4, "team": "Washington Mystics", "wins": 5, "losses": 5 },
+          { "pos": 5, "team": "Atlanta Dream", "wins": 3, "losses": 7 },
+          { "pos": 6, "team": "Indiana Fever", "wins": 2, "losses": 8 }
+        ],
+        "western_conference": [
+          { "pos": 1, "team": "Las Vegas Aces", "wins": 9, "losses": 1 },
+          { "pos": 2, "team": "Seattle Storm", "wins": 6, "losses": 4 },
+          { "pos": 3, "team": "Dallas Wings", "wins": 5, "losses": 5 },
+          { "pos": 4, "team": "Minnesota Lynx", "wins": 4, "losses": 6 },
+          { "pos": 5, "team": "Phoenix Mercury", "wins": 3, "losses": 7 },
+          { "pos": 6, "team": "Los Angeles Sparks", "wins": 3, "losses": 7 }
+        ]
+      }
+    },
+    {
+      "year": 2021,
+      "championship_game": {
+        "date": "August 12, 2021",
+        "venue": "Footprint Center, Phoenix, Arizona",
+        "attendance": 5006,
+        "mvp": "Breanna Stewart",
+        "matchup": {
+          "winner": {
+            "team": "Seattle Storm",
+            "score": 79,
+            "head_coach": "Noelle Quinn"
+          },
+          "runner_up": {
+            "team": "Connecticut Sun",
+            "score": 57,
+            "head_coach": "Curt Miller"
+          }
+        }
+      },
+      "standings": {
+        "eastern_conference": [
+          { "pos": 1, "team": "Connecticut Sun", "wins": 9, "losses": 1 },
+          { "pos": 2, "team": "Chicago Sky", "wins": 6, "losses": 4 },
+          { "pos": 3, "team": "New York Liberty", "wins": 5, "losses": 5 },
+          { "pos": 4, "team": "Atlanta Dream", "wins": 4, "losses": 6 },
+          { "pos": 5, "team": "Washington Mystics", "wins": 4, "losses": 6 },
+          { "pos": 6, "team": "Indiana Fever", "wins": 2, "losses": 8 }
+        ],
+        "western_conference": [
+          { "pos": 1, "team": "Seattle Storm", "wins": 8, "losses": 2 },
+          { "pos": 2, "team": "Minnesota Lynx", "wins": 7, "losses": 3 },
+          { "pos": 3, "team": "Las Vegas Aces", "wins": 6, "losses": 4 },
+          { "pos": 4, "team": "Phoenix Mercury", "wins": 5, "losses": 5 },
+          { "pos": 5, "team": "Dallas Wings", "wins": 3, "losses": 7 },
+          { "pos": 6, "team": "Los Angeles Sparks", "wins": 1, "losses": 9 }
+        ]
+      }
+    }
+  ]
+}

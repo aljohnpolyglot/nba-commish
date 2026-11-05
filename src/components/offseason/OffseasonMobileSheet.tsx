@@ -15,7 +15,7 @@ export const OffseasonAufgabenMobileSheet: React.FC = () => {
     <>
       <button
         onClick={() => setOpen(true)}
-        className="lg:hidden fixed bottom-4 right-4 z-[160] flex items-center gap-2 px-4 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-widest shadow-2xl transition-colors"
+        className="lg:hidden fixed bottom-[calc(env(safe-area-inset-bottom)+1rem)] right-4 z-[160] flex max-w-[calc(100vw-2rem)] items-center gap-2 px-4 py-3 rounded-full bg-amber-500 hover:bg-amber-400 text-black font-black text-xs uppercase tracking-widest shadow-2xl transition-colors"
       >
         <ListChecks size={14} />
         Offseason · {remaining} left
@@ -23,9 +23,10 @@ export const OffseasonAufgabenMobileSheet: React.FC = () => {
       {open && (
         <div className="lg:hidden fixed inset-0 z-[165] flex">
           <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setOpen(false)} />
-          <div className="relative ml-auto h-full w-[320px] max-w-[88vw] bg-slate-950 border-l border-slate-800 overflow-y-auto scrollbar-hide p-3">
+          <div className="relative ml-auto h-[100dvh] w-[320px] max-w-[88vw] bg-slate-950 border-l border-slate-800 overflow-y-auto scrollbar-hide p-3 pb-[calc(env(safe-area-inset-bottom)+1rem)]">
             <button
               onClick={() => setOpen(false)}
+              aria-label="Close offseason tasks"
               className="absolute top-3 right-3 z-10 p-1.5 rounded-md bg-slate-800 hover:bg-slate-700 text-slate-300"
             >
               <X size={14} />

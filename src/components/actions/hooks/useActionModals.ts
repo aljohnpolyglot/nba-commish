@@ -3,11 +3,8 @@ import { Contact } from '../../../types';
 
 export const useActionModals = () => {
   const [modalOpen, setModalOpen] = useState(false);
-  const [fundSourceModalOpen, setFundSourceModalOpen] = useState(false);
   const [selectedFundSource, setSelectedFundSource] = useState<'personal' | 'league' | null>(null);
-  const [modalType, setModalType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'contact' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire'>('general');
-  const [announcementModalOpen, setAnnouncementModalOpen] = useState(false);
-  const [announcementText, setAnnouncementText] = useState('');
+  const [modalType, setModalType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'movie' | 'give_money' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire'>('general');
   
   // Contact Modal State
   const [selectedContactForModal, setSelectedContactForModal] = useState<Contact | null>(null);
@@ -27,7 +24,6 @@ export const useActionModals = () => {
   const [christmasModalOpen, setChristmasModalOpen] = useState(false);
   const [globalGamesModalOpen, setGlobalGamesModalOpen] = useState(false);
   const [preseasonInternationalModalOpen, setPreseasonInternationalModalOpen] = useState(false);
-  const [rigLotteryModalOpen, setRigLotteryModalOpen] = useState(false);
 
   // Expansion Draft (ZenGM-style, Phase 2 Modals — Phase 1 nur State-Plumbing)
   const [expansionSetupModalOpen, setExpansionSetupModalOpen] = useState(false);
@@ -38,10 +34,11 @@ export const useActionModals = () => {
   const [confirmActionType, setConfirmActionType] = useState<string | null>(null);
   const [confirmActionDetails, setConfirmActionDetails] = useState<{title: string, desc: string} | null>(null);
 
-  const openPersonSelector = (type: 'suspension' | 'drug_test' | 'dinner' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'contact' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire') => {
-      if (['bribe', 'give_money'].includes(type)) {
-          setFundSourceModalOpen(true);
+  const openPersonSelector = (type: 'suspension' | 'drug_test' | 'dinner' | 'fine' | 'movie' | 'give_money' | 'hypnotize' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire') => {
+      if (type === 'give_money') {
+          setSelectedFundSource('league');
           setModalType(type);
+          setModalOpen(true);
       } else {
           setModalType(type);
           setModalOpen(true);
@@ -61,11 +58,8 @@ export const useActionModals = () => {
 
   return {
     modalOpen, setModalOpen,
-    fundSourceModalOpen, setFundSourceModalOpen,
     selectedFundSource, setSelectedFundSource,
     modalType, setModalType,
-    announcementModalOpen, setAnnouncementModalOpen,
-    announcementText, setAnnouncementText,
     selectedContactForModal, setSelectedContactForModal,
     citySelectorOpen, setCitySelectorOpen,
     citySelectorType, setCitySelectorType,
@@ -80,7 +74,6 @@ export const useActionModals = () => {
     christmasModalOpen, setChristmasModalOpen,
     globalGamesModalOpen, setGlobalGamesModalOpen,
     preseasonInternationalModalOpen, setPreseasonInternationalModalOpen,
-    rigLotteryModalOpen, setRigLotteryModalOpen,
     expansionSetupModalOpen, setExpansionSetupModalOpen,
     expansionProtectModalOpen, setExpansionProtectModalOpen,
     expansionDraftViewOpen, setExpansionDraftViewOpen,

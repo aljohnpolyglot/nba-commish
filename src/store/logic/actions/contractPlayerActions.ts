@@ -12,9 +12,23 @@ import { buildStretchedSchedule, contractToUSD, getCapThresholds, getContractLim
 import { computeTradeEligibleDate } from '../../../utils/signingMoratorium';
 import { getFreeAgencyStartDate, parseGameDate } from '../../../utils/dateUtils';
 import { clearWaiverMarkers, stripLiveContractAfterWaive } from '../../../utils/contractCleanup';
+import { isTwoWayContract, normalizeContractOptionKind, withPlayerContractType } from '../../../utils/contractTypes';
+import { appendPlayerTransaction } from '../../../utils/playerBirdRights';
 import { getTeamFullName } from '../../../utils/teamNames';
-import { buildGeneratedNBAStaffForRole } from '../../../services/staff/nbaRealStaffSeed';
-import { ensureStaffPoolDepth, inferEuroStaffLeagueId, normalizeStaffPoolRole, toStaffFreeAgent } from '../../../services/euro/staffPool';
+import { getTwoWayRosterLimit } from '../../../utils/rosterLimits';
+import { isDeadMoneyEnabled, isStretchProvisionEnabled } from '../../../utils/ruleFlags';
+import { tunePbaDraftProspects } from '../../../services/pba/draftRules';
+import {
+    consumeTeamOptionContractYear,
+    getCompletedContractDecisionSeason,
+    resolveOffseasonContractDecision,
+} from '../../../services/freeAgency/offseasonContractDecision';
+import {
+    areWnbaDevelopmentalContractsEnabled,
+    getWnbaDevelopmentalBaseStipendUSD,
+    getWnbaDevelopmentalContractLabel,
+    isWnbaDevelopmentalServiceEligible,
+} from '../../../services/wnba/developmentalContracts';
 
 export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAction, _simResults: any[], _recentDMs: any[]) => {
     const { contacts, stretch } = action.payload as { contacts: any[]; stretch?: boolean };
@@ -51,13 +65,24 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     // never produce dead money — $625K is min-day-rate paid only for days on
     // roster, real-NBA convention.
     const ls = stateWithSim.leagueStats as any;
-    const deadMoneyEnabled = ls.deadMoneyEnabled ?? true;
-    const wasNG = !!playerRecord?.nonGuaranteed;
-    const wasTwoWay = !!playerRecord?.twoWay;
+    const pbaIsolated = ls.uiMode === 'pba_isolated';
+    const wasPbaImport = pbaIsolated && !!playerRecord && (
+        playerRecord.isImport === true
+        || playerRecord.pbaImportContract
+        || String(playerRecord.contract?.type ?? '').toUpperCase() === 'PBA_IMPORT'
+    );
+    const deadMoneyEnabled = !pbaIsolated && isDeadMoneyEnabled(ls);
+    const twoWayContractsActive = !pbaIsolated && getTwoWayRosterLimit(ls) > 0;
+    const nonGuaranteedContractsActive = !pbaIsolated && ls.nonGuaranteedContractsEnabled !== false;
+    const wasNG = nonGuaranteedContractsActive && !!playerRecord?.nonGuaranteed;
+    const wasTwoWay = twoWayContractsActive && isTwoWayContract(playerRecord, ls);
     const currentSeasonYear: number = ls.year ?? new Date(stateWithSim.date ?? Date.now()).getUTCFullYear();
+    const pbaTunedReleasePlayer = pbaIsolated
+        ? tunePbaDraftProspects(stateWithSim.players as any, currentSeasonYear, stateWithSim.leagueStats).find((p: any) => p.internalId === (player.id || player.internalId))
+        : undefined;
     // If nonGuaranteed flag is still set the Jan-10 auto-guarantee hasn't fired,
     // meaning the contract was never locked in — release is always free.
-    const ngFreeRelease = wasNG;
+    const ngFreeRelease = !pbaIsolated && wasNG;
 
     let updatedTeams = stateWithSim.teams;
     let deadMoneyAdded: import('../../../types').DeadMoneyEntry | null = null;
@@ -93,7 +118,7 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
         }
         const totalDeadUSD = remaining.reduce((s, y) => s + y.amountUSD, 0);
         if (remaining.length > 0 && totalDeadUSD >= DEAD_MONEY_FLOOR_USD) {
-            const stretchEnabled = ls.stretchProvisionEnabled ?? true;
+            const stretchEnabled = isStretchProvisionEnabled(ls);
             const wantStretch = !!stretch && stretchEnabled;
             const stretchMult = ls.stretchProvisionMultiplier ?? 2;
             const finalSchedule = wantStretch
@@ -122,25 +147,52 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     // ghost player-options and inflated salaries (Khris Middleton case: Mavs
     // $33.3M player option survived through waive, then re-stamped under the
     // new team in PlayerBio renders).
-    const players = stateWithSim.players.map((p: any) =>
-        p.internalId === (player.id || player.internalId)
+    const players = stateWithSim.players.map((p: any) => {
+        if (p.internalId !== (player.id || player.internalId)) return p;
+        const normalizedPlayer = pbaTunedReleasePlayer
             ? {
-                ...stripLiveContractAfterWaive(p, currentSeasonYear),
-                tid: -1,
-                status: 'Free Agent',
-                twoWay: undefined,
-                nonGuaranteed: false,
-                gLeagueAssigned: false,
-                mleSignedVia: undefined,
-                hasBirdRights: false,
-                yearsWithTeam: 0,
-                recentlyWaivedBy: team?.id,
-                recentlyWaivedDate: stateWithSim.date,
-                signedDate: undefined,
-                tradeEligibleDate: undefined,
+                ...p,
+                pos: pbaTunedReleasePlayer.pos,
+                overallRating: pbaTunedReleasePlayer.overallRating,
+                potential: pbaTunedReleasePlayer.potential,
+                ratings: pbaTunedReleasePlayer.ratings,
+                ovrHistory: (pbaTunedReleasePlayer as any).ovrHistory ?? (p as any).ovrHistory,
+                ovrTimeline: (pbaTunedReleasePlayer as any).ovrTimeline ?? (p as any).ovrTimeline,
+                pbaDraftTunedVersion: (pbaTunedReleasePlayer as any).pbaDraftTunedVersion ?? (p as any).pbaDraftTunedVersion,
             }
-            : p
-    );
+            : p;
+        const pbaImportRelease = wasPbaImport
+            ? {
+                isImport: undefined,
+                importConference: undefined,
+                importTeamId: undefined,
+                pbaImportContract: normalizedPlayer.pbaImportContract
+                    ? { ...normalizedPlayer.pbaImportContract, status: 'released', releaseDate: stateWithSim.date }
+                    : undefined,
+            }
+            : {};
+        return {
+            ...stripLiveContractAfterWaive(normalizedPlayer, currentSeasonYear),
+            ...pbaImportRelease,
+            tid: -1,
+            status: 'Free Agent',
+            twoWay: undefined,
+            developmentalContract: undefined,
+            developmentalGamesPlayed: undefined,
+            developmentalContractSeason: undefined,
+            nonGuaranteed: false,
+            gLeagueAssigned: false,
+            mleSignedVia: undefined,
+            baeSignedVia: undefined,
+            hasBirdRights: false,
+            yearsWithTeam: 0,
+            transactions: appendPlayerTransaction(p, { season: currentSeasonYear, tid: -1, type: 'waive' }),
+            recentlyWaivedBy: team?.id,
+            recentlyWaivedDate: stateWithSim.date,
+            signedDate: undefined,
+            tradeEligibleDate: undefined,
+        };
+    });
 
     const deadMoneyThisSeason = deadMoneyAdded
         ? (deadMoneyAdded.remainingByYear.find(y => seasonLabelToYear(y.season) === currentSeasonYear)?.amountUSD ?? 0)
@@ -150,9 +202,11 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
     // Verb choice mirrors how the move would actually be reported:
     // - Two-way release / NG pre-deadline release: "released" (no dead money)
     // - Guaranteed waive: "waived" (with or without stretch — that detail lives in finances UI, not the headline)
-    const releaseVerb = (wasTwoWay || ngFreeRelease) ? 'released' : 'waived';
-    const releaseSuffix = wasTwoWay
-        ? ' from his two-way contract'
+    const releaseVerb = (pbaIsolated || wasTwoWay || ngFreeRelease) ? 'released' : 'waived';
+    const releaseSuffix = pbaIsolated
+        ? ''
+        : wasTwoWay
+        ? ` from his ${getWnbaDevelopmentalContractLabel(ls).toLowerCase()} contract`
         : ngFreeRelease
             ? ' (non-guaranteed)'
             : '';
@@ -163,7 +217,7 @@ export const handleWaivePlayer = async (stateWithSim: GameState, action: UserAct
         : '';
     const newsDeadTag = totalDead > 0
         ? ` Dead money: $${(totalDead / 1_000_000).toFixed(1)}M total ($${(deadMoneyThisSeason / 1_000_000).toFixed(1)}M this season).${stretchTag}`
-        : ngFreeRelease
+        : ngFreeRelease && !pbaIsolated
             ? ' Contract was non-guaranteed — no dead money.'
             : '';
 
@@ -212,22 +266,25 @@ export const handleExerciseTeamOption = async (stateWithSim: GameState, action: 
     const player = stateWithSim.players.find((p: any) => p.internalId === playerId) as any;
     if (!player) return { isProcessing: false };
     const team = stateWithSim.teams.find(t => t.id === player.tid);
-    const optionSeasonExp = Number(player.contract?.teamOptionExp ?? 0);
+    const completedSeason = getCompletedContractDecisionSeason(stateWithSim);
+    const decision = resolveOffseasonContractDecision(player, stateWithSim, completedSeason);
+    if (decision.kind !== 'ROOKIE_TEAM_OPTION_DUE' && decision.kind !== 'TEAM_OPTION_DUE') {
+        return { isProcessing: false };
+    }
+    const optionSeasonExp = Number(decision.optionEndYear ?? 0);
+    if (!Number.isFinite(optionSeasonExp) || optionSeasonExp <= 0) return { isProcessing: false };
     const minimumExp = optionSeasonExp || ((stateWithSim.leagueStats?.year ?? 0) + 1);
     const exercisedExp = Math.max(Number(player.contract?.exp ?? 0), minimumExp);
+    const optionResolved = consumeTeamOptionContractYear(player, optionSeasonExp, 'exercise');
 
     const players = stateWithSim.players.map((p: any) =>
         p.internalId === playerId
             ? {
-                ...p,
-                contract: { ...p.contract, exp: exercisedExp, hasTeamOption: false, teamOptionExp: undefined },
-                contractYears: Array.isArray(p.contractYears)
-                    ? p.contractYears.map((cy: any, i: number) =>
-                        i === p.contractYears.length - 1 && (cy.option ?? '').toLowerCase().includes('team')
-                            ? { ...cy, option: '' }
-                            : cy
-                    )
-                    : p.contractYears,
+                ...optionResolved,
+                contract: {
+                    ...optionResolved.contract,
+                    exp: exercisedExp,
+                },
             }
             : p
     );
@@ -246,27 +303,43 @@ export const handleDeclineTeamOption = async (stateWithSim: GameState, action: U
     const team = stateWithSim.teams.find(t => t.id === player.tid);
 
     const priorContractYears = Array.isArray(player.contractYears) ? player.contractYears : [];
-    const declinedOptionYear = Number(player.contract?.teamOptionExp ?? player.contract?.exp ?? 0);
+    const completedSeason = getCompletedContractDecisionSeason(stateWithSim);
+    const decision = resolveOffseasonContractDecision(player, stateWithSim, completedSeason);
+    if (decision.kind !== 'ROOKIE_TEAM_OPTION_DUE' && decision.kind !== 'TEAM_OPTION_DUE') {
+        return { isProcessing: false };
+    }
+    const declinedOptionYear = Number(decision.optionEndYear ?? 0);
+    if (!Number.isFinite(declinedOptionYear) || declinedOptionYear <= 0) return { isProcessing: false };
     const declinedOptionRow = priorContractYears.find((cy: any) => {
         const start = parseInt(String(cy.season ?? '').split('-')[0], 10);
         return Number.isFinite(start) && start + 1 === declinedOptionYear;
     }) ?? priorContractYears[priorContractYears.length - 1];
     const declinedOptionSalaryUSD = Number(declinedOptionRow?.guaranteed ?? 0);
-    const trimmedContractYears = priorContractYears.slice(0, -1);
-    const newExp = Math.max((player.contract?.exp ?? 0) - 1, (stateWithSim.leagueStats?.year ?? new Date().getFullYear()) - 1);
+    const optionResolved = consumeTeamOptionContractYear(player, declinedOptionYear, 'decline');
 
     const players = stateWithSim.players.map((p: any) =>
         p.internalId === playerId
             ? {
-                ...p,
+                ...optionResolved,
                 tid: -1,
                 status: 'Free Agent',
-                contract: { ...p.contract, exp: newExp, hasTeamOption: false, teamOptionExp: undefined },
-                contractYears: trimmedContractYears,
+                contract: {
+                    ...optionResolved.contract,
+                    qualifyingOfferSubmitted: false,
+                    qualifyingOfferSkipped: false,
+                },
                 twoWay: undefined,
+                developmentalContract: undefined,
+                developmentalGamesPlayed: undefined,
+                developmentalContractSeason: undefined,
                 nonGuaranteed: false,
-                hasBirdRights: false,
+                hasBirdRights: player.hasBirdRights,
+                birdRightsTeamId: player.hasBirdRights ? player.tid : player.birdRightsTeamId,
+                birdRightsSeason: player.hasBirdRights ? completedSeason : player.birdRightsSeason,
                 yearsWithTeam: 0,
+                offseasonDecisionTeamId: player.tid,
+                offseasonDecisionSeason: completedSeason,
+                transactions: appendPlayerTransaction(p, { season: stateWithSim.leagueStats?.year ?? declinedOptionYear, tid: -1, type: 'freeAgent' }),
                 declinedTeamOptionByTid: player.tid,
                 declinedTeamOptionSeasonYear: declinedOptionYear,
                 declinedTeamOptionSalaryUSD: declinedOptionSalaryUSD,
@@ -285,12 +358,13 @@ export const handleDeclineTeamOption = async (stateWithSim: GameState, action: U
  * Convert a non-guaranteed contract on the fly.
  *  - to:'GUARANTEED' just clears the `nonGuaranteed` flag (existing salary stays).
  *  - to:'TWO_WAY' collapses the deal to a 1-year, $625K two-way (real-NBA scale).
- * Mirrors the AI Jan 10 auto-guarantee path but lets the user pull the trigger
+ * Mirrors the configured automatic-guarantee path but lets the user pull the trigger
  * any time before the deadline.
  */
 export const handleConvertContractType = async (stateWithSim: GameState, action: UserAction) => {
     const { playerId, to } = action.payload as { playerId: string; to: 'GUARANTEED' | 'TWO_WAY' };
     const player = stateWithSim.players.find((p: any) => p.internalId === playerId) as any;
+    if (stateWithSim.leagueStats?.nonGuaranteedContractsEnabled === false) return { isProcessing: false };
     if (!player || !(player as any).nonGuaranteed) return { isProcessing: false };
     const team = stateWithSim.teams.find(t => t.id === player.tid);
     const teamName = team?.name ?? 'team';
@@ -310,16 +384,27 @@ export const handleConvertContractType = async (stateWithSim: GameState, action:
         });
         players = stateWithSim.players.map((p: any) =>
             p.internalId === playerId
-                ? { ...p, nonGuaranteed: undefined, signedDate: stateWithSim.date, tradeEligibleDate: ngTradeEligibleDate }
+                ? { ...withPlayerContractType(p, 'guaranteed'), signedDate: stateWithSim.date, tradeEligibleDate: ngTradeEligibleDate }
                 : p
         );
         outcomeText = `${player.name}'s contract was guaranteed by the ${teamName}.`;
     } else {
+        const maxTwoWay = getTwoWayRosterLimit(stateWithSim.leagueStats as any);
+        const twoWayCount = stateWithSim.players.filter((p: any) => p.tid === player.tid && isTwoWayContract(p, stateWithSim.leagueStats)).length;
+        if (maxTwoWay <= 0 || twoWayCount >= maxTwoWay) {
+            return { isProcessing: false };
+        }
+        const developmental = areWnbaDevelopmentalContractsEnabled(stateWithSim.leagueStats);
+        const leagueYear = stateWithSim.leagueStats?.year ?? new Date().getUTCFullYear();
+        if (developmental && !isWnbaDevelopmentalServiceEligible(player, leagueYear, stateWithSim.leagueStats)) {
+            return { isProcessing: false };
+        }
         // Two-way scale: $625K, 1 year. Replace current-season contractYears entry,
         // preserve any historical (pre-current-season) salary rows.
-        const TWO_WAY_THOUSANDS = 625;
-        const TWO_WAY_USD = 625_000;
-        const leagueYear = stateWithSim.leagueStats?.year ?? new Date().getUTCFullYear();
+        const TWO_WAY_USD = developmental
+            ? getWnbaDevelopmentalBaseStipendUSD(stateWithSim.leagueStats)
+            : 625_000;
+        const TWO_WAY_THOUSANDS = Math.round(TWO_WAY_USD / 1_000);
         const seasonLabel = `${leagueYear - 1}-${String(leagueYear).slice(-2)}`;
         const priorYears: Array<{ season: string; guaranteed: number; option?: string }> =
             Array.isArray(player.contractYears) ? player.contractYears : [];
@@ -329,26 +414,25 @@ export const handleConvertContractType = async (stateWithSim: GameState, action:
         });
         const newContractYears = [
             ...historical,
-            { season: seasonLabel, guaranteed: TWO_WAY_USD, option: '' },
+            { season: seasonLabel, guaranteed: TWO_WAY_USD, option: developmental ? 'Developmental' : 'Two-Way' },
         ];
         players = stateWithSim.players.map((p: any) =>
             p.internalId === playerId
-                ? {
+                ? withPlayerContractType({
                     ...p,
                     nonGuaranteed: undefined,
-                    twoWay: true,
-                    contract: { ...(p.contract ?? {}), amount: TWO_WAY_THOUSANDS, exp: leagueYear },
+                    contract: { ...(p.contract ?? {}), amount: TWO_WAY_THOUSANDS, exp: leagueYear, type: developmental ? 'DEVELOPMENTAL' : 'TWO_WAY' },
                     contractYears: newContractYears,
-                }
+                }, 'twoWay', stateWithSim.leagueStats)
                 : p
         );
-        outcomeText = `${player.name} was converted to a two-way contract by the ${teamName}.`;
+        outcomeText = `${player.name} was converted to a ${getWnbaDevelopmentalContractLabel(stateWithSim.leagueStats).toLowerCase()} contract by the ${teamName}.`;
     }
 
     const historyEntry = {
         text: outcomeText,
         date: stateWithSim.date,
-        type: to === 'GUARANTEED' ? 'NG Guaranteed' : 'NG → Two-Way',
+        type: to === 'GUARANTEED' ? 'NG Guaranteed' : `NG → ${getWnbaDevelopmentalContractLabel(stateWithSim.leagueStats)}`,
         playerIds: [playerId],
     };
 

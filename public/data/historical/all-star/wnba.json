@@ -1,0 +1,1613 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "wnba-all-star.3865595928586944",
+  "leagueKey": "wnba",
+  "generatedAt": "2026-08-01T21:33:40.334Z",
+  "sources": [
+    {
+      "role": "game",
+      "source": {
+        "provider": "wikipedia",
+        "pageTitle": "WNBA All-Star Game",
+        "pageUrl": "https://en.wikipedia.org/w/index.php?title=WNBA_All-Star_Game&oldid=1366317058",
+        "revisionId": 1366317058,
+        "fetchedAt": "2026-08-01T21:31:09.501Z"
+      }
+    },
+    {
+      "role": "special2004",
+      "source": {
+        "provider": "wikipedia",
+        "pageTitle": "The Game at Radio City",
+        "pageUrl": "https://en.wikipedia.org/w/index.php?title=The_Game_at_Radio_City&oldid=1356166479",
+        "revisionId": 1356166479,
+        "fetchedAt": "2026-08-01T21:33:40.332Z"
+      }
+    },
+    {
+      "role": "special2010",
+      "source": {
+        "provider": "wikipedia",
+        "pageTitle": "Stars at the Sun",
+        "pageUrl": "https://en.wikipedia.org/w/index.php?title=Stars_at_the_Sun&oldid=1337486630",
+        "revisionId": 1337486630,
+        "fetchedAt": "2026-08-01T21:33:40.334Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 1999,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 79,
+        "East": 61
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Madison Square Garden",
+          "sourcePageTitle": "Madison Square Garden",
+          "sourceHref": "/wiki/Madison_Square_Garden",
+          "canonicalKey": "arena:madison-square-garden"
+        },
+        "city": "New York, New York"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Lisa Leslie",
+            "sourcePageTitle": "Lisa Leslie",
+            "sourceHref": "/wiki/Lisa_Leslie",
+            "canonicalKey": "person:lisa-leslie"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Los Angeles Sparks",
+            "sourcePageTitle": "Los Angeles Sparks",
+            "sourceHref": "/wiki/Los_Angeles_Sparks",
+            "canonicalKey": "wnba:los-angeles-sparks"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2000,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 73,
+        "East": 61
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "America West Arena",
+          "sourcePageTitle": "America West Arena",
+          "sourceHref": "/wiki/America_West_Arena",
+          "canonicalKey": "arena:america-west-arena"
+        },
+        "city": "Phoenix, Arizona"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Tina Thompson",
+            "sourcePageTitle": "Tina Thompson",
+            "sourceHref": "/wiki/Tina_Thompson",
+            "canonicalKey": "person:tina-thompson"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Houston Comets",
+            "sourcePageTitle": "Houston Comets",
+            "sourceHref": "/wiki/Houston_Comets",
+            "canonicalKey": "wnba:houston-comets"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2001,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 80,
+        "East": 72
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "TD Waterhouse Centre",
+          "sourcePageTitle": "Amway Arena",
+          "sourceHref": "/wiki/Amway_Arena",
+          "canonicalKey": "arena:td-waterhouse-centre"
+        },
+        "city": "Orlando, Florida"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Lisa Leslie",
+            "canonicalKey": "person:lisa-leslie"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Los Angeles Sparks",
+            "canonicalKey": "wnba:los-angeles-sparks"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2002,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 81,
+        "East": 76
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "MCI Center",
+          "sourcePageTitle": "Capital One Arena",
+          "sourceHref": "/wiki/Capital_One_Arena",
+          "canonicalKey": "arena:mci-center"
+        },
+        "city": "Washington, D.C."
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Lisa Leslie",
+            "canonicalKey": "person:lisa-leslie"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Los Angeles Sparks",
+            "canonicalKey": "wnba:los-angeles-sparks"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2003,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 84,
+        "East": 75
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Madison Square Garden",
+          "canonicalKey": "arena:madison-square-garden"
+        },
+        "city": "New York, New York"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Nikki Teasley",
+            "canonicalKey": "person:nikki-teasley"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Los Angeles Sparks",
+            "canonicalKey": "wnba:los-angeles-sparks"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dawn Staley",
+                "sourcePageTitle": "Dawn Staley",
+                "sourceHref": "/wiki/Dawn_Staley",
+                "canonicalKey": "person:dawn-staley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Charlotte Sting",
+                "sourcePageTitle": "Charlotte Sting",
+                "sourceHref": "/wiki/Charlotte_Sting",
+                "canonicalKey": "wnba:charlotte-sting"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2004,
+      "status": "special-event-only",
+      "format": "The Game at Radio City",
+      "teams": [
+        "USA",
+        "WNBA"
+      ],
+      "winner": "USA",
+      "finalScore": {
+        "USA": 74,
+        "WNBA": 58
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Radio City Music Hall",
+          "sourcePageTitle": "Radio City Music Hall",
+          "sourceHref": "/wiki/Radio_City_Music_Hall",
+          "canonicalKey": "arena:radio-city-music-hall"
+        },
+        "city": "New York, New York"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Yolanda Griffith",
+            "canonicalKey": "person:yolanda-griffith"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2005,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 122,
+        "East": 99
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Mohegan Sun Arena",
+          "sourcePageTitle": "Mohegan Sun Arena",
+          "sourceHref": "/wiki/Mohegan_Sun_Arena",
+          "canonicalKey": "arena:mohegan-sun-arena"
+        },
+        "city": "Uncasville, Connecticut"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Sheryl Swoopes",
+            "canonicalKey": "person:sheryl-swoopes"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Houston Comets",
+            "canonicalKey": "wnba:houston-comets"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sue Bird",
+                "sourcePageTitle": "Sue Bird",
+                "sourceHref": "/wiki/Sue_Bird",
+                "canonicalKey": "person:sue-bird"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Seattle Storm",
+                "sourcePageTitle": "Seattle Storm",
+                "sourceHref": "/wiki/Seattle_Storm",
+                "canonicalKey": "wnba:seattle-storm"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2006,
+      "status": "held",
+      "teams": [
+        "East",
+        "West"
+      ],
+      "winner": "East",
+      "finalScore": {
+        "East": 98,
+        "West": 82
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Madison Square Garden",
+          "canonicalKey": "arena:madison-square-garden"
+        },
+        "city": "New York, New York"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Katie Douglas",
+            "sourcePageTitle": "Katie Douglas (basketball)",
+            "sourceHref": "/wiki/Katie_Douglas_(basketball)",
+            "canonicalKey": "person:katie-douglas-basketball"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Connecticut Sun",
+            "sourcePageTitle": "Connecticut Sun",
+            "sourceHref": "/wiki/Connecticut_Sun",
+            "canonicalKey": "wnba:connecticut-sun"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dawn Staley",
+                "sourcePageTitle": "Dawn Staley",
+                "sourceHref": "/wiki/Dawn_Staley",
+                "canonicalKey": "person:dawn-staley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Comets",
+                "sourcePageTitle": "Houston Comets",
+                "sourceHref": "/wiki/Houston_Comets",
+                "canonicalKey": "wnba:houston-comets"
+              }
+            }
+          ]
+        },
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Seimone Augustus",
+                "sourcePageTitle": "Seimone Augustus",
+                "sourceHref": "/wiki/Seimone_Augustus",
+                "canonicalKey": "person:seimone-augustus"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "sourcePageTitle": "Minnesota Lynx",
+                "sourceHref": "/wiki/Minnesota_Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2007,
+      "status": "held",
+      "teams": [
+        "East",
+        "West"
+      ],
+      "winner": "East",
+      "finalScore": {
+        "East": 103,
+        "West": 99
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Verizon Center",
+          "sourcePageTitle": "Capital One Arena",
+          "sourceHref": "/wiki/Capital_One_Arena",
+          "canonicalKey": "arena:verizon-center"
+        },
+        "city": "Washington, D.C."
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Cheryl Ford",
+            "sourcePageTitle": "Cheryl Ford",
+            "sourceHref": "/wiki/Cheryl_Ford",
+            "canonicalKey": "person:cheryl-ford"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Detroit Shock",
+            "sourcePageTitle": "Detroit Shock",
+            "sourceHref": "/wiki/Detroit_Shock",
+            "canonicalKey": "wnba:detroit-shock"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Laurie Koehn",
+                "sourcePageTitle": "Laurie Koehn",
+                "sourceHref": "/wiki/Laurie_Koehn",
+                "canonicalKey": "person:laurie-koehn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Mystics",
+                "sourcePageTitle": "Washington Mystics",
+                "sourceHref": "/wiki/Washington_Mystics",
+                "canonicalKey": "wnba:washington-mystics"
+              }
+            }
+          ]
+        },
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Becky Hammon",
+                "sourcePageTitle": "Becky Hammon",
+                "sourceHref": "/wiki/Becky_Hammon",
+                "canonicalKey": "person:becky-hammon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Silver Stars",
+                "sourcePageTitle": "San Antonio Silver Stars",
+                "sourceHref": "/wiki/San_Antonio_Silver_Stars",
+                "canonicalKey": "wnba:san-antonio-silver-stars"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2008,
+      "status": "not-held",
+      "note": "No game due to the 2008 Summer Olympics"
+    },
+    {
+      "season": 2009,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 130,
+        "East": 118
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Mohegan Sun Arena",
+          "canonicalKey": "arena:mohegan-sun-arena"
+        },
+        "city": "Uncasville, Connecticut"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Swin Cash",
+            "sourcePageTitle": "Swin Cash",
+            "sourceHref": "/wiki/Swin_Cash",
+            "canonicalKey": "person:swin-cash"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Seattle Storm",
+            "sourcePageTitle": "Seattle Storm",
+            "sourceHref": "/wiki/Seattle_Storm",
+            "canonicalKey": "wnba:seattle-storm"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Becky Hammon",
+                "sourcePageTitle": "Becky Hammon",
+                "sourceHref": "/wiki/Becky_Hammon",
+                "canonicalKey": "person:becky-hammon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Silver Stars",
+                "sourcePageTitle": "San Antonio Silver Stars",
+                "sourceHref": "/wiki/San_Antonio_Silver_Stars",
+                "canonicalKey": "wnba:san-antonio-silver-stars"
+              }
+            }
+          ]
+        },
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cappie Pondexter",
+                "sourcePageTitle": "Cappie Pondexter",
+                "sourceHref": "/wiki/Cappie_Pondexter",
+                "canonicalKey": "person:cappie-pondexter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Mercury",
+                "sourcePageTitle": "Phoenix Mercury",
+                "sourceHref": "/wiki/Phoenix_Mercury",
+                "canonicalKey": "wnba:phoenix-mercury"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sophia Young",
+                "sourcePageTitle": "Sophia Young",
+                "sourceHref": "/wiki/Sophia_Young",
+                "canonicalKey": "person:sophia-young"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Silver Stars",
+                "sourcePageTitle": "San Antonio Silver Stars",
+                "sourceHref": "/wiki/San_Antonio_Silver_Stars",
+                "canonicalKey": "wnba:san-antonio-silver-stars"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Charde Houston",
+                "sourcePageTitle": "Charde Houston",
+                "sourceHref": "/wiki/Charde_Houston",
+                "canonicalKey": "person:charde-houston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Lynx",
+                "sourcePageTitle": "Minnesota Lynx",
+                "sourceHref": "/wiki/Minnesota_Lynx",
+                "canonicalKey": "wnba:minnesota-lynx"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "status": "special-event-only",
+      "format": "Stars at the Sun",
+      "teams": [
+        "USA",
+        "WNBA"
+      ],
+      "winner": "USA",
+      "finalScore": {
+        "USA": 99,
+        "WNBA": 72
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Mohegan Sun Arena",
+          "sourcePageTitle": "Mohegan Sun Arena",
+          "sourceHref": "/wiki/Mohegan_Sun_Arena",
+          "canonicalKey": "arena:mohegan-sun-arena"
+        },
+        "city": "Uncasville, Connecticut"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Sylvia Fowles",
+            "canonicalKey": "person:sylvia-fowles"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Team USA",
+            "canonicalKey": "wnba:team-usa"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Katie Douglas",
+                "sourcePageTitle": "Katie Douglas (basketball)",
+                "sourceHref": "/wiki/Katie_Douglas_(basketball)",
+                "canonicalKey": "person:katie-douglas-basketball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Fever",
+                "sourcePageTitle": "Indiana Fever",
+                "sourceHref": "/wiki/Indiana_Fever",
+                "canonicalKey": "wnba:indiana-fever"
+              }
+            }
+          ]
+        },
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Renee Montgomery",
+                "sourcePageTitle": "Renee Montgomery",
+                "sourceHref": "/wiki/Renee_Montgomery",
+                "canonicalKey": "person:renee-montgomery"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "sourcePageTitle": "Connecticut Sun",
+                "sourceHref": "/wiki/Connecticut_Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2011,
+      "status": "held",
+      "teams": [
+        "East",
+        "West"
+      ],
+      "winner": "East",
+      "finalScore": {
+        "East": 118,
+        "West": 113
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "AT&T Center",
+          "sourcePageTitle": "Frost Bank Center",
+          "sourceHref": "/wiki/Frost_Bank_Center",
+          "canonicalKey": "arena:at-t-center"
+        },
+        "city": "San Antonio, Texas"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Swin Cash",
+            "canonicalKey": "person:swin-cash"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Seattle Storm",
+            "canonicalKey": "wnba:seattle-storm"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "status": "not-held",
+      "note": "No game due to the 2012 Summer Olympics"
+    },
+    {
+      "season": 2013,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 102,
+        "East": 98
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Mohegan Sun Arena",
+          "canonicalKey": "arena:mohegan-sun-arena"
+        },
+        "city": "Uncasville, Connecticut"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Candace Parker",
+            "canonicalKey": "person:candace-parker"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Los Angeles Sparks",
+            "canonicalKey": "wnba:los-angeles-sparks"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "status": "held",
+      "teams": [
+        "East",
+        "West"
+      ],
+      "winner": "East",
+      "finalScore": {
+        "East": 125,
+        "West": 124
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "US Airways Center",
+          "sourcePageTitle": "US Airways Center",
+          "sourceHref": "/wiki/US_Airways_Center",
+          "canonicalKey": "arena:us-airways-center"
+        },
+        "city": "Phoenix, Arizona"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Shoni Schimmel",
+            "sourcePageTitle": "Shoni Schimmel",
+            "sourceHref": "/wiki/Shoni_Schimmel",
+            "canonicalKey": "person:shoni-schimmel"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Atlanta Dream",
+            "sourcePageTitle": "Atlanta Dream",
+            "sourceHref": "/wiki/Atlanta_Dream",
+            "canonicalKey": "wnba:atlanta-dream"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 117,
+        "East": 112
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Mohegan Sun Arena",
+          "canonicalKey": "arena:mohegan-sun-arena"
+        },
+        "city": "Uncasville, Connecticut"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Maya Moore",
+            "sourcePageTitle": "Maya Moore",
+            "sourceHref": "/wiki/Maya_Moore",
+            "canonicalKey": "person:maya-moore"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Minnesota Lynx",
+            "sourcePageTitle": "Minnesota Lynx",
+            "sourceHref": "/wiki/Minnesota_Lynx",
+            "canonicalKey": "wnba:minnesota-lynx"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "status": "not-held",
+      "note": "No game due to the 2016 Summer Olympics"
+    },
+    {
+      "season": 2017,
+      "status": "held",
+      "teams": [
+        "West",
+        "East"
+      ],
+      "winner": "West",
+      "finalScore": {
+        "West": 130,
+        "East": 121
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "KeyArena",
+          "sourcePageTitle": "Climate Pledge Arena",
+          "sourceHref": "/wiki/Climate_Pledge_Arena",
+          "canonicalKey": "arena:keyarena"
+        },
+        "city": "Seattle, Washington"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Maya Moore",
+            "canonicalKey": "person:maya-moore"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Minnesota Lynx",
+            "canonicalKey": "wnba:minnesota-lynx"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Allie Quigley",
+                "sourcePageTitle": "Allie Quigley",
+                "sourceHref": "/wiki/Allie_Quigley",
+                "canonicalKey": "person:allie-quigley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "sourcePageTitle": "Chicago Sky",
+                "sourceHref": "/wiki/Chicago_Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "status": "held",
+      "teams": [
+        "Team Parker",
+        "Team Delle Donne"
+      ],
+      "winner": "Team Parker",
+      "finalScore": {
+        "Team Parker": 119,
+        "Team Delle Donne": 112
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Target Center",
+          "sourcePageTitle": "Target Center",
+          "sourceHref": "/wiki/Target_Center",
+          "canonicalKey": "arena:target-center"
+        },
+        "city": "Minneapolis, Minnesota"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Maya Moore",
+            "canonicalKey": "person:maya-moore"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Minnesota Lynx",
+            "canonicalKey": "wnba:minnesota-lynx"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Allie Quigley",
+                "sourcePageTitle": "Allie Quigley",
+                "sourceHref": "/wiki/Allie_Quigley",
+                "canonicalKey": "person:allie-quigley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "sourcePageTitle": "Chicago Sky",
+                "sourceHref": "/wiki/Chicago_Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "status": "held",
+      "teams": [
+        "Team Wilson",
+        "Team Delle Donne"
+      ],
+      "winner": "Team Wilson",
+      "finalScore": {
+        "Team Wilson": 129,
+        "Team Delle Donne": 126
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Mandalay Bay Events Center",
+          "sourcePageTitle": "Michelob Ultra Arena",
+          "sourceHref": "/wiki/Michelob_Ultra_Arena",
+          "canonicalKey": "arena:mandalay-bay-events-center"
+        },
+        "city": "Las Vegas, Nevada"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Erica Wheeler",
+            "sourcePageTitle": "Erica Wheeler (basketball)",
+            "sourceHref": "/wiki/Erica_Wheeler_(basketball)",
+            "canonicalKey": "person:erica-wheeler-basketball"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Indiana Fever",
+            "sourcePageTitle": "Indiana Fever",
+            "sourceHref": "/wiki/Indiana_Fever",
+            "canonicalKey": "wnba:indiana-fever"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shekinna Stricklen",
+                "sourcePageTitle": "Shekinna Stricklen",
+                "sourceHref": "/wiki/Shekinna_Stricklen",
+                "canonicalKey": "person:shekinna-stricklen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Connecticut Sun",
+                "sourcePageTitle": "Connecticut Sun",
+                "sourceHref": "/wiki/Connecticut_Sun",
+                "canonicalKey": "wnba:connecticut-sun"
+              }
+            }
+          ]
+        },
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Diamond DeShields",
+                "sourcePageTitle": "Diamond DeShields",
+                "sourceHref": "/wiki/Diamond_DeShields",
+                "canonicalKey": "person:diamond-deshields"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "sourcePageTitle": "Chicago Sky",
+                "sourceHref": "/wiki/Chicago_Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "status": "not-held",
+      "note": "No game due to the 2020 Summer Olympics, which was later postponed by the COVID-19 pandemic"
+    },
+    {
+      "season": 2021,
+      "status": "held",
+      "teams": [
+        "Team WNBA",
+        "Team USA"
+      ],
+      "winner": "Team WNBA",
+      "finalScore": {
+        "Team WNBA": 93,
+        "Team USA": 85
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Michelob Ultra Arena",
+          "sourcePageTitle": "Michelob Ultra Arena",
+          "sourceHref": "/wiki/Michelob_Ultra_Arena",
+          "canonicalKey": "arena:michelob-ultra-arena"
+        },
+        "city": "Las Vegas, Nevada"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Arike Ogunbowale",
+            "sourcePageTitle": "Arike Ogunbowale",
+            "sourceHref": "/wiki/Arike_Ogunbowale",
+            "canonicalKey": "person:arike-ogunbowale"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Dallas Wings",
+            "sourcePageTitle": "Dallas Wings",
+            "sourceHref": "/wiki/Dallas_Wings",
+            "canonicalKey": "wnba:dallas-wings"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Allie Quigley",
+                "sourcePageTitle": "Allie Quigley",
+                "sourceHref": "/wiki/Allie_Quigley",
+                "canonicalKey": "person:allie-quigley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "sourcePageTitle": "Chicago Sky",
+                "sourceHref": "/wiki/Chicago_Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "status": "held",
+      "teams": [
+        "Team Wilson",
+        "Team Stewart"
+      ],
+      "winner": "Team Wilson",
+      "finalScore": {
+        "Team Wilson": 134,
+        "Team Stewart": 112
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Wintrust Arena",
+          "sourcePageTitle": "Wintrust Arena",
+          "sourceHref": "/wiki/Wintrust_Arena",
+          "canonicalKey": "arena:wintrust-arena"
+        },
+        "city": "Chicago, Illinois"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Kelsey Plum",
+            "sourcePageTitle": "Kelsey Plum",
+            "sourceHref": "/wiki/Kelsey_Plum",
+            "canonicalKey": "person:kelsey-plum"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Las Vegas Aces",
+            "sourcePageTitle": "Las Vegas Aces",
+            "sourceHref": "/wiki/Las_Vegas_Aces",
+            "canonicalKey": "wnba:las-vegas-aces"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Allie Quigley",
+                "sourcePageTitle": "Allie Quigley",
+                "sourceHref": "/wiki/Allie_Quigley",
+                "canonicalKey": "person:allie-quigley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Sky",
+                "sourcePageTitle": "Chicago Sky",
+                "sourceHref": "/wiki/Chicago_Sky",
+                "canonicalKey": "wnba:chicago-sky"
+              }
+            }
+          ]
+        },
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sabrina Ionescu",
+                "sourcePageTitle": "Sabrina Ionescu",
+                "sourceHref": "/wiki/Sabrina_Ionescu",
+                "canonicalKey": "person:sabrina-ionescu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "sourcePageTitle": "New York Liberty",
+                "sourceHref": "/wiki/New_York_Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "status": "held",
+      "teams": [
+        "Team Stewart",
+        "Team Wilson"
+      ],
+      "winner": "Team Stewart",
+      "finalScore": {
+        "Team Stewart": 143,
+        "Team Wilson": 127
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Michelob Ultra Arena",
+          "sourcePageTitle": "Michelob Ultra Arena",
+          "sourceHref": "/wiki/Michelob_Ultra_Arena",
+          "canonicalKey": "arena:michelob-ultra-arena"
+        },
+        "city": "Las Vegas, Nevada"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Jewell Loyd",
+            "sourcePageTitle": "Jewell Loyd",
+            "sourceHref": "/wiki/Jewell_Loyd",
+            "canonicalKey": "person:jewell-loyd"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Seattle Storm",
+            "sourcePageTitle": "Seattle Storm",
+            "sourceHref": "/wiki/Seattle_Storm",
+            "canonicalKey": "wnba:seattle-storm"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sabrina Ionescu",
+                "sourcePageTitle": "Sabrina Ionescu",
+                "sourceHref": "/wiki/Sabrina_Ionescu",
+                "canonicalKey": "person:sabrina-ionescu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "sourcePageTitle": "New York Liberty",
+                "sourceHref": "/wiki/New_York_Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kelsey Plum",
+                "sourcePageTitle": "Kelsey Plum",
+                "sourceHref": "/wiki/Kelsey_Plum",
+                "canonicalKey": "person:kelsey-plum"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "sourcePageTitle": "Las Vegas Aces",
+                "sourceHref": "/wiki/Las_Vegas_Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chelsea Gray",
+                "sourcePageTitle": "Chelsea Gray",
+                "sourceHref": "/wiki/Chelsea_Gray",
+                "canonicalKey": "person:chelsea-gray"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Las Vegas Aces",
+                "sourcePageTitle": "Las Vegas Aces",
+                "sourceHref": "/wiki/Las_Vegas_Aces",
+                "canonicalKey": "wnba:las-vegas-aces"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "status": "held",
+      "teams": [
+        "Team WNBA",
+        "Team USA"
+      ],
+      "winner": "Team WNBA",
+      "finalScore": {
+        "Team WNBA": 117,
+        "Team USA": 109
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Footprint Center",
+          "sourcePageTitle": "Footprint Center",
+          "sourceHref": "/wiki/Footprint_Center",
+          "canonicalKey": "arena:footprint-center"
+        },
+        "city": "Phoenix, Arizona"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Arike Ogunbowale",
+            "canonicalKey": "person:arike-ogunbowale"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Dallas Wings",
+            "canonicalKey": "wnba:dallas-wings"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Allisha Gray",
+                "sourcePageTitle": "Allisha Gray",
+                "sourceHref": "/wiki/Allisha_Gray",
+                "canonicalKey": "person:allisha-gray"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Dream",
+                "sourcePageTitle": "Atlanta Dream",
+                "sourceHref": "/wiki/Atlanta_Dream",
+                "canonicalKey": "wnba:atlanta-dream"
+              }
+            }
+          ]
+        },
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Allisha Gray",
+                "sourcePageTitle": "Allisha Gray",
+                "sourceHref": "/wiki/Allisha_Gray",
+                "canonicalKey": "person:allisha-gray"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Dream",
+                "sourcePageTitle": "Atlanta Dream",
+                "sourceHref": "/wiki/Atlanta_Dream",
+                "canonicalKey": "wnba:atlanta-dream"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "status": "held",
+      "teams": [
+        "Team Collier",
+        "Team Clark"
+      ],
+      "winner": "Team Collier",
+      "finalScore": {
+        "Team Collier": 151,
+        "Team Clark": 131
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "Gainbridge Fieldhouse",
+          "sourcePageTitle": "Gainbridge Fieldhouse",
+          "sourceHref": "/wiki/Gainbridge_Fieldhouse",
+          "canonicalKey": "arena:gainbridge-fieldhouse"
+        },
+        "city": "Indianapolis, Indiana"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Napheesa Collier",
+            "canonicalKey": "person:napheesa-collier"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Minnesota Lynx",
+            "canonicalKey": "wnba:minnesota-lynx"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sabrina Ionescu",
+                "sourcePageTitle": "Sabrina Ionescu",
+                "sourceHref": "/wiki/Sabrina_Ionescu",
+                "canonicalKey": "person:sabrina-ionescu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "sourcePageTitle": "New York Liberty",
+                "sourceHref": "/wiki/New_York_Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        },
+        {
+          "contestKey": "skills",
+          "contestName": "Skills Challenge",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Natasha Cloud",
+                "sourcePageTitle": "Natasha Cloud",
+                "sourceHref": "/wiki/Natasha_Cloud",
+                "canonicalKey": "person:natasha-cloud"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Liberty",
+                "sourcePageTitle": "New York Liberty",
+                "sourceHref": "/wiki/New_York_Liberty",
+                "canonicalKey": "wnba:new-york-liberty"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "status": "held",
+      "teams": [
+        "Team Spoon",
+        "Team Coop"
+      ],
+      "winner": "Team Spoon",
+      "finalScore": {
+        "Team Spoon": 129,
+        "Team Coop": 122
+      },
+      "host": {
+        "arena": {
+          "entityType": "arena",
+          "sourceName": "United Center",
+          "sourcePageTitle": "United Center",
+          "sourceHref": "/wiki/United_Center",
+          "canonicalKey": "arena:united-center"
+        },
+        "city": "Chicago, Illinois"
+      },
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Jonquel Jones",
+            "sourcePageTitle": "Jonquel Jones",
+            "sourceHref": "/wiki/Jonquel_Jones",
+            "canonicalKey": "person:jonquel-jones"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "New York Liberty",
+            "sourcePageTitle": "New York Liberty",
+            "sourceHref": "/wiki/New_York_Liberty",
+            "canonicalKey": "wnba:new-york-liberty"
+          }
+        }
+      ],
+      "contests": [
+        {
+          "contestKey": "three-point",
+          "contestName": "Three-Point Contest",
+          "status": "held",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Azzi Fudd",
+                "sourcePageTitle": "Azzi Fudd",
+                "sourceHref": "/wiki/Azzi_Fudd",
+                "canonicalKey": "person:azzi-fudd"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Wings",
+                "sourcePageTitle": "Dallas Wings",
+                "sourceHref": "/wiki/Dallas_Wings",
+                "canonicalKey": "wnba:dallas-wings"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

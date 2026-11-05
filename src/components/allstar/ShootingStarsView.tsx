@@ -3,6 +3,9 @@ import { Play, Sparkles, Trophy } from 'lucide-react';
 import { ChallengeEmptyState } from './AllStarChallengeCards';
 import { getPlayerImage } from '../../utils/playerImage';
 import { getTeamFullName } from '../../utils/teamNames';
+import { useGame } from '../../store/GameContext';
+import { getLeagueEventDisplayName } from '../../services/franchises/franchiseEventNaming';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
 
 interface ShootingStarsViewProps {
   allStar: any;
@@ -50,7 +53,7 @@ const resolveTeam = (teamEntry: any, teams: any[], teamPlayers: any[]) => {
 };
 
 const teamName = (team: any, fallback?: string) => team ? getTeamFullName(team) : collapseRepeatedLocation(fallback) || 'Team TBD';
-const teamLogo = (team: any) => team?.logoUrl ?? team?.imgURL ?? team?.imgURLSmall;
+const teamLogo = (team: any) => getResolvedTeamLogoUrl(team);
 
 const nameParts = (name?: string) => {
   const parts = (name ?? 'TBD').trim().split(/\s+/);
@@ -92,6 +95,8 @@ const sortResultTeams = (result: any) => [...(result?.teams ?? [])].sort((a: any
 });
 
 export const ShootingStarsView: React.FC<ShootingStarsViewProps> = ({ allStar, players, teams, ownTid, onRun, isSimulating }) => {
+  const { state } = useGame();
+  const eventName = getLeagueEventDisplayName(state, 'shooting_stars', 'Shooting Stars');
   const contestants = allStar?.shootingStarsContestants ?? [];
   const result = allStar?.shootingStars;
   const isAnnounced = contestants.length > 0 || !!result;
@@ -100,7 +105,7 @@ export const ShootingStarsView: React.FC<ShootingStarsViewProps> = ({ allStar, p
   if (!isAnnounced) {
     return (
       <ChallengeEmptyState
-        title="Shooting Stars"
+        title={eventName}
         copy="The teams will be announced before All-Star Saturday."
         icon={<Sparkles size={32} />}
       />
@@ -112,7 +117,7 @@ export const ShootingStarsView: React.FC<ShootingStarsViewProps> = ({ allStar, p
       <div className="space-y-6">
         <div className="flex flex-col gap-4 border-b border-slate-800 pb-6 md:flex-row md:items-end md:justify-between">
           <div>
-            <p className="mb-1 text-xs font-black uppercase tracking-widest text-cyan-400">Saturday · Shooting Stars</p>
+            <p className="mb-1 text-xs font-black uppercase tracking-widest text-cyan-400">Saturday · {eventName}</p>
             <h2 className="text-3xl font-black italic tracking-tight text-white sm:text-4xl">Team Field</h2>
             <p className="mt-2 text-sm font-semibold text-slate-400">{contestants.length} participants · teams of three</p>
           </div>
@@ -181,7 +186,7 @@ export const ShootingStarsView: React.FC<ShootingStarsViewProps> = ({ allStar, p
             </div>
             <div className="min-w-0">
               <div className="mb-2 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-cyan-300">
-                <Trophy size={15} /> Shooting Stars Champion
+                <Trophy size={15} /> {eventName} Champion
               </div>
               <h2 className="truncate text-4xl font-black italic tracking-tight text-white sm:text-5xl">{winnerDisplayName}</h2>
               <p className="mt-2 truncate text-lg font-bold text-slate-400 sm:text-xl">{winner?.playerNames?.join(' · ')}</p>

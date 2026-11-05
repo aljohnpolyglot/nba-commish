@@ -8,6 +8,7 @@
  */
 
 import type { GameState, NBAPlayer, NBATeam, TransferBid, TransferBidType, TransferListing } from '../../types';
+import type { SponsorSigningPerkGrant } from '../../types/tycoon';
 import { getDisplayOverall, getDisplayPotential } from '../../utils/playerRatings';
 
 const DEFAULT_AUCTION_DAYS = 7;
@@ -52,7 +53,7 @@ export function newId(prefix: string): string {
  *  willingness-to-pay anchor. Works off K2-scale OVR + POT so Euro rosters
  *  (BBGM 30-55) get sensible gradation instead of all flooring to €50K.
  *  Calibration anchors: K2 60→€450K, 70→€2M, 75→€4.3M, 80→€9M, 85→€19M, 90→€40M, 95→€85M. */
-export function estimatePlayerValueEUR(player: NBAPlayer, currentYear: number): number {
+export function estimatePlayerValueEUR(player: NBAPlayer, currentYear: number, economyIndex = 1): number {
   const ovrK2 = getDisplayOverall(player);
   const potK2 = getDisplayPotential(player, currentYear);
   const age = player.born?.year ? currentYear - player.born.year : (player.age ?? 25);
@@ -71,7 +72,8 @@ export function estimatePlayerValueEUR(player: NBAPlayer, currentYear: number): 
   else if (age >= 30) value *= 0.75;
 
   // Snap to €50K listing step; never below the listing minimum.
-  return Math.max(50_000, Math.round(value / 50_000) * 50_000);
+  const nominalValue = value * Math.max(0.05, economyIndex);
+  return Math.max(50_000, Math.round(nominalValue / 50_000) * 50_000);
 }
 
 // ── Selectors ───────────────────────────────────────────────────────────────
@@ -125,6 +127,8 @@ export interface SubmitBidInput {
   sellerTid: number;
   bidType: TransferBidType;
   amountEUR: number;
+  signingBonusEUR?: number;
+  sponsorSigningPerk?: SponsorSigningPerkGrant;
   userInitiated?: boolean;
   currentDate: string;
   validDays?: number;
@@ -140,6 +144,8 @@ export function buildBid(input: SubmitBidInput): TransferBid {
     sellerTid: input.sellerTid,
     bidType: input.bidType,
     amountEUR: Math.max(50_000, Math.round(input.amountEUR / 50_000) * 50_000),
+    signingBonusEUR: Math.max(0, Math.round((input.signingBonusEUR ?? 0) / 50_000) * 50_000),
+    sponsorSigningPerk: input.sponsorSigningPerk,
     userInitiated: input.userInitiated === true ? true : undefined,
     receivedDate: toISO(input.currentDate),
     expiresDate: addDays(input.currentDate, days),

@@ -1,0 +1,43 @@
+Upper Bowl
+==========
+
+Detected sections: 25
+
+[east]
+212	02-upper-bowl/east/sections/212-east.svg	x=2673.00 y=971.40 w=420.50 h=370.20
+213	02-upper-bowl/east/sections/213-east.svg	x=2702.70 y=1278.70 w=389.80 h=279.80
+
+[north]
+205	02-upper-bowl/north/sections/205-north.svg	x=1215.90 y=144.50 w=339.00 h=297.20
+206	02-upper-bowl/north/sections/206-north.svg	x=1414.50 y=144.50 w=394.80 h=297.20
+207	02-upper-bowl/north/sections/207-north.svg	x=1672.40 y=144.50 w=333.60 h=297.20
+
+[north-east]
+208	02-upper-bowl/north-east/sections/208-north-east.svg	x=2005.90 y=144.70 w=317.80 h=357.70
+209	02-upper-bowl/north-east/sections/209-north-east.svg	x=2231.10 y=220.10 w=414.60 h=494.80
+210	02-upper-bowl/north-east/sections/210-north-east.svg	x=2416.90 y=400.20 w=472.90 h=491.70
+211	02-upper-bowl/north-east/sections/211-north-east.svg	x=2574.80 y=663.40 w=468.10 h=433.50
+
+[north-west]
+201	02-upper-bowl/north-west/sections/201-north-west.svg	x=455.90 y=688.40 w=261.10 h=169.30
+202	02-upper-bowl/north-west/sections/202-north-west.svg	x=437.00 y=426.20 w=369.80 h=373.10
+203	02-upper-bowl/north-west/sections/203-north-west.svg	x=577.80 y=218.40 w=412.60 h=494.70
+204	02-upper-bowl/north-west/sections/204-north-west.svg	x=899.90 y=144.70 w=316.70 h=357.40
+
+[south]
+219	02-upper-bowl/south/sections/219-south.svg	x=1671.00 y=2395.60 w=335.50 h=297.40
+220	02-upper-bowl/south/sections/220-south.svg	x=1414.60 y=2395.60 w=393.30 h=297.30
+221	02-upper-bowl/south/sections/221-south.svg	x=1218.90 y=2395.60 w=332.60 h=297.40
+
+[south-east]
+214	02-upper-bowl/south-east/sections/214-south-east.svg	x=2674.10 y=1494.30 w=418.40 h=359.40
+215	02-upper-bowl/south-east/sections/215-south-east.svg	x=2572.80 y=1736.80 w=472.80 h=437.00
+216	02-upper-bowl/south-east/sections/216-south-east.svg	x=2429.50 y=1946.10 w=460.60 h=522.00
+217	02-upper-bowl/south-east/sections/217-south-east.svg	x=2228.90 y=2144.60 w=438.20 h=473.00
+218	02-upper-bowl/south-east/sections/218-south-east.svg	x=2006.60 y=2335.50 w=318.90 h=358.00
+
+[south-west]
+222	02-upper-bowl/south-west/sections/222-south-west.svg	x=902.00 y=2333.80 w=317.10 h=359.30
+223	02-upper-bowl/south-west/sections/223-south-west.svg	x=573.80 y=2124.10 w=415.20 h=493.80
+224	02-upper-bowl/south-west/sections/224-south-west.svg	x=438.80 y=2036.00 w=368.40 h=379.10
+225	02-upper-bowl/south-west/sections/225-south-west.svg	x=458.20 y=1971.20 w=265.90 h=176.40

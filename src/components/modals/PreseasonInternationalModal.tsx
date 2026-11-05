@@ -1,37 +1,133 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { X, Globe, Calendar, Search, ChevronLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { NBATeam, NonNBATeam } from '../../types';
+import { LeagueStats, NBATeam, NonNBATeam, NBAPlayer } from '../../types';
+import { getTeamFullName } from '../../utils/teamNames';
+import { getTeamCountry } from '../../utils/teamCountry';
+import { CountryFlag } from '../shared/CountryFlag';
+import {
+  buildInternationalPreseasonRecommendations,
+  type InternationalPreseasonRecommendation,
+} from '../../services/logic/autoResolversParts/scheduleResolvers';
+import { InternationalPreseasonRecommendedSlate } from './InternationalPreseasonRecommendedSlate';
+import { buildInternationalShowcaseOpponents } from '../../services/externalLeague/internationalShowcase';
+import { getLeagueCalendarDates } from '../../services/leagueCalendar';
+import { addGameDays, toISODateString } from '../../utils/dateUtils';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
 
 interface PreseasonInternationalModalProps {
   teams: NBATeam[];
   nonNBATeams: NonNBATeam[];
+  players: NBAPlayer[];
+  seasonYear?: number;
+  leagueStats?: LeagueStats;
   onClose: () => void;
-  onConfirm: (payloads: { teamId: number; opponentId: number; date: string; city: string; country: string }[]) => void;
+  onConfirm: (payloads: {
+    teamId: number;
+    opponentId: number;
+    opponentName?: string;
+    showcasePlayerIds?: string[];
+    date: string;
+    city: string;
+    country: string;
+  }[]) => void;
 }
 
 type Step = 'LEAGUE' | 'TEAM' | 'NBA_TEAM' | 'DATE' | 'SUMMARY';
 
-export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalProps> = ({ teams, nonNBATeams, onClose, onConfirm }) => {
+interface PendingInternationalGame extends InternationalPreseasonRecommendation {
+  opponentName: string;
+  nbaTeamName: string;
+  opponentLogo?: string;
+  nbaLogo?: string;
+}
+
+const LEAGUE_LOGOS: Record<string, string> = {
+  Euroleague: 'https://r2.thesportsdb.com/images/media/league/badge/7xjtuy1554397263.png',
+  PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/Philippine_Basketball_Association_%28logo%29.svg/1280px-Philippine_Basketball_Association_%28logo%29.svg.png',
+  'B-League': 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/B.LEAGUE_Logo.svg/1280px-B.LEAGUE_Logo.svg.png',
+  'G-League': 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/NBA_G_League_logo.svg/1280px-NBA_G_League_logo.svg.png',
+  Endesa: 'https://r2.thesportsdb.com/images/media/league/badge/9i99ii1549879285.png',
+  'China CBA': 'https://upload.wikimedia.org/wikipedia/en/b/b9/CBAlogo.svg',
+  'NBL Australia': 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c9/NBL_logo.svg/1280px-NBL_logo.svg.png',
+};
+
+const LeagueIdentity: React.FC<{ name: string; logo?: string; country?: string }> = ({ name, logo, country }) => {
+  const [failed, setFailed] = useState(false);
+  if (!logo || failed) {
+    return country
+      ? <CountryFlag country={country} className="flex h-12 w-16 rounded-lg" />
+      : <Globe size={28} className="text-slate-500" />;
+  }
+  return (
+    <img
+      src={logo}
+      alt={name}
+      className="max-h-full max-w-full object-contain"
+      referrerPolicy="no-referrer"
+      onError={() => setFailed(true)}
+    />
+  );
+};
+
+export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalProps> = ({ teams, nonNBATeams, players, seasonYear, leagueStats, onClose, onConfirm }) => {
+  const resolvedSeasonYear = Number.isFinite(seasonYear) ? Number(seasonYear) : new Date().getFullYear() + 1;
+  const calendar = getLeagueCalendarDates(resolvedSeasonYear, leagueStats);
+  const preseasonStart = toISODateString(calendar.preseasonStart ?? calendar.trainingCampStart ?? addGameDays(calendar.regularSeasonStart, -14));
+  const preseasonEnd = toISODateString(calendar.preseasonEnd ?? addGameDays(calendar.regularSeasonStart, -1));
   const [step, setStep] = useState<Step>('LEAGUE');
-  const [pendingGames, setPendingGames] = useState<{ teamId: number; opponentId: number; date: string; city: string; country: string; opponentName: string; nbaTeamName: string; opponentLogo?: string; nbaLogo?: string }[]>([]);
+  const [pendingGames, setPendingGames] = useState<PendingInternationalGame[]>([]);
   
-  const [selectedLeague, setSelectedLeague] = useState<'Euroleague' | 'PBA' | 'WNBA' | 'B-League' | 'G-League' | 'Endesa' | 'China CBA' | 'NBL Australia' | null>(null);
+  const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
   const [selectedOpponent, setSelectedOpponent] = useState<NonNBATeam | null>(null);
   const [selectedNBATeamId, setSelectedNBATeamId] = useState<number>(-1);
-  const [date, setDate] = useState('2025-10-01');
+  const [date, setDate] = useState(preseasonStart);
   const [searchTerm, setSearchTerm] = useState('');
 
-  const leagues = [
-    { name: 'Euroleague', logo: 'https://r2.thesportsdb.com/images/media/league/badge/7xjtuy1554397263.png' },
-    { name: 'PBA', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/Philippine_Basketball_Association_%28logo%29.svg/1280px-Philippine_Basketball_Association_%28logo%29.svg.png' },
-    { name: 'WNBA', logo: 'https://content.sportslogos.net/logos/16/1152/full/6613__wnba-alternate-2020.png' },
-    { name: 'B-League', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/B.LEAGUE_Logo.svg/1280px-B.LEAGUE_Logo.svg.png' },
-    { name: 'G-League', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/NBA_G_League_logo.svg/1280px-NBA_G_League_logo.svg.png' },
-    { name: 'Endesa', logo: 'https://r2.thesportsdb.com/images/media/league/badge/9i99ii1549879285.png' },
-    { name: 'China CBA', logo: 'https://upload.wikimedia.org/wikipedia/en/b/b9/CBAlogo.svg' },
-    { name: 'NBL Australia', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c9/NBL_logo.svg/1280px-NBL_logo.svg.png' },
-  ];
+  const showcaseOpponents = useMemo(
+    () => buildInternationalShowcaseOpponents(nonNBATeams, players, {
+      excludedLeagues: ['WNBA'],
+    }),
+    [nonNBATeams, players],
+  );
+  const eligibleNonNBATeams = useMemo(() => showcaseOpponents.map(opponent => opponent.team), [showcaseOpponents]);
+  const getShowcaseOpponent = (tid: number) => showcaseOpponents.find(opponent => opponent.team.tid === tid);
+  const getOpponentName = (team: NonNBATeam | undefined) => (
+    team ? getShowcaseOpponent(team.tid)?.displayName || getTeamFullName(team) : ''
+  );
+  const leagues = useMemo(() => Array.from(new Set(
+    eligibleNonNBATeams
+      .map(team => String(team.league ?? '').trim())
+      .filter(Boolean),
+  )).map(name => {
+    const representative = eligibleNonNBATeams.find(team => team.league === name);
+    return {
+      name,
+      logo: LEAGUE_LOGOS[name],
+      country: getTeamCountry(representative, { nonNBATeams }),
+    };
+  }).sort((left, right) => left.name.localeCompare(right.name)), [eligibleNonNBATeams, nonNBATeams]);
+  const recommendations = useMemo(
+    () => buildInternationalPreseasonRecommendations({
+      teams,
+      nonNBATeams,
+      players,
+      seasonYear: resolvedSeasonYear,
+      leagueStats,
+    }),
+    [leagueStats, nonNBATeams, players, resolvedSeasonYear, teams],
+  );
+  const toPendingGame = (game: InternationalPreseasonRecommendation): PendingInternationalGame => {
+    const opponent = nonNBATeams.find(team => team.tid === game.opponentId);
+    const nbaTeam = teams.find(team => team.id === game.teamId);
+    return {
+      ...game,
+      opponentName: game.opponentName || getOpponentName(opponent) || 'International Club',
+      nbaTeamName: getTeamFullName(nbaTeam) || 'NBA Team',
+      opponentLogo: getResolvedTeamLogoUrl(opponent, resolvedSeasonYear),
+      nbaLogo: nbaTeam?.logoUrl,
+    };
+  };
 
   const handleClose = () => {
     onClose();
@@ -44,7 +140,7 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
   };
 
   const handleLeagueSelect = (league: string) => {
-    setSelectedLeague(league as any);
+    setSelectedLeague(league);
     setStep('TEAM');
   };
 
@@ -63,20 +159,21 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
   const handleAddGame = () => {
     if (selectedOpponent && selectedNBATeamId !== -1 && date !== '') {
       const nbaTeam = teams.find(t => t.id === selectedNBATeamId);
+      const showcaseOpponent = getShowcaseOpponent(selectedOpponent.tid);
       const newGame = {
         teamId: selectedNBATeamId,
         opponentId: selectedOpponent.tid,
+        showcasePlayerIds: showcaseOpponent?.showcasePlayerIds,
         date,
         city: selectedOpponent.region || 'International City',
-        country: selectedOpponent.league || 'International',
-        opponentName: selectedOpponent.name,
-        nbaTeamName: nbaTeam?.name || 'NBA Team',
-        opponentLogo: selectedOpponent.imgURL,
+        country: getTeamCountry(selectedOpponent, { nonNBATeams }) || 'International',
+        opponentName: showcaseOpponent?.displayName || getTeamFullName(selectedOpponent),
+        nbaTeamName: getTeamFullName(nbaTeam) || 'NBA Team',
+        opponentLogo: getResolvedTeamLogoUrl(selectedOpponent, resolvedSeasonYear),
         nbaLogo: nbaTeam?.logoUrl
       };
       setPendingGames([...pendingGames, newGame]);
       
-      // Reset for next game
       setSelectedLeague(null);
       setSelectedOpponent(null);
       setSelectedNBATeamId(-1);
@@ -87,8 +184,8 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
 
   const handleConfirmAll = () => {
     if (pendingGames.length > 0) {
-      onConfirm(pendingGames.map(({ teamId, opponentId, date, city, country }) => ({
-        teamId, opponentId, date, city, country
+      onConfirm(pendingGames.map(({ teamId, opponentId, opponentName, showcasePlayerIds, date, city, country }) => ({
+        teamId, opponentId, opponentName, showcasePlayerIds, date, city, country
       })));
       handleClose();
     }
@@ -96,18 +193,16 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
 
   const bookedOpponentIds = new Set(pendingGames.map(g => g.opponentId));
   const bookedNBATeamIds = new Set(pendingGames.map(g => g.teamId));
+  const availableLeagues = leagues.filter(league =>
+    eligibleNonNBATeams.some(team => team.league === league.name && !bookedOpponentIds.has(team.tid)),
+  );
 
-  const filteredOpponents = nonNBATeams.filter(t => {
+  const filteredOpponents = eligibleNonNBATeams.filter(t => {
     const matchesLeague = t.league === selectedLeague;
     const isNotBooked = !bookedOpponentIds.has(t.tid);
     const matchesSearch = searchTerm === '' || 
       t.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-      t.region.toLowerCase().includes(searchTerm.toLowerCase());
-    
-    if (selectedLeague === 'Euroleague') {
-      return matchesLeague && isNotBooked && matchesSearch && t.imgURL && t.imgURL.trim() !== '';
-    }
-    
+      String(t.region ?? '').toLowerCase().includes(searchTerm.toLowerCase());
     return matchesLeague && isNotBooked && matchesSearch;
   });
 
@@ -155,24 +250,28 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
                     "Commissioner, which league should we partner with for this preseason showcase?"
                   </p>
                 </div>
+                <InternationalPreseasonRecommendedSlate
+                  recommendations={recommendations}
+                  teams={teams}
+                  nonNBATeams={nonNBATeams}
+                  onUse={() => {
+                    setPendingGames(recommendations.map(toPendingGame));
+                    setStep('SUMMARY');
+                  }}
+                />
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {leagues.map(league => (
+                  {availableLeagues.map(league => (
                     <button
                       key={league.name}
                       onClick={() => handleLeagueSelect(league.name)}
                       className="flex flex-col items-center justify-center p-6 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500 rounded-2xl transition-all group"
                     >
                       <div className="w-16 h-16 mb-4 flex items-center justify-center">
-                        <img 
-                          src={league.logo} 
-                          alt={league.name} 
-                          className="max-w-full max-h-full object-contain"
-                          referrerPolicy="no-referrer"
-                        />
+                        <LeagueIdentity name={league.name} logo={league.logo} country={league.country} />
                       </div>
                       <span className="text-xl font-black text-white uppercase tracking-tight group-hover:text-emerald-400">{league.name}</span>
                       <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-2">
-                        {nonNBATeams.filter(t => t.league === league.name && !bookedOpponentIds.has(t.tid)).length} Available
+                        {eligibleNonNBATeams.filter(t => t.league === league.name && !bookedOpponentIds.has(t.tid)).length} Available
                       </span>
                     </button>
                   ))}
@@ -216,14 +315,14 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
                       className="flex items-center gap-4 p-4 bg-slate-800/50 hover:bg-slate-800 border border-slate-700 hover:border-emerald-500 rounded-2xl transition-all text-left group"
                     >
                       <div className="w-12 h-12 flex-shrink-0 bg-black/20 rounded-xl overflow-hidden flex items-center justify-center p-2">
-                        {team.imgURL ? (
-                          <img src={team.imgURL} alt={team.name} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                        {getResolvedTeamLogoUrl(team, resolvedSeasonYear) ? (
+                          <img src={getResolvedTeamLogoUrl(team, resolvedSeasonYear)} alt={team.name} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
                         ) : (
                           <Globe size={20} className="text-slate-600" />
                         )}
                       </div>
                       <div>
-                        <div className="font-black text-white uppercase tracking-tight group-hover:text-emerald-400">{team.region} {team.name}</div>
+                        <div className="font-black text-white uppercase tracking-tight group-hover:text-emerald-400">{getOpponentName(team)}</div>
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{team.abbrev} • Pop: {(team.pop || 0).toFixed(1)}M</div>
                       </div>
                     </button>
@@ -252,7 +351,7 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
                 </div>
 
                 <h4 className="text-lg font-black text-white uppercase tracking-tight">Select NBA Participant</h4>
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Playing against {selectedOpponent?.name}</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Playing against {getOpponentName(selectedOpponent ?? undefined)}</p>
                 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   {filteredNBATeams.map(team => (
@@ -269,7 +368,7 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
                         )}
                       </div>
                       <div>
-                        <div className="font-black text-white uppercase tracking-tight group-hover:text-emerald-400">{team.name}</div>
+                        <div className="font-black text-white uppercase tracking-tight group-hover:text-emerald-400">{getTeamFullName(team)}</div>
                         <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">{team.conference} Conference</div>
                       </div>
                     </button>
@@ -292,16 +391,16 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
                   <div className="flex items-center justify-center gap-6 py-6">
                     <div className="text-center">
                       <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center p-4 mb-2 border border-slate-700">
-                        <img src={selectedOpponent?.imgURL} alt={selectedOpponent?.name} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+                        <img src={getResolvedTeamLogoUrl(selectedOpponent, resolvedSeasonYear)} alt={selectedOpponent?.name} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
                       </div>
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{selectedOpponent?.name}</div>
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{getOpponentName(selectedOpponent ?? undefined)}</div>
                     </div>
                     <div className="text-2xl font-black text-slate-700 uppercase italic">VS</div>
                     <div className="text-center">
                       <div className="w-20 h-20 bg-slate-800 rounded-2xl flex items-center justify-center p-4 mb-2 border border-slate-700">
                         <img src={teams.find(t => t.id === selectedNBATeamId)?.logoUrl} alt="NBA Team" className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
                       </div>
-                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{teams.find(t => t.id === selectedNBATeamId)?.name}</div>
+                      <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{getTeamFullName(teams.find(t => t.id === selectedNBATeamId))}</div>
                     </div>
                   </div>
                 </div>
@@ -313,8 +412,8 @@ export const PreseasonInternationalModal: React.FC<PreseasonInternationalModalPr
                     <input
                       type="date"
                       value={date}
-                      min="2025-10-01"
-                      max="2025-10-20"
+                      min={preseasonStart}
+                      max={preseasonEnd}
                       onChange={(e) => setDate(e.target.value)}
                       className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-12 pr-4 py-4 text-white font-bold focus:outline-none focus:ring-2 focus:ring-emerald-500/50 transition-all"
                     />

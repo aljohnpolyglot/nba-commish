@@ -2,11 +2,10 @@ import { NBAPlayer, NBATeam } from '../../types';
 import { getInjuries } from '../injuryService';
 import { normalRandom } from './utils';
 import {
-  getPlayerInjuryProfile,
   get2KExplosiveness,
   BODY_PART_TO_INJURIES,
 } from '../../data/playerInjuryData';
-import { getRealDurability } from '../../utils/durabilityUtils';
+import { getPlayerInjuryProfileForPlayer, getRealDurability } from '../../utils/durabilityUtils';
 import { getTeamMedicalGameplayEffects } from '../staff/staffGameplayEffects';
 
 export interface PlayerInjuryEvent {
@@ -160,6 +159,15 @@ export function applyMajorInjuryStatChanges(
 
 function clamp(v: number, lo: number, hi: number) {
   return Math.max(lo, Math.min(hi, v));
+}
+
+export function resolveInjuryFrequencyFactor(value: unknown): number {
+  const factor = Number(value);
+  return Number.isFinite(factor) ? clamp(factor, 0, 10) : 1;
+}
+
+export function injuryChanceWithLeagueFactor(baseChance: number, factor: unknown): number {
+  return Math.max(0, baseChance) * resolveInjuryFrequencyFactor(factor);
 }
 
 /**
@@ -319,7 +327,7 @@ function computeBMIWear(player: NBAPlayer): number {
 const NBA_AVG_FREQ = 10;
 
 function durabilityMultiplier(player: NBAPlayer): number {
-  const profile = getPlayerInjuryProfile(player.name);
+  const profile = getPlayerInjuryProfileForPlayer(player);
   const profileMult = (() => {
     if (!profile) return null;
     const yearsPro = Math.max(1, (player.age ?? 26) - 19);
@@ -358,6 +366,7 @@ export class InjurySystem {
     players:  NBAPlayer[],
     homeTeam: NBATeam,
     awayTeam: NBATeam,
+    injuryFrequencyFactor: number = 1,
   ): PlayerInjuryEvent[] {
     const events: PlayerInjuryEvent[] = [];
     // Base rate covers bench/off-court "random" nags (practice, travel, soreness).
@@ -407,8 +416,9 @@ export class InjurySystem {
       }
 
       // ── Roll ───────────────────────────────────────────────────────────
-      if (Math.random() < injuryRate) {
-        const profile       = getPlayerInjuryProfile(player.name);
+      if (Math.random() < injuryChanceWithLeagueFactor(injuryRate, injuryFrequencyFactor)) {
+        if (getInjuries().length === 0) continue;
+        const profile       = getPlayerInjuryProfileForPlayer(player);
         const bmiLowerBoost = computeBMIWear(player);
         const healthLevel   = durabilityHealthLevel(player);
 

@@ -1,0 +1,752 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "turkish-bsl-league-file.737215234626476",
+  "competitionKey": "turkish-bsl",
+  "competitionName": "Basketbol Süper Ligi",
+  "leagueKey": "turkish-bsl",
+  "generatedAt": "2026-07-19T12:24:17.601Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "turkish-bsl-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/7/Turkish-BSL/stats/2026/Averages/Qualified/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/turkish-bsl/turkish-bsl-2026-bbgm.json",
+        "sourceHash": "3f572e3c812677b6187eaeec99e57a67b8b89e8cf33b9cec8d427c8dd4a87e25",
+        "fetchedAt": "2026-07-19T12:24:17.601Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kerem Tunceri",
+                "canonicalKey": "person:kerem-tunceri"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Solomon",
+                "canonicalKey": "person:will-solomon"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Quinton Hosley",
+                "canonicalKey": "person:quinton-hosley"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Preston Shumpert",
+                "canonicalKey": "person:preston-shumpert"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kaya Peker",
+                "canonicalKey": "person:kaya-peker"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Omer Onan",
+                "canonicalKey": "person:omer-onan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Teksut Bandirma",
+          "canonicalKey": "turkish-bsl:teksut-bandirma"
+        },
+        "won": 29,
+        "lost": 8
+      }
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Galatasaray",
+        "canonicalKey": "turkish-bsl:galatasaray"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Teksut Bandirma",
+        "canonicalKey": "turkish-bsl:teksut-bandirma"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Galatasaray",
+          "canonicalKey": "turkish-bsl:galatasaray"
+        },
+        "won": 36,
+        "lost": 4
+      }
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Galatasaray",
+        "canonicalKey": "turkish-bsl:galatasaray"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Teksut Bandirma",
+          "canonicalKey": "turkish-bsl:teksut-bandirma"
+        },
+        "won": 31,
+        "lost": 5
+      }
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Pinar Karsiyaka",
+        "canonicalKey": "turkish-bsl:pinar-karsiyaka"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Anadolu Efes Istanbul",
+        "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fenerbahce Beko",
+          "canonicalKey": "turkish-bsl:fenerbahce-beko"
+        },
+        "won": 26,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Carlos Arroyo",
+                "canonicalKey": "person:carlos-arroyo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Galatasaray",
+                "canonicalKey": "turkish-bsl:galatasaray"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Anadolu Efes Istanbul",
+        "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fenerbahce Beko",
+          "canonicalKey": "turkish-bsl:fenerbahce-beko"
+        },
+        "won": 33,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gigi Datome",
+                "canonicalKey": "person:gigi-datome"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "turkish-bsl:fenerbahce-beko"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adrien Moerman",
+                "canonicalKey": "person:adrien-moerman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Teksut Bandirma",
+                "canonicalKey": "turkish-bsl:teksut-bandirma"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Besiktas Icrypex",
+        "canonicalKey": "turkish-bsl:besiktas-icrypex"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fenerbahce Beko",
+          "canonicalKey": "turkish-bsl:fenerbahce-beko"
+        },
+        "won": 37,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Bogdanovic",
+                "canonicalKey": "person:bojan-bogdanovic"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Tofas SC",
+        "canonicalKey": "turkish-bsl:tofas-sc"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fenerbahce Beko",
+          "canonicalKey": "turkish-bsl:fenerbahce-beko"
+        },
+        "won": 36,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brad Wanamaker",
+                "canonicalKey": "person:brad-wanamaker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "turkish-bsl:fenerbahce-beko"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Anadolu Efes Istanbul",
+        "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Anadolu Efes Istanbul",
+          "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+        },
+        "won": 34,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shane Larkin",
+                "canonicalKey": "person:shane-larkin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Anadolu Efes Istanbul",
+          "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+        },
+        "won": 21,
+        "lost": 2
+      }
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Anadolu Efes Istanbul",
+        "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Anadolu Efes Istanbul",
+          "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+        },
+        "won": 37,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rodrigue Beaubois",
+                "canonicalKey": "person:rodrigue-beaubois"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Anadolu Efes Istanbul",
+        "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fenerbahce Beko",
+          "canonicalKey": "turkish-bsl:fenerbahce-beko"
+        },
+        "won": 32,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jan Vesely",
+                "canonicalKey": "person:jan-vesely"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "turkish-bsl:fenerbahce-beko"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Anadolu Efes Istanbul",
+        "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Pinar Karsiyaka",
+        "canonicalKey": "turkish-bsl:pinar-karsiyaka"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Anadolu Efes Istanbul",
+          "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+        },
+        "won": 30,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vasilije Micic",
+                "canonicalKey": "person:vasilije-micic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Anadolu Efes Istanbul",
+        "canonicalKey": "turkish-bsl:anadolu-efes-istanbul"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fenerbahce Beko",
+          "canonicalKey": "turkish-bsl:fenerbahce-beko"
+        },
+        "won": 33,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nigel Hayes-Davis",
+                "canonicalKey": "person:nigel-hayes-davis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "turkish-bsl:fenerbahce-beko"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Besiktas Icrypex",
+        "canonicalKey": "turkish-bsl:besiktas-icrypex"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fenerbahce Beko",
+          "canonicalKey": "turkish-bsl:fenerbahce-beko"
+        },
+        "won": 36,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Khem Birch",
+                "canonicalKey": "person:khem-birch"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "turkish-bsl:fenerbahce-beko"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "turkish-bsl:fenerbahce-beko"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Besiktas Icrypex",
+        "canonicalKey": "turkish-bsl:besiktas-icrypex"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fenerbahce Beko",
+          "canonicalKey": "turkish-bsl:fenerbahce-beko"
+        },
+        "won": 33,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Wade Baldwin IV",
+                "canonicalKey": "person:wade-baldwin-iv"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "turkish-bsl:fenerbahce-beko"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

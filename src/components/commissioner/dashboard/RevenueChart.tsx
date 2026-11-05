@@ -4,9 +4,10 @@ import { HistoricalStatPoint } from '../../../types';
 
 interface RevenueChartProps {
   data: HistoricalStatPoint[];
+  currencyCode?: string;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+const CustomTooltip = ({ active, payload, label, currencyCode }: any) => {
   if (active && payload && payload.length) {
     return (
       <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl shadow-2xl backdrop-blur-md">
@@ -15,7 +16,11 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           <div key={index} className="flex items-center justify-between gap-8 mb-1">
             <span className="text-xs font-bold text-slate-400">{entry.name}:</span>
             <span className="text-xs font-mono font-bold" style={{ color: entry.color }}>
-              ${entry.value.toFixed(2)}B
+              {new Intl.NumberFormat('en-US', {
+                style: 'currency',
+                currency: currencyCode ?? 'USD',
+                maximumFractionDigits: 2,
+              }).format(entry.value)}B
             </span>
           </div>
         ))}
@@ -25,23 +30,23 @@ const CustomTooltip = ({ active, payload, label }: any) => {
   return null;
 };
 
-export const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
-  const [showProfit, setShowProfit] = useState(false);
+export const RevenueChart: React.FC<RevenueChartProps> = ({ data, currencyCode = 'USD' }) => {
+  const [metric, setMetric] = useState<'revenue' | 'leagueReserve' | 'availableBudget'>('revenue');
 
   // Convert raw million-scale values → billions so Recharts sees small, readable numbers
   const chartData = useMemo(() =>
     data.map(d => ({
       ...d,
       revenue: d.revenue / 1000,
-      seasonRevenue: (d as any).seasonRevenue != null ? (d as any).seasonRevenue / 1000 : 0,
+      leagueReserve: d.leagueReserve != null ? d.leagueReserve / 1000 : null,
+      availableBudget: d.availableBudget != null ? d.availableBudget / 1000 : null,
     })),
     [data]
   );
 
   // Zoom Y domain to the actual data range with a small 10% padding
   const yDomain = useMemo(() => {
-    const key = showProfit ? 'seasonRevenue' : 'revenue';
-    const values = chartData.map(d => (d as any)[key]).filter(v => v != null && isFinite(v));
+    const values = chartData.map(d => d[metric]).filter((value): value is number => value != null && isFinite(value));
     if (values.length === 0) return ['auto', 'auto'] as const;
     const min = Math.min(...values);
     const max = Math.max(...values);
@@ -50,24 +55,36 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
       parseFloat((min - pad).toFixed(2)),
       parseFloat((max + pad).toFixed(2)),
     ] as [number, number];
-  }, [chartData, showProfit]);
+  }, [chartData, metric]);
+
+  const metricLabel = metric === 'revenue'
+    ? 'Annual Revenue'
+    : metric === 'leagueReserve'
+      ? 'League Reserve'
+      : 'Available Budget';
 
   return (
     <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm h-[400px] flex flex-col">
         <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-bold text-white tracking-tight">Financial Performance</h3>
-            <div className="flex items-center gap-2 bg-slate-900 p-1 rounded-xl border border-slate-800">
+            <h3 className="text-lg font-bold text-white tracking-tight">League Financial History</h3>
+            <div className="flex flex-wrap items-center gap-1 bg-slate-900 p-1 rounded-xl border border-slate-800">
                 <button
-                    onClick={() => setShowProfit(false)}
-                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${!showProfit ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                    onClick={() => setMetric('revenue')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${metric === 'revenue' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Annual Est.
+                    Revenue
                 </button>
                 <button
-                    onClick={() => setShowProfit(true)}
-                    className={`px-4 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${showProfit ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                    onClick={() => setMetric('leagueReserve')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${metric === 'leagueReserve' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
                 >
-                    Season Est.
+                    Reserve
+                </button>
+                <button
+                    onClick={() => setMetric('availableBudget')}
+                    className={`px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${metric === 'availableBudget' ? 'bg-emerald-600 text-white' : 'text-slate-500 hover:text-slate-300'}`}
+                >
+                    Budget
                 </button>
             </div>
         </div>
@@ -88,16 +105,20 @@ export const RevenueChart: React.FC<RevenueChartProps> = ({ data }) => {
                   tickLine={false}
                   axisLine={false}
                   tick={{ fontWeight: 'bold' }}
-                  tickFormatter={(v) => `$${v.toFixed(1)}B`}
+                  tickFormatter={(value) => `${new Intl.NumberFormat('en-US', {
+                    style: 'currency',
+                    currency: currencyCode,
+                    maximumFractionDigits: 1,
+                  }).format(value)}B`}
                   domain={yDomain}
                   tickCount={5}
                   width={55}
                 />
-                <Tooltip content={<CustomTooltip />} />
+                <Tooltip content={<CustomTooltip currencyCode={currencyCode} />} />
                 <Area
-                    name={showProfit ? "Season Est." : "Annual Est."}
+                    name={metricLabel}
                     type="monotone"
-                    dataKey={showProfit ? "seasonRevenue" : "revenue"}
+                    dataKey={metric}
                     stroke="#10b981"
                     strokeWidth={3}
                     fillOpacity={1}

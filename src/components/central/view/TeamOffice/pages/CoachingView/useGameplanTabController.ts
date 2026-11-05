@@ -12,8 +12,11 @@ import { resolveRotationPlan } from '../../../../../../services/simulation/rotat
 import { buildLeagueBaseKnobs } from '../../../../../../services/simulation/GameSimulator/engineLeagueKnobs';
 import type { NBAPlayer } from '../../../../../../types';
 import { effectiveRecord } from '../../../../../../utils/salaryUtils';
-import { getGameDateParts } from '../../../../../../utils/dateUtils';
+import { getTwoWayRosterLimit } from '../../../../../../utils/rosterLimits';
+import { isTwoWayContract } from '../../../../../../utils/contractTypes';
+import { areWnbaDevelopmentalContractsEnabled } from '../../../../../../services/wnba/developmentalContracts';
 import { resolveAnyTeam, isOnRoster } from '../../../../../../utils/teamLookup';
+import { isLeaguePostseasonWindow } from '../../../../../../services/leagueCalendar';
 import {
   buildBenchOrder,
   buildIdealMinuteOverrides,
@@ -23,11 +26,12 @@ import {
   isInjured,
 } from './gameplanTabShared';
 import { useGameplanDrag } from './useGameplanDrag';
+import { getPlayersOnCourt } from '../../../../../../services/simulation/courtSize';
 
 export interface GameplanTabController {
   team: any;
   state: ReturnType<typeof useGame>['state']; canEdit: boolean; isCommissioner: boolean;
-  currentYear: number; targetMinutes: number; maxPlayerMinutes: number;
+  currentYear: number; playersOnCourt: number; targetMinutes: number; maxPlayerMinutes: number;
   starters: NBAPlayer[]; rotationBench: NBAPlayer[]; minuteOverrides: Record<string, number>;
   selectedId: string | null; totalMinutes: number; remaining: number;
   headerMinutesVisible: boolean; headerMinutesRef: React.RefObject<HTMLDivElement | null>;
@@ -48,16 +52,17 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
   const currentYear = state.leagueStats?.year || 2026;
   const defaultQuarterLength = isEuroClubTeamId(teamId) ? 10 : 12;
   const gameLengthMinutes = (state.leagueStats?.quarterLength ?? defaultQuarterLength) * (state.leagueStats?.numQuarters ?? 4);
-  const targetMinutes = gameLengthMinutes * 5;
+  const playersOnCourt = getPlayersOnCourt(state.leagueStats);
+  const targetMinutes = gameLengthMinutes * playersOnCourt;
   const maxPlayerMinutes = gameLengthMinutes;
   const canEdit = state.gameMode !== 'gm' || teamId === state.userTeamId;
   const isCommissioner = state.gameMode !== 'gm';
+  const twoWayContractsEnabled = teamId >= 0 && teamId < 100 && getTwoWayRosterLimit(state.leagueStats as any) > 0;
 
   const isPlayoffSeason = useMemo(() => {
     if (!state.date) return false;
-    const { month } = getGameDateParts(state.date);
-    return month >= 4 && month <= 6;
-  }, [state.date]);
+    return isLeaguePostseasonWindow(state.date, state.leagueStats);
+  }, [state.date, state.leagueStats]);
 
   const nextMatchup = useMemo(() => {
     if (!state.schedule || !state.date) return null;
@@ -136,8 +141,12 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
       return { rotation: [], baseMinutes: [], injuredPlayers: [], benchPool: [], twoWayIneligible: [] };
     }
     const roster = state.players.filter(p => p.tid === teamId && isOnRoster(p));
-    const playoffIneligible = isPlayoffSeason ? roster.filter(p => (p as any).twoWay) : [];
-    const eligibleRoster = isPlayoffSeason ? roster.filter(p => !(p as any).twoWay) : roster;
+    const isActiveTwoWay = (player: NBAPlayer) => twoWayContractsEnabled && isTwoWayContract(player, state.leagueStats);
+    const secondaryContractsPlayoffIneligible = isPlayoffSeason
+      && twoWayContractsEnabled
+      && !areWnbaDevelopmentalContractsEnabled(state.leagueStats);
+    const playoffIneligible = secondaryContractsPlayoffIneligible ? roster.filter(isActiveTwoWay) : [];
+    const eligibleRoster = secondaryContractsPlayoffIneligible ? roster.filter(p => !isActiveTwoWay(p)) : roster;
     const injured = eligibleRoster.filter(p => isInjured(p, ptiLevel));
     const rec = effectiveRecord(team, currentYear);
     const confTeams = state.teams
@@ -156,6 +165,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
       currentYear,
       {
         ...(isPbaTeam ? { ...baseKnobs, ...KNOBS_PBA } : baseKnobs),
+        playersOnCourt,
         conferenceRank: confRank,
         gbFromLeader: gb,
         gamesRemaining,
@@ -168,7 +178,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
     );
     const inRotationIds = new Set(resolvedPlan.rotation.map(p => p.internalId));
     return {
-      rotation: resolvedPlan.rotation.filter(p => !(p as any).twoWay || !isPlayoffSeason),
+      rotation: resolvedPlan.rotation.filter(p => !isPlayoffSeason || !isActiveTwoWay(p)),
       baseMinutes: resolvedPlan.minuteTargets,
       injuredPlayers: injured,
       benchPool: eligibleRoster.filter(p => !inRotationIds.has(p.internalId) && !isInjured(p, ptiLevel)),
@@ -184,6 +194,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
     teamId,
     currentYear,
     isPlayoffSeason,
+    twoWayContractsEnabled,
     ptiLevel,
     defaultQuarterLength,
   ]);
@@ -199,11 +210,13 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
   const [minuteOverrides, setMinuteOverrides] = useState<Record<string, number>>({});
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const seededFor = useRef('');
+  const persistNextEdit = useRef(false);
 
   useEffect(() => {
-    const key = rotation.map(p => p.internalId).join('|');
+    const key = `${playersOnCourt}:${rotation.map(p => p.internalId).join('|')}`;
     if (!key || key === seededFor.current) return;
     seededFor.current = key;
+    persistNextEdit.current = false;
     const saved = getGameplan(teamId);
     const ideal = !saved ? getIdealRotation(teamId) : null;
     const starters = buildStarterOrder({
@@ -217,6 +230,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
       healthyRoster,
       healthyIds,
       forceSort: false,
+      playersOnCourt,
     });
     setStarterOrder(starters);
     setBenchOrder(buildBenchOrder(saved?.benchOrder, starters, rotation, onTeamIds));
@@ -242,22 +256,20 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
     healthyIds,
     maxPlayerMinutes,
     targetMinutes,
+    playersOnCourt,
   ]);
 
-  const firstRender = useRef(true);
   useEffect(() => {
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
-    if (!canEdit || starterOrder.length !== 5) return;
+    if (!persistNextEdit.current) return;
+    persistNextEdit.current = false;
+    if (!canEdit || starterOrder.length !== playersOnCourt) return;
     const plan: Gameplan = {
       starterIds: starterOrder,
       benchOrder,
       minuteOverrides: Object.fromEntries(Object.entries(minuteOverrides).filter(([, value]) => value > 0)),
     };
     saveGameplan(teamId, plan);
-  }, [starterOrder, benchOrder, minuteOverrides, canEdit, teamId]);
+  }, [starterOrder, benchOrder, minuteOverrides, canEdit, teamId, playersOnCourt]);
 
   const playersById = useMemo(() => new Map(state.players.map(player => [player.internalId, player])), [state.players]);
   const starters = useMemo(
@@ -301,6 +313,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
     const benchSourceIndex = benchIds.indexOf(sourceId);
     const benchTargetIndex = benchIds.indexOf(targetId);
     if (starterSourceIndex >= 0 && starterTargetIndex >= 0) {
+      persistNextEdit.current = true;
       setStarterOrder(prev => {
         const next = [...prev];
         [next[starterSourceIndex], next[starterTargetIndex]] = [next[starterTargetIndex], next[starterSourceIndex]];
@@ -309,12 +322,14 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
       return;
     }
     if (benchSourceIndex >= 0 && benchTargetIndex >= 0) {
+      persistNextEdit.current = true;
       const next = [...benchIds];
       [next[benchSourceIndex], next[benchTargetIndex]] = [next[benchTargetIndex], next[benchSourceIndex]];
       setBenchOrder(next);
       return;
     }
     if (benchSourceIndex >= 0 && starterTargetIndex >= 0) {
+      persistNextEdit.current = true;
       const displaced = starterOrder[starterTargetIndex];
       setStarterOrder(prev => {
         const next = [...prev];
@@ -327,6 +342,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
       return;
     }
     if (starterSourceIndex >= 0 && benchTargetIndex >= 0) {
+      persistNextEdit.current = true;
       const displaced = benchIds[benchTargetIndex];
       setStarterOrder(prev => {
         const next = [...prev];
@@ -364,6 +380,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
 
   const setMins = (id: string, value: number) => {
     if (!canEdit) return;
+    persistNextEdit.current = true;
     setMinuteOverrides(prev => {
       const clamped = Math.max(0, Math.min(maxPlayerMinutes, value));
       const current = prev[id] ?? 0;
@@ -423,6 +440,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
       healthyRoster,
       healthyIds,
       forceSort,
+      playersOnCourt,
     });
     setStarterOrder(starters);
     setBenchOrder(rotation.map(player => player.internalId).filter(id => !new Set(starters).has(id)));
@@ -440,6 +458,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
 
   const resetToAuto = () => {
     if (!canEdit) return;
+    persistNextEdit.current = false;
     clearGameplan(teamId);
     seededFor.current = '';
     seedAutoState(true);
@@ -451,7 +470,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
     const currentTotal = entries.reduce((a, [, value]) => a + value, 0);
     if (currentTotal === targetMinutes) return;
     if (currentTotal <= 0) {
-      const roster = [...starters, ...rotationBench].slice(0, 10);
+      const roster = [...starters, ...rotationBench].slice(0, playersOnCourt + 5);
       if (roster.length === 0) return;
       const per = Math.floor(targetMinutes / roster.length);
       const next = Object.fromEntries(roster.map(player => [player.internalId, per]));
@@ -460,6 +479,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
         next[roster[i].internalId] += 1;
         residual -= 1;
       }
+      persistNextEdit.current = true;
       setMinuteOverrides(next);
       return;
     }
@@ -477,6 +497,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
       next[key] = nextValue;
       diff -= step;
     }
+    persistNextEdit.current = true;
     setMinuteOverrides(next);
   };
 
@@ -486,6 +507,7 @@ export function useGameplanTabController(teamId: number): GameplanTabController 
     canEdit,
     isCommissioner,
     currentYear,
+    playersOnCourt,
     targetMinutes,
     maxPlayerMinutes,
     starters,

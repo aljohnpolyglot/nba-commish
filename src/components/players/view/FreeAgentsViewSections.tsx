@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'motion/react';
 import { ArrowUpDown, Briefcase, ChevronDown, Globe, Hourglass, PlayCircle, Search, Trophy, User, UserX, Users } from 'lucide-react';
 import { formatCurrencyWithCode } from '../../../utils/helpers';
 import { FreeAgentCard } from './FreeAgentCard';
+import { getTeamFullName } from '../../../utils/teamNames';
 
 const poolIcons = { Globe, Briefcase, Trophy };
 
@@ -11,8 +12,7 @@ export const FreeAgentsOverlays: React.FC<{
   setOffseasonBlockOpen: (open: boolean) => void;
   showFaHeadsUp: boolean;
   dismissFaHeadsUp: () => void;
-  moratoriumEndLabel: string;
-}> = ({ offseasonBlockOpen, setOffseasonBlockOpen, showFaHeadsUp, dismissFaHeadsUp, moratoriumEndLabel }) => (
+}> = ({ offseasonBlockOpen, setOffseasonBlockOpen, showFaHeadsUp, dismissFaHeadsUp }) => (
   <AnimatePresence>
     {offseasonBlockOpen && (
       <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
@@ -21,7 +21,7 @@ export const FreeAgentsOverlays: React.FC<{
           <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]"><h2 className="text-lg font-black uppercase tracking-tight text-white">Free Agency Flow</h2></div>
           <div className="p-5 space-y-4">
             <p className="text-sm text-slate-300 leading-relaxed">Calendar sim is paused during offseason free agency so bid markets, RFA decisions, and phase changes resolve in order.</p>
-            <p className="text-sm text-slate-500 leading-relaxed">Use the <span className="font-black text-amber-300">Free Agency Day bar</span> at the bottom to advance the market.</p>
+            <p className="text-sm text-slate-500 leading-relaxed">Use <span className="font-black text-amber-300">Sim Free Agency</span> to advance one day and review that day&apos;s decisions.</p>
             <button onClick={() => setOffseasonBlockOpen(false)} className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors">Got it</button>
           </div>
         </motion.div>
@@ -33,9 +33,9 @@ export const FreeAgentsOverlays: React.FC<{
         <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 12 }} className="relative w-full max-w-md rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl overflow-hidden">
           <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]"><h2 className="text-lg font-black uppercase tracking-tight text-white">Free Agency Has Opened</h2></div>
           <div className="p-5 space-y-4">
-            <p className="text-sm text-slate-300 leading-relaxed">July 1 is when teams can start talking money with the players who are already free agents. Those players are in <span className="font-black text-white">Available</span>.</p>
+            <p className="text-sm text-slate-300 leading-relaxed">When free agency opens, teams can start talking money with the players who are already free agents. Those players are in <span className="font-black text-white">Available</span>.</p>
             <p className="text-sm text-slate-300 leading-relaxed"><span className="font-black text-white">Upcoming</span> is a watchlist. Those players are still attached to a team, so they are not on the open market yet. They may re-sign, pick up an option, have a team option decided, or become free agents later.</p>
-            <p className="text-sm text-slate-300 leading-relaxed">During the first few days, deals are mostly being negotiated. Use the top PlayButton dropdown and click <span className="font-black text-amber-300">Through moratorium</span> to jump to {moratoriumEndLabel}, when signings and market decisions start landing.</p>
+            <p className="text-sm text-slate-300 leading-relaxed">Contact agents, submit offers, then use <span className="font-black text-amber-300">Sim Free Agency</span> to receive player decisions.</p>
             <button onClick={dismissFaHeadsUp} className="w-full rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors">Got it</button>
           </div>
         </motion.div>
@@ -46,22 +46,22 @@ export const FreeAgentsOverlays: React.FC<{
 
 const FreeAgentsRosterBadges: React.FC<{ userRosterSlots: any; currencyCode: string }> = ({ userRosterSlots, currencyCode }) => (
   <>
-    {userRosterSlots.isTrainingCamp && <div className="flex items-center gap-2"><span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${userRosterSlots.totalCount >= userRosterSlots.maxStandard ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' : 'bg-sky-500/10 border-sky-500/30 text-sky-300'}`}>Camp {userRosterSlots.totalCount}/{userRosterSlots.maxStandard}</span></div>}
+    {userRosterSlots.isTrainingCamp && <div className="flex items-center gap-2"><span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${userRosterSlots.totalCount >= userRosterSlots.maxStandard ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' : 'bg-sky-500/10 border-sky-500/30 text-sky-300'}`}>Camp {userRosterSlots.totalCount}/{userRosterSlots.maxStandard} · {Math.max(0, userRosterSlots.maxStandard - userRosterSlots.totalCount)} open</span></div>}
     <div className="flex items-center gap-2"><span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${userRosterSlots.guaranteedCount >= userRosterSlots.maxGuaranteed ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'}`}>Guaranteed {userRosterSlots.guaranteedCount}/{userRosterSlots.maxGuaranteed}</span></div>
-    <div className="flex items-center gap-2"><span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${userRosterSlots.twoWayLeft === 0 ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' : 'bg-violet-500/10 border-violet-500/30 text-violet-300'}`}>Two-Way {userRosterSlots.twoWayCount}/{userRosterSlots.maxTwoWay}</span></div>
+    {userRosterSlots.twoWayEnabled && <div className="flex items-center gap-2"><span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${userRosterSlots.twoWayLeft === 0 ? 'bg-rose-500/10 border-rose-500/30 text-rose-300' : 'bg-violet-500/10 border-violet-500/30 text-violet-300'}`}>{userRosterSlots.secondaryContractLabel} {userRosterSlots.twoWayCount}/{userRosterSlots.maxTwoWay}</span></div>}
     {userRosterSlots.ngCount > 0 && <div className="flex items-center gap-2"><span className="text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border bg-amber-500/10 border-amber-500/30 text-amber-300">{userRosterSlots.ngCount} Non-Guaranteed</span></div>}
     <div className="flex items-center gap-2"><span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${userRosterSlots.capSpaceUSD >= 0 ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-slate-700/30 border-slate-600/40 text-slate-400'}`}>{userRosterSlots.capSpaceUSD >= 0 ? `Cap Space ${formatCurrencyWithCode(userRosterSlots.capSpaceUSD, currencyCode, false)}` : `Over Cap ${formatCurrencyWithCode(-Math.abs(userRosterSlots.capSpaceUSD), currencyCode, false)}`}</span></div>
-    <div className="flex items-center gap-2"><span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${userRosterSlots.mleAvailable > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-slate-700/30 border-slate-600/40 text-slate-500'}`}>MLE {userRosterSlots.mleAvailable > 0 ? formatCurrencyWithCode(userRosterSlots.mleAvailable, currencyCode, false) : 'N/A'}</span></div>
+    {userRosterSlots.mleEnabled && <div className="flex items-center gap-2"><span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md border ${userRosterSlots.mleAvailable > 0 ? 'bg-amber-500/10 border-amber-500/30 text-amber-300' : 'bg-slate-700/30 border-slate-600/40 text-slate-500'}`}>MLE {userRosterSlots.mleAvailable > 0 ? formatCurrencyWithCode(userRosterSlots.mleAvailable, currencyCode, false) : 'N/A'}</span></div>}
   </>
 );
 
-export const FreeAgentsHeader: React.FC<any> = ({ nonNbaIsolated, viewMode, setViewMode, isFreeAgencySeason, handleSimDayClick, isProcessing, isFictional, nbaFreeAgents, internationalPlayers, freeAgentsCount, userRosterSlots, currencyCode }) => (
+export const FreeAgentsHeader: React.FC<any> = ({ euroIsolated, nonNbaIsolated, viewMode, setViewMode, isFreeAgencySeason, handleSimDayClick, isProcessing, isFictional, nbaFreeAgents, internationalPlayers, freeAgentsCount, userRosterSlots, currencyCode }) => (
   <div className="space-y-3 sm:space-y-4">
     <div className="flex items-center gap-3 sm:gap-4">
       <div className="w-10 h-10 sm:w-16 sm:h-16 bg-rose-600/20 rounded-xl sm:rounded-2xl flex items-center justify-center border border-rose-500/30 flex-shrink-0"><UserX size={20} className="text-rose-400 sm:hidden" /><UserX size={32} className="text-rose-400 hidden sm:block" /></div>
       <div className="flex-1 min-w-0">
-        <h1 className="text-lg sm:text-3xl font-black text-white uppercase tracking-tight leading-tight">{nonNbaIsolated ? 'Free Agents' : viewMode === 'upcoming' ? 'Upcoming Free Agents' : 'Free Agent Market'}</h1>
-        <p className="hidden sm:block text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 font-medium">{nonNbaIsolated ? 'Browse unattached players available to sign.' : viewMode === 'upcoming' ? 'Players on the last year of their deal — re-sign before they hit the market.' : 'Browse and interact with available players.'}</p>
+        <h1 className="text-lg sm:text-3xl font-black text-white uppercase tracking-tight leading-tight">{euroIsolated ? 'Signing Market' : nonNbaIsolated ? 'Free Agents' : viewMode === 'upcoming' ? 'Upcoming Free Agents' : 'Free Agent Market'}</h1>
+        <p className="hidden sm:block text-xs sm:text-sm text-slate-500 mt-0.5 sm:mt-1 font-medium">{euroIsolated ? 'Free agents and unsigned players available to sign.' : nonNbaIsolated ? 'Browse unattached players available to sign.' : viewMode === 'upcoming' ? 'Players on the last year of their deal — re-sign before they hit the market.' : 'Browse and interact with available players.'}</p>
       </div>
       {!nonNbaIsolated && <div className="hidden sm:flex items-center gap-3 shrink-0">
         <div className="flex items-center gap-1 bg-slate-900 border border-slate-800 rounded-xl p-1">
@@ -77,7 +77,7 @@ export const FreeAgentsHeader: React.FC<any> = ({ nonNbaIsolated, viewMode, setV
     </div>}
     {!nonNbaIsolated && isFreeAgencySeason && <button onClick={handleSimDayClick} disabled={isProcessing} className="sm:hidden w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl text-sm font-black uppercase tracking-widest bg-gradient-to-r from-rose-600 to-rose-500 hover:from-rose-500 hover:to-rose-400 disabled:opacity-50 text-white transition-all shadow-lg"><PlayCircle size={16} />Simulate Day</button>}
     <div className="flex flex-wrap items-center gap-x-3 gap-y-2 sm:gap-6 text-[11px] sm:text-sm">
-      {!nonNbaIsolated && <><div className="flex items-center gap-2"><div className="w-2 h-2 bg-indigo-500 rounded-full" /><span className="text-slate-400 font-medium">{nbaFreeAgents} {isFictional ? 'Free Agents' : 'NBA Free Agents'}</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 bg-amber-500 rounded-full" /><span className="text-slate-400 font-medium">{internationalPlayers} International</span></div></>}
+      {!nonNbaIsolated && <><div className="flex items-center gap-2"><div className="w-2 h-2 bg-indigo-500 rounded-full" /><span className="text-slate-400 font-medium">{nbaFreeAgents} Free Agents</span></div><div className="flex items-center gap-2"><div className="w-2 h-2 bg-amber-500 rounded-full" /><span className="text-slate-400 font-medium">{internationalPlayers} International</span></div></>}
       <div className="flex items-center gap-2"><div className="w-2 h-2 bg-emerald-500 rounded-full" /><span className="text-slate-400 font-medium">{freeAgentsCount} Total Available</span></div>
       {!nonNbaIsolated && userRosterSlots && <FreeAgentsRosterBadges userRosterSlots={userRosterSlots} currencyCode={currencyCode} />}
     </div>
@@ -105,19 +105,19 @@ export const FreeAgentsFilters: React.FC<any> = (props) => {
             <AnimatePresence>{props.isCountryDropdownOpen && <><div className="fixed inset-0 z-40" onClick={() => props.setIsCountryDropdownOpen(false)} /><motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} className="absolute z-50 mt-2 left-0 w-48 bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl overflow-hidden max-h-60 overflow-y-auto custom-scrollbar"><button onClick={() => { props.setSelectedCountry('All'); props.setIsCountryDropdownOpen(false); }} className={`w-full text-left px-4 py-2.5 text-xs hover:bg-slate-800 transition-colors ${props.selectedCountry === 'All' ? 'bg-rose-500/10 text-rose-400' : 'text-slate-300'}`}>All Countries</button>{props.allCountries.map((country: string) => <button key={country} onClick={() => { props.setSelectedCountry(country); props.setIsCountryDropdownOpen(false); }} className={`w-full text-left px-4 py-2.5 text-xs hover:bg-slate-800 transition-colors ${props.selectedCountry === country ? 'bg-rose-500/10 text-rose-400' : 'text-slate-300'}`}>{country}</button>)}</motion.div></>}</AnimatePresence>
           </div>
           {props.viewMode === 'upcoming' && (props.selectedPool === 'all' || props.selectedPool === 'nba') && <select value={props.upcomingTeamFilter === 'all' ? 'all' : String(props.upcomingTeamFilter)} onChange={(e) => props.setUpcomingTeamFilter(e.target.value === 'all' ? 'all' : parseInt(e.target.value))} className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-amber-500 transition-colors font-bold uppercase tracking-tight max-w-[220px]">{userTeam && <option value={String(userTeam.id)}>Your Team — {userTeam.name}</option>}<option value="all">All Players</option>{sortedTeams.filter((team: any) => team.id !== userTid).map((team: any) => <option key={team.id} value={String(team.id)}>{team.name}</option>)}</select>}
-          {props.leagueTeams.length > 0 && <select value={props.selectedTeamId ?? ''} onChange={(e) => props.setSelectedTeamId(e.target.value ? parseInt(e.target.value) : null)} className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-rose-500 transition-colors font-bold uppercase tracking-tight max-w-[200px]"><option value="">All Teams</option>{props.leagueTeams.map((team: any) => { const fullName = team.region ? `${team.region} ${team.name}`.trim() : team.name; return <option key={team.tid} value={team.tid}>{fullName}</option>; })}</select>}
+          {props.leagueTeams.length > 0 && <select value={props.selectedTeamId ?? ''} onChange={(e) => props.setSelectedTeamId(e.target.value ? parseInt(e.target.value) : null)} className="bg-slate-900 border border-slate-800 text-slate-300 text-xs py-2 px-3 rounded-xl focus:outline-none focus:border-rose-500 transition-colors font-bold uppercase tracking-tight max-w-[200px]"><option value="">All Teams</option>{props.leagueTeams.map((team: any) => <option key={team.tid} value={team.tid}>{getTeamFullName(team)}</option>)}</select>}
         </div>
       </div>
     </div>
   );
 };
 
-export const FreeAgentsResults: React.FC<any> = ({ filteredPlayers, visiblePlayers, nonNBATeams, onClick, onViewOffers, itemsPerPage, setItemsPerPage, page, setPage, totalPages }) => (
+export const FreeAgentsResults: React.FC<any> = ({ filteredPlayers, visiblePlayers, nonNBATeams, onClick, itemsPerPage, setItemsPerPage, page, setPage, totalPages }) => (
   filteredPlayers.length === 0 ? (
     <div className="flex flex-col items-center justify-center py-20 text-slate-600 bg-slate-900/10 rounded-[3rem] border border-dashed border-slate-800"><User size={64} className="mb-6 opacity-10" /><p className="font-black uppercase tracking-[0.3em] text-sm">No Free Agents Found</p><p className="text-xs font-medium mt-3 text-slate-500 max-w-xs text-center leading-relaxed">Try adjusting your search or filters</p></div>
   ) : (
     <>
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">{visiblePlayers.map((player: any) => <FreeAgentCard key={player.internalId} player={player} nonNBATeams={nonNBATeams} onClick={onClick} onViewOffers={onViewOffers} />)}</div>
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">{visiblePlayers.map((player: any) => <FreeAgentCard key={player.internalId} player={player} nonNBATeams={nonNBATeams} onClick={onClick} />)}</div>
       <div className="flex items-center justify-between gap-2 sm:gap-4 pt-4 mt-2 border-t border-slate-800">
         <div className="flex items-center gap-2"><span className="text-[10px] uppercase tracking-widest text-slate-500 font-bold hidden sm:inline-block">Show</span><select className="bg-slate-900 border border-slate-800 text-white text-xs font-bold rounded-md px-2 py-1 outline-none appearance-none text-center" value={itemsPerPage} onChange={(e) => { setItemsPerPage(Number(e.target.value)); setPage(1); }}><option value={25}>25</option><option value={50}>50</option><option value={100}>100</option></select></div>
         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center flex-1">Page {page} <span className="text-slate-600">of</span> {totalPages}<span className="hidden sm:inline"> • {filteredPlayers.length} Players</span></div>

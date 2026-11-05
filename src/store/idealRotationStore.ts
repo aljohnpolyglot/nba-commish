@@ -14,7 +14,7 @@
  */
 
 export interface IdealRotation {
-  /** internalIds of the 5 starters in position order (PG→SG→SF→PF→C). */
+  /** internalIds of the configured starting lineup. */
   starterIds: string[];
   /** internalId → minutes per game (in a perfect, injury-free game). */
   minutes: Record<string, number>;
@@ -106,7 +106,7 @@ export function clearIdealRotation(teamId: number) {
  *     absorb more of the vacated time
  *   - New roster additions land at 0 unless the caller assigns them
  *
- * The total is NOT renormalized to 240 here — leave that to the UI's auto-
+ * The total is NOT renormalized to the team-minute budget here — leave that to the UI's auto-
  * distribute pass or the sim's own normalization.
  */
 export function reconcileIdealMinutes(
@@ -162,7 +162,7 @@ export function reconcileIdealMinutes(
       orphanedMinutes -= taken;
     }
     // Any leftover (everyone hit 48) is simply dropped — UI will show the
-    // team under 240 and the Auto-Distribute button can reshape it.
+    // team under its configured budget and the Auto-Distribute button can reshape it.
   }
   // Ensure every current roster id has a key (even if 0) so UI can render.
   for (const id of currentRosterIds) {
@@ -181,15 +181,16 @@ export function reconcileStarters(
   storedStarters: string[],
   currentRosterIds: string[],
   fallbackOrder: string[],
+  playersOnCourt: number = 5,
 ): string[] {
   const rosterSet = new Set(currentRosterIds);
   const kept = storedStarters.filter(id => rosterSet.has(id));
   const keptSet = new Set(kept);
   for (const id of fallbackOrder) {
-    if (kept.length >= 5) break;
+    if (kept.length >= playersOnCourt) break;
     if (keptSet.has(id) || !rosterSet.has(id)) continue;
     kept.push(id);
     keptSet.add(id);
   }
-  return kept.slice(0, 5);
+  return kept.slice(0, playersOnCourt);
 }

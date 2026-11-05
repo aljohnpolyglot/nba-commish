@@ -1,27 +1,33 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { NBAPlayer, NBATeam, NonNBATeam } from '../../../types';
-import { getCountryCode } from '../../../utils/helpers';
-import { getPlayerImage } from './bioCache';
+import { getPlayerImage } from '../../../utils/playerImage';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { CountryFlag } from '../../shared/CountryFlag';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
 
 interface PlayerSearchCardProps {
-  player: NBAPlayer & { displayOvr: number; calculatedAge: number; extractedCountry: string };
+  player: NBAPlayer & { displayOvr: number; calculatedAge: number; extractedCountry: string; extractedCountries?: string[] };
   teams: NBATeam[];
   nonNBATeams: NonNBATeam[];
   onClick: (player: NBAPlayer) => void;
   onTeamClick?: (teamId: number) => void;
+  season: number;
 }
 
-export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, teams, nonNBATeams, onClick, onTeamClick }) => {
+export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, teams, nonNBATeams, onClick, onTeamClick, season }) => {
   const team = player.tid >= 0 ? resolveAnyTeam(player.tid, teams, nonNBATeams) : null;
+  const teamLogo = team ? getResolvedTeamLogoUrl(team, season) : undefined;
 
   let teamName = 'Free Agent';
   if (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') {
     teamName = 'Draft Prospect';
+  } else if (player.status === 'G-League' && !team) {
+    teamName = 'NBA G League Player Pool';
   } else if (team) {
-    teamName = team.name;
+    teamName = getTeamFullName(team);
   }
 
   const isInjured = player.injury && player.injury.type !== 'Healthy' && player.injury.gamesRemaining > 0;
@@ -32,7 +38,9 @@ export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, team
   if (isInjured) {
     statusText = `OUT - ${player.injury.type}`;
   } else if (isSuspended) {
-    statusText = 'OUT - SUSPENDED';
+    statusText = /red card/i.test(player.suspension?.reason ?? '')
+      ? 'Suspended - Red Card'
+      : 'OUT - SUSPENDED';
   }
 
   return (
@@ -51,8 +59,11 @@ export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, team
           <div className={`transition-all duration-500 group-hover:scale-110 ${!isAvailable ? 'grayscale-[0.5]' : ''}`}>
             <PlayerPortrait
               imgUrl={getPlayerImage(player)}
+              teamLogoUrl={teamLogo}
               face={(player as any).face}
               playerName={player.name}
+              playerIdentity={player}
+              portraitSeason={season}
               size={64}
             />
           </div>
@@ -72,7 +83,7 @@ export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, team
           <div className="flex items-center gap-2 mt-1">
             <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter">{player.pos}</span>
             <span className="text-[10px] text-slate-600">•</span>
-            {team && onTeamClick ? (
+            {team && onTeamClick && (player as any).externalArchiveOnly !== true ? (
               <button
                 onClick={(e) => { e.stopPropagation(); onTeamClick(team.id); }}
                 className="text-[10px] font-bold text-slate-500 truncate hover:text-indigo-400 transition-colors"
@@ -89,13 +100,7 @@ export const PlayerSearchCard: React.FC<PlayerSearchCardProps> = ({ player, team
             <span className="text-[10px] font-medium text-slate-600">{player.calculatedAge}</span>
             <span className="text-[10px] text-slate-700">|</span>
             <span className="text-[10px] font-medium text-slate-600 truncate flex items-center gap-1">
-              {getCountryCode(player.extractedCountry) && (
-                <img
-                  src={`https://flagcdn.com/w20/${getCountryCode(player.extractedCountry)}.png`}
-                  alt=""
-                  className="w-3 h-2 object-cover rounded-[1px]"
-                />
-              )}
+              <CountryFlag country={player.extractedCountries?.[0] ?? player.extractedCountry} className="inline-flex h-2 w-3 shrink-0 rounded-[1px]" />
               {player.extractedCountry}
             </span>
           </div>

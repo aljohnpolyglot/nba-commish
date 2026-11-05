@@ -85,7 +85,6 @@ export function ThreePointContest({ contestants, onClose, onComplete }: ThreePoi
     return (
       <PlayerIntroSequence
         contestants={contestants}
-        zoneData={zoneData}
         moneyrackAssignments={moneyrackAssignments}
         onComplete={handleIntrosComplete}
         onSkip={handleIntrosComplete}
@@ -212,7 +211,9 @@ export function ThreePointContest({ contestants, onClose, onComplete }: ThreePoi
                 <div className="flex items-center space-x-3 sm:space-x-4">
                   <div className="relative">
                     <img src={activeContestant.imgURL} alt={activeContestant.name} className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-slate-800 object-cover border-2 border-slate-700" />
-                    <img src={`https://a.espncdn.com/i/teamlogos/nba/500/${activeContestant.team.toLowerCase()}.png`} alt={activeContestant.team} className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-slate-900 rounded-full border border-slate-700 p-0.5 object-contain" />
+                    {activeContestant.teamLogoUrl && (
+                      <img src={activeContestant.teamLogoUrl} alt={activeContestant.team} className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-6 h-6 sm:w-8 sm:h-8 bg-slate-900 rounded-full border border-slate-700 p-0.5 object-contain" />
+                    )}
                   </div>
                   <div>
                     <h2 className="text-base sm:text-xl font-black text-white uppercase leading-tight">{activeContestant.name}</h2>

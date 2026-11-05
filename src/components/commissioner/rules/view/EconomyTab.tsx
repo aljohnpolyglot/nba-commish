@@ -5,10 +5,12 @@ import { EconomyTeamsSection } from './EconomyTeamsSection';
 import { EconomyContractsSection } from './EconomyContractsSection';
 import { EconomyRookieContractsSection } from './EconomyRookieContractsSection';
 import { Ticket, Calendar, Lock, Coins, HeartPulse, ShieldCheck, Skull } from 'lucide-react';
-import { getTradeDeadlineDate, getCurrentOffseasonFAStart, getCurrentOffseasonFAMoratoriumEnd, toISODateString } from '../../../../utils/dateUtils';
+import { getTradeDeadlineDate, getCurrentOffseasonFAMoratoriumEnd, getSeasonSimStartDate, toISODateString } from '../../../../utils/dateUtils';
 import { useGame } from '../../../../store/GameContext';
 
 interface EconomyTabProps {
+    startupSeasonYear?: number;
+    uiMode?: string;
     draftType: string;
     currency: string;
     setCurrency: (val: string) => void;
@@ -58,6 +60,18 @@ interface EconomyTabProps {
     setPostSigningMoratoriumEnabled: (val: boolean) => void;
     twoWayContractsEnabled: boolean;
     setTwoWayContractsEnabled: (val: boolean) => void;
+    developmentalContractsEnabled: boolean;
+    setDevelopmentalContractsEnabled: (val: boolean) => void;
+    maxDevelopmentalPlayersPerTeam: number;
+    setMaxDevelopmentalPlayersPerTeam: (val: number) => void;
+    developmentalMaxServiceYears: number;
+    setDevelopmentalMaxServiceYears: (val: number) => void;
+    developmentalMaxGames: number;
+    setDevelopmentalMaxGames: (val: number) => void;
+    developmentalWeeklyStipendUSD: number;
+    setDevelopmentalWeeklyStipendUSD: (val: number) => void;
+    developmentalActiveGameBonusUSD: number;
+    setDevelopmentalActiveGameBonusUSD: (val: number) => void;
     nonGuaranteedContractsEnabled: boolean;
     setNonGuaranteedContractsEnabled: (val: boolean) => void;
     minPlayersPerTeam: number;
@@ -308,8 +322,11 @@ const ApronRulesCard = ({ props }: { props: EconomyTabProps }) => (
 export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
     const { state } = useGame();
     const pbaMode = state.leagueStats?.uiMode === 'pba_isolated';
-    const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
-    const currentDate = state.date ? new Date(state.date) : new Date();
+    const wnbaMode = (props.uiMode ?? state.leagueStats?.uiMode) === 'wnba_isolated';
+    const seasonYear = props.startupSeasonYear ?? state.leagueStats?.year ?? new Date().getFullYear();
+    const currentDate = props.startupSeasonYear
+        ? getSeasonSimStartDate(props.startupSeasonYear, state.leagueStats)
+        : state.date ? new Date(state.date) : new Date();
     const [showTaxRates, setShowTaxRates] = useState(false);
     const [isMinContractModalOpen, setIsMinContractModalOpen] = useState(false);
     const [isMaxContractModalOpen, setIsMaxContractModalOpen] = useState(false);
@@ -320,12 +337,11 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
         tradeDeadlineMonth: props.tradeDeadlineMonth,
         tradeDeadlineOrdinal: props.tradeDeadlineOrdinal,
         tradeDeadlineDayOfWeek: props.tradeDeadlineDayOfWeek,
-        faStartMonth: props.faStartMonth,
-        faStartDay: props.faStartDay,
         faMoratoriumDays: props.faMoratoriumDays,
+        uiMode: state.leagueStats?.uiMode,
+        leagueCalendar: state.leagueStats?.leagueCalendar,
     };
     const resolvedTradeDeadline = toISODateString(getTradeDeadlineDate(seasonYear, previewStats));
-    const resolvedFAStart = toISODateString(getCurrentOffseasonFAStart(currentDate, previewStats));
     const resolvedMoratoriumEnd = toISODateString(getCurrentOffseasonFAMoratoriumEnd(currentDate, previewStats));
 
     return (
@@ -397,7 +413,7 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
 
                     <ApronRulesCard props={props} />
 
-                    <EconomyTeamsSection props={props} />
+                    <EconomyTeamsSection props={props} wnbaMode={wnbaMode} />
                 </div>
 
                 <div className="space-y-8">
@@ -558,7 +574,7 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                                     onChange={e => props.setNgGuaranteeDeadlineDay(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
                                     className="bg-slate-900/60 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white" />
                             </div>
-                            <p className="text-[9px] text-slate-500 italic">Waive an NG before this date = free release. After = full guaranteed dead money. NBA: Jan 10.</p>
+                            <p className="text-[9px] text-slate-500 italic">Waive an NG before the saved Season Calendar deadline to avoid guaranteed dead money.</p>
                         </div>
 
                         <label className={`flex items-center justify-between cursor-pointer pt-3 border-t border-slate-800/60 ${props.deadMoneyEnabled ? '' : 'opacity-50 pointer-events-none'}`}>
@@ -699,31 +715,6 @@ export const EconomyTab: React.FC<EconomyTabProps> = (props) => {
                             <p className="text-[9px] text-slate-500 italic">
                                 NBA default: 1st Thu of Feb. Resolved to a real weekday each season.
                             </p>
-                        </div>
-
-                        {/* Free Agency Start */}
-                        <div className="space-y-3 pt-3 border-t border-slate-800/60">
-                            <div className="flex items-center justify-between">
-                                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Free Agency Opens</span>
-                                <span className="font-black text-emerald-400 text-xs">{resolvedFAStart}</span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2">
-                                <select
-                                    value={props.faStartMonth}
-                                    onChange={e => props.setFaStartMonth(parseInt(e.target.value))}
-                                    className="bg-slate-900/60 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white"
-                                >
-                                    {MONTH_NAMES.map((m, i) => (
-                                        <option key={m} value={i + 1}>{m}</option>
-                                    ))}
-                                </select>
-                                <input
-                                    type="number" min={1} max={31}
-                                    value={props.faStartDay}
-                                    onChange={e => props.setFaStartDay(Math.max(1, Math.min(31, parseInt(e.target.value) || 1)))}
-                                    className="bg-slate-900/60 border border-slate-700 rounded-md px-2 py-1.5 text-xs text-white"
-                                />
-                            </div>
                         </div>
 
                         {/* Moratorium */}

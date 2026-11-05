@@ -1,467 +1,402 @@
-import React from 'react';
-import { Search, User, X, Check, Utensils, MapPin, CheckCircle2, ChevronDown, SortAsc, SortDesc, Activity, Film, Music, Users } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import {
+  CalendarDays,
+  CircleDollarSign,
+  Film,
+  GlassWater,
+  HeartHandshake,
+  NotebookPen,
+  Pill,
+  Send,
+  ShieldUser,
+  Smile,
+  Sparkles,
+  UserRound,
+  Users,
+  Utensils,
+} from 'lucide-react';
+import { ClubStep } from './PersonSelector/ClubStep';
 import { LocationStep } from './PersonSelector/LocationStep';
 import { MovieStep } from './PersonSelector/MovieStep';
-import { ClubStep } from './PersonSelector/ClubStep';
-import { ContactList } from './PersonSelector/ContactList';
+import { PersonActionDetails } from './PersonSelector/PersonActionDetails';
+import type { PersonSelectorActionType, PersonSelectorModalProps } from './personSelectorModalShared';
 import { usePersonSelectorModalModel } from './usePersonSelectorModalModel';
-import type { PersonSelectorModalProps } from './personSelectorModalShared';
+import { ActionContactPicker } from '../shared/actions/ActionContactPicker';
+import { ActionInfoPanel } from '../shared/actions/ActionInfoPanel';
+import { ActionModalShell } from '../shared/actions/ActionModalShell';
+import { ActionTextField } from '../shared/actions/ActionTextField';
+import { useGame } from '../../store/GameContext';
+import { getAvailableLeagueBudget } from '../../services/logic/leagueTreasury';
+import {
+  formatTeamActivityCost,
+  getTeamActivityChemistryGain,
+  getTeamActivityCostMillion,
+} from '../../services/teamActivities';
 
-export const PersonSelectorModal: React.FC<PersonSelectorModalProps> = ({ onSelect, onClose, title, actionType, preSelectedContact, skipPersonSelection }) => {
-  const {
-    step,
-    setStep,
-    searchTerm,
-    setSearchTerm,
-    activeFilter,
-    setActiveFilter,
-    reason,
-    setReason,
-    duration,
-    setDuration,
-    amount,
-    setAmount,
-    selectedContacts,
-    setSelectedContacts,
-    injurySort,
-    setInjurySort,
-    selectedInjuryName,
-    restaurants,
-    restaurantSearch,
-    setRestaurantSearch,
-    selectedRestaurant,
-    setSelectedRestaurant,
-    loadingRestaurants,
-    movies,
-    movieSearch,
-    setMovieSearch,
-    selectedMovie,
-    setSelectedMovie,
-    loadingMovies,
-    useMovieDatabase,
-    setUseMovieDatabase,
-    clubSearch,
-    setClubSearch,
-    selectedClub,
-    setSelectedClub,
-    refsLoaded,
-    requiresLocation,
-    requiresClub,
-    isMovieAction,
-    availableFilters,
-    filteredContacts,
-    sortedInjuries,
-    handleInjurySelect,
-    handleContactToggle,
-    handleNext,
-    goBack,
-    isFormValid,
-  } = usePersonSelectorModalModel({
+const presentation: Record<PersonSelectorActionType, {
+  title: string;
+  description: string;
+  accent: 'violet' | 'cyan' | 'emerald' | 'amber' | 'sky';
+  icon: typeof UserRound;
+}> = {
+  suspension: {
+    title: 'Suspend Player',
+    description: 'Issue a temporary suspension for conduct or policy violations.',
+    accent: 'violet',
+    icon: ShieldUser,
+  },
+  drug_test: {
+    title: 'Order Drug Test',
+    description: 'Request a confidential league-administered drug screening.',
+    accent: 'violet',
+    icon: Pill,
+  },
+  dinner: {
+    title: 'Invite to Dinner',
+    description: 'Arrange a private dinner to build trust and discuss next steps.',
+    accent: 'amber',
+    icon: HeartHandshake,
+  },
+  general: {
+    title: 'Select Personnel',
+    description: 'Choose the people involved in this action.',
+    accent: 'violet',
+    icon: Users,
+  },
+  fine: {
+    title: 'Fine Player',
+    description: 'Issue a league fine for player misconduct or violations.',
+    accent: 'violet',
+    icon: ShieldUser,
+  },
+  movie: {
+    title: 'Invite to Movie',
+    description: 'Plan a casual team-bonding outing off the court.',
+    accent: 'violet',
+    icon: HeartHandshake,
+  },
+  give_money: {
+    title: 'Disburse Funds',
+    description: 'Choose a recipient, purpose, and league-appropriate amount.',
+    accent: 'emerald',
+    icon: CircleDollarSign,
+  },
+  contact: {
+    title: 'Contact Person',
+    description: 'Select the person you want to contact.',
+    accent: 'cyan',
+    icon: Send,
+  },
+  hypnotize: {
+    title: 'Hypnotize Target',
+    description: 'Choose a target and enter the command.',
+    accent: 'violet',
+    icon: Sparkles,
+  },
+  sabotage: {
+    title: 'Sabotage Personnel',
+    description: 'Select a covert injury plan and duration.',
+    accent: 'violet',
+    icon: UserRound,
+  },
+  club: {
+    title: 'Go to Club',
+    description: 'Choose the company and venue for the night.',
+    accent: 'violet',
+    icon: GlassWater,
+  },
+  endorse_hof: {
+    title: 'Endorse for Hall of Fame',
+    description: 'Select the retired player you want to endorse.',
+    accent: 'amber',
+    icon: Sparkles,
+  },
+  waive: {
+    title: 'Waive Player',
+    description: 'Select the player to release.',
+    accent: 'violet',
+    icon: UserRound,
+  },
+  fire: {
+    title: 'Fire Personnel',
+    description: 'Select the staff member to dismiss.',
+    accent: 'violet',
+    icon: UserRound,
+  },
+  retire_now: {
+    title: 'Retire Coach',
+    description: 'Confirm the immediate end of this coach’s active staff career.',
+    accent: 'amber',
+    icon: UserRound,
+  },
+};
+
+export function PersonSelectorModal({
+  onSelect,
+  onClose,
+  title,
+  actionType,
+  preSelectedContact,
+  initialSelectedContacts,
+  skipPersonSelection,
+  allowEmptySelection,
+  contactFilter,
+  selectionTitle,
+  selectionDescription,
+  peoplePrimaryLabel,
+  onSelectionBack,
+  fundSource,
+  onFundSourceChange,
+  chargePersonalFunds,
+}: PersonSelectorModalProps) {
+  const { state } = useGame();
+  const model = usePersonSelectorModalModel({
     actionType,
     onClose,
     onSelect,
     preSelectedContact,
+    initialSelectedContacts,
     skipPersonSelection,
+    allowEmptySelection,
+    contactFilter,
   });
+  const config = presentation[actionType] ?? { ...presentation.general, title };
+  const Icon = config.icon;
+  const isSocialAction = actionType === 'dinner' || actionType === 'movie';
+  const socialActivityType = actionType === 'movie' ? 'movie' : 'dinner';
+  const selectedFundsM = fundSource === 'personal' ? state.stats.personalWealth : getAvailableLeagueBudget(state.stats);
+  const personalExpenseM = chargePersonalFunds && isSocialAction && model.selectedContacts.length > 0
+    ? getTeamActivityCostMillion(socialActivityType, model.selectedContacts.length)
+    : 0;
+  const personalExpenseExceedsFunds = personalExpenseM > state.stats.personalWealth;
+  const disbursementExceedsFunds = actionType === 'give_money' && model.step === 'details'
+    && Number(model.amount || 0) / 1_000_000 > selectedFundsM;
+
+  const primaryForStep = () => {
+    if (model.step === 'movie') return 'Next: Select Guests';
+    if (model.step === 'location') return 'Next: Add Note';
+    if (model.step === 'note') return 'Confirm Selection';
+    if (model.step === 'details') return 'Confirm Selection';
+    if (model.step === 'club') return 'Confirm Selection';
+    if (model.step === 'people') {
+      if (peoplePrimaryLabel) return peoplePrimaryLabel;
+      if (actionType === 'dinner') return 'Next: Select Venue';
+      if (actionType === 'movie') return 'Next: Add Note';
+      if (['fine', 'drug_test', 'suspension', 'sabotage', 'give_money', 'hypnotize', 'retire_now'].includes(actionType)) {
+        return 'Next: Action Details';
+      }
+      return 'Confirm Selection';
+    }
+    return undefined;
+  };
+
+  const handlePrimary = () => {
+    if (model.step === 'note') {
+      model.handleSubmit();
+      return;
+    }
+    if (model.step === 'details' || model.step === 'club') {
+      model.handleSubmit();
+      return;
+    }
+    model.handleNext();
+  };
+
+  const currentTitle = model.step === 'movie'
+    ? 'Select Movie'
+    : model.step === 'people'
+      ? selectionTitle ?? `Select ${isSocialAction ? 'Guests' : 'Personnel'}`
+      : model.step === 'location'
+        ? 'Select Venue'
+        : model.step === 'note'
+          ? actionType === 'movie' ? 'Invite to Movie' : 'Invite to Dinner'
+          : config.title;
+  const currentDescription = model.step === 'people'
+    ? selectionDescription ?? 'Choose everyone involved in this action.'
+    : model.step === 'location'
+      ? 'Choose where the private dinner will take place.'
+      : model.step === 'movie'
+        ? 'Choose the movie for the outing.'
+        : config.description;
+  const HeaderIcon = model.step === 'movie'
+    ? Film
+    : model.step === 'location'
+      ? Utensils
+      : model.step === 'note'
+        ? NotebookPen
+        : model.step === 'people'
+          ? Users
+          : Icon;
+  const handleBack = model.step === 'people' && onSelectionBack
+      ? onSelectionBack
+    : model.goBack;
 
   return (
-    <AnimatePresence>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
-      >
-        <motion.div 
-          initial={{ scale: 0.95, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.95, y: 20 }}
-          className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[calc(100vh-2rem)]"
-        >
-          <div className="p-4 sm:p-6 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-900/50">
-            <div className="flex items-start gap-3 text-indigo-400 min-w-0">
-                {step === 'location' ? <Utensils size={24} /> : step === 'movie' ? <Film size={24} /> : step === 'club' || step === 'club_choice' ? <Music size={24} /> : <User size={24} />}
-                <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white break-words">
-                    {step === 'location' ? 'Select Venue' : step === 'movie' ? 'Select Movie' : step === 'movie_prompt' ? 'Movie Selection' : step === 'club' ? 'Select Club' : step === 'club_choice' ? 'Clubbing Choice' : title}
-                </h3>
-            </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
-              <X size={20} />
-            </button>
-          </div>
+    <ActionModalShell
+      title={currentTitle}
+      description={currentDescription}
+      icon={<HeaderIcon size={actionType === 'sabotage' ? 32 : 28} />}
+      accent={config.accent}
+      wide={actionType === 'sabotage' || model.step === 'people'}
+      onClose={onClose}
+      onBack={model.step === 'people' && !isSocialAction && !preSelectedContact && !onSelectionBack ? undefined : handleBack}
+      selectedCount={model.selectedContacts.length}
+      primaryLabel={primaryForStep()}
+      primaryDisabled={!model.isFormValid() || disbursementExceedsFunds || personalExpenseExceedsFunds}
+      onPrimary={primaryForStep() ? handlePrimary : undefined}
+    >
+      {model.step === 'movie' && (
+        <MovieStep
+          movies={model.movies}
+          movieSearch={model.movieSearch}
+          setMovieSearch={model.setMovieSearch}
+          selectedMovie={model.selectedMovie}
+          setSelectedMovie={model.setSelectedMovie}
+          loadingMovies={model.loadingMovies}
+        />
+      )}
 
-          <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-5 sm:space-y-6">
-            {step === 'movie_prompt' ? (
-                <div className="flex flex-col items-center justify-center py-12 space-y-8">
-                    <div className="w-20 h-20 bg-indigo-500/10 rounded-full flex items-center justify-center text-indigo-400">
-                        <Film size={40} />
-                    </div>
-                    <div className="text-center space-y-2">
-                        <h4 className="text-lg font-black text-white uppercase tracking-tight">IMDb Movie Database</h4>
-                        <p className="text-sm text-slate-500 max-w-sm mx-auto">
-                            Commissioner, would you like to browse our curated database of top-rated movies for this event?
-                        </p>
-                    </div>
-                    <div className="flex flex-col sm:flex-row gap-4 w-full max-w-xs">
-                        <button 
-                            onClick={() => {
-                                setUseMovieDatabase(true);
-                                setStep('movie');
-                            }}
-                            className="flex-1 bg-indigo-600 hover:bg-indigo-500 text-white font-black py-4 rounded-2xl transition-all shadow-lg shadow-indigo-600/20 uppercase tracking-widest text-xs"
-                        >
-                            Yes, Please
-                        </button>
-                        <button 
-                            onClick={() => {
-                                setUseMovieDatabase(false);
-                                setStep('people');
-                            }}
-                            className="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-black py-4 rounded-2xl transition-all uppercase tracking-widest text-xs"
-                        >
-                            No Thanks
-                        </button>
-                    </div>
-                </div>
-            ) : step === 'movie' ? (
-                <MovieStep 
-                    movies={movies}
-                    movieSearch={movieSearch}
-                    setMovieSearch={setMovieSearch}
-                    selectedMovie={selectedMovie}
-                    setSelectedMovie={setSelectedMovie}
-                    loadingMovies={loadingMovies}
-                />
-            ) : step === 'club_choice' ? (
-              <div className="flex flex-col items-center justify-center py-12 space-y-8">
-                <div className="text-center space-y-2">
-                  <h4 className="text-xl font-bold text-white uppercase tracking-tight">Nightlife Choice</h4>
-                  <p className="text-slate-400 text-sm">How do you want to experience the club tonight?</p>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full max-w-md">
-                  <button
-                    onClick={() => {
-                      setSelectedContacts([]);
-                      setStep('club');
-                    }}
-                    className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-violet-500 hover:bg-violet-500/10 transition-all group"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-violet-500 group-hover:text-white transition-colors">
-                      <User size={32} />
-                    </div>
-                    <div className="text-center">
-                      <span className="block text-sm font-bold text-white uppercase tracking-wider">Go Alone</span>
-                      <span className="block text-[10px] text-slate-500 mt-1">Solo mission, mysterious vibes</span>
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setStep('people')}
-                    className="flex flex-col items-center gap-4 p-6 rounded-2xl bg-slate-900 border border-slate-800 hover:border-indigo-500 hover:bg-indigo-500/10 transition-all group"
-                  >
-                    <div className="w-16 h-16 rounded-full bg-slate-800 flex items-center justify-center group-hover:bg-indigo-500 group-hover:text-white transition-colors">
-                      <Users size={32} />
-                    </div>
-                    <div className="text-center">
-                      <span className="block text-sm font-bold text-white uppercase tracking-wider">Invite Someone</span>
-                      <span className="block text-[10px] text-slate-500 mt-1">Bring the squad or a special guest</span>
-                    </div>
-                  </button>
-                </div>
-              </div>
-            ) : step === 'people' ? (
-                <>
-                    {!skipPersonSelection && (
-                      <>
-                        {/* Search & Filters */}
-                        <div className="space-y-3">
-                            <div className="relative">
-                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-                                <input
-                                    type="text"
-                                    value={searchTerm}
-                                    onChange={(e) => setSearchTerm(e.target.value)}
-                                    placeholder="Search by name or team..."
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none placeholder:text-slate-700 transition-all"
-                                    autoFocus
-                                />
-                            </div>
-
-                            <div className="flex gap-2 overflow-x-auto pb-2 custom-scrollbar no-scrollbar">
-                                {availableFilters.map((filter) => (
-                                    <button
-                                        key={filter}
-                                        onClick={() => setActiveFilter(filter)}
-                                        className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider whitespace-nowrap transition-colors ${
-                                            activeFilter === filter 
-                                            ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-600/20' 
-                                            : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-white'
-                                        }`}
-                                    >
-                                        {filter}
-                                    </button>
-                                ))}
-                            </div>
-                        </div>
-
-                        {/* Contact List */}
-                        {activeFilter === 'Referee' && !refsLoaded ? (
-                          <div className="flex items-center justify-center h-32 text-slate-500 text-xs uppercase tracking-widest gap-3">
-                            <div className="w-4 h-4 border-2 border-slate-500 border-t-transparent rounded-full animate-spin" />
-                            Loading referee photos...
-                          </div>
-                        ) : (
-                          <ContactList
-                            contacts={filteredContacts}
-                            selectedContacts={selectedContacts}
-                            onToggle={handleContactToggle}
-                          />
-                        )}
-                      </>
-                    )}
-
-                    {/* Additional Inputs */}
-                    <div className={`space-y-4 ${skipPersonSelection ? '' : 'pt-4 border-t border-slate-800'}`}>
-                        {actionType === 'suspension' && (
-                            <div className="flex flex-col sm:flex-row gap-4">
-                                <div className="flex-1 space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reason <span className="text-rose-500">*</span></label>
-                                    <input
-                                        type="text"
-                                        value={reason}
-                                        onChange={(e) => setReason(e.target.value)}
-                                        placeholder="Violation of league policy..."
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none placeholder:text-slate-700 transition-all"
-                                    />
-                                </div>
-                                <div className="sm:w-1/3 space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Duration <span className="text-rose-500">*</span></label>
-                                    <input
-                                        type="text"
-                                        value={duration}
-                                        onChange={(e) => setDuration(e.target.value)}
-                                        placeholder="e.g. 5 games"
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none placeholder:text-slate-700 transition-all"
-                                    />
-                                </div>
-                            </div>
-                        )}
-
-                        {actionType === 'sabotage' && (
-                            <div className="space-y-4">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Select Injury <span className="text-rose-500">*</span></label>
-                                    <div className="flex gap-2">
-                                        <button 
-                                            onClick={() => setInjurySort('name')}
-                                            className={`p-1.5 rounded-lg transition-colors ${injurySort === 'name' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
-                                            title="Sort A-Z"
-                                        >
-                                            <SortAsc size={14} />
-                                        </button>
-                                        <button 
-                                            onClick={() => setInjurySort('games-asc')}
-                                            className={`p-1.5 rounded-lg transition-colors ${injurySort === 'games-asc' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
-                                            title="Sort by Lowest Games"
-                                        >
-                                            <ChevronDown size={14} className="rotate-180" />
-                                        </button>
-                                        <button 
-                                            onClick={() => setInjurySort('games-desc')}
-                                            className={`p-1.5 rounded-lg transition-colors ${injurySort === 'games-desc' ? 'bg-indigo-500/20 text-indigo-400' : 'text-slate-500 hover:text-slate-300'}`}
-                                            title="Sort by Highest Games"
-                                        >
-                                            <ChevronDown size={14} />
-                                        </button>
-                                    </div>
-                                </div>
-                                
-                                <div className="flex flex-col sm:flex-row gap-4">
-                                    <div className="flex-1 space-y-2">
-                                        <div className="relative">
-                                            <select
-                                                value={selectedInjuryName}
-                                                onChange={handleInjurySelect}
-                                                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 outline-none appearance-none cursor-pointer"
-                                            >
-                                                <option value="" disabled>Choose an injury...</option>
-                                                {sortedInjuries.map(injury => (
-                                                    <option key={injury.name} value={injury.name}>
-                                                        {injury.name} ({injury.games} games)
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-slate-500">
-                                                <ChevronDown size={16} />
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div className="sm:w-1/3 space-y-2">
-                                        <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5">
-                                            <Activity size={10} />
-                                            Games <span className="text-rose-500">*</span>
-                                        </label>
-                                        <input
-                                            type="number"
-                                            value={duration}
-                                            onChange={(e) => setDuration(e.target.value)}
-                                            placeholder="e.g. 15"
-                                            className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 outline-none placeholder:text-slate-700 transition-all"
-                                        />
-                                    </div>
-                                </div>
-                                {reason && (
-                                    <div className="p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl">
-                                        <p className="text-[10px] text-violet-300 font-medium leading-relaxed">
-                                            <span className="font-bold uppercase tracking-wider">Covert Plan:</span> Target will suffer a <span className="text-white underline decoration-violet-500/50">{reason}</span> and be sidelined for approximately <span className="text-white font-bold">{duration}</span> games. The media will report this as a natural occurrence.
-                                        </p>
-                                    </div>
-                                )}
-                            </div>
-                        )}
-
-                        {actionType === 'drug_test' && (
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reason / Suspicion <span className="text-rose-500">*</span></label>
-                                <input
-                                    type="text"
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    placeholder="Erratic behavior, anonymous tip..."
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 outline-none placeholder:text-slate-700 transition-all"
-                                />
-                            </div>
-                        )}
-
-                        {actionType === 'leak_scandal' && (
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Scandal Topic / Details <span className="text-rose-500">*</span></label>
-                                <textarea
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    placeholder="e.g., Unpaid gambling debts, locker room altercation..."
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none placeholder:text-slate-700 transition-all h-24 resize-none"
-                                />
-                            </div>
-                        )}
-
-                        {actionType === 'hypnotize' && (
-                            <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Command / Suggestion <span className="text-rose-500">*</span></label>
-                                <textarea
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    placeholder="e.g., Demand a trade to the Knicks, shave your head, guarantee a championship..."
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-violet-500/50 focus:border-violet-500 outline-none placeholder:text-slate-700 transition-all h-24 resize-none"
-                                />
-                            </div>
-                        )}
-
-                        {(actionType === 'fine' || actionType === 'bribe' || actionType === 'give_money') && (
-                            <div className="space-y-4">
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reason <span className="text-rose-500">*</span></label>
-                                    <input
-                                        type="text"
-                                        value={reason}
-                                        onChange={(e) => setReason(e.target.value)}
-                                        placeholder={actionType === 'fine' ? "Technical foul, conduct detrimental..." : actionType === 'give_money' ? "Charitable donation, performance bonus..." : "Influence decision, silence scandal..."}
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none placeholder:text-slate-700 transition-all"
-                                    />
-                                </div>
-                                <div className="space-y-2">
-                                    <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Amount ($) <span className="text-rose-500">*</span></label>
-                                    <input
-                                        type="number"
-                                        value={amount}
-                                        onChange={(e) => setAmount(e.target.value)}
-                                        placeholder="50000"
-                                        className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none placeholder:text-slate-700 transition-all"
-                                    />
-                                </div>
-                            </div>
-                        )}
-                        
-                        {(actionType === 'dinner' || actionType === 'movie' || actionType === 'club' || actionType === 'general') && (
-                             <div className="space-y-2">
-                                <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                                  {actionType === 'general' ? 'Reason for Invite (Optional)' : 'Occasion / Note (Optional)'}
-                                </label>
-                                <input
-                                    type="text"
-                                    value={reason}
-                                    onChange={(e) => setReason(e.target.value)}
-                                    placeholder={actionType === 'dinner' ? "Discussing contract extension..." : actionType === 'movie' ? "Team bonding..." : actionType === 'club' ? "Night out..." : "Business meeting, partnership discussion..."}
-                                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 outline-none placeholder:text-slate-700 transition-all"
-                                />
-                            </div>
-                        )}
-                    </div>
-                </>
-            ) : (
-                <>
-                    {/* Location Selection Step */}
-                    {step === 'location' ? (
-                      <LocationStep
-                        restaurants={restaurants}
-                        restaurantSearch={restaurantSearch}
-                        setRestaurantSearch={setRestaurantSearch}
-                        selectedRestaurant={selectedRestaurant}
-                        setSelectedRestaurant={setSelectedRestaurant}
-                        loadingRestaurants={loadingRestaurants}
-                        guestCount={selectedContacts.length}
-                      />
-                    ) : (
-                      <ClubStep
-                        clubSearch={clubSearch}
-                        setClubSearch={setClubSearch}
-                        selectedClub={selectedClub}
-                        setSelectedClub={setSelectedClub}
-                        guestCount={selectedContacts.length}
-                      />
-                    )}
-                </>
-            )}
-          </div>
-
-          <div className="p-4 sm:p-6 border-t border-slate-800 bg-slate-900/50 flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
-            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider">
-                {selectedContacts.length} Selected
-            </div>
-            <div className="flex flex-col-reverse sm:flex-row gap-3 w-full sm:w-auto">
-                {(step === 'location' || step === 'movie' || step === 'club' || step === 'club_choice' || (step === 'people' && isMovieAction && useMovieDatabase)) && (
-                    <button 
-                        onClick={goBack}
-                        className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-white hover:bg-slate-800 transition-colors uppercase tracking-wider"
-                    >
-                        Back
-                    </button>
-                )}
-                <button 
-                    onClick={onClose}
-                    className="w-full sm:w-auto px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-white hover:bg-slate-800 transition-colors uppercase tracking-wider"
+      {model.step === 'people' && (
+        <div className="space-y-4">
+          {model.availableFilters.length > 1 && (
+            <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+              {model.availableFilters.map(filter => (
+                <button
+                  type="button"
+                  key={filter}
+                  onClick={() => model.setActiveFilter(filter)}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-wide transition ${
+                    model.activeFilter === filter
+                      ? 'bg-violet-600 text-white'
+                      : 'border border-slate-700 bg-slate-900/50 text-slate-400 hover:text-white'
+                  }`}
                 >
-                    Cancel
+                  {filter}
                 </button>
-                {step !== 'club_choice' && (
-                  <button 
-                      onClick={handleNext}
-                      disabled={!isFormValid()}
-                      className="w-full sm:w-auto px-6 py-2 rounded-xl text-xs font-black text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-all uppercase tracking-wider shadow-lg shadow-indigo-600/20 flex items-center justify-center gap-2"
-                  >
-                      {step === 'movie_prompt' ? 'Select Option' : 
-                       step === 'movie' ? 'Next: Select Guests' :
-                       step === 'people' && requiresLocation ? 'Next: Select Venue' : 
-                       step === 'people' && requiresClub ? 'Next: Select Club' : 'Confirm Selection'}
-                      {(step === 'people' && requiresLocation) && <Utensils size={14} />}
-                      {(step === 'people' && requiresClub) && <Music size={14} />}
-                      {step === 'movie' && <User size={14} />}
-                  </button>
-                )}
+              ))}
             </div>
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+          )}
+          {model.activeFilter === 'Referee' && !model.refsLoaded ? (
+            <div className="flex min-h-48 items-center justify-center gap-3 text-xs uppercase tracking-widest text-slate-500">
+              <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-500 border-t-transparent" />
+              Loading officials
+            </div>
+          ) : (
+            <ActionContactPicker
+              contacts={model.filteredContacts}
+              selectedContacts={model.selectedContacts}
+              searchTerm={model.searchTerm}
+              onSearchTermChange={model.setSearchTerm}
+              onToggle={model.handleContactToggle}
+              placeholder="Search by name or team..."
+            />
+          )}
+        </div>
+      )}
+
+      {model.step === 'location' && (
+        <LocationStep
+          restaurants={model.restaurants}
+          restaurantSearch={model.restaurantSearch}
+          setRestaurantSearch={model.setRestaurantSearch}
+          selectedRestaurant={model.selectedRestaurant}
+          setSelectedRestaurant={model.setSelectedRestaurant}
+          loadingRestaurants={model.loadingRestaurants}
+          guestCount={model.selectedContacts.length}
+        />
+      )}
+
+      {model.step === 'club' && (
+        <ClubStep
+          clubSearch={model.clubSearch}
+          setClubSearch={model.setClubSearch}
+          selectedClub={model.selectedClub}
+          setSelectedClub={model.setSelectedClub}
+          guestCount={model.selectedContacts.length}
+        />
+      )}
+
+      {model.step === 'club_choice' && (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => {
+              model.setSelectedContacts([]);
+              model.setStep('club');
+            }}
+            className="flex min-h-52 flex-col items-center justify-center rounded-2xl border border-slate-700 bg-slate-950/25 p-6 text-center transition hover:border-violet-400/60"
+          >
+            <UserRound size={38} className="text-violet-300" />
+            <span className="mt-4 font-black text-white">Go Alone</span>
+            <span className="mt-1 text-xs text-slate-500">A solo night out.</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => model.setStep('people')}
+            className="flex min-h-52 flex-col items-center justify-center rounded-2xl border border-slate-700 bg-slate-950/25 p-6 text-center transition hover:border-violet-400/60"
+          >
+            <Users size={38} className="text-violet-300" />
+            <span className="mt-4 font-black text-white">Invite Someone</span>
+            <span className="mt-1 text-xs text-slate-500">Bring guests for the night.</span>
+          </button>
+        </div>
+      )}
+
+      {model.step === 'note' && (
+        <div className="space-y-6">
+          <ActionTextField
+            label="Occasion / Note"
+            value={model.reason}
+            onChange={model.setReason}
+            placeholder={actionType === 'dinner'
+              ? 'Discussing contract extension, team chemistry, or personal support...'
+              : 'Team bonding, rookie welcome, morale boost...'}
+            optional
+            multiline
+            minRowsClassName="min-h-28"
+          />
+          {actionType === 'dinner' ? (
+            <ActionInfoPanel
+              icon={<CalendarDays size={26} />}
+              title="Next Step"
+              accent="amber"
+              aside={<GlassWater size={50} className="text-violet-400/80" />}
+            >
+              After sending the invitation, the selected venue and date will be arranged.
+            </ActionInfoPanel>
+          ) : (
+            <ActionInfoPanel icon={<Smile size={27} />} title="Social Effect" accent="violet">
+              Casual outings can strengthen relationships, improve chemistry, and build off-court comfort.
+            </ActionInfoPanel>
+          )}
+          {chargePersonalFunds && isSocialAction && model.selectedContacts.length > 0 && (
+            <ActionInfoPanel
+              icon={<CircleDollarSign size={26} />}
+              title="Personal Expense"
+              accent={actionType === 'dinner' ? 'amber' : 'violet'}
+            >
+              <span className={personalExpenseExceedsFunds ? 'font-bold text-rose-300' : undefined}>
+                {formatTeamActivityCost(socialActivityType, model.selectedContacts.length)} from personal funds
+              </span>
+              <span className="mt-1 block text-xs text-slate-400">
+                Team Chemistry +{getTeamActivityChemistryGain(model.selectedContacts.length).toFixed(1)}
+              </span>
+              {personalExpenseExceedsFunds && (
+                <span className="mt-1 block text-xs text-rose-300">Insufficient personal funds.</span>
+              )}
+            </ActionInfoPanel>
+          )}
+        </div>
+      )}
+
+      {model.step === 'details' && (
+        <PersonActionDetails
+          actionType={actionType}
+          model={model}
+          fundSource={fundSource}
+          onFundSourceChange={onFundSourceChange}
+          disbursementExceedsFunds={disbursementExceedsFunds}
+        />
+      )}
+    </ActionModalShell>
   );
-};
+}

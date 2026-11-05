@@ -187,7 +187,9 @@ export function getNonNBABioData(player: NBAPlayer): { bio: { pro: string; pre: 
       if (trbPg && parseFloat(trbPg) > 0) parts.push(`${trbPg} RPG`);
       if (ast && parseFloat(ast) > 0) parts.push(`${ast} APG`);
       if (parts.length > 0) {
-        const season = latest.season ? `${latest.season - 1}-${String(latest.season).slice(-2)}` : 'Latest';
+        const season = latest.season
+          ? player.status === 'WNBA' ? String(latest.season) : `${latest.season - 1}-${String(latest.season).slice(-2)}`
+          : 'Latest';
         statsBio = `<li><b>${season} Season Stats:</b> ${parts.join(' · ')} in ${gp} games.</li>`;
       }
     }

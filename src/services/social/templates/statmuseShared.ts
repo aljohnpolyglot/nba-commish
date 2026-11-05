@@ -26,7 +26,12 @@ const getStatmuseImage = (playerName: string): string | null => {
 };
 
 export const resolveStatmuseMedia = (ctx: SocialContext) => ({
-    mediaUrl: ctx.player ? getStatmuseImage(ctx.player.name) ?? undefined : undefined,
+    mediaUrl: ctx.player &&
+        !ctx.player.sourceInjuryProfileDisabled &&
+        ctx.player.face == null &&
+        !String(ctx.player.internalId ?? '').startsWith('gen-')
+        ? getStatmuseImage(ctx.player.name) ?? undefined
+        : undefined,
     mediaBackgroundColor: ctx.team?.colors?.[0] ?? '#1a1a2e',
 });
 

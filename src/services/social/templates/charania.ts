@@ -230,16 +230,19 @@ export function buildShamsSigningPost(
     overallRating: number,
     prevTeamName?: string | null,
     prevLeague?: string | null,
-    salary?: number // thousands of dollars (BBGM units)
+    salary?: number, // thousands of dollars (BBGM units)
+    mediaContext: 'nba' | 'pba' = 'nba',
 ): string {
-    const src = getSource();
+    const src = mediaContext === 'pba' ? 'league sources confirm.' : getSource();
     const salaryStr = salary && salary >= 5000
         ? ` on a $${(salary / 1000).toFixed(1)}M deal`
         : '';
     const intlLeagues = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'WNBA', 'China CBA', 'NBL Australia'];
     const isReturn = prevLeague && intlLeagues.includes(prevLeague);
     const prevStr = isReturn
-        ? ` He is returning to the NBA after playing in the ${prevLeague}.`
+        ? mediaContext === 'pba'
+            ? ` He previously played in the ${prevLeague}.`
+            : ` He is returning to the NBA after playing in the ${prevLeague}.`
         : prevTeamName
             ? ` He was previously with the ${prevTeamName}.`
             : prevLeague && prevLeague !== 'Free Agent'
@@ -284,9 +287,18 @@ export function buildShamsTradePost(
     teamBName: string,
     teamBAbbrev: string,
     assetsToB: string[],   // names of players/picks going to teamB
-    assetsToA: string[]    // names of players/picks going to teamA
+    assetsToA: string[],   // names of players/picks going to teamA
+    mediaContext: 'nba' | 'pba' = 'nba',
 ): string {
-    const src = getSource();
+    const pbaSources = [
+        'league sources say.',
+        'according to multiple reports.',
+        'sources close to both teams confirm.',
+        'per the league transaction wire.',
+    ];
+    const src = mediaContext === 'pba'
+        ? pbaSources[Math.floor(Math.random() * pbaSources.length)]
+        : getSource();
     const toBStr = assetsToB.join(', ') || 'future considerations';
     const toAStr = assetsToA.join(', ') || 'future considerations';
 
@@ -461,8 +473,9 @@ function buildShamsTransactionPost(opts: {
     years?: number;
     hasPlayerOption?: boolean;
     otherTeamName?: string; // for trades
+    mediaContext?: 'nba' | 'pba';
 }): string {
-    const src = getSource();
+    const src = opts.mediaContext === 'pba' ? 'league sources confirm.' : getSource();
     const { type, playerName, teamName, amount, years, hasPlayerOption, otherTeamName } = opts;
 
     if (type === 'signing') {
@@ -474,7 +487,7 @@ function buildShamsTransactionPost(opts: {
         const variants = [
             `${playerName} has agreed to a ${dealStr} with the ${teamName}${optStr}, ${src}`,
             `Free agent ${playerName} is signing with the ${teamName} on a ${dealStr}${optStr}, ${src}`,
-            `The ${teamName} are signing ${playerName} to a ${dealStr}${optStr}, sources tell ESPN.`,
+            `The ${teamName} are signing ${playerName} to a ${dealStr}${optStr}, ${src}`,
         ];
         return variants[Math.floor(Math.random() * variants.length)];
     }
@@ -482,7 +495,7 @@ function buildShamsTransactionPost(opts: {
     if (type === 'trade') {
         const variants = [
             `BREAKING: The ${teamName} are trading ${playerName} to the ${otherTeamName ?? 'another team'}, ${src}`,
-            `${playerName} is being traded to the ${otherTeamName ?? 'another team'}, sources tell ESPN and @Stadium.`,
+            `${playerName} is being traded to the ${otherTeamName ?? 'another team'}, ${src}`,
             `Trade: ${teamName} sending ${playerName} to ${otherTeamName ?? 'another team'} in a deal, per sources.`,
         ];
         return variants[Math.floor(Math.random() * variants.length)];

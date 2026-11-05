@@ -1,13 +1,18 @@
 import { NBAPlayer as Player, NBATeam as Team } from '../../types';
-import { clearGameplan, getGameplan } from '../../store/gameplanStore';
-import { getIdealRotation, reconcileIdealMinutes } from '../../store/idealRotationStore';
+import { reconcileIdealMinutes } from '../../store/idealRotationStore';
 import { MinutesPlayedService } from './MinutesPlayedService';
 import { SimulatorKnobs, isEuroClubCompetitionGame } from './SimulatorKnobs';
+import {
+  getSimulationGameplan as getGameplan,
+  getSimulationIdealRotation as getIdealRotation,
+  getSimulationLockedStrategy as getLockedStrategy,
+} from './simulationRealmContext';
 
 interface RotationPlanResult {
   rotation: Player[];
   minuteTargets: number[];
   starMpgTarget: number;
+  source: 'auto' | 'gameplan' | 'ideal';
 }
 
 function clampMinute(value: number): number {
@@ -21,12 +26,76 @@ function normalizeMinutes(minutes: number[], targetTotal: number): number[] {
   return clamped.map(value => value * (targetTotal / total));
 }
 
-function applyOrder(rotation: Player[], starterIds?: string[], benchOrder?: string[]): Player[] {
+function getPlayableRoster(team: Team, allPlayers: Player[], playThroughInjuries: number): Player[] {
+  return allPlayers.filter(player =>
+    player.tid === team.id &&
+    ((player.injury?.gamesRemaining ?? 0) <= 0 || playThroughInjuries > 0)
+  );
+}
+
+function countExplicitMinutePlayers(
+  team: Team,
+  allPlayers: Player[],
+  minutes: Record<string, number> | null,
+  playThroughInjuries: number,
+): number {
+  if (!minutes) return 0;
+  const playableIds = new Set(getPlayableRoster(team, allPlayers, playThroughInjuries).map(player => player.internalId));
+  return Object.entries(minutes).filter(([id, value]) => value > 0 && playableIds.has(id)).length;
+}
+
+function addExplicitMinutePlayers(
+  rotation: Player[],
+  team: Team,
+  allPlayers: Player[],
+  minutes: Record<string, number> | null,
+  playThroughInjuries: number,
+  playersOnCourt: number,
+): Player[] {
+  if (!minutes) return rotation;
+  const playable = getPlayableRoster(team, allPlayers, playThroughInjuries);
+  const byId = new Map(playable.map(player => [player.internalId, player]));
+  const existing = new Set(rotation.map(player => player.internalId));
+  const next = [...rotation];
+  const plannedIds = Object.entries(minutes)
+    .filter(([, value]) => value > 0)
+    .sort((a, b) => b[1] - a[1])
+    .map(([id]) => id);
+
+  const maxRotation = Math.max(13, playersOnCourt + 5);
+  for (const id of plannedIds) {
+    if (next.length >= maxRotation) break;
+    if (existing.has(id)) continue;
+    const player = byId.get(id);
+    if (!player) continue;
+    next.push(player);
+    existing.add(id);
+  }
+
+  const plannedSet = new Set(plannedIds);
+  while (next.length > maxRotation) {
+    const trimIndex = [...next].reverse().findIndex(player => !plannedSet.has(player.internalId));
+    if (trimIndex < 0) {
+      next.pop();
+      continue;
+    }
+    next.splice(next.length - 1 - trimIndex, 1);
+  }
+
+  return next;
+}
+
+function applyOrder(
+  rotation: Player[],
+  starterIds: string[] | undefined,
+  benchOrder: string[] | undefined,
+  playersOnCourt: number,
+): Player[] {
   if (rotation.length === 0) return rotation;
 
   const byId = new Map(rotation.map(player => [player.internalId, player]));
   const starterSet = new Set<string>();
-  const starterTarget = Math.min(5, rotation.length);
+  const starterTarget = Math.min(playersOnCourt, rotation.length);
 
   for (const id of starterIds ?? []) {
     const player = byId.get(id);
@@ -65,14 +134,21 @@ function applyOrder(rotation: Player[], starterIds?: string[], benchOrder?: stri
   return [...starters, ...orderedBench];
 }
 
-function isClearlyBrokenSavedPlan(rotation: Player[], minuteTargets: number[]): boolean {
-  if (rotation.length < 5 || minuteTargets.length < 5) return false;
-  const starterMinutes = minuteTargets.slice(0, 5);
-  const benchMinutes = minuteTargets.slice(5);
+function isClearlyBrokenSavedPlan(
+  rotation: Player[],
+  minuteTargets: number[],
+  playersOnCourt: number,
+): boolean {
+  if (rotation.length < playersOnCourt || minuteTargets.length < playersOnCourt) return false;
+  const starterMinutes = minuteTargets.slice(0, playersOnCourt);
+  const benchMinutes = minuteTargets.slice(playersOnCourt);
   const veryLowStarters = starterMinutes.filter(value => value < 6).length;
   const lowStarters = starterMinutes.filter(value => value < 12).length;
   const playableBench = benchMinutes.filter(value => value >= 18).length;
-  return veryLowStarters >= 2 || (lowStarters >= 3 && playableBench >= 2);
+  const veryLowLimit = Math.max(1, Math.ceil(playersOnCourt * 0.4));
+  const lowLimit = Math.max(1, Math.ceil(playersOnCourt * 0.6));
+  const benchLimit = Math.max(1, Math.ceil(playersOnCourt * 0.4));
+  return veryLowStarters >= veryLowLimit || (lowStarters >= lowLimit && playableBench >= benchLimit);
 }
 
 export function resolveRotationPlan(
@@ -83,6 +159,36 @@ export function resolveRotationPlan(
   lead: number,
   overridePlayers?: Player[],
 ): RotationPlanResult {
+  const playersOnCourt = Math.max(1, Math.round(knobs.playersOnCourt ?? 5));
+  const savedPlan = overridePlayers ? null : getGameplan(team.id);
+  const idealPlan = overridePlayers ? null : getIdealRotation(team.id);
+  const useIdeal = !!idealPlan?.locked;
+  const explicitMinutes =
+    savedPlan?.minuteOverrides && Object.keys(savedPlan.minuteOverrides).length > 0
+      ? savedPlan.minuteOverrides
+      : useIdeal
+        ? idealPlan?.minutes ?? null
+        : null;
+  const explicitDepth = countExplicitMinutePlayers(
+    team,
+    allPlayers,
+    explicitMinutes,
+    knobs.playThroughInjuries ?? 0,
+  );
+  const substitutionRotationCap = knobs.gameRules?.substitutionLimitEnabled
+    ? playersOnCourt + Math.max(0, Math.round(knobs.gameRules.maxSubstitutions ?? 0))
+    : Number.POSITIVE_INFINITY;
+  const maximumPlannedRotation = Math.min(Math.max(13, playersOnCourt + 5), substitutionRotationCap);
+  let rotationDepthOverride = explicitDepth > 0
+    ? Math.max(knobs.rotationDepthOverride ?? 0, Math.min(maximumPlannedRotation, explicitDepth))
+    : knobs.rotationDepthOverride;
+  if (knobs.gameRules?.substitutionLimitEnabled) {
+    rotationDepthOverride = Math.min(
+      substitutionRotationCap,
+      rotationDepthOverride ?? substitutionRotationCap,
+    );
+  }
+
   const rotResult = MinutesPlayedService.getRotation(
     team,
     allPlayers,
@@ -92,41 +198,55 @@ export function resolveRotationPlan(
     knobs.conferenceRank,
     knobs.gbFromLeader,
     knobs.gamesRemaining,
-    knobs.rotationDepthOverride,
+    rotationDepthOverride,
     knobs.playThroughInjuries ?? 0,
+    playersOnCourt,
   );
 
   let rotation = rotResult.players;
   if (rotation.length === 0) {
-    return { rotation: [], minuteTargets: [], starMpgTarget: rotResult.starMpgTarget };
+    return { rotation: [], minuteTargets: [], starMpgTarget: rotResult.starMpgTarget, source: 'auto' };
   }
 
-  const savedPlan = overridePlayers ? null : getGameplan(team.id);
-  const idealPlan = overridePlayers ? null : getIdealRotation(team.id);
-  const useIdeal = !!idealPlan?.locked;
   const autoRotation = rotation;
+  rotation = addExplicitMinutePlayers(
+    rotation,
+    team,
+    allPlayers,
+    explicitMinutes,
+    knobs.playThroughInjuries ?? 0,
+    playersOnCourt,
+  );
 
   rotation = applyOrder(
     rotation,
     savedPlan?.starterIds?.length ? savedPlan.starterIds : useIdeal ? idealPlan?.starterIds : undefined,
     savedPlan?.benchOrder?.length ? savedPlan.benchOrder : useIdeal ? idealPlan?.benchOrder : undefined,
+    playersOnCourt,
   );
+  if (knobs.gameRules?.substitutionLimitEnabled) {
+    rotation = rotation.slice(0, substitutionRotationCap);
+  }
 
   const numQuarters = knobs.numQuarters ?? 4;
   const overtimeDuration = knobs.overtimeDuration ?? 5;
-  const targetTotal = (knobs.quarterLength * numQuarters) * 5;
+  const targetTotal = (knobs.quarterLength * numQuarters) * playersOnCourt;
   const minuteProfile = isEuroClubCompetitionGame(team, knobs) ? 'euro_club' : 'default';
+  const eraRotation = getLockedStrategy(team.id) ? undefined : knobs.eraCoachingBias;
+  const starMpgTarget = eraRotation?.starMpgTarget ?? knobs.starMpgOverride ?? rotResult.starMpgTarget;
   const { minutes: baseMinutes } = MinutesPlayedService.allocateMinutes(
     rotation,
     season,
     lead,
     0,
-    knobs.starMpgOverride ?? rotResult.starMpgTarget,
+    starMpgTarget,
     !!knobs.isPlayoffs,
     knobs.quarterLength,
     overtimeDuration,
     numQuarters,
     minuteProfile,
+    playersOnCourt,
+    eraRotation?.maxPlayerMinutes,
   );
 
   if (savedPlan?.minuteOverrides && Object.keys(savedPlan.minuteOverrides).length > 0) {
@@ -135,30 +255,33 @@ export function resolveRotationPlan(
       return typeof value === 'number' ? value : baseMinutes[index];
     });
     const normalized = normalizeMinutes(overridden, targetTotal);
-    if (isClearlyBrokenSavedPlan(rotation, normalized)) {
-      clearGameplan(team.id);
+    if (isClearlyBrokenSavedPlan(rotation, normalized, playersOnCourt)) {
       const { minutes: autoMinutes } = MinutesPlayedService.allocateMinutes(
         autoRotation,
         season,
         lead,
         0,
-        knobs.starMpgOverride ?? rotResult.starMpgTarget,
+        starMpgTarget,
         !!knobs.isPlayoffs,
         knobs.quarterLength,
         overtimeDuration,
         numQuarters,
         minuteProfile,
+        playersOnCourt,
+        eraRotation?.maxPlayerMinutes,
       );
       return {
         rotation: autoRotation,
         minuteTargets: autoMinutes,
         starMpgTarget: rotResult.starMpgTarget,
+        source: 'auto',
       };
     }
     return {
       rotation,
       minuteTargets: normalized,
       starMpgTarget: rotResult.starMpgTarget,
+      source: 'gameplan',
     };
   }
 
@@ -175,6 +298,7 @@ export function resolveRotationPlan(
       rotation,
       minuteTargets: normalizeMinutes(seeded, targetTotal),
       starMpgTarget: rotResult.starMpgTarget,
+      source: 'ideal',
     };
   }
 
@@ -182,5 +306,6 @@ export function resolveRotationPlan(
     rotation,
     minuteTargets: baseMinutes,
     starMpgTarget: rotResult.starMpgTarget,
+    source: 'auto',
   };
 }

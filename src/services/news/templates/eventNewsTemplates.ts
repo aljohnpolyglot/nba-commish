@@ -2,6 +2,17 @@ import type { NewsTemplate } from '../newsTemplateTypes';
 
 export const EVENT_NEWS_TEMPLATES: NewsTemplate[] = [
   {
+    category: 'all_star_contest',
+    headlines: [
+      '{winnerName} Wins the {year} {eventName}',
+      '{eventName}: {winnerName} Takes the Title',
+    ],
+    contents: [
+      '{winnerName} delivered when it mattered and won the {year} {eventName}.',
+      'All-Star Weekend has a new {eventName} champion: {winnerName}.',
+    ],
+  },
+  {
     category: 'all_star_winner',
     headlines: [
       '{conference} Wins {year} NBA All-Star Game {homeScore}–{awayScore}',

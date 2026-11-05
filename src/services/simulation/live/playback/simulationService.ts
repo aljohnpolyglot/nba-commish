@@ -1,9 +1,14 @@
-import { RotationService } from './rotationService';
+import { parseMin, RotationService } from './rotationService';
 import { PlayerGameStats, GameResult } from '../../types';
 import { NBAPlayer } from '../../../../types';
 import { TeamId, PlayerPool } from './possessionTypes';
+import { validateAndNormalizePlaySequence } from './validatePlaySequence';
 import { buildPossessions } from './possessionBuilder';
 import { stampFoulContext, stampLateGameIntentional } from './foulTracker';
+import { stampRuleCommentary } from './ruleCommentary';
+import { stampCoachChallenges } from './reviewCommentary';
+import { stampHeaveCommentary } from './heaveCommentary';
+import { stampTimeouts } from './timeoutCommentary';
 import { assignClocks } from './clockAssigner';
 import { renderPossession, PlayLine } from './playRenderer';
 import { Period } from './possessionTypes';
@@ -15,10 +20,85 @@ import {
   getPeriodStartClock,
   getPeriodStartSeconds,
 } from '../../../../utils/gameClock';
+import { DEFAULT_GAME_RULES } from '../../gameRuleRuntime';
 
 const pick = <T>(a: T[]): T => a[~~(Math.random() * a.length)];
 const makeId = (suffix: string) => `gen-${Math.random().toString(36).substr(2, 9)}-${suffix}`;
 const scoreTotal = (scores: number[] = []) => scores.reduce((sum, score) => sum + (Number(score) || 0), 0);
+const safeClock = (value: unknown, fallback = '12:00') =>
+  typeof value === 'string' && value.trim() ? value : fallback;
+const clockToSeconds = (value: unknown): number => {
+  const clock = safeClock(value, '0');
+  if (clock.includes(':')) {
+    const [minStr, secStr] = clock.split(':');
+    return (parseInt(minStr, 10) || 0) * 60 + (parseFloat(secStr) || 0);
+  }
+  return parseFloat(clock) || 0;
+};
+
+export function findLateGameWinningScoreIndex(
+  lines: PlayLine[],
+  winningTeam: TeamId,
+  regulationPeriods = 4,
+): number {
+  const finalPeriod = Math.max(regulationPeriods, ...lines.map(line => line.q || 0));
+  return lines.findIndex((line, index) => {
+    if (
+      line.q !== finalPeriod
+      || line.tm !== winningTeam
+      || line.pts <= 0
+      || !line.player
+      || clockToSeconds(line.clock) > 5
+    ) return false;
+
+    const winnerAfter = winningTeam === 'HOME' ? line.cs : line.ds;
+    const loserAfter = winningTeam === 'HOME' ? line.ds : line.cs;
+    if (winnerAfter - line.pts > loserAfter || winnerAfter <= loserAfter) return false;
+
+    return lines.slice(index + 1).every(later => {
+      const winnerScore = winningTeam === 'HOME' ? later.cs : later.ds;
+      const loserScore = winningTeam === 'HOME' ? later.ds : later.cs;
+      return winnerScore > loserScore;
+    });
+  });
+}
+
+function alignLineupToPossession(
+  lineup: PlayerPool[],
+  possession: any,
+  team: TeamId,
+  playersOnCourt: number,
+): PlayerPool[] {
+  const required = [
+    possession.scorer,
+    possession.assister,
+    possession.passPlayer,
+    possession.blocker,
+    possession.rebounder,
+    possession.handler,
+    possession.stealer,
+    possession.fouler,
+    possession.victim,
+    ...(possession.fts ?? []).map((shot: any) => shot.shooter),
+  ].filter((player: PlayerPool | undefined): player is PlayerPool => player?.tm === team);
+  const requiredIds = new Set(required.map(player => player.id));
+  const aligned = [...lineup];
+  for (const player of required) {
+    if (aligned.some(current => current.id === player.id)) continue;
+    let replaceAt = -1;
+    for (let index = aligned.length - 1; index >= 0; index--) {
+      if (!requiredIds.has(aligned[index].id)) { replaceAt = index; break; }
+    }
+    if (replaceAt >= 0) aligned[replaceAt] = player;
+    else if (aligned.length < playersOnCourt) aligned.push(player);
+  }
+  return aligned.slice(0, playersOnCourt);
+}
+
+const punctuateCommentary = (line: PlayLine): PlayLine =>
+  line.type === 'sub' || /[.!?]$/.test(line.desc.trim())
+    ? line
+    : { ...line, desc: `${line.desc.trim()}.` };
 
 function initPool(stats: PlayerGameStats[], players: NBAPlayer[], tm: TeamId): PlayerPool[] {
   if (!stats) return [];
@@ -42,7 +122,14 @@ function initPool(stats: PlayerGameStats[], players: NBAPlayer[], tm: TeamId): P
       blk:     stat.blk || 0,
       tov:     stat.tov || 0,
       pf:      stat.pf  || 0,
+      dunks:   stat.dunks || 0,
       ftPct:   (stat.fta || 0) > 0 ? (stat.ftm || 0) / (stat.fta || 0) : 0.7,
+      fgAtRim: stat.fgAtRim ?? 0,
+      fgaAtRim: stat.fgaAtRim ?? 0,
+      fgLowPost: stat.fgLowPost ?? 0,
+      fgaLowPost: stat.fgaLowPost ?? 0,
+      fgMidRange: stat.fgMidRange ?? 0,
+      fgaMidRange: stat.fgaMidRange ?? 0,
     };
   });
 }
@@ -86,13 +173,15 @@ function buildSubLine(
   const desc = outNames.length > 0
     ? `SUB: ${inNames} in for ${outNames}`
     : `SUB: ${inNames} enters the game`;
+  const period = poss.period ?? String(poss.quarter ?? 1);
+  const clock = safeClock(poss.clock);
 
   return {
     id: `sub-${poss.id}-${tm}`,
     tm,
-    period: poss.period!,
-    clock: poss.clock!,
-    time: `${poss.period} ${poss.clock}`,
+    period,
+    clock,
+    time: `${period} ${clock}`,
     gs: (poss.gs ?? 0) - 0.5,
     pts: 0,
     desc,
@@ -109,23 +198,145 @@ function buildSubLine(
   };
 }
 
-function clampScoresToFinal(lines: PlayLine[], homeFinal: number, awayFinal: number): PlayLine[] {
-  if (!Number.isFinite(homeFinal) || !Number.isFinite(awayFinal)) return lines;
+function getAvailableLineup(
+  pool: PlayerPool[],
+  gs: number,
+  scoreDiff: number,
+  playersOnCourt: number,
+  excludedIds: Set<string>,
+): PlayerPool[] {
+  const proposed = RotationService.getLineupAtTime(pool, gs, scoreDiff, playersOnCourt)
+    .filter(player => !excludedIds.has(player.id));
+  if (proposed.length >= playersOnCourt) return proposed.slice(0, playersOnCourt);
+  const used = new Set(proposed.map(player => player.id));
+  const replacements = [...pool]
+    .filter(player => !excludedIds.has(player.id) && !used.has(player.id))
+    .sort((a, b) => parseMin(b.min) - parseMin(a.min));
+  return [...proposed, ...replacements].slice(0, playersOnCourt);
+}
 
+function enforceSubstitutionLimit(
+  previous: PlayerPool[],
+  proposed: PlayerPool[],
+  excludedIds: Set<string>,
+  used: number,
+  enabled: boolean,
+  maximum: number,
+  playersOnCourt: number,
+): { lineup: PlayerPool[]; used: number } {
+  if (previous.length === 0 || !enabled) {
+    const incoming = previous.length === 0 ? 0 : detectSubs(previous, proposed).comingIn.length;
+    return { lineup: proposed, used: used + incoming };
+  }
+
+  const eligiblePrevious = previous.filter(player => !excludedIds.has(player.id));
+  const forcedSlots = Math.max(0, playersOnCourt - eligiblePrevious.length);
+  if (forcedSlots > 0) {
+    const currentIds = new Set(eligiblePrevious.map(player => player.id));
+    const forcedReplacements = proposed
+      .filter(player => !currentIds.has(player.id))
+      .slice(0, forcedSlots);
+    return {
+      lineup: [...eligiblePrevious, ...forcedReplacements].slice(0, playersOnCourt),
+      used,
+    };
+  }
+
+  const incoming = detectSubs(previous, proposed).comingIn.length;
+  const remaining = Math.max(0, Math.round(maximum) - used);
+  if (incoming <= remaining) return { lineup: proposed, used: used + incoming };
+  return { lineup: previous, used };
+}
+
+function reconcilePlaybackScores(
+  lines: PlayLine[],
+  quarterScores: { home: number[]; away: number[] },
+): PlayLine[] {
   let homeScore = 0;
   let awayScore = 0;
-  return lines.map((line, index) => {
-    const nextHome = Math.min(Math.max(Number(line.cs ?? homeScore) || 0, homeScore), homeFinal);
-    const nextAway = Math.min(Math.max(Number(line.ds ?? awayScore) || 0, awayScore), awayFinal);
-    homeScore = nextHome;
-    awayScore = nextAway;
+  const periodHome = new Map<number, number>();
+  const periodAway = new Map<number, number>();
+  const reconciled: PlayLine[] = [];
 
-    if (index === lines.length - 1 || line.id === 'final') {
-      return { ...line, cs: homeFinal, ds: awayFinal };
+  for (const line of lines) {
+    let reconciledLine = line;
+    const isScoringPlay = line.pts > 0 && (line.type === 'made' || (line.type === 'ft' && line.isMake));
+    if (isScoringPlay) {
+      const periodIndex = Math.max(0, line.q - 1);
+      const target = line.tm === 'HOME'
+        ? Number(quarterScores.home[periodIndex] ?? 0)
+        : Number(quarterScores.away[periodIndex] ?? 0);
+      const current = line.tm === 'HOME'
+        ? periodHome.get(line.q) ?? 0
+        : periodAway.get(line.q) ?? 0;
+      const remaining = target - current;
+      if (remaining <= 0) continue;
+      if (line.pts > remaining) {
+        const playerName = line.player?.n ?? 'The shooter';
+        reconciledLine = {
+          ...line,
+          pts: remaining,
+          type: line.type,
+          isMake: line.type === 'ft' ? true : undefined,
+          is3: remaining === 3,
+          is4: remaining === 4,
+          desc: remaining === 1
+            ? line.type === 'ft'
+              ? `${playerName} free throw GOOD.`
+              : `${playerName} scores a goal.`
+            : remaining === 3
+              ? `${playerName} hits the three.`
+              : remaining === 4
+                ? `${playerName} connects from four-point range.`
+                : `${playerName} scores inside.`,
+        };
+      }
+      if (line.tm === 'HOME') {
+        periodHome.set(line.q, current + reconciledLine.pts);
+        homeScore += reconciledLine.pts;
+      } else {
+        periodAway.set(line.q, current + reconciledLine.pts);
+        awayScore += reconciledLine.pts;
+      }
     }
+    reconciled.push({ ...reconciledLine, cs: homeScore, ds: awayScore });
+  }
 
-    return { ...line, cs: nextHome, ds: nextAway };
-  });
+  return reconciled;
+}
+
+export function auditLivePlayback(lines: PlayLine[], finalResult: GameResult) {
+  let previousHome = 0;
+  let previousAway = 0;
+  const scoringDivergences: Array<{ id: string; team: TeamId; pts: number; homeDelta: number; awayDelta: number }> = [];
+  const missingActors: string[] = [];
+  const offCourtActors: string[] = [];
+  for (const line of lines) {
+    const homeDelta = line.cs - previousHome;
+    const awayDelta = line.ds - previousAway;
+    const isScoringPlay = line.pts > 0 && (line.type === 'made' || (line.type === 'ft' && line.isMake));
+    if (isScoringPlay) {
+      const valid = line.tm === 'HOME'
+        ? homeDelta === line.pts && awayDelta === 0
+        : awayDelta === line.pts && homeDelta === 0;
+      if (!valid) scoringDivergences.push({ id: line.id, team: line.tm, pts: line.pts, homeDelta, awayDelta });
+      if (!line.player?.n || !line.desc.includes(line.player.n)) missingActors.push(line.id);
+    }
+    if (line.player && ['made', 'miss', 'blk', 'reb', 'tov', 'stl', 'foul', 'ft'].includes(line.type)) {
+      const lineup = line.tm === 'HOME' ? line.lineupHOME : line.lineupAWAY;
+      if (lineup?.length && !lineup.some(player => player.id === line.player?.id)) offCourtActors.push(line.id);
+    }
+    previousHome = line.cs;
+    previousAway = line.ds;
+  }
+  return {
+    scoringDivergences,
+    missingActors,
+    offCourtActors,
+    playbackFinal: { home: previousHome, away: previousAway },
+    resultFinal: { home: finalResult.homeScore, away: finalResult.awayScore },
+    finalMatches: previousHome === finalResult.homeScore && previousAway === finalResult.awayScore,
+  };
 }
 
 function injectLiveEvents(
@@ -134,8 +345,11 @@ function injectLiveEvents(
   homePool: PlayerPool[],
   awayPool: PlayerPool[],
   timingConfig: GameTimingConfig,
+  playersOnCourt: number,
 ): PlayLine[] {
-  if (!finalResult?.liveEvents || finalResult.liveEvents.length === 0) return lines;
+  if (!finalResult?.liveEvents || finalResult.liveEvents.length === 0) {
+    return [...lines].sort((left, right) => (left.gs ?? 0) - (right.gs ?? 0));
+  }
 
   const withEvents = [...lines];
   const lookupPlayer = (id: string | undefined, team: TeamId, fallbackName: string): PlayerPool => {
@@ -151,7 +365,7 @@ function injectLiveEvents(
         min: 0,
         pos: 'F',
         fg2: 0, fg3: 0, fg4: 0, m2: 0, m3: 0, m4: 0,
-        ftm: 0, ftmiss: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0,
+        ftm: 0, ftmiss: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, dunks: 0,
       };
   };
 
@@ -162,8 +376,8 @@ function injectLiveEvents(
     );
     const insertAt = anchorIndex === -1 ? withEvents.length - 1 : Math.max(1, anchorIndex);
     const prev = withEvents[Math.max(0, insertAt - 1)];
-    const lineupHOME = prev?.lineupHOME ?? RotationService.getLineupAtTime(homePool, event.gs, 0);
-    const lineupAWAY = prev?.lineupAWAY ?? RotationService.getLineupAtTime(awayPool, event.gs, 0);
+    const lineupHOME = prev?.lineupHOME ?? RotationService.getLineupAtTime(homePool, event.gs, 0, playersOnCourt);
+    const lineupAWAY = prev?.lineupAWAY ?? RotationService.getLineupAtTime(awayPool, event.gs, 0, playersOnCourt);
     const scoreHome = typeof prev?.cs === 'number' ? prev.cs : 0;
     const scoreAway = typeof prev?.ds === 'number' ? prev.ds : 0;
     const period = getPeriodLabel(event.quarter, timingConfig.numQuarters);
@@ -202,6 +416,8 @@ export async function genPlays(
   timingConfig: GameTimingConfig = getGameTimingConfig(),
   finalResult?: GameResult,
 ): Promise<PlayLine[]> {
+  const playersOnCourt = Math.max(1, Math.round(finalResult?.playersOnCourt ?? 5));
+  const gameRules = finalResult?.gameRules ?? DEFAULT_GAME_RULES;
   const homePool = initPool(homeStats, players, 'HOME');
   const awayPool = initPool(awayStats, players, 'AWAY');
   const expectedHomeFinal = scoreTotal(quarterScores.home);
@@ -210,16 +426,30 @@ export async function genPlays(
   const tipWinner: TeamId = Math.random() > 0.5 ? 'HOME' : 'AWAY';
   const tipLoser:  TeamId = tipWinner === 'HOME' ? 'AWAY' : 'HOME';
 
-  const fallbackPlayer = { n: 'Unknown', fn: 'Unknown', id: '0', imgURL: '', tm: 'HOME', min: 0, pos: 'C' as 'C', fg2: 0, fg3: 0, fg4: 0, m2: 0, m3: 0, m4: 0, ft: 0, mft: 0, ftm: 0, ftmiss: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0 };
+  const fallbackPlayer = { n: 'Unknown', fn: 'Unknown', id: '0', imgURL: '', tm: 'HOME', min: 0, pos: 'C' as 'C', fg2: 0, fg3: 0, fg4: 0, m2: 0, m3: 0, m4: 0, ft: 0, mft: 0, ftm: 0, ftmiss: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, dunks: 0 };
   const homeCenter = homePool.find(p => p.pos === 'C') ?? homePool[0] ?? { ...fallbackPlayer, tm: 'HOME' };
   const awayCenter = awayPool.find(p => p.pos === 'C') ?? awayPool[0] ?? { ...fallbackPlayer, tm: 'AWAY' };
   const [tipW, tipL] = tipWinner === 'HOME' ? [homeCenter, awayCenter] : [awayCenter, homeCenter];
 
-  const possessions = buildPossessions(homePool, awayPool, quarterScores, tipWinner, otCount, timingConfig);
+  const possessions = buildPossessions(
+    homePool,
+    awayPool,
+    quarterScores,
+    tipWinner,
+    otCount,
+    timingConfig,
+    playersOnCourt,
+    gameRules,
+  );
 
-  stampFoulContext(possessions);
+  stampFoulContext(possessions, gameRules.foulOutLimit, gameRules.teamFoulPenalty);
+  stampRuleCommentary(possessions, gameRules);
   
-  const TOTAL_PERIODS = timingConfig.numQuarters + otCount;
+  const TOTAL_PERIODS = Math.max(
+    timingConfig.numQuarters + otCount,
+    quarterScores.home.length,
+    quarterScores.away.length,
+  );
   
   for (let q = 1; q <= TOTAL_PERIODS; q++) {
     const qPossessions = possessions.filter(p => p.quarter === q);
@@ -228,6 +458,23 @@ export async function genPlays(
     assignClocks(qPossessions, quarterDuration, qStartGs, getPeriodLabel(q, timingConfig.numQuarters) as Period, q >= timingConfig.numQuarters);
   }
 
+  stampCoachChallenges(possessions, gameRules, timingConfig.numQuarters);
+  const timeoutCountForTeam = (teamId: number | undefined) => finalResult?.highlights?.find(
+    highlight => highlight.type === 'timeout' && highlight.teamId === teamId,
+  )?.count;
+  stampTimeouts(possessions, gameRules, timingConfig.numQuarters, {
+    HOME: timeoutCountForTeam(finalResult?.homeTeamId),
+    AWAY: timeoutCountForTeam(finalResult?.awayTeamId),
+  });
+  stampHeaveCommentary(
+    possessions,
+    finalResult?.heaves ?? [],
+    finalResult?.homeTeamId ?? -1,
+    finalResult?.awayTeamId ?? -1,
+    timingConfig,
+    homePool,
+    awayPool,
+  );
   stampLateGameIntentional(possessions);
 
   const allLines: PlayLine[] = [];
@@ -235,10 +482,19 @@ export async function genPlays(
 
   let prevHomeLineup: PlayerPool[] = [];
   let prevAwayLineup: PlayerPool[] = [];
+  let homeSubstitutions = 0;
+  let awaySubstitutions = 0;
+  const excludedHome = new Set<string>();
+  const excludedAway = new Set<string>();
   const lastSubKey = new Set<string>();
 
+  const openingDescription = gameRules.startOfPossessionMethod === 'coin_toss'
+    ? `The ${tipWinner === 'HOME' ? 'home' : 'away'} side wins the coin toss and takes the opening possession.`
+    : gameRules.startOfPossessionMethod === 'rock_paper_scissors'
+      ? `The ${tipWinner === 'HOME' ? 'home' : 'away'} side wins rock-paper-scissors and takes the opening possession.`
+      : `Jump ball! ${tipW.n} wins the tip over ${tipL.n}.`;
   allLines.push({
-    id: 'jumpball',
+    id: 'opening-possession',
     tm: tipWinner,
     period: getPeriodLabel(1, timingConfig.numQuarters),
     q: 1,
@@ -246,13 +502,13 @@ export async function genPlays(
     time: `${getPeriodLabel(1, timingConfig.numQuarters)} ${getPeriodStartClock(1, timingConfig)}`,
     gs: 0,
     pts: 0,
-    desc: `Jumpball! ${tipW.n} wins the tip over ${tipL.n}.`,
+    desc: openingDescription,
     type: 'jumpball',
-    player: tipW,
+    player: gameRules.startOfPossessionMethod === 'jump_ball' ? tipW : undefined,
     cs: 0, ds: 0,
     possession: tipWinner,
-    lineupHOME: RotationService.getLineupAtTime(homePool, 0, 0),
-    lineupAWAY: RotationService.getLineupAtTime(awayPool, 0, 0),
+    lineupHOME: RotationService.getLineupAtTime(homePool, 0, 0, playersOnCourt),
+    lineupAWAY: RotationService.getLineupAtTime(awayPool, 0, 0, playersOnCourt),
   });
 
   let prevPoss: any = null;
@@ -311,6 +567,16 @@ export async function genPlays(
         const isOT = poss.quarter > timingConfig.numQuarters;
         const otNum = isOT ? poss.quarter - timingConfig.numQuarters : 0;
         const startClock = getPeriodStartClock(poss.quarter, timingConfig);
+        const side = poss.team === 'HOME' ? 'home' : 'away';
+        const periodStartDescription = isOT
+          ? gameRules.startOfPossessionMethod === 'jump_ball'
+            ? `Overtime ${otNum}! The ${side} side controls the opening tip.`
+            : gameRules.startOfPossessionMethod === 'coin_toss'
+              ? `Overtime ${otNum}! A fresh coin toss gives the ${side} side the first possession.`
+              : `Overtime ${otNum}! Rock-paper-scissors gives the ${side} side the first possession.`
+          : gameRules.possessionPattern === 'alternating'
+            ? `The possession arrow gives the ${side} side the first possession of ${qLabel}.`
+            : `The ${side} side controls the opening possession of ${qLabel}.`;
 
         allLines.push({
           id: makeId(`tipoff_${poss.quarter}`),
@@ -321,7 +587,7 @@ export async function genPlays(
           time: `${qLabel} ${startClock}`,
           gs: poss.gs - 0.1,
           pts: 0,
-          desc: isOT ? `Overtime ${otNum}! Here we go!!` : `${qLabel} quarter underway.`,
+          desc: periodStartDescription,
           type: 'gameOver',
           cs, ds,
           possession: poss.team,
@@ -329,11 +595,46 @@ export async function genPlays(
           isOT,
         });
       }
+
+      // Period-opening lineups are newly submitted starters, not substitutions.
+      prevHomeLineup = [];
+      prevAwayLineup = [];
     }
 
     const gs = poss.gs ?? 0;
-    const homeLineup = RotationService.getLineupAtTime(homePool, gs, cs - ds);
-    const awayLineup = RotationService.getLineupAtTime(awayPool, gs, ds - cs);
+    for (const ejection of finalResult?.ejections ?? []) {
+      const start = getPeriodStartSeconds(ejection.quarter, timingConfig);
+      const duration = getPeriodDurationSeconds(ejection.quarter, timingConfig);
+      const ejectionGs = start + Math.max(0, duration - clockToSeconds(ejection.clock));
+      if (ejectionGs > gs) continue;
+      if (ejection.teamId === finalResult?.homeTeamId) excludedHome.add(ejection.playerId);
+      if (ejection.teamId === finalResult?.awayTeamId) excludedAway.add(ejection.playerId);
+    }
+
+    const proposedHome = getAvailableLineup(homePool, gs, cs - ds, playersOnCourt, excludedHome);
+    const proposedAway = getAvailableLineup(awayPool, gs, ds - cs, playersOnCourt, excludedAway);
+    const boundedHome = enforceSubstitutionLimit(
+      prevHomeLineup,
+      proposedHome,
+      excludedHome,
+      homeSubstitutions,
+      gameRules.substitutionLimitEnabled,
+      gameRules.maxSubstitutions,
+      playersOnCourt,
+    );
+    const boundedAway = enforceSubstitutionLimit(
+      prevAwayLineup,
+      proposedAway,
+      excludedAway,
+      awaySubstitutions,
+      gameRules.substitutionLimitEnabled,
+      gameRules.maxSubstitutions,
+      playersOnCourt,
+    );
+    const homeLineup = alignLineupToPossession(boundedHome.lineup, poss, 'HOME', playersOnCourt);
+    const awayLineup = alignLineupToPossession(boundedAway.lineup, poss, 'AWAY', playersOnCourt);
+    homeSubstitutions = boundedHome.used;
+    awaySubstitutions = boundedAway.used;
 
     if (prevHomeLineup.length > 0) {
       const homeSubs = detectSubs(prevHomeLineup, homeLineup);
@@ -362,81 +663,62 @@ export async function genPlays(
     prevAwayLineup = awayLineup;
 
     const { lines, newHomeScore, newAwayScore } = renderPossession(
-      poss, cs, ds, homeLineup, awayLineup
+      poss, cs, ds, homeLineup, awayLineup, gameRules
     );
 
     cs = newHomeScore;
     ds = newAwayScore;
     allLines.push(...lines);
 
+    if (poss.isFoulOut && poss.fouler) {
+      (poss.fouler.tm === 'HOME' ? excludedHome : excludedAway).add(poss.fouler.id);
+    }
+
     prevPoss = poss;
   }
 
-  const winningTeamStr = gameWinner 
+  const winningTeamStr = finalResult?.winnerId === finalResult?.homeTeamId
+    ? 'HOME'
+    : finalResult?.winnerId === finalResult?.awayTeamId
+      ? 'AWAY'
+      : gameWinner 
     ? (homePool.some(p => p.id === gameWinner.playerId) ? 'HOME' : 'AWAY')
     : (expectedHomeFinal > expectedAwayFinal ? 'HOME' : 'AWAY');
 
-  if (gameWinner && gameWinner.isWalkoff && allLines.length > 0) {
-    const gw = gameWinner;
-    const is3 = gw.shotType === 'clutch_3';
-    const isOTWinner = otCount > 0;
-    
-    const gwDesc = buildGameWinnerDesc(
-      gw.playerName, is3, isOTWinner,
-      gw.clockRemaining
-    );
-    
-    // Find last scoring line and replace desc
-    const lastScoreLine = [...allLines]
-      .reverse()
-      .find(l => l.pts > 0);
-    if (lastScoreLine) {
-      lastScoreLine.desc = gwDesc;
-      lastScoreLine.isGameWinner = true;
-    }
-    
-    // Replace buzzer line with walkoff celebration if it exists
-    const buzzerLine = allLines.find(l => l.id === 'final');
-    if (buzzerLine) {
-      buzzerLine.desc = pick([
-        `${gw.playerName} WINS IT AT THE BUZZER!! THE CROWD ERUPTS!!`,
-        `FINAL!! ${gw.playerName} IS MOBBED BY TEAMMATES!! WHAT A GAME!!`,
-        `BALLGAME!! ${gw.playerName} DELIVERS THE DAGGER!! UNBELIEVABLE!!`,
-      ]);
-      buzzerLine.type = 'gameOver';
-    }
-  } else if (gameWinner && allLines.length > 0) {
-    // Original clutch logic for non-walkoff game winners
-    const finalPeriod = allLines[allLines.length - 1].period;
-    const lastScoringIdx = [...allLines]
-      .map((p, i) => ({ p, i }))
-      .filter(({ p }) => (p.type === 'made' || p.type === 'ft') && p.tm === winningTeamStr && p.period === finalPeriod)
-      .pop()?.i ?? -1;
-
-    if (lastScoringIdx !== -1) {
-      const wp = allLines[lastScoringIdx];
-      const clock = wp.clock; 
+  if (gameWinner && allLines.length > 0) {
+    const winningScoreIdx = findLateGameWinningScoreIndex(allLines, winningTeamStr, timingConfig.numQuarters);
+    if (winningScoreIdx !== -1) {
+      const wp = allLines[winningScoreIdx];
+      const clock = safeClock(wp.clock, '0');
       const playerName = wp.player?.n || gameWinner.playerName;
       let desc: string;
       
-      let secondsLeft = 0;
-      if (clock.includes(':')) {
-        const [minStr, secStr] = clock.split(':');
-        secondsLeft = parseInt(minStr) * 60 + parseFloat(secStr);
-      } else {
-        secondsLeft = parseFloat(clock);
-      }
+      const secondsLeft = clockToSeconds(clock);
       const isWalkoff = secondsLeft <= 5.0;
       
-      if (wp.pts === 1) {
+      if (wp.type === 'ft') {
         desc = `${playerName} free throw GOOD — ${isWalkoff ? 'GAME OVER' : 'clutch from the stripe'}! (${clock})`;
+      } else if (gameRules.fieldGoalValue === 1) {
+        desc = `${playerName} scores the winning goal ${isWalkoff ? 'at the horn' : `with ${clock} left`}!`;
       } else if (wp.pts === 3) {
         desc = `${playerName} BURIES THE THREE!! ${isWalkoff ? '🚨 WALKOFF THREE!' : 'clutch shot!'} (${clock})`;
       } else {
         desc = `${playerName} ${isWalkoff ? 'HITS THE WALKOFF' : 'clutch bucket'}!! (${clock})`;
       }
       
-      allLines[lastScoringIdx] = { ...wp, desc, isGameWinner: true } as any;
+      allLines[winningScoreIdx] = { ...wp, desc, isGameWinner: true } as any;
+
+      if (isWalkoff) {
+        const buzzerLine = allLines.find(line => line.id === 'final');
+        if (buzzerLine) {
+          buzzerLine.desc = pick([
+            `${playerName} WINS IT AT THE BUZZER!! THE CROWD ERUPTS!!`,
+            `FINAL!! ${playerName} IS MOBBED BY TEAMMATES!! WHAT A GAME!!`,
+            `BALLGAME!! ${playerName} DELIVERS THE DAGGER!! UNBELIEVABLE!!`,
+          ]);
+          buzzerLine.type = 'gameOver';
+        }
+      }
     }
   }
 
@@ -456,21 +738,27 @@ export async function genPlays(
       let desc: string;
       if (isLosing) {
         const desperationVariations = [
-          `${playerName} fires a desperation heave at the buzzer — no good!`,
-          `${playerName} tries a halfcourt prayer — it clangs off the rim!`,
-          `${playerName} launches a wild shot as time expires — off the mark.`,
-          `${playerName} can't get the miracle shot to fall.`,
-          `The final shot is off — the buzzer sounds!`
+          `${playerName} cannot create a clean look before the horn.`,
+          `${playerName} is forced to hold as the final seconds disappear.`,
+          `${playerName} runs out of time trying to create one last chance.`,
+          `The defense closes the final possession and the buzzer sounds.`,
+          `Time expires before the offense can release a shot.`
         ];
         desc = desperationVariations[Math.floor(Math.random() * desperationVariations.length)];
       } else {
-        const variations = [
-          `${playerName} dribbles out the clock.`,
-          `${playerName} runs down the final seconds.`,
-          `${playerName} milks the clock.`,
-          `${playerName} lets it expire.`,
-          `The buzzer sounds.`
-        ];
+        const variations = gameRules.dribbleRule === 'continuous'
+          ? [
+              `${playerName} dribbles out the clock.`,
+              `${playerName} runs down the final seconds.`,
+              `${playerName} milks the clock.`,
+              `${playerName} lets it expire.`,
+              'The buzzer sounds.',
+            ]
+          : [
+              `${playerName} keeps possession as the final seconds expire.`,
+              `${playerName} lets the final seconds pass.`,
+              'The final horn sounds.',
+            ];
         desc = variations[Math.floor(Math.random() * variations.length)];
       }
 
@@ -480,7 +768,7 @@ export async function genPlays(
         period: lastLine.period,
         clock: '0:00',
         time: `${lastLine.period} 0:00`,
-        gs: lastLine.gs + 0.1,
+        gs: Math.max(...allLines.map(line => line.gs ?? 0)) + 0.1,
         pts: 0,
         desc,
         type: 'gameOver',
@@ -493,47 +781,15 @@ export async function genPlays(
     }
   }
 
-  const withLiveEvents = injectLiveEvents(allLines, finalResult, homePool, awayPool, timingConfig);
-  return clampScoresToFinal(withLiveEvents, expectedHomeFinal, expectedAwayFinal);
+  const withLiveEvents = injectLiveEvents(
+    allLines,
+    finalResult,
+    homePool,
+    awayPool,
+    timingConfig,
+    playersOnCourt,
+  );
+  return validateAndNormalizePlaySequence(reconcilePlaybackScores(withLiveEvents, quarterScores))
+    .plays.map(punctuateCommentary);
 }
 
-function buildGameWinnerDesc(
-  playerName: string,
-  is3: boolean,
-  isOT: boolean,
-  clockStr: string,
-): string {
-  const clockRemaining = parseFloat(clockStr.replace('s', ''));
-  const timeDesc = clockRemaining <= 3
-    ? 'AT THE BUZZER'
-    : `with ${clockRemaining} seconds left`;
-
-  if (is3 && isOT) {
-    return pick([
-      `${playerName} PULLS UP FROM THREE IN OT — ${timeDesc}!! DRAINS IT!! GAME OVER!!`,
-      `${playerName} RISES UP — BANG!! THREE POINTER ${timeDesc}!! THIS PLACE IS GOING CRAZY!!`,
-      `${playerName} WITH THE COLD-BLOODED THREE IN OT — ${timeDesc}!! UNREAL SHOT!! GAME!!`,
-    ]);
-  }
-
-  if (is3 && !isOT) {
-    return pick([
-      `${playerName} LAUNCHES FROM THREE ${timeDesc}!! GOOD!! WALK-OFF THREE POINTER!!`,
-      `${playerName} — STEP BACK THREE — ${timeDesc}!! IT GOES IN!! THE BUILDING EXPLODES!!`,
-      `${playerName} DRAINS THE BUZZER BEATER THREE!! ${timeDesc}!! ARE YOU KIDDING ME!!`,
-    ]);
-  }
-
-  if (!is3 && isOT) {
-    return pick([
-      `${playerName} DRIVES AND SCORES IN OT — ${timeDesc}!! THAT'S THE GAME!!`,
-      `${playerName} GETS TO THE RIM ${timeDesc}!! LAYS IT IN!! OVERTIME WINNER!!`,
-    ]);
-  }
-
-  // Regulation walkoff 2PT
-  return pick([
-    `${playerName} DRIVES — SCORES — ${timeDesc}!! WALK-OFF BUCKET!! GAME OVER!!`,
-    `${playerName} SPLITS THE DEFENSE AND LAYS IT IN ${timeDesc}!! THIS GAME IS OVER!!`,
-  ]);
-}

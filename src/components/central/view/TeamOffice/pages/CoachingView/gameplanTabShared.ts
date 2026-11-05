@@ -3,14 +3,9 @@ import { reconcileIdealMinutes } from '../../../../../../store/idealRotationStor
 import { StarterService } from '../../../../../../services/simulation/StarterService';
 import { injurySeverityLevel } from '../../../../../../services/simulation/playThroughInjuriesFactor';
 import type { NBAPlayer } from '../../../../../../types';
-import { getDisplayOverall } from '../../../../../../utils/playerRatings';
 import { isOnRoster } from '../../../../../../utils/teamLookup';
 
 export const STARTER_POS_ORDER = ['PG', 'SG', 'SF', 'PF', 'C'] as const;
-
-export function getK2(player: NBAPlayer): number {
-  return getDisplayOverall(player);
-}
 
 export function isInjured(player: NBAPlayer, ptiLevel = 0): boolean {
   const gamesRemaining = player.injury?.gamesRemaining ?? 0;
@@ -76,6 +71,7 @@ interface BuildStarterOrderArgs {
   healthyRoster: NBAPlayer[];
   healthyIds: Set<string>;
   forceSort: boolean;
+  playersOnCourt: number;
 }
 
 export function buildStarterOrder({
@@ -88,30 +84,31 @@ export function buildStarterOrder({
   healthyRoster,
   healthyIds,
   forceSort,
+  playersOnCourt,
 }: BuildStarterOrderArgs) {
   const savedStarters = (savedStarterIds ?? []).filter(id => onTeamIds.has(id) && healthyIds.has(id));
   const projected = team
-    ? StarterService.getProjectedStarters(team, players, currentYear, healthyRoster)
-        .slice(0, 5)
+    ? StarterService.getProjectedStarters(team, players, currentYear, healthyRoster, true, playersOnCourt)
+        .slice(0, playersOnCourt)
         .map(p => p.internalId)
     : [];
   let nextStarters: string[];
   let hadToFill = false;
   if (savedStarters.length > 0) {
     nextStarters = [...savedStarters];
-    hadToFill = savedStarters.length < 5;
+    hadToFill = savedStarters.length < playersOnCourt;
   } else if ((idealStarterIds?.length ?? 0) > 0) {
     nextStarters = (idealStarterIds ?? []).filter(id => healthyIds.has(id));
-    hadToFill = nextStarters.length < 5;
+    hadToFill = nextStarters.length < playersOnCourt;
   } else {
     nextStarters = [];
     hadToFill = true;
   }
   for (const playerId of projected) {
-    if (nextStarters.length >= 5) break;
+    if (nextStarters.length >= playersOnCourt) break;
     if (!nextStarters.includes(playerId)) nextStarters.push(playerId);
   }
-  let finalStarters = nextStarters.slice(0, 5);
+  let finalStarters = nextStarters.slice(0, playersOnCourt);
   if (forceSort || hadToFill) {
     finalStarters = StarterService.sortByPositionSlot(
       finalStarters

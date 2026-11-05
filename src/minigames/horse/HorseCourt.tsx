@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from 'motion/react';
 import type { HorseShot } from '../../services/allStar/AllStarHorseSim';
+import { ContestBall } from '../../components/allstar/ContestBall';
 
 interface HorseCourtProps {
   activeShooterPos?: { x: number; y: number };
@@ -96,6 +97,7 @@ export default function HorseCourt({
             </motion.g>
           )}
         </AnimatePresence>
+        {activeShooterPos && <ContestBall shooter={activeShooterPos} isShooting={isShooting} />}
       </svg>
     </div>
   );

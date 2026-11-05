@@ -22,9 +22,54 @@ export function extractJerseyNumber(player: { jerseyNumber?: string | number; st
 const arrFirst = (value: any): number =>
   Array.isArray(value) ? (typeof value[0] === 'number' ? value[0] : 0) : (typeof value === 'number' ? value : 0);
 
+const finiteStatNumber = (value: unknown): number => {
+  const numeric = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(numeric) ? numeric : 0;
+};
+
+const validNbaTid = (tid: any): tid is number =>
+  typeof tid === 'number' && tid >= 0 && tid < 100;
+
+const regularNbaStats = (player: NBAGMPlayer) =>
+  (player.stats ?? [])
+    .filter((stat: any) =>
+      !stat.playoffs &&
+      Number(stat.season ?? 0) > 0 &&
+      (stat.gp ?? 0) > 0 &&
+      validNbaTid(stat.tid)
+    )
+    .sort((a: any, b: any) =>
+      Number(a.season ?? 0) - Number(b.season ?? 0) ||
+      Number(b.gp ?? 0) - Number(a.gp ?? 0)
+    );
+
 export function normalizeBBGMStat(stat: any): any {
+  const orb = finiteStatNumber(stat.orb);
+  const drb = finiteStatNumber(stat.drb);
+  const explicitRebounds = stat.trb ?? stat.reb;
+
   return {
     ...stat,
+    gp: finiteStatNumber(stat.gp),
+    gs: finiteStatNumber(stat.gs),
+    min: finiteStatNumber(stat.min),
+    fg: finiteStatNumber(stat.fg),
+    fga: finiteStatNumber(stat.fga),
+    tp: finiteStatNumber(stat.tp),
+    tpa: finiteStatNumber(stat.tpa),
+    ft: finiteStatNumber(stat.ft),
+    fta: finiteStatNumber(stat.fta),
+    orb,
+    drb,
+    trb: explicitRebounds === undefined || explicitRebounds === null
+      ? orb + drb
+      : finiteStatNumber(explicitRebounds),
+    ast: finiteStatNumber(stat.ast),
+    stl: finiteStatNumber(stat.stl),
+    blk: finiteStatNumber(stat.blk),
+    tov: finiteStatNumber(stat.tov),
+    pf: finiteStatNumber(stat.pf),
+    pts: finiteStatNumber(stat.pts),
     orbPct: stat.orbPct ?? stat.orbp,
     drbPct: stat.drbPct ?? stat.drbp,
     rebPct: stat.rebPct ?? stat.trbp,
@@ -72,30 +117,54 @@ export function normalizeBBGMStat(stat: any): any {
   };
 }
 
+export function normalizeBBGMStats(stats: unknown, exclusiveSeasonCutoff?: number): any[] {
+  if (!Array.isArray(stats)) return [];
+  return stats
+    .filter(stat => exclusiveSeasonCutoff == null || Number(stat?.season) < exclusiveSeasonCutoff)
+    .map(normalizeBBGMStat);
+}
+
 export const findTeamInfoForSeason = (player: NBAGMPlayer, startYear: number, startPhase: GamePhase): { tid: number } => {
   if (startYear === 2025) {
     return { tid: player.tid };
   }
 
   let finalTid = -1;
+  const seasonEndYear = startYear + 1;
+  const draftYear = Number(player.draft?.year ?? 0);
+  const stats = regularNbaStats(player);
+  const firstStatSeason = stats[0] ? Number((stats[0] as any).season ?? 0) : null;
+
+  if (draftYear > seasonEndYear) return { tid: -1 };
+  if (!firstStatSeason || firstStatSeason > seasonEndYear) return { tid: -1 };
 
   if (!player.ratings || player.ratings.length === 0) {
-    return { tid: -1 };
+    if (!firstStatSeason || firstStatSeason > seasonEndYear) return { tid: -1 };
   }
 
-  const sortedTransactions = (player.transactions || []).sort((a, b) => {
+  const startSeasonStat = [...stats]
+    .filter((stat: any) => Number(stat.season ?? 0) === seasonEndYear)
+    .sort((a: any, b: any) => Number(b.gp ?? 0) - Number(a.gp ?? 0))[0] as any;
+  if (startSeasonStat && validNbaTid(startSeasonStat.tid)) {
+    finalTid = startSeasonStat.tid;
+  }
+
+  const sortedTransactions = [...(player.transactions || [])].sort((a, b) => {
     if (a.season !== b.season) return a.season - b.season;
     return (a.phase || 0) - (b.phase || 0);
   });
 
-  const historicalTransactions = sortedTransactions.filter((transaction) => transaction.season < startYear);
+  const historicalTransactions = sortedTransactions.filter((transaction) => transaction.season <= startYear && validNbaTid(transaction.tid));
 
-  if (historicalTransactions.length > 0) {
+  if (finalTid < 0 && historicalTransactions.length > 0) {
     finalTid = historicalTransactions[historicalTransactions.length - 1].tid;
-  } else if (player.draft && player.draft.year && player.draft.year < startYear) {
+  } else if (finalTid < 0 && stats.length > 0) {
+    const latestKnownStat = [...stats]
+      .filter((stat: any) => Number(stat.season ?? 0) <= seasonEndYear)
+      .sort((a: any, b: any) => Number(b.season ?? 0) - Number(a.season ?? 0) || Number(b.gp ?? 0) - Number(a.gp ?? 0))[0] as any;
+    if (latestKnownStat && validNbaTid(latestKnownStat.tid)) finalTid = latestKnownStat.tid;
+  } else if (finalTid < 0 && player.draft && player.draft.year && player.draft.year < startYear && validNbaTid(player.draft.tid)) {
     finalTid = player.draft.tid;
-  } else {
-    finalTid = player.tid;
   }
 
   const isPostRegularSeason =
@@ -108,19 +177,19 @@ export const findTeamInfoForSeason = (player: NBAGMPlayer, startYear: number, st
     startPhase === 'Draft Lottery' ||
     startPhase === 'Free Agency';
   if (isPostRegularSeason) {
-    const startYearTransactions = sortedTransactions.filter((transaction) => transaction.season === startYear);
+    const startYearTransactions = sortedTransactions.filter((transaction) => transaction.season === startYear && validNbaTid(transaction.tid));
     for (const transaction of startYearTransactions) {
       finalTid = transaction.tid;
     }
   } else {
-    const startYearTransactions = sortedTransactions.filter((transaction) => transaction.season === startYear);
+    const startYearTransactions = sortedTransactions.filter((transaction) => transaction.season === startYear && validNbaTid(transaction.tid));
     if (startYearTransactions.length > 0) {
       finalTid = startYearTransactions[startYearTransactions.length - 1].tid;
     }
   }
 
-  const latestRatingYear = player.ratings[player.ratings.length - 1].season;
-  if (startYear > latestRatingYear + 5) {
+  const latestRatingYear = player.ratings?.[player.ratings.length - 1]?.season;
+  if (latestRatingYear && startYear > latestRatingYear + 5) {
     return { tid: -1 };
   }
 

@@ -1,0 +1,1354 @@
+{
+  "russian_championship_results": [
+    {
+      "season": "1991–92",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": null,
+      "runner_up": "Stroitel Samara",
+      "third_place": "Avtodor Saratov",
+      "won_russian_cup": false
+    },
+    {
+      "season": "1992–93",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": null,
+      "runner_up": "Spartak Saint Petersburg",
+      "third_place": "Stroitel Samara",
+      "won_russian_cup": false
+    },
+    {
+      "season": "1993–94",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": null,
+      "runner_up": "Avtodor Saratov",
+      "third_place": "CSK VVS Samara",
+      "won_russian_cup": false
+    },
+    {
+      "season": "1994–95",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "Dynamo Moscow",
+      "third_place": "CSK VVS Samara",
+      "won_russian_cup": false
+    },
+    {
+      "season": "1995–96",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–2",
+      "runner_up": "Dynamo Moscow",
+      "third_place": "Avtodor Saratov",
+      "won_russian_cup": false
+    },
+    {
+      "season": "1996–97",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–2",
+      "runner_up": "Avtodor Saratov",
+      "third_place": "BC Samara",
+      "won_russian_cup": false
+    },
+    {
+      "season": "1997–98",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–1",
+      "runner_up": "Avtodor Saratov",
+      "third_place": "BC Samara",
+      "won_russian_cup": false
+    },
+    {
+      "season": "1998–99",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "2–0",
+      "runner_up": "Avtodor Saratov",
+      "third_place": "Arsenal",
+      "won_russian_cup": false
+    },
+    {
+      "season": "1999–2000",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "Ural Great Perm",
+      "third_place": "UNICS",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2000–01",
+      "league": "Russia Super League A",
+      "champion": "Ural Great Perm",
+      "score": "3–0",
+      "runner_up": "UNICS",
+      "third_place": "Lokomotiv-Kuban",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2001–02",
+      "league": "Russia Super League A",
+      "champion": "Ural Great Perm",
+      "score": "3–1",
+      "runner_up": "UNICS",
+      "third_place": "Lokomotiv-Kuban",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2002–03",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–1",
+      "runner_up": "Ural Great Perm",
+      "third_place": "UNICS",
+      "won_russian_cup": true
+    },
+    {
+      "season": "2003–04",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–1",
+      "runner_up": "UNICS",
+      "third_place": "Dynamo Moscow",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2004–05",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–1",
+      "runner_up": "Dynamo Moscow",
+      "third_place": "UNICS",
+      "won_russian_cup": true
+    },
+    {
+      "season": "2005–06",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "Khimki",
+      "third_place": "Dynamo Saint Petersburg",
+      "won_russian_cup": true
+    },
+    {
+      "season": "2006–07",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "UNICS",
+      "third_place": "Khimki",
+      "won_russian_cup": true
+    },
+    {
+      "season": "2007–08",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "Khimki",
+      "third_place": "Dynamo Moscow",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2008–09",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–1",
+      "runner_up": "Khimki",
+      "third_place": "UNICS",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2009–10",
+      "league": "Russia Super League A",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "Khimki",
+      "third_place": "UNICS",
+      "won_russian_cup": true
+    },
+    {
+      "season": "2010–11",
+      "league": "Russia PBL",
+      "champion": "CSKA Moscow",
+      "score": "3–1",
+      "runner_up": "Khimki",
+      "third_place": "UNICS",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2011–12",
+      "league": "Russia PBL",
+      "champion": "CSKA Moscow",
+      "score": "2–0",
+      "runner_up": "Khimki",
+      "third_place": "Lokomotiv-Kuban",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2012–13",
+      "league": "Russia PBL",
+      "champion": "CSKA Moscow",
+      "score": null,
+      "runner_up": "Khimki",
+      "third_place": "Spartak Saint Petersburg",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2013–14",
+      "league": "VTB United League",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "Nizhny Novgorod",
+      "third_place": "UNICS",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2014–15",
+      "league": "VTB United League",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "Khimki",
+      "third_place": "Lokomotiv-Kuban",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2015–16",
+      "league": "VTB United League",
+      "champion": "CSKA Moscow",
+      "score": "3–1",
+      "runner_up": "UNICS",
+      "third_place": "Zenit Saint Petersburg",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2016–17",
+      "league": "VTB United League",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "Khimki",
+      "third_place": "Zenit Saint Petersburg",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2017–18",
+      "league": "VTB United League",
+      "champion": "CSKA Moscow",
+      "score": "95:84",
+      "runner_up": "Khimki",
+      "third_place": "Zenit Saint Petersburg",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2018–19",
+      "league": "VTB United League",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "Khimki",
+      "third_place": "UNICS",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2019–20",
+      "league": "VTB United League",
+      "champion": null,
+      "score": null,
+      "runner_up": null,
+      "third_place": null,
+      "won_russian_cup": false,
+      "note": "Cancelled due to the COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "league": "VTB United League",
+      "champion": "CSKA Moscow",
+      "score": "3–0",
+      "runner_up": "UNICS",
+      "third_place": "Zenit Saint Petersburg",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2021–22",
+      "league": "VTB United League",
+      "champion": "Zenit Saint Petersburg",
+      "score": "4–3",
+      "runner_up": "CSKA Moscow",
+      "third_place": "UNICS",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2022–23",
+      "league": "VTB United League",
+      "champion": "UNICS",
+      "score": "4–1",
+      "runner_up": "Lokomotiv Kuban",
+      "third_place": "CSKA Moscow",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2023–24",
+      "league": "VTB United League",
+      "champion": "CSKA Moscow",
+      "score": "4–1",
+      "runner_up": "UNICS",
+      "third_place": "BC Zenit Saint Petersburg",
+      "won_russian_cup": false
+    },
+    {
+      "season": "2024–25",
+      "league": "VTB United League",
+      "champion": "CSKA Moscow",
+      "score": "4–2",
+      "runner_up": "Zenit Saint Petersburg",
+      "third_place": "UNICS",
+      "won_russian_cup": false
+    }
+  ],
+  "vtb_united_league_finals": [
+    {
+      "season": "2008",
+      "hosts": "Russia (Moscow)",
+      "gold": "CSKA Moscow",
+      "score": "70–66",
+      "silver": "Khimki",
+      "bronze": "Kyiv",
+      "bronze_score": "86–73",
+      "fourth_place": "Dynamo Moscow",
+      "format": "Final Four"
+    },
+    {
+      "season": "2009–10",
+      "hosts": "Lithuania (Kaunas)",
+      "gold": "CSKA Moscow",
+      "score": "66–55",
+      "silver": "UNICS",
+      "bronze": "Žalgiris",
+      "bronze_score": "78–72",
+      "fourth_place": "Khimki",
+      "format": "Final Four"
+    },
+    {
+      "season": "2010–11",
+      "hosts": "Russia (Kazan)",
+      "gold": "Khimki",
+      "score": "66–64",
+      "silver": "CSKA Moscow",
+      "bronze": "UNICS",
+      "bronze_score": "95–75",
+      "fourth_place": "Azovmash",
+      "format": "Final Four"
+    },
+    {
+      "season": "2011–12",
+      "hosts": "Lithuania (Vilnius)",
+      "gold": "CSKA Moscow",
+      "score": "74–62",
+      "silver": "UNICS",
+      "bronze": "Lietuvos rytas",
+      "bronze_score": "91–83",
+      "fourth_place": "Lokomotiv Kuban",
+      "format": "Final Four"
+    },
+    {
+      "season": "2012–13",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "3–1",
+      "silver": "Lokomotiv Kuban",
+      "bronze": "Žalgiris",
+      "bronze_score": null,
+      "fourth_place": "Khimki",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2013–14",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "3–0",
+      "silver": "Nizhny Novgorod",
+      "bronze": "UNICS",
+      "bronze_score": null,
+      "fourth_place": "Lietuvos rytas",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2014–15",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "3–0",
+      "silver": "Khimki",
+      "bronze": "Lokomotiv Kuban",
+      "bronze_score": null,
+      "fourth_place": "Nizhny Novgorod",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2015–16",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "3–1",
+      "silver": "UNICS",
+      "bronze": "Zenit Saint Petersburg",
+      "bronze_score": null,
+      "fourth_place": "Khimki",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2016–17",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "3–0",
+      "silver": "Khimki",
+      "bronze": "Zenit Saint Petersburg",
+      "bronze_score": null,
+      "fourth_place": "Lokomotiv Kuban",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2017–18",
+      "hosts": "Russia (Moscow)",
+      "gold": "CSKA Moscow",
+      "score": "95–84",
+      "silver": "Khimki",
+      "bronze": "Zenit Saint Petersburg",
+      "bronze_score": "93–79",
+      "fourth_place": "UNICS",
+      "format": "Final Four"
+    },
+    {
+      "season": "2018–19",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "3–0",
+      "silver": "Khimki",
+      "bronze": "UNICS",
+      "bronze_score": null,
+      "fourth_place": "Zenit Saint Petersburg",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2019–20",
+      "hosts": null,
+      "gold": null,
+      "score": null,
+      "silver": null,
+      "bronze": null,
+      "bronze_score": null,
+      "fourth_place": null,
+      "format": null,
+      "note": "Cancelled due to the COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "3–0",
+      "silver": "UNICS",
+      "bronze": "Lokomotiv Kuban",
+      "bronze_score": null,
+      "fourth_place": "Zenit Saint Petersburg",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2021–22",
+      "hosts": "Home and away venues",
+      "gold": "Zenit Saint Petersburg",
+      "score": "4–3",
+      "silver": "CSKA Moscow",
+      "bronze": "UNICS",
+      "bronze_score": "3–1",
+      "fourth_place": "Lokomotiv Kuban",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2022–23",
+      "hosts": "Home and away venues",
+      "gold": "UNICS",
+      "score": "4–1",
+      "silver": "Lokomotiv Kuban",
+      "bronze": "CSKA Moscow",
+      "bronze_score": "4–1",
+      "fourth_place": "Zenit Saint Petersburg",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2023–24",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "4–1",
+      "silver": "UNICS",
+      "bronze": "Zenit Saint Petersburg",
+      "bronze_score": "3–1",
+      "fourth_place": "Lokomotiv Kuban",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2024–25",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "4–2",
+      "silver": "Zenit Saint Petersburg",
+      "bronze": "UNICS",
+      "bronze_score": "3–1",
+      "fourth_place": "Lokomotiv Kuban",
+      "format": "Playoffs"
+    },
+    {
+      "season": "2025–26",
+      "hosts": "Home and away venues",
+      "gold": "CSKA Moscow",
+      "score": "4–0",
+      "silver": "UNICS",
+      "bronze": "Lokomotiv Kuban",
+      "bronze_score": "3–2",
+      "fourth_place": "Zenit Saint Petersburg",
+      "format": "Playoffs"
+    }
+  ],
+  "vtb_supercup_finals": [
+    {
+      "season": "2021",
+      "hosts": "Russia (Moscow)",
+      "gold": "CSKA Moscow",
+      "score": "81–73",
+      "silver": "Zenit Saint Petersburg",
+      "bronze": "UNICS",
+      "bronze_score": "84–70",
+      "fourth_place": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2022",
+      "hosts": null,
+      "gold": "Zenit Saint Petersburg",
+      "score": "71–70",
+      "silver": "CSKA Moscow",
+      "bronze": "UNICS",
+      "bronze_score": "83–77",
+      "fourth_place": "Partizan"
+    },
+    {
+      "season": "2023",
+      "hosts": null,
+      "gold": "Zenit Saint Petersburg",
+      "score": "85–83",
+      "silver": "Lokomotiv Kuban",
+      "bronze": "Fenerbahçe",
+      "bronze_score": "82–80",
+      "fourth_place": "Nizhny Novgorod"
+    },
+    {
+      "season": "2024",
+      "hosts": null,
+      "gold": "CSKA Moscow",
+      "score": "87–72",
+      "silver": "UNICS",
+      "bronze": "Zenit Saint Petersburg",
+      "bronze_score": "83–70",
+      "fourth_place": "Crvena zvezda"
+    },
+    {
+      "season": "2025",
+      "hosts": "Serbia (Belgrade)",
+      "gold": "CSKA Moscow",
+      "score": "96–79",
+      "silver": "Zenit Saint Petersburg",
+      "bronze": "Crvena zvezda",
+      "bronze_score": "82–80",
+      "fourth_place": "Dubai Basketball"
+    }
+  ],
+  "vtb_mvp": [
+    {
+      "season": "2009–10",
+      "player": "Victor Khryapa",
+      "position": "PF",
+      "nationality": "Russia",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2010–11",
+      "player": "Ramel Curry",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Azovmash"
+    },
+    {
+      "season": "2011–12",
+      "player": "Andrei Kirilenko",
+      "position": "SF",
+      "nationality": "Russia",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2012–13",
+      "player": "E.J. Rowland",
+      "position": "PG",
+      "nationality": "Bulgaria",
+      "team": "VEF Rīga"
+    },
+    {
+      "season": "2013–14",
+      "player": "Drew Goudelock",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "UNICS Kazan"
+    },
+    {
+      "season": "2014–15",
+      "player": "Nando de Colo",
+      "position": "SG",
+      "nationality": "France",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2015–16",
+      "player": "Nando de Colo",
+      "position": "SG",
+      "nationality": "France",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2016–17",
+      "player": "Alexey Shved",
+      "position": "SG",
+      "nationality": "Russia",
+      "team": "Khimki"
+    },
+    {
+      "season": "2017–18",
+      "player": "Nando de Colo",
+      "position": "SG",
+      "nationality": "France",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2018–19",
+      "player": "Alexey Shved",
+      "position": "SG",
+      "nationality": "Russia",
+      "team": "Khimki"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Mantas Kalnietis",
+      "position": "PG",
+      "nationality": "Lithuania",
+      "team": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2021–22",
+      "player": "Mario Hezonja",
+      "position": "SF",
+      "nationality": "Croatia",
+      "team": "UNICS Kazan"
+    },
+    {
+      "season": "2022–23",
+      "player": "Nikola Milutinov",
+      "position": "C",
+      "nationality": "Serbia",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2023–24",
+      "player": "Nenad Dimitrijević",
+      "position": "PG",
+      "nationality": "North Macedonia",
+      "team": "UNICS Kazan"
+    },
+    {
+      "season": "2024–25",
+      "player": "Dwayne Bacon",
+      "position": "SF",
+      "nationality": "United States",
+      "team": "Zenit Saint Petersburg"
+    }
+  ],
+  "vtb_playoffs_mvp": [
+    {
+      "season": "2008",
+      "player": "Ramūnas Šiškauskas",
+      "position": "Forward",
+      "nationality": "Lithuania",
+      "team": "CSKA Moscow",
+      "format": "Final Four MVP"
+    },
+    {
+      "season": "2010",
+      "player": "J.R. Holden",
+      "position": "Guard",
+      "nationality": "Russia",
+      "team": "CSKA Moscow",
+      "format": "Final Four MVP"
+    },
+    {
+      "season": "2011",
+      "player": "Vitaly Fridzon",
+      "position": "Guard",
+      "nationality": "Russia",
+      "team": "Khimki",
+      "format": "Final Four MVP"
+    },
+    {
+      "season": "2012",
+      "player": "Andrei Kirilenko",
+      "position": "Forward",
+      "nationality": "Russia",
+      "team": "CSKA Moscow",
+      "format": "Final Four MVP"
+    },
+    {
+      "season": "2013",
+      "player": "Victor Khryapa",
+      "position": "Forward",
+      "nationality": "Russia",
+      "team": "CSKA Moscow",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2014",
+      "player": "Miloš Teodosić",
+      "position": "Guard",
+      "nationality": "Serbia",
+      "team": "CSKA Moscow",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2015",
+      "player": "Andrey Vorontsevich",
+      "position": "Forward",
+      "nationality": "Russia",
+      "team": "CSKA Moscow",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2016",
+      "player": "Miloš Teodosić",
+      "position": "Guard",
+      "nationality": "Serbia",
+      "team": "CSKA Moscow",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2017",
+      "player": "Nando de Colo",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "CSKA Moscow",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2018",
+      "player": "Sergio Rodríguez",
+      "position": "Guard",
+      "nationality": "Spain",
+      "team": "CSKA Moscow",
+      "format": "Final Four MVP"
+    },
+    {
+      "season": "2019",
+      "player": "Nikita Kurbanov",
+      "position": "Forward",
+      "nationality": "Russia",
+      "team": "CSKA Moscow",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2020",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "format": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2021",
+      "player": "Daniel Hackett",
+      "position": "Guard",
+      "nationality": "Italy",
+      "team": "CSKA Moscow",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2022",
+      "player": "Jordan Mickey",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Zenit Saint Petersburg",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2023",
+      "player": "Nenad Dimitrijević",
+      "position": "Guard",
+      "nationality": "North Macedonia",
+      "team": "UNICS Kazan",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2024",
+      "player": "Melo Trimble",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "CSKA Moscow",
+      "format": "Playoffs MVP"
+    },
+    {
+      "season": "2025",
+      "player": "Melo Trimble",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "CSKA Moscow",
+      "format": "Playoffs MVP"
+    }
+  ],
+  "vtb_scoring_leaders": [
+    {
+      "season": "2009–10",
+      "player": "Hasan Rizvić",
+      "position": "C",
+      "nationality": "Slovenia",
+      "team": "Azovmash",
+      "games": 6,
+      "ppg": 20
+    },
+    {
+      "season": "2010–11",
+      "player": "Jamar Wilson",
+      "position": "PG",
+      "nationality": "Finland",
+      "team": "Honka",
+      "games": 10,
+      "ppg": 18.8
+    },
+    {
+      "season": "2011–12",
+      "player": "Rawle Marshall",
+      "position": "SF",
+      "nationality": "Guyana",
+      "team": "Astana",
+      "games": 15,
+      "ppg": 16.8
+    },
+    {
+      "season": "2012–13",
+      "player": "E.J. Rowland",
+      "position": "PG",
+      "nationality": "Bulgaria",
+      "team": "VEF Rīga",
+      "games": 18,
+      "ppg": 17.1
+    },
+    {
+      "season": "2013–14",
+      "player": "Cory Higgins",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Triumph Lyubertsy",
+      "games": 16,
+      "ppg": 21.5
+    },
+    {
+      "season": "2014–15",
+      "player": "Randy Culpepper",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Krasny Oktyabr",
+      "games": 25,
+      "ppg": 21
+    },
+    {
+      "season": "2015–16",
+      "player": "Keith Langford",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "UNICS",
+      "games": 28,
+      "ppg": 21
+    },
+    {
+      "season": "2016–17",
+      "player": "Nick Minnerath",
+      "position": "PF",
+      "nationality": "United States",
+      "team": "Avtodor Saratov",
+      "games": 22,
+      "ppg": 23.2
+    },
+    {
+      "season": "2017–18",
+      "player": "Alexey Shved",
+      "position": "G",
+      "nationality": "Russia",
+      "team": "Khimki",
+      "games": 19,
+      "ppg": 22.3
+    },
+    {
+      "season": "2018–19",
+      "player": "Alexey Shved",
+      "position": "G",
+      "nationality": "Russia",
+      "team": "Khimki",
+      "games": 15,
+      "ppg": 22.8
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "games": null,
+      "ppg": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Marcus Keene",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Kalev/Cramo",
+      "games": 22,
+      "ppg": 20
+    },
+    {
+      "season": "2021–22",
+      "player": "Errick McCollum",
+      "position": "G",
+      "nationality": "United States",
+      "team": "Lokomotiv Kuban",
+      "games": 17,
+      "ppg": 19.8
+    },
+    {
+      "season": "2022–23",
+      "player": "Malik Newman",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Avtodor Saratov",
+      "games": 23,
+      "ppg": 18.9
+    },
+    {
+      "season": "2023–24",
+      "player": "Xavier Rathan-Mayes",
+      "position": "G",
+      "nationality": "Canada",
+      "team": "Enisey",
+      "games": 39,
+      "ppg": 25.7
+    },
+    {
+      "season": "2024–25",
+      "player": "Jeremiah Martin",
+      "position": "G",
+      "nationality": "United States",
+      "team": "Uralmash",
+      "games": 35,
+      "ppg": 18.2
+    }
+  ],
+  "vtb_defensive_player_of_the_year": [
+    {
+      "season": "2013–14",
+      "player": "Sasha Kaun",
+      "position": "C",
+      "nationality": "Russia",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2014–15",
+      "player": "Andrey Vorontsevich",
+      "position": "PF",
+      "nationality": "Russia",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2015–16",
+      "player": "Kyle Hines",
+      "position": "C",
+      "nationality": "United States",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2016–17",
+      "player": "Nikita Kurbanov",
+      "position": "SF",
+      "nationality": "Russia",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2017–18",
+      "player": "Dmitry Kulagin",
+      "position": "SG",
+      "nationality": "Russia",
+      "team": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2018–19",
+      "player": "Maurice Ndour",
+      "position": "PF",
+      "nationality": "Senegal",
+      "team": "UNICS"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "John Brown",
+      "position": "F",
+      "nationality": "United States",
+      "team": "UNICS"
+    },
+    {
+      "season": "2021–22",
+      "player": "Jordan Mickey",
+      "position": "C/PF",
+      "nationality": "United States",
+      "team": "Zenit Saint Petersburg"
+    },
+    {
+      "season": "2022–23",
+      "player": "Evgeny Baburin",
+      "position": "SG",
+      "nationality": "Russia",
+      "team": "Pari Nizhny Novgorod"
+    },
+    {
+      "season": "2023–24",
+      "player": "Vince Hunter",
+      "position": "C",
+      "nationality": "United States",
+      "team": "Zenit Saint Petersburg"
+    },
+    {
+      "season": "2024–25",
+      "player": "Antonius Cleveland",
+      "position": "SF",
+      "nationality": "United States",
+      "team": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2025–26",
+      "player": "Georgy Zhbanov",
+      "position": "SG",
+      "nationality": "Russia",
+      "team": "Zenit Saint Petersburg"
+    }
+  ],
+  "vtb_sixth_man_of_the_year": [
+    {
+      "season": "2013–14",
+      "player": "James Augustine",
+      "position": "C",
+      "nationality": "United States",
+      "team": "Khimki"
+    },
+    {
+      "season": "2014–15",
+      "player": "Petteri Koponen",
+      "position": "SG",
+      "nationality": "Finland",
+      "team": "Khimki"
+    },
+    {
+      "season": "2015–16",
+      "player": "Quino Colom",
+      "position": "PG",
+      "nationality": "Spain",
+      "team": "UNICS"
+    },
+    {
+      "season": "2016–17",
+      "player": "Suleiman Braimoh",
+      "position": "PF",
+      "nationality": "Nigeria",
+      "team": "Enisey"
+    },
+    {
+      "season": "2017–18",
+      "player": "Jamar Smith",
+      "position": "G",
+      "nationality": "United States",
+      "team": "UNICS"
+    },
+    {
+      "season": "2018–19",
+      "player": "Dorell Wright",
+      "position": "SF",
+      "nationality": "United States",
+      "team": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Rolands Freimanis",
+      "position": "PF",
+      "nationality": "Latvia",
+      "team": "Zastal Zielona Góra"
+    },
+    {
+      "season": "2021–22",
+      "player": "Billy Baron",
+      "position": "G",
+      "nationality": "United States",
+      "team": "Zenit Saint Petersburg"
+    },
+    {
+      "season": "2022–23",
+      "player": "Jalen Reynolds",
+      "position": "C",
+      "nationality": "United States",
+      "team": "UNICS"
+    },
+    {
+      "season": "2023–24",
+      "player": "Melo Trimble",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2024–25",
+      "player": "Marcos Knight",
+      "position": "G",
+      "nationality": "United States",
+      "team": "UNICS"
+    }
+  ],
+  "vtb_young_player_of_the_year": [
+    {
+      "season": "2012–13",
+      "position": "SF",
+      "player": "Sergey Karasev",
+      "club": "Triumph Lyubertsy"
+    },
+    {
+      "season": "2013–14",
+      "recipients": [
+        {
+          "position": "SG",
+          "player": "Dmitry Kulagin",
+          "club": "Triumph Lyubertsy"
+        },
+        {
+          "position": "SF",
+          "player": "Edgaras Ulanovas",
+          "club": "Neptūnas"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "position": "SF",
+      "player": "Jānis Timma",
+      "club": "VEF Rīga"
+    },
+    {
+      "season": "2015–16",
+      "position": "C",
+      "player": "Artem Klimenko",
+      "club": "Avtodor Saratov"
+    },
+    {
+      "season": "2016–17",
+      "position": "G/F",
+      "player": "Ivan Ukhov",
+      "club": "Parma"
+    },
+    {
+      "season": "2017–18",
+      "position": "G",
+      "player": "Isaiah Briscoe",
+      "club": "Kalev/Cramo"
+    },
+    {
+      "season": "2018–19",
+      "position": "SG",
+      "player": "Nikita Mikhailovsky",
+      "club": "Avtodor Saratov"
+    },
+    {
+      "season": "2019–20",
+      "position": null,
+      "player": null,
+      "club": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "position": "SG",
+      "player": "Nikita Mikhailovsky",
+      "club": "Avtodor Saratov"
+    },
+    {
+      "season": "2021–22",
+      "position": "PF",
+      "player": "Andrey Martyuk",
+      "club": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2022–23",
+      "position": "PF",
+      "player": "Andrey Martyuk",
+      "club": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2023–24",
+      "position": "C",
+      "player": "Kirill Elatontsev",
+      "club": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2024–25",
+      "position": "C",
+      "player": "Kirill Elatontsev",
+      "club": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2025–26",
+      "position": "SF",
+      "player": "Vsevolod Ishchenko",
+      "club": "Lokomotiv Kuban"
+    }
+  ],
+  "vtb_supercup_mvp": [
+    {
+      "season": "2021–22",
+      "player": "Will Clyburn",
+      "position": "SF",
+      "nationality": "United States",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2022–23",
+      "player": "Thomas Wimbush",
+      "position": "SF",
+      "nationality": "United States",
+      "team": "Zenit Saint Petersburg"
+    },
+    {
+      "season": "2023–24",
+      "player": "Kyle Kuric",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Zenit Saint Petersburg"
+    },
+    {
+      "season": "2024–25",
+      "player": "Aleksa Avramović",
+      "position": "SG",
+      "nationality": "Serbia",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2025–26",
+      "player": "Melo Trimble",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "CSKA Moscow"
+    }
+  ],
+  "vtb_coach_of_the_year": [
+    {
+      "season": "2013–14",
+      "coach": "Rimas Kurtinaitis",
+      "nationality": "Lithuania",
+      "team": "Khimki"
+    },
+    {
+      "season": "2014–15",
+      "coach": "Dimitrios Itoudis",
+      "nationality": "Greece",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2015–16",
+      "coach": "Vasily Karasev",
+      "nationality": "Russia",
+      "team": "Zenit"
+    },
+    {
+      "season": "2016–17",
+      "coach": "Dimitrios Itoudis",
+      "nationality": "Greece",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2017–18",
+      "coach": "Dimitrios Itoudis",
+      "nationality": "Greece",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2018–19",
+      "coach": "Emil Rajković",
+      "nationality": "North Macedonia",
+      "team": "Astana"
+    },
+    {
+      "season": "2019–20",
+      "coach": null,
+      "nationality": null,
+      "team": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "team": "Zenit"
+    },
+    {
+      "season": "2021–22",
+      "coach": "Dimitrios Itoudis",
+      "nationality": "Greece",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2022–23",
+      "coach": "Emil Rajković",
+      "nationality": "North Macedonia",
+      "team": "CSKA Moscow"
+    },
+    {
+      "season": "2023–24",
+      "coach": "Velimir Perasovic",
+      "nationality": "Croatia",
+      "team": "UNICS"
+    },
+    {
+      "season": "2024–25",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "team": "Zenit"
+    }
+  ]
+}

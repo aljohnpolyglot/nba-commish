@@ -1,0 +1,902 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "pba-all-star.570827087807672",
+  "leagueKey": "pba",
+  "generatedAt": "2026-08-01T22:15:48.946Z",
+  "sources": [
+    {
+      "role": "mvp",
+      "source": {
+        "provider": "wikipedia",
+        "pageTitle": "PBA All-Star Game Most Valuable Player award",
+        "pageUrl": "https://en.wikipedia.org/w/index.php?title=PBA_All-Star_Game_Most_Valuable_Player_award&oldid=1346451812",
+        "revisionId": 1346451812,
+        "fetchedAt": "2026-08-01T22:15:48.946Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 1989,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Elmer Cabahug",
+            "sourcePageTitle": "Boy Cabahug",
+            "sourceHref": "/wiki/Boy_Cabahug",
+            "canonicalKey": "person:boy-cabahug"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Alaska Milkmen",
+            "sourcePageTitle": "Alaska Milkmen",
+            "sourceHref": "/wiki/Alaska_Milkmen",
+            "canonicalKey": "pba:alaska-milkmen"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1990,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Samboy Lim",
+            "sourcePageTitle": "Samboy Lim",
+            "sourceHref": "/wiki/Samboy_Lim",
+            "canonicalKey": "person:samboy-lim"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "San Miguel Beermen",
+            "sourcePageTitle": "San Miguel Beermen",
+            "sourceHref": "/wiki/San_Miguel_Beermen",
+            "canonicalKey": "pba:san-miguel-beermen"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1991,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Alvin Patrimonio",
+            "sourcePageTitle": "Alvin Patrimonio",
+            "sourceHref": "/wiki/Alvin_Patrimonio",
+            "canonicalKey": "person:alvin-patrimonio"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Purefoods Tender Juicy Hotdogs",
+            "sourcePageTitle": "Purefoods Tender Juicy Hotdogs",
+            "sourceHref": "/wiki/Purefoods_Tender_Juicy_Hotdogs",
+            "canonicalKey": "pba:purefoods-tender-juicy-hotdogs"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1992,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Alvin Teng",
+            "sourcePageTitle": "Alvin Teng",
+            "sourceHref": "/wiki/Alvin_Teng",
+            "canonicalKey": "person:alvin-teng"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "San Miguel Beermen",
+            "sourcePageTitle": "San Miguel Beermen",
+            "sourceHref": "/wiki/San_Miguel_Beermen",
+            "canonicalKey": "pba:san-miguel-beermen"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1993,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Allan Caidic",
+            "sourcePageTitle": "Allan Caidic",
+            "sourceHref": "/wiki/Allan_Caidic",
+            "canonicalKey": "person:allan-caidic"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "San Miguel Beermen",
+            "sourcePageTitle": "San Miguel Beermen",
+            "sourceHref": "/wiki/San_Miguel_Beermen",
+            "canonicalKey": "pba:san-miguel-beermen"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1994,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Benjie Paras",
+            "sourcePageTitle": "Benjie Paras",
+            "sourceHref": "/wiki/Benjie_Paras",
+            "canonicalKey": "person:benjie-paras"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Shell Rimula X",
+            "sourcePageTitle": "Shell Rimula X",
+            "sourceHref": "/wiki/Shell_Rimula_X",
+            "canonicalKey": "pba:shell-rimula-x"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1995,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Vergel Meneses",
+            "sourcePageTitle": "Vergel Meneses",
+            "sourceHref": "/wiki/Vergel_Meneses",
+            "canonicalKey": "person:vergel-meneses"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Sunkist Orange Juicers",
+            "sourcePageTitle": "Sunkist Orange Juicers",
+            "sourceHref": "/wiki/Sunkist_Orange_Juicers",
+            "canonicalKey": "pba:sunkist-orange-juicers"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1996,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Kenneth Duremdes",
+            "sourcePageTitle": "Kenneth Duremdes",
+            "sourceHref": "/wiki/Kenneth_Duremdes",
+            "canonicalKey": "person:kenneth-duremdes"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Sunkist Orange Bottlers",
+            "sourcePageTitle": "Sunkist Orange Bottlers",
+            "sourceHref": "/wiki/Sunkist_Orange_Bottlers",
+            "canonicalKey": "pba:sunkist-orange-bottlers"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1997,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Bal David",
+            "sourcePageTitle": "Bal David",
+            "sourceHref": "/wiki/Bal_David",
+            "canonicalKey": "person:bal-david"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Gordon's Gin Boars",
+            "sourcePageTitle": "Gordon's Gin Boars",
+            "sourceHref": "/wiki/Gordon%27s_Gin_Boars",
+            "canonicalKey": "pba:gordon-s-gin-boars"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1998,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Vergel Meneses",
+            "sourcePageTitle": "Vergel Meneses",
+            "sourceHref": "/wiki/Vergel_Meneses",
+            "canonicalKey": "person:vergel-meneses"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Pop Cola 800s",
+            "sourcePageTitle": "Pop Cola 800s",
+            "sourceHref": "/wiki/Pop_Cola_800s",
+            "canonicalKey": "pba:pop-cola-800s"
+          }
+        }
+      ]
+    },
+    {
+      "season": 1999,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Benjie Paras",
+            "sourcePageTitle": "Benjie Paras",
+            "sourceHref": "/wiki/Benjie_Paras",
+            "canonicalKey": "person:benjie-paras"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Formula Shell Zoom Masters",
+            "sourcePageTitle": "Formula Shell Zoom Masters",
+            "sourceHref": "/wiki/Formula_Shell_Zoom_Masters",
+            "canonicalKey": "pba:formula-shell-zoom-masters"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2000,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Vergel Meneses",
+            "sourcePageTitle": "Vergel Meneses",
+            "sourceHref": "/wiki/Vergel_Meneses",
+            "canonicalKey": "person:vergel-meneses"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Barangay Ginebra Kings",
+            "sourcePageTitle": "Barangay Ginebra Kings",
+            "sourceHref": "/wiki/Barangay_Ginebra_Kings",
+            "canonicalKey": "pba:barangay-ginebra-kings"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2001,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Danny Ildefonso",
+            "sourcePageTitle": "Danny Ildefonso",
+            "sourceHref": "/wiki/Danny_Ildefonso",
+            "canonicalKey": "person:danny-ildefonso"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "San Miguel Beermen",
+            "sourcePageTitle": "San Miguel Beermen",
+            "sourceHref": "/wiki/San_Miguel_Beermen",
+            "canonicalKey": "pba:san-miguel-beermen"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2002,
+      "status": "not-held",
+      "note": "No game held"
+    },
+    {
+      "season": 2003,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Vergel Meneses",
+            "sourcePageTitle": "Vergel Meneses",
+            "sourceHref": "/wiki/Vergel_Meneses",
+            "canonicalKey": "person:vergel-meneses"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "FedEx Express",
+            "sourcePageTitle": "FedEx Express (PBA Team)",
+            "sourceHref": "/wiki/FedEx_Express_(PBA_Team)",
+            "canonicalKey": "pba:fedex-express-pba-team"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2004,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Asi Taulava",
+            "sourcePageTitle": "Asi Taulava",
+            "sourceHref": "/wiki/Asi_Taulava",
+            "canonicalKey": "person:asi-taulava"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Talk 'N Text Phone Pals",
+            "sourcePageTitle": "Talk 'N Text Phone Pals",
+            "sourceHref": "/wiki/Talk_%27N_Text_Phone_Pals",
+            "canonicalKey": "pba:talk-n-text-phone-pals"
+          }
+        },
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Jimmy Alapag",
+            "sourcePageTitle": "Jimmy Alapag",
+            "sourceHref": "/wiki/Jimmy_Alapag",
+            "canonicalKey": "person:jimmy-alapag"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Talk 'N Text Phone Pals",
+            "sourcePageTitle": "Talk 'N Text Phone Pals",
+            "sourceHref": "/wiki/Talk_%27N_Text_Phone_Pals",
+            "canonicalKey": "pba:talk-n-text-phone-pals"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2005,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Jayjay Helterbrand",
+            "sourcePageTitle": "Jayjay Helterbrand",
+            "sourceHref": "/wiki/Jayjay_Helterbrand",
+            "canonicalKey": "person:jayjay-helterbrand"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Barangay Ginebra Kings",
+            "sourcePageTitle": "Barangay Ginebra Kings",
+            "sourceHref": "/wiki/Barangay_Ginebra_Kings",
+            "canonicalKey": "pba:barangay-ginebra-kings"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2006,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Asi Taulava",
+            "sourcePageTitle": "Asi Taulava",
+            "sourceHref": "/wiki/Asi_Taulava",
+            "canonicalKey": "person:asi-taulava"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Talk 'N Text Phone Pals",
+            "sourcePageTitle": "Talk 'N Text Phone Pals",
+            "sourceHref": "/wiki/Talk_%27N_Text_Phone_Pals",
+            "canonicalKey": "pba:talk-n-text-phone-pals"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2007,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Willie Miller",
+            "sourcePageTitle": "Willie Miller (basketball)",
+            "sourceHref": "/wiki/Willie_Miller_(basketball)",
+            "canonicalKey": "person:willie-miller-basketball"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Alaska Aces",
+            "sourcePageTitle": "Alaska Aces (PBA)",
+            "sourceHref": "/wiki/Alaska_Aces_(PBA)",
+            "canonicalKey": "pba:alaska-aces-pba"
+          }
+        },
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Jayjay Helterbrand",
+            "sourcePageTitle": "Jayjay Helterbrand",
+            "sourceHref": "/wiki/Jayjay_Helterbrand",
+            "canonicalKey": "person:jayjay-helterbrand"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Barangay Ginebra Kings",
+            "sourcePageTitle": "Barangay Ginebra Kings",
+            "sourceHref": "/wiki/Barangay_Ginebra_Kings",
+            "canonicalKey": "pba:barangay-ginebra-kings"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2008,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Peter June Simon",
+            "sourcePageTitle": "Peter June Simon",
+            "sourceHref": "/wiki/Peter_June_Simon",
+            "canonicalKey": "person:peter-june-simon"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Purefoods Tender Juicy Giants",
+            "sourcePageTitle": "Purefoods Tender Juicy Giants",
+            "sourceHref": "/wiki/Purefoods_Tender_Juicy_Giants",
+            "canonicalKey": "pba:purefoods-tender-juicy-giants"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2009,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "David Noel",
+            "sourcePageTitle": "David Noel",
+            "sourceHref": "/wiki/David_Noel",
+            "canonicalKey": "person:david-noel"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Barangay Ginebra Kings",
+            "sourcePageTitle": "Barangay Ginebra Kings",
+            "sourceHref": "/wiki/Barangay_Ginebra_Kings",
+            "canonicalKey": "pba:barangay-ginebra-kings"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Gabe Norwood",
+            "sourcePageTitle": "Gabe Norwood",
+            "sourceHref": "/wiki/Gabe_Norwood",
+            "canonicalKey": "person:gabe-norwood"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Rain or Shine",
+            "sourcePageTitle": "Rain or Shine Elasto Painters",
+            "sourceHref": "/wiki/Rain_or_Shine_Elasto_Painters",
+            "canonicalKey": "pba:rain-or-shine-elasto-painters"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2011,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Marc Pingris",
+            "sourcePageTitle": "Marc Pingris",
+            "sourceHref": "/wiki/Marc_Pingris",
+            "canonicalKey": "person:marc-pingris"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "B-Meg Derby Ace Llamados",
+            "sourcePageTitle": "B-Meg Derby Ace Llamados",
+            "sourceHref": "/wiki/B-Meg_Derby_Ace_Llamados",
+            "canonicalKey": "pba:b-meg-derby-ace-llamados"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "James Yap",
+            "sourcePageTitle": "James Yap",
+            "sourceHref": "/wiki/James_Yap",
+            "canonicalKey": "person:james-yap"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "B-Meg Llamados",
+            "sourcePageTitle": "B-Meg Llamados",
+            "sourceHref": "/wiki/B-Meg_Llamados",
+            "canonicalKey": "pba:b-meg-llamados"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Jeff Chan",
+            "sourcePageTitle": "Jeff Chan (basketball)",
+            "sourceHref": "/wiki/Jeff_Chan_(basketball)",
+            "canonicalKey": "person:jeff-chan-basketball"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Rain or Shine",
+            "sourcePageTitle": "Rain or Shine Elasto Painters",
+            "sourceHref": "/wiki/Rain_or_Shine_Elasto_Painters",
+            "canonicalKey": "pba:rain-or-shine-elasto-painters"
+          }
+        },
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Arwind Santos",
+            "sourcePageTitle": "Arwind Santos",
+            "sourceHref": "/wiki/Arwind_Santos",
+            "canonicalKey": "person:arwind-santos"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Petron Blaze Boosters",
+            "sourcePageTitle": "Petron Blaze Boosters",
+            "sourceHref": "/wiki/Petron_Blaze_Boosters",
+            "canonicalKey": "pba:petron-blaze-boosters"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Gary David",
+            "sourcePageTitle": "Gary David",
+            "sourceHref": "/wiki/Gary_David",
+            "canonicalKey": "person:gary-david"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Meralco",
+            "sourcePageTitle": "Meralco Bolts",
+            "sourceHref": "/wiki/Meralco_Bolts",
+            "canonicalKey": "pba:meralco-bolts"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Terrence Romeo",
+            "sourcePageTitle": "Terrence Romeo",
+            "sourceHref": "/wiki/Terrence_Romeo",
+            "canonicalKey": "person:terrence-romeo"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "GlobalPort Batang Pier",
+            "sourcePageTitle": "GlobalPort Batang Pier",
+            "sourceHref": "/wiki/GlobalPort_Batang_Pier",
+            "canonicalKey": "pba:globalport-batang-pier"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Alex Cabagnot",
+            "sourcePageTitle": "Alex Cabagnot",
+            "sourceHref": "/wiki/Alex_Cabagnot",
+            "canonicalKey": "person:alex-cabagnot"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "San Miguel Beermen",
+            "sourcePageTitle": "San Miguel Beermen",
+            "sourceHref": "/wiki/San_Miguel_Beermen",
+            "canonicalKey": "pba:san-miguel-beermen"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "status": "held",
+      "format": "Mindanao / Luzon / Visayas",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Troy Rosario",
+            "sourcePageTitle": "Troy Rosario",
+            "sourceHref": "/wiki/Troy_Rosario",
+            "canonicalKey": "person:troy-rosario"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "TNT KaTropa",
+            "sourcePageTitle": "TNT KaTropa",
+            "sourceHref": "/wiki/TNT_KaTropa",
+            "canonicalKey": "pba:tnt-katropa"
+          }
+        },
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Matthew Wright",
+            "sourcePageTitle": "Matthew Wright (basketball)",
+            "sourceHref": "/wiki/Matthew_Wright_(basketball)",
+            "canonicalKey": "person:matthew-wright-basketball"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Phoenix Fuel Masters",
+            "sourcePageTitle": "Phoenix Fuel Masters",
+            "sourceHref": "/wiki/Phoenix_Fuel_Masters",
+            "canonicalKey": "pba:phoenix-fuel-masters"
+          }
+        },
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Terrence Romeo",
+            "sourcePageTitle": "Terrence Romeo",
+            "sourceHref": "/wiki/Terrence_Romeo",
+            "canonicalKey": "person:terrence-romeo"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "GlobalPort Batang Pier",
+            "sourcePageTitle": "GlobalPort Batang Pier",
+            "sourceHref": "/wiki/GlobalPort_Batang_Pier",
+            "canonicalKey": "pba:globalport-batang-pier"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "status": "held",
+      "format": "Mindanao / Luzon / Visayas",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Baser Amer",
+            "sourcePageTitle": "Baser Amer",
+            "sourceHref": "/wiki/Baser_Amer",
+            "canonicalKey": "person:baser-amer"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Meralco Bolts",
+            "sourcePageTitle": "Meralco Bolts",
+            "sourceHref": "/wiki/Meralco_Bolts",
+            "canonicalKey": "pba:meralco-bolts"
+          }
+        },
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Terrence Romeo",
+            "sourcePageTitle": "Terrence Romeo",
+            "sourceHref": "/wiki/Terrence_Romeo",
+            "canonicalKey": "person:terrence-romeo"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "TNT KaTropa",
+            "sourcePageTitle": "TNT KaTropa",
+            "sourceHref": "/wiki/TNT_KaTropa",
+            "canonicalKey": "pba:tnt-katropa"
+          }
+        },
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Jeff Chan",
+            "sourcePageTitle": "Jeff Chan (basketball)",
+            "sourceHref": "/wiki/Jeff_Chan_(basketball)",
+            "canonicalKey": "person:jeff-chan-basketball"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Phoenix Fuel Masters",
+            "sourcePageTitle": "Phoenix Fuel Masters",
+            "sourceHref": "/wiki/Phoenix_Fuel_Masters",
+            "canonicalKey": "pba:phoenix-fuel-masters"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Japeth Aguilar",
+            "sourcePageTitle": "Japeth Aguilar",
+            "sourceHref": "/wiki/Japeth_Aguilar",
+            "canonicalKey": "person:japeth-aguilar"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Barangay Ginebra San Miguel",
+            "sourcePageTitle": "Barangay Ginebra San Miguel",
+            "sourceHref": "/wiki/Barangay_Ginebra_San_Miguel",
+            "canonicalKey": "pba:barangay-ginebra-san-miguel"
+          }
+        },
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Arwind Santos",
+            "sourcePageTitle": "Arwind Santos",
+            "sourceHref": "/wiki/Arwind_Santos",
+            "canonicalKey": "person:arwind-santos"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "San Miguel Beermen",
+            "sourcePageTitle": "San Miguel Beermen",
+            "sourceHref": "/wiki/San_Miguel_Beermen",
+            "canonicalKey": "pba:san-miguel-beermen"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Paul Lee",
+            "sourcePageTitle": "Paul Lee (basketball)",
+            "sourceHref": "/wiki/Paul_Lee_(basketball)",
+            "canonicalKey": "person:paul-lee-basketball"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Magnolia Chicken Timplados Hotshots",
+            "sourcePageTitle": "Magnolia Chicken Timplados Hotshots",
+            "sourceHref": "/wiki/Magnolia_Chicken_Timplados_Hotshots",
+            "canonicalKey": "pba:magnolia-chicken-timplados-hotshots"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Japeth Aguilar",
+            "sourcePageTitle": "Japeth Aguilar",
+            "sourceHref": "/wiki/Japeth_Aguilar",
+            "canonicalKey": "person:japeth-aguilar"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Barangay Ginebra San Miguel",
+            "sourcePageTitle": "Barangay Ginebra San Miguel",
+            "sourceHref": "/wiki/Barangay_Ginebra_San_Miguel",
+            "canonicalKey": "pba:barangay-ginebra-san-miguel"
+          }
+        },
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Robert Bolick",
+            "sourcePageTitle": "Robert Bolick",
+            "sourceHref": "/wiki/Robert_Bolick",
+            "canonicalKey": "person:robert-bolick"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "NLEX Road Warriors",
+            "sourcePageTitle": "NLEX Road Warriors",
+            "sourceHref": "/wiki/NLEX_Road_Warriors",
+            "canonicalKey": "pba:nlex-road-warriors"
+          }
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "status": "cancelled",
+      "note": "Cancelled"
+    },
+    {
+      "season": 2026,
+      "status": "held",
+      "mvps": [
+        {
+          "person": {
+            "entityType": "person",
+            "sourceName": "Japeth Aguilar",
+            "sourcePageTitle": "Japeth Aguilar",
+            "sourceHref": "/wiki/Japeth_Aguilar",
+            "canonicalKey": "person:japeth-aguilar"
+          },
+          "team": {
+            "entityType": "team",
+            "sourceName": "Barangay Ginebra San Miguel",
+            "sourcePageTitle": "Barangay Ginebra San Miguel",
+            "sourceHref": "/wiki/Barangay_Ginebra_San_Miguel",
+            "canonicalKey": "pba:barangay-ginebra-san-miguel"
+          }
+        }
+      ]
+    }
+  ]
+}

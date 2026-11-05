@@ -1,7 +1,11 @@
 import { GameState, NBAPlayer, NBATeam } from '../types';
 import { normalizeDate, convertTo2KRating } from '../utils/helpers';
 import { getTradeDeadlineDate } from '../utils/dateUtils';
+import { getLeagueCalendarDates } from './leagueCalendar';
 import { getTradingBlock } from '../store/tradingBlockStore';
+import { getCapThresholds, getMLEAvailability, getTeamPayrollUSD } from '../utils/salaryUtils';
+import { getTwoWayRosterLimit } from '../utils/rosterLimits';
+import { isNonGuaranteedContract, isTwoWayContract } from '../utils/contractTypes';
 
 export interface GMChatContext {
   currentDate: string;
@@ -135,29 +139,31 @@ export function buildGMChatContext(
   }
 
   const dateNorm = normalizeDate(state.date);
-  const [year, month, day] = dateNorm.split('-').map(Number);
   const seasonYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const currentDate = new Date(`${dateNorm}T00:00:00Z`);
+  const calendarDates = getLeagueCalendarDates(seasonYear, state.leagueStats);
 
-  // Determine season phase
   let seasonPhase: 'preseason' | 'regular' | 'playoffs' | 'offseason' = 'offseason';
-  if ((month === 7 && day >= 1) || (month >= 8 && month <= 9) || (month === 10 && day <= 23)) {
+  const preseasonStart = calendarDates.trainingCampStart ?? calendarDates.preseasonStart;
+  if (preseasonStart && currentDate >= preseasonStart && currentDate < calendarDates.regularSeasonStart) {
     seasonPhase = 'preseason';
-  } else if ((month === 10 && day >= 24) || (month >= 11) || (month <= 3)) {
+  } else if (currentDate >= calendarDates.regularSeasonStart && currentDate < calendarDates.regularSeasonEnd) {
     seasonPhase = 'regular';
-  } else if (month >= 4) {
+  } else if (currentDate >= calendarDates.regularSeasonEnd && currentDate < calendarDates.rollover) {
     seasonPhase = 'playoffs';
   }
 
-  // Days until trade deadline
-  const tradeDeadlineStr = `${seasonYear}-02-06`;
-  const daysUntilTradeDeadline = dateNorm >= tradeDeadlineStr ? null : Math.ceil((new Date(tradeDeadlineStr).getTime() - new Date(dateNorm).getTime()) / (1000 * 60 * 60 * 24));
-
-  // Days until playoff start
-  const playoffStartStr = `${seasonYear}-04-13`;
-  const daysUntilPlayoff = Math.ceil((new Date(playoffStartStr).getTime() - new Date(dateNorm).getTime()) / (1000 * 60 * 60 * 24));
+  const tradeDeadline = getTradeDeadlineDate(seasonYear, state.leagueStats);
+  const daysUntilTradeDeadline = currentDate >= tradeDeadline
+    ? null
+    : Math.ceil((tradeDeadline.getTime() - currentDate.getTime()) / 86_400_000);
+  const daysUntilPlayoff = Math.ceil((calendarDates.playoffStart.getTime() - currentDate.getTime()) / 86_400_000);
 
   // ─────── FULL ROSTER ────────────────────────────────────────────
   const userRoster = state.players.filter(p => p.tid === state.userTeamId && p.status === 'Active');
+  const twoWayContractsActive = getTwoWayRosterLimit(state.leagueStats as any) > 0;
+  const nonGuaranteedContractsActive = state.leagueStats?.nonGuaranteedContractsEnabled !== false;
+  const isActiveTwoWay = (p: any) => twoWayContractsActive && isTwoWayContract(p, state.leagueStats);
 
   // Get trading block info
   const tradingBlock = getTradingBlock(state.userTeamId || 0);
@@ -185,7 +191,7 @@ export function buildGMChatContext(
 
       // Determine status (starter/bench/6th/etc) — simplified
       let status: 'starter' | 'bench' | '6th-man' | 'backup' | 'two-way' = 'bench';
-      if ((p as any).twoWay) {
+      if (isActiveTwoWay(p)) {
         status = 'two-way';
       } else if (k2 >= 85) {
         status = 'starter';
@@ -214,9 +220,9 @@ export function buildGMChatContext(
     });
 
   // ─────── TEAM INTEL ─────────────────────────────────────────────
-  const standardPlayers = userRoster.filter(p => !(p as any).twoWay);
-  const twoWayPlayers = userRoster.filter(p => (p as any).twoWay);
-  const ngPlayers = userRoster.filter(p => (p as any).nonGuaranteed);
+  const standardPlayers = userRoster.filter(p => !isActiveTwoWay(p));
+  const twoWayPlayers = userRoster.filter(p => isActiveTwoWay(p));
+  const ngPlayers = userRoster.filter(p => nonGuaranteedContractsActive && isNonGuaranteedContract(p, state.leagueStats));
 
   const untouchables = roster
     .filter(r => r.marketStatus === 'untouchable')
@@ -312,8 +318,12 @@ export function buildGMChatContext(
   }
 
   // ─────── PAYROLL ───────────────────────────────────────────────
-  const totalSalary = userRoster.reduce((sum, p) => sum + ((p.contract?.amount ?? 0) * 1000), 0);
-  const capSpace = 136000000 - totalSalary; // cap in USD
+  const thresholds = getCapThresholds(state.leagueStats as any);
+  const totalSalary = getTeamPayrollUSD(state.players as any, state.userTeamId || 0, userTeam as any, seasonYear, state.leagueStats as any);
+  const capSpace = Number.isFinite(thresholds.salaryCap) ? thresholds.salaryCap - totalSalary : Infinity;
+  const mle = Number.isFinite(thresholds.salaryCap)
+    ? getMLEAvailability(state.userTeamId || 0, totalSalary, 0, thresholds, state.leagueStats as any)
+    : { available: 0 };
 
   // ─────── RECENT ACTIVITY ───────────────────────────────────────
   const recentMoves = (state.history ?? [])
@@ -457,10 +467,10 @@ export function buildGMChatContext(
 
     payroll: {
       total: totalSalary,
-      capRoom: Math.max(0, capSpace),
-      luxTax: 0,
-      mleRemaining: 2000000,
-      apronStatus: capSpace < 0 ? 'Over cap' : 'Under cap',
+      capRoom: Number.isFinite(capSpace) ? Math.max(0, capSpace) : 0,
+      luxTax: Number.isFinite(thresholds.luxuryTax) ? Math.max(0, totalSalary - thresholds.luxuryTax) : 0,
+      mleRemaining: mle.available,
+      apronStatus: Number.isFinite(capSpace) ? (capSpace < 0 ? 'Over cap' : 'Under cap') : 'No cap',
     },
 
     rosterSummary: {
@@ -470,7 +480,7 @@ export function buildGMChatContext(
       avgOVR: Math.round(
         standardPlayers.reduce((sum, p) => sum + (p.overallRating ?? 0), 0) / Math.max(1, standardPlayers.length)
       ),
-      topPlayers: roster.slice(0, 3).map(r => `${r.name} (${r.k2} OVR)`),
+      topPlayers: roster.slice(0, 3).map(r => r.name),
     },
 
     roster,

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { ImagnPhoto } from '../../services/ImagnPhotoService';
+import { resolveRealPhotoCredit } from '../../services/social/photoEnricherHelpers';
 
 const PROXY = 'https://nbagamesimages.mogatas-princealjohn-05082003.workers.dev/?url=';
 
@@ -32,16 +33,20 @@ export const ImagnPhotoEditor: React.FC<Props> = ({
   homeLogoUrl, awayLogoUrl, onExport,
   readOnly = false,
 }) => {
+  const photoCredit = resolveRealPhotoCredit(photo);
   // ── readOnly: pure CSS overlay, no canvas, no proxy needed ───────────────
   if (readOnly) {
     return (
       <div className="relative w-full rounded-xl overflow-hidden">
         <img
-          src={photo.medUrl}
+          src={PROXY + encodeURIComponent(photo.medUrl)}
           alt=""
           className="w-full object-cover"
           style={{ maxHeight: 400 }}
           referrerPolicy="no-referrer"
+          onError={event => {
+            if (event.currentTarget.src !== photo.medUrl) event.currentTarget.src = photo.medUrl;
+          }}
         />
         {/* bottom gradient */}
         <div className="absolute inset-0" style={{ background: 'linear-gradient(to bottom, transparent 50%, rgba(0,0,0,0.72) 100%)' }} />
@@ -64,9 +69,9 @@ export const ImagnPhotoEditor: React.FC<Props> = ({
             {homeLogoUrl && <img src={homeLogoUrl} alt={homeAbbrev} className="h-6 w-6 object-contain" referrerPolicy="no-referrer" />}
           </div>
         </div>
-        {photo.photographer && (
+        {photoCredit && (
           <div className="absolute text-white text-xs opacity-40" style={{ bottom: 50, right: 8 }}>
-            © {photo.photographer} / Imagn
+            {photoCredit}
           </div>
         )}
       </div>
@@ -154,18 +159,18 @@ export const ImagnPhotoEditor: React.FC<Props> = ({
       }
 
       // ── Photographer credit ───────────────────────────────────────────
-      if (photo.photographer) {
+      if (photoCredit) {
         const creditFs   = Math.round(outW * 0.018);
         ctx.font         = `400 ${creditFs}px Arial, sans-serif`;
         ctx.fillStyle    = 'rgba(255,255,255,0.5)';
         ctx.textAlign    = 'right';
         ctx.textBaseline = 'bottom';
         const creditY    = outH - (overlay ? Math.round(outH * 0.11) : 0) - 8;
-        ctx.fillText(`© ${photo.photographer} / Imagn Images`, outW - 12, creditY);
+        ctx.fillText(photoCredit, outW - 12, creditY);
       }
     };
   }, [photo, activePreset, overlay, gradient, zoom, offsetY, outW, outH,
-      awayTeamColor, homeTeamColor, awayAbbrev, homeAbbrev, awayScore, homeScore]);
+      awayTeamColor, homeTeamColor, awayAbbrev, homeAbbrev, awayScore, homeScore, photoCredit]);
 
   const handleExport = () => {
     const dataUrl = canvasRef.current?.toDataURL('image/jpeg', 0.92) ?? '';

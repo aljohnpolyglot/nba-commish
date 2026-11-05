@@ -14,7 +14,7 @@ export const CompetitionBadge: React.FC<Props> = ({ competitionId, phase, state 
   const label = phase?.startsWith('r') ? `${spec.shortName} ${phase.toUpperCase()}` : `${spec.shortName}${phase ? ` ${phase}` : ''}`;
   return (
     <span
-      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white cursor-help"
+      className="inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white cursor-default"
       style={{ backgroundColor: spec.accentColor }}
       title={explainerTooltip(competitionId)}
     >

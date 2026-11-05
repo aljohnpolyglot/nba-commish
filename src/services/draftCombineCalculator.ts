@@ -7,6 +7,7 @@
  */
 
 import type { NBAPlayer } from '../types';
+import { seededRandom } from './nbaCup/seededRandom';
 
 export interface CombineAnthro {
   heightNoShoes: string;    // e.g. "6' 5.25''"
@@ -47,6 +48,12 @@ export interface CombineStats {
   anthro: CombineAnthro;
   athletic: CombineAthletic;
   shootingDrills: CombineShootingDrills;
+}
+
+export function didPlayerAttendDraftCombine(player: NBAPlayer, draftYear: number, projectedRank: number): boolean {
+  if (draftYear >= 2024) return true;
+  const absenceChance = projectedRank <= 5 ? 0.65 : projectedRank <= 14 ? 0.18 : 0.025;
+  return seededRandom(`draft-combine:${draftYear}:${player.internalId}`) >= absenceChance;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

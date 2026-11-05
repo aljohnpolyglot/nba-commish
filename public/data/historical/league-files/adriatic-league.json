@@ -1,0 +1,1064 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "adriatic-league-league-file.4438911338025547",
+  "competitionKey": "adriatic-league",
+  "competitionName": "ABA League",
+  "leagueKey": "adriatic-league",
+  "generatedAt": "2026-07-19T21:41:06.325Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "adriatic-league-liga-aba-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/18/Adriatic-League-Liga-ABA/stats/2026/Averages/Qualified/All",
+        "sourcePath": "public/data/external/adriatic-league/adriatic-league-liga-aba-2026-bbgm.json",
+        "sourceHash": "e1695a16bcb848e66f2af5c4c558c3773f2dba7b710d789a018941e866d2d1ca",
+        "fetchedAt": "2026-07-19T21:41:06.325Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "adriatic-league:maccabi-fox-tel-aviv"
+        },
+        "won": 26,
+        "lost": 2
+      }
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "KK Partizan",
+        "canonicalKey": "adriatic-league:kk-partizan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "BC Igokea",
+          "canonicalKey": "adriatic-league:bc-igokea"
+        },
+        "won": 20,
+        "lost": 7
+      }
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "KK Cibona",
+        "canonicalKey": "adriatic-league:kk-cibona"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Cedevita",
+        "canonicalKey": "adriatic-league:cedevita"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Crvena Zvezda Belgrade",
+          "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+        },
+        "won": 22,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dario Saric",
+                "canonicalKey": "person:dario-saric"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Cibona",
+                "canonicalKey": "adriatic-league:kk-cibona"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Cedevita",
+        "canonicalKey": "adriatic-league:cedevita"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Crvena Zvezda Belgrade",
+          "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+        },
+        "won": 30,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Boban Marjanovic",
+                "canonicalKey": "person:boban-marjanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "KK Mega Bemax",
+        "canonicalKey": "adriatic-league:kk-mega-bemax"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Buducnost Voli Podgorica",
+          "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+        },
+        "won": 23,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Stefan Jovic",
+                "canonicalKey": "person:stefan-jovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Cedevita",
+        "canonicalKey": "adriatic-league:cedevita"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Crvena Zvezda Belgrade",
+          "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+        },
+        "won": 30,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tadija Dragicevic",
+                "canonicalKey": "person:tadija-dragicevic"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Charles Jenkins",
+                "canonicalKey": "person:charles-jenkins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Buducnost Voli Podgorica",
+        "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Buducnost Voli Podgorica",
+          "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+        },
+        "won": 22,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Uros Lukovic",
+                "canonicalKey": "person:uros-lukovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Mornar",
+                "canonicalKey": "adriatic-league:kk-mornar"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nemanja Gordic",
+                "canonicalKey": "person:nemanja-gordic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Buducnost Voli Podgorica",
+                "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Buducnost Voli Podgorica",
+        "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Crvena Zvezda Belgrade",
+          "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+        },
+        "won": 26,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marcus Paige",
+                "canonicalKey": "person:marcus-paige"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "adriatic-league:kk-partizan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Billy Baron",
+                "canonicalKey": "person:billy-baron"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "KK Partizan",
+          "canonicalKey": "adriatic-league:kk-partizan"
+        },
+        "won": 17,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aleksa Radanov",
+                "canonicalKey": "person:aleksa-radanov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FMP Beograd",
+                "canonicalKey": "adriatic-league:fmp-beograd"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Buducnost Voli Podgorica",
+        "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Crvena Zvezda Belgrade",
+          "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+        },
+        "won": 28,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Ivanovic",
+                "canonicalKey": "person:nikola-ivanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Buducnost Voli Podgorica",
+                "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Landry Nnoko",
+                "canonicalKey": "person:landry-nnoko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Branko Lazic",
+                "canonicalKey": "person:branko-lazic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Branko Lazic",
+                "canonicalKey": "person:branko-lazic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "KK Partizan",
+        "canonicalKey": "adriatic-league:kk-partizan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Crvena Zvezda Belgrade",
+          "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+        },
+        "won": 29,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Cobbs",
+                "canonicalKey": "person:justin-cobbs"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Buducnost Voli Podgorica",
+                "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ognjen Dobric",
+                "canonicalKey": "person:ognjen-dobric"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Branko Lazic",
+                "canonicalKey": "person:branko-lazic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Branko Lazic",
+                "canonicalKey": "person:branko-lazic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "KK Cedevita Olimpija Ljubljana",
+        "canonicalKey": "adriatic-league:kk-cedevita-olimpija-ljubljana"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "KK Partizan",
+          "canonicalKey": "adriatic-league:kk-partizan"
+        },
+        "won": 31,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yogi Ferrell",
+                "canonicalKey": "person:yogi-ferrell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Cedevita Olimpija Ljubljana",
+                "canonicalKey": "adriatic-league:kk-cedevita-olimpija-ljubljana"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Punter",
+                "canonicalKey": "person:kevin-punter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "adriatic-league:kk-partizan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mathias Lessort",
+                "canonicalKey": "person:mathias-lessort"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "adriatic-league:kk-partizan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mathias Lessort",
+                "canonicalKey": "person:mathias-lessort"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "adriatic-league:kk-partizan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Crvena Zvezda Belgrade",
+        "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "KK Partizan",
+        "canonicalKey": "adriatic-league:kk-partizan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Crvena Zvezda Belgrade",
+          "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+        },
+        "won": 29,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shannon Shorter",
+                "canonicalKey": "person:shannon-shorter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Split",
+                "canonicalKey": "adriatic-league:kk-split"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yago Dos Santos",
+                "canonicalKey": "person:yago-dos-santos"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Branko Lazic",
+                "canonicalKey": "person:branko-lazic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Branko Lazic",
+                "canonicalKey": "person:branko-lazic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "adriatic-league:crvena-zvezda-belgrade"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "KK Partizan",
+        "canonicalKey": "adriatic-league:kk-partizan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Buducnost Voli Podgorica",
+        "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "KK Partizan",
+          "canonicalKey": "adriatic-league:kk-partizan"
+        },
+        "won": 33,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Filip Bundovic",
+                "canonicalKey": "person:filip-bundovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Cibona",
+                "canonicalKey": "adriatic-league:kk-cibona"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyrique Jones",
+                "canonicalKey": "person:tyrique-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "adriatic-league:kk-partizan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaac Bonga",
+                "canonicalKey": "person:isaac-bonga"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "adriatic-league:kk-partizan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaac Bonga",
+                "canonicalKey": "person:isaac-bonga"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "adriatic-league:kk-partizan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Dubai",
+        "canonicalKey": "adriatic-league:dubai"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "KK Partizan",
+        "canonicalKey": "adriatic-league:kk-partizan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Dubai",
+          "canonicalKey": "adriatic-league:dubai"
+        },
+        "won": 28,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yogi Ferrell",
+                "canonicalKey": "person:yogi-ferrell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Buducnost Voli Podgorica",
+                "canonicalKey": "adriatic-league:buducnost-voli-podgorica"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mfiondu Kabengele",
+                "canonicalKey": "person:mfiondu-kabengele"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dubai",
+                "canonicalKey": "adriatic-league:dubai"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaac Bonga",
+                "canonicalKey": "person:isaac-bonga"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "adriatic-league:kk-partizan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaac Bonga",
+                "canonicalKey": "person:isaac-bonga"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "adriatic-league:kk-partizan"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

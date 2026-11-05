@@ -4,6 +4,9 @@ import { evaluateTradeAcceptance, roleToMode } from '../../services/trade/tradeF
 import { formatPickLabel } from '../../services/draft/draftClassStrength';
 import type { DraftPick, NBAPlayer, NBATeam } from '../../types';
 import type { TradeOutlook } from '../../utils/salaryUtils';
+import { isPbaConferenceImport } from '../../services/trade/tradeFinderShared';
+import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { getGMAttributes, getGMName } from '../../services/staff/gmAttributes';
 
 export function evaluateTradeMachineExecution(args: {
   teamAId: number;
@@ -52,7 +55,7 @@ export function evaluateTradeMachineExecution(args: {
   } = args;
 
   const otherTeam = activeTeams.find(t => t.id === teamBId);
-  const otherGMName = otherTeam ? `${otherTeam.name} GM` : 'Their GM';
+  const otherGMName = otherTeam ? getGMName(state, teamBId) : 'Their GM';
   const tradeDifficulty = SettingsManager.getSettings().tradeDifficulty ?? 50;
   const result = evaluateTradeAcceptance({
     fromTid: teamAId,
@@ -80,6 +83,17 @@ export function evaluateTradeMachineExecution(args: {
     allPlayers: activePlayers,
     fromCashUSD: teamACashUSD,
     toCashUSD: teamBCashUSD,
+    aiGmOverall: getGMAttributes(state, teamBId).overall,
+    perceptionSeed: [
+      state.saveId,
+      state.date,
+      teamAId,
+      teamBId,
+      ...teamAPlayers.map(player => player.internalId),
+      ...teamBPlayers.map(player => player.internalId),
+      ...teamAPicks.map(pick => pick.dpid),
+      ...teamBPicks.map(pick => pick.dpid),
+    ].join(':'),
   });
 
   const { accepted, reason, shortfall } = result;
@@ -90,7 +104,12 @@ export function evaluateTradeMachineExecution(args: {
   if (!accepted) {
     const fromMode: TeamMode = roleToMode(teamOutlooks.get(teamAId)?.role ?? 'neutral');
     const gap = shortfall + 5;
-    const userRoster = activePlayers.filter(p => p.tid === teamAId && !teamAPlayers.some(x => x.internalId === p.internalId));
+    const pbaMode = isPbaIsolatedMode(state);
+    const userRoster = activePlayers.filter(p =>
+      p.tid === teamAId
+      && !teamAPlayers.some(x => x.internalId === p.internalId)
+      && (!pbaMode || !isPbaConferenceImport(p))
+    );
     const userPicks = (state.draftPicks as DraftPick[]).filter(pk => pk.tid === teamAId && !teamAPicks.some(x => x.dpid === pk.dpid));
     type Candidate = { kind: 'player' | 'pick'; id: string | number; name: string; tv: number };
     const candidates: Candidate[] = [

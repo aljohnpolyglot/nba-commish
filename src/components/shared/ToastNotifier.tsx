@@ -1,19 +1,38 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, XCircle, TrendingDown, Bandage, AlertTriangle, Zap, Star, Heart, Trophy, Award, FileSignature, ShieldAlert, Siren } from 'lucide-react';
+import { ArrowLeftRight, Banknote, CheckCircle, XCircle, TrendingDown, Bandage, AlertTriangle, Zap, Star, Heart, Trophy, Award, FileSignature, ShieldAlert, Siren, Ruler } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
 import { formatContractTotalUSD, formatContractUSD } from '../../utils/salaryUtils';
+import { usePlayerQuickActions } from '../../hooks/usePlayerQuickActions';
+import { formatExternalSalary } from '../../constants';
+import { formatInjuryRecoveryWindow } from '../../services/injuryService';
+import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getPrimaryLeagueIdentityNamespace, resolveCanonicalTeamIdentityId } from '../../services/teamIdentity';
+import type { ExternalSaveNotice } from '../../services/SaveManager';
 
 type ToastItem =
-  | { type: 'fa-accepted'; playerName: string; annualM: number; salaryUSD?: number; years: number }
+  | { type: 'fa-accepted'; playerName: string; annualM: number; salaryUSD?: number; salaryLeague?: 'PBA'; years: number }
   | { type: 'fa-rejected'; playerName: string; winnerTeamName: string; rejectionReason?: string }
-  | { type: 'fa-bid-submitted'; playerName: string; teamName: string; annualM: number; salaryUSD?: number; years: number; resolvesInDays: number }
+  | { type: 'fa-bid-submitted'; playerName: string; teamName: string; annualM: number; salaryUSD?: number; salaryLeague?: 'PBA'; years: number }
   | { type: 'eliminated'; teamName: string }
   | { type: 'injury'; playerName: string; injuryType: string; gamesRemaining: number; pos?: string; teamName?: string }
   | { type: 'fight'; playerName: string; opponentName: string; teamName: string; severity: 'scuffle' | 'ejection' | 'brawl' }
   | { type: 'recovery'; playerName: string; teamName: string; pos: string }
   | { type: 'suspension'; playerName: string; teamName: string; pos?: string; gamesRemaining: number; reason: string }
+  | {
+      type: 'discipline';
+      playerName: string;
+      teamName: string;
+      pos?: string;
+      action: 'fine' | 'suspension' | 'fine_and_suspension';
+      amount?: number;
+      currencyCode?: string;
+      games?: number;
+      reason: string;
+      templateId?: string;
+      templateName?: string;
+    }
   | { type: 'feat-own'; playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number }
   | { type: 'feat-league'; playerName: string; teamName: string; oppName: string; homeScore: number; awayScore: number; isHome: boolean; won: boolean; pts: number; reb: number; ast: number }
   | { type: 'award'; playerName: string; teamName: string; teamAbbrev: string; awardLabel: string }
@@ -29,8 +48,12 @@ type ToastItem =
   | { type: 'rfa-not-matched'; playerName: string; signingTeamName: string }
   | { type: 'transfer-accepted'; playerName: string; sellerTeamName: string; feeEUR: number }
   | { type: 'transfer-rejected'; playerName: string; sellerTeamName: string; feeEUR: number; reason?: string }
+  | { type: 'loan'; playerId?: string; playerName: string; accepted: boolean; parentTid?: number; parentTeamName: string; borrowerTid?: number; borrowerTeamName?: string; eventType: 'decision' | 'arrival' | 'departure' | 'return'; reason?: string; returnedToUser?: boolean }
+  | { type: 'academy-promotion'; playerName: string; promoted: boolean; reason: string; releasedToFreeAgency?: boolean }
+  | { type: 'academy-growth-spurt'; playerName: string; inches: number; newHeight: number }
   | { type: 'draft-combine'; year: number }
-  | { type: 'gameplan-copied' };
+  | { type: 'gameplan-copied' }
+  | { type: 'save-conflict'; kind: ExternalSaveNotice['kind'] };
 
 // ── Imperative push API (usable outside React tree) ─────────────────────────
 let _enqueue: ((item: ToastItem) => void) | null = null;
@@ -45,6 +68,7 @@ const TOAST_DURATION: Record<ToastItem['type'], number> = {
   'fight': 6500,
   'recovery': 5000,
   'suspension': 7000,
+  'discipline': 7500,
   'feat-own': 6000,
   'feat-league': 6000,
   'award': 7000,
@@ -58,8 +82,12 @@ const TOAST_DURATION: Record<ToastItem['type'], number> = {
   'rfa-not-matched': 6000,
   'transfer-accepted': 6000,
   'transfer-rejected': 5500,
+  'loan': 8000,
+  'academy-promotion': 7500,
+  'academy-growth-spurt': 6500,
   'draft-combine': 5500,
   'gameplan-copied': 3500,
+  'save-conflict': 0,
 };
 
 // ── Color theme per toast type (accent = border/icon/label tint) ────────────
@@ -73,6 +101,7 @@ const ACCENT: Record<ToastItem['type'], Accent> = {
   'fight':        { bg: 'bg-orange-950/90',  border: 'border-orange-500/50',  label: 'text-orange-300',  icon: 'text-orange-400'  },
   'recovery':     { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
   'suspension':   { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
+  'discipline':   { bg: 'bg-violet-950/90',  border: 'border-violet-500/50',  label: 'text-violet-300',  icon: 'text-violet-400'  },
   'feat-own':     { bg: 'bg-indigo-950/90',  border: 'border-indigo-500/50',  label: 'text-indigo-300',  icon: 'text-indigo-400'  },
   'feat-league':  { bg: 'bg-amber-950/90',   border: 'border-amber-500/50',   label: 'text-amber-300',   icon: 'text-amber-400'   },
   'award':        { bg: 'bg-[#3a2a05]/90',   border: 'border-[#FDB927]/50',   label: 'text-[#FDB927]',   icon: 'text-[#FDB927]'   },
@@ -85,12 +114,27 @@ const ACCENT: Record<ToastItem['type'], Accent> = {
   'rfa-not-matched': { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
   'transfer-accepted': { bg: 'bg-emerald-950/90', border: 'border-emerald-500/50', label: 'text-emerald-300', icon: 'text-emerald-400' },
   'transfer-rejected': { bg: 'bg-rose-950/90',    border: 'border-rose-500/50',    label: 'text-rose-300',    icon: 'text-rose-400'    },
+  'loan': { bg: 'bg-sky-950/95', border: 'border-sky-500/55', label: 'text-sky-300', icon: 'text-sky-400' },
+  'academy-promotion': { bg: 'bg-emerald-950/95', border: 'border-emerald-500/55', label: 'text-emerald-300', icon: 'text-emerald-400' },
+  'academy-growth-spurt': { bg: 'bg-cyan-950/95', border: 'border-cyan-500/55', label: 'text-cyan-300', icon: 'text-cyan-400' },
   'draft-combine': { bg: 'bg-violet-950/90', border: 'border-violet-500/50', label: 'text-violet-300', icon: 'text-violet-400' },
   'gameplan-copied': { bg: 'bg-sky-950/90',     border: 'border-sky-500/50',     label: 'text-sky-300',     icon: 'text-sky-400'     },
+  'save-conflict': { bg: 'bg-amber-950/95', border: 'border-amber-400/60', label: 'text-amber-300', icon: 'text-amber-300' },
 };
 
-export const ToastNotifier: React.FC = () => {
-  const { state, dispatchAction } = useGame();
+interface ToastNotifierProps {
+  externalSaveNotice?: ExternalSaveNotice | null;
+  onReloadExternalSave?: () => void | Promise<void>;
+  onReturnToSaves?: () => void;
+}
+
+export const ToastNotifier: React.FC<ToastNotifierProps> = ({
+  externalSaveNotice,
+  onReloadExternalSave,
+  onReturnToSaves,
+}) => {
+  const { state, dispatchAction, navigateToRoute } = useGame();
+  const quick = usePlayerQuickActions();
   const [queue, setQueue] = useState<ToastItem[]>([]);
   const [visible, setVisible] = useState<ToastItem | null>(null);
   const isolatedLeagueMode = isEuroIsolatedMode(state) || isPbaIsolatedMode(state);
@@ -107,7 +151,7 @@ export const ToastNotifier: React.FC = () => {
     if (!pending || pending.length === 0) return;
     const items: ToastItem[] = pending.map(p =>
       p.accepted
-        ? { type: 'fa-accepted', playerName: p.playerName, annualM: p.annualM, salaryUSD: (p as any).salaryUSD, years: p.years }
+        ? { type: 'fa-accepted', playerName: p.playerName, annualM: p.annualM, salaryUSD: p.salaryUSD, salaryLeague: p.salaryLeague, years: p.years }
         : { type: 'fa-rejected', playerName: p.playerName, winnerTeamName: p.winnerTeamName ?? '', rejectionReason: p.rejectionReason }
     );
     setQueue(q => [...q, ...items]);
@@ -120,6 +164,20 @@ export const ToastNotifier: React.FC = () => {
   // Transfer market resolutions are handled by TransferResolutionModal mounted
   // globally in App.tsx — keeps the user attention on rejections instead of
   // letting them auto-dismiss as toasts.
+
+  useEffect(() => {
+    const pending = state.pendingAcademyPromotionToasts;
+    if (!pending?.length) return;
+    setQueue(current => [...current, ...pending.map(item => ({ type: 'academy-promotion' as const, ...item }))]);
+    dispatchAction({ type: 'UPDATE_STATE', payload: { pendingAcademyPromotionToasts: [] } });
+  }, [state.pendingAcademyPromotionToasts]);
+
+  useEffect(() => {
+    const pending = state.pendingAcademyGrowthSpurtToasts;
+    if (!pending?.length) return;
+    setQueue(current => [...current, ...pending.map(item => ({ type: 'academy-growth-spurt' as const, ...item }))]);
+    dispatchAction({ type: 'UPDATE_STATE', payload: { pendingAcademyGrowthSpurtToasts: [] } });
+  }, [state.pendingAcademyGrowthSpurtToasts]);
 
 // Drain pendingRFAMatchResolutions — outcome toasts (matched / not-matched).
   useEffect(() => {
@@ -199,6 +257,16 @@ export const ToastNotifier: React.FC = () => {
     setQueue(q => [...q, ...items]);
     dispatchAction({ type: 'UPDATE_STATE' as any, payload: { pendingSuspensionToasts: [] } });
   }, [(state as any).pendingSuspensionToasts]);
+
+  useEffect(() => {
+    const pending = state.pendingDisciplineToasts;
+    if (!pending?.length) return;
+    setQueue(current => [
+      ...current,
+      ...pending.map(item => ({ type: 'discipline' as const, ...item })),
+    ]);
+    dispatchAction({ type: 'UPDATE_STATE', payload: { pendingDisciplineToasts: [] } });
+  }, [state.pendingDisciplineToasts]);
 
   // Drain pendingFeatToasts
   useEffect(() => {
@@ -298,32 +366,71 @@ export const ToastNotifier: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (visible || queue.length === 0) return;
+    if (!externalSaveNotice || !visible) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = null;
+    setQueue(current => [visible, ...current]);
+    setVisible(null);
+  }, [externalSaveNotice, visible]);
+
+  useEffect(() => {
+    if (externalSaveNotice || visible || queue.length === 0) return;
     const [next, ...rest] = queue;
     setVisible(next);
     setQueue(rest);
     timerRef.current = setTimeout(() => setVisible(null), TOAST_DURATION[next.type]);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [visible, queue]);
+  }, [externalSaveNotice, visible, queue]);
 
-  return (
+  const openPlayer = (playerId?: string) => {
+    const player = state.players.find(candidate => String(candidate.internalId) === String(playerId));
+    if (player) quick.openFor(player);
+  };
+  const openTeam = (tid?: number) => {
+    if (tid == null || !state.saveId) return;
+    const team = resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []);
+    if (!team) return;
+    const namespace = 'league' in team && team.league
+      ? String(team.league)
+      : getPrimaryLeagueIdentityNamespace(state);
+    navigateToRoute({
+      kind: 'team',
+      saveId: state.saveId,
+      teamIdentityId: resolveCanonicalTeamIdentityId(team, namespace),
+    });
+  };
+
+  const externalItem: ToastItem | null = externalSaveNotice
+    ? { type: 'save-conflict', kind: externalSaveNotice.kind }
+    : null;
+  const displayedItem = externalItem ?? visible;
+
+  return <>
     <AnimatePresence>
-      {visible && (
+      {displayedItem && (
         <motion.div
-          key={`${visible.type}-${JSON.stringify(visible)}`}
+          key={externalSaveNotice
+            ? `save-conflict-${externalSaveNotice.saveId}-${externalSaveNotice.saveRevision}`
+            : `${displayedItem.type}-${JSON.stringify(displayedItem)}`}
           initial={{ opacity: 0, y: -28, scale: 0.95 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: -16, scale: 0.95 }}
           transition={{ type: 'spring', stiffness: 400, damping: 30 }}
-          className="fixed top-5 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-1.5"
+          className="pointer-events-none fixed top-16 sm:top-5 left-1/2 -translate-x-1/2 z-[9999] flex flex-col items-center gap-1.5"
         >
-          <div className="cursor-pointer" onClick={dismissCurrent}>
-            <ToastContent item={visible} />
+          <div className={externalItem ? 'pointer-events-auto' : 'pointer-events-auto cursor-pointer'} onClick={externalItem ? undefined : dismissCurrent}>
+            <ToastContent
+              item={displayedItem}
+              onOpenPlayer={openPlayer}
+              onOpenTeam={openTeam}
+              onReloadExternalSave={onReloadExternalSave}
+              onReturnToSaves={onReturnToSaves}
+            />
           </div>
-          {queue.length > 0 && (
+          {!externalItem && queue.length > 0 && (
             <button
               onClick={clearAll}
-              className="text-xs text-slate-400 hover:text-white bg-slate-900/80 border border-slate-700/60 px-3 py-1 rounded-full backdrop-blur-md transition-colors"
+              className="pointer-events-auto text-xs text-slate-400 hover:text-white bg-slate-900/80 border border-slate-700/60 px-3 py-1 rounded-full backdrop-blur-md transition-colors"
             >
               clear all ({queue.length} more)
             </button>
@@ -331,15 +438,13 @@ export const ToastNotifier: React.FC = () => {
         </motion.div>
       )}
     </AnimatePresence>
-  );
+    {quick.portals}
+  </>;
 };
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 function injuryDuration(gamesRemaining: number): string {
-  if (gamesRemaining <= 3) return 'Day-to-Day';
-  if (gamesRemaining >= 82) return 'Season-Ending';
-  if (gamesRemaining >= 15) return `~${Math.round(gamesRemaining / 3)} weeks`;
-  return `~${gamesRemaining} games`;
+  return formatInjuryRecoveryWindow(gamesRemaining);
 }
 
 function statLine(pts: number, reb: number, ast: number): string {
@@ -355,6 +460,15 @@ function statLine(pts: number, reb: number, ast: number): string {
 const annualUSDFromToast = (item: { annualM: number; salaryUSD?: number }): number =>
   Math.max(0, Math.round(item.salaryUSD ?? item.annualM * 1_000_000));
 
+const formatFreeAgencyToastTotal = (
+  item: { annualM: number; salaryUSD?: number; salaryLeague?: 'PBA'; years: number },
+): string => {
+  const annualValue = annualUSDFromToast(item);
+  return item.salaryLeague === 'PBA'
+    ? formatExternalSalary(annualValue * item.years, 'PBA')
+    : formatContractTotalUSD(annualValue, item.years);
+};
+
 // ── Card shell (used by all toast types) ────────────────────────────────────
 const Card: React.FC<{
   type: ToastItem['type'];
@@ -365,7 +479,7 @@ const Card: React.FC<{
 }> = ({ type, icon: Icon, header, label, children }) => {
   const a = ACCENT[type];
   return (
-    <div className={`min-w-[320px] max-w-[440px] rounded-xl border shadow-2xl backdrop-blur-md ${a.bg} ${a.border} overflow-hidden`}>
+    <div className={`w-[calc(100vw-2rem)] min-w-0 max-w-[440px] rounded-xl border shadow-2xl backdrop-blur-md ${a.bg} ${a.border} overflow-hidden`}>
       <div className={`flex items-center gap-2 px-4 py-1.5 border-b ${a.border} bg-black/30`}>
         <Icon className={`w-3.5 h-3.5 ${a.icon} shrink-0`} />
         <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">{header}</span>
@@ -379,12 +493,20 @@ const Card: React.FC<{
 };
 
 // ── Per-type render ─────────────────────────────────────────────────────────
-const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
+const ToastContent: React.FC<{
+  item: ToastItem;
+  onOpenPlayer?: (playerId?: string) => void;
+  onOpenTeam?: (tid?: number) => void;
+  onReloadExternalSave?: () => void | Promise<void>;
+  onReturnToSaves?: () => void;
+}> = ({ item, onOpenPlayer, onOpenTeam, onReloadExternalSave, onReturnToSaves }) => {
+  if (item.type === 'save-conflict') {
+    return <SaveConflictToast item={item} onReload={onReloadExternalSave} onReturn={onReturnToSaves} />;
+  }
   if (item.type === 'fa-accepted') {
-    const annualValue = annualUSDFromToast(item);
     return (
       <Card type={item.type} icon={CheckCircle} header={item.playerName} label="Signed">
-        Accepted your offer — <span className="text-[#FDB927] font-bold">{formatContractTotalUSD(annualValue, item.years)} / {item.years}yr</span>.
+        Accepted your offer — <span className="text-[#FDB927] font-bold">{formatFreeAgencyToastTotal(item)} / {item.years}yr</span>.
       </Card>
     );
   }
@@ -400,10 +522,9 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
   }
 
   if (item.type === 'fa-bid-submitted') {
-    const annualValue = annualUSDFromToast(item);
     return (
       <Card type={item.type} icon={FileSignature} header={item.playerName} label="Offer Submitted">
-        <span className="text-white font-bold">{item.teamName}</span> offered <span className="text-[#FDB927] font-bold">{formatContractTotalUSD(annualValue, item.years)} / {item.years}yr</span> — decision in ~{item.resolvesInDays} {item.resolvesInDays === 1 ? 'day' : 'days'}.
+        <span className="text-white font-bold">{item.teamName}</span> offered <span className="text-[#FDB927] font-bold">{formatFreeAgencyToastTotal(item)} / {item.years}yr</span>. Awaiting the player&apos;s decision.
       </Card>
     );
   }
@@ -412,6 +533,44 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
   // (global mount in App.tsx) — kept out of the toast queue intentionally so
   // rejection reasons aren't lost to a 5s auto-dismiss.
   if (item.type === 'transfer-accepted' || item.type === 'transfer-rejected') return null;
+
+  if (item.type === 'loan') {
+    const linkClass = 'font-bold text-white hover:text-sky-200 hover:underline';
+    const player = <button type="button" className={linkClass} onClick={event => { event.stopPropagation(); onOpenPlayer?.(item.playerId); }}>{item.playerName}</button>;
+    const parent = <button type="button" className={linkClass} onClick={event => { event.stopPropagation(); onOpenTeam?.(item.parentTid); }}>{item.parentTeamName}</button>;
+    const borrower = <button type="button" className={linkClass} onClick={event => { event.stopPropagation(); onOpenTeam?.(item.borrowerTid); }}>{item.borrowerTeamName ?? 'the borrowing club'}</button>;
+    const body = !item.accepted
+      ? <>{parent} declined the loan for {player}. {item.reason}</>
+      : item.eventType === 'departure'
+        ? <>{player} left your club on loan for {borrower}.</>
+        : item.eventType === 'return' && item.returnedToUser
+          ? <>{player} rejoined your club after his loan at {borrower}.</>
+          : item.eventType === 'return'
+            ? <>{player} left your club and returned to {parent}.</>
+            : <>{player} joined your club on loan from {parent}.</>;
+    return <Card type={item.type} icon={ArrowLeftRight} header={item.playerName} label={item.eventType === 'return' ? 'Loan Ended' : item.accepted ? 'Loan Completed' : 'Loan Declined'}>{body}</Card>;
+  }
+
+  if (item.type === 'academy-promotion') {
+    const releasedToFreeAgency = !item.promoted && item.releasedToFreeAgency;
+    return (
+      <Card type={item.type} icon={item.promoted || releasedToFreeAgency ? CheckCircle : AlertTriangle} header={item.playerName} label={item.promoted ? 'Academy Graduate' : releasedToFreeAgency ? 'Entered Free Agency' : 'Promotion Held'}>
+        {item.promoted
+          ? <><span className="font-bold text-white">{item.playerName}</span> joined the senior team after reaching the academy age limit.</>
+          : releasedToFreeAgency
+            ? <><span className="font-bold text-white">{item.playerName}</span> reached the academy age limit and entered free agency because no senior roster place was available.</>
+          : <><span className="font-bold text-white">{item.playerName}</span> reached the academy age limit but could not be promoted because {item.reason}.</>}
+      </Card>
+    );
+  }
+
+  if (item.type === 'academy-growth-spurt') {
+    return (
+      <Card type={item.type} icon={Ruler} header={item.playerName} label="Growth Spurt">
+        <span className="font-bold text-white">{item.playerName}</span> grew {item.inches} inches and is now {Math.floor(item.newHeight / 12)}'{item.newHeight % 12}".
+      </Card>
+    );
+  }
 
   if (item.type === 'eliminated') {
     return (
@@ -458,10 +617,52 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
 
   if (item.type === 'suspension') {
     const posPrefix = item.pos ? `${item.pos} ` : '';
+    const isRedCard = /red card/i.test(item.reason);
     return (
-      <Card type={item.type} icon={ShieldAlert} header={item.teamName} label="Suspension">
-        <span className="text-white font-bold">{posPrefix}{item.playerName}</span> was suspended for <span className="text-rose-300 font-bold">{item.gamesRemaining} game{item.gamesRemaining === 1 ? '' : 's'}</span>.
-        {' '}Reason: <span className="text-white font-bold">{item.reason}</span>.
+      <Card type={item.type} icon={ShieldAlert} header={item.teamName} label={isRedCard ? 'Red Card' : 'Suspension'}>
+        {isRedCard ? (
+          <>
+            <span className="text-white font-bold">{posPrefix}{item.playerName}</span> has received a red card and will be suspended for the next game.
+          </>
+        ) : (
+          <>
+            <span className="text-white font-bold">{posPrefix}{item.playerName}</span> was suspended for <span className="text-rose-300 font-bold">{item.gamesRemaining} game{item.gamesRemaining === 1 ? '' : 's'}</span>.
+            {' '}Reason: <span className="text-white font-bold">{item.reason}</span>.
+          </>
+        )}
+      </Card>
+    );
+  }
+
+  if (item.type === 'discipline') {
+    const posPrefix = item.pos ? `${item.pos} ` : '';
+    const label = item.templateName
+      ?? (item.action === 'fine'
+        ? 'Fine'
+        : item.action === 'suspension'
+          ? 'Suspension'
+          : 'Fine & Suspension');
+    const formattedAmount = item.amount && item.currencyCode
+      ? new Intl.NumberFormat('en-US', {
+          style: 'currency',
+          currency: item.currencyCode,
+          maximumFractionDigits: 0,
+        }).format(item.amount)
+      : null;
+    return (
+      <Card
+        type={item.type}
+        icon={item.action === 'suspension' ? ShieldAlert : Banknote}
+        header={item.teamName}
+        label={label}
+      >
+        <span className="font-bold text-white">{posPrefix}{item.playerName}</span>
+        {item.action === 'fine' && <> was fined <span className="font-bold text-emerald-300">{formattedAmount ?? 'an undisclosed amount'}</span>.</>}
+        {item.action === 'suspension' && <> was suspended for <span className="font-bold text-rose-300">{item.games ?? 0} game{item.games === 1 ? '' : 's'}</span>.</>}
+        {item.action === 'fine_and_suspension' && (
+          <> was fined <span className="font-bold text-emerald-300">{formattedAmount ?? 'an undisclosed amount'}</span> and suspended for <span className="font-bold text-rose-300">{item.games ?? 0} game{item.games === 1 ? '' : 's'}</span>.</>
+        )}
+        {' '}Reason: <span className="font-bold text-white">{item.reason}</span>.
       </Card>
     );
   }
@@ -470,7 +671,13 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
     const scoreStr = item.isHome
       ? `${item.homeScore}-${item.awayScore}`
       : `${item.awayScore}-${item.homeScore}`;
-    const outcome = item.won ? `${scoreStr} win over the ${item.oppName}` : `${scoreStr} loss to the ${item.oppName}`;
+    const outcome = item.oppName
+      ? item.won
+        ? `${scoreStr} win over ${item.oppName}`
+        : `${scoreStr} loss to ${item.oppName}`
+      : item.won
+        ? `${scoreStr} win`
+        : `${scoreStr} loss`;
     return (
       <Card type={item.type} icon={item.type === 'feat-own' ? Zap : Star} header={item.teamName} label="Player Feat">
         <span className="text-white font-bold">{item.playerName}</span> had {statLine(item.pts, item.reb, item.ast)} in a {outcome}.
@@ -580,6 +787,46 @@ const ToastContent: React.FC<{ item: ToastItem }> = ({ item }) => {
   return (
     <Card type="playoffs" icon={Trophy} header={item.teamName} label="Playoffs">
       {item.body}
+    </Card>
+  );
+};
+
+const SaveConflictToast: React.FC<{
+  item: Extract<ToastItem, { type: 'save-conflict' }>;
+  onReload?: () => void | Promise<void>;
+  onReturn?: () => void;
+}> = ({ item, onReload, onReturn }) => {
+  const [reloading, setReloading] = useState(false);
+  const updated = item.kind === 'updated';
+  const activate = async (event: React.MouseEvent<HTMLButtonElement>) => {
+    event.stopPropagation();
+    if (!updated) {
+      onReturn?.();
+      return;
+    }
+    if (reloading) return;
+    setReloading(true);
+    try {
+      await onReload?.();
+    } finally {
+      setReloading(false);
+    }
+  };
+  return (
+    <Card type={item.type} icon={AlertTriangle} header="Save changed" label="Another tab">
+      <p>
+        {updated
+          ? 'This save was updated in another tab. Reload the latest version before continuing.'
+          : 'This save was deleted in another tab. This tab can no longer write to it.'}
+      </p>
+      <button
+        type="button"
+        onClick={event => void activate(event)}
+        disabled={reloading}
+        className="mt-3 w-full rounded-lg bg-amber-300 px-4 py-2.5 text-[10px] font-black uppercase tracking-widest text-slate-950 transition-colors hover:bg-amber-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-100 disabled:cursor-wait disabled:opacity-70"
+      >
+        {reloading ? 'Reloading latest save...' : updated ? 'Reload latest save' : 'Return to saves'}
+      </button>
     </Card>
   );
 };

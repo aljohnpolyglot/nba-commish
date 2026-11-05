@@ -15,12 +15,14 @@
  * Changes trickle in across preseason so roster cuts are informed by training camp performance.
  *
  * Applies to ALL leagues — everyone goes through camp.
- * Deterministic: seeded by saveId + year + playerId.
+ * Deterministic: seeded by universe simulation seed + year + playerId.
  */
 
 import { NBAPlayer } from '../../types';
 import { calculatePlayerOverallForYear } from '../../utils/playerRatings';
 import { calculateLeagueOverall } from '../logic/leagueOvr';
+import { EXTERNAL_LEAGUE_STATUSES } from '../../constants';
+import { simDebug } from '../../utils/simDebug';
 
 const SHUFFLE_ATTRS = [
   'stre', 'spd', 'jmp', 'endu',
@@ -28,10 +30,7 @@ const SHUFFLE_ATTRS = [
   'oiq', 'diq', 'drb', 'pss', 'reb',
 ] as const;
 
-const EXTERNAL_STATUSES = new Set([
-  'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa',
-  'China CBA', 'NBL Australia', 'WNBA',
-]);
+const EXTERNAL_STATUSES = new Set(EXTERNAL_LEAGUE_STATUSES);
 
 // ── Seeded RNG ─────────────────────────────────────────────────────────────
 
@@ -103,6 +102,7 @@ export function markTrainingCampShuffle(
   const updatedPlayers = players.map(p => {
     if ((p as any).diedYear || p.tid === -2 || (p as any).status === 'Retired') return p;
     if (!p.ratings || p.ratings.length === 0) return p;
+    if (p.rookieCampProgressionSeason === seasonYear) return p;
     // Skip if already marked this season
     if ((p as any).pendingCampBoost) return p;
 
@@ -142,7 +142,9 @@ export function markTrainingCampShuffle(
   });
 
   const marked = updatedPlayers.filter((p: any) => p.pendingCampBoost).length;
-  console.log(`[TrainingCamp] Marked ${marked} players for camp shuffle (${campStart} → ${campEnd})`);
+  simDebug('development', () => (
+    `[TrainingCamp] Marked ${marked} players for camp shuffle (${campStart} → ${campEnd})`
+  ), { marked, campStart, campEnd });
 
   return { players: updatedPlayers };
 }

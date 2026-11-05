@@ -3,12 +3,13 @@ import {
   NBAPlayer, Play, DunkContestResult, AllStarDunkContestSim
 } from '../../../../services/allStar/AllStarDunkContestSim';
 import { loadBadges } from '../../../../services/simulation/live/playback/badgeService';
+import type { JudgeCandidate } from '../../../../services/allStar/judges';
 
 /**
  * Hook to manage the Slam Dunk Contest live simulation state.
  * Follows the exact pattern of the game's useLiveGame hook.
  */
-export function useDunkContest(contestants: NBAPlayer[]) {
+export function useDunkContest(contestants: NBAPlayer[], judgeCandidates: JudgeCandidate[] = []) {
   const [badgesLoaded, setBadgesLoaded] = useState(false);
   const [plays, setPlays] = useState<Play[]>([]);
   const [simResult, setSimResult] = useState<DunkContestResult | null>(null);
@@ -24,6 +25,7 @@ export function useDunkContest(contestants: NBAPlayer[]) {
 
   // Use a stable key so a new array reference with same contestants doesn't re-sim
   const contestantsKey = contestants.map(c => c.name).join(',');
+  const judgesKey = judgeCandidates.map(candidate => candidate.id).join(',');
 
   useEffect(() => {
     const fresh: Record<string, number> = {};
@@ -36,12 +38,12 @@ export function useDunkContest(contestants: NBAPlayer[]) {
       setBadgesLoaded(true);
 
       if (contestants.length < 2) return; // not enough contestants to run
-      const result = AllStarDunkContestSim.simulate(contestants);
+      const result = AllStarDunkContestSim.simulate(contestants, judgeCandidates);
       setPlays(result.plays);
       setSimResult(result);
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [contestantsKey]);
+  }, [contestantsKey, judgesKey]);
 
   useEffect(() => {
     let timer: ReturnType<typeof setInterval>;

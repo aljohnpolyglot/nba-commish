@@ -6,23 +6,46 @@ import { useGame } from '../../store/GameContext';
 import { normalizeDate, extractTeamId } from '../../utils/helpers';
 import { getPlayerImage } from '../central/view/bioCache';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
+import { findBoxScoreForGame } from '../../utils/boxScoreLookup';
+import { getHistoricalTeamSnapshot, getResolvedTeamLogoUrl } from '../../utils/teamAssets';
+import { getRisingStarsEventLabel } from '../../services/allStar/allStarEventAvailability';
+import { didHomeTeamWin } from '../../utils/gameOutcome';
+import { getLeagueEventDisplayName } from '../../services/franchises/franchiseEventNaming';
+import {
+  getLeagueFormerPlayerCaptainCandidates,
+  resolveFormerPlayerCaptains,
+} from '../../services/allStar/captainPool';
+import { RisingStarsFinalHeader } from './RisingStarsFinalHeader';
+import { getScoutedDisplayOverall } from '../../utils/scoutingFuzz';
 
 interface RisingStarsViewProps {
   allStar: any;
   ownTid?: number | null;
   onWatchGame?: (game: any) => void;
   onViewBoxScore?: (game: any) => void;
+  onPlayerClick?: (player: any) => void;
 }
 
-export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTid, onWatchGame, onViewBoxScore }) => {
+export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTid, onWatchGame, onViewBoxScore, onPlayerClick }) => {
   const { state } = useGame();
-  const dates = getAllStarWeekendDates(state.leagueStats.year);
-  const bracket = allStar?.risingStarsBracket;
+  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
+  const announcementLabel = dates.risingStarsAnnounced.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+  const eventDateLabel = dates.risingStars.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' });
   const rsFormat = state.leagueStats?.risingStarsFormat ?? '4team_tournament';
-  const isTournament = rsFormat === '4team_tournament' || rsFormat === 'random_4team' || !!bracket?.teams?.length;
+  const eventLabel = getLeagueEventDisplayName(
+    state,
+    'rising_stars',
+    getRisingStarsEventLabel(state.leagueStats),
+  );
+  const isTournament = rsFormat === '4team_tournament' || rsFormat === 'random_4team';
+  const isUsaWorld = rsFormat === 'usa_vs_world';
+  const isCaptainsDraft = rsFormat === 'captains_draft';
+  const bracket = isTournament ? allStar?.risingStarsBracket : undefined;
   const gameId = allStar?.risingStarsGameId;
   const game = state.schedule?.find((g: any) => g.gid === gameId);
-  const boxScore = state.boxScores?.find((r: any) => r.gameId === gameId || (r.homeTeamId === -3 && r.awayTeamId === -4));
+  const boxScore = game
+    ? findBoxScoreForGame(state.boxScores, game.gid, game.date, { homeTid: game.homeTid, awayTid: game.awayTid })
+    : state.boxScores?.find((r: any) => r.gameId === gameId || (r.homeTeamId === -3 && r.awayTeamId === -4));
   const roster = allStar?.risingStarsRoster || [];
 
   const isToday = game && normalizeDate(game.date) === normalizeDate(state.date);
@@ -34,9 +57,9 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
         <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto mb-4">
           <Zap size={32} className="text-slate-700" />
         </div>
-        <h3 className="text-xl font-black text-white mb-2">Rising Stars</h3>
+        <h3 className="text-xl font-black text-white mb-2">{eventLabel}</h3>
         <p className="text-slate-400 text-sm max-w-xs mx-auto">
-          The best rookies and sophomores will be selected on Jan 29.
+          The best rookies and sophomores will be selected on {announcementLabel}.
         </p>
       </div>
     );
@@ -44,6 +67,16 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
 
   const rookies = roster.filter((p: any) => p.isRookie);
   const sophomores = roster.filter((p: any) => !p.isRookie);
+  const usaRoster = roster.filter((p: any) => p.risingStarsTeam === 'USA' || p.conference === 'USA');
+  const worldRoster = roster.filter((p: any) => p.risingStarsTeam === 'World' || p.conference === 'World');
+  const captainOneRoster = roster.filter((p: any) => p.risingStarsTeam === 'Captain 1');
+  const captainTwoRoster = roster.filter((p: any) => p.risingStarsTeam === 'Captain 2');
+  const formerPlayerCaptains = isCaptainsDraft
+    ? resolveFormerPlayerCaptains(
+        state.leagueStats.risingStarsLegendCaptainIds,
+        getLeagueFormerPlayerCaptainCandidates(state.players, state.teams, state.leagueStats),
+      )
+    : [];
 
   const PlayerCard = ({ p }: { p: any }) => {
     const fullPlayer = state.players?.find((pl: any) => pl.internalId === p.playerId);
@@ -53,21 +86,35 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
     const nonNbaTeam = !nbaTeam && fullPlayer
       ? (state.nonNBATeams ?? []).find((t: any) => t.tid === fullPlayer.tid && t.league === fullPlayer.status)
       : null;
-    const team = nbaTeam ?? nonNbaTeam;
-    const teamColor = (team as any)?.colors?.[0] || '#64748b';
-    const teamLogoUrl = (team as any)?.logoUrl || (team as any)?.imgURL;
+    const team = nbaTeam ? getHistoricalTeamSnapshot(nbaTeam, state.leagueStats.year) : nonNbaTeam;
+    const teamLogoUrl = getResolvedTeamLogoUrl(team, state.leagueStats.year);
     const teamAbbrev = (team as any)?.abbrev || p.teamAbbrev || '—';
     const imgUrl = (fullPlayer && getPlayerImage(fullPlayer)) || undefined;
     const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
+    const bioPlayer = fullPlayer ?? { name: p.playerName, internalId: p.playerId };
+    const handleOpenPlayer = () => onPlayerClick?.(bioPlayer);
+    const displayOverall = fullPlayer
+      ? getScoutedDisplayOverall(state, fullPlayer, state.leagueStats.year)
+      : p.ovr;
 
     return (
       <div
-        className={`border rounded-xl p-3 flex items-center gap-3 border-l-4 shadow-lg transition-transform hover:scale-[1.02] ${
+        role={onPlayerClick ? 'button' : undefined}
+        tabIndex={onPlayerClick ? 0 : undefined}
+        onClick={onPlayerClick ? handleOpenPlayer : undefined}
+        onKeyDown={onPlayerClick ? (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            handleOpenPlayer();
+          }
+        } : undefined}
+        className={`border rounded-xl p-3 flex items-center gap-3 shadow-lg transition-transform hover:scale-[1.02] ${
+          onPlayerClick ? 'cursor-pointer hover:border-slate-600' : ''
+        } ${
           isOwn
             ? 'bg-indigo-500/10 border-indigo-500/60'
             : 'bg-slate-900 border-slate-800'
         }`}
-        style={{ borderLeftColor: isOwn ? '#6366f1' : teamColor }}
       >
         <PlayerPortrait
           imgUrl={imgUrl}
@@ -76,6 +123,7 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
           teamLogoUrl={teamLogoUrl}
           overallRating={fullPlayer?.overallRating ?? p.ovr}
           ratings={fullPlayer?.ratings}
+          ovrLabel={displayOverall != null ? String(displayOverall) : undefined}
           size={40}
         />
         <div className="flex-1 min-w-0">
@@ -92,12 +140,29 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
     );
   };
 
-  const homeTeamName = allStar?.risingStarsTeams?.[0] || boxScore?.homeTeamName || 'Team 1';
-  const awayTeamName = allStar?.risingStarsTeams?.[1] || boxScore?.awayTeamName || 'Team 2';
+  const homeTeamName = allStar?.risingStarsTeams?.[0] || boxScore?.homeTeamName || (isUsaWorld ? 'Team USA' : 'Team 1');
+  const awayTeamName = allStar?.risingStarsTeams?.[1] || boxScore?.awayTeamName || (isUsaWorld ? 'Team World' : 'Team 2');
+  const finalBracket = isTournament ? bracket?.games?.find((entry: any) => entry.round === 'final') : undefined;
+  const finalBracketHomeName = finalBracket
+    ? bracket?.teams?.find((team: any) => team.tid === finalBracket.homeTid)?.name ?? homeTeamName
+    : homeTeamName;
+  const finalBracketAwayName = finalBracket
+    ? bracket?.teams?.find((team: any) => team.tid === finalBracket.awayTid)?.name ?? awayTeamName
+    : awayTeamName;
+  const displayHomeTeamName = isTournament ? finalBracketHomeName : homeTeamName;
+  const displayAwayTeamName = isTournament ? finalBracketAwayName : awayTeamName;
 
   // Conference logos — matches the WatchGamePreviewModal / AllStarWeekendOrchestrator
-  const HOME_LOGO = 'https://upload.wikimedia.org/wikipedia/en/thumb/1/16/Eastern_Conference_%28NBA%29_logo.svg/200px-Eastern_Conference_%28NBA%29_logo.svg.png';
-  const AWAY_LOGO = 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Western_Conference_%28NBA%29_logo.svg/200px-Western_Conference_%28NBA%29_logo.svg.png';
+  const HOME_LOGO = isCaptainsDraft
+    ? (formerPlayerCaptains[0] ? getPlayerImage(formerPlayerCaptains[0]) : undefined)
+    : isUsaWorld
+      ? 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f1fa-1f1f8.png'
+      : 'https://upload.wikimedia.org/wikipedia/en/thumb/1/16/Eastern_Conference_%28NBA%29_logo.svg/200px-Eastern_Conference_%28NBA%29_logo.svg.png';
+  const AWAY_LOGO = isCaptainsDraft
+    ? (formerPlayerCaptains[1] ? getPlayerImage(formerPlayerCaptains[1]) : undefined)
+    : isUsaWorld
+      ? 'https://cdnjs.cloudflare.com/ajax/libs/twemoji/14.0.2/72x72/1f310.png'
+      : 'https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/Western_Conference_%28NBA%29_logo.svg/200px-Western_Conference_%28NBA%29_logo.svg.png';
 
   // ── Tournament path: 4-team bracket (3 NBA + 1 G League) ─────────────────
   if (isTournament) {
@@ -133,7 +198,7 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
           </div>
           <div className="flex items-center justify-between gap-4">
             <div className="flex-1 text-center">
-              <div className={`text-3xl font-black mb-1 ${g.played ? (g.homeScore >= g.awayScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+              <div className={`text-3xl font-black mb-1 ${g.played ? (didHomeTeamWin(g) ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
                 {g.played ? g.homeScore : '—'}
               </div>
               <div className="text-[10px] text-sky-400 font-black uppercase tracking-widest leading-tight">{homeT?.name ?? 'TBD'}</div>
@@ -141,7 +206,7 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
             </div>
             <div className="text-lg font-black text-slate-700 italic">VS</div>
             <div className="flex-1 text-center">
-              <div className={`text-3xl font-black mb-1 ${g.played ? (g.awayScore > g.homeScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+              <div className={`text-3xl font-black mb-1 ${g.played ? (!didHomeTeamWin(g) ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
                 {g.played ? g.awayScore : '—'}
               </div>
               <div className="text-[10px] text-emerald-400 font-black uppercase tracking-widest leading-tight">{awayT?.name ?? 'TBD'}</div>
@@ -166,6 +231,17 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
 
     return (
       <div className="space-y-8">
+        {boxScore && game?.played && (
+          <RisingStarsFinalHeader
+            game={game}
+            boxScore={boxScore}
+            homeName={displayHomeTeamName}
+            awayName={displayAwayTeamName}
+            homeLogo={HOME_LOGO}
+            awayLogo={AWAY_LOGO}
+            onViewBoxScore={selectedGame => onViewBoxScore?.({ ...selectedGame, expectedHomeTeamName: displayHomeTeamName, expectedAwayTeamName: displayAwayTeamName })}
+          />
+        )}
         {/* Bracket games or pre-bracket placeholder */}
         {orderedGames.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -173,8 +249,8 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
           </div>
         ) : (
           <div className="bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
-            <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">Rising Stars Tournament</h3>
-            <p className="text-slate-400 text-sm mb-4">4-team bracket · Semifinals + Championship · Feb 13</p>
+            <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">{eventLabel}</h3>
+            <p className="text-slate-400 text-sm mb-4">4-team bracket · Semifinals + Championship · {eventDateLabel}</p>
             {roster.length > 0 && (
               <p className="text-slate-500 text-xs max-w-lg mx-auto mb-4">
                 The player pool is already announced. The 4 tournament teams are finalized on event night, so this screen shows the rookie and sophomore pool until the bracket is built.
@@ -205,10 +281,10 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
                     playerId: fp.internalId,
                     playerName: fp.name,
                     teamAbbrev: teamObj?.abbrev ?? (fp.status === 'G-League' ? 'GL' : '—'),
-                    teamNbaId: teamObj?.logoUrl ? extractTeamId(teamObj.logoUrl, teamObj.abbrev) : null,
+                    teamNbaId: teamObj ? extractTeamId(getResolvedTeamLogoUrl(teamObj, state.leagueStats.year), teamObj.abbrev) : null,
                     position: fp.pos,
                     ovr: fp.overallRating,
-                    imgURL: (fp as any).imgURL,
+                    imgURL: getPlayerImage(fp),
                   };
                 })
                 .filter(Boolean);
@@ -236,10 +312,16 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
         ) : (
           roster.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {[
-                { label: 'Sophomores', players: sophomores },
-                { label: 'Rookies', players: rookies },
-              ].map(({ label, players }) => (
+              {(isUsaWorld
+                ? [
+                    { label: 'Team USA', players: usaRoster },
+                    { label: 'Team World', players: worldRoster },
+                  ]
+                : [
+                    { label: 'Sophomores', players: sophomores },
+                    { label: 'Rookies', players: rookies },
+                  ]
+              ).map(({ label, players }) => (
                 <div key={label} className="space-y-3">
                   <div className="flex items-center gap-3 px-2">
                     <h4 className="text-sm font-black text-white uppercase tracking-widest whitespace-nowrap">{label}</h4>
@@ -256,7 +338,7 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
             </div>
           ) : (
             <div className="text-center py-8 text-xs text-slate-600 italic">
-              The player pool will be announced Jan 29.
+              The player pool will be announced {announcementLabel}.
             </div>
           )
         )}
@@ -267,67 +349,23 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
   // ── Legacy 2-team path (rookies vs sophomores) ───────────────────────────
   return (
     <div className="space-y-8">
-      {boxScore ? (
-        <div className="bg-slate-900 rounded-2xl border border-slate-800 p-8 text-center">
-          <div className="text-[10px] font-black text-slate-500 uppercase tracking-[0.2em] mb-6">
-            Friday Night · Final Score
-          </div>
-          <div className="flex items-center justify-center gap-12 md:gap-24 mb-8">
-            <div className="text-center">
-              <img
-                src={HOME_LOGO}
-                alt={homeTeamName}
-                className="w-16 h-16 object-contain mx-auto mb-3 drop-shadow-lg"
-                referrerPolicy="no-referrer"
-              />
-              <div className={`text-5xl font-black mb-1 ${boxScore.homeScore > boxScore.awayScore ? 'text-white' : 'text-slate-600'}`}>
-                {boxScore.homeScore}
-              </div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">{homeTeamName}</div>
-            </div>
-            <div className="text-4xl font-black text-slate-800">VS</div>
-            <div className="text-center">
-              <img
-                src={AWAY_LOGO}
-                alt={awayTeamName}
-                className="w-16 h-16 object-contain mx-auto mb-3 drop-shadow-lg"
-                referrerPolicy="no-referrer"
-              />
-              <div className={`text-5xl font-black mb-1 ${boxScore.awayScore > boxScore.homeScore ? 'text-white' : 'text-slate-600'}`}>
-                {boxScore.awayScore}
-              </div>
-              <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">{awayTeamName}</div>
-            </div>
-          </div>
-          {(() => {
-            const mvp = [...(boxScore.homeStats || []), ...(boxScore.awayStats || [])]
-              .sort((a: any, b: any) => b.pts - a.pts || b.reb - a.reb || b.ast - a.ast)[0];
-            return mvp ? (
-              <div className="flex flex-col items-center gap-1 mb-4">
-                <div className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Game MVP</div>
-                <div className="px-6 py-2 bg-white text-black rounded-full text-sm font-black uppercase tracking-tight shadow-xl shadow-white/10">
-                  {mvp.name}
-                </div>
-              </div>
-            ) : null;
-          })()}
-
-          {game && (
-            <button
-              onClick={() => onViewBoxScore?.(game)}
-              className="px-6 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-xl text-sm font-bold transition-all"
-            >
-              View Box Score
-            </button>
-          )}
-        </div>
+      {boxScore && game ? (
+        <RisingStarsFinalHeader
+          game={game}
+          boxScore={boxScore}
+          homeName={displayHomeTeamName}
+          awayName={displayAwayTeamName}
+          homeLogo={HOME_LOGO}
+          awayLogo={AWAY_LOGO}
+          onViewBoxScore={selectedGame => onViewBoxScore?.({ ...selectedGame, expectedHomeTeamName: displayHomeTeamName, expectedAwayTeamName: displayAwayTeamName })}
+        />
       ) : (
         <div className="text-center max-w-2xl mx-auto">
           <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">
-            Friday, Feb 13
+            {eventDateLabel}
           </h3>
           <p className="text-slate-400 text-sm">
-            Rising Stars Challenge · Rookies vs Sophomores
+            {eventLabel} · {isUsaWorld ? 'USA vs World' : isCaptainsDraft ? 'Former Player Captains Draft' : 'Rookies vs Sophomores'}
           </p>
 
           {canWatch && (
@@ -349,7 +387,7 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
             <div className="h-px bg-slate-800 flex-1" />
           </div>
           <div className="grid grid-cols-1 gap-3">
-            {sophomores.map((p: any) => <PlayerCard key={p.playerId} p={p} />)}
+            {(isUsaWorld ? usaRoster : isCaptainsDraft ? captainOneRoster : sophomores).map((p: any) => <PlayerCard key={p.playerId} p={p} />)}
           </div>
         </div>
 
@@ -359,7 +397,7 @@ export const RisingStarsView: React.FC<RisingStarsViewProps> = ({ allStar, ownTi
             <div className="h-px bg-slate-800 flex-1" />
           </div>
           <div className="grid grid-cols-1 gap-3">
-            {rookies.map((p: any) => <PlayerCard key={p.playerId} p={p} />)}
+            {(isUsaWorld ? worldRoster : isCaptainsDraft ? captainTwoRoster : rookies).map((p: any) => <PlayerCard key={p.playerId} p={p} />)}
           </div>
         </div>
       </div>

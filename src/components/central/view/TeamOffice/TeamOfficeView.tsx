@@ -2,8 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { ChevronLeft } from 'lucide-react';
 import { cn } from '../../../../lib/utils';
 import { useGame } from '../../../../store/GameContext';
-import { PlayerBioView } from '../PlayerBioView';
-import { NBAPlayer } from '../../../../types';
 import { Home } from './pages/Home';
 import { TradingBlock } from './pages/TradingBlock';
 import { TeamNeeds } from './pages/TeamNeeds';
@@ -15,6 +13,7 @@ import { TeamOfficeDepthChartTab } from './pages/TeamOfficeDepthChartTab';
 import { resolveAnyTeam } from '../../../../utils/teamLookup';
 import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
 import { isEuroIsolatedMode } from '../../../../utils/uiMode';
+import { getTeamFullName } from '../../../../utils/teamNames';
 
 type OfficeTab = 'home' | 'gm' | 'depth' | 'intel' | 'needs' | 'trading' | 'picks' | 'scouting';
 
@@ -29,14 +28,13 @@ const TABS: { id: OfficeTab; label: string }[] = [
 ];
 
 export function TeamOfficeView() {
-  const { state, dispatchAction } = useGame();
+  const { state, dispatchAction, navigateToPlayer } = useGame();
   const isGM = state.gameMode === 'gm';
   const noDraft = isNoDraftLeague(state.leagueStats as any);
   const euroIsolated = isEuroIsolatedMode(state);
   // GM mode: default to user's team but can still browse other teams
   const [currentTeamId, setCurrentTeamId] = useState<number | null>(isGM && state.userTeamId != null ? state.userTeamId : null);
   const [activeTab, setActiveTab] = useState<OfficeTab>(isGM && state.userTeamId != null ? 'gm' : 'home');
-  const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
   const visibleTabs = TABS.filter(tab => {
     if (noDraft && (tab.id === 'picks' || tab.id === 'scouting')) return false;
     if (euroIsolated && tab.id === 'trading') return false;
@@ -51,13 +49,14 @@ export function TeamOfficeView() {
   useEffect(() => {
     const nav = state.pendingTeamOfficeNav;
     if (!nav?.tab) return;
+    if (isGM && state.userTeamId != null) setCurrentTeamId(state.userTeamId);
     setActiveTab(nav.tab as OfficeTab);
     // Drop just the tab; keep intelTab for TeamIntel to consume next tick.
     dispatchAction({
       type: 'UPDATE_STATE',
       payload: { pendingTeamOfficeNav: nav.intelTab ? { intelTab: nav.intelTab } : undefined },
     } as any);
-  }, [state.pendingTeamOfficeNav?.tab]);
+  }, [state.pendingTeamOfficeNav?.tab, isGM, state.userTeamId, dispatchAction]);
 
   useEffect(() => {
     if (euroIsolated && activeTab === 'trading') setActiveTab('intel');
@@ -81,16 +80,13 @@ export function TeamOfficeView() {
   };
 
   const renderPage = () => {
-    if (selectedPlayer) {
-      return <PlayerBioView player={selectedPlayer} onBack={() => setSelectedPlayer(null)} />;
-    }
     if (!currentTeam) {
       return <Home onSelectTeam={handleSelectTeam} />;
     }
     switch (activeTab) {
       case 'gm': return <TeamOfficeRosterView teamId={currentTeam.id} />;
       case 'depth': return <TeamOfficeDepthChartTab teamId={currentTeam.id} />;
-      case 'intel': return <TeamIntel teamId={currentTeam.id} onPlayerClick={setSelectedPlayer} />;
+      case 'intel': return <TeamIntel teamId={currentTeam.id} onPlayerClick={navigateToPlayer} />;
       case 'needs': return <TeamNeeds teamId={currentTeam.id} />;
       case 'trading': return <TradingBlock teamId={currentTeam.id} />;
       case 'picks': return <DraftPicks teamId={currentTeam.id} />;
@@ -114,7 +110,7 @@ export function TeamOfficeView() {
                 {currentTeam.logoUrl && (
                   <img src={currentTeam.logoUrl} alt="" className="w-5 h-5 object-contain" />
                 )}
-                <span style={{ color: teamColor }}>{currentTeam.region && !currentTeam.name.includes(currentTeam.region) ? `${currentTeam.region} ${currentTeam.name}` : currentTeam.name}</span>
+                <span style={{ color: teamColor }}>{getTeamFullName(currentTeam)}</span>
               </div>
             </>
           )}

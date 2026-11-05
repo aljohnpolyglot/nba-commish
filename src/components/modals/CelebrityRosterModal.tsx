@@ -1,15 +1,20 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import { X, Check, Search, Star, AlertCircle } from 'lucide-react';
+import { X, Check, Search, Sparkles, Star, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../store/GameContext';
-import { fetchRatedCelebrities, RatedCelebrity } from '../../data/celebrities';
+import { fetchRatedCelebritiesForYear, type RatedCelebrity } from '../../data/celebrities';
+import { getCelebrityDecadeLabel } from '../../data/celebrityDecadePools';
 
 interface Celebrity {
     id: string;
     name: string;
     type: string;
     isRated?: boolean;
+    imgUrl?: string;
+    profile?: RatedCelebrity;
 }
+
+export type CelebritySelection = Celebrity;
 
 const CELEBRITY_LIST_URL = 'https://gist.githubusercontent.com/mbejda/9c3353780270e7298763/raw/1bfc4810db4240d85947e6aef85fcae71f475493/Top-1000-Celebrity-Twitter-Accounts.csv';
 
@@ -29,22 +34,43 @@ const normalizeCelebrityName = (name: string) => {
 interface CelebrityRosterModalProps {
     onClose: () => void;
     onConfirm: (roster: Celebrity[]) => void;
+    title?: string;
+    subtitle?: string;
+    confirmLabel?: string;
+    maxSelections?: number;
+    minSelections?: number;
+    excludeNames?: string[];
 }
 
-export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({ onClose, onConfirm }) => {
+export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({
+    onClose,
+    onConfirm,
+    title,
+    subtitle,
+    confirmLabel,
+    maxSelections = 20,
+    minSelections = 10,
+    excludeNames = [],
+}) => {
     const { state } = useGame();
+    const rosterYear = state.leagueStats.year;
+    const poolSource = state.leagueType === 'fictional' ? 'fictional' : 'real';
+    const decadeLabel = getCelebrityDecadeLabel(rosterYear, poolSource);
     const [selectedCelebrities, setSelectedCelebrities] = useState<Celebrity[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [allCelebrities, setAllCelebrities] = useState<Celebrity[]>([]);
     const [loading, setLoading] = useState(true);
-    const maxSelections = 20;
+    const excludedNameKeys = useMemo(
+        () => new Set(excludeNames.map(name => normalizeCelebrityName(name).toLowerCase())),
+        [excludeNames],
+    );
 
     useEffect(() => {
         const fetchCelebrities = async () => {
             try {
                 // Fetch rated list first — warms cache
                 // and provides the priority pool
-                const rated = await fetchRatedCelebrities();
+                const rated = await fetchRatedCelebritiesForYear(rosterYear, poolSource);
                 
                 // Convert to Celebrity shape for modal
                 const priorityPool = rated.map(
@@ -52,9 +78,16 @@ export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({ onCl
                     id: `rated-${i}`,
                     name: c.name,
                     type: c.type,
+                    imgUrl: c.imgUrl,
+                    profile: c,
                     isRated: true,  // flag for UI
                   })
                 );
+
+                if (poolSource === 'fictional') {
+                    setAllCelebrities(priorityPool.filter(person => !excludedNameKeys.has(normalizeCelebrityName(person.name).toLowerCase())));
+                    return;
+                }
 
                 const response = await fetch(CELEBRITY_LIST_URL);
                 const csvText = await response.text();
@@ -82,7 +115,7 @@ export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({ onCl
                     const normalizedName = normalizeCelebrityName(rawName);
                     const type = parts[typeIndex] || 'Celebrity';
 
-                    if (!seenNames.has(normalizedName) && !nbaPlayerNames.has(normalizedName.toLowerCase())) {
+                    if (!seenNames.has(normalizedName) && !nbaPlayerNames.has(normalizedName.toLowerCase()) && !excludedNameKeys.has(normalizedName.toLowerCase())) {
                         seenNames.add(normalizedName);
                         fetchedCelebs.push({
                             id: `fetched-${i}`,
@@ -95,45 +128,53 @@ export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({ onCl
                 const combined = [
                     ...priorityPool,
                     ...fetchedCelebs
-                ];
+                ].filter(person => !excludedNameKeys.has(normalizeCelebrityName(person.name).toLowerCase()));
 
                 setAllCelebrities(combined);
             } catch (error) {
                 console.error("Failed to fetch celebrity list:", error);
                 // Fallback to priority list
-                const rated = await fetchRatedCelebrities();
+                const rated = await fetchRatedCelebritiesForYear(rosterYear, poolSource);
                 const priorityPool = rated.map(
                   (c, i) => ({
                     id: `rated-${i}`,
                     name: c.name,
                     type: c.type,
+                    imgUrl: c.imgUrl,
+                    profile: c,
                     isRated: true,
                   })
                 );
-                setAllCelebrities(priorityPool);
+                setAllCelebrities(priorityPool.filter(person => !excludedNameKeys.has(normalizeCelebrityName(person.name).toLowerCase())));
             } finally {
                 setLoading(false);
             }
         };
 
         fetchCelebrities();
-    }, [state.players]);
+    }, [excludedNameKeys, poolSource, rosterYear, state.players]);
 
     const filteredCelebrities = useMemo(() => {
-        if (!searchTerm) return allCelebrities.slice(0, 50);
+        if (!searchTerm) return allCelebrities;
         return allCelebrities.filter(c => 
             c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
             c.type.toLowerCase().includes(searchTerm.toLowerCase())
-        ).slice(0, 50);
+        );
     }, [searchTerm, allCelebrities]);
 
     const handleToggle = (celebrity: Celebrity) => {
         if (selectedCelebrities.some(c => c.id === celebrity.id)) {
             setSelectedCelebrities(selectedCelebrities.filter(c => c.id !== celebrity.id));
+        } else if (maxSelections === 1) {
+            setSelectedCelebrities([celebrity]);
         } else if (selectedCelebrities.length < maxSelections) {
             setSelectedCelebrities([...selectedCelebrities, celebrity]);
         }
     };
+
+    const modalTitle = title ?? 'Celebrity Game Roster';
+    const modalSubtitle = subtitle ?? `${decadeLabel} pool · Selected: ${selectedCelebrities.length} / ${maxSelections}`;
+    const actionLabel = confirmLabel ?? 'Confirm Roster';
 
     return (
         <AnimatePresence>
@@ -151,9 +192,9 @@ export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({ onCl
                 >
                     <div className="p-4 sm:p-6 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-900/50">
                         <div className="flex min-w-0 flex-col">
-                            <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight leading-tight">Celebrity Game Roster</h3>
+                            <h3 className="text-lg sm:text-xl font-black text-white uppercase tracking-tight leading-tight">{modalTitle}</h3>
                             <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-1">
-                                Selected: {selectedCelebrities.length} / {maxSelections}
+                                {modalSubtitle}
                             </span>
                         </div>
                         <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors flex-shrink-0">
@@ -196,8 +237,16 @@ export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({ onCl
                                         onClick={() => handleToggle(celebrity)}
                                         className={`flex items-center p-3 rounded-xl transition-colors text-left group border ${isSelected ? 'bg-indigo-500/10 border-indigo-500/50' : 'hover:bg-slate-800/50 border-transparent hover:border-indigo-500/20'}`}
                                     >
-                                        <div className="w-10 h-10 rounded-full bg-slate-800 flex items-center justify-center shrink-0">
+                                        <div className="relative w-10 h-10 overflow-hidden rounded-full bg-slate-800 flex items-center justify-center shrink-0">
                                             <Star size={18} className={isSelected ? "text-indigo-400" : "text-slate-500"} />
+                                            {celebrity.imgUrl && (
+                                              <img
+                                                src={celebrity.imgUrl}
+                                                alt=""
+                                                className="absolute inset-0 h-full w-full object-cover"
+                                                onError={event => event.currentTarget.remove()}
+                                              />
+                                            )}
                                         </div>
                                         <div className="ml-3 flex-1 min-w-0">
                                             <div className="flex items-center justify-between">
@@ -217,19 +266,22 @@ export const CelebrityRosterModal: React.FC<CelebrityRosterModalProps> = ({ onCl
                         </div>
                     </div>
 
-                    <div className="p-4 border-t border-slate-800 bg-slate-900/50 flex flex-col-reverse sm:flex-row justify-end gap-3">
-                        <button
-                            onClick={onClose}
-                            className="w-full sm:w-auto px-6 py-3 sm:py-2 rounded-xl text-slate-400 font-bold hover:text-white hover:bg-slate-800 transition-colors"
-                        >
-                            Cancel
-                        </button>
+                    <div className="flex flex-col gap-3 border-t border-slate-800 bg-slate-900/50 p-4 sm:flex-row sm:justify-between">
+                        {maxSelections > 1 && (
+                          <button
+                              onClick={() => setSelectedCelebrities(allCelebrities.slice(0, maxSelections))}
+                              disabled={loading || allCelebrities.length < minSelections}
+                              className="flex w-full items-center justify-center gap-2 rounded-xl border border-indigo-500/30 bg-indigo-500/10 px-6 py-3 text-xs font-black uppercase tracking-wider text-indigo-200 hover:bg-indigo-500/20 disabled:opacity-40 sm:w-auto sm:py-2"
+                          >
+                              <Sparkles size={14} /> Auto-select participants
+                          </button>
+                        )}
                         <button
                             onClick={() => onConfirm(selectedCelebrities)}
-                            disabled={selectedCelebrities.length < 10}
+                            disabled={selectedCelebrities.length < minSelections}
                             className="w-full sm:w-auto px-6 py-3 sm:py-2 rounded-xl bg-indigo-600 text-white font-bold hover:bg-indigo-500 disabled:opacity-50 disabled:hover:bg-indigo-600 disabled:cursor-not-allowed transition-colors shadow-lg shadow-indigo-500/20"
                         >
-                            Confirm Roster ({selectedCelebrities.length})
+                            {actionLabel} ({selectedCelebrities.length})
                         </button>
                     </div>
                 </motion.div>

@@ -9,10 +9,16 @@ import {
   SaveAsDefaultPrompt,
   TrainingCenterHeader,
   TrainingCenterPickerShell,
-  TrainingCenterTabs,
   TrainingPlanModals,
 } from './TrainingCenterChrome';
-import { buildCalendar, sundayOf, toIsoDay, type SavedDefaultState } from './trainingCenterShared';
+import {
+  buildCalendar,
+  isTrainingCalendarDormant,
+  isTrainingChecklistBlockingWindow,
+  sundayOf,
+  toIsoDay,
+  type SavedDefaultState,
+} from './trainingCenterShared';
 import { getActiveLeagueTeams, isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
 import { DashboardStatusBar } from './DashboardStatusBar';
 import { mapPlayerToK2 } from '../../TeamTraining/lib/playerMapping';
@@ -21,13 +27,13 @@ import { nbaPlayerToTrainingPlayer, nbaTeamToTrainingTeam } from '../../TeamTrai
 import { TRAINING_CALENDAR_VERSION } from '../../services/training/trainingScheduler';
 import { resolveEffectiveTrainingCalendar, resolveEffectiveTrainingPlan } from '../../services/training/trainingPlanResolver';
 import type { Allocations, TrainingParadigm, Staffing } from '../../TeamTraining/types';
-import { TrainingCenterWelcomeModal } from './TrainingCenterWelcomeModal';
-import { useTrainingCenterWelcome } from './useTrainingCenterWelcome';
+import { formatGameDateShort, parseGameDate } from '../../utils/dateUtils';
+import { getLeagueCalendarDates, getLeagueSeasonForDate } from '../../services/leagueCalendar';
+import { getStaffHiresTrainingBlocker } from '../../services/offseason/staffHiringRequirements';
 
 export const TrainingCenterView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
-  const trainingCenterWelcome = useTrainingCenterWelcome(state.saveId);
 
   // GM mode default: user's team. GM can still navigate to other teams,
   // but those views are read-only (per TeamTraining.tsx:279 design doc).
@@ -54,9 +60,10 @@ export const TrainingCenterView: React.FC = () => {
         team,
         dateStr: state.date,
         teamPlayers,
+        state,
       }),
     );
-  }, [state.players, team, leagueYear, state.date]);
+  }, [state, state.players, team, leagueYear, state.date]);
 
   // Persistent daily plans live on NBATeam.trainingCalendar keyed by ISO date `YYYY-MM-DD`.
   const effectiveDailyPlansISO = useMemo(
@@ -67,7 +74,7 @@ export const TrainingCenterView: React.FC = () => {
   const [intensity] = useState(50);
   const [allocations] = useState<Allocations>({ offense: 30, defense: 30, conditioning: 20, recovery: 20 });
   const [staffing] = useState<Staffing>({});
-  const [activeView, setActiveView] = useState<'training' | 'roster' | 'proficiency'>('training');
+  const [activeView] = useState<'training' | 'roster' | 'proficiency'>('roster');
   const [selectedPlanDateISO, setSelectedPlanDateISO] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState(state.date);
   const [viewMode, setViewMode] = useState<'calendar' | 'day' | 'watching'>('calendar');
@@ -77,8 +84,8 @@ export const TrainingCenterView: React.FC = () => {
   // and chevrons silently break (`Date < Date` is false when either side is NaN).
   const [weekAnchor, setWeekAnchor] = useState<Date>(() => sundayOf(state.date));
 
-  // Conditional schedule regen — when play-in / playoffs / NBA Cup games get
-  // injected into state.schedule (post-Aug 14), the team's `trainingCalendar`
+  // Conditional schedule regen — when play-in / playoffs / cup games get
+  // injected into state.schedule, the team's `trainingCalendar`
   // doesn't know about them yet. Watch schedule length and dispatch an autofill
   // for the active team when it grows. Cheap; preserves user overrides.
   const lastScheduleLenRef = useRef<number>(state.schedule?.length ?? 0);
@@ -155,32 +162,36 @@ export const TrainingCenterView: React.FC = () => {
   // settings.
   const dormantState = useMemo(() => {
     if (!team || !state.date) return null;
-    const unresolved = (status?: string) => status === 'pending' || status === 'in-progress' || status == null;
+    const d = parseGameDate(state.date);
+    const calendarSeason = getLeagueSeasonForDate(state.date, state.leagueStats) || state.leagueStats.year;
+    const leagueDates = getLeagueCalendarDates(calendarSeason, state.leagueStats);
+    const checklistCanBlock = isTrainingChecklistBlockingWindow(d, leagueDates.regularSeasonStart);
     const checklist = state.offseasonChecklist;
-    if (checklist && unresolved(checklist.staffSignings)) {
+    const staffHiresBlocker = checklist && checklistCanBlock ? getStaffHiresTrainingBlocker(state) : null;
+    if (staffHiresBlocker) {
       return {
         reason: 'offseason' as const,
-        label: 'Staff hires in progress',
-        subtext: 'Finish staff signings before team training opens.',
+        label: staffHiresBlocker.label,
+        subtext: staffHiresBlocker.subtext,
       };
     }
-    if (checklist && unresolved(checklist.trainingCamp)) {
+    if (checklistCanBlock && checklist && (checklist.trainingCamp === 'pending' || checklist.trainingCamp == null)) {
       return {
         reason: 'offseason' as const,
         label: 'Training camp not opened yet',
         subtext: 'Open training camp from the offseason tasks to unlock the calendar.',
       };
     }
-    const d = new Date(state.date);
-    const m = d.getUTCMonth() + 1;
-    const day = d.getUTCDate();
-    // Offseason / Free Agency window — Jun 21 – Aug 14 inclusive.
-    const inOffseason = (m === 6 && day >= 21) || m === 7 || (m === 8 && day <= 14);
+    const campStart = leagueDates.trainingCampStart ?? leagueDates.preseasonStart ?? leagueDates.regularSeasonStart;
+    const inOffseason = isTrainingCalendarDormant(d, campStart, leagueDates.rollover);
     if (inOffseason) {
-      return { reason: 'offseason' as const, label: 'Offseason — no team training', subtext: 'Players are on vacation, in Vegas Summer League, or signing FA deals. Training Center reopens Aug 15 (Training Camp).' };
+      return {
+        reason: 'offseason' as const,
+        label: 'Offseason — no team training',
+        subtext: `Players are away from team activities. Training Center reopens ${formatGameDateShort(campStart)}.`,
+      };
     }
-    // Playoffs phase — Apr 16 to Jun 20. If team isn't alive in the bracket, treat as offseason.
-    const inPlayoffsPhase = (m === 4 && day >= 16) || m === 5 || (m === 6 && day <= 20);
+    const inPlayoffsPhase = d >= leagueDates.playoffStart && d < leagueDates.rollover;
     if (inPlayoffsPhase) {
       const playoffs: any = (state as any).playoffs;
       const aliveTids = new Set<number>();
@@ -192,11 +203,15 @@ export const TrainingCenterView: React.FC = () => {
       }
       // Fallback: if we can't reliably introspect the bracket, assume alive.
       if (aliveTids.size > 0 && !aliveTids.has(team.id)) {
-        return { reason: 'eliminated' as const, label: 'Season over — your team was eliminated', subtext: 'Players are recovering. Calendar reopens at Training Camp (Aug 15).' };
+        return {
+          reason: 'eliminated' as const,
+          label: 'Season over — your team was eliminated',
+          subtext: `Players are recovering. Calendar reopens ${formatGameDateShort(campStart)}.`,
+        };
       }
     }
     return null;
-  }, [team, state.date, state.playoffs, state.offseasonChecklist]);
+  }, [team, state.date, state.leagueStats, state.offseasonChecklist, state.staffHiresReviewEvidence, state.staffRetirementAnnouncements, state.staff, state.teams, state.nonNBATeams, state.playoffs, state.schedule]);
   const selectedDayData = selectedPlanDateISO ? schedule.find(d => d.isoDate === selectedPlanDateISO) : null;
   const selectedDayISO = selectedPlanDateISO;
 
@@ -234,18 +249,18 @@ export const TrainingCenterView: React.FC = () => {
     if (!needAllRosters) return [] as any[];
     return activeLeagueTeams.map(t => {
       const tp = state.players.filter(p => p.tid === t.id && isOnRoster(p))
-        .map(p => nbaPlayerToTrainingPlayer(p, leagueYear, { team: t }));
+        .map(p => nbaPlayerToTrainingPlayer(p, leagueYear, { team: t, state }));
       return tp.map(mapPlayerToK2) as any;
     });
-  }, [needAllRosters, activeLeagueTeams, state.players, leagueYear]);
+  }, [needAllRosters, activeLeagueTeams, state, state.players, leagueYear]);
 
   const top5Systems = useMemo(() => {
     // Same gate — top5Systems only feeds the modal, no point computing while closed.
     if (!needAllRosters || roster.length === 0) return [];
     const k2 = roster.map(mapPlayerToK2);
-    const { sortedProfs } = computeTeamProficiency(k2 as any, allK2Rosters, team?.systemFamiliarity);
+    const { sortedProfs } = computeTeamProficiency(k2 as any, allK2Rosters, team?.systemFamiliarity, state.leagueStats);
     return sortedProfs.slice(0, 5).map(([n]) => n);
-  }, [needAllRosters, roster, team?.systemFamiliarity, allK2Rosters]);
+  }, [needAllRosters, roster, team?.systemFamiliarity, allK2Rosters, state.leagueStats]);
 
   // Tracks the just-edited day so we can offer "Save as Default" propagation.
   // Captures the BEFORE-save plan so we know which auto-cells match for replacement.
@@ -407,8 +422,6 @@ export const TrainingCenterView: React.FC = () => {
         onTeamChange={setSelectedTeamId}
       />
 
-      <TrainingCenterTabs activeView={activeView} onViewChange={setActiveView} />
-
       <div className="p-4 md:p-8">
         <div className="max-w-7xl mx-auto space-y-6">
           {activeView === 'training' && dormantState ? (
@@ -469,6 +482,7 @@ export const TrainingCenterView: React.FC = () => {
               })()}
               currentYear={leagueYear}
               currentDate={state.date}
+              allowSourcePortraits={state.leagueType !== 'fictional'}
               trainingCalendar={effectiveDailyPlansISO as any}
               updateDevFocus={updateDevFocus}
               updateIndividualIntensity={updateIndividualIntensity}
@@ -478,7 +492,12 @@ export const TrainingCenterView: React.FC = () => {
           )}
 
           {activeView === 'proficiency' && (
-            <SystemProficiencyView roster={roster} systemFamiliarity={team.systemFamiliarity} allRosters={allK2Rosters} />
+            <SystemProficiencyView
+              roster={roster}
+              systemFamiliarity={team.systemFamiliarity}
+              allRosters={allK2Rosters}
+              leagueStats={state.leagueStats}
+            />
           )}
 
           {(() => {
@@ -513,11 +532,6 @@ export const TrainingCenterView: React.FC = () => {
           />
         </div>
       </div>
-      <TrainingCenterWelcomeModal
-        open={trainingCenterWelcome.open}
-        onClose={trainingCenterWelcome.close}
-        onDontShowAgain={trainingCenterWelcome.dontShowAgain}
-      />
     </div>
   );
 };

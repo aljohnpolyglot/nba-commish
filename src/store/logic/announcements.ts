@@ -1,6 +1,8 @@
 import { GameState, SocialPost, NewsItem, Email } from '../../types';
 import { generateReactions } from '../../services/llm/llm';
 import { calculateSocialEngagement } from '../../utils/helpers';
+import { coerceInsiderPostToEra } from '../../data/social/handles';
+import { isTwitterAvailable } from '../../utils/mediaTimeline';
 
 export const handleAnnounceChange = async (state: GameState, payload: any): Promise<Partial<GameState>> => {
     const { description, statUpdates } = payload;
@@ -22,17 +24,20 @@ export const handleAnnounceChange = async (state: GameState, payload: any): Prom
       date: state.date,
     }));
 
-    const newSocial = (reactions.newSocialPosts || []).map((s: any, i: number) => {
-      const engagement = calculateSocialEngagement(s.handle, s.content);
+    const newSocial = isTwitterAvailable(state.date, state.leagueStats?.year)
+      ? (reactions.newSocialPosts || []).map((s: any, i: number) => {
+      const timelinePost = coerceInsiderPostToEra(s, state.leagueType, state.date, state.leagueStats?.year, state.leagueStats?.uiMode);
+      const engagement = calculateSocialEngagement(timelinePost.handle, timelinePost.content);
       return {
-        ...s,
+        ...timelinePost,
         id: `react-social-${Date.now()}-${i}`,
         date: state.date,
         likes: engagement.likes,
         retweets: engagement.retweets,
         isNew: true
       };
-    });
+    })
+      : [];
 
     const actualChanges = {
         publicApproval: statUpdates.morale?.fans || 0,

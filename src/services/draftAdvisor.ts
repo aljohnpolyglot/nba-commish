@@ -9,12 +9,13 @@
  */
 
 import type { NBAPlayer, NBATeam } from '../types';
-import { calcOvr2K, calcPot2K, type TeamMode } from './trade/tradeValueEngine';
+import { calcOvr2K, type TeamMode } from './trade/tradeValueEngine';
 import {
   getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2,
   resolveManualOutlook, type CapThresholds,
 } from '../utils/salaryUtils';
 import { isOnRoster } from '../utils/teamLookup';
+import { getProspectDisplayPotential } from '../utils/playerRatings';
 
 // ── Position bucket helpers (Guard / Forward / Center) ──────────────────────
 
@@ -42,7 +43,7 @@ export interface ResolveTeamModeArgs {
 
 export function resolveTeamMode(args: ResolveTeamModeArgs): TeamMode {
   const { team, allTeams, allPlayers, leagueStats, thresholds, gameMode, userTeamId, currentYear } = args;
-  const manual = resolveManualOutlook(team, gameMode, userTeamId);
+  const manual = resolveManualOutlook(team, gameMode, userTeamId, leagueStats?.playIn !== false);
   if (manual) {
     if (manual.role === 'heavy_buyer' || manual.role === 'buyer') return 'contend';
     if (manual.role === 'rebuilding') return 'presti';
@@ -100,7 +101,7 @@ export function scoreProspectForTeam(
   currentYear: number,
 ): number {
   const ovr = calcOvr2K(prospect);
-  const pot = calcPot2K(prospect, currentYear);
+  const pot = getProspectDisplayPotential(prospect, currentYear);
   const valuePart = teamMode === 'contend'
     ? ovr * 1.4 + pot * 0.6
     : teamMode === 'presti'
@@ -167,7 +168,6 @@ export function buildMockDraft(args: BuildMockDraftArgs): MockDraftSlot[] {
     });
     const weak = computeWeakPositions(slotTeam.id, allPlayers);
 
-    // Best remaining prospect by score
     let bestId: string | number | null = null;
     let bestScore = -Infinity;
     for (const [id, p] of remaining) {

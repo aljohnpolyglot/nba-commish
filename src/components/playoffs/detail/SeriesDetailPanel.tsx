@@ -6,6 +6,8 @@ import { SeriesGameSlots } from './SeriesGameSlots';
 import { SeriesActionMenu } from './SeriesActionMenu';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { useLeagueLabels } from '../../../utils/leagueLabels';
+import { findBoxScoreForScheduledGame } from '../../../utils/boxScoreLookup';
+import { getPlayoffRoundLabel } from '../../../utils/playoffFormat';
 
 interface SeriesDetailPanelProps {
   seriesId: string;
@@ -26,6 +28,7 @@ interface SeriesDetailPanelProps {
   isProcessing: boolean;
   competitionLabel?: string;
   roundLabels?: Partial<Record<number, string>>;
+  roundCount?: number;
 }
 
 export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
@@ -47,6 +50,7 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
   isProcessing,
   competitionLabel,
   roundLabels: customRoundLabels,
+  roundCount,
 }) => {
   const labels = useLeagueLabels();
   const [boxScoreTarget, setBoxScoreTarget] = useState<{ game: Game; result: GameResult } | null>(null);
@@ -57,8 +61,10 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
     4: labels.finals,
   };
 
-  const findBoxScore = (gid: number) =>
-    boxScores.find(b => b.gameId === gid && (!b.season || b.season === currentSeason));
+  const findBoxScore = (gid: number) => {
+    const game = schedule.find(g => g.gid === gid);
+    return findBoxScoreForScheduledGame(boxScores, game) ?? boxScores.find(b => b.gameId === gid && (!b.season || b.season === currentSeason));
+  };
 
   // Resolve series or play-in game
   const series = playoffs.series.find(s => s.id === seriesId) ?? null;
@@ -77,24 +83,33 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
   let winnerId: number | undefined;
 
   if (series) {
-    team1 = teams.find(t => t.id === series.higherSeedTid);
-    team2 = teams.find(t => t.id === series.lowerSeedTid);
+    const higherSeedTid = Number(series.higherSeedTid);
+    const lowerSeedTid = Number(series.lowerSeedTid);
+    team1 = teams.find(t => t.id === higherSeedTid);
+    team2 = teams.find(t => t.id === lowerSeedTid);
     team1Wins = series.higherSeedWins;
     team2Wins = series.lowerSeedWins;
-    confLabel = competitionLabel ?? (series.conference === 'Finals' ? labels.finals : `${series.conference}ern Conference`);
-    roundLabel = customRoundLabels?.[series.round] ?? roundLabels[series.round] ?? `Round ${series.round}`;
+    confLabel = competitionLabel ?? (series.conference === 'League'
+      ? 'League-wide bracket'
+      : series.conference === 'Finals'
+        ? labels.finals
+        : `${series.conference}ern Conference`);
+    roundLabel = customRoundLabels?.[series.round]
+      ?? (roundCount
+        ? getPlayoffRoundLabel(series.round, roundCount, playoffs.numPlayoffTeams, labels.finals)
+        : roundLabels[series.round] ?? `Round ${series.round}`);
     isComplete = series.status === 'complete';
-    winnerId = series.winnerId;
+    winnerId = series.winnerId == null ? undefined : Number(series.winnerId);
   } else if (playIn) {
     const pi1Tid = Number(playIn.team1Tid);
     const pi2Tid = Number(playIn.team2Tid);
-    team1 = pi1Tid > 0 ? teams.find(t => t.id === pi1Tid) : undefined;
-    team2 = pi2Tid > 0 ? teams.find(t => t.id === pi2Tid) : undefined;
+    team1 = pi1Tid !== -1 ? teams.find(t => t.id === pi1Tid) : undefined;
+    team2 = pi2Tid !== -1 ? teams.find(t => t.id === pi2Tid) : undefined;
     confLabel = competitionLabel ?? `${playIn.conference}ern Conference`;
-    const typeMap: Record<string, string> = { '7v8': '7 vs 8 Seed', '9v10': '9 vs 10 Seed', 'loserGame': 'Loser Game' };
+    const typeMap: Record<string, string> = { '7v8': '7 vs 8 Seed', '9v10': '9 vs 10 Seed', 'loserGame': 'Loser Game', '8v9': '8 vs 9 Seed', '8v9Game2': '8 vs 9 Seed' };
     roundLabel = `Play-In · ${typeMap[playIn.gameType] ?? playIn.gameType}`;
     isComplete = playIn.played;
-    winnerId = playIn.winnerId;
+    winnerId = playIn.winnerId == null ? undefined : Number(playIn.winnerId);
   }
 
   // Get games for this series
@@ -177,7 +192,7 @@ export const SeriesDetailPanel: React.FC<SeriesDetailPanelProps> = ({
                 {team1Wins > 0 || team2Wins > 0 || isComplete ? team2Wins : '–'}
               </span>
             </div>
-            {isComplete && winnerId && (
+            {isComplete && winnerId != null && (
               <div className="text-[9px] font-bold text-emerald-400 text-center">
                 {teams.find(t => t.id === winnerId)?.abbrev} wins
               </div>

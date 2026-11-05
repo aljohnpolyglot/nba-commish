@@ -1,0 +1,1431 @@
+{
+  "lba_mvp": [
+    {
+      "season": "1993–94",
+      "winner": "Carlton Myers",
+      "nationality": "Italy",
+      "club": "Scavolini Pesaro"
+    },
+    {
+      "season": "1994–95",
+      "winner": "Stefano Rusconi",
+      "nationality": "Italy",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "1995–96",
+      "winner": "Henry Williams",
+      "nationality": "United States",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "1996–97",
+      "winner": "Carlton Myers",
+      "nationality": "Italy",
+      "club": "Teamsystem Bologna"
+    },
+    {
+      "season": "1997–98",
+      "winner": "Sasha Danilović",
+      "nationality": "FR Yugoslavia",
+      "club": "Kinder Bologna"
+    },
+    {
+      "season": "1998–99",
+      "winner": "Vincenzo Esposito",
+      "nationality": "Italy",
+      "club": "Andrea Costa Imola"
+    },
+    {
+      "season": "1999–00",
+      "winner": "Vincenzo Esposito",
+      "nationality": "Italy",
+      "club": "Andrea Costa Imola"
+    },
+    {
+      "season": "2000–01",
+      "winner": "Manu Ginóbili",
+      "nationality": "Argentina",
+      "club": "Kinder Bologna"
+    },
+    {
+      "season": "2001–02",
+      "winner": "Manu Ginóbili",
+      "nationality": "Argentina",
+      "club": "Kinder Bologna"
+    },
+    {
+      "season": "2002–03",
+      "winner": "Massimo Bulleri",
+      "nationality": "Italy",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "2003–04",
+      "winner": "Gianluca Basile",
+      "nationality": "Italy",
+      "club": "Skipper Bologna"
+    },
+    {
+      "season": "2004–05",
+      "winner": "Massimo Bulleri",
+      "nationality": "Italy",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "2005–06",
+      "winner": "Lynn Greer",
+      "nationality": "United States",
+      "club": "Carpisa Napoli"
+    },
+    {
+      "season": "2006–07",
+      "winner": "Terrell McIntyre",
+      "nationality": "United States",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2007–08",
+      "winner": "Danilo Gallinari",
+      "nationality": "Italy",
+      "club": "Armani Jeans Milano"
+    },
+    {
+      "season": "2008–09",
+      "winner": "Terrell McIntyre",
+      "nationality": "United States",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2009–10",
+      "winner": "Romain Sato",
+      "nationality": "Central African Republic",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2010–11",
+      "winner": "Omar Thomas",
+      "nationality": "United States",
+      "club": "Air Avellino"
+    },
+    {
+      "season": "2011–12",
+      "winner": "Bo McCalebb",
+      "nationality": "North Macedonia",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2012–13",
+      "winner": "Luigi Datome",
+      "nationality": "Italy",
+      "club": "Acea Roma"
+    },
+    {
+      "season": "2013–14",
+      "winner": "Drake Diener",
+      "nationality": "United States",
+      "club": "Banco di Sardegna Sassari"
+    },
+    {
+      "season": "2014–15",
+      "winner": "Tony Mitchell",
+      "nationality": "United States",
+      "club": "Dolomiti Energia Trento"
+    },
+    {
+      "season": "2015–16",
+      "winner": "James Nunnally",
+      "nationality": "United States",
+      "club": "Sidigas Avellino"
+    },
+    {
+      "season": "2016–17",
+      "winner": "Marcus Landry",
+      "nationality": "United States",
+      "club": "Germani Brescia"
+    },
+    {
+      "season": "2017–18",
+      "winner": "Jason Rich",
+      "nationality": "United States",
+      "club": "Sidigas Avellino"
+    },
+    {
+      "season": "2018–19",
+      "winner": "Drew Crawford",
+      "nationality": "United States",
+      "club": "Vanoli Cremona"
+    },
+    {
+      "season": "2019–20",
+      "winner": null,
+      "nationality": null,
+      "club": null,
+      "note": "Not awarded due to the COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "winner": "Stefano Tonut",
+      "nationality": "Italy",
+      "club": "Reyer Venezia"
+    },
+    {
+      "season": "2021–22",
+      "winner": "Amedeo Della Valle",
+      "nationality": "Italy",
+      "club": "Basket Brescia Leonessa"
+    },
+    {
+      "season": "2022–23",
+      "winner": "Colbey Ross",
+      "nationality": "United States",
+      "club": "Openjobmetis Varese"
+    },
+    {
+      "season": "2023–24",
+      "winner": "Marco Belinelli",
+      "nationality": "Italy",
+      "club": "Virtus Bologna"
+    },
+    {
+      "season": "2024–25",
+      "winner": "Miro Bilan",
+      "nationality": "Croatia",
+      "club": "Pallacanestro Brescia"
+    },
+    {
+      "season": "2025–26",
+      "winner": "Armoni Brooks",
+      "nationality": "United States",
+      "club": "Olimpia Milano"
+    }
+  ],
+  "lba_finals_mvp": [
+    {
+      "season": "2003–04",
+      "winner": "David Andersen",
+      "position": "C",
+      "nationality": "Australia",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2004–05",
+      "winner": "Gianluca Basile",
+      "position": "SG",
+      "nationality": "Italy",
+      "club": "Climamio Bologna"
+    },
+    {
+      "season": "2005–06",
+      "winner": "Ramūnas Šiškauskas",
+      "position": "SF",
+      "nationality": "Lithuania",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "2006–07",
+      "winner": "Rimantas Kaukėnas",
+      "position": "SG",
+      "nationality": "Lithuania",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2007–08",
+      "winner": "Terrell McIntyre",
+      "position": "PG",
+      "nationality": "United States",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2008–09",
+      "winner": "Terrell McIntyre",
+      "position": "PG",
+      "nationality": "United States",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2009–10",
+      "winner": "Terrell McIntyre",
+      "position": "PG",
+      "nationality": "United States",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2010–11",
+      "winner": "Bo McCalebb",
+      "position": "PG",
+      "nationality": "North Macedonia",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2011–12",
+      "winner": "Bo McCalebb",
+      "position": "PG",
+      "nationality": "North Macedonia",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2012–13",
+      "winner": "Daniel Hackett",
+      "position": "PG/SG",
+      "nationality": "Italy",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2013–14",
+      "winner": "Alessandro Gentile",
+      "position": "SF",
+      "nationality": "Italy",
+      "club": "EA7 Emporio Armani Milano"
+    },
+    {
+      "season": "2014–15",
+      "winner": "Rakim Sanders",
+      "position": "SF",
+      "nationality": "United States",
+      "club": "Banco di Sardegna Sassari"
+    },
+    {
+      "season": "2015–16",
+      "winner": "Rakim Sanders",
+      "position": "SF",
+      "nationality": "United States",
+      "club": "EA7 Emporio Armani Milano"
+    },
+    {
+      "season": "2016–17",
+      "winner": "Melvin Ejim",
+      "position": "SF",
+      "nationality": "Canada",
+      "club": "Umana Reyer Venezia"
+    },
+    {
+      "season": "2017–18",
+      "winner": "Andrew Goudelock",
+      "position": "SG",
+      "nationality": "United States",
+      "club": "EA7 Emporio Armani Milano"
+    },
+    {
+      "season": "2018–19",
+      "winner": "Austin Daye",
+      "position": "PF",
+      "nationality": "United States",
+      "club": "Umana Reyer Venezia"
+    },
+    {
+      "season": "2019–20",
+      "winner": null,
+      "position": null,
+      "nationality": null,
+      "club": null,
+      "note": "Season cancelled due to COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "winner": "Miloš Teodosić",
+      "position": "PG",
+      "nationality": "Serbia",
+      "club": "Virtus Segafredo Bologna"
+    },
+    {
+      "season": "2021–22",
+      "winner": "Shavon Shields",
+      "position": "SF",
+      "nationality": "Denmark",
+      "club": "Olimpia Milano"
+    },
+    {
+      "season": "2022–23",
+      "winner": "Luigi Datome",
+      "position": "SF",
+      "nationality": "Italy",
+      "club": "Olimpia Milano"
+    },
+    {
+      "season": "2023–24",
+      "winner": "Nikola Mirotic",
+      "position": "PF",
+      "nationality": "Spain",
+      "club": "Olimpia Milano"
+    },
+    {
+      "season": "2024–25",
+      "winner": "Tornike Shengelia",
+      "position": "PF",
+      "nationality": "Georgia",
+      "club": "Virtus Bologna"
+    },
+    {
+      "season": "2025–26",
+      "winner": "Armoni Brooks",
+      "position": "SG",
+      "nationality": "United States",
+      "club": "Olimpia Milano"
+    }
+  ],
+  "lba_best_player_under_22": [
+    {
+      "season": "2005–06",
+      "player": "Andrea Bargnani",
+      "nationality": "Italy",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "2006–07",
+      "player": "Danilo Gallinari",
+      "nationality": "Italy",
+      "club": "Armani Jeans Milano"
+    },
+    {
+      "season": "2007–08",
+      "player": "Danilo Gallinari",
+      "nationality": "Italy",
+      "club": "Armani Jeans Milano"
+    },
+    {
+      "season": "2008–09",
+      "player": "Luigi Datome",
+      "nationality": "Italy",
+      "club": "Lottomatica Roma"
+    },
+    {
+      "season": "2009–10",
+      "player": "Pietro Aradori",
+      "nationality": "Italy",
+      "club": "Lauretana Biella"
+    },
+    {
+      "season": "2010–11",
+      "player": "Alessandro Gentile",
+      "nationality": "Italy",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "2011–12",
+      "player": "Achille Polonara",
+      "nationality": "Italy",
+      "club": "Bancatercas Teramo"
+    },
+    {
+      "season": "2012–13",
+      "player": "Achille Polonara",
+      "nationality": "Italy",
+      "club": "Cimberio Varèse"
+    },
+    {
+      "season": "2013–14",
+      "player": "Alessandro Gentile",
+      "nationality": "Italy",
+      "club": "EA7 Emporio Armani Milano"
+    },
+    {
+      "season": "2014–15",
+      "player": "Simone Fontecchio",
+      "nationality": "Italy",
+      "club": "Granarolo Bologna"
+    },
+    {
+      "season": "2015–16",
+      "player": "Diego Flaccadori",
+      "nationality": "Italy",
+      "club": "Dolomiti Energia Trento"
+    },
+    {
+      "season": "2016–17",
+      "player": "Diego Flaccadori",
+      "nationality": "Italy",
+      "club": "Dolomiti Energia Trento"
+    },
+    {
+      "season": "2017–18",
+      "player": "Diego Flaccadori",
+      "nationality": "Italy",
+      "club": "Dolomiti Energia Trento"
+    },
+    {
+      "season": "2018–19",
+      "player": "Tony Carr",
+      "nationality": "United States",
+      "club": "Red October Cantù"
+    },
+    {
+      "season": "2020–21",
+      "player": "Alessandro Pajola",
+      "nationality": "Italy",
+      "club": "Virtus Bologna"
+    },
+    {
+      "season": "2021–22",
+      "player": "Matteo Spagnolo",
+      "nationality": "Italy",
+      "club": "Vanoli Cremona"
+    },
+    {
+      "season": "2022–23",
+      "player": "Matteo Spagnolo",
+      "nationality": "Italy",
+      "club": "Dolomiti Energia Trento"
+    },
+    {
+      "season": "2023–24",
+      "player": "Mouhamed Faye",
+      "nationality": "Senegal",
+      "club": "UNAHOTELS Reggio Emilia"
+    },
+    {
+      "season": "2024–25",
+      "player": "Quinn Ellis",
+      "nationality": "United Kingdom",
+      "club": "Dolomiti Energia Trento"
+    },
+    {
+      "season": "2025–26",
+      "player": "Saliou Niang",
+      "nationality": "Italy",
+      "club": "Virtus Bologna"
+    }
+  ],
+  "lba_best_coach": [
+    {
+      "season": "1993–94",
+      "winner": "Franco Marcelletti",
+      "nationality": "Italy",
+      "club": "Glaxo Verona"
+    },
+    {
+      "season": "1994–95",
+      "winner": "Edoardo Rusconi",
+      "nationality": "Italy",
+      "club": "Cagiva Varèse"
+    },
+    {
+      "season": "1995–96",
+      "winner": "Attilio Caja",
+      "nationality": "Italy",
+      "club": "Nuova Tirrenia Roma"
+    },
+    {
+      "season": "1996–97",
+      "winner": "Andrea Mazzon",
+      "nationality": "Italy",
+      "club": "Mash Jeans Verona"
+    },
+    {
+      "season": "1997–98",
+      "winner": "Ettore Messina",
+      "nationality": "Italy",
+      "club": "Kinder Bologna"
+    },
+    {
+      "season": "1998–99",
+      "winner": "Carlo Recalcati",
+      "nationality": "Italy",
+      "club": "Varèse Roosters"
+    },
+    {
+      "season": "1999–00",
+      "winner": "Piero Bucchi",
+      "nationality": "Italy",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "2000–01",
+      "winner": "Ettore Messina",
+      "nationality": "Italy",
+      "club": "Kinder Bologna"
+    },
+    {
+      "season": "2001–02",
+      "winner": "Stefano Sacripanti",
+      "nationality": "Italy",
+      "club": "Oregon Scientific Cantù"
+    },
+    {
+      "season": "2002–03",
+      "winner": "Lino Lardo",
+      "nationality": "Italy",
+      "club": "Reggio Calabria"
+    },
+    {
+      "season": "2003–04",
+      "winner": "Carlo Recalcati",
+      "nationality": "Italy",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2004–05",
+      "winner": "Ettore Messina",
+      "nationality": "Italy",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "2005–06",
+      "winner": "Cesare Pancotto",
+      "nationality": "Italy",
+      "club": "Snaidero Udine"
+    },
+    {
+      "season": "2006–07",
+      "winner": "Simone Pianigiani",
+      "nationality": "Italy",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2007–08",
+      "winner": "Matteo Boniciolli",
+      "nationality": "Italy",
+      "club": "Air Avellino"
+    },
+    {
+      "season": "2008–09",
+      "winner": "Andrea Capobianco",
+      "nationality": "Italy",
+      "club": "Bancatercas Teramo"
+    },
+    {
+      "season": "2009–10",
+      "winner": "Andrea Trinchieri",
+      "nationality": "Italy",
+      "club": "NGC Medical Cantù"
+    },
+    {
+      "season": "2010–11",
+      "winner": "Andrea Trinchieri",
+      "nationality": "Italy",
+      "club": "Bennet Cantù"
+    },
+    {
+      "season": "2011–12",
+      "winner": "Romeo Sacchetti",
+      "nationality": "Italy",
+      "club": "Banco di Sardegna Sassari"
+    },
+    {
+      "season": "2012–13",
+      "winner": "Francesco Vitucci",
+      "nationality": "Italy",
+      "club": "Cimberio Varèse"
+    },
+    {
+      "season": "2013–14",
+      "winner": "Paolo Moretti",
+      "nationality": "Italy",
+      "club": "Giorgio Tesi Group Pistoia"
+    },
+    {
+      "season": "2014–15",
+      "winner": "Maurizio Buscaglia",
+      "nationality": "Italy",
+      "club": "Dolomiti Energia Trento"
+    },
+    {
+      "season": "2015–16",
+      "winner": "Cesare Pancotto",
+      "nationality": "Italy",
+      "club": "Vanoli Cremona"
+    },
+    {
+      "season": "2016–17",
+      "winner": "Vincenzo Esposito",
+      "nationality": "Italy",
+      "club": "The Flexx Pistoia"
+    },
+    {
+      "season": "2017–18",
+      "winner": "Attilio Caja",
+      "nationality": "Italy",
+      "club": "Openjobmetis Varese"
+    },
+    {
+      "season": "2018–19",
+      "winner": "Romeo Sacchetti",
+      "nationality": "Italy",
+      "club": "Vanoli Cremona"
+    },
+    {
+      "season": "2020–21",
+      "winner": "Francesco Vitucci",
+      "nationality": "Italy",
+      "club": "New Basket Brindisi"
+    },
+    {
+      "season": "2021–22",
+      "winner": "Alessandro Magro",
+      "nationality": "Italy",
+      "club": "Basket Brescia Leonessa"
+    },
+    {
+      "season": "2022–23",
+      "winner": "Marco Ramondino",
+      "nationality": "Italy",
+      "club": "Bertram Yachts Derthona Tortona"
+    },
+    {
+      "season": "2023–24",
+      "winner": "Nicola Brienza",
+      "nationality": "Italy",
+      "club": "Estra Pistoia"
+    },
+    {
+      "season": "2024–25",
+      "winner": "Paolo Galbiati",
+      "nationality": "Italy",
+      "club": "Dolomiti Energia Trentino"
+    },
+    {
+      "season": "2025–26",
+      "winner": "Dimitrios Priftis",
+      "nationality": "Greece",
+      "club": "Pallacanestro Reggiana"
+    }
+  ],
+  "lba_best_executive": [
+    {
+      "season": "2005–06",
+      "winner": "Maurizio Gherardini",
+      "nationality": "Italy",
+      "club": "Benetton Treviso"
+    },
+    {
+      "season": "2006–07",
+      "winner": "Ferdinando Minucci",
+      "nationality": "Italy",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2007–08",
+      "winner": "Ferdinando Minucci",
+      "nationality": "Italy",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2008–09",
+      "winner": "Ferdinando Minucci",
+      "nationality": "Italy",
+      "club": "Montepaschi Siena"
+    },
+    {
+      "season": "2009–10",
+      "winner": "Bruno Arrigoni",
+      "nationality": "Italy",
+      "club": "NGC Medical Cantù"
+    },
+    {
+      "season": "2010–11",
+      "winner": "Bruno Arrigoni",
+      "nationality": "Italy",
+      "club": "Bennet Cantù"
+    },
+    {
+      "season": "2011–12",
+      "winner": "Federico Casarin",
+      "nationality": "Italy",
+      "club": "Umana Venezia"
+    },
+    {
+      "season": "2012–13",
+      "winner": "Alessandro Della Salda",
+      "nationality": "Italy",
+      "club": "Trenkwalder Reggio Emilia"
+    },
+    {
+      "season": "2013–14",
+      "winner": "Alessandro Giuliani",
+      "nationality": "Italy",
+      "club": "Enel Brindisi"
+    },
+    {
+      "season": "2014–15",
+      "winner": "Salvatore Trainotti",
+      "nationality": "Italy",
+      "club": "Dolomiti Energia Trento"
+    },
+    {
+      "season": "2015–16",
+      "winner": "Nicola Alberani",
+      "nationality": "Italy",
+      "club": "Sidigas Avellino"
+    },
+    {
+      "season": "2016–17",
+      "winner": "Peppe Sindoni",
+      "nationality": "Italy",
+      "club": "Betaland Capo d'Orlando"
+    },
+    {
+      "season": "2017–18",
+      "winner": "Federico Casarin",
+      "nationality": "Italy",
+      "club": "Umana Reyer Venezia"
+    },
+    {
+      "season": "2018–19",
+      "winner": "Simone Giofré",
+      "nationality": "Italy",
+      "club": "New Basket Brindisi"
+    },
+    {
+      "season": "2020–21",
+      "winner": "Simone Giofré",
+      "nationality": "Italy",
+      "club": "New Basket Brindisi"
+    },
+    {
+      "season": "2021–22",
+      "winner": "Marco De Benedetto",
+      "nationality": "Italy",
+      "club": "Germani Brescia"
+    },
+    {
+      "season": "2022–23",
+      "winner": "Micheal Arceri",
+      "nationality": "Italy",
+      "club": "Openjobmetis Varese"
+    },
+    {
+      "season": "2023–24",
+      "winner": "Massimo Capecchi",
+      "nationality": "Italy",
+      "club": "Estra Pistoia"
+    },
+    {
+      "season": "2024–25",
+      "winner": "Andrea Nardelli",
+      "nationality": "Italy",
+      "club": "Dolomiti Energia Trentino"
+    },
+    {
+      "season": "2025–26",
+      "winner": "Marco Sambugaro",
+      "nationality": "Italy",
+      "club": "Pallacanestro Reggiana"
+    }
+  ],
+  "lba_top_scorers": [
+    {
+      "season": "1948–49",
+      "player": "Agostino Miliani",
+      "nationality": "Italy",
+      "club": "San Giusto Trieste",
+      "value": 238,
+      "metric": "total_points"
+    },
+    {
+      "season": "1949–50",
+      "player": "Romeo Romanutti",
+      "nationality": "Italy",
+      "club": "Borletti Milano",
+      "value": 378,
+      "metric": "total_points"
+    },
+    {
+      "season": "1950–51",
+      "player": "Sergio Stefanini",
+      "nationality": "Italy",
+      "club": "Borletti Milano",
+      "value": 473,
+      "metric": "total_points"
+    },
+    {
+      "season": "1951–52",
+      "player": "Sergio Stefanini",
+      "nationality": "Italy",
+      "club": "Borletti Milano",
+      "value": 366,
+      "metric": "total_points"
+    },
+    {
+      "season": "1952–53",
+      "player": "Sergio Stefanini",
+      "nationality": "Italy",
+      "club": "Borletti Milano",
+      "value": 416,
+      "metric": "total_points"
+    },
+    {
+      "season": "1952–54",
+      "player": "Sergio Stefanini",
+      "nationality": "Italy",
+      "club": "Borletti Milano",
+      "value": 517,
+      "metric": "total_points"
+    },
+    {
+      "season": "1954–55",
+      "player": "Tonino Zorzi",
+      "nationality": "Italy",
+      "club": "Ignis Varese",
+      "value": 527,
+      "metric": "total_points"
+    },
+    {
+      "season": "1955–56",
+      "player": "Romeo Romanutti",
+      "nationality": "Italy",
+      "club": "Borletti Milano",
+      "value": 496,
+      "metric": "total_points"
+    },
+    {
+      "season": "1956–57",
+      "player": "Tony Vlastelica",
+      "nationality": "United States",
+      "club": "Benelli Pesaro",
+      "value": 546,
+      "metric": "total_points"
+    },
+    {
+      "season": "1957–58",
+      "player": "Tony Vlastelica",
+      "nationality": "United States",
+      "club": "Oransoda Cantù",
+      "value": 479,
+      "metric": "total_points"
+    },
+    {
+      "season": "1958–59",
+      "player": "Al Inniss",
+      "nationality": "United States",
+      "club": "Lanco Pesaro",
+      "value": 508,
+      "metric": "total_points"
+    },
+    {
+      "season": "1959–60",
+      "player": "Nino Cescutti",
+      "nationality": "Italy",
+      "club": "Lanco Pesaro",
+      "value": 531,
+      "metric": "total_points"
+    },
+    {
+      "season": "1960–61",
+      "player": "Paolo Vittori",
+      "nationality": "Italy",
+      "club": "Simmenthal Milano",
+      "value": 509,
+      "metric": "total_points"
+    },
+    {
+      "season": "1961–62",
+      "player": "Nino Cescutti",
+      "nationality": "Italy",
+      "club": "Algor Pesaro",
+      "value": 529,
+      "metric": "total_points"
+    },
+    {
+      "season": "1962–63",
+      "player": "Andrea Toso",
+      "nationality": "Italy",
+      "club": "Pallacanestro Treviso",
+      "value": 628,
+      "metric": "total_points"
+    },
+    {
+      "season": "1963–64",
+      "player": "Gianfranco Lombardi",
+      "nationality": "Italy",
+      "club": "Knorr Bologna",
+      "value": 594,
+      "metric": "total_points"
+    },
+    {
+      "season": "1964–65",
+      "player": "Paolo Vittori",
+      "nationality": "Italy",
+      "club": "Simmenthal Milano",
+      "value": 562,
+      "metric": "total_points"
+    },
+    {
+      "season": "1965–66",
+      "player": "Doug Moe",
+      "nationality": "United States",
+      "club": "Petrarca Padova",
+      "value": 674,
+      "metric": "total_points"
+    },
+    {
+      "season": "1966–67",
+      "player": "Gianfranco Lombardi",
+      "nationality": "Italy",
+      "club": "Candy Bologna",
+      "value": 552,
+      "metric": "total_points"
+    },
+    {
+      "season": "1967–68",
+      "player": "Trajko Rajković",
+      "nationality": "Yugoslavia",
+      "club": "Fargas Livorno",
+      "value": 521,
+      "metric": "total_points"
+    },
+    {
+      "season": "1968–69",
+      "player": "Radivoj Korać",
+      "nationality": "Yugoslavia",
+      "club": "Boario Padova",
+      "value": 581,
+      "metric": "total_points"
+    },
+    {
+      "season": "1969–70",
+      "player": "Elnardo Webster",
+      "nationality": "United States",
+      "club": "Splügen Brau Gorizia",
+      "value": 593,
+      "metric": "total_points"
+    },
+    {
+      "season": "1970–71",
+      "player": "Gary Schull",
+      "nationality": "United States",
+      "club": "Eldorado Bologna",
+      "value": 540,
+      "metric": "total_points"
+    },
+    {
+      "season": "1971–72",
+      "player": "John Fultz",
+      "nationality": "United States",
+      "club": "Norda Bologna",
+      "value": 655,
+      "metric": "total_points"
+    },
+    {
+      "season": "1972–73",
+      "player": "Bob Morse",
+      "nationality": "United States",
+      "club": "Ignis Varese",
+      "value": 824,
+      "metric": "total_points"
+    },
+    {
+      "season": "1973–74",
+      "player": "Bob Morse",
+      "nationality": "United States",
+      "club": "Ignis Varese",
+      "value": 753,
+      "metric": "total_points"
+    },
+    {
+      "season": "1974–75",
+      "player": "Bob Morse",
+      "nationality": "United States",
+      "club": "Ignis Varese",
+      "value": 1336,
+      "metric": "total_points"
+    },
+    {
+      "season": "1975–76",
+      "player": "Chuck Jura",
+      "nationality": "United States",
+      "club": "Mobilquattro Milano",
+      "value": 1198,
+      "metric": "total_points"
+    },
+    {
+      "season": "1976–77",
+      "player": "Chuck Jura",
+      "nationality": "United States",
+      "club": "Xerox Milano",
+      "value": 1052,
+      "metric": "total_points"
+    },
+    {
+      "season": "1977–78",
+      "player": "Chuck Jura",
+      "nationality": "United States",
+      "club": "Xerox Milano",
+      "value": 997,
+      "metric": "total_points"
+    },
+    {
+      "season": "1978–79",
+      "player": "Bob Morse",
+      "nationality": "United States",
+      "club": "Emerson Varese",
+      "value": 885,
+      "metric": "total_points"
+    },
+    {
+      "season": "1979–80",
+      "player": "Bob Morse",
+      "nationality": "United States",
+      "club": "Emerson Varese",
+      "value": 964,
+      "metric": "total_points"
+    },
+    {
+      "season": "1980–81",
+      "player": "Bob Morse",
+      "nationality": "United States",
+      "club": "Turisanda Varese",
+      "value": 980,
+      "metric": "total_points"
+    },
+    {
+      "season": "1981–82",
+      "player": "Zam Fredrick",
+      "nationality": "United States",
+      "club": "Sinudyne Bologna",
+      "value": 988,
+      "metric": "total_points"
+    },
+    {
+      "season": "1982–83",
+      "player": "Kevin Magee",
+      "nationality": "United States",
+      "club": "Cagiva Varese",
+      "value": 887,
+      "metric": "total_points"
+    },
+    {
+      "season": "1983–84",
+      "player": "Oscar Schmidt",
+      "nationality": "Brazil",
+      "club": "Indesit Caserta",
+      "value": 955,
+      "metric": "total_points"
+    },
+    {
+      "season": "1984–85",
+      "player": "Oscar Schmidt",
+      "nationality": "Brazil",
+      "club": "Indesit Caserta",
+      "value": 1140,
+      "metric": "total_points"
+    },
+    {
+      "season": "1985–86",
+      "player": "Oscar Schmidt",
+      "nationality": "Brazil",
+      "club": "Mobilgirgi Caserta",
+      "value": 1226,
+      "metric": "total_points"
+    },
+    {
+      "season": "1986–87",
+      "player": "Oscar Schmidt",
+      "nationality": "Brazil",
+      "club": "Mobilgirgi Caserta",
+      "value": 1316,
+      "metric": "total_points"
+    },
+    {
+      "season": "1987–88",
+      "player": "Dražen Dalipagić",
+      "nationality": "Yugoslavia",
+      "club": "Hitachi Venezia",
+      "value": 1417,
+      "metric": "total_points"
+    },
+    {
+      "season": "1988–89",
+      "player": "Oscar Schmidt",
+      "nationality": "Brazil",
+      "club": "Snaidero Caserta",
+      "value": 35.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1989–90",
+      "player": "Oscar Schmidt",
+      "nationality": "Brazil",
+      "club": "Phonola Caserta",
+      "value": 32.7,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1990–91",
+      "player": "Michael Young",
+      "nationality": "United States",
+      "club": "Panasonic Reggio Calabria",
+      "value": 34,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1991–92",
+      "player": "Oscar Schmidt",
+      "nationality": "Brazil",
+      "club": "Branca Pavia",
+      "value": 37.7,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1992–93",
+      "player": "Larry Middleton",
+      "nationality": "Italy",
+      "club": "Marr Rimini",
+      "value": 26,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1993–94",
+      "player": "Mario Boni",
+      "nationality": "Italy",
+      "club": "Bialetti Montecatini",
+      "value": 30.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1994–95",
+      "player": "Arijan Komazec",
+      "nationality": "Croatia",
+      "club": "Cagiva Varese",
+      "value": 33.7,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1995–96",
+      "player": "Carlton Myers",
+      "nationality": "Italy",
+      "club": "Teamsystem Bologna",
+      "value": 26.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1996–97",
+      "player": "Steve Burtt Sr.",
+      "nationality": "United States",
+      "club": "Genertel Trieste",
+      "value": 34.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1997–98",
+      "player": "Mike Mitchell",
+      "nationality": "United States",
+      "club": "Cfm Reggio Emilia",
+      "value": 24.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1998–99",
+      "player": "Vincenzo Esposito",
+      "nationality": "Italy",
+      "club": "Termal Imola",
+      "value": 24.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1999–00",
+      "player": "Vincenzo Esposito",
+      "nationality": "Italy",
+      "club": "Lineltex Imola",
+      "value": 30.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2000–01",
+      "player": "Vincenzo Esposito",
+      "nationality": "Italy",
+      "club": "Lineltex Imola",
+      "value": 28,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2001–02",
+      "player": "Lou Bullock",
+      "nationality": "United States",
+      "club": "Adecco Milano",
+      "value": 24.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2002–03",
+      "player": "Boris Gorenc",
+      "nationality": "Slovenia",
+      "club": "Metis Varese",
+      "value": 22.4,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2003–04",
+      "player": "Charlie Bell",
+      "nationality": "United States",
+      "club": "Mabo Livorno",
+      "value": 25.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2004–05",
+      "player": "Drew Nicholas",
+      "nationality": "United States",
+      "club": "Solidago Livorno",
+      "value": 22.8,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2005–06",
+      "player": "Lynn Greer",
+      "nationality": "United States",
+      "club": "Carpisa Napoli",
+      "value": 23.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2006–07",
+      "player": "Rick Apodaca",
+      "nationality": "Puerto Rico",
+      "club": "Legea Scafati",
+      "value": 19.8,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2007–08",
+      "player": "Clay Tucker",
+      "nationality": "United States",
+      "club": "Siviglia Wear Teramo",
+      "value": 21,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2008–09",
+      "player": "Michael Hicks",
+      "nationality": "Panama",
+      "club": "Scavolini Pesaro",
+      "value": 18.8,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2009–10",
+      "player": "Gary Neal",
+      "nationality": "United States",
+      "club": "Benetton Treviso",
+      "value": 19.4,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2010–11",
+      "player": "James White",
+      "nationality": "United States",
+      "club": "Dinamo Sassari",
+      "value": 21,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2011–12",
+      "player": "Andre Smith",
+      "nationality": "United States",
+      "club": "Otto Caserta",
+      "value": 18.4,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2012–13",
+      "player": "Donell Taylor",
+      "nationality": "United States",
+      "club": "Trenkwalder Reggio Emilia",
+      "value": 19.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2013–14",
+      "player": "Drake Diener",
+      "nationality": "United States",
+      "club": "Banco di Sardegna Sassari",
+      "value": 19.4,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2014–15",
+      "player": "Tony Mitchell",
+      "nationality": "United States",
+      "club": "Dolomiti Energia Trento",
+      "value": 20.7,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2015–16",
+      "player": "Austin Daye",
+      "nationality": "United States",
+      "club": "Consultinvest Pesaro",
+      "value": 21.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2016–17",
+      "player": "Marcus Landry",
+      "nationality": "United States",
+      "club": "Germani Basket Brescia",
+      "value": 19.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2017–18",
+      "player": "Jason Rich",
+      "nationality": "United States",
+      "club": "Sidigas Avellino",
+      "value": 19.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2018–19",
+      "player": "Frank Gaines",
+      "nationality": "United States",
+      "club": "Red October Cantù",
+      "value": 20.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2019–20",
+      "player": "Adrian Banks",
+      "nationality": "United States",
+      "club": "New Basket Brindisi",
+      "value": 21.2,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2020–21",
+      "player": "JaCorey Williams",
+      "nationality": "United States",
+      "club": "Aquila Basket Trento",
+      "value": 17.8,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2021–22",
+      "player": "Marcus Keene",
+      "nationality": "United States",
+      "club": "Pallacanestro Varese",
+      "value": 18.7,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2022–23",
+      "player": "Frank Bartley",
+      "nationality": "United States",
+      "club": "Pallacanestro Trieste",
+      "value": 19.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2023–24",
+      "player": "Nico Mannion",
+      "nationality": "Italy",
+      "club": "Pallacanestro Varese",
+      "value": 20.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2024–25",
+      "player": "Rob Gray",
+      "nationality": "United States",
+      "club": "Scafati Basket",
+      "value": 21.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2025–26",
+      "player": "Jahmi'us Ramsey",
+      "nationality": "United States",
+      "club": "Pallacanestro Trieste",
+      "value": 19.3,
+      "metric": "points_per_game"
+    }
+  ]
+}

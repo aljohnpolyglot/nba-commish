@@ -1,5 +1,6 @@
 import React from 'react';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
+import { filterAwardsToVisibleTimeline } from '../../../utils/awardHistory';
 import {
   ComputedRow,
   fmt0,
@@ -18,10 +19,14 @@ interface PlayerStatsTableProps {
   season: SeasonMode;
   statType: StatType;
   phase: Phase;
+  competitionId?: string;
   competitionLabel?: string;
+  phaseLabelOverride?: string;
   cupShort: string;
   cupChampion: string;
+  maxSeason: number;
   fourPointEnabled: boolean;
+  threePointEnabled: boolean;
   ownTid: number | null;
   showFilters: boolean;
   columnFilters: Record<string, string>;
@@ -35,24 +40,27 @@ interface PlayerStatsTableProps {
   setCurrentPage: React.Dispatch<React.SetStateAction<number>>;
   perPage: number;
   totalPages: number;
-  brefRowsSize: number;
   onPlayerSelect: (row: ComputedRow) => void;
   onTeamSelect: (abbrev: string) => void;
+  formatSeasonLabel: (season: number) => string;
 }
 
 const pctFields: SortField[] = ['fgPct', 'tpPct', 'fpPct', 'twopPct', 'efgPct', 'ftPct'];
 
-function seasonBadgeRow(row: ComputedRow, cupChampion: string) {
-  const awards = row.player.awards ?? [];
+function seasonBadgeRow(row: ComputedRow, cupChampion: string, maxSeason: number, competitionId?: string, competitionLabel?: string) {
+  const awards = filterAwardsToVisibleTimeline(row.player.awards ?? [], maxSeason);
   const targetSeason = typeof row.season === 'number' ? row.season : null;
   if (!targetSeason) return null;
   const isChamp = awards.some(award => {
     if (award.season !== targetSeason || !award.type) return false;
     const type = award.type.toLowerCase();
-    return type.includes('champion') && !type.includes('cup');
+    return type.includes('champion') && !type.includes('cup') && (!competitionId || !award.competitionId);
   });
   const isCupChamp = awards.some(
-    award => award.season === targetSeason && award.type?.toLowerCase() === 'nba cup champion',
+    award => award.season === targetSeason && (
+      award.type?.toLowerCase() === 'nba cup champion'
+      || (!!competitionId && award.competitionId === competitionId && award.type?.toLowerCase().includes('champion'))
+    ),
   );
   const isAllStar = awards.some(
     award =>
@@ -62,7 +70,7 @@ function seasonBadgeRow(row: ComputedRow, cupChampion: string) {
   return (
     <>
       {isChamp && <span className="ml-1 text-[9px]" title={`${targetSeason} Champion`}>💍</span>}
-      {isCupChamp && <span className="ml-1 text-[9px]" title={`${targetSeason} ${cupChampion}`}>🏆</span>}
+      {isCupChamp && <span className="ml-1 text-[9px]" title={`${targetSeason} ${competitionLabel ? `${competitionLabel} Champion` : cupChampion}`}>🏆</span>}
       {isAllStar && <span className="ml-1 text-[9px]" title={`${targetSeason} All-Star`}>⭐</span>}
     </>
   );
@@ -72,10 +80,14 @@ export function PlayerStatsTable({
   season,
   statType,
   phase,
+  competitionId,
   competitionLabel,
+  phaseLabelOverride,
   cupShort,
   cupChampion,
+  maxSeason,
   fourPointEnabled,
+  threePointEnabled,
   ownTid,
   showFilters,
   columnFilters,
@@ -89,21 +101,21 @@ export function PlayerStatsTable({
   setCurrentPage,
   perPage,
   totalPages,
-  brefRowsSize,
   onPlayerSelect,
   onTeamSelect,
+  formatSeasonLabel,
 }: PlayerStatsTableProps) {
-  const activeCols = getActivePlayerStatsColumns(statType, fourPointEnabled);
+  const activeCols = getActivePlayerStatsColumns(statType, fourPointEnabled, threePointEnabled);
   const seasonLabel =
     season === 'career'
       ? 'Career'
       : season === 'all'
         ? 'All Time'
-        : `${(season as number) - 1}–${String(season).slice(2)}`;
+        : formatSeasonLabel(season as number);
   const formatRowSeason = (row: ComputedRow) =>
-    row.seasonLabel ?? (typeof row.season === 'number' ? `${row.season - 1}–${String(row.season).slice(2)}` : '—');
+    row.seasonLabel ?? (typeof row.season === 'number' ? formatSeasonLabel(row.season) : '—');
   const typeLabel = getPlayerStatsTypeLabel(statType);
-  const phaseLabel = getPlayerStatsPhaseLabel(phase, cupShort);
+  const phaseLabel = phaseLabelOverride ?? getPlayerStatsPhaseLabel(phase, cupShort);
   const thCls = (field: SortField) =>
     `px-2 py-2 text-right cursor-pointer select-none whitespace-nowrap font-semibold transition-colors hover:text-white text-[11px] ${
       sortField === field ? 'text-indigo-400' : 'text-slate-400'
@@ -117,6 +129,31 @@ export function PlayerStatsTable({
   const stickyBg = (index: number, isHof: boolean, isOwn: boolean) =>
     isOwn ? 'rgb(30,27,75)' : isHof ? 'rgb(69,10,10)' : index % 2 === 0 ? 'rgb(2,6,23)' : 'rgb(9,14,27)';
 
+  const tableMinWidth = statType === 'advanced'
+    ? (threePointEnabled ? 1600 : 1520)
+    : statType === 'shotLocations'
+      ? (threePointEnabled ? 1050 : 900)
+      : fourPointEnabled
+        ? (threePointEnabled ? 1480 : 1320)
+        : (threePointEnabled ? 1360 : 1200);
+  const mobileSortOptions = [
+    { key: 'name' as SortField, label: 'Player' },
+    { key: 'pos' as SortField, label: 'Position' },
+    { key: 'age' as SortField, label: 'Age' },
+    { key: 'team' as SortField, label: 'Team' },
+    ...activeCols.map(column => ({ key: column.key, label: column.label })),
+  ];
+  const mobileSortLabel = mobileSortOptions.find(option => option.key === sortField)?.label ?? sortField;
+  const mobileSortValue = (row: ComputedRow): string => {
+    if (sortField === 'name') return row.player.name;
+    if (sortField === 'pos') return row.player.pos ?? '—';
+    if (sortField === 'age') return String(row.age || '—');
+    if (sortField === 'team') return row.teamAbbrev;
+    const value = (row as any)[sortField];
+    if (typeof value !== 'number' || !Number.isFinite(value)) return '—';
+    return pctFields.includes(sortField) ? fmt3(value) : value.toFixed(value % 1 === 0 ? 0 : 1);
+  };
+
   return (
     <>
       <div className="shrink-0 px-3 sm:px-4 py-1 border-b border-slate-800/40 flex items-center justify-between">
@@ -125,17 +162,70 @@ export function PlayerStatsTable({
           {typeof season === 'number' && <><span className="ml-3">💍</span> Champion</>}
           {typeof season === 'number' && <><span className="ml-3">🏆</span> Cup Champion</>}
           {typeof season === 'number' && <><span className="ml-3">⭐</span> All-Star</>}
-          {brefRowsSize > 0 && <span className="ml-3 text-slate-600">† bref career</span>}
         </span>
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
           {seasonLabel} · {competitionLabel ? `${competitionLabel} · ` : ''}{typeLabel} · {phaseLabel}
         </span>
       </div>
 
-      <div className="flex-1 overflow-auto custom-scrollbar" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
+      <div className="flex shrink-0 items-center gap-2 border-b border-slate-800 px-3 py-2 sm:hidden">
+        <span className="text-[10px] font-black uppercase tracking-wider text-slate-500">Sort</span>
+        <select
+          value={sortField}
+          onChange={event => {
+            const next = event.target.value as SortField;
+            if (next !== sortField) onSort(next);
+          }}
+          className="min-w-0 flex-1 rounded border border-slate-700 bg-slate-900 px-2 py-1.5 text-xs text-white"
+        >
+          {mobileSortOptions.map(option => <option key={option.key} value={option.key}>{option.label}</option>)}
+        </select>
+        <button
+          type="button"
+          onClick={() => onSort(sortField)}
+          className="rounded border border-slate-700 bg-slate-900 px-2.5 py-1.5 text-xs font-black text-slate-300"
+        >
+          {sortOrder === 'desc' ? '↓' : '↑'}
+        </button>
+      </div>
+
+      <div className="min-h-0 flex-1 space-y-2 overflow-y-auto p-3 sm:hidden">
+        {pageRows.map((row, index) => {
+          const isOwn = ownTid !== null && row.player.tid === ownTid;
+          return (
+            <article key={`${row.player.internalId}-${row.season}-${index}`} className={`rounded-xl border p-3 ${isOwn ? 'border-indigo-500/40 bg-indigo-500/10' : 'border-slate-800 bg-slate-900/50'}`}>
+              <div className="flex items-start justify-between gap-3">
+                <button type="button" onClick={() => onPlayerSelect(row)} className="min-w-0 text-left">
+                  <span className="block truncate text-sm font-black text-white">{row.player.name}</span>
+                  <span className="mt-0.5 block text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                    {row.player.pos ?? '—'} · {row.teamAbbrev} · Age {row.age || '—'}
+                  </span>
+                </button>
+                <div className="shrink-0 text-right">
+                  <div className="text-[9px] font-black uppercase tracking-wider text-slate-600">{mobileSortLabel}</div>
+                  <div className="text-base font-black tabular-nums text-indigo-300">{mobileSortValue(row)}</div>
+                </div>
+              </div>
+              <div className="mt-3 grid grid-cols-4 gap-2 border-t border-slate-800 pt-2 text-center">
+                {[
+                  ['G', row.gp],
+                  ['PTS', fmt1(row.pts)],
+                  ['REB', fmt1(row.trb)],
+                  ['AST', fmt1(row.ast)],
+                ].map(([label, value]) => (
+                  <div key={String(label)}><div className="text-[9px] font-black uppercase text-slate-600">{label}</div><div className="text-xs font-bold text-slate-200">{value}</div></div>
+                ))}
+              </div>
+            </article>
+          );
+        })}
+        {filteredRows.length === 0 && <div className="py-12 text-center text-sm text-slate-500">No stats found for the selected filters.</div>}
+      </div>
+
+      <div className="hidden flex-1 overflow-auto custom-scrollbar sm:block" style={{ WebkitOverflowScrolling: 'touch' } as React.CSSProperties}>
         <table
           className="w-full text-xs text-left border-collapse"
-          style={{ minWidth: statType === 'advanced' ? 1600 : statType === 'shotLocations' ? 1050 : fourPointEnabled ? 1480 : 1360 }}
+          style={{ minWidth: tableMinWidth }}
         >
           <thead className="sticky top-0 z-20 bg-slate-900 border-b-2 border-slate-700">
             <tr>
@@ -236,7 +326,7 @@ export function PlayerStatsTable({
                   >
                     <PlayerNameWithHover player={row.player}>{row.player.name}</PlayerNameWithHover>
                     {row.fromBref && <span className="ml-1 text-[9px] text-slate-600">†</span>}
-                    {seasonBadgeRow(row, cupChampion)}
+                    {seasonBadgeRow(row, cupChampion, maxSeason, competitionId, competitionLabel)}
                   </td>
                   <td className="px-2 py-1.5 text-slate-400">{row.player.pos ?? '—'}</td>
                   <td className="px-2 py-1.5 text-right text-slate-400">{row.age || '—'}</td>
@@ -264,9 +354,13 @@ export function PlayerStatsTable({
                       <td className="px-2 py-1.5 text-right">{row.mrFgm ?? 0}</td>
                       <td className="px-2 py-1.5 text-right text-slate-500">{row.mrFga ?? 0}</td>
                       <td className="px-2 py-1.5 text-right">{fmt3(row.mrFgPct ?? 0)}</td>
-                      <td className="px-2 py-1.5 text-right text-indigo-300">{row.slTpm ?? 0}</td>
-                      <td className="px-2 py-1.5 text-right text-slate-500">{row.slTpa ?? 0}</td>
-                      <td className="px-2 py-1.5 text-right text-indigo-300">{fmt3(row.slTpPct ?? 0)}</td>
+                      {threePointEnabled && (
+                        <>
+                          <td className="px-2 py-1.5 text-right text-indigo-300">{row.slTpm ?? 0}</td>
+                          <td className="px-2 py-1.5 text-right text-slate-500">{row.slTpa ?? 0}</td>
+                          <td className="px-2 py-1.5 text-right text-indigo-300">{fmt3(row.slTpPct ?? 0)}</td>
+                        </>
+                      )}
                       <td className="px-2 py-1.5 text-right text-slate-500">{row.ba ?? 0}</td>
                       <td className="px-2 py-1.5 text-right text-emerald-300 font-medium">{row.dd ?? 0}</td>
                       <td className="px-2 py-1.5 text-right text-amber-300 font-bold">{row.td ?? 0}</td>
@@ -309,7 +403,7 @@ export function PlayerStatsTable({
                       <td className="px-2 py-1.5 text-right font-bold text-white">{fmt1(row.per)}</td>
                       <td className="px-2 py-1.5 text-right text-slate-400">{fmt1(row.ewa)}</td>
                       <td className="px-2 py-1.5 text-right text-indigo-300">{fmt3(row.tsPct / 100)}</td>
-                      <td className="px-2 py-1.5 text-right text-slate-500">{fmt3(row.threePAr)}</td>
+                      {threePointEnabled && <td className="px-2 py-1.5 text-right text-slate-500">{fmt3(row.threePAr)}</td>}
                       <td className="px-2 py-1.5 text-right text-slate-500">{fmt3(row.ftRate)}</td>
                       <td className="px-2 py-1.5 text-right text-slate-500">{fmt1(row.orbPct)}</td>
                       <td className="px-2 py-1.5 text-right text-slate-500">{fmt1(row.drbPct)}</td>

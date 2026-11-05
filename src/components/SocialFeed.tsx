@@ -1,26 +1,29 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useGame } from '../store/GameContext';
 import SocialFeedView from './social/SocialFeedView';
+import { getVisibleSocialPosts } from '../services/social/socialPostVisibility';
 
 export const SocialFeed: React.FC = () => {
   const { state } = useGame();
-  const [visiblePosts, setVisiblePosts] = useState(state.socialFeed);
-  const prevFeedRef = useRef(state.socialFeed);
+  const duePosts = getVisibleSocialPosts(state.socialFeed, state.date);
+  const [visiblePosts, setVisiblePosts] = useState(duePosts);
+  const prevFeedRef = useRef(duePosts);
 
   useEffect(() => {
+    const currentPosts = getVisibleSocialPosts(state.socialFeed, state.date);
     const prevIds = new Set(prevFeedRef.current.map(p => p.id));
-    const newPosts = state.socialFeed.filter(p => p.isNew && !prevIds.has(p.id));
-    const oldPosts = state.socialFeed.filter(p => !p.isNew || prevIds.has(p.id));
+    const newPosts = currentPosts.filter(p => p.isNew && !prevIds.has(p.id));
+    const oldPosts = currentPosts.filter(p => !p.isNew || prevIds.has(p.id));
 
     if (newPosts.length === 0) {
-      setVisiblePosts(state.socialFeed);
-      prevFeedRef.current = state.socialFeed;
+      setVisiblePosts(currentPosts);
+      prevFeedRef.current = currentPosts;
       return;
     }
 
     // Show old posts immediately
     setVisiblePosts(oldPosts);
-    prevFeedRef.current = state.socialFeed;
+    prevFeedRef.current = currentPosts;
 
     // Reveal new posts one by one with stagger
     newPosts.forEach((post, i) => {
@@ -31,7 +34,7 @@ export const SocialFeed: React.FC = () => {
         });
       }, (i + 1) * 2500);
     });
-  }, [state.socialFeed]);
+  }, [state.date, state.socialFeed]);
 
   return <SocialFeedView posts={visiblePosts} />;
 };

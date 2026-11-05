@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Target, RotateCcw, Search } from 'lucide-react';
+import { Sparkles, Target, RotateCcw, Search, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
@@ -26,6 +26,7 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
   const season = state.leagueStats.year || 2026;
+  const contestantCount = Math.min(20, Math.max(2, Math.round(state.leagueStats.allStarThreePointContestPlayers ?? 8)));
 
   const existingContestants: NBAPlayer[] = state.allStar?.threePointContestants ?? [];
   const isEditMode = existingContestants.length > 0;
@@ -38,16 +39,18 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
 
   const allPlayers = useMemo(() => {
     return state.players
-      .filter(p => p.status === 'Active' && p.tid >= 0)
+      .filter(p => p.status === 'Active' && p.tid >= 0 && p.tid < 100)
       .map(p => {
         const stat = p.stats?.find(s => s.season === season && !s.playoffs);
+        const rating = p.ratings?.find(row => Number(row.season) === Number(season))
+          ?? p.ratings?.[p.ratings.length - 1];
         const gp = stat?.gp ?? 0;
         const tpa = gp > 0 ? (stat!.tpa ?? 0) / gp : 0;
         const tpp = stat?.tpp ?? 0;
         const score = tpa * 40 + tpp * 60;
-        return { player: p, tpa, tpp, score, hasStats: gp >= 5 };
+        return { player: p, tp: Number(rating?.tp ?? 0), tpa, tpp, score, hasStats: gp >= 5 };
       })
-      .sort((a, b) => b.score - a.score);
+      .sort((a, b) => b.tp - a.tp || b.score - a.score || a.player.name.localeCompare(b.player.name));
   }, [state.players, season]);
 
   const visiblePlayers = useMemo(() => {
@@ -64,7 +67,7 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
     setSelected(prev => {
       const n = new Set(prev);
       if (n.has(id)) n.delete(id);
-      else if (n.size < 8) n.add(id);
+      else if (n.size < contestantCount) n.add(id);
       return n;
     });
   };
@@ -92,6 +95,9 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
             >
               <RotateCcw size={13} /> Edit Lineup
             </button>
+            <button onClick={onClose} className="rounded-xl p-2 text-slate-500 hover:bg-slate-800 hover:text-white" aria-label="Close">
+              <X size={20} />
+            </button>
           </div>
         </div>
         <div className="custom-scrollbar flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
@@ -117,9 +123,6 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
             })}
           </div>
         </div>
-        <div className="flex justify-end border-t border-slate-800 p-4 pt-4 sm:p-8">
-          <button onClick={onClose} className="px-6 py-3 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold uppercase tracking-wider text-xs">Close</button>
-        </div>
       </ModalShell3P>
     );
   }
@@ -140,19 +143,32 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
           <div className="flex-1">
             <h3 className="text-xl font-black text-white uppercase tracking-widest">3-Point Contest</h3>
             <p className="text-slate-400 text-xs">
-              {!search ? 'Top 30 recommended — ' : ''}{selected.size}/8 selected
+              {!search ? 'Top 30 recommended · ' : ''}{selected.size}/{contestantCount} selected
             </p>
           </div>
+          <button onClick={onClose} className="rounded-xl p-2 text-slate-500 hover:bg-slate-800 hover:text-white" aria-label="Close">
+            <X size={20} />
+          </button>
         </div>
-        <div className="relative">
-          <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
-          <input
-            type="text"
-            placeholder="Search all players…"
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
-          />
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => setSelected(new Set(allPlayers.slice(0, contestantCount).map(entry => entry.player.internalId)))}
+            disabled={allPlayers.length < contestantCount}
+            className="flex items-center justify-center gap-2 rounded-xl border border-sky-500/30 bg-sky-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-sky-300 hover:bg-sky-500/20 disabled:opacity-40"
+          >
+            <Sparkles size={13} /> Auto-select participants
+          </button>
+          <div className="relative flex-1">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
+            <input
+              type="text"
+              placeholder="Search all players…"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+              className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-sky-500"
+            />
+          </div>
         </div>
       </div>
 
@@ -160,7 +176,7 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
         <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
           {visiblePlayers.map(x => {
             const isSelected = selected.has(x.player.internalId);
-            const canSelect = isSelected || selected.size < 8;
+            const canSelect = isSelected || selected.size < contestantCount;
             const team = state.teams.find(t => t.id === x.player.tid);
             return (
               <button
@@ -195,11 +211,10 @@ export const ThreePointContestModal: React.FC<ThreePointContestModalProps> = ({ 
       </div>
 
       <div className="flex flex-col gap-3 border-t border-slate-800 p-4 pt-4 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-        <p className="text-xs text-slate-500">{selected.size}/8 selected</p>
+        <p className="text-xs text-slate-500">{selected.size}/{contestantCount} selected</p>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <button onClick={onClose} className="w-full rounded-xl px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:bg-slate-800 hover:text-white sm:w-auto">Cancel</button>
           <button
-            disabled={selected.size < 2}
+            disabled={selected.size !== contestantCount}
             onClick={() => onConfirm(selectedPlayers)}
             className="w-full rounded-xl bg-sky-600 px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-sky-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >

@@ -1,0 +1,27 @@
+Floor Sections
+==============
+
+Detected sections: 13
+
+[east]
+5	04-floor-sections/east/sections/5-east.svg	x=1900.20 y=1072.50 w=148.70 h=116.90
+9	04-floor-sections/east/sections/9-east.svg	x=2064.70 y=1235.40 w=100.40 h=183.20
+10	04-floor-sections/east/sections/10-east.svg	x=2063.40 y=1418.60 w=101.30 h=180.40
+
+[north]
+3	04-floor-sections/north/sections/3-north.svg	x=1325.00 y=1072.40 w=287.30 h=93.10
+4	04-floor-sections/north/sections/4-north.svg	x=1612.20 y=1072.40 w=288.00 h=93.10
+
+[south]
+15	04-floor-sections/south/sections/15-south.svg	x=1612.30 y=1671.80 w=286.50 h=93.10
+16	04-floor-sections/south/sections/16-south.svg	x=1325.00 y=1671.80 w=287.40 h=93.10
+17	04-floor-sections/south/sections/17-south.svg	x=1173.90 y=1648.80 w=151.20 h=115.60
+
+[south-east]
+14	04-floor-sections/south-east/sections/14-south-east.svg	x=1898.70 y=1646.20 w=151.90 h=118.60
+
+[west]
+2	04-floor-sections/west/sections/2-west.svg	x=1173.90 y=1072.40 w=150.90 h=116.00
+21	04-floor-sections/west/sections/21-west.svg	x=1059.70 y=1418.60 w=105.70 h=180.20
+22	04-floor-sections/west/sections/22-west.svg	x=1059.80 y=1234.80 w=105.60 h=183.80
+23	04-floor-sections/west/sections/23-west.svg	x=1077.30 y=1194.40 w=80.80 h=63.80

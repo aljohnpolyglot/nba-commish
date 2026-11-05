@@ -1,10 +1,14 @@
 import type { GameState, NBAPlayer, StaffData, StaffMember } from '../../types';
 import { computeAge, normalizeDate } from '../../utils/helpers';
 import { zengmUsableTragicDeathReasons } from '../../data/zengmTragicDeaths';
+import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getTeamFullName } from '../../utils/teamNames';
+import { isSimulationPerfEnabled, recordSimulationPerf } from '../simulation/simulationPerfDebug';
 
 export type DeathEvent = {
   entityType: 'player' | 'staff';
   playerId?: string;
+  teamId?: number;
   staffId?: string;
   name: string;
   age: number;
@@ -26,6 +30,38 @@ type DeathPassResult = {
   deaths: DeathEvent[];
   pendingDeathToasts: DeathToast[];
 };
+
+type DeathPassProfile = {
+  playerPrecheckMs: number;
+  playerEligibilityMs: number;
+  playerScheduleMs: number;
+  playerProbabilityMs: number;
+  playerMutationMs: number;
+  staffPrecheckMs: number;
+  staffScheduleMs: number;
+  staffProbabilityMs: number;
+  staffMutationMs: number;
+  alreadyDeadPlayers: number;
+  futureProspects: number;
+  eligiblePlayers: number;
+  ineligiblePlayers: number;
+  initializedPlayerChecks: number;
+  futurePlayerChecks: number;
+  duePlayerChecks: number;
+  playerProbabilityEvaluations: number;
+  playerReferenceMutations: number;
+  staffScanned: number;
+  initializedStaffChecks: number;
+  futureStaffChecks: number;
+  dueStaffChecks: number;
+  staffProbabilityEvaluations: number;
+  staffReferenceMutations: number;
+};
+
+const deathPerfNow = () =>
+  typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
 
 const NATURAL_CAUSES = [
   'natural causes',
@@ -134,30 +170,104 @@ function applyPronouns(template: string, person: { name: string }): string {
     .replaceAll('PRONOUN_himself', 'himself');
 }
 
+export function isPlayerEligibleForSimulatedDeath(
+  player: NBAPlayer,
+  branchStartYear?: number,
+): boolean {
+  const isRetired = player.status === 'Retired' || !!player.retiredYear || player.tid === -3;
+  if (!isRetired) return true;
+  if (player.sourceRetirement || (player as any)._historySourceOnly) return false;
+  const startYear = Number(branchStartYear ?? 0);
+  if (!Number.isFinite(startYear) || startYear <= 0) return true;
+  const retiredYear = Number(player.retiredYear ?? 0);
+  if (Number.isFinite(retiredYear) && retiredYear > 0 && retiredYear < startYear) return false;
+  const lastPlayedSeason = Math.max(0, ...(player.stats ?? [])
+    .filter(row => !row.playoffs && Number(row.gp ?? 0) > 0)
+    .map(row => Number(row.season ?? 0))
+    .filter(Number.isFinite));
+  return lastPlayedSeason <= 0 || lastPlayedSeason >= startYear;
+}
+
 function maybeProcessPlayerDeath(
   player: NBAPlayer,
   todayIso: string,
   currentYear: number,
-  teamNameLookup: Map<number, string>,
+  resolveTeamName: (teamId: number) => string | undefined,
+  tragicDeathRateFactor: number,
+  branchStartYear?: number,
+  profile?: DeathPassProfile,
 ): { player: NBAPlayer; death?: DeathEvent; toast?: DeathToast } {
-  if ((player as any).diedYear || (player as any).diedDate) return { player };
-  if (player.tid === -2) return { player };
+  let leafStart = profile ? deathPerfNow() : 0;
+  if ((player as any).diedYear || (player as any).diedDate) {
+    if (profile) {
+      profile.alreadyDeadPlayers += 1;
+      profile.playerPrecheckMs += deathPerfNow() - leafStart;
+    }
+    return { player };
+  }
+  if (player.tid === -2) {
+    if (profile) {
+      profile.futureProspects += 1;
+      profile.playerPrecheckMs += deathPerfNow() - leafStart;
+    }
+    return { player };
+  }
+  if (profile) {
+    profile.playerPrecheckMs += deathPerfNow() - leafStart;
+    leafStart = deathPerfNow();
+  }
+  if (!isPlayerEligibleForSimulatedDeath(player, branchStartYear)) {
+    const updated = player.deathCheckDate ? { ...player, deathCheckDate: undefined } : player;
+    if (profile) {
+      profile.ineligiblePlayers += 1;
+      profile.playerEligibilityMs += deathPerfNow() - leafStart;
+      if (updated !== player) profile.playerReferenceMutations += 1;
+    }
+    return { player: updated };
+  }
+  if (profile) {
+    profile.eligiblePlayers += 1;
+    profile.playerEligibilityMs += deathPerfNow() - leafStart;
+    leafStart = deathPerfNow();
+  }
 
   const checkId = player.internalId;
   const scheduled = (player as any).deathCheckDate as string | undefined;
   if (!scheduled) {
-    return { player: { ...player, deathCheckDate: nextAnnualCheckDate(checkId, todayIso) } as any };
+    const updated = { ...player, deathCheckDate: nextAnnualCheckDate(checkId, todayIso) } as any;
+    if (profile) {
+      profile.initializedPlayerChecks += 1;
+      profile.playerReferenceMutations += 1;
+      profile.playerScheduleMs += deathPerfNow() - leafStart;
+    }
+    return { player: updated };
   }
-  if (scheduled > todayIso) return { player };
+  if (scheduled > todayIso) {
+    if (profile) {
+      profile.futurePlayerChecks += 1;
+      profile.playerScheduleMs += deathPerfNow() - leafStart;
+    }
+    return { player };
+  }
+  if (profile) {
+    profile.duePlayerChecks += 1;
+    profile.playerScheduleMs += deathPerfNow() - leafStart;
+    leafStart = deathPerfNow();
+  }
 
   const age = computeAge(player, currentYear);
   const isRetired = (player as any).status === 'Retired' || !!player.retiredYear || player.tid === -3;
   const isActive = !isRetired && (player.tid >= 0 || (player as any).status === 'Free Agent');
 
-  const tragicProb = isRetired ? tragicRetiredDeathProb(age) : tragicPlayerDeathProb(age);
+  const tragicProb = (isRetired ? tragicRetiredDeathProb(age) : tragicPlayerDeathProb(age)) * tragicDeathRateFactor;
   const naturalProb = isRetired ? retiredNaturalDeathProb(age) : 0;
   const tragicRoll = seededUnit(`death-tragic:${checkId}:${todayIso}`);
   const naturalRoll = seededUnit(`death-natural:${checkId}:${todayIso}`);
+  if (profile) {
+    profile.playerProbabilityEvaluations += 1;
+    profile.playerProbabilityMs += deathPerfNow() - leafStart;
+    leafStart = deathPerfNow();
+  }
 
   let deathType: DeathEvent['deathType'] | null = null;
   let cause = '';
@@ -173,14 +283,25 @@ function maybeProcessPlayerDeath(
   }
 
   if (!deathType) {
-    return { player: { ...player, deathCheckDate: nextYearCheckDate(checkId, currentYear) } as any };
+    const updated = { ...player, deathCheckDate: nextYearCheckDate(checkId, currentYear) } as any;
+    if (profile) {
+      profile.playerReferenceMutations += 1;
+      profile.playerMutationMs += deathPerfNow() - leafStart;
+    }
+    return { player: updated };
   }
 
-  const teamName = player.tid >= 0 ? teamNameLookup.get(player.tid) : undefined;
+  if (profile) {
+    profile.playerMutationMs += deathPerfNow() - leafStart;
+    leafStart = deathPerfNow();
+  }
+  const teamName = player.tid >= 0 ? resolveTeamName(player.tid) : undefined;
+  if (profile) leafStart = deathPerfNow();
   const wasActive = isActive && deathType === 'tragic';
   const death: DeathEvent = {
     entityType: 'player',
     playerId: player.internalId,
+    teamId: player.tid >= 0 ? player.tid : undefined,
     name: player.name,
     age,
     cause,
@@ -222,6 +343,11 @@ function maybeProcessPlayerDeath(
       }
     : undefined;
 
+  if (profile) {
+    profile.playerReferenceMutations += 1;
+    profile.playerMutationMs += deathPerfNow() - leafStart;
+  }
+
   return { player: updated, death, toast };
 }
 
@@ -229,22 +355,55 @@ function maybeProcessStaffDeath(
   member: StaffMember,
   todayIso: string,
   currentYear: number,
+  tragicDeathRateFactor: number,
+  profile?: DeathPassProfile,
 ): { member?: StaffMember; death?: DeathEvent; toast?: DeathToast } {
-  if ((member as any).diedYear || (member as any).diedDate) return { member };
+  let leafStart = profile ? deathPerfNow() : 0;
+  if (profile) profile.staffScanned += 1;
+  if ((member as any).diedYear || (member as any).diedDate) {
+    if (profile) profile.staffPrecheckMs += deathPerfNow() - leafStart;
+    return { member };
+  }
+  if (profile) {
+    profile.staffPrecheckMs += deathPerfNow() - leafStart;
+    leafStart = deathPerfNow();
+  }
 
   const checkId = member.id ?? `${member.name}:${member.position ?? member.jobTitle ?? member.role ?? 'staff'}`;
   const scheduled = (member as any).deathCheckDate as string | undefined;
   if (!scheduled) {
-    return { member: { ...member, deathCheckDate: nextAnnualCheckDate(checkId, todayIso) } as any };
+    const updated = { ...member, deathCheckDate: nextAnnualCheckDate(checkId, todayIso) } as any;
+    if (profile) {
+      profile.initializedStaffChecks += 1;
+      profile.staffReferenceMutations += 1;
+      profile.staffScheduleMs += deathPerfNow() - leafStart;
+    }
+    return { member: updated };
   }
-  if (scheduled > todayIso) return { member };
+  if (scheduled > todayIso) {
+    if (profile) {
+      profile.futureStaffChecks += 1;
+      profile.staffScheduleMs += deathPerfNow() - leafStart;
+    }
+    return { member };
+  }
+  if (profile) {
+    profile.dueStaffChecks += 1;
+    profile.staffScheduleMs += deathPerfNow() - leafStart;
+    leafStart = deathPerfNow();
+  }
 
   const bornYear = Number((member as any).bornYear ?? 0);
   const age = bornYear > 0 ? currentYear - bornYear : 48;
-  const tragicProb = tragicStaffDeathProb(age);
+  const tragicProb = tragicStaffDeathProb(age) * tragicDeathRateFactor;
   const naturalProb = staffNaturalDeathProb(age);
   const tragicRoll = seededUnit(`staff-death-tragic:${checkId}:${todayIso}`);
   const naturalRoll = seededUnit(`staff-death-natural:${checkId}:${todayIso}`);
+  if (profile) {
+    profile.staffProbabilityEvaluations += 1;
+    profile.staffProbabilityMs += deathPerfNow() - leafStart;
+    leafStart = deathPerfNow();
+  }
 
   let deathType: DeathEvent['deathType'] | null = null;
   let cause = '';
@@ -257,7 +416,12 @@ function maybeProcessStaffDeath(
   }
 
   if (!deathType) {
-    return { member: { ...member, deathCheckDate: nextYearCheckDate(checkId, currentYear) } as any };
+    const updated = { ...member, deathCheckDate: nextYearCheckDate(checkId, currentYear) } as any;
+    if (profile) {
+      profile.staffReferenceMutations += 1;
+      profile.staffMutationMs += deathPerfNow() - leafStart;
+    }
+    return { member: updated };
   }
 
   const teamName = member.team;
@@ -285,6 +449,11 @@ function maybeProcessStaffDeath(
     deathType,
   };
 
+  if (profile) {
+    profile.staffReferenceMutations += 1;
+    profile.staffMutationMs += deathPerfNow() - leafStart;
+  }
+
   return { death, toast };
 }
 
@@ -292,12 +461,14 @@ function processStaffGroup(
   group: StaffMember[] | undefined,
   todayIso: string,
   currentYear: number,
+  tragicDeathRateFactor: number,
+  profile?: DeathPassProfile,
 ): { members: StaffMember[]; deaths: DeathEvent[]; toasts: DeathToast[] } {
   const members: StaffMember[] = [];
   const deaths: DeathEvent[] = [];
   const toasts: DeathToast[] = [];
   for (const member of group ?? []) {
-    const result = maybeProcessStaffDeath(member, todayIso, currentYear);
+    const result = maybeProcessStaffDeath(member, todayIso, currentYear, tragicDeathRateFactor, profile);
     if (result.member) members.push(result.member);
     if (result.death) deaths.push(result.death);
     if (result.toast) toasts.push(result.toast);
@@ -306,7 +477,37 @@ function processStaffGroup(
 }
 
 export function runDailyDeathPass(state: GameState): DeathPassResult {
+  const perfEnabled = isSimulationPerfEnabled();
+  const totalStart = perfEnabled ? deathPerfNow() : 0;
+  const profile: DeathPassProfile | undefined = perfEnabled ? {
+    playerPrecheckMs: 0,
+    playerEligibilityMs: 0,
+    playerScheduleMs: 0,
+    playerProbabilityMs: 0,
+    playerMutationMs: 0,
+    staffPrecheckMs: 0,
+    staffScheduleMs: 0,
+    staffProbabilityMs: 0,
+    staffMutationMs: 0,
+    alreadyDeadPlayers: 0,
+    futureProspects: 0,
+    eligiblePlayers: 0,
+    ineligiblePlayers: 0,
+    initializedPlayerChecks: 0,
+    futurePlayerChecks: 0,
+    duePlayerChecks: 0,
+    playerProbabilityEvaluations: 0,
+    playerReferenceMutations: 0,
+    staffScanned: 0,
+    initializedStaffChecks: 0,
+    futureStaffChecks: 0,
+    dueStaffChecks: 0,
+    staffProbabilityEvaluations: 0,
+    staffReferenceMutations: 0,
+  } : undefined;
+  const dateStart = perfEnabled ? deathPerfNow() : 0;
   const todayIso = normalizeDate(state.date);
+  const dateNormalizationMs = perfEnabled ? deathPerfNow() - dateStart : 0;
   if (!todayIso) {
     return {
       players: state.players,
@@ -318,24 +519,65 @@ export function runDailyDeathPass(state: GameState): DeathPassResult {
   }
 
   const currentYear = Number(todayIso.slice(0, 4));
-  const teamNameLookup = new Map((state.teams ?? []).map(team => [team.id, team.name]));
+  const tragicDeathRateFactor = Math.min(10, Math.max(0, Number(state.leagueStats?.tragicDeathRateFactor ?? 1)));
+  const teamLookupStart = perfEnabled ? deathPerfNow() : 0;
+  const allTeamIds = [
+    ...(state.teams ?? []).map(team => team.id),
+    ...(state.nonNBATeams ?? []).map(team => team.tid),
+  ];
+  let teamNameLookup: Map<number, string> | undefined;
+  let teamLookupMs = 0;
+  let teamsScanned = 0;
+  const resolveTeamName = (teamId: number): string | undefined => {
+    if (!teamNameLookup) {
+      const lazyLookupStart = perfEnabled ? deathPerfNow() : 0;
+      teamNameLookup = new Map(allTeamIds.flatMap(candidateTeamId => {
+        const team = resolveAnyTeam(candidateTeamId, state.teams, state.nonNBATeams ?? []);
+        return team ? [[candidateTeamId, getTeamFullName(team)] as const] : [];
+      }));
+      teamsScanned = allTeamIds.length;
+      if (perfEnabled) teamLookupMs += deathPerfNow() - lazyLookupStart;
+    }
+    return teamNameLookup.get(teamId);
+  };
+  if (perfEnabled) teamLookupMs += deathPerfNow() - teamLookupStart;
 
   const players: NBAPlayer[] = [];
   const deaths: DeathEvent[] = [];
   const pendingDeathToasts: DeathToast[] = [];
 
+  const playerLoopStart = perfEnabled ? deathPerfNow() : 0;
+  let activePlayers = 0;
+  let freeAgents = 0;
+  let retiredPlayers = 0;
+  let sourceOnlyPlayers = 0;
   for (const player of state.players) {
-    const result = maybeProcessPlayerDeath(player, todayIso, currentYear, teamNameLookup);
+    const retired = player.status === 'Retired' || !!player.retiredYear || player.tid === -3;
+    if (retired) retiredPlayers += 1;
+    else if (player.status === 'Free Agent' || player.tid < 0) freeAgents += 1;
+    else activePlayers += 1;
+    if (player.sourceRetirement || (player as any)._historySourceOnly) sourceOnlyPlayers += 1;
+    const result = maybeProcessPlayerDeath(
+      player,
+      todayIso,
+      currentYear,
+      resolveTeamName,
+      tragicDeathRateFactor,
+      Number(state.nbaStartYear ?? 0) || undefined,
+      profile,
+    );
     players.push(result.player);
     if (result.death) deaths.push(result.death);
     if (result.toast) pendingDeathToasts.push(result.toast);
   }
+  const playerLoopMs = perfEnabled ? deathPerfNow() - playerLoopStart : 0;
 
+  const staffLoopStart = perfEnabled ? deathPerfNow() : 0;
   const staffGroups = state.staff ? {
-    owners: processStaffGroup(state.staff.owners, todayIso, currentYear),
-    gms: processStaffGroup(state.staff.gms, todayIso, currentYear),
-    coaches: processStaffGroup(state.staff.coaches, todayIso, currentYear),
-    leagueOffice: processStaffGroup(state.staff.leagueOffice, todayIso, currentYear),
+    owners: processStaffGroup(state.staff.owners, todayIso, currentYear, tragicDeathRateFactor, profile),
+    gms: processStaffGroup(state.staff.gms, todayIso, currentYear, tragicDeathRateFactor, profile),
+    coaches: processStaffGroup(state.staff.coaches, todayIso, currentYear, tragicDeathRateFactor, profile),
+    leagueOffice: processStaffGroup(state.staff.leagueOffice, todayIso, currentYear, tragicDeathRateFactor, profile),
   } : null;
 
   if (staffGroups) {
@@ -353,10 +595,11 @@ export function runDailyDeathPass(state: GameState): DeathPassResult {
     );
   }
 
-  const staffFreeAgentPass = processStaffGroup(state.staffFreeAgents ?? [], todayIso, currentYear);
+  const staffFreeAgentPass = processStaffGroup(state.staffFreeAgents ?? [], todayIso, currentYear, tragicDeathRateFactor, profile);
   deaths.push(...staffFreeAgentPass.deaths);
+  const staffLoopMs = perfEnabled ? deathPerfNow() - staffLoopStart : 0;
 
-  return {
+  const result = {
     players,
     staff: staffGroups ? {
       owners: staffGroups.owners.members,
@@ -369,4 +612,30 @@ export function runDailyDeathPass(state: GameState): DeathPassResult {
     deaths,
     pendingDeathToasts,
   };
+  if (perfEnabled && profile) {
+    const leafMs = profile.playerPrecheckMs + profile.playerEligibilityMs + profile.playerScheduleMs
+      + profile.playerProbabilityMs + profile.playerMutationMs + profile.staffPrecheckMs
+      + profile.staffScheduleMs + profile.staffProbabilityMs + profile.staffMutationMs;
+    recordSimulationPerf({
+      engine: 'death-pass-forensics',
+      date: todayIso,
+      totalMs: deathPerfNow() - totalStart,
+      dateNormalizationMs,
+      teamLookupMs,
+      playerLoopMs,
+      staffLoopMs,
+      loopOtherMs: Math.max(0, playerLoopMs + staffLoopMs - leafMs),
+      ...profile,
+      playersScanned: state.players.length,
+      activePlayers,
+      freeAgents,
+      retiredPlayers,
+      sourceOnlyPlayers,
+      teamsScanned,
+      deaths: deaths.length,
+      mutations: profile.playerReferenceMutations + profile.staffReferenceMutations,
+      noOp: deaths.length === 0 && profile.playerReferenceMutations === 0 && profile.staffReferenceMutations === 0,
+    });
+  }
+  return result;
 }

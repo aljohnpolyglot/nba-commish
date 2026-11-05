@@ -10,6 +10,7 @@ import { PlayerSelector } from './PlayerSelector';
 import { TheThroneGame } from './Game';
 import { TournamentBracket } from './Bracket';
 import { StatsTable } from './StatsTable';
+import { useGame } from '../../../store/GameContext';
 
 const rosterService = new RosterService();
 const makeId = () => Math.random().toString(36).slice(2);
@@ -74,6 +75,7 @@ enum AppView {
 }
 
 export default function TheThroneView() {
+  const { state } = useGame();
   const [view, setView] = useState<AppView>(AppView.LANDING);
   const [introIndex, setIntroIndex] = useState(0);
   const [allPlayers, setAllPlayers] = useState<Player[]>([]);
@@ -113,8 +115,8 @@ export default function TheThroneView() {
   } = useGameSim();
 
   useEffect(() => {
-    rosterService.loadPlayers().then(setAllPlayers).catch(console.error);
-  }, []);
+    rosterService.loadPlayers(state.players, state.teams).then(setAllPlayers).catch(console.error);
+  }, [state.players, state.teams]);
 
   // Field intro auto-progression
   useEffect(() => {

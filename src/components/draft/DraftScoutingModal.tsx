@@ -4,35 +4,36 @@ import { X, ShieldAlert, Heart, Zap, Target } from 'lucide-react';
 import type { NBAPlayer } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
-import { generateCombineStats } from '../../services/draftCombineCalculator';
+import { didPlayerAttendDraftCombine, generateCombineStats } from '../../services/draftCombineCalculator';
 import {
   generateStructuredScoutingReport,
   getTendencies,
   getRiskProfile,
-  getSkillGrades,
   getPhysicalSnapshot,
-  getBackgroundBlurb,
   getComparisonsWithSimilarity,
   inferArchetype,
-  type ClassPercentileMaps,
-  type SkillAxis,
-  SKILL_AXES,
-  posBucketFor as scoutPosBucket,
 } from '../../services/scoutingReport';
 import type { GistProspect } from '../../services/draftScoutingGist';
 import { findCollegeTeamProfile, type CollegeTeamProfile } from '../../services/collegeTeamCatalog';
-import { HybridRadarChart, letterColor, ordinal, tierColor } from './DraftScoutingModalShared';
+import {
+  getProspectBackgroundBlurb,
+  rankProspectComparisons,
+  resolveCollegeSnapshot,
+  tierColor,
+} from './DraftScoutingModalShared';
 import { DraftScoutingCombineTab } from './DraftScoutingCombineTab';
-import { fuzzRatingValue } from '../../utils/scoutingFuzz';
-import { isPbaIsolatedMode } from '../../utils/uiMode';
+import { fuzzPercentileValue } from '../../utils/scoutingFuzz';
+import { isPbaIsolatedMode, isWnbaIsolatedMode } from '../../utils/uiMode';
+import { ClassPercentileSkillProfile } from '../scouting/ClassPercentileSkillProfile';
+import { loadBbrCollegeStatsForPlayer } from '../../services/college/bbrCollegeHistory';
+import type { NBAGMStat } from '../../types';
+import { getProspectPreDraftClub } from '../../utils/prospectUtils';
 
 export interface DraftScoutingModalProps {
   player: NBAPlayer | null;
   onClose: () => void;
   classProspects: NBAPlayer[];
   activePlayers: NBAPlayer[];
-  percentilesByPos: Map<string, ClassPercentileMaps>;
-  classAverages: Record<SkillAxis, number>;
   draftYear: number;
   /** Optional gist match for ranks/college-stats/photo. */
   gistData?: GistProspect | null;
@@ -53,53 +54,69 @@ export interface DraftScoutingModalProps {
 
 type Tab = 'overview' | 'scouting' | 'skill' | 'combine';
 
-function skillLetterFor(score: number): string {
-  if (score >= 88) return 'A+';
-  if (score >= 82) return 'A';
-  if (score >= 76) return 'A-';
-  if (score >= 70) return 'B+';
-  if (score >= 64) return 'B';
-  if (score >= 58) return 'B-';
-  if (score >= 52) return 'C+';
-  if (score >= 46) return 'C';
-  if (score >= 40) return 'C-';
-  if (score >= 34) return 'D';
-  return 'F';
-}
-
 export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
-  player, onClose, classProspects, activePlayers, percentilesByPos,
-  classAverages, draftYear, gistData, ranks, teamLogoUrl, onViewPlayerBio,
+  player, onClose, classProspects, activePlayers,
+  draftYear, gistData, ranks, teamLogoUrl, onViewPlayerBio,
   onConfirmPick, pickLabel, preComputedComps, showCombineTab = false,
 }) => {
   const { state } = useGame();
   const [tab, setTab] = useState<Tab>('overview');
+  const [archivedCollegeStats, setArchivedCollegeStats] = useState<NBAGMStat[]>([]);
   React.useEffect(() => { setTab('overview'); }, [player?.internalId]);
+  React.useEffect(() => {
+    let active = true;
+    setArchivedCollegeStats([]);
+    if (!player) return () => { active = false; };
+    loadBbrCollegeStatsForPlayer(player, draftYear)
+      .then(rows => { if (active) setArchivedCollegeStats(rows); })
+      .catch(() => { if (active) setArchivedCollegeStats([]); });
+    return () => { active = false; };
+  }, [draftYear, player]);
   const projectionContext = isPbaIsolatedMode(state) ? 'pba' : 'nba';
 
   const data = useMemo(() => {
     if (!player) return null;
-    const report = generateStructuredScoutingReport(player, projectionContext);
+    const report = generateStructuredScoutingReport(player, projectionContext, { cohortProspects: classProspects });
     const tendencies = getTendencies(player);
     const risk = getRiskProfile(player, projectionContext);
-    const grades = getSkillGrades(player);
     const physical = getPhysicalSnapshot(player);
-    const blurb = getBackgroundBlurb(player, draftYear);
+    const blurb = getProspectBackgroundBlurb(player, draftYear, gistData);
     const archetype = inferArchetype(player);
-    return { report, tendencies, risk, grades, physical, blurb, archetype };
-  }, [player, draftYear, projectionContext]);
+    return { report, tendencies, risk, physical, blurb, archetype };
+  }, [player, draftYear, gistData, projectionContext, classProspects]);
 
   const comparisons = useMemo(() => {
-    if (preComputedComps) return preComputedComps;
     if (!player) return [];
-    return getComparisonsWithSimilarity(player, activePlayers, 3);
-  }, [player, activePlayers, preComputedComps]);
+    const live = getComparisonsWithSimilarity(player, activePlayers, 10, projectionContext);
+    const byId = new Map<string, (typeof live)[number]>();
+    for (const row of [...(preComputedComps ?? []), ...live]) byId.set(row.comparison.internalId, row);
+    return rankProspectComparisons(player, [...byId.values()], 3);
+  }, [player, activePlayers, preComputedComps, projectionContext]);
 
-  const cohort = player ? scoutPosBucket(player.pos) : 'Class';
-  const cohortMaps = percentilesByPos.get(cohort);
-  const collegeName = player ? (gistData?.college || (player as any).college) : undefined;
+  const collegeSnapshot = useMemo(
+    () => player ? resolveCollegeSnapshot(player, gistData, draftYear, archivedCollegeStats) : null,
+    [archivedCollegeStats, draftYear, gistData, player],
+  );
+  const collegeName = collegeSnapshot?.college;
   const collegeProfile = useMemo(() => findCollegeTeamProfile(collegeName), [collegeName]);
-  const combine = useMemo(() => (player && showCombineTab ? generateCombineStats(player) : null), [player, showCombineTab]);
+  const preDraftClub = useMemo(() => player ? getProspectPreDraftClub(player, {
+    currentSeason: draftYear,
+    completedThrough: draftYear,
+    teams: [...state.teams, ...(state.nonNBATeams ?? [])],
+  }) : null, [draftYear, player, state.nonNBATeams, state.teams]);
+  const programName = collegeName || preDraftClub?.name;
+  const classRank = player ? classProspects.findIndex(row => row.internalId === player.internalId) : -1;
+  const projectedRank = player
+    ? ranks?.consensus ?? ranks?.espn ?? ranks?.noCeilings
+      ?? player.preDraftClub?.projectedOverallPick
+      ?? (classRank >= 0 ? classRank + 1 : 60)
+    : 1;
+  const attendedCombine = !player || isPbaIsolatedMode(state) || isWnbaIsolatedMode(state)
+    || didPlayerAttendDraftCombine(player, draftYear, projectedRank);
+  const combine = useMemo(
+    () => player && showCombineTab && attendedCombine ? generateCombineStats(player) : null,
+    [attendedCombine, player, showCombineTab],
+  );
 
   return (
     <AnimatePresence>
@@ -107,7 +124,7 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
       <motion.div
         key={player.internalId}
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[80] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-0 md:p-4"
+        className="fixed inset-0 z-[170] bg-slate-950/90 backdrop-blur-sm flex items-center justify-center p-0 md:p-4"
         onClick={e => { if (e.target === e.currentTarget) onClose(); }}
       >
         <motion.div
@@ -120,8 +137,11 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
                 <PlayerPortrait
                   imgUrl={player.imgURL || gistData?.headshot}
                   face={(player as any).face}
-                  teamLogoUrl={collegeProfile?.logoUrl || teamLogoUrl}
+                  teamLogoUrl={collegeProfile?.logoUrl || preDraftClub?.logoUrl || teamLogoUrl}
                   playerName={player.name}
+                  playerIdentity={player}
+                  portraitSeason={draftYear}
+                  isDraftProspect
                   size={64}
                 />
                 <div className="min-w-0 flex-1">
@@ -135,7 +155,7 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
                   </h2>
                   <p className="text-xs text-slate-400 font-medium mt-0.5">
                     {player.pos}
-                    {collegeName && <> &middot; {collegeName}</>}
+                    {programName && <> &middot; {programName}</>}
                     {player.age != null && <> &middot; Age {player.age}</>}
                     {data.physical.heightDisplay && <> &middot; {data.physical.heightDisplay}</>}
                   </p>
@@ -176,11 +196,34 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
               </div>
               <button
                 onClick={onClose}
+                aria-label="Close scouting report"
                 className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors flex-shrink-0"
               >
                 <X size={18} />
               </button>
             </div>
+            {collegeSnapshot && (
+              <div className="mt-4 grid grid-cols-[minmax(0,1.5fr)_repeat(3,minmax(58px,1fr))] gap-2 rounded-xl border border-indigo-400/20 bg-indigo-500/5 p-2 sm:p-3">
+                <div className="min-w-0 self-center px-1">
+                  <div className="truncate text-xs font-black uppercase tracking-wide text-white">{collegeSnapshot.college}</div>
+                  <div className="text-[9px] font-bold uppercase tracking-widest text-slate-500">
+                    {collegeSnapshot.seasonLabel}{collegeSnapshot.games ? ` · ${collegeSnapshot.games} GP` : ''}
+                  </div>
+                </div>
+                {[
+                  ['PPG', collegeSnapshot.ppg],
+                  ['RPG', collegeSnapshot.rpg],
+                  ['APG', collegeSnapshot.apg],
+                ].map(([label, value]) => (
+                  <div key={String(label)} className="rounded-lg bg-slate-950/60 px-2 py-2 text-center">
+                    <div className="text-[8px] font-black uppercase tracking-widest text-slate-500">{label}</div>
+                    <div className="mt-0.5 text-sm font-black tabular-nums text-white">
+                      {typeof value === 'number' ? value.toFixed(1) : '—'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div className="flex-shrink-0 px-4 md:px-6 pt-3 border-b border-slate-800 bg-slate-900/40">
@@ -229,15 +272,13 @@ export const DraftScoutingModal: React.FC<DraftScoutingModalProps> = ({
               />
             )}
             {tab === 'skill' && (
-              <SkillProfileTab
-                grades={data.grades}
-                cohortMaps={cohortMaps}
-                classAverages={classAverages}
-                playerId={player.internalId}
-                fuzzValue={(value, salt) => fuzzRatingValue(value, state, player, salt)}
+              <ClassPercentileSkillProfile
+                player={player}
+                classProspects={classProspects}
+                fuzzPercentile={(value, salt) => fuzzPercentileValue(value, state, player, salt)}
               />
             )}
-            {tab === 'combine' && combine && (
+            {tab === 'combine' && (
               <DraftScoutingCombineTab playerName={player.name} combine={combine} />
             )}
           </div>
@@ -294,25 +335,6 @@ const OverviewTab: React.FC<{
         ))}
       </div>
     </div>
-
-    {gistData?.stats && (gistData.stats.pts != null || gistData.stats.reb != null || gistData.stats.ast != null) && (
-      <div>
-        <h3 className="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-2">College Stats</h3>
-        <div className="grid grid-cols-4 gap-2">
-          {[
-            { label: 'PPG', value: gistData.stats.pts ?? '—' },
-            { label: 'RPG', value: gistData.stats.reb ?? '—' },
-            { label: 'APG', value: gistData.stats.ast ?? '—' },
-            { label: 'FG%', value: gistData.stats.fg ?? '—' },
-          ].map(s => (
-            <div key={s.label} className="bg-slate-900 border border-slate-800 rounded-xl px-3 py-2 text-center">
-              <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{s.label}</div>
-              <div className="text-sm font-bold text-white mt-0.5">{s.value}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    )}
 
     {comparisons.length > 0 && (
       <div>
@@ -465,60 +487,6 @@ const ScoutingReportTab: React.FC<{
             </div>
           </div>
         </div>
-      </div>
-    </div>
-  );
-};
-
-const SkillProfileTab: React.FC<{
-  grades: Record<SkillAxis, { score: number; letter: string }>;
-  cohortMaps: ClassPercentileMaps | undefined;
-  classAverages: Record<SkillAxis, number>;
-  playerId: string | number;
-  fuzzValue: (value: number, salt: string) => number;
-}> = ({ grades, cohortMaps, classAverages, playerId, fuzzValue }) => {
-  const fuzzedScores = Object.fromEntries(
-    SKILL_AXES.map(axis => {
-      const score = fuzzValue(grades[axis].score, `skill-${axis}`);
-      return [axis, { score, letter: skillLetterFor(score) }];
-    }),
-  ) as Record<SkillAxis, { score: number; letter: string }>;
-  const values = SKILL_AXES.map(a => fuzzedScores[a].score);
-  const baseline = SKILL_AXES.map(a => classAverages[a] ?? 50);
-
-  return (
-    <div className="space-y-5">
-      <div className="bg-slate-800/30 border border-slate-800 rounded-2xl p-3">
-        <HybridRadarChart values={values} baseline={baseline} axes={SKILL_AXES as unknown as string[]} />
-        <div className="flex items-center justify-center gap-4 text-[10px] font-bold mt-1">
-          <span className="flex items-center gap-1.5 text-sky-300">
-            <span className="w-3 h-0.5 bg-sky-400" /> Player
-          </span>
-          <span className="flex items-center gap-1.5 text-slate-400">
-            <span className="w-3 h-0.5 border-t border-dashed border-slate-400" /> Class average
-          </span>
-        </div>
-      </div>
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-        {SKILL_AXES.map(axis => {
-          const g = fuzzedScores[axis];
-          const pct = cohortMaps?.byAxis[axis].get(playerId);
-          return (
-            <div key={axis} className="bg-slate-900 border border-slate-800 rounded-xl p-3 text-center">
-              <div className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{axis}</div>
-              <div className="text-2xl font-black mt-1" style={{ color: letterColor(g.score) }}>
-                {g.letter}
-              </div>
-              {pct != null && cohortMaps && (
-                <div className="text-[9px] font-bold text-slate-400 mt-1 leading-tight">
-                  {ordinal(pct)} pct
-                  <br />
-                  <span className="text-slate-500">in {cohortMaps.cohortLabel}</span>
-                </div>
-              )}
-            </div>
-          );
-        })}
       </div>
     </div>
   );

@@ -41,16 +41,16 @@ export default function FarewellTourReviewView({ rows, selected, onSelect, onOpe
 
   return (
     <div className="min-h-0 flex-1 overflow-y-auto bg-[#08101d]" style={{ scrollbarWidth: 'thin' }}>
-      <div className="grid min-h-full grid-cols-[320px_1fr]">
-        <div className="relative overflow-hidden border-r border-slate-800 bg-gradient-to-b from-slate-950 to-black">
+      <div className="grid min-h-full grid-cols-1 lg:grid-cols-[320px_1fr]">
+        <div className="relative overflow-hidden border-b lg:border-b-0 lg:border-r border-slate-800 bg-gradient-to-b from-slate-950 to-black">
           <div className="absolute inset-0 bg-[radial-gradient(circle_at_40%_20%,rgba(245,158,11,0.20),transparent_34%),linear-gradient(180deg,transparent,rgba(0,0,0,0.72))]" />
-          <div className="relative flex h-full flex-col items-center justify-center px-6 py-8">
+          <div className="relative flex h-full flex-col items-center justify-center px-4 py-6 sm:px-6 sm:py-8">
             <button onClick={() => onOpenBio(p)} className="rounded-full ring-2 ring-amber-400/40 transition hover:ring-amber-300" title="Open player card">
               <PlayerPortrait
                 imgUrl={(p as any).imgURL}
                 playerName={p.name}
                 face={(p as any).face}
-                size={190}
+                size={160}
               />
             </button>
             <div className="mt-6 flex items-center gap-2">
@@ -65,14 +65,14 @@ export default function FarewellTourReviewView({ rows, selected, onSelect, onOpe
           </div>
         </div>
 
-        <div className="flex min-w-0 flex-col p-7">
+        <div className="flex min-w-0 flex-col p-4 sm:p-5 lg:p-7">
           <div className="flex flex-col gap-5">
             <div className="min-w-0">
               <div className="text-sm font-black uppercase tracking-[0.25em] text-amber-300">Farewell Tour</div>
-              <button onClick={() => onOpenBio(p)} className="mt-2 block max-w-full text-left font-display text-4xl font-black uppercase leading-none tracking-wide text-slate-100 [overflow-wrap:anywhere] hover:text-amber-200 xl:text-5xl">
+              <button onClick={() => onOpenBio(p)} className="mt-2 block max-w-full text-left font-display text-3xl font-black uppercase leading-none tracking-wide text-slate-100 [overflow-wrap:anywhere] hover:text-amber-200 sm:text-4xl xl:text-5xl">
                 {p.name}
               </button>
-              <div className="mt-2 text-xl font-black uppercase tracking-wide text-amber-300">Final NBA Season</div>
+              <div className="mt-2 text-lg font-black uppercase tracking-wide text-amber-300 sm:text-xl">Final NBA Season</div>
               <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-300">
                 His final season. One last run.
               </p>
@@ -87,9 +87,9 @@ export default function FarewellTourReviewView({ rows, selected, onSelect, onOpe
           </div>
 
           <div className="mt-7 grid flex-1 grid-cols-1 gap-5">
-            <section className="rounded-lg border border-slate-800 bg-slate-950/65 p-5">
+            <section className="rounded-lg border border-slate-800 bg-slate-950/65 p-4 sm:p-5">
               <h3 className="text-sm font-black uppercase tracking-[0.18em] text-amber-300">Key Teams</h3>
-              <div className="mt-5 flex items-center gap-3">
+              <div className="mt-5 flex items-center gap-2 sm:gap-3">
                 {selected.teamLogos.slice(0, 6).map((team, i) => (
                   <React.Fragment key={team.tid}>
                     <div className="flex flex-col items-center gap-2">
@@ -117,15 +117,15 @@ export default function FarewellTourReviewView({ rows, selected, onSelect, onOpe
             </section>
           </div>
 
-          <div className="mt-5 flex items-center justify-between">
-            <div className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500">
+          <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="text-center text-xs font-bold uppercase tracking-[0.2em] text-slate-500 sm:text-left">
               {index + 1} / {rows.length}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <button
                 onClick={() => prev && onSelect(prev.player.internalId)}
                 disabled={!prev}
-                className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-bold transition-colors ${
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-bold transition-colors sm:w-auto ${
                   prev ? 'border-slate-700 bg-slate-900 text-slate-200 hover:border-slate-500' : 'border-slate-800 bg-slate-950 text-slate-700'
                 }`}
               >
@@ -135,7 +135,7 @@ export default function FarewellTourReviewView({ rows, selected, onSelect, onOpe
               <button
                 onClick={() => next && onSelect(next.player.internalId)}
                 disabled={!next}
-                className={`inline-flex items-center gap-2 rounded-lg border px-4 py-2 text-sm font-bold transition-colors ${
+                className={`inline-flex w-full items-center justify-center gap-2 rounded-lg border px-4 py-2 text-sm font-bold transition-colors sm:w-auto ${
                   next ? 'border-amber-500/40 bg-amber-500/15 text-amber-200 hover:bg-amber-500/25' : 'border-slate-800 bg-slate-950 text-slate-700'
                 }`}
               >

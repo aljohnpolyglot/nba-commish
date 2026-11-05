@@ -1,5 +1,6 @@
 import { GameState } from '../../../../types';
 import { runAIBirdRightsResigns } from '../../../../services/AIFreeAgentHandler';
+import { simDebug } from '../../../../utils/simDebug';
 
 export function applyBirdRightsResignsPass(stateWithSim: GameState): GameState {
     const rawBirdResigns = runAIBirdRightsResigns(stateWithSim);
@@ -69,7 +70,10 @@ export function applyBirdRightsResignsPass(stateWithSim: GameState): GameState {
         }
     }
 
-    console.log(`[BirdRights] Queued ${birdResigns.length} incumbent re-sign bids into FA markets.`);
+    simDebug('bird-rights', () => `[BirdRights] Queued ${birdResigns.length} incumbent re-sign bids into FA markets.`, {
+        event: 'market-bids-queued',
+        count: birdResigns.length,
+    });
     return {
         ...stateWithSim,
         faBidding: { markets: markets as any },

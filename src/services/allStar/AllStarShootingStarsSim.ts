@@ -1,4 +1,4 @@
-import { NBAPlayer, NBATeam } from '../../types';
+import type { GameState, NBAPlayer, NBATeam } from '../../types';
 import { getTeamFullName } from '../../utils/teamNames';
 import {
   shootingStarsLegendRatingOf,
@@ -8,6 +8,7 @@ import {
   shootingStarsScore,
   shootingStarsStatsForSeason,
 } from './shootingStarsRatings';
+import { isCurrentNbaPlayer } from './allStarSelectionHelpers';
 
 export interface ShootingStarsTeam {
   teamId: string;
@@ -185,6 +186,29 @@ const cityOf = (value?: string): string => {
 
 const teamCity = (team: any): string => cityOf(team?.region ?? team?.city ?? team?.name);
 
+const WNBA_PARTNER_BY_NBA_ABBREV: Record<string, string> = {
+  ATL: 'ATL',
+  BOS: 'CON',
+  BKN: 'NYL',
+  BRK: 'NYL',
+  CHI: 'CHI',
+  DAL: 'DAL',
+  GSW: 'GSV',
+  HOU: 'DAL',
+  IND: 'IND',
+  LAC: 'LA',
+  LAL: 'LA',
+  MIN: 'MIN',
+  NJN: 'NYL',
+  NYK: 'NYL',
+  PHX: 'PHO',
+  POR: 'SEA',
+  SAC: 'GSV',
+  SAS: 'DAL',
+  SEA: 'SEA',
+  WAS: 'WAS',
+};
+
 const playerTeamIds = (player: NBAPlayer): number[] => {
   const ids = new Set<number>();
   if (player.tid >= 0 && player.tid < 100) ids.add(player.tid);
@@ -198,6 +222,21 @@ const playerTeamIds = (player: NBAPlayer): number[] => {
   return [...ids];
 };
 
+export const shouldUseCrossLeagueShootingStarsFormat = (
+  state: Pick<GameState, 'leagueType' | 'moddedLeagueBase' | 'leagueStats' | 'players' | 'nonNBATeams'>,
+): boolean => {
+  const nbaMode = state.leagueType === 'modded'
+    && (state.moddedLeagueBase ?? (state.leagueStats as any)?.moddedLeagueBase) === 'nba'
+    && (!state.leagueStats?.uiMode || state.leagueStats.uiMode === 'nba');
+  if (!nbaMode) return false;
+  const hasWnbaTeamData = (state.nonNBATeams ?? []).some(team => team.league === 'WNBA');
+  const hasWnbaPlayers = state.players.some(player => player.status === 'WNBA' && !(player as any).diedYear);
+  const hasFranchiseHistory = state.players.some(player =>
+    isLegend(player) && playerTeamIds(player).length > 0,
+  );
+  return hasWnbaTeamData && hasWnbaPlayers && hasFranchiseHistory;
+};
+
 export class AllStarShootingStarsSim {
   static selectContestants(
     players: NBAPlayer[],
@@ -206,13 +245,11 @@ export class AllStarShootingStarsSim {
     teams: NBATeam[] = [],
     nonNBATeams: any[] = [],
     hostCity?: string,
+    preferCrossLeagueFormat = false,
   ): NBAPlayer[] {
     const currentNba = players.filter(p =>
-      p.tid >= 0 &&
-      p.tid < 100 &&
-      !(p as any).diedYear &&
-      p.status !== 'Retired' &&
-      p.stats?.some(s => s.season === season && !s.playoffs && (s.gp ?? 0) > 0)
+      isCurrentNbaPlayer(p) &&
+      !(p as any).diedYear
     );
     const wnbaPlayers = players
       .filter(p => p.status === 'WNBA' && !(p as any).diedYear)
@@ -241,40 +278,50 @@ export class AllStarShootingStarsSim {
         return bBest - aBest;
       });
 
-    const entries: NBAPlayer[] = [];
-    for (const team of orderedTeams) {
-      if (entries.length >= teamCount * 3) break;
-      const city = teamCity(team);
-      const nba = currentNba.filter(player => player.tid === team.id).sort((a, b) => scoreOf(b, season) - scoreOf(a, season))[0];
-      if (!nba) continue;
+    if (preferCrossLeagueFormat && wnbaPlayers.length > 0 && legends.length > 0) {
+      const crossLeagueEntries: NBAPlayer[] = [];
+      for (const team of orderedTeams) {
+        if (crossLeagueEntries.length >= teamCount * 3) break;
+        const city = teamCity(team);
+        const nba = currentNba.filter(player => player.tid === team.id).sort((a, b) => scoreOf(b, season) - scoreOf(a, season))[0];
+        if (!nba) continue;
 
-      const matchingWnbaTids = wnbaTeams.filter(wnbaTeam => teamCity(wnbaTeam) === city).map(wnbaTeam => wnbaTeam.tid);
-      const wnba = wnbaPlayers.find(player =>
-        !usedWnba.has(player.internalId) &&
-        (matchingWnbaTids.includes(player.tid) || matchingWnbaTids.length === 0)
-      ) ?? wnbaPlayers.find(player => !usedWnba.has(player.internalId));
-      const legend = legends.find(player => !usedLegends.has(player.internalId) && playerTeamIds(player).includes(team.id))
-        ?? legends.find(player => !usedLegends.has(player.internalId));
-      if (!wnba || !legend) continue;
+        const partnerAbbrev = WNBA_PARTNER_BY_NBA_ABBREV[String((team as any).abbrev ?? '').toUpperCase()];
+        const matchingWnbaTids = wnbaTeams
+          .filter(wnbaTeam =>
+            teamCity(wnbaTeam) === city
+            || (partnerAbbrev && String(wnbaTeam.abbrev ?? '').toUpperCase() === partnerAbbrev),
+          )
+          .map(wnbaTeam => wnbaTeam.tid);
+        const wnba = wnbaPlayers.find(player =>
+          !usedWnba.has(player.internalId)
+          && (matchingWnbaTids.includes(player.tid) || matchingWnbaTids.length === 0)
+        ) ?? wnbaPlayers.find(player => !usedWnba.has(player.internalId));
+        const legend = legends.find(player =>
+          !usedLegends.has(player.internalId)
+          && playerTeamIds(player).includes(team.id)
+        );
+        if (!wnba || !legend) continue;
 
-      usedWnba.add(wnba.internalId);
-      usedLegends.add(legend.internalId);
-      entries.push(nba, wnba, legend);
+        usedWnba.add(wnba.internalId);
+        usedLegends.add(legend.internalId);
+        crossLeagueEntries.push(nba, wnba, legend);
+      }
+      if (crossLeagueEntries.length >= teamCount * 3) {
+        return crossLeagueEntries.slice(0, teamCount * 3);
+      }
     }
 
-    if (entries.length >= 6) return entries.slice(0, teamCount * 3);
-
-    const grouped = new Map<number, NBAPlayer[]>();
-    currentNba.forEach(player => {
-      if (!grouped.has(player.tid)) grouped.set(player.tid, []);
-      grouped.get(player.tid)!.push(player);
-    });
-    return Array.from(grouped.values())
-      .map(teamPlayers => [...teamPlayers].sort((a, b) => scoreOf(b, season) - scoreOf(a, season)).slice(0, 3))
-      .filter(teamPlayers => teamPlayers.length === 3)
-      .sort((a, b) => b.reduce((sum, p) => sum + scoreOf(p, season), 0) - a.reduce((sum, p) => sum + scoreOf(p, season), 0))
-      .slice(0, teamCount)
-      .flat();
+    const sameTeamEntries: NBAPlayer[] = [];
+    for (const team of orderedTeams) {
+      if (sameTeamEntries.length >= teamCount * 3) break;
+      const teamPlayers = currentNba
+        .filter(player => player.tid === team.id)
+        .sort((a, b) => scoreOf(b, season) - scoreOf(a, season))
+        .slice(0, 3);
+      if (teamPlayers.length === 3) sameTeamEntries.push(...teamPlayers);
+    }
+    return sameTeamEntries.slice(0, teamCount * 3);
   }
 
   static simulate(contestants: NBAPlayer[], teamCount: number, playersPerTeam: number, nbaTeams: NBATeam[] = [], season?: number): ShootingStarsResult {

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Clock } from 'lucide-react';
-import { RuleToggle, RuleInput } from '../RuleControls';
+import { RuleToggle, RuleInput, RuleRange } from '../RuleControls';
 import { RULE_DEFINITIONS } from '../../../../../constants/ruleDefinitions';
 
 interface GameStructureSectionProps {
@@ -32,6 +32,11 @@ interface GameStructureSectionProps {
     setStartOfPossessionMethod: (val: 'jump_ball' | 'coin_toss' | 'rock_paper_scissors') => void;
     possessionPattern: 'nba' | 'alternating';
     setPossessionPattern: (val: 'nba' | 'alternating') => void;
+    madeBasketRestart?: 'center_jump' | 'inbound';
+    setMadeBasketRestart?: (value: 'center_jump' | 'inbound') => void;
+    homeCourtAdvantage?: number;
+    setHomeCourtAdvantage?: (value: number) => void;
+    showLeagueEnvironmentControls?: boolean;
 }
 
 export const GameStructureSection: React.FC<GameStructureSectionProps> = ({
@@ -48,7 +53,10 @@ export const GameStructureSection: React.FC<GameStructureSectionProps> = ({
     overtimeTargetPoints, setOvertimeTargetPoints,
     shootoutRounds, setShootoutRounds,
     startOfPossessionMethod, setStartOfPossessionMethod,
-    possessionPattern, setPossessionPattern
+    possessionPattern, setPossessionPattern,
+    madeBasketRestart = 'inbound', setMadeBasketRestart = () => undefined,
+    homeCourtAdvantage = 50, setHomeCourtAdvantage = () => undefined,
+    showLeagueEnvironmentControls = true
 }) => {
     return (
         <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-800/50 space-y-6">
@@ -85,13 +93,27 @@ export const GameStructureSection: React.FC<GameStructureSectionProps> = ({
                     </div>
                 </div>
 
+                {showLeagueEnvironmentControls && <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+                    <div className="flex flex-col gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">After a Made Basket</span>
+                        <select
+                            value={madeBasketRestart}
+                            onChange={event => setMadeBasketRestart(event.target.value as 'center_jump' | 'inbound')}
+                            className="w-full appearance-none rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-[10px] font-bold uppercase text-white focus:border-indigo-500 focus:outline-none"
+                        >
+                            <option value="inbound">Inbound</option>
+                            <option value="center_jump">Center Jump</option>
+                        </select>
+                    </div>
+                    <RuleRange id="homeCourtAdvantage" value={homeCourtAdvantage} onChange={setHomeCourtAdvantage} />
+                </div>}
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     {gameFormat === 'timed' ? (
                         <>
                             <div className="space-y-4">
                                 {/* quarterLength feeds simulator score and minutes budgets. */}
                                 <RuleInput id="quarterLength" value={quarterLength} onChange={setQuarterLength} />
-                                {/* Stored only: engine currently simulates 4 quarters. */}
                                 <RuleInput id="numQuarters" value={numQuarters} onChange={setNumQuarters} />
                                 <div className="flex flex-col gap-2">
                                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Quarter Possession Pattern</span>
@@ -138,13 +160,16 @@ export const GameStructureSection: React.FC<GameStructureSectionProps> = ({
                                                                 onChange={(e) => setOvertimeTieBreaker(e.target.value)} 
                                                                 className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-[10px] py-2 px-3 focus:outline-none focus:border-indigo-500 appearance-none uppercase font-bold"
                                                             >
-                                                                {RULE_DEFINITIONS.overtimeTieBreaker.options?.map(opt => (
-                                                                    <option key={opt.value} value={opt.value}>{opt.label}</option>
-                                                                ))}
-                                                            </select>
-                                                        </div>
+                                                            {RULE_DEFINITIONS.overtimeTieBreaker.options?.map(opt => (
+                                                                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                                                            ))}
+                                                        </select>
                                                     </div>
-                                                )}
+                                                    {overtimeTieBreaker === 'shootout' && (
+                                                        <RuleInput id="shootoutRounds" value={shootoutRounds} onChange={setShootoutRounds} />
+                                                    )}
+                                                </div>
+                                            )}
                                             </>
                                         )}
 

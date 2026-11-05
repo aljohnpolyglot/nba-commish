@@ -4,7 +4,9 @@ import { AlertTriangle, Scissors, UserPlus, X, ShieldCheck } from 'lucide-react'
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { getDisplayOverall } from '../../utils/playerRatings';
 import { contractToUSD, formatSalaryM } from '../../utils/salaryUtils';
+import { isNonGuaranteedContract, isTwoWayContract } from '../../utils/contractTypes';
 import type { NBAPlayer } from '../../types';
+import { getWnbaDevelopmentalContractLabel } from '../../services/wnba/developmentalContracts';
 
 interface RosterComplianceModalProps {
   isOpen: boolean;
@@ -15,8 +17,10 @@ interface RosterComplianceModalProps {
   maxRoster?: number;
   limitLabel?: string;
   description?: string;
+  deadlineLabel?: string;
   phase?: 'training-camp' | 'regular-season' | 'playoffs' | 'offseason';
   isPreseasonEnd?: boolean;
+  leagueStats?: unknown;
   onAutoAction: () => void;
   onManual: () => void;
   canConvertExcess?: boolean;
@@ -32,8 +36,10 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
   maxRoster,
   limitLabel: limitLabelOverride,
   description,
+  deadlineLabel,
   phase,
   isPreseasonEnd = false,
+  leagueStats,
   onAutoAction,
   onManual,
   canConvertExcess = false,
@@ -46,7 +52,7 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
   const cap = maxRoster ?? (isCamp ? 21 : 15);
   const limitLabel = limitLabelOverride ?? (isCamp ? 'training camp' : 'standard');
   const title = isNgDeadline
-    ? 'Jan 10 Guarantee Deadline'
+    ? `${deadlineLabel ?? 'Contract'} Guarantee Deadline`
     : isUnder
       ? 'Roster Too Small'
       : isCamp
@@ -90,11 +96,11 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
               </p>
               <p className="text-xs text-slate-500 mb-4">
                 {description ?? (isNgDeadline
-                  ? `On Jan 10 every NG contract still on a roster auto-guarantees for the rest of the season. Cut now (free release) or guarantee them yourself before the deadline.`
+                  ? `Every non-guaranteed contract still on a roster becomes guaranteed at the league deadline. Cut now or guarantee them before it arrives.`
                   : isUnder
                     ? `League minimum is ${minRoster} standard players. Sign free agents before simulating.`
                     : isCamp
-                      ? `Training camp limit is ${cap} (standard + non-guaranteed + two-way combined). Trim before advancing.`
+                      ? `Training camp limit is ${cap} (standard + non-guaranteed + ${getWnbaDevelopmentalContractLabel(leagueStats).toLowerCase()} combined). Trim before advancing.`
                       : isPreseasonEnd
                         ? `Cut down to ${cap} standard players before regular season tips off.`
                         : `Waive players first, then simulate. Standard limit is ${cap}.`)}
@@ -109,7 +115,7 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
                     {excessPlayers.map(p => {
                       const ovr = getDisplayOverall(p);
                       const salary = contractToUSD(p.contract?.amount || 0);
-                      const isNG = !!(p as any).nonGuaranteed;
+                      const isNG = isNonGuaranteedContract(p, leagueStats);
                       return (
                         <div key={p.internalId} className="flex items-center gap-3 px-4 py-2">
                           <PlayerPortrait imgUrl={p.imgURL} face={(p as any).face} playerName={p.name} size={32} overallRating={p.overallRating} />
@@ -124,7 +130,7 @@ export const RosterComplianceModal: React.FC<RosterComplianceModalProps> = ({
                               )}
                             </div>
                           </div>
-                          {canConvertExcess && onConvertOne && !!(p as any).twoWay && (
+                          {canConvertExcess && onConvertOne && isTwoWayContract(p, leagueStats) && (
                             <button
                               onClick={() => onConvertOne(p)}
                               className="shrink-0 px-2 py-1 bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 rounded-md text-[10px] font-black uppercase tracking-widest transition-colors border border-emerald-500/30"

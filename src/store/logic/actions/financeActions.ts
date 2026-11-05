@@ -2,6 +2,11 @@ import { GameState, UserAction } from '../../../types';
 import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
 import { getLeagueCurrencyCode } from '../../../utils/helpers';
+import { getInsiderHandle } from '../../../data/social/handles';
+import { resolveMatchingDisciplineCases } from '../../../services/disciplineInbox';
+import { appendPlayerDisciplineRecord } from '../../../services/playerDisciplineHistory';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
 
 export const handleTransferFunds = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { from, amount } = action.payload;
@@ -53,27 +58,79 @@ export const handleGiveMoney = async (stateWithSim: GameState, action: UserActio
 };
 
 export const handleFinePerson = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
-    const { contacts, reason, amount } = action.payload;
+    const {
+        contacts,
+        reason,
+        amount,
+        sourceIncidentId,
+        disciplineTemplateId,
+        disciplineTemplateName,
+    } = action.payload;
     const names = contacts?.length > 0 ? contacts.map((c: any) => c.name).join(', ') : (action.payload.targetName || 'the subject');
     const currencyCode = getLeagueCurrencyCode(stateWithSim.leagueStats);
     const formattedAmount = amount
         ? new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, maximumFractionDigits: 0 }).format(amount)
         : 'an undisclosed amount';
     const outcomeText = `Commissioner ${stateWithSim.commissionerName} has issued a fine of ${formattedAmount} to ${names}. Reason: ${reason || 'conduct detrimental to the league'}.`;
-    const fineSeed = `BREAKING: The NBA Commissioner just dropped a ${formattedAmount} fine on ${names}. Reason: ${reason || 'conduct detrimental to the league'}. ` +
-        `@ShamsCharania breaks it first. Then: one furious fan defending ${names.split(',')[0]}, one fan saying they deserved worse, ` +
-        `one analyst debating whether the fine is too light or too heavy given the reason, and a reaction from a player rep or agent. ` +
-        `Make the posts feel like real Twitter — specific opinions, not vague reactions.`;
     const outcome = calculateOutcome('FINE_PERSON', action.payload, stateWithSim);
-    const result = await advanceDay(stateWithSim, {
-        type: 'FINE_PERSON',
-        payload: { ...action.payload, outcomeText }
-    } as any, [fineSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
-    result.statChanges = result.statChanges || {};
-    result.statChanges.publicApproval = (result.statChanges.publicApproval || 0) + (outcome.publicApproval || 0);
-    result.statChanges.ownerApproval = (result.statChanges.ownerApproval || 0) + (outcome.ownerApproval || 0);
-    result.statChanges.playerApproval = (result.statChanges.playerApproval || 0) + (outcome.playerApproval || 0);
-    return result;
+    const playerIds = (contacts ?? []).map((contact: any) => contact.id ?? contact.internalId).filter(Boolean);
+    const playerIdSet = new Set<string>(playerIds);
+    const numericAmount = Math.max(0, Number(amount) || 0);
+    const recordSeed = sourceIncidentId
+        ?? `${stateWithSim.day}-${stateWithSim.history?.length ?? 0}-${disciplineTemplateId ?? 'custom'}`;
+    const players = stateWithSim.players.map(player =>
+        playerIdSet.has(player.internalId)
+            ? appendPlayerDisciplineRecord(player, {
+                id: `discipline-${recordSeed}-${player.internalId}`,
+                date: stateWithSim.date,
+                season: stateWithSim.leagueStats.year,
+                action: 'fine',
+                amount: numericAmount,
+                currencyCode,
+                reason,
+                authority: stateWithSim.gameMode === 'gm' ? 'team' : 'league',
+                templateId: disciplineTemplateId,
+                templateName: disciplineTemplateName,
+                tid: player.tid,
+                source: 'game',
+            })
+            : player
+    );
+    const pendingDisciplineToasts = players
+        .filter(player => playerIdSet.has(player.internalId))
+        .map(player => {
+            const team = resolveAnyTeam(player.tid, stateWithSim.teams, stateWithSim.nonNBATeams ?? []);
+            return {
+                playerName: player.name,
+                teamName: team ? getTeamFullName(team) : 'League Office',
+                pos: player.pos,
+                action: 'fine' as const,
+                amount: numericAmount,
+                currencyCode,
+                reason,
+                templateId: disciplineTemplateId,
+                templateName: disciplineTemplateName,
+            };
+        });
+    return {
+        outcomeText,
+        players,
+        pendingDisciplineToasts,
+        inbox: resolveMatchingDisciplineCases(stateWithSim.inbox, playerIds, 'fine', stateWithSim.date, Number(amount) || 0),
+        statChanges: {
+            publicApproval: outcome.publicApproval || 0,
+            ownerApproval: outcome.ownerApproval || 0,
+            playerApproval: outcome.playerApproval || 0,
+        },
+        newNews: [{
+            id: `fine-${stateWithSim.day}-${playerIds.join('-')}`,
+            headline: 'League Issues Fine',
+            content: outcomeText,
+            date: stateWithSim.date,
+            type: 'league',
+            read: false,
+        }],
+    };
 };
 
 export const handleAdjustFinancials = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
@@ -102,29 +159,5 @@ export const handleAdjustFinancials = async (stateWithSim: GameState, action: Us
     result.consequence.statChanges.morale.players = (result.consequence.statChanges.morale.players || 0) + (outcome.morale || 0);
     result.consequence.statChanges.morale.fans = (result.consequence.statChanges.morale.fans || 0) + (outcome.morale || 0);
     result.consequence.statChanges.morale.owners = (result.consequence.statChanges.morale.owners || 0) + (outcome.morale || 0);
-    return result;
-};
-
-export const handleBribePerson = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
-    const { contacts, reason, amount } = action.payload;
-    const names = contacts?.length > 0 ? contacts.map((c: any) => c.name).join(', ') : (action.payload.targetName || 'the target');
-    const currencyCode = getLeagueCurrencyCode(stateWithSim.leagueStats);
-    const formattedAmount = amount
-        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: currencyCode, maximumFractionDigits: 0 }).format(amount)
-        : 'an undisclosed sum';
-    const outcomeText = `Commissioner ${stateWithSim.commissionerName} covertly offered ${formattedAmount} to ${names}. Purpose: ${reason || 'undisclosed'}.`;
-    // Bribe is covert — generate rumors/suspicion without exposing the Commissioner
-    const bribeSeed = `Unverified insider chatter is circulating in NBA circles. Something smells off — sources hint that ${names} may have received an unusual financial arrangement. ` +
-        `Generate: 2-3 conspiracy tweets from reporters and fans speculating something shady happened, one insider journalist hinting they're "looking into something" regarding ${names}, ` +
-        `one league official or rep firmly denying any wrongdoing. NEVER name the Commissioner as the source. Keep it murky and dramatic.`;
-    const outcome = calculateOutcome('BRIBE_PERSON', action.payload, stateWithSim);
-    const result = await advanceDay(stateWithSim, {
-        type: 'BRIBE_PERSON',
-        payload: { ...action.payload, outcomeText }
-    } as any, [bribeSeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
-    result.statChanges = result.statChanges || {};
-    result.statChanges.publicApproval = (result.statChanges.publicApproval || 0) + (outcome.publicApproval || 0);
-    result.statChanges.ownerApproval = (result.statChanges.ownerApproval || 0) + (outcome.ownerApproval || 0);
-    result.statChanges.playerApproval = (result.statChanges.playerApproval || 0) + (outcome.playerApproval || 0);
     return result;
 };

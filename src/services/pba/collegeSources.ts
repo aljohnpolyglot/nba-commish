@@ -1,13 +1,14 @@
 import type { NBAPlayer } from '../../types';
 import fallbackDraftArchive from '../../data/pba_draft_all_rows_single.json';
 import { PHILIPPINE_COLLEGE_POOL } from '../../data/philippineCollegePool';
+import { getLastAttendedSchool } from '../../utils/educationUtils';
 import { normalizePbaSchoolClubTeam } from './pbaDraftArchive';
 
 const COLLEGE_KEYS = ['college', 'school', 'almaMater', 'alma_mater', 'university'];
 
 const cleanCollege = (value: unknown): string => {
-  if (typeof value !== 'string') return '';
-  return normalizePbaSchoolClubTeam(value).trim().replace(/\s+/g, ' ');
+  const school = getLastAttendedSchool(value);
+  return school ? normalizePbaSchoolClubTeam(school).trim().replace(/\s+/g, ' ') : '';
 };
 
 const addCollege = (pool: Record<string, number>, value: unknown) => {

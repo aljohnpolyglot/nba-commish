@@ -1,13 +1,14 @@
 // Centralized league-type-aware label resolution.
-// Modded leagues use NBA branding (real-NBA mod). Fictional leagues use neutral
-// labels so the base UI stays IP-clean. Any new user-visible string that differs
-// between modes goes here, not hardcoded in components.
+// Labels follow the active save identity. NBA branding is reserved for NBA
+// saves; named custom league files keep their own identity across shared views.
 
 import { useGame } from '../store/GameContext';
+import { SettingsManager } from '../services/SettingsManager';
 
 type LeagueType = 'fictional' | 'modded' | undefined;
 
 export interface LeagueLabels {
+  leagueName: string;
   cupShort: string;        // "NBA Cup" | "In-Season Cup"  — tab labels, badges
   cupLong: string;         // "NBA Cup" | "In-Season Tournament"  — page headers
   central: string;         // "NBA Central" | "League Central"
@@ -29,10 +30,142 @@ export interface LeagueLabels {
   cupMVP: string;          // "NBA Cup MVP" | "In-Season Tournament MVP"
 }
 
-export function getLeagueLabels(leagueType: LeagueType): LeagueLabels {
+const cleanLeagueName = (value?: string | null): string => String(value ?? '').trim();
+
+const isNbaLeagueName = (value: string): boolean => /^(nba|national basketball association)$/i.test(value);
+
+const LEAGUE_DISPLAY_TAGS: Record<string, { name: string; code: string }> = {
+  nba: { name: 'NBA', code: 'USA-1' },
+  pba: { name: 'PBA', code: 'PHI-1' },
+  endesa: { name: 'ACB', code: 'ESP-1' },
+  acb: { name: 'ACB', code: 'ESP-1' },
+  'italian-serie-a': { name: 'LBA', code: 'ITA-1' },
+  nblaustralia: { name: 'NBL', code: 'AUS-1' },
+};
+
+export function getLeagueDisplayTag(competitionId: unknown, fallback: string): string {
+  const id = String(competitionId ?? '').trim().toLowerCase();
+  const fallbackKey = fallback.trim().toLowerCase();
+  const entry = LEAGUE_DISPLAY_TAGS[id]
+    ?? Object.values(LEAGUE_DISPLAY_TAGS).find(candidate => (
+      candidate.name.toLowerCase() === fallbackKey || candidate.code.toLowerCase() === fallbackKey
+    ));
+  if (!entry) return fallback;
+  return SettingsManager.getSettings().leagueDisplayMode === 'code' ? entry.code : entry.name;
+}
+
+export function getLeagueLabels(
+  leagueType: LeagueType,
+  uiMode?: string | null,
+  configuredLeagueName?: string | null,
+): LeagueLabels {
+  const configured = cleanLeagueName(configuredLeagueName);
+  if (uiMode === 'wnba_isolated') {
+    return {
+      leagueName: configured || 'WNBA',
+      cupShort: 'Commissioner’s Cup',
+      cupLong: 'Commissioner’s Cup',
+      central: 'WNBA Central',
+      finals: 'WNBA Finals',
+      draft: 'WNBA Draft',
+      draftLottery: 'WNBA Draft Lottery',
+      leagueOffice: 'WNBA League Office',
+      officials: 'WNBA Officials',
+      referee: 'WNBA Referee',
+      official: 'WNBA Official',
+      leaguePass: 'WNBA League Pass',
+      injuriesTitle: 'WNBA Injuries',
+      leagueHQ: 'WNBA HQ',
+      mediaRights: 'WNBA Media Rights',
+      appTitle: 'WNBA Commissioner Simulator',
+      leagueTeam: 'WNBA Team',
+      finalsHalftime: 'WNBA Finals Halftime Show',
+      cupChampion: 'Commissioner’s Cup Champion',
+      cupMVP: 'Commissioner’s Cup MVP',
+    };
+  }
+  if (uiMode === 'pba_isolated') {
+    return {
+      leagueName: configured || 'PBA',
+      cupShort: 'PBA Cup',
+      cupLong: 'PBA Cup',
+      central: 'PBA Central',
+      finals: 'PBA Finals',
+      draft: 'PBA Draft',
+      draftLottery: 'Draft Order',
+      leagueOffice: 'PBA Office',
+      officials: 'PBA Officials',
+      referee: 'PBA Referee',
+      official: 'PBA Official',
+      leaguePass: 'PBA Pass',
+      injuriesTitle: 'PBA Injuries',
+      leagueHQ: 'PBA HQ',
+      mediaRights: 'PBA Media Rights',
+      appTitle: 'FilipinoBasketCommissionerSim',
+      leagueTeam: 'PBA Team',
+      finalsHalftime: 'PBA Finals Halftime Show',
+      cupChampion: 'Conference Champion',
+      cupMVP: 'Conference MVP',
+    };
+  }
+  if (uiMode === 'euro_isolated') {
+    const leagueName = configured || 'League';
+    return {
+      leagueName,
+      cupShort: 'Cup',
+      cupLong: 'Cup',
+      central: 'Club Central',
+      finals: 'League Finals',
+      draft: 'Draft',
+      draftLottery: 'Draft Order',
+      leagueOffice: 'League Office',
+      officials: 'League Officials',
+      referee: 'League Referee',
+      official: 'League Official',
+      leaguePass: 'League Pass',
+      injuriesTitle: 'League Injuries',
+      leagueHQ: 'League HQ',
+      mediaRights: 'League Media Rights',
+      appTitle: 'Basketball Commissioner Simulator',
+      leagueTeam: 'Club',
+      finalsHalftime: 'Finals Halftime Show',
+      cupChampion: 'Cup Champion',
+      cupMVP: 'Cup MVP',
+    };
+  }
   const isFictional = leagueType === 'fictional';
+  const isNamedCustomLeague = Boolean(
+    configured
+    && configured !== 'Association'
+    && !isNbaLeagueName(configured),
+  );
+  if (isNamedCustomLeague) {
+    return {
+      leagueName: configured,
+      cupShort: 'In-Season Cup',
+      cupLong: 'In-Season Tournament',
+      central: `${configured} Central`,
+      finals: `${configured} Finals`,
+      draft: `${configured} Draft`,
+      draftLottery: `${configured} Draft Lottery`,
+      leagueOffice: `${configured} Office`,
+      officials: `${configured} Officials`,
+      referee: `${configured} Referee`,
+      official: `${configured} Official`,
+      leaguePass: `${configured} Pass`,
+      injuriesTitle: `${configured} Injuries`,
+      leagueHQ: `${configured} HQ`,
+      mediaRights: `${configured} Media Rights`,
+      appTitle: `${configured} Commissioner Simulator`,
+      leagueTeam: `${configured} Team`,
+      finalsHalftime: `${configured} Finals Halftime Show`,
+      cupChampion: 'In-Season Cup Champion',
+      cupMVP: 'In-Season Tournament MVP',
+    };
+  }
   return isFictional
     ? {
+        leagueName:       configured || 'League',
         cupShort:       'In-Season Cup',
         cupLong:        'In-Season Tournament',
         central:        'League Central',
@@ -54,6 +187,7 @@ export function getLeagueLabels(leagueType: LeagueType): LeagueLabels {
         cupMVP:         'In-Season Tournament MVP',
       }
     : {
+        leagueName:       configured || 'NBA',
         cupShort:       'NBA Cup',
         cupLong:        'NBA Cup',
         central:        'NBA Central',
@@ -82,52 +216,6 @@ export function getLeagueLabels(leagueType: LeagueType): LeagueLabels {
 export function useLeagueLabels(): LeagueLabels {
   const { state } = useGame();
   const uiMode = state?.leagueStats?.uiMode ?? state?.pendingStartPayload?.uiMode;
-  if (uiMode === 'pba_isolated') {
-    return {
-      cupShort: 'PBA Cup',
-      cupLong: 'PBA Cup',
-      central: 'PBA Central',
-      finals: 'PBA Finals',
-      draft: 'PBA Draft',
-      draftLottery: 'Draft Order',
-      leagueOffice: 'PBA Office',
-      officials: 'PBA Officials',
-      referee: 'PBA Referee',
-      official: 'PBA Official',
-      leaguePass: 'PBA Pass',
-      injuriesTitle: 'PBA Injuries',
-      leagueHQ: 'PBA HQ',
-      mediaRights: 'PBA Media Rights',
-      appTitle: 'FilipinoBasketCommissionerSim',
-      leagueTeam: 'PBA Team',
-      finalsHalftime: 'PBA Finals Halftime Show',
-      cupChampion: 'Conference Champion',
-      cupMVP: 'Conference MVP',
-    };
-  }
-  if (uiMode === 'euro_isolated') {
-    return {
-      cupShort: 'Cup',
-      cupLong: 'Cup',
-      central: 'Club Central',
-      finals: 'League Finals',
-      draft: 'Draft',
-      draftLottery: 'Draft Order',
-      leagueOffice: 'League Office',
-      officials: 'League Officials',
-      referee: 'League Referee',
-      official: 'League Official',
-      leaguePass: 'League Pass',
-      injuriesTitle: 'League Injuries',
-      leagueHQ: 'League HQ',
-      mediaRights: 'League Media Rights',
-      appTitle: 'Basketball Commissioner Simulator',
-      leagueTeam: 'Club',
-      finalsHalftime: 'Finals Halftime Show',
-      cupChampion: 'Cup Champion',
-      cupMVP: 'Cup MVP',
-    };
-  }
   const leagueType = state?.leagueType ?? state?.pendingStartPayload?.leagueType;
-  return getLeagueLabels(leagueType);
+  return getLeagueLabels(leagueType, uiMode, state?.leagueStats?.leagueName);
 }

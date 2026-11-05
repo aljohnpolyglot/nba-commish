@@ -8,6 +8,7 @@ import SigningModalFinancesTab from './SigningModalFinancesTab';
 import SigningModalFooter from './SigningModalFooter';
 import SigningModalNegotiationTab from './SigningModalNegotiationTab';
 import SigningModalOffersTab from './SigningModalOffersTab';
+import SigningModalAspireTab from './SigningModalAspireTab';
 import {
   SigningModalBidSubmittedOverlay,
   SigningModalBuyoutRefusedOverlay,
@@ -24,7 +25,6 @@ import { useSigningModalController } from './useSigningModalController';
 
 const SigningModal: React.FC<SigningModalProps> = props => {
   const modal = useSigningModalController(props);
-
   if (modal.overLimitAction) {
     return (
       <SigningModalOverLimitOverlay
@@ -33,6 +33,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
         maxGuaranteed={modal.maxGuaranteed}
         onCancel={() => modal.setOverLimitAction(null)}
         onContinue={action => {
+          modal.setGuaranteedOverLimitApproved(true);
           modal.setOverLimitAction(null);
           if (action === 'sign') modal.submitSigning(true);
           else modal.setShowResponse(true);
@@ -51,7 +52,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
         playerFace={modal.playerFace}
         portraitFallback={modal.portraitFallback}
         preflightMessage={{
-          title: 'Import Not Eligible',
+          title: 'Signing Unavailable',
           body: modal.pbaSigningGate.reason,
         }}
         teamColors={modal.teamColors}
@@ -76,6 +77,10 @@ const SigningModal: React.FC<SigningModalProps> = props => {
         projectedPayroll={modal.capWarningProjectedPayroll}
         salary={modal.salary}
         team={modal.team}
+        availableBae={modal.bae.blocked ? 0 : modal.bae.available}
+        availableMle={modal.mle.blocked ? 0 : modal.mle.available}
+        hasOwnTeamBirdRights={modal.hasOwnTeamBirdRights}
+        mleType={modal.mle.type}
       />
     );
   }
@@ -105,6 +110,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
         player={modal.player}
         roster={modal.roster}
         stateDate={modal.state.date}
+        leagueStats={modal.state.leagueStats}
         team={modal.team}
       />
     );
@@ -129,6 +135,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
     return (
       <SigningModalBidSubmittedOverlay
         bidSubmitted={modal.bidSubmitted}
+        pbaIsolated={modal.pbaIsolated}
         onDone={() => {
           modal.setBidSubmitted(null);
           modal.onClose();
@@ -138,6 +145,21 @@ const SigningModal: React.FC<SigningModalProps> = props => {
         portraitFallback={modal.portraitFallback}
         teamColors={modal.teamColors}
       />
+    );
+  }
+
+  if (modal.showAspireRoll) {
+    const caught = modal.aspireRoll <= modal.aspireRisk;
+    return (
+      <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/95 p-4">
+        <div role="dialog" aria-label="ASPIRE risk roll" className="w-full max-w-md border border-white/10 bg-[#0a0a0a] p-6 text-center shadow-2xl sm:p-8">
+          <p className="text-[10px] font-black uppercase tracking-[0.25em] text-rose-300">ASPIRE · {modal.aspireBrand}</p>
+          <h2 className="mt-3 text-3xl font-black italic uppercase text-white">Detection Roll</h2>
+          <div className={`mx-auto mt-6 flex h-28 w-28 items-center justify-center rounded-2xl border-2 text-5xl font-black ${caught ? 'border-rose-400 bg-rose-500/10 text-rose-300' : 'border-emerald-400 bg-emerald-500/10 text-emerald-300'}`}>{modal.aspireRoll}</div>
+          <p className="mt-5 text-sm leading-6 text-white/55">Risk {modal.aspireRisk}% · {caught ? 'The agreement was discovered. The league will forfeit future first-round picks.' : 'The agreement was not discovered.'}</p>
+          <button onClick={() => { modal.setShowAspireRoll(false); modal.submitSigning(false, undefined, undefined, true); }} className="mt-7 w-full bg-[#e21d37] px-6 py-3 text-xs font-black uppercase tracking-widest text-white hover:bg-[#f02a45]">Continue Signing</button>
+        </div>
+      </div>
     );
   }
 
@@ -257,21 +279,23 @@ const SigningModal: React.FC<SigningModalProps> = props => {
                   contractType={modal.contractType}
                   decOptionProps={modal.decOptionProps}
                   decSalaryProps={modal.decSalaryProps}
+                  decSigningBonusProps={modal.decSigningBonusProps}
                   decYearsProps={modal.decYearsProps}
                   euroIsolated={modal.euroIsolated}
                   pbaIsolated={modal.pbaIsolated}
                   formattedYears={modal.formattedYears}
-                  gmSpending={modal.gmSpending}
                   hasOwnTeamBirdRights={modal.hasOwnTeamBirdRights}
+                  hideMarketFeedback={modal.hasSubmittedUserBid}
                   incOptionProps={modal.incOptionProps}
                   incSalaryProps={modal.incSalaryProps}
+                  incSigningBonusProps={modal.incSigningBonusProps}
                   incYearsProps={modal.incYearsProps}
                   interest={modal.interest}
                   interestColor={modal.interestColor}
-                  isOwnTeamGM={modal.isOwnTeamGM}
                   isPbaImportSigning={modal.isPbaImportSigning}
                   isResign={modal.isResign}
                   isTrainingCampPeriod={modal.isTrainingCampPeriod}
+                  leagueStats={modal.leagueStats}
                   leagueYear={modal.leagueStats?.year ?? new Date().getFullYear()}
                   limits={modal.limits}
                   maxAllowed={modal.maxAllowed}
@@ -282,12 +306,33 @@ const SigningModal: React.FC<SigningModalProps> = props => {
                   player={modal.player}
                   roster={modal.roster}
                   salary={modal.salary}
+                  signingBonusEUR={modal.signingBonusEUR}
+                  signingBonusStepEUR={modal.signingBonusStepEUR}
+                  recommendedSigningBonusEUR={modal.recommendedSigningBonusEUR}
+                  selectedSponsorPerkKey={modal.selectedSponsorPerkKey}
+                  setSelectedSponsorPerkKey={modal.setSelectedSponsorPerkKey}
                   setContractType={modal.setContractType}
                   setTeamBuyoutContribUSD={modal.setTeamBuyoutContribUSD}
                   teamBuyoutContribUSD={modal.teamBuyoutContribUSD}
                   teamHoldsBirdRights={modal.teamHoldsBirdRights}
                   totalBuyoutPaidUSD={modal.totalBuyoutPaidUSD}
                   yearsTable={modal.yearsTable}
+                  tycoon={modal.team.tycoon}
+                />
+              )}
+
+              {modal.activeTab === 'ASPIRE' && modal.aspireEligible && (
+                <SigningModalAspireTab
+                  amountUSD={modal.aspireAmountUSD}
+                  brand={modal.aspireBrand}
+                  brands={modal.aspireBrands}
+                  canAfford={modal.aspireCanAfford}
+                  lowerAmount={() => modal.setAspireAmountUSD(value => Math.max(0, value - modal.aspireAmountStep))}
+                  moneyPrecise={modal.moneyPrecise}
+                  personalWealthUSD={modal.personalWealthUSD}
+                  raiseAmount={() => modal.setAspireAmountUSD(value => Math.min(modal.personalWealthUSD, value + modal.aspireAmountStep))}
+                  risk={modal.aspireRisk}
+                  setBrand={modal.setAspireBrand}
                 />
               )}
 
@@ -296,6 +341,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
 
               {modal.activeTab === 'FINANCES' && (
                 <SigningModalFinancesTab
+                  bae={modal.bae}
                   initialOffer={modal.initialOffer}
                   mle={modal.mle}
                   money={modal.money}
@@ -309,6 +355,7 @@ const SigningModal: React.FC<SigningModalProps> = props => {
                 <SigningModalOffersTab
                   isPlausibleActiveMarket={isPlausibleActiveMarket}
                   leagueStats={modal.leagueStats}
+                  pbaIsolated={modal.pbaIsolated}
                   player={modal.player}
                   state={modal.state}
                 />
@@ -317,16 +364,19 @@ const SigningModal: React.FC<SigningModalProps> = props => {
 
             <SigningModalFooter
               autoAccept={modal.autoAccept}
+              bae={modal.bae}
               contractType={modal.contractType}
               euroIsolated={modal.euroIsolated}
               pbaIsolated={modal.pbaIsolated}
               hasOwnTeamBirdRights={modal.hasOwnTeamBirdRights}
               isResign={modal.isResign}
+              leagueStats={modal.leagueStats}
               leagueYear={modal.leagueStats.year}
               limitsMinSalaryUSD={modal.limits.minSalaryUSD}
               mle={modal.mle}
               money={modal.money}
               onClose={modal.onClose}
+              onBaeSubmit={modal.handleBaeSubmit}
               onMleSubmit={modal.handleMleSubmit}
               onPrimarySubmit={modal.handlePrimarySubmit}
               onShowCapWarning={() => modal.setShowCapWarning(true)}

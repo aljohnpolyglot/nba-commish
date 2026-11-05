@@ -1,7 +1,19 @@
-import { NBAPlayer as Player, DraftPick, Game, NBATeam } from '../../../types';
+import { NBAPlayer as Player, DraftPick, Game, LeagueStats, NBATeam } from '../../../types';
 import { applyMajorInjuryStatChanges } from '../../../services/simulation/InjurySystem';
 import { getTeamMedicalGameplayEffects } from '../../../services/staff/staffGameplayEffects';
 import { getTeamTravelGameplayEffects } from '../../../services/tycoon/travelGameplayEffects';
+import { getSponsorEffectMultiplier } from '../../../services/tycoon/sponsorPerkEngine';
+import {
+    ADVANCED_STAT_FORMULA_VERSION,
+    calculateIndividualOrtg,
+    getCalibratedEwa,
+    getCalibratedPer,
+} from '../../../utils/advancedStatCalibration';
+import {
+    areWnbaDevelopmentalContractsEnabled,
+    getWnbaDevelopmentalGameLimit,
+    isWnbaDevelopmentalContract,
+} from '../../../services/wnba/developmentalContracts';
 
 function clamp(value: number, min: number, max: number): number {
     return Math.max(min, Math.min(max, value));
@@ -47,6 +59,33 @@ const groupByStatSplit = (gameStats: any[]) => {
     return Array.from(grouped.values());
 };
 
+const prepareAdvancedAccumulator = (stat: any) => {
+    const needsMigration = Number(stat._advancedStatVersion ?? 0) < ADVANCED_STAT_FORMULA_VERSION;
+    if (needsMigration) {
+        const migratedPer = getCalibratedPer(stat);
+        const migratedEwa = getCalibratedEwa(stat);
+        stat.per = migratedPer;
+        stat.ewa = migratedEwa;
+        stat._perSum = stat.per * Number(stat.gp ?? 0);
+        stat._perMinuteSum = stat.per * Number(stat.min ?? 0);
+        const minutes = Number(stat.min ?? 0);
+        for (const [sumKey, valueKey] of [
+            ['_usgPctSum', 'usgPct'], ['_ortgSum', 'ortg'], ['_drtgSum', 'drtg'],
+            ['_bpmSum', 'bpm'], ['_obpmSum', 'obpm'], ['_dbpmSum', 'dbpm'],
+            ['_orbPctSum', 'orbPct'], ['_drbPctSum', 'drbPct'], ['_trbPctSum', 'rebPct'],
+            ['_astPctSum', 'astPct'], ['_stlPctSum', 'stlPct'], ['_blkPctSum', 'blkPct'],
+            ['_tovPctSum', 'tovPct'],
+        ] as const) stat[sumKey] = Number(stat[valueKey] ?? 0) * minutes;
+    }
+    if (stat._perSum === undefined) stat._perSum = Number(stat.per ?? 0) * Number(stat.gp ?? 0);
+    if (stat._perMinuteSum === undefined) stat._perMinuteSum = Number(stat.per ?? 0) * Number(stat.min ?? 0);
+    stat._advancedStatVersion = ADVANCED_STAT_FORMULA_VERSION;
+};
+
+const calibratedGamePer = (stat: any) => {
+    return getCalibratedPer(stat);
+};
+
 export const processSimulationResults = (
     allSimResults: any[],
     players: Player[],
@@ -54,6 +93,7 @@ export const processSimulationResults = (
     schedule?: Game[],
     seasonYear?: number,
     teams?: NBATeam[],
+    leagueStats?: Partial<LeagueStats>,
 ) => {
     const currentSeasonYear = seasonYear ?? new Date().getFullYear();
     let updatedPlayers = [...players];
@@ -61,6 +101,7 @@ export const processSimulationResults = (
 
     const playerStatsMap = new Map<string, any>();
     const playoffStatsMap = new Map<string, any>();
+    const developmentalAppearances = new Map<string, Set<number>>();
     allSimResults.forEach(res => {
         // Skip exhibition games — All-Star, Rising Stars,
         // Celebrity Game all have negative team IDs
@@ -104,6 +145,21 @@ export const processSimulationResults = (
         const isPreseasonGame = schedGame?.isPreseason === true || res.isPreseason === true;
         const excludeFromRecord = (schedGame as any)?.excludeFromRecord === true || res.excludeFromRecord === true;
 
+        if (
+            areWnbaDevelopmentalContractsEnabled(leagueStats)
+            && !isPreseasonGame
+            && !excludeFromRecord
+        ) {
+            [...(res.homeStats ?? []), ...(res.awayStats ?? [])].forEach((stat: any) => {
+                if (Number(stat.min ?? 0) <= 0) return;
+                const player = updatedPlayers.find(candidate => candidate.internalId === stat.playerId);
+                if (!isWnbaDevelopmentalContract(player, leagueStats)) return;
+                const gameIds = developmentalAppearances.get(stat.playerId) ?? new Set<number>();
+                gameIds.add(Number(res.gameId));
+                developmentalAppearances.set(stat.playerId, gameIds);
+            });
+        }
+
         // Route stats: regular → playerStatsMap, playoff → playoffStatsMap, play-in/preseason → skip
         if (!isPlayoffGame && !isPlayInGame && !isPreseasonGame && !excludeFromRecord) {
             [
@@ -115,6 +171,7 @@ export const processSimulationResults = (
                 }
                 playerStatsMap.get(stat.playerId).push({
                     ...stat,
+                    gameWinners: (stat.gameWinners ?? 0) + (res.gameWinner?.playerId === stat.playerId ? 1 : 0),
                     __gameId: res.gameId,
                     __tid: side.tid,
                     __competitionId: competitionId || undefined,
@@ -131,6 +188,7 @@ export const processSimulationResults = (
                 }
                 playoffStatsMap.get(stat.playerId).push({
                     ...stat,
+                    gameWinners: (stat.gameWinners ?? 0) + (res.gameWinner?.playerId === stat.playerId ? 1 : 0),
                     __gameId: res.gameId,
                     __tid: side.tid,
                     __competitionId: competitionId || undefined,
@@ -167,11 +225,12 @@ export const processSimulationResults = (
                         ...(split.competitionId ? { competitionId: split.competitionId } : {}),
                         ...(split.competitionPhase ? { competitionPhase: split.competitionPhase } : {}),
                         gp: 0, gs: 0, min: 0, fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, fp: 0, fpa: 0, fpp: 0, ft: 0, fta: 0, ftp: 0,
-                        orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, per: 0,
+                        orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, q4Pts: 0, q4Reb: 0, q4Ast: 0, gameWinners: 0, per: 0,
                         pm: 0, tsPct: 0, efgPct: 0, usgPct: 0, ortg: 0, drtg: 0, bpm: 0, ws: 0, vorp: 0,
                         ows: 0, dws: 0, obpm: 0, dbpm: 0, ewa: 0,
                         orbPct: 0, drbPct: 0, rebPct: 0, astPct: 0, stlPct: 0, blkPct: 0, tovPct: 0,
-                        _perSum: 0, _usgPctSum: 0, _ortgSum: 0, _drtgSum: 0, _bpmSum: 0,
+                        _advancedStatVersion: ADVANCED_STAT_FORMULA_VERSION,
+                        _perSum: 0, _perMinuteSum: 0, _usgPctSum: 0, _ortgSum: 0, _drtgSum: 0, _bpmSum: 0,
                         _obpmSum: 0, _dbpmSum: 0, _orbPctSum: 0, _drbPctSum: 0, _trbPctSum: 0,
                         _astPctSum: 0, _stlPctSum: 0, _blkPctSum: 0, _tovPctSum: 0,
                     };
@@ -181,20 +240,21 @@ export const processSimulationResults = (
                     seasonStat = { ...stats[seasonStatIndex] };
                     if (split.competitionId && !seasonStat.competitionId) seasonStat.competitionId = split.competitionId;
                     if (split.competitionPhase && !seasonStat.competitionPhase) seasonStat.competitionPhase = split.competitionPhase;
-                    if (seasonStat._perSum === undefined) seasonStat._perSum = (seasonStat.per || 0) * seasonStat.gp;
-                    if (seasonStat._usgPctSum === undefined) seasonStat._usgPctSum = (seasonStat.usgPct || 0) * seasonStat.gp;
-                    if (seasonStat._ortgSum === undefined) seasonStat._ortgSum = (seasonStat.ortg || 0) * seasonStat.gp;
-                    if (seasonStat._drtgSum === undefined) seasonStat._drtgSum = (seasonStat.drtg || 0) * seasonStat.gp;
-                    if (seasonStat._bpmSum === undefined) seasonStat._bpmSum = (seasonStat.bpm || 0) * seasonStat.gp;
-                    if (seasonStat._obpmSum === undefined) seasonStat._obpmSum = (seasonStat.obpm || 0) * seasonStat.gp;
-                    if (seasonStat._dbpmSum === undefined) seasonStat._dbpmSum = (seasonStat.dbpm || 0) * seasonStat.gp;
-                    if (seasonStat._orbPctSum === undefined) seasonStat._orbPctSum = (seasonStat.orbPct || 0) * seasonStat.gp;
-                    if (seasonStat._drbPctSum === undefined) seasonStat._drbPctSum = (seasonStat.drbPct || 0) * seasonStat.gp;
-                    if (seasonStat._trbPctSum === undefined) seasonStat._trbPctSum = (seasonStat.rebPct || 0) * seasonStat.gp;
-                    if (seasonStat._astPctSum === undefined) seasonStat._astPctSum = (seasonStat.astPct || 0) * seasonStat.gp;
-                    if (seasonStat._stlPctSum === undefined) seasonStat._stlPctSum = (seasonStat.stlPct || 0) * seasonStat.gp;
-                    if (seasonStat._blkPctSum === undefined) seasonStat._blkPctSum = (seasonStat.blkPct || 0) * seasonStat.gp;
-                    if (seasonStat._tovPctSum === undefined) seasonStat._tovPctSum = (seasonStat.tovPct || 0) * seasonStat.gp;
+                    prepareAdvancedAccumulator(seasonStat);
+                    const minutes = Number(seasonStat.min ?? 0);
+                    if (seasonStat._usgPctSum === undefined) seasonStat._usgPctSum = (seasonStat.usgPct || 0) * minutes;
+                    if (seasonStat._ortgSum === undefined) seasonStat._ortgSum = (seasonStat.ortg || 0) * minutes;
+                    if (seasonStat._drtgSum === undefined) seasonStat._drtgSum = (seasonStat.drtg || 0) * minutes;
+                    if (seasonStat._bpmSum === undefined) seasonStat._bpmSum = (seasonStat.bpm || 0) * minutes;
+                    if (seasonStat._obpmSum === undefined) seasonStat._obpmSum = (seasonStat.obpm || 0) * minutes;
+                    if (seasonStat._dbpmSum === undefined) seasonStat._dbpmSum = (seasonStat.dbpm || 0) * minutes;
+                    if (seasonStat._orbPctSum === undefined) seasonStat._orbPctSum = (seasonStat.orbPct || 0) * minutes;
+                    if (seasonStat._drbPctSum === undefined) seasonStat._drbPctSum = (seasonStat.drbPct || 0) * minutes;
+                    if (seasonStat._trbPctSum === undefined) seasonStat._trbPctSum = (seasonStat.rebPct || 0) * minutes;
+                    if (seasonStat._astPctSum === undefined) seasonStat._astPctSum = (seasonStat.astPct || 0) * minutes;
+                    if (seasonStat._stlPctSum === undefined) seasonStat._stlPctSum = (seasonStat.stlPct || 0) * minutes;
+                    if (seasonStat._blkPctSum === undefined) seasonStat._blkPctSum = (seasonStat.blkPct || 0) * minutes;
+                    if (seasonStat._tovPctSum === undefined) seasonStat._tovPctSum = (seasonStat.tovPct || 0) * minutes;
                 }
 
                 split.stats.forEach((stat: any) => {
@@ -202,6 +262,10 @@ export const processSimulationResults = (
                     seasonStat.gs += (stat.gs || 0);
                     seasonStat.min += stat.min;
                     seasonStat.pts += stat.pts;
+                    seasonStat.q4Pts = (seasonStat.q4Pts || 0) + (stat.q4Pts || 0);
+                    seasonStat.q4Reb = (seasonStat.q4Reb || 0) + (stat.q4Reb || 0);
+                    seasonStat.q4Ast = (seasonStat.q4Ast || 0) + (stat.q4Ast || 0);
+                    seasonStat.gameWinners = (seasonStat.gameWinners || 0) + (stat.gameWinners || 0);
                     seasonStat.trb += (stat.reb || (stat.orb || 0) + (stat.drb || 0));
                     seasonStat.orb += (stat.orb || 0);
                     seasonStat.drb += (stat.drb || 0);
@@ -218,6 +282,8 @@ export const processSimulationResults = (
                     seasonStat.fpa = (seasonStat.fpa || 0) + (stat.fourPa || 0);
                     seasonStat.dunks = (seasonStat.dunks || 0) + (stat.dunks || 0);
                     seasonStat.techs = (seasonStat.techs || 0) + (stat.techs || 0);
+                    seasonStat.deflections = (seasonStat.deflections || 0) + (stat.deflections || 0);
+                    seasonStat.chargesDrawn = (seasonStat.chargesDrawn || 0) + (stat.chargesDrawn || 0);
                     seasonStat.ft += stat.ftm;
                     seasonStat.fta += stat.fta;
 
@@ -228,20 +294,23 @@ export const processSimulationResults = (
                     seasonStat.vorp = (seasonStat.vorp || 0) + (stat.vorp || 0);
                     seasonStat.ewa  = (seasonStat.ewa  || 0) + (stat.ewa  || 0);
 
-                    seasonStat._perSum    += (stat.per    || 0);
-                    seasonStat._usgPctSum += (stat.usgPct || 0);
-                    seasonStat._ortgSum   += (stat.ortg   || 0);
-                    seasonStat._drtgSum   += (stat.drtg   || 0);
-                    seasonStat._bpmSum    += (stat.bpm    || 0);
-                    seasonStat._obpmSum   = (seasonStat._obpmSum   || 0) + (stat.obpm   || 0);
-                    seasonStat._dbpmSum   = (seasonStat._dbpmSum   || 0) + (stat.dbpm   || 0);
-                    seasonStat._orbPctSum = (seasonStat._orbPctSum || 0) + (stat.orbPct || 0);
-                    seasonStat._drbPctSum = (seasonStat._drbPctSum || 0) + (stat.drbPct || 0);
-                    seasonStat._trbPctSum = (seasonStat._trbPctSum || 0) + (stat.trbPct || 0);
-                    seasonStat._astPctSum = (seasonStat._astPctSum || 0) + (stat.astPct || 0);
-                    seasonStat._stlPctSum = (seasonStat._stlPctSum || 0) + (stat.stlPct || 0);
-                    seasonStat._blkPctSum = (seasonStat._blkPctSum || 0) + (stat.blkPct || 0);
-                    seasonStat._tovPctSum = (seasonStat._tovPctSum || 0) + (stat.tovPct || 0);
+                    const gamePer = calibratedGamePer(stat);
+                    seasonStat._perSum += gamePer;
+                    seasonStat._perMinuteSum += gamePer * Number(stat.min ?? 0);
+                    const advancedMinutes = Number(stat.min ?? 0);
+                    seasonStat._usgPctSum += (stat.usgPct || 0) * advancedMinutes;
+                    seasonStat._ortgSum   += (stat.ortg   || 0) * advancedMinutes;
+                    seasonStat._drtgSum   += (stat.drtg   || 0) * advancedMinutes;
+                    seasonStat._bpmSum    += (stat.bpm    || 0) * advancedMinutes;
+                    seasonStat._obpmSum   = (seasonStat._obpmSum   || 0) + (stat.obpm   || 0) * advancedMinutes;
+                    seasonStat._dbpmSum   = (seasonStat._dbpmSum   || 0) + (stat.dbpm   || 0) * advancedMinutes;
+                    seasonStat._orbPctSum = (seasonStat._orbPctSum || 0) + (stat.orbPct || 0) * advancedMinutes;
+                    seasonStat._drbPctSum = (seasonStat._drbPctSum || 0) + (stat.drbPct || 0) * advancedMinutes;
+                    seasonStat._trbPctSum = (seasonStat._trbPctSum || 0) + (stat.trbPct || 0) * advancedMinutes;
+                    seasonStat._astPctSum = (seasonStat._astPctSum || 0) + (stat.astPct || 0) * advancedMinutes;
+                    seasonStat._stlPctSum = (seasonStat._stlPctSum || 0) + (stat.stlPct || 0) * advancedMinutes;
+                    seasonStat._blkPctSum = (seasonStat._blkPctSum || 0) + (stat.blkPct || 0) * advancedMinutes;
+                    seasonStat._tovPctSum = (seasonStat._tovPctSum || 0) + (stat.tovPct || 0) * advancedMinutes;
                 });
 
                 // Update percentages and averages
@@ -251,27 +320,29 @@ export const processSimulationResults = (
                 seasonStat.ftp = seasonStat.fta > 0 ? (seasonStat.ft / seasonStat.fta) * 100 : 0;
 
                 if (seasonStat.gp > 0) {
-                    seasonStat.per    = seasonStat._perSum    / seasonStat.gp;
-                    seasonStat.usgPct = seasonStat._usgPctSum / seasonStat.gp;
-                    seasonStat.drtg   = seasonStat._drtgSum   / seasonStat.gp;
-                    seasonStat.bpm    = seasonStat._bpmSum    / seasonStat.gp;
-                    seasonStat.obpm   = seasonStat._obpmSum   / seasonStat.gp;
-                    seasonStat.dbpm   = seasonStat._dbpmSum   / seasonStat.gp;
-                    seasonStat.orbPct = seasonStat._orbPctSum / seasonStat.gp;
-                    seasonStat.drbPct = seasonStat._drbPctSum / seasonStat.gp;
-                    seasonStat.rebPct = seasonStat._trbPctSum / seasonStat.gp;
-                    seasonStat.astPct = seasonStat._astPctSum / seasonStat.gp;
-                    seasonStat.stlPct = seasonStat._stlPctSum / seasonStat.gp;
-                    seasonStat.blkPct = seasonStat._blkPctSum / seasonStat.gp;
-                    seasonStat.tovPct = seasonStat._tovPctSum / seasonStat.gp;
+                    seasonStat.per = seasonStat.min > 0
+                        ? seasonStat._perMinuteSum / seasonStat.min
+                        : seasonStat._perSum / seasonStat.gp;
+                    const advancedMinutes = seasonStat.min || 1;
+                    seasonStat.usgPct = seasonStat._usgPctSum / advancedMinutes;
+                    seasonStat.drtg   = seasonStat._drtgSum   / advancedMinutes;
+                    seasonStat.bpm    = seasonStat._bpmSum    / advancedMinutes;
+                    seasonStat.obpm   = seasonStat._obpmSum   / advancedMinutes;
+                    seasonStat.dbpm   = seasonStat._dbpmSum   / advancedMinutes;
+                    seasonStat.orbPct = seasonStat._orbPctSum / advancedMinutes;
+                    seasonStat.drbPct = seasonStat._drbPctSum / advancedMinutes;
+                    seasonStat.rebPct = seasonStat._trbPctSum / advancedMinutes;
+                    seasonStat.astPct = seasonStat._astPctSum / advancedMinutes;
+                    seasonStat.stlPct = seasonStat._stlPctSum / advancedMinutes;
+                    seasonStat.blkPct = seasonStat._blkPctSum / advancedMinutes;
+                    seasonStat.tovPct = seasonStat._tovPctSum / advancedMinutes;
 
                     // Recalculate season-wide TS%, eFG%, and ORtg
                     const tsDenom = 2 * (seasonStat.fga + 0.44 * seasonStat.fta);
                     seasonStat.tsPct = tsDenom > 0 ? (seasonStat.pts / tsDenom) * 100 : 0;
                     seasonStat.efgPct = seasonStat.fga > 0 ? ((seasonStat.fg + 0.5 * seasonStat.tp + (seasonStat.fp || 0)) / seasonStat.fga) * 100 : 0;
 
-                    const seasonPoss = seasonStat.fga + 0.44 * seasonStat.fta - seasonStat.orb + seasonStat.tov;
-                    seasonStat.ortg = seasonPoss > 0 ? (seasonStat.pts * 100) / seasonPoss : 0;
+                    seasonStat.ortg = calculateIndividualOrtg(seasonStat);
                 }
 
                 stats[seasonStatIndex] = seasonStat;
@@ -309,11 +380,12 @@ export const processSimulationResults = (
                         ...(split.competitionId ? { competitionId: split.competitionId } : {}),
                         ...(split.competitionPhase ? { competitionPhase: split.competitionPhase } : {}),
                         gp: 0, gs: 0, min: 0, fg: 0, fga: 0, fgp: 0, tp: 0, tpa: 0, tpp: 0, fp: 0, fpa: 0, fpp: 0, ft: 0, fta: 0, ftp: 0,
-                        orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, per: 0,
+                        orb: 0, drb: 0, trb: 0, ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, q4Pts: 0, q4Reb: 0, q4Ast: 0, gameWinners: 0, per: 0,
                         pm: 0, tsPct: 0, efgPct: 0, usgPct: 0, ortg: 0, drtg: 0, bpm: 0, ws: 0, vorp: 0,
                         ows: 0, dws: 0, obpm: 0, dbpm: 0, ewa: 0,
                         orbPct: 0, drbPct: 0, rebPct: 0, astPct: 0, stlPct: 0, blkPct: 0, tovPct: 0,
-                        _perSum: 0, _usgPctSum: 0, _ortgSum: 0, _drtgSum: 0, _bpmSum: 0,
+                        _advancedStatVersion: ADVANCED_STAT_FORMULA_VERSION,
+                        _perSum: 0, _perMinuteSum: 0, _usgPctSum: 0, _ortgSum: 0, _drtgSum: 0, _bpmSum: 0,
                         _obpmSum: 0, _dbpmSum: 0, _orbPctSum: 0, _drbPctSum: 0, _trbPctSum: 0,
                         _astPctSum: 0, _stlPctSum: 0, _blkPctSum: 0, _tovPctSum: 0,
                     };
@@ -323,20 +395,21 @@ export const processSimulationResults = (
                     seasonStat = { ...stats[statIndex] };
                     if (split.competitionId && !seasonStat.competitionId) seasonStat.competitionId = split.competitionId;
                     if (split.competitionPhase && !seasonStat.competitionPhase) seasonStat.competitionPhase = split.competitionPhase;
-                    if (seasonStat._perSum === undefined) seasonStat._perSum = (seasonStat.per || 0) * seasonStat.gp;
-                    if (seasonStat._usgPctSum === undefined) seasonStat._usgPctSum = (seasonStat.usgPct || 0) * seasonStat.gp;
-                    if (seasonStat._ortgSum === undefined) seasonStat._ortgSum = (seasonStat.ortg || 0) * seasonStat.gp;
-                    if (seasonStat._drtgSum === undefined) seasonStat._drtgSum = (seasonStat.drtg || 0) * seasonStat.gp;
-                    if (seasonStat._bpmSum === undefined) seasonStat._bpmSum = (seasonStat.bpm || 0) * seasonStat.gp;
-                    if (seasonStat._obpmSum === undefined) seasonStat._obpmSum = (seasonStat.obpm || 0) * seasonStat.gp;
-                    if (seasonStat._dbpmSum === undefined) seasonStat._dbpmSum = (seasonStat.dbpm || 0) * seasonStat.gp;
-                    if (seasonStat._orbPctSum === undefined) seasonStat._orbPctSum = (seasonStat.orbPct || 0) * seasonStat.gp;
-                    if (seasonStat._drbPctSum === undefined) seasonStat._drbPctSum = (seasonStat.drbPct || 0) * seasonStat.gp;
-                    if (seasonStat._trbPctSum === undefined) seasonStat._trbPctSum = (seasonStat.rebPct || 0) * seasonStat.gp;
-                    if (seasonStat._astPctSum === undefined) seasonStat._astPctSum = (seasonStat.astPct || 0) * seasonStat.gp;
-                    if (seasonStat._stlPctSum === undefined) seasonStat._stlPctSum = (seasonStat.stlPct || 0) * seasonStat.gp;
-                    if (seasonStat._blkPctSum === undefined) seasonStat._blkPctSum = (seasonStat.blkPct || 0) * seasonStat.gp;
-                    if (seasonStat._tovPctSum === undefined) seasonStat._tovPctSum = (seasonStat.tovPct || 0) * seasonStat.gp;
+                    prepareAdvancedAccumulator(seasonStat);
+                    const minutes = Number(seasonStat.min ?? 0);
+                    if (seasonStat._usgPctSum === undefined) seasonStat._usgPctSum = (seasonStat.usgPct || 0) * minutes;
+                    if (seasonStat._ortgSum === undefined) seasonStat._ortgSum = (seasonStat.ortg || 0) * minutes;
+                    if (seasonStat._drtgSum === undefined) seasonStat._drtgSum = (seasonStat.drtg || 0) * minutes;
+                    if (seasonStat._bpmSum === undefined) seasonStat._bpmSum = (seasonStat.bpm || 0) * minutes;
+                    if (seasonStat._obpmSum === undefined) seasonStat._obpmSum = (seasonStat.obpm || 0) * minutes;
+                    if (seasonStat._dbpmSum === undefined) seasonStat._dbpmSum = (seasonStat.dbpm || 0) * minutes;
+                    if (seasonStat._orbPctSum === undefined) seasonStat._orbPctSum = (seasonStat.orbPct || 0) * minutes;
+                    if (seasonStat._drbPctSum === undefined) seasonStat._drbPctSum = (seasonStat.drbPct || 0) * minutes;
+                    if (seasonStat._trbPctSum === undefined) seasonStat._trbPctSum = (seasonStat.rebPct || 0) * minutes;
+                    if (seasonStat._astPctSum === undefined) seasonStat._astPctSum = (seasonStat.astPct || 0) * minutes;
+                    if (seasonStat._stlPctSum === undefined) seasonStat._stlPctSum = (seasonStat.stlPct || 0) * minutes;
+                    if (seasonStat._blkPctSum === undefined) seasonStat._blkPctSum = (seasonStat.blkPct || 0) * minutes;
+                    if (seasonStat._tovPctSum === undefined) seasonStat._tovPctSum = (seasonStat.tovPct || 0) * minutes;
                 }
 
                 split.stats.forEach((stat: any) => {
@@ -344,6 +417,10 @@ export const processSimulationResults = (
                     seasonStat.gs += (stat.gs || 0);
                     seasonStat.min += stat.min;
                     seasonStat.pts += stat.pts;
+                    seasonStat.q4Pts = (seasonStat.q4Pts || 0) + (stat.q4Pts || 0);
+                    seasonStat.q4Reb = (seasonStat.q4Reb || 0) + (stat.q4Reb || 0);
+                    seasonStat.q4Ast = (seasonStat.q4Ast || 0) + (stat.q4Ast || 0);
+                    seasonStat.gameWinners = (seasonStat.gameWinners || 0) + (stat.gameWinners || 0);
                     seasonStat.trb += (stat.reb || (stat.orb || 0) + (stat.drb || 0));
                     seasonStat.orb += (stat.orb || 0);
                     seasonStat.drb += (stat.drb || 0);
@@ -360,6 +437,8 @@ export const processSimulationResults = (
                     seasonStat.fpa = (seasonStat.fpa || 0) + (stat.fourPa || 0);
                     seasonStat.dunks = (seasonStat.dunks || 0) + (stat.dunks || 0);
                     seasonStat.techs = (seasonStat.techs || 0) + (stat.techs || 0);
+                    seasonStat.deflections = (seasonStat.deflections || 0) + (stat.deflections || 0);
+                    seasonStat.chargesDrawn = (seasonStat.chargesDrawn || 0) + (stat.chargesDrawn || 0);
                     seasonStat.ft += stat.ftm;
                     seasonStat.fta += stat.fta;
                     seasonStat.pm   = (seasonStat.pm   || 0) + (stat.pm   || 0);
@@ -368,20 +447,23 @@ export const processSimulationResults = (
                     seasonStat.dws  = (seasonStat.dws  || 0) + (stat.dws  || 0);
                     seasonStat.vorp = (seasonStat.vorp || 0) + (stat.vorp || 0);
                     seasonStat.ewa  = (seasonStat.ewa  || 0) + (stat.ewa  || 0);
-                    seasonStat._perSum    += (stat.per    || 0);
-                    seasonStat._usgPctSum += (stat.usgPct || 0);
-                    seasonStat._ortgSum   += (stat.ortg   || 0);
-                    seasonStat._drtgSum   += (stat.drtg   || 0);
-                    seasonStat._bpmSum    += (stat.bpm    || 0);
-                    seasonStat._obpmSum   = (seasonStat._obpmSum   || 0) + (stat.obpm   || 0);
-                    seasonStat._dbpmSum   = (seasonStat._dbpmSum   || 0) + (stat.dbpm   || 0);
-                    seasonStat._orbPctSum = (seasonStat._orbPctSum || 0) + (stat.orbPct || 0);
-                    seasonStat._drbPctSum = (seasonStat._drbPctSum || 0) + (stat.drbPct || 0);
-                    seasonStat._trbPctSum = (seasonStat._trbPctSum || 0) + (stat.trbPct || 0);
-                    seasonStat._astPctSum = (seasonStat._astPctSum || 0) + (stat.astPct || 0);
-                    seasonStat._stlPctSum = (seasonStat._stlPctSum || 0) + (stat.stlPct || 0);
-                    seasonStat._blkPctSum = (seasonStat._blkPctSum || 0) + (stat.blkPct || 0);
-                    seasonStat._tovPctSum = (seasonStat._tovPctSum || 0) + (stat.tovPct || 0);
+                    const gamePer = calibratedGamePer(stat);
+                    seasonStat._perSum += gamePer;
+                    seasonStat._perMinuteSum += gamePer * Number(stat.min ?? 0);
+                    const advancedMinutes = Number(stat.min ?? 0);
+                    seasonStat._usgPctSum += (stat.usgPct || 0) * advancedMinutes;
+                    seasonStat._ortgSum   += (stat.ortg   || 0) * advancedMinutes;
+                    seasonStat._drtgSum   += (stat.drtg   || 0) * advancedMinutes;
+                    seasonStat._bpmSum    += (stat.bpm    || 0) * advancedMinutes;
+                    seasonStat._obpmSum   = (seasonStat._obpmSum   || 0) + (stat.obpm   || 0) * advancedMinutes;
+                    seasonStat._dbpmSum   = (seasonStat._dbpmSum   || 0) + (stat.dbpm   || 0) * advancedMinutes;
+                    seasonStat._orbPctSum = (seasonStat._orbPctSum || 0) + (stat.orbPct || 0) * advancedMinutes;
+                    seasonStat._drbPctSum = (seasonStat._drbPctSum || 0) + (stat.drbPct || 0) * advancedMinutes;
+                    seasonStat._trbPctSum = (seasonStat._trbPctSum || 0) + (stat.trbPct || 0) * advancedMinutes;
+                    seasonStat._astPctSum = (seasonStat._astPctSum || 0) + (stat.astPct || 0) * advancedMinutes;
+                    seasonStat._stlPctSum = (seasonStat._stlPctSum || 0) + (stat.stlPct || 0) * advancedMinutes;
+                    seasonStat._blkPctSum = (seasonStat._blkPctSum || 0) + (stat.blkPct || 0) * advancedMinutes;
+                    seasonStat._tovPctSum = (seasonStat._tovPctSum || 0) + (stat.tovPct || 0) * advancedMinutes;
                 });
 
                 seasonStat.fgp = seasonStat.fga > 0 ? (seasonStat.fg / seasonStat.fga) * 100 : 0;
@@ -390,24 +472,26 @@ export const processSimulationResults = (
                 seasonStat.ftp = seasonStat.fta > 0 ? (seasonStat.ft / seasonStat.fta) * 100 : 0;
 
                 if (seasonStat.gp > 0) {
-                    seasonStat.per    = seasonStat._perSum    / seasonStat.gp;
-                    seasonStat.usgPct = seasonStat._usgPctSum / seasonStat.gp;
-                    seasonStat.drtg   = seasonStat._drtgSum   / seasonStat.gp;
-                    seasonStat.bpm    = seasonStat._bpmSum    / seasonStat.gp;
-                    seasonStat.obpm   = seasonStat._obpmSum   / seasonStat.gp;
-                    seasonStat.dbpm   = seasonStat._dbpmSum   / seasonStat.gp;
-                    seasonStat.orbPct = seasonStat._orbPctSum / seasonStat.gp;
-                    seasonStat.drbPct = seasonStat._drbPctSum / seasonStat.gp;
-                    seasonStat.rebPct = seasonStat._trbPctSum / seasonStat.gp;
-                    seasonStat.astPct = seasonStat._astPctSum / seasonStat.gp;
-                    seasonStat.stlPct = seasonStat._stlPctSum / seasonStat.gp;
-                    seasonStat.blkPct = seasonStat._blkPctSum / seasonStat.gp;
-                    seasonStat.tovPct = seasonStat._tovPctSum / seasonStat.gp;
+                    seasonStat.per = seasonStat.min > 0
+                        ? seasonStat._perMinuteSum / seasonStat.min
+                        : seasonStat._perSum / seasonStat.gp;
+                    const advancedMinutes = seasonStat.min || 1;
+                    seasonStat.usgPct = seasonStat._usgPctSum / advancedMinutes;
+                    seasonStat.drtg   = seasonStat._drtgSum   / advancedMinutes;
+                    seasonStat.bpm    = seasonStat._bpmSum    / advancedMinutes;
+                    seasonStat.obpm   = seasonStat._obpmSum   / advancedMinutes;
+                    seasonStat.dbpm   = seasonStat._dbpmSum   / advancedMinutes;
+                    seasonStat.orbPct = seasonStat._orbPctSum / advancedMinutes;
+                    seasonStat.drbPct = seasonStat._drbPctSum / advancedMinutes;
+                    seasonStat.rebPct = seasonStat._trbPctSum / advancedMinutes;
+                    seasonStat.astPct = seasonStat._astPctSum / advancedMinutes;
+                    seasonStat.stlPct = seasonStat._stlPctSum / advancedMinutes;
+                    seasonStat.blkPct = seasonStat._blkPctSum / advancedMinutes;
+                    seasonStat.tovPct = seasonStat._tovPctSum / advancedMinutes;
                     const tsDenom = 2 * (seasonStat.fga + 0.44 * seasonStat.fta);
                     seasonStat.tsPct = tsDenom > 0 ? (seasonStat.pts / tsDenom) * 100 : 0;
                     seasonStat.efgPct = seasonStat.fga > 0 ? ((seasonStat.fg + 0.5 * seasonStat.tp + (seasonStat.fp || 0)) / seasonStat.fga) * 100 : 0;
-                    const seasonPoss = seasonStat.fga + 0.44 * seasonStat.fta - seasonStat.orb + seasonStat.tov;
-                    seasonStat.ortg = seasonPoss > 0 ? (seasonStat.pts * 100) / seasonPoss : 0;
+                    seasonStat.ortg = calculateIndividualOrtg(seasonStat);
                 }
 
                 stats[statIndex] = seasonStat;
@@ -437,6 +521,21 @@ export const processSimulationResults = (
         }
     });
 
+    if (developmentalAppearances.size > 0) {
+        const gameLimit = getWnbaDevelopmentalGameLimit(leagueStats);
+        updatedPlayers = updatedPlayers.map(player => {
+            const appearances = developmentalAppearances.get(player.internalId)?.size ?? 0;
+            if (appearances <= 0) return player;
+            return {
+                ...player,
+                developmentalGamesPlayed: Math.min(
+                    gameLimit,
+                    Math.max(0, Number(player.developmentalGamesPlayed ?? 0)) + appearances,
+                ),
+            };
+        });
+    }
+
     const recoveries: { playerName: string; teamName: string; pos: string; tid: number }[] = [];
     const teamById = new Map<number, NBATeam>();
     for (const team of teams ?? []) teamById.set(team.id, team);
@@ -445,6 +544,7 @@ export const processSimulationResults = (
         const team = teamById.get(player.tid);
         const recoveryMultiplier = team
             ? getTeamMedicalGameplayEffects(team as any).recoveryMultiplier
+                * getSponsorEffectMultiplier((team as any).tycoon, currentSeasonYear, 'injuryRecoverySpeed')
             : 1;
         const scaled = gamesPlayed * recoveryMultiplier;
         const whole = Math.floor(scaled);
@@ -494,6 +594,42 @@ export const processSimulationResults = (
 
         return changed ? updated : p;
     });
+
+    const automaticSuspensions = new Map<string, { games: number; reason: string }>();
+    for (const result of allSimResults) {
+        for (const ejection of result.ejections ?? []) {
+            const games = Math.max(0, Math.round(Number(ejection.suspensionGames ?? 0)));
+            if (games <= 0) continue;
+            const reason = ejection.reason === 'red_card'
+                ? 'Red Card'
+                : ejection.reason === 'fighting'
+                    ? 'Fighting Ejection'
+                    : ejection.reason === 'flagrant_2'
+                        ? 'Flagrant 2 Ejection'
+                        : ejection.reason === 'flagrant_1'
+                            ? 'Flagrant 1 Ejection'
+                            : 'Technical Foul Ejection';
+            const current = automaticSuspensions.get(ejection.playerId);
+            if (!current || games > current.games) {
+                automaticSuspensions.set(ejection.playerId, { games, reason });
+            }
+        }
+    }
+    if (automaticSuspensions.size > 0) {
+        updatedPlayers = updatedPlayers.map(player => {
+            const automatic = automaticSuspensions.get(player.internalId);
+            if (!automatic) return player;
+            const currentGames = player.suspension?.gamesRemaining ?? 0;
+            if (currentGames >= automatic.games) return player;
+            return {
+                ...player,
+                suspension: {
+                    reason: automatic.reason,
+                    gamesRemaining: automatic.games,
+                },
+            };
+        });
+    }
 
     return { updatedPlayers, updatedDraftPicks, recoveries };
 };

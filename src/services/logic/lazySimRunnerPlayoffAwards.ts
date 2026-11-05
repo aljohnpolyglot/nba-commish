@@ -1,6 +1,11 @@
-import type { GameResult, GameState, HistoricalAward, NewsItem, SeasonHistoryEntry } from '../../types';
-import { NewsGenerator } from '../news/NewsGenerator';
-import { computePlayoffMvpFromResults, generatePlayoffSeriesNews } from './lazySimRunnerHelpers';
+import type { GameResult, GameState, HistoricalAward, SeasonHistoryEntry } from '../../types';
+import { computePlayoffMvpFromResults } from './lazySimRunnerHelpers';
+import { resolveHeadCoachMember } from '../staff/coachNameResolver';
+import { getTeamFullName } from '../../utils/teamNames';
+import { appendCoachAchievementToTeam } from '../staff/coachAchievements';
+import { getEnabledAwards } from '../awards/AwardEngine';
+import { getLeagueLabels } from '../../utils/leagueLabels';
+import { resolveFinalsRound } from '../playoffs/playoffRounds';
 
 type LazySimPlayoffOutcomeArgs = {
   state: GameState;
@@ -11,7 +16,6 @@ type LazySimPlayoffOutcomeArgs = {
 
 type LazySimPlayoffOutcome = {
   updatedPlayers: GameState['players'];
-  playoffSeriesNews: NewsItem[];
   champHistoricalAwards: HistoricalAward[];
   semifinalsMvpAwards: HistoricalAward[];
   champTeamsWithRoundsWon: GameState['teams'] | null;
@@ -24,36 +28,43 @@ export function buildLazySimPlayoffOutcomes({
   allSimResults,
   updatedPlayers,
 }: LazySimPlayoffOutcomeArgs): LazySimPlayoffOutcome {
-  const playoffSeriesNews = generatePlayoffSeriesNews(
-    state.playoffs,
-    stateWithSim.playoffs,
-    stateWithSim.teams,
-    stateWithSim.date,
-    state.leagueStats.year,
-    allSimResults,
-    updatedPlayers,
-    stateWithSim.historicalAwards,
+  const finalsRound = resolveFinalsRound(stateWithSim.leagueStats, stateWithSim.playoffs);
+  const leagueLabels = getLeagueLabels(
+    stateWithSim.leagueType,
+    stateWithSim.leagueStats.uiMode,
+    stateWithSim.leagueStats.leagueName,
   );
-
   const champHistoricalAwards: HistoricalAward[] = [];
   const semifinalsMvpAwards: HistoricalAward[] = [];
   let champTeamsWithRoundsWon: GameState['teams'] | null = null;
+  const conferenceFinalsMvpEnabled = getEnabledAwards(stateWithSim)
+    .some(award => award.id === 'conf-finals-mvp');
 
-  if (stateWithSim.playoffs?.bracketComplete && !state.playoffs?.bracketComplete && stateWithSim.playoffs.champion) {
+  if (stateWithSim.playoffs?.bracketComplete && !state.playoffs?.bracketComplete && stateWithSim.playoffs.champion != null) {
     const champTid = stateWithSim.playoffs.champion;
-    const finalsSeries = stateWithSim.playoffs.series.find(s => s.round === 4);
+    const finalsSeries = stateWithSim.playoffs.series.find(s => s.round === finalsRound);
     const loserTid = finalsSeries
       ? (finalsSeries.higherSeedTid === champTid ? finalsSeries.lowerSeedTid : finalsSeries.higherSeedTid)
       : undefined;
     const champTeam = stateWithSim.teams.find(t => t.id === champTid);
     const loserTeam = loserTid !== undefined ? stateWithSim.teams.find(t => t.id === loserTid) : undefined;
     const season = state.leagueStats.year;
+    const leagueId = stateWithSim.leagueStats.uiMode ?? (stateWithSim.leagueType === 'fictional' ? 'fictional' : 'nba');
+    const leagueName = leagueLabels.leagueName;
+    const championCoach = champTeam ? resolveHeadCoachMember(champTeam, stateWithSim.staff ?? state.staff) : undefined;
 
     if (champTeam) {
-      champHistoricalAwards.push({ season, type: 'Champion', name: champTeam.name, tid: champTid });
+      champHistoricalAwards.push({
+        season,
+        type: 'Champion',
+        name: getTeamFullName(champTeam),
+        tid: champTid,
+        coachName: championCoach?.name,
+        coachId: championCoach?.id ?? championCoach?.sourcePlayerId,
+      });
     }
     if (loserTeam) {
-      champHistoricalAwards.push({ season, type: 'Runner Up', name: loserTeam.name, tid: loserTid });
+      champHistoricalAwards.push({ season, type: 'Runner Up', name: getTeamFullName(loserTeam), tid: loserTid });
     }
 
     if (champTeam || loserTeam) {
@@ -61,14 +72,26 @@ export function buildLazySimPlayoffOutcomes({
         const isChamp = t.id === champTid;
         const isRunner = loserTid !== undefined && t.id === loserTid;
         if (!isChamp && !isRunner) return t;
-        return {
+        const nextTeam = {
           ...t,
           seasons: (t.seasons ?? []).map((s: any) =>
             Number(s.season) === Number(season)
-              ? { ...s, playoffRoundsWon: isChamp ? 4 : 3 }
+              ? { ...s, playoffRoundsWon: isChamp ? finalsRound : finalsRound - 1 }
               : s
           ),
         };
+        return isChamp && championCoach ? appendCoachAchievementToTeam(nextTeam, {
+          coachName: championCoach.name,
+          coachId: championCoach.id ?? championCoach.sourcePlayerId,
+        }, {
+          season,
+          type: 'Champion',
+          label: `${season} ${leagueName} Champion`,
+          league: leagueId,
+          teamId: champTid,
+          teamName: getTeamFullName(champTeam),
+          role: 'Head Coach',
+        }) : nextTeam;
       });
     }
 
@@ -76,11 +99,12 @@ export function buildLazySimPlayoffOutcomes({
       const champRosterIds = new Set(
         updatedPlayers.filter(p => p.tid === champTid).map(p => p.internalId),
       );
+      const championAwardType = `${leagueName} Champion`;
       updatedPlayers = updatedPlayers.map(p => {
         if (!champRosterIds.has(p.internalId)) return p;
-        const already = (p.awards ?? []).some(a => a.season === season && a.type === 'NBA Champion');
+        const already = (p.awards ?? []).some(a => a.season === season && a.type === championAwardType);
         if (already) return p;
-        return { ...p, awards: [...(p.awards ?? []), { season, type: 'NBA Champion' }] };
+        return { ...p, awards: [...(p.awards ?? []), { season, type: championAwardType }] };
       });
     }
 
@@ -102,29 +126,11 @@ export function buildLazySimPlayoffOutcomes({
       }
     }
 
-    const fmvpAward = champHistoricalAwards.find(a => a.type === 'Finals MVP');
-    if (fmvpAward && champTeam) {
-      const champPlayerStats = allSimResults
-        .filter(r => r.homeTeamId === champTid || r.awayTeamId === champTid)
-        .flatMap(r => (r.homeTeamId === champTid ? r.homeStats : r.awayStats))
-        .filter(s => s.playerId === fmvpAward.pid);
-      const avgPts = champPlayerStats.length > 0
-        ? (champPlayerStats.reduce((sum, item) => sum + item.pts, 0) / champPlayerStats.length).toFixed(1)
-        : '?';
-      const fmvpItem = NewsGenerator.generate('finals_mvp', stateWithSim.date, {
-        playerName: fmvpAward.name,
-        teamName: champTeam.name,
-        teamCity: champTeam.region ?? champTeam.name,
-        year: season,
-        pts: avgPts,
-      });
-      if (fmvpItem) playoffSeriesNews.push(fmvpItem);
-    }
   }
 
-  if (stateWithSim.playoffs && state.playoffs) {
+  if (conferenceFinalsMvpEnabled && stateWithSim.playoffs && state.playoffs) {
     for (const newSeries of stateWithSim.playoffs.series) {
-      if (newSeries.round !== 3 || newSeries.status !== 'complete') continue;
+      if (newSeries.round !== finalsRound - 1 || newSeries.status !== 'complete') continue;
       const prevSeries = state.playoffs.series.find(s => s.id === newSeries.id);
       if (prevSeries?.status === 'complete') continue;
       const winnerTid = newSeries.winnerId;
@@ -160,9 +166,9 @@ export function buildLazySimPlayoffOutcomes({
   }
 
   let seasonHistoryPatch: { seasonHistory: SeasonHistoryEntry[] } | null = null;
-  if (stateWithSim.playoffs?.bracketComplete && !state.playoffs?.bracketComplete && stateWithSim.playoffs.champion) {
+  if (stateWithSim.playoffs?.bracketComplete && !state.playoffs?.bracketComplete && stateWithSim.playoffs.champion != null) {
     const champTid = stateWithSim.playoffs.champion;
-    const finalsSeries = stateWithSim.playoffs.series.find(series => series.round === 4);
+    const finalsSeries = stateWithSim.playoffs.series.find(series => series.round === finalsRound);
     const loserTid = finalsSeries
       ? (finalsSeries.higherSeedTid === champTid ? finalsSeries.lowerSeedTid : finalsSeries.higherSeedTid)
       : undefined;
@@ -173,9 +179,9 @@ export function buildLazySimPlayoffOutcomes({
     const seasonAward = (type: string) => awards.find(a => a.season === season && a.type === type);
     const newEntry: SeasonHistoryEntry = {
       year: season,
-      champion: champTeam?.name ?? 'Unknown',
+      champion: champTeam ? getTeamFullName(champTeam) : 'Unknown',
       championTid: champTid,
-      runnerUp: loserTeam?.name,
+      runnerUp: loserTeam ? getTeamFullName(loserTeam) : undefined,
       runnerUpTid: loserTid,
       mvp: seasonAward('MVP')?.name,
       mvpPid: seasonAward('MVP')?.pid as string | undefined,
@@ -196,7 +202,6 @@ export function buildLazySimPlayoffOutcomes({
 
   return {
     updatedPlayers,
-    playoffSeriesNews,
     champHistoricalAwards,
     semifinalsMvpAwards,
     champTeamsWithRoundsWon,

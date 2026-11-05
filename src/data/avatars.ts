@@ -1,4 +1,4 @@
-import { fetchWithCache } from '../services/utils/fetchWithCache';
+import { SOCIAL_HANDLES } from './social/handles';
 
 export interface AvatarData {
   name: string;
@@ -6,14 +6,10 @@ export interface AvatarData {
   avatarUrl: string;
 }
 
-const AVATAR_GIST_URL = "https://gist.githubusercontent.com/aljohnpolyglot/4711f5bd42dc7e82f0489bbc5b897711/raw/0d93b93e0a3760af1ee0953a41ae3e8373cb5bb4/nba_twitter_handles";
+export const AVATAR_DATA: AvatarData[] = Object.values(SOCIAL_HANDLES).map(({ name, handle }) => ({
+  name,
+  handle,
+  avatarUrl: `/img/social/avatars/${handle.toLowerCase()}.png`,
+}));
 
-export let AVATAR_DATA: AvatarData[] = [];
-
-export const fetchAvatarData = async () => {
-    const data = await fetchWithCache<AvatarData[]>('avatars', AVATAR_GIST_URL);
-    if (data) {
-        AVATAR_DATA = data;
-        console.log(`Avatars synced: ${AVATAR_DATA.length} entries loaded.`);
-    }
-};
+export const fetchAvatarData = async () => AVATAR_DATA;

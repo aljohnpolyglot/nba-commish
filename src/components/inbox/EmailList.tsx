@@ -47,6 +47,15 @@ export const EmailList: React.FC<EmailListProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto custom-scrollbar">
+        {emails.length === 0 && (
+          <div className="flex min-h-[260px] flex-col items-center justify-center px-8 text-center">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full border border-slate-800 bg-slate-950/70">
+              <Mail size={22} className="text-slate-600" />
+            </div>
+            <div className="mt-4 text-sm font-black text-slate-400">No messages yet</div>
+            <div className="mt-1 text-xs leading-relaxed text-slate-600">Club and league correspondence will appear here.</div>
+          </div>
+        )}
         {emails.map((email) => (
           <button
             key={email.id}

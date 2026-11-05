@@ -68,7 +68,11 @@ interface BoxScoreTeamComparisonProps {
   result?: GameResult;
 }
 
-function calculateTeamStats(stats: PlayerGameStats[], oppStats: PlayerGameStats[]) {
+function calculateTeamStats(
+  stats: PlayerGameStats[],
+  oppStats: PlayerGameStats[],
+  protectedHeaveMisses = 0,
+) {
   let fgm = 0, fga = 0, threePm = 0, threePa = 0, fourPm = 0, fourPa = 0, ftm = 0, fta = 0, orb = 0, drb = 0, ast = 0, stl = 0, blk = 0, tov = 0, pf = 0;
   let fgAtRim = 0, fgLowPost = 0;
   stats.forEach((stat) => {
@@ -81,6 +85,8 @@ function calculateTeamStats(stats: PlayerGameStats[], oppStats: PlayerGameStats[
     blk += stat.blk; tov += stat.tov; pf += stat.pf;
     fgAtRim += stat.fgAtRim || 0; fgLowPost += stat.fgLowPost || 0;
   });
+  fga += protectedHeaveMisses;
+  threePa += protectedHeaveMisses;
 
   let oppDrb = 0;
   oppStats.forEach((stat) => { oppDrb += stat.drb; });
@@ -107,8 +113,27 @@ export function BoxScoreTeamComparison({
   result,
 }: BoxScoreTeamComparisonProps) {
   if (!result) return null;
-  const awayStats = calculateTeamStats(result.awayStats, result.homeStats);
-  const homeStats = calculateTeamStats(result.homeStats, result.awayStats);
+  const protectedHeaveMisses = (teamId: number) => (result.heaves ?? []).filter(
+    event => event.teamId === teamId && !event.made && event.protectedFromIndividualStats,
+  ).length;
+  const awayStatsBase = calculateTeamStats(
+    result.awayStats,
+    result.homeStats,
+    protectedHeaveMisses(result.awayTeamId),
+  );
+  const homeStatsBase = calculateTeamStats(
+    result.homeStats,
+    result.awayStats,
+    protectedHeaveMisses(result.homeTeamId),
+  );
+  const awayStats = {
+    ...awayStatsBase,
+    pip: result.teamShotStats?.away.pointsInPaint ?? awayStatsBase.pip,
+  };
+  const homeStats = {
+    ...homeStatsBase,
+    pip: result.teamShotStats?.home.pointsInPaint ?? homeStatsBase.pip,
+  };
 
   const StatRow = ({ label, awayVal, homeVal }: { label: string; awayVal: string | number; homeVal: string | number }) => (
     <div className="flex justify-between items-center py-2 border-b border-white/5">
@@ -180,4 +205,3 @@ export function BoxScoreTeamComparison({
     </div>
   );
 }
-

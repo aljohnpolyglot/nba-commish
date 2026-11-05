@@ -4,21 +4,30 @@ type ControlProps = {
   label: string;
   value: number;
   min: number;
-  max: number;
+  max?: number;
   step: number;
   fmt: (v: number) => string;
   onChange: (v: number) => void;
   disabled?: boolean;
 };
 
-export const SponsorshipControl: React.FC<ControlProps> = ({ label, value, min, max, step, fmt, onChange, disabled }) => (
+export const SponsorshipControl: React.FC<ControlProps> = ({ label, value, min, max, step, fmt, onChange, disabled }) => {
+  const applyValue = (next: number) => onChange(Math.max(min, max == null ? next : Math.min(max, next)));
+  return (
   <div className={disabled ? 'opacity-50 pointer-events-none' : ''}>
-    <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-500 mb-2">
-      <span>{label}</span><span className="text-amber-300">{fmt(value)}</span>
+    <div className="flex items-center justify-between gap-3 text-xs font-black uppercase tracking-widest text-slate-500 mb-2">
+      <span>{label}</span><span className="text-amber-300 tabular-nums">{fmt(value)}</span>
     </div>
-    <input type="range" min={min} max={max} step={step} value={value} onChange={e => onChange(parseInt(e.target.value, 10))} className="w-full accent-amber-400" disabled={disabled} />
+    <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] gap-2">
+      <button type="button" onClick={() => applyValue(value - step)} disabled={disabled || value <= min} className="h-11 rounded-lg border border-slate-700 bg-slate-950 text-lg font-black text-slate-300 disabled:opacity-35">−</button>
+      <div className="flex h-11 min-w-0 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 px-3 text-center text-sm font-black tabular-nums text-white" aria-label={label}>
+        {fmt(value)}
+      </div>
+      <button type="button" onClick={() => applyValue(value + step)} disabled={disabled || (max != null && value >= max)} className="h-11 rounded-lg border border-slate-700 bg-slate-950 text-lg font-black text-slate-300 disabled:opacity-35">+</button>
+    </div>
   </div>
-);
+  );
+};
 
 type DiffRowProps = {
   label: string;

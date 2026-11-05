@@ -239,6 +239,7 @@ export const UNDERDOG_NBA_TEMPLATES: SocialTemplate[] = [
                 ? ctx.game.homeStats
                 : ctx.game.awayStats;
 
+            const lineupSize = Math.max(1, Math.round(ctx.game.playersOnCourt ?? 5));
             const starters = teamStats
                 ?.filter((s: any) => s.gs === 1)
                 .map((s: any) => {
@@ -246,9 +247,9 @@ export const UNDERDOG_NBA_TEMPLATES: SocialTemplate[] = [
                     const parts = (s.name ?? '').split(' ');
                     return parts.length > 1 ? parts[parts.length - 1] : s.name;
                 })
-                .slice(0, 5) ?? [];
+                .slice(0, lineupSize) ?? [];
 
-            if (starters.length < 5) return { content: '' };
+            if (starters.length < lineupSize) return { content: '' };
 
             return {
                 content: `Lineup alert: ${teamName} will start ${starters.join(', ')} on ${day}.`,

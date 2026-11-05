@@ -23,7 +23,7 @@ const ViewershipTab: React.FC = () => {
     fullDate: point.date
   }));
 
-  const currentPhase = getGamePhase(state.date);
+  const currentPhase = getGamePhase(state.date, state.leagueStats);
   const currentBaseline = VIEWERSHIP_MEANS[currentPhase] || 1.8;
   const currentViewership = state.leagueStats.viewership;
   

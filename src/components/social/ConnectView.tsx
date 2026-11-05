@@ -40,7 +40,7 @@ export const ConnectView: React.FC<ConnectViewProps> = ({ onBack, onProfileClick
               <div key={i} className="border-b border-[#2f3336]">
                 <WhoToFollow
                   {...user}
-                  avatar={cached?.avatarUrl || user.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanHandle}`}
+                  avatar={user.avatar || cached?.avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${cleanHandle}`}
                   isFollowing={(state.followedHandles || []).includes(cleanHandle)}
                   onToggleFollow={() => handleToggleFollow(user.handle)}
                   onProfileClick={() => onProfileClick(user.handle)}

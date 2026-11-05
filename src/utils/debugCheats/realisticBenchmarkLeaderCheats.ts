@@ -308,4 +308,77 @@ export function runSimTrace(): CheatResult {
   return { title: 'SIMTRACE ON', body: 'Trace enabled. Watch a game or run SIMBENCH; every possession will log to console.', ok: true };
 }
 
+export function runSimPerf(): CheatResult {
+  const g = globalThis as any;
+  const perf = g.__gameSimPerf as { enabled: boolean; rows: Array<Record<string, unknown>>; maxRows: number } | undefined;
+  if (!perf?.enabled) {
+    g.__gameSimPerf = { enabled: true, rows: [], maxRows: 120 };
+    console.log('SIMPERF ON: simulate a day or watched game, then run SIMPERF again for the timing tables. No per-game console logging occurs while it collects.');
+    return { title: 'SIMPERF ON', body: 'Profiler armed. Simulate games, then run SIMPERF again to print the timing breakdown.', ok: true };
+  }
+
+  perf.enabled = false;
+  const realistic = perf.rows
+    .filter(row => row.engine === 'realistic')
+    .sort((a, b) => Number(b.totalMs ?? 0) - Number(a.totalMs ?? 0));
+  const day = perf.rows
+    .filter(row => row.engine === 'day')
+    .sort((a, b) => Number(b.totalMs ?? 0) - Number(a.totalMs ?? 0));
+  const dayGames = perf.rows
+    .filter(row => row.engine === 'day-games')
+    .sort((a, b) => Number(b.totalMs ?? 0) - Number(a.totalMs ?? 0));
+  const simulationDays = perf.rows
+    .filter(row => row.engine === 'simulation-day')
+    .sort((a, b) => Number(b.totalDayMs ?? 0) - Number(a.totalDayMs ?? 0));
+  const lazySim = perf.rows
+    .filter(row => row.engine === 'lazy-sim')
+    .sort((a, b) => Number(b.totalIterMs ?? 0) - Number(a.totalIterMs ?? 0));
+  const average = (rows: Array<Record<string, unknown>>, key: string) => rows.length === 0
+    ? 0
+    : Math.round(rows.reduce((sum, row) => sum + Number(row[key] ?? 0), 0) / rows.length * 10) / 10;
+
+  console.group(`SIMPERF: ${realistic.length} realistic game(s), ${day.length} scheduled game(s)`);
+  if (realistic.length > 0) {
+    console.log('Realistic engine, slowest first:');
+    console.table(realistic.slice(0, 30));
+    console.table([{
+      games: realistic.length,
+      avgTotalMs: average(realistic, 'totalMs'),
+      avgPrepMs: average(realistic, 'prepMs'),
+      avgSystemEffectsMs: average(realistic, 'systemEffectsMs'),
+      avgTeamSetupMs: average(realistic, 'teamSetupMs'),
+      avgHooksMs: average(realistic, 'hooksMs'),
+      avgLoopMs: average(realistic, 'loopMs'),
+      avgAdvancedMs: average(realistic, 'advancedMs'),
+      avgInjuryRollMs: average(realistic, 'benchInjuryRollMs') + average(realistic, 'midgameInjuryMs'),
+      avgHighlightsMs: average(realistic, 'highlightsMs'),
+    }]);
+  }
+  if (day.length > 0) {
+    console.log('Whole scheduled-game path, slowest first:');
+    console.table(day.slice(0, 30));
+  }
+  if (dayGames.length > 0) {
+    console.log('Daily wrapper, slowest first:');
+    console.table(dayGames.slice(0, 30));
+  }
+  if (simulationDays.length > 0) {
+    console.log('Simulation day pipeline, slowest first:');
+    console.table(simulationDays.slice(0, 30));
+  }
+  if (lazySim.length > 0) {
+    console.log('Lazy-sim iteration pipeline, slowest first:');
+    console.table(lazySim.slice(0, 30));
+  }
+  console.groupEnd();
+
+  return {
+    title: 'SIMPERF results',
+    body: realistic.length > 0
+      ? `${realistic.length} realistic game(s) profiled. The slowest games and phase averages are in the console.`
+      : `No realistic-engine games were captured. ${day.length} scheduled game(s) were captured; they may have used Fast mode or fallen back.`,
+    ok: realistic.length > 0,
+  };
+}
+
 

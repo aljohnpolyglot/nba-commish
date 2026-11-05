@@ -7,7 +7,7 @@
  */
 
 import type { LeagueStats } from '../types';
-import { EURO_ISOLATED_DEFAULTS, TRANSFER_MARKET_NBA_DEFAULTS } from '../constants';
+import { EURO_ISOLATED_DEFAULTS, LOAN_MARKET_NBA_DEFAULTS, TRANSFER_MARKET_NBA_DEFAULTS } from '../constants';
 
 export type TransferWindowName = 'summer' | 'winter' | null;
 
@@ -33,10 +33,33 @@ function parseMonthDay(s: string): { month: number; day: number } | null {
   return { month, day };
 }
 
+function validMonthDay(s: unknown): s is string {
+  return typeof s === 'string' && parseMonthDay(s) !== null;
+}
+
 function resolveSettings(leagueStats: LeagueStats | undefined): NonNullable<LeagueStats['transferMarket']> {
   const euro = leagueStats?.uiMode === 'euro_isolated';
   const base = euro ? EURO_ISOLATED_DEFAULTS.transferMarket : TRANSFER_MARKET_NBA_DEFAULTS;
-  return { ...(base as NonNullable<LeagueStats['transferMarket']>), ...(leagueStats?.transferMarket ?? {}) };
+  const overrides = leagueStats?.transferMarket ?? {};
+  const merged = { ...(base as NonNullable<LeagueStats['transferMarket']>), ...overrides };
+  for (const key of ['summerStart', 'summerEnd', 'winterStart', 'winterEnd'] as const) {
+    if (!validMonthDay(merged[key])) {
+      merged[key] = (base as NonNullable<LeagueStats['transferMarket']>)[key];
+    }
+  }
+  return euro ? { ...merged, enabled: true } : merged;
+}
+
+function resolveLoanSettings(leagueStats: LeagueStats | undefined): NonNullable<LeagueStats['loanMarket']> {
+  const euro = leagueStats?.uiMode === 'euro_isolated';
+  const base = euro
+    ? (EURO_ISOLATED_DEFAULTS.loanMarket as NonNullable<LeagueStats['loanMarket']>)
+    : LOAN_MARKET_NBA_DEFAULTS;
+  const merged = { ...base, ...(leagueStats?.loanMarket ?? {}) };
+  for (const key of ['summerStart', 'summerEnd', 'winterStart', 'winterEnd'] as const) {
+    if (!validMonthDay(merged[key])) merged[key] = base[key];
+  }
+  return euro ? { ...merged, enabled: true } : merged;
 }
 
 function dateAt(year: number, mmdd: string): Date | null {
@@ -149,6 +172,54 @@ export function isInTransferWindow(
   };
 }
 
+export function isInLoanWindow(
+  currentDate: Date | string,
+  leagueStats: LeagueStats | undefined,
+): TransferWindowStatus {
+  const settings = resolveLoanSettings(leagueStats);
+  let date: Date;
+  if (typeof currentDate === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(currentDate)) date = new Date(`${currentDate}T00:00:00Z`);
+    else {
+      const parsed = new Date(currentDate);
+      date = Number.isNaN(parsed.getTime())
+        ? new Date()
+        : new Date(Date.UTC(parsed.getFullYear(), parsed.getMonth(), parsed.getDate()));
+    }
+  } else date = currentDate;
+  if (Number.isNaN(date.getTime()) || !settings.enabled) {
+    return { open: false, window: null, nextOpen: null, currentClose: null };
+  }
+  if (inWindow(date, settings.summerStart, settings.summerEnd)) {
+    return {
+      open: true,
+      window: 'summer',
+      nextOpen: null,
+      currentClose: currentWindowClose(date, settings.summerStart, settings.summerEnd),
+    };
+  }
+  if (inWindow(date, settings.winterStart, settings.winterEnd)) {
+    return {
+      open: true,
+      window: 'winter',
+      nextOpen: null,
+      currentClose: currentWindowClose(date, settings.winterStart, settings.winterEnd),
+    };
+  }
+  return {
+    open: false,
+    window: null,
+    nextOpen: nextOpening(date, settings.summerStart, settings.winterStart),
+    currentClose: null,
+  };
+}
+
+export function getLoanMarketSettings(
+  leagueStats: LeagueStats | undefined,
+): NonNullable<LeagueStats['loanMarket']> {
+  return resolveLoanSettings(leagueStats);
+}
+
 /** Convenience: just the boolean open-flag. */
 export function isTransferWindowOpen(
   currentDate: Date | string,
@@ -162,4 +233,28 @@ export function getTransferMarketSettings(
   leagueStats: LeagueStats | undefined
 ): NonNullable<LeagueStats['transferMarket']> {
   return resolveSettings(leagueStats);
+}
+
+export function getTransferWindowProgress(
+  currentDate: string | Date | undefined,
+  leagueStats: LeagueStats | undefined,
+): { current: number; total: number; isLast: boolean; todayIso: string; closeIso: string } | null {
+  if (!currentDate) return null;
+  const status = isInTransferWindow(currentDate, leagueStats);
+  if (!status.open || !status.currentClose || !status.window) return null;
+
+  const todayIso = typeof currentDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(currentDate)
+    ? currentDate
+    : new Date(currentDate).toISOString().slice(0, 10);
+  const closeIso = status.currentClose.toISOString().slice(0, 10);
+  const settings = getTransferMarketSettings(leagueStats);
+  const startMMDD = status.window === 'summer' ? settings.summerStart : settings.winterStart;
+  const [startMonth, startDay] = startMMDD.split('-').map(value => Number.parseInt(value, 10));
+  const today = new Date(`${todayIso}T00:00:00Z`);
+  const close = new Date(`${closeIso}T00:00:00Z`);
+  let start = new Date(Date.UTC(close.getUTCFullYear(), startMonth - 1, startDay));
+  if (start.getTime() > close.getTime()) start = new Date(Date.UTC(close.getUTCFullYear() - 1, startMonth - 1, startDay));
+  const total = Math.max(1, Math.round((close.getTime() - start.getTime()) / 86_400_000) + 1);
+  const current = Math.max(1, Math.min(total, Math.round((today.getTime() - start.getTime()) / 86_400_000) + 1));
+  return { current, total, isLast: current >= total, todayIso, closeIso };
 }

@@ -1,0 +1,2441 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "eurocup-history.1524604708820623",
+  "competitionKey": "eurocup",
+  "competitionName": "EuroCup",
+  "leagueKey": "euroleague",
+  "generatedAt": "2026-08-01T21:55:01.807Z",
+  "sources": [
+    {
+      "role": "results",
+      "source": {
+        "provider": "wikipedia",
+        "pageTitle": "EuroCup Basketball",
+        "pageUrl": "https://en.wikipedia.org/w/index.php?title=EuroCup_Basketball&oldid=1364217469",
+        "revisionId": 1364217469,
+        "fetchedAt": "2026-08-01T21:55:00.371Z"
+      }
+    },
+    {
+      "role": "awards",
+      "source": {
+        "provider": "wikipedia",
+        "pageTitle": "EuroCup Basketball Awards",
+        "pageUrl": "https://en.wikipedia.org/w/index.php?title=EuroCup_Basketball_Awards&oldid=1353772208",
+        "revisionId": 1353772208,
+        "fetchedAt": "2026-08-01T21:55:01.807Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2003,
+      "seasonLabel": "2002–03",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Valencia",
+        "sourcePageTitle": "Valencia Basket",
+        "sourceHref": "/wiki/Valencia_Basket",
+        "canonicalKey": "club:valencia-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Krka",
+        "sourcePageTitle": "KK Krka",
+        "sourceHref": "/wiki/KK_Krka",
+        "canonicalKey": "club:kk-krka"
+      },
+      "result": "168–154(78–90 / 78–76)",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dejan Tomašević",
+                "sourcePageTitle": "Dejan Tomašević",
+                "sourceHref": "/wiki/Dejan_Toma%C5%A1evi%C4%87",
+                "canonicalKey": "person:dejan-tomasevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia",
+                "sourcePageTitle": "Valencia BC",
+                "sourceHref": "/wiki/Valencia_BC",
+                "canonicalKey": "club:valencia-bc"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2004,
+      "seasonLabel": "2003–04",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Hapoel Jerusalem",
+        "sourcePageTitle": "Hapoel Jerusalem B.C.",
+        "sourceHref": "/wiki/Hapoel_Jerusalem_B.C.",
+        "canonicalKey": "club:hapoel-jerusalem-b-c"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Real Madrid",
+        "sourcePageTitle": "Real Madrid Baloncesto",
+        "sourceHref": "/wiki/Real_Madrid_Baloncesto",
+        "canonicalKey": "club:real-madrid-baloncesto"
+      },
+      "result": "83–72",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kelly McCarty",
+                "sourcePageTitle": "Kelly McCarty",
+                "sourceHref": "/wiki/Kelly_McCarty",
+                "canonicalKey": "person:kelly-mccarty"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Jerusalem",
+                "sourcePageTitle": "Hapoel Jerusalem B.C.",
+                "sourceHref": "/wiki/Hapoel_Jerusalem_B.C.",
+                "canonicalKey": "club:hapoel-jerusalem-b-c"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2005,
+      "seasonLabel": "2004–05",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Rytas Vilnius",
+        "sourcePageTitle": "BC Lietuvos rytas",
+        "sourceHref": "/wiki/BC_Lietuvos_rytas",
+        "canonicalKey": "club:bc-lietuvos-rytas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Makedonikos",
+        "sourcePageTitle": "Makedonikos B.C.",
+        "sourceHref": "/wiki/Makedonikos_B.C.",
+        "canonicalKey": "club:makedonikos-b-c"
+      },
+      "result": "78–74",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Robertas Javtokas",
+                "sourcePageTitle": "Robertas Javtokas",
+                "sourceHref": "/wiki/Robertas_Javtokas",
+                "canonicalKey": "person:robertas-javtokas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "sourcePageTitle": "BC Lietuvos Rytas",
+                "sourceHref": "/wiki/BC_Lietuvos_Rytas",
+                "canonicalKey": "club:bc-lietuvos-rytas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2005–06",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Dynamo Moscow",
+        "sourcePageTitle": "MBC Dynamo Moscow",
+        "sourceHref": "/wiki/MBC_Dynamo_Moscow",
+        "canonicalKey": "club:mbc-dynamo-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Aris",
+        "sourcePageTitle": "Aris B.C.",
+        "sourceHref": "/wiki/Aris_B.C.",
+        "canonicalKey": "club:aris-b-c"
+      },
+      "result": "73–60",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ruben Douglas",
+                "sourcePageTitle": "Ruben Douglas",
+                "sourceHref": "/wiki/Ruben_Douglas",
+                "canonicalKey": "person:ruben-douglas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dynamo Moscow",
+                "sourcePageTitle": "MBC Dynamo Moscow",
+                "sourceHref": "/wiki/MBC_Dynamo_Moscow",
+                "canonicalKey": "club:mbc-dynamo-moscow"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2006–07",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Real Madrid",
+        "sourcePageTitle": "Real Madrid Baloncesto",
+        "sourceHref": "/wiki/Real_Madrid_Baloncesto",
+        "canonicalKey": "club:real-madrid-baloncesto"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Rytas Vilnius",
+        "sourcePageTitle": "BC Lietuvos rytas",
+        "sourceHref": "/wiki/BC_Lietuvos_rytas",
+        "canonicalKey": "club:bc-lietuvos-rytas"
+      },
+      "result": "87–75",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Charles Smith",
+                "sourcePageTitle": "Charles Cornelius Smith",
+                "sourceHref": "/wiki/Charles_Cornelius_Smith",
+                "canonicalKey": "person:charles-cornelius-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "sourcePageTitle": "Real Madrid Baloncesto",
+                "sourceHref": "/wiki/Real_Madrid_Baloncesto",
+                "canonicalKey": "club:real-madrid-baloncesto"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2007–08",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Joventut",
+        "sourcePageTitle": "Club Joventut Badalona",
+        "sourceHref": "/wiki/Club_Joventut_Badalona",
+        "canonicalKey": "club:club-joventut-badalona"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Girona",
+        "sourcePageTitle": "CB Sant Josep",
+        "sourceHref": "/wiki/CB_Sant_Josep",
+        "canonicalKey": "club:cb-sant-josep"
+      },
+      "result": "79–54",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rudy Fernández",
+                "sourcePageTitle": "Rudy Fernández (basketball)",
+                "sourceHref": "/wiki/Rudy_Fern%C3%A1ndez_(basketball)",
+                "canonicalKey": "person:rudy-fernandez-basketball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Joventut Badalona",
+                "sourcePageTitle": "Joventut Badalona",
+                "sourceHref": "/wiki/Joventut_Badalona",
+                "canonicalKey": "club:joventut-badalona"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2008–09",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Rytas Vilnius",
+        "sourcePageTitle": "BC Lietuvos rytas",
+        "sourceHref": "/wiki/BC_Lietuvos_rytas",
+        "canonicalKey": "club:bc-lietuvos-rytas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Khimki",
+        "sourcePageTitle": "BC Khimki",
+        "sourceHref": "/wiki/BC_Khimki",
+        "canonicalKey": "club:bc-khimki"
+      },
+      "result": "80–74",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chuck Eidson",
+                "sourcePageTitle": "Chuck Eidson",
+                "sourceHref": "/wiki/Chuck_Eidson",
+                "canonicalKey": "person:chuck-eidson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "sourcePageTitle": "BC Lietuvos Rytas",
+                "sourceHref": "/wiki/BC_Lietuvos_Rytas",
+                "canonicalKey": "club:bc-lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marijonas Petravičius",
+                "sourcePageTitle": "Marijonas Petravičius",
+                "sourceHref": "/wiki/Marijonas_Petravi%C4%8Dius",
+                "canonicalKey": "person:marijonas-petravicius"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "sourcePageTitle": "BC Lietuvos Rytas",
+                "sourceHref": "/wiki/BC_Lietuvos_Rytas",
+                "canonicalKey": "club:bc-lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milan Mačvan",
+                "sourcePageTitle": "Milan Mačvan",
+                "sourceHref": "/wiki/Milan_Ma%C4%8Dvan",
+                "canonicalKey": "person:milan-macvan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hemofarm",
+                "sourcePageTitle": "KK Hemofarm",
+                "sourceHref": "/wiki/KK_Hemofarm",
+                "canonicalKey": "club:kk-hemofarm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Oktay Mahmuti",
+                "sourcePageTitle": "Oktay Mahmuti",
+                "sourceHref": "/wiki/Oktay_Mahmuti",
+                "canonicalKey": "person:oktay-mahmuti"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Treviso",
+                "sourcePageTitle": "Pallacanestro Treviso",
+                "sourceHref": "/wiki/Pallacanestro_Treviso",
+                "canonicalKey": "club:pallacanestro-treviso"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2009–10",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Valencia",
+        "sourcePageTitle": "Valencia Basket",
+        "sourceHref": "/wiki/Valencia_Basket",
+        "canonicalKey": "club:valencia-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Alba",
+        "sourcePageTitle": "Alba Berlin",
+        "sourceHref": "/wiki/Alba_Berlin",
+        "canonicalKey": "club:alba-berlin"
+      },
+      "result": "67–44",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marko Banić",
+                "sourcePageTitle": "Marko Banić",
+                "sourceHref": "/wiki/Marko_Bani%C4%87",
+                "canonicalKey": "person:marko-banic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bilbao",
+                "sourcePageTitle": "CB Bilbao Berri",
+                "sourceHref": "/wiki/CB_Bilbao_Berri",
+                "canonicalKey": "club:cb-bilbao-berri"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Matt Nielsen",
+                "sourcePageTitle": "Matt Nielsen",
+                "sourceHref": "/wiki/Matt_Nielsen",
+                "canonicalKey": "person:matt-nielsen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia",
+                "sourcePageTitle": "Valencia BC",
+                "sourceHref": "/wiki/Valencia_BC",
+                "canonicalKey": "club:valencia-bc"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Víctor Claver",
+                "sourcePageTitle": "Víctor Claver",
+                "sourceHref": "/wiki/V%C3%ADctor_Claver",
+                "canonicalKey": "person:victor-claver"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia",
+                "sourcePageTitle": "Valencia Basket",
+                "sourceHref": "/wiki/Valencia_Basket",
+                "canonicalKey": "club:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ilias Zouros",
+                "sourcePageTitle": "Ilias Zouros",
+                "sourceHref": "/wiki/Ilias_Zouros",
+                "canonicalKey": "person:ilias-zouros"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panellinios",
+                "sourcePageTitle": "Panellinios B.C.",
+                "sourceHref": "/wiki/Panellinios_B.C.",
+                "canonicalKey": "club:panellinios-b-c"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2010–11",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "UNICS",
+        "sourcePageTitle": "BC UNICS",
+        "sourceHref": "/wiki/BC_UNICS",
+        "canonicalKey": "club:bc-unics"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Cajasol",
+        "sourcePageTitle": "CB Sevilla",
+        "sourceHref": "/wiki/CB_Sevilla",
+        "canonicalKey": "club:cb-sevilla"
+      },
+      "result": "92–77",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dontaye Draper",
+                "sourcePageTitle": "Dontaye Draper",
+                "sourceHref": "/wiki/Dontaye_Draper",
+                "canonicalKey": "person:dontaye-draper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cedevita Zagreb",
+                "sourcePageTitle": "KK Cedevita Zagreb",
+                "sourceHref": "/wiki/KK_Cedevita_Zagreb",
+                "canonicalKey": "club:kk-cedevita-zagreb"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marko Popović",
+                "sourcePageTitle": "Marko Popović (born 1982)",
+                "sourceHref": "/wiki/Marko_Popovi%C4%87_(born_1982)",
+                "canonicalKey": "person:marko-popovic-born-1982"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "sourcePageTitle": "BC UNICS Kazan",
+                "sourceHref": "/wiki/BC_UNICS_Kazan",
+                "canonicalKey": "club:bc-unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Donatas Motiejūnas",
+                "sourcePageTitle": "Donatas Motiejūnas",
+                "sourceHref": "/wiki/Donatas_Motiej%C5%ABnas",
+                "canonicalKey": "person:donatas-motiejunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Treviso",
+                "sourcePageTitle": "Pallacanestro Treviso",
+                "sourceHref": "/wiki/Pallacanestro_Treviso",
+                "canonicalKey": "club:pallacanestro-treviso"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aleksandar Petrović",
+                "sourcePageTitle": "Aleksandar Petrović (basketball, born February 1959)",
+                "sourceHref": "/wiki/Aleksandar_Petrovi%C4%87_(basketball,_born_February_1959)",
+                "canonicalKey": "person:aleksandar-petrovic-basketball-born-february-1959"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cedevita Zagreb",
+                "sourcePageTitle": "KK Cedevita Zagreb",
+                "sourceHref": "/wiki/KK_Cedevita_Zagreb",
+                "canonicalKey": "club:kk-cedevita-zagreb"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2011–12",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Khimki",
+        "sourcePageTitle": "BC Khimki",
+        "sourceHref": "/wiki/BC_Khimki",
+        "canonicalKey": "club:bc-khimki"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Valencia",
+        "sourcePageTitle": "Valencia Basket",
+        "sourceHref": "/wiki/Valencia_Basket",
+        "canonicalKey": "club:valencia-basket"
+      },
+      "result": "77–68",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Patrick Beverley",
+                "sourcePageTitle": "Patrick Beverley",
+                "sourceHref": "/wiki/Patrick_Beverley",
+                "canonicalKey": "person:patrick-beverley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Spartak St. Petersburg",
+                "sourcePageTitle": "BC Spartak Saint Petersburg",
+                "sourceHref": "/wiki/BC_Spartak_Saint_Petersburg",
+                "canonicalKey": "club:bc-spartak-saint-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zoran Planinić",
+                "sourcePageTitle": "Zoran Planinić",
+                "sourceHref": "/wiki/Zoran_Planini%C4%87",
+                "canonicalKey": "person:zoran-planinic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "sourcePageTitle": "BC Khimki",
+                "sourceHref": "/wiki/BC_Khimki",
+                "canonicalKey": "club:bc-khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jonas Valančiūnas",
+                "sourcePageTitle": "Jonas Valančiūnas",
+                "sourceHref": "/wiki/Jonas_Valan%C4%8Di%C5%ABnas",
+                "canonicalKey": "person:jonas-valanciunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "sourcePageTitle": "BC Lietuvos rytas",
+                "sourceHref": "/wiki/BC_Lietuvos_rytas",
+                "canonicalKey": "club:bc-lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jure Zdovc",
+                "sourcePageTitle": "Jure Zdovc",
+                "sourceHref": "/wiki/Jure_Zdovc",
+                "canonicalKey": "person:jure-zdovc"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Spartak St. Petersburg",
+                "sourcePageTitle": "BC Spartak Saint Petersburg",
+                "sourceHref": "/wiki/BC_Spartak_Saint_Petersburg",
+                "canonicalKey": "club:bc-spartak-saint-petersburg"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2012–13",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Lokomotiv Kuban",
+        "sourcePageTitle": "PBC Lokomotiv Kuban",
+        "sourceHref": "/wiki/PBC_Lokomotiv_Kuban",
+        "canonicalKey": "club:pbc-lokomotiv-kuban"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Bilbao",
+        "sourcePageTitle": "Bilbao Basket",
+        "sourceHref": "/wiki/Bilbao_Basket",
+        "canonicalKey": "club:bilbao-basket"
+      },
+      "result": "75–64",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "sourcePageTitle": "Nick Calathes",
+                "sourceHref": "/wiki/Nick_Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "sourcePageTitle": "PBC Lokomotiv Kuban",
+                "sourceHref": "/wiki/PBC_Lokomotiv_Kuban",
+                "canonicalKey": "club:pbc-lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Richard Hendrix",
+                "sourcePageTitle": "Richard Hendrix",
+                "sourceHref": "/wiki/Richard_Hendrix",
+                "canonicalKey": "person:richard-hendrix"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "sourcePageTitle": "PBC Lokomotiv Kuban",
+                "sourceHref": "/wiki/PBC_Lokomotiv_Kuban",
+                "canonicalKey": "club:pbc-lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljević",
+                "sourcePageTitle": "Bojan Dubljević",
+                "sourceHref": "/wiki/Bojan_Dubljevi%C4%87",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia",
+                "sourcePageTitle": "Valencia Basket",
+                "sourceHref": "/wiki/Valencia_Basket",
+                "canonicalKey": "club:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Fotios Katsikaris",
+                "sourcePageTitle": "Fotios Katsikaris",
+                "sourceHref": "/wiki/Fotios_Katsikaris",
+                "canonicalKey": "person:fotios-katsikaris"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bilbao",
+                "sourcePageTitle": "Bilbao Basket",
+                "sourceHref": "/wiki/Bilbao_Basket",
+                "canonicalKey": "club:bilbao-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2013–14",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Valencia",
+        "sourcePageTitle": "Valencia Basket",
+        "sourceHref": "/wiki/Valencia_Basket",
+        "canonicalKey": "club:valencia-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "UNICS",
+        "sourcePageTitle": "BC UNICS",
+        "sourceHref": "/wiki/BC_UNICS",
+        "canonicalKey": "club:bc-unics"
+      },
+      "result": "165–140(80–67 / 73–85)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Goudelock",
+                "sourcePageTitle": "Andrew Goudelock",
+                "sourceHref": "/wiki/Andrew_Goudelock",
+                "canonicalKey": "person:andrew-goudelock"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "sourcePageTitle": "BC UNICS Kazan",
+                "sourceHref": "/wiki/BC_UNICS_Kazan",
+                "canonicalKey": "club:bc-unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Doellman",
+                "sourcePageTitle": "Justin Doellman",
+                "sourceHref": "/wiki/Justin_Doellman",
+                "canonicalKey": "person:justin-doellman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia",
+                "sourcePageTitle": "Valencia BC",
+                "sourceHref": "/wiki/Valencia_BC",
+                "canonicalKey": "club:valencia-bc"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljević",
+                "sourcePageTitle": "Bojan Dubljević",
+                "sourceHref": "/wiki/Bojan_Dubljevi%C4%87",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia",
+                "sourcePageTitle": "Valencia Basket",
+                "sourceHref": "/wiki/Valencia_Basket",
+                "canonicalKey": "club:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrea Trinchieri",
+                "sourcePageTitle": "Andrea Trinchieri",
+                "sourceHref": "/wiki/Andrea_Trinchieri",
+                "canonicalKey": "person:andrea-trinchieri"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "sourcePageTitle": "BC UNICS Kazan",
+                "sourceHref": "/wiki/BC_UNICS_Kazan",
+                "canonicalKey": "club:bc-unics-kazan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2014–15",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Khimki",
+        "sourcePageTitle": "BC Khimki",
+        "sourceHref": "/wiki/BC_Khimki",
+        "canonicalKey": "club:bc-khimki"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Gran Canaria",
+        "sourcePageTitle": "CB Gran Canaria",
+        "sourceHref": "/wiki/CB_Gran_Canaria",
+        "canonicalKey": "club:cb-gran-canaria"
+      },
+      "result": "174–130 (66–91 / 83–64)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyrese Rice",
+                "sourcePageTitle": "Tyrese Rice",
+                "sourceHref": "/wiki/Tyrese_Rice",
+                "canonicalKey": "person:tyrese-rice"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "sourcePageTitle": "BC Khimki",
+                "sourceHref": "/wiki/BC_Khimki",
+                "canonicalKey": "club:bc-khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyrese Rice",
+                "sourcePageTitle": "Tyrese Rice",
+                "sourceHref": "/wiki/Tyrese_Rice",
+                "canonicalKey": "person:tyrese-rice"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "sourcePageTitle": "BC Khimki",
+                "sourceHref": "/wiki/BC_Khimki",
+                "canonicalKey": "club:bc-khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kristaps Porziņģis",
+                "sourcePageTitle": "Kristaps Porziņģis",
+                "sourceHref": "/wiki/Kristaps_Porzi%C5%86%C4%A3is",
+                "canonicalKey": "person:kristaps-porzingis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sevilla",
+                "sourcePageTitle": "CB Sevilla",
+                "sourceHref": "/wiki/CB_Sevilla",
+                "canonicalKey": "club:cb-sevilla"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aíto García Reneses",
+                "sourcePageTitle": "Aíto García Reneses",
+                "sourceHref": "/wiki/A%C3%ADto_Garc%C3%ADa_Reneses",
+                "canonicalKey": "person:aito-garcia-reneses"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Gran Canaria",
+                "sourcePageTitle": "CB Gran Canaria",
+                "sourceHref": "/wiki/CB_Gran_Canaria",
+                "canonicalKey": "club:cb-gran-canaria"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2015–16",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Galatasaray",
+        "sourcePageTitle": "Galatasaray S.K. (men's basketball)",
+        "sourceHref": "/wiki/Galatasaray_S.K._(men%27s_basketball)",
+        "canonicalKey": "club:galatasaray-s-k-men-s-basketball"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Strasbourg",
+        "sourcePageTitle": "SIG Basket",
+        "sourceHref": "/wiki/SIG_Basket",
+        "canonicalKey": "club:sig-basket"
+      },
+      "result": "140–133 (66–62 / 78–67)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Errick McCollum",
+                "sourcePageTitle": "Errick McCollum",
+                "sourceHref": "/wiki/Errick_McCollum",
+                "canonicalKey": "person:errick-mccollum"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Galatasaray",
+                "sourcePageTitle": "Galatasaray S.K. (men's basketball)",
+                "sourceHref": "/wiki/Galatasaray_S.K._(men%27s_basketball)",
+                "canonicalKey": "club:galatasaray-s-k-men-s-basketball"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Stéphane Lasme",
+                "sourcePageTitle": "Stéphane Lasme",
+                "sourceHref": "/wiki/St%C3%A9phane_Lasme",
+                "canonicalKey": "person:stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Galatasaray Odeabank",
+                "sourcePageTitle": "Galatasaray S.K. (men's basketball)",
+                "sourceHref": "/wiki/Galatasaray_S.K._(men%27s_basketball)",
+                "canonicalKey": "club:galatasaray-s-k-men-s-basketball"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mateusz Ponitka",
+                "sourcePageTitle": "Mateusz Ponitka",
+                "sourceHref": "/wiki/Mateusz_Ponitka",
+                "canonicalKey": "person:mateusz-ponitka"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zielona Góra",
+                "sourcePageTitle": "Basket Zielona Góra",
+                "sourceHref": "/wiki/Basket_Zielona_G%C3%B3ra",
+                "canonicalKey": "club:basket-zielona-gora"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maurizio Buscaglia",
+                "sourcePageTitle": "Maurizio Buscaglia",
+                "sourceHref": "/wiki/Maurizio_Buscaglia",
+                "canonicalKey": "person:maurizio-buscaglia"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aquila Trento",
+                "sourcePageTitle": "Aquila Basket Trento",
+                "sourceHref": "/wiki/Aquila_Basket_Trento",
+                "canonicalKey": "club:aquila-basket-trento"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2016–17",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Unicaja",
+        "sourcePageTitle": "Baloncesto Málaga",
+        "sourceHref": "/wiki/Baloncesto_M%C3%A1laga",
+        "canonicalKey": "club:baloncesto-malaga"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Valencia",
+        "sourcePageTitle": "Valencia Basket",
+        "sourceHref": "/wiki/Valencia_Basket",
+        "canonicalKey": "club:valencia-basket"
+      },
+      "result": "2–1 (68–62 / 79–71 / 58–63)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alexey Shved",
+                "sourcePageTitle": "Alexey Shved",
+                "sourceHref": "/wiki/Alexey_Shved",
+                "canonicalKey": "person:alexey-shved"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "sourcePageTitle": "BC Khimki",
+                "sourceHref": "/wiki/BC_Khimki",
+                "canonicalKey": "club:bc-khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alberto Díaz",
+                "sourcePageTitle": "Alberto Díaz",
+                "sourceHref": "/wiki/Alberto_D%C3%ADaz",
+                "canonicalKey": "person:alberto-diaz"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Unicaja",
+                "sourcePageTitle": "Baloncesto Málaga",
+                "sourceHref": "/wiki/Baloncesto_M%C3%A1laga",
+                "canonicalKey": "club:baloncesto-malaga"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rolands Šmits",
+                "sourcePageTitle": "Rolands Šmits",
+                "sourceHref": "/wiki/Rolands_%C5%A0mits",
+                "canonicalKey": "person:rolands-smits"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Montakit Fuenlabrada",
+                "sourcePageTitle": "Baloncesto Fuenlabrada",
+                "sourceHref": "/wiki/Baloncesto_Fuenlabrada",
+                "canonicalKey": "club:baloncesto-fuenlabrada"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Pedro Martínez",
+                "sourcePageTitle": "Pedro Martínez (basketball)",
+                "sourceHref": "/wiki/Pedro_Mart%C3%ADnez_(basketball)",
+                "canonicalKey": "person:pedro-martinez-basketball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia",
+                "sourcePageTitle": "Valencia Basket",
+                "sourceHref": "/wiki/Valencia_Basket",
+                "canonicalKey": "club:valencia-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2017–18",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Darüşşafaka",
+        "sourcePageTitle": "Darüşşafaka S.K.",
+        "sourceHref": "/wiki/Dar%C3%BC%C5%9F%C5%9Fafaka_S.K.",
+        "canonicalKey": "club:darussafaka-s-k"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lokomotiv Kuban",
+        "sourcePageTitle": "PBC Lokomotiv-Kuban",
+        "sourceHref": "/wiki/PBC_Lokomotiv-Kuban",
+        "canonicalKey": "club:pbc-lokomotiv-kuban"
+      },
+      "result": "2–0 (78–81 / 67–59)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Scottie Wilbekin",
+                "sourcePageTitle": "Scottie Wilbekin",
+                "sourceHref": "/wiki/Scottie_Wilbekin",
+                "canonicalKey": "person:scottie-wilbekin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Darüşşafaka",
+                "sourcePageTitle": "Darüşşafaka S.K.",
+                "sourceHref": "/wiki/Dar%C3%BC%C5%9F%C5%9Fafaka_S.K.",
+                "canonicalKey": "club:darussafaka-s-k"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Scottie Wilbekin",
+                "sourcePageTitle": "Scottie Wilbekin",
+                "sourceHref": "/wiki/Scottie_Wilbekin",
+                "canonicalKey": "person:scottie-wilbekin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Darüşşafaka",
+                "sourcePageTitle": "Darüşşafaka S.K.",
+                "sourceHref": "/wiki/Dar%C3%BC%C5%9F%C5%9Fafaka_S.K.",
+                "canonicalKey": "club:darussafaka-s-k"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "regular-season-mvp",
+          "awardName": "Regular Season MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Scottie Wilbekin",
+                "sourcePageTitle": "Scottie Wilbekin",
+                "sourceHref": "/wiki/Scottie_Wilbekin",
+                "canonicalKey": "person:scottie-wilbekin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Darüşşafaka",
+                "sourcePageTitle": "Darüşşafaka S.K.",
+                "sourceHref": "/wiki/Dar%C3%BC%C5%9F%C5%9Fafaka_S.K.",
+                "canonicalKey": "club:darussafaka-s-k"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Džanan Musa",
+                "sourcePageTitle": "Džanan Musa",
+                "sourceHref": "/wiki/D%C5%BEanan_Musa",
+                "canonicalKey": "person:dzanan-musa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cedevita",
+                "sourcePageTitle": "KK Cedevita",
+                "sourceHref": "/wiki/KK_Cedevita",
+                "canonicalKey": "club:kk-cedevita"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Saša Obradović",
+                "sourcePageTitle": "Saša Obradović",
+                "sourceHref": "/wiki/Sa%C5%A1a_Obradovi%C4%87",
+                "canonicalKey": "person:sasa-obradovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "sourcePageTitle": "PBC Lokomotiv Kuban",
+                "sourceHref": "/wiki/PBC_Lokomotiv_Kuban",
+                "canonicalKey": "club:pbc-lokomotiv-kuban"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2018–19",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Valencia",
+        "sourcePageTitle": "Valencia Basket",
+        "sourceHref": "/wiki/Valencia_Basket",
+        "canonicalKey": "club:valencia-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Alba",
+        "sourcePageTitle": "Alba Berlin",
+        "sourceHref": "/wiki/Alba_Berlin",
+        "canonicalKey": "club:alba-berlin"
+      },
+      "result": "2–1(89–75 / 95–92 / 89–63)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luke Sikma",
+                "sourcePageTitle": "Luke Sikma",
+                "sourceHref": "/wiki/Luke_Sikma",
+                "canonicalKey": "person:luke-sikma"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "sourcePageTitle": "Alba Berlin",
+                "sourceHref": "/wiki/Alba_Berlin",
+                "canonicalKey": "club:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Thomas",
+                "sourcePageTitle": "Will Thomas (basketball)",
+                "sourceHref": "/wiki/Will_Thomas_(basketball)",
+                "canonicalKey": "person:will-thomas-basketball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "sourcePageTitle": "Valencia Basket",
+                "sourceHref": "/wiki/Valencia_Basket",
+                "canonicalKey": "club:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "regular-season-mvp",
+          "awardName": "Regular Season MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Pierriá Henry",
+                "sourcePageTitle": "Pierriá Henry",
+                "sourceHref": "/wiki/Pierri%C3%A1_Henry",
+                "canonicalKey": "person:pierria-henry"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "sourcePageTitle": "BC UNICS Kazan",
+                "sourceHref": "/wiki/BC_UNICS_Kazan",
+                "canonicalKey": "club:bc-unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Martynas Echodas",
+                "sourcePageTitle": "Martynas Echodas",
+                "sourceHref": "/wiki/Martynas_Echodas",
+                "canonicalKey": "person:martynas-echodas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Rytas Vilnius",
+                "sourcePageTitle": "BC Rytas",
+                "sourceHref": "/wiki/BC_Rytas",
+                "canonicalKey": "club:bc-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aíto García Reneses",
+                "sourcePageTitle": "Aíto García Reneses",
+                "sourceHref": "/wiki/A%C3%ADto_Garc%C3%ADa_Reneses",
+                "canonicalKey": "person:aito-garcia-reneses"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "sourcePageTitle": "Alba Berlin",
+                "sourceHref": "/wiki/Alba_Berlin",
+                "canonicalKey": "club:alba-berlin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2019–20",
+      "status": "cancelled",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "not-awarded"
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "not-awarded"
+        },
+        {
+          "awardKey": "regular-season-mvp",
+          "awardName": "Regular Season MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Miloš Teodosić",
+                "sourcePageTitle": "Miloš Teodosić",
+                "sourceHref": "/wiki/Milo%C5%A1_Teodosi%C4%87",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "sourcePageTitle": "Virtus Bologna",
+                "sourceHref": "/wiki/Virtus_Bologna",
+                "canonicalKey": "club:virtus-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "not-awarded"
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "not-awarded"
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2020–21",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Monaco",
+        "sourcePageTitle": "AS Monaco Basket",
+        "sourceHref": "/wiki/AS_Monaco_Basket",
+        "canonicalKey": "club:as-monaco-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "UNICS",
+        "sourcePageTitle": "BC UNICS",
+        "sourceHref": "/wiki/BC_UNICS",
+        "canonicalKey": "club:bc-unics"
+      },
+      "result": "2–0(89–87 / 83–86)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jamar Smith",
+                "sourcePageTitle": "Jamar Smith",
+                "sourceHref": "/wiki/Jamar_Smith",
+                "canonicalKey": "person:jamar-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "sourcePageTitle": "UNICS Kazan",
+                "sourceHref": "/wiki/UNICS_Kazan",
+                "canonicalKey": "club:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rob Gray",
+                "sourcePageTitle": "Rob Gray (basketball)",
+                "sourceHref": "/wiki/Rob_Gray_(basketball)",
+                "canonicalKey": "person:rob-gray-basketball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Monaco",
+                "sourcePageTitle": "AS Monaco Basket",
+                "sourceHref": "/wiki/AS_Monaco_Basket",
+                "canonicalKey": "club:as-monaco-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "regular-season-mvp",
+          "awardName": "Regular Season MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Miloš Teodosić",
+                "sourcePageTitle": "Miloš Teodosić",
+                "sourceHref": "/wiki/Milo%C5%A1_Teodosi%C4%87",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "sourcePageTitle": "Virtus Bologna",
+                "sourceHref": "/wiki/Virtus_Bologna",
+                "canonicalKey": "club:virtus-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aleksander Balcerowski",
+                "sourcePageTitle": "Aleksander Balcerowski",
+                "sourceHref": "/wiki/Aleksander_Balcerowski",
+                "canonicalKey": "person:aleksander-balcerowski"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Herbalife Gran Canaria",
+                "sourcePageTitle": "CB Gran Canaria",
+                "sourceHref": "/wiki/CB_Gran_Canaria",
+                "canonicalKey": "club:cb-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zvezdan Mitrović",
+                "sourcePageTitle": "Zvezdan Mitrović",
+                "sourceHref": "/wiki/Zvezdan_Mitrovi%C4%87",
+                "canonicalKey": "person:zvezdan-mitrovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Monaco",
+                "sourcePageTitle": "AS Monaco Basket",
+                "sourceHref": "/wiki/AS_Monaco_Basket",
+                "canonicalKey": "club:as-monaco-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2021–22",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Virtus Bologna",
+        "sourcePageTitle": "Virtus Bologna",
+        "sourceHref": "/wiki/Virtus_Bologna",
+        "canonicalKey": "club:virtus-bologna"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Bursaspor",
+        "sourcePageTitle": "Bursaspor Basketbol",
+        "sourceHref": "/wiki/Bursaspor_Basketbol",
+        "canonicalKey": "club:bursaspor-basketbol"
+      },
+      "result": "80–67",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mouhammadou Jaiteh",
+                "sourcePageTitle": "Mouhammadou Jaiteh",
+                "sourceHref": "/wiki/Mouhammadou_Jaiteh",
+                "canonicalKey": "person:mouhammadou-jaiteh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "sourcePageTitle": "Virtus Bologna",
+                "sourceHref": "/wiki/Virtus_Bologna",
+                "canonicalKey": "club:virtus-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Miloš Teodosić",
+                "sourcePageTitle": "Miloš Teodosić",
+                "sourceHref": "/wiki/Milo%C5%A1_Teodosi%C4%87",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "sourcePageTitle": "Virtus Bologna",
+                "sourceHref": "/wiki/Virtus_Bologna",
+                "canonicalKey": "club:virtus-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Khalifa Diop",
+                "sourcePageTitle": "Khalifa Diop",
+                "sourceHref": "/wiki/Khalifa_Diop",
+                "canonicalKey": "person:khalifa-diop"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Herbalife Gran Canaria",
+                "sourcePageTitle": "CB Gran Canaria",
+                "sourceHref": "/wiki/CB_Gran_Canaria",
+                "canonicalKey": "club:cb-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dušan Alimpijević",
+                "sourcePageTitle": "Dušan Alimpijević",
+                "sourceHref": "/wiki/Du%C5%A1an_Alimpijevi%C4%87",
+                "canonicalKey": "person:dusan-alimpijevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Frutti Extra Bursaspor",
+                "sourcePageTitle": "Bursaspor Basketbol",
+                "sourceHref": "/wiki/Bursaspor_Basketbol",
+                "canonicalKey": "club:bursaspor-basketbol"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2022–23",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Gran Canaria",
+        "sourcePageTitle": "CB Gran Canaria",
+        "sourceHref": "/wiki/CB_Gran_Canaria",
+        "canonicalKey": "club:cb-gran-canaria"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Türk Telekom",
+        "sourcePageTitle": "Türk Telekom B.K.",
+        "sourceHref": "/wiki/T%C3%BCrk_Telekom_B.K.",
+        "canonicalKey": "club:turk-telekom-b-k"
+      },
+      "result": "71–67",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jerian Grant",
+                "sourcePageTitle": "Jerian Grant",
+                "sourceHref": "/wiki/Jerian_Grant",
+                "canonicalKey": "person:jerian-grant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Türk Telekom",
+                "sourcePageTitle": "Türk Telekom B.K.",
+                "sourceHref": "/wiki/T%C3%BCrk_Telekom_B.K.",
+                "canonicalKey": "club:turk-telekom-b-k"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Shurna",
+                "sourcePageTitle": "John Shurna",
+                "sourceHref": "/wiki/John_Shurna",
+                "canonicalKey": "person:john-shurna"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Gran Canaria",
+                "sourcePageTitle": "CB Gran Canaria",
+                "sourceHref": "/wiki/CB_Gran_Canaria",
+                "canonicalKey": "club:cb-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aleksander Balcerowski",
+                "sourcePageTitle": "Aleksander Balcerowski",
+                "sourceHref": "/wiki/Aleksander_Balcerowski",
+                "canonicalKey": "person:aleksander-balcerowski"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Herbalife Gran Canaria",
+                "sourcePageTitle": "CB Gran Canaria",
+                "sourceHref": "/wiki/CB_Gran_Canaria",
+                "canonicalKey": "club:cb-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Erdem Can",
+                "sourcePageTitle": "Erdem Can",
+                "sourceHref": "/wiki/Erdem_Can",
+                "canonicalKey": "person:erdem-can"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Türk Telekom",
+                "sourcePageTitle": "Türk Telekom B.K.",
+                "sourceHref": "/wiki/T%C3%BCrk_Telekom_B.K.",
+                "canonicalKey": "club:turk-telekom-b-k"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2023–24",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Paris",
+        "sourcePageTitle": "Paris Basketball",
+        "sourceHref": "/wiki/Paris_Basketball",
+        "canonicalKey": "club:paris-basketball"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Bourg",
+        "sourcePageTitle": "JL Bourg Basket",
+        "sourceHref": "/wiki/JL_Bourg_Basket",
+        "canonicalKey": "club:jl-bourg-basket"
+      },
+      "result": "2–0(77–64 / 81–89)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T. J. Shorts",
+                "sourcePageTitle": "T. J. Shorts",
+                "sourceHref": "/wiki/T._J._Shorts",
+                "canonicalKey": "person:t-j-shorts"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris Basketball",
+                "sourcePageTitle": "Paris Basketball",
+                "sourceHref": "/wiki/Paris_Basketball",
+                "canonicalKey": "club:paris-basketball"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T. J. Shorts",
+                "sourcePageTitle": "T. J. Shorts",
+                "sourceHref": "/wiki/T._J._Shorts",
+                "canonicalKey": "person:t-j-shorts"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris Basketball",
+                "sourcePageTitle": "Paris Basketball",
+                "sourceHref": "/wiki/Paris_Basketball",
+                "canonicalKey": "club:paris-basketball"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zaccharie Risacher",
+                "sourcePageTitle": "Zaccharie Risacher",
+                "sourceHref": "/wiki/Zaccharie_Risacher",
+                "canonicalKey": "person:zaccharie-risacher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg",
+                "sourcePageTitle": "JL Bourg Basket",
+                "sourceHref": "/wiki/JL_Bourg_Basket",
+                "canonicalKey": "club:jl-bourg-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tuomas Iisalo",
+                "sourcePageTitle": "Tuomas Iisalo",
+                "sourceHref": "/wiki/Tuomas_Iisalo",
+                "canonicalKey": "person:tuomas-iisalo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "sourcePageTitle": "Paris Basketball",
+                "sourceHref": "/wiki/Paris_Basketball",
+                "canonicalKey": "club:paris-basketball"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2024–25",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Hapoel Tel Aviv",
+        "sourcePageTitle": "Hapoel Tel Aviv B.C.",
+        "sourceHref": "/wiki/Hapoel_Tel_Aviv_B.C.",
+        "canonicalKey": "club:hapoel-tel-aviv-b-c"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Dreamland Gran Canaria",
+        "sourcePageTitle": "CB Gran Canaria",
+        "sourceHref": "/wiki/CB_Gran_Canaria",
+        "canonicalKey": "club:cb-gran-canaria"
+      },
+      "result": "2–0(74–65 / 94–103)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jared Harper",
+                "sourcePageTitle": "Jared Harper",
+                "sourceHref": "/wiki/Jared_Harper",
+                "canonicalKey": "person:jared-harper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Jerusalem",
+                "sourcePageTitle": "Hapoel Jerusalem B.C.",
+                "sourceHref": "/wiki/Hapoel_Jerusalem_B.C.",
+                "canonicalKey": "club:hapoel-jerusalem-b-c"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Johnathan Motley",
+                "sourcePageTitle": "Johnathan Motley",
+                "sourceHref": "/wiki/Johnathan_Motley",
+                "canonicalKey": "person:johnathan-motley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Tel Aviv",
+                "sourcePageTitle": "Hapoel Tel Aviv B.C.",
+                "sourceHref": "/wiki/Hapoel_Tel_Aviv_B.C.",
+                "canonicalKey": "club:hapoel-tel-aviv-b-c"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jean Montero",
+                "sourcePageTitle": "Jean Montero",
+                "sourceHref": "/wiki/Jean_Montero",
+                "canonicalKey": "person:jean-montero"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "sourcePageTitle": "Valencia Basket",
+                "sourceHref": "/wiki/Valencia_Basket",
+                "canonicalKey": "club:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Pedro Martínez",
+                "sourcePageTitle": "Pedro Martínez (basketball)",
+                "sourceHref": "/wiki/Pedro_Mart%C3%ADnez_(basketball)",
+                "canonicalKey": "person:pedro-martinez-basketball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia",
+                "sourcePageTitle": "Valencia Basket",
+                "sourceHref": "/wiki/Valencia_Basket",
+                "canonicalKey": "club:valencia-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2025–26",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Bourg",
+        "sourcePageTitle": "JL Bourg Basket",
+        "sourceHref": "/wiki/JL_Bourg_Basket",
+        "canonicalKey": "club:jl-bourg-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Beşiktaş",
+        "sourcePageTitle": "Beşiktaş J.K. (men's basketball)",
+        "sourceHref": "/wiki/Be%C5%9Fikta%C5%9F_J.K._(men%27s_basketball)",
+        "canonicalKey": "club:besiktas-j-k-men-s-basketball"
+      },
+      "result": "2–0(60–72 / 73–71)",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "EuroCup MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jared Harper",
+                "sourcePageTitle": "Jared Harper",
+                "sourceHref": "/wiki/Jared_Harper",
+                "canonicalKey": "person:jared-harper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Jerusalem",
+                "sourcePageTitle": "Hapoel Jerusalem B.C.",
+                "sourceHref": "/wiki/Hapoel_Jerusalem_B.C.",
+                "canonicalKey": "club:hapoel-jerusalem-b-c"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adam Mokoka",
+                "sourcePageTitle": "Adam Mokoka",
+                "sourceHref": "/wiki/Adam_Mokoka",
+                "canonicalKey": "person:adam-mokoka"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cosea JL Bourg",
+                "sourcePageTitle": "JL Bourg Basket",
+                "sourceHref": "/wiki/JL_Bourg_Basket",
+                "canonicalKey": "club:jl-bourg-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rising-star",
+          "awardName": "Rising Star",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tobias Jensen",
+                "sourcePageTitle": "Tobias Jensen",
+                "sourceHref": "/wiki/Tobias_Jensen",
+                "canonicalKey": "person:tobias-jensen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ratiopharm Ulm",
+                "sourcePageTitle": "Ratiopharm Ulm",
+                "sourceHref": "/wiki/Ratiopharm_Ulm",
+                "canonicalKey": "club:ratiopharm-ulm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "coach-of-the-year",
+          "awardName": "Coach of the Year",
+          "role": "coach",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dušan Alimpijević",
+                "sourcePageTitle": "Dušan Alimpijević",
+                "sourceHref": "/wiki/Du%C5%A1an_Alimpijevi%C4%87",
+                "canonicalKey": "person:dusan-alimpijevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Beşiktaş Gain",
+                "sourcePageTitle": "Beşiktaş J.K. (men's basketball)",
+                "sourceHref": "/wiki/Be%C5%9Fikta%C5%9F_J.K._(men%27s_basketball)",
+                "canonicalKey": "club:besiktas-j-k-men-s-basketball"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

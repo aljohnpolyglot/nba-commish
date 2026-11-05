@@ -3,6 +3,18 @@ import TeamsDropdown from './TeamsDropdown';
 import { Bookmark, ArrowLeft } from 'lucide-react';
 import { TEAM_COLORS } from '../../constants/teamColors';
 import { NBATeam } from '../../types';
+import EuroNewsPortalNav from './EuroNewsPortalNav';
+import type { NewsBranding } from './branding';
+import type { EuroNewsTeamOption } from '../../services/news/europeNews';
+
+interface EuroPortalProps {
+  countries: string[];
+  teams: EuroNewsTeamOption[];
+  selectedCountry: string | null;
+  selectedTeamId: number | null;
+  onSelectCountry: (country: string | null) => void;
+  onSelectTeam: (teamId: number | null) => void;
+}
 
 interface SubNavProps {
   selectedTeam: string | null;
@@ -12,6 +24,8 @@ interface SubNavProps {
   onSelectType: (typeName: string | null) => void;
   onToggleBookmarks: () => void;
   gameTeams?: NBATeam[];
+  branding: NewsBranding;
+  euroPortal?: EuroPortalProps;
 }
 
 const GLOBAL_TABS = [
@@ -19,6 +33,9 @@ const GLOBAL_TABS = [
   { label: 'Injuries', value: 'Injury Update' },
   { label: 'League', value: 'League News' },
   { label: 'Transactions', value: 'Transaction' },
+  { label: 'Awards', value: 'Awards' },
+  { label: 'Recaps', value: 'Season Recap' },
+  { label: 'International', value: 'International' },
 ];
 
 const TEAM_TABS = [
@@ -35,6 +52,8 @@ export default function SubNav({
   onSelectType,
   onToggleBookmarks,
   gameTeams = [],
+  branding,
+  euroPortal,
 }: SubNavProps) {
   const selectedTeamData = selectedTeam ? gameTeams.find(team => team.name === selectedTeam) : null;
   const teamColor = selectedTeam
@@ -52,13 +71,10 @@ export default function SubNav({
   return (
     <div
       className="border-b border-gray-200 sticky top-[60px] md:top-[70px] z-40 transition-colors duration-300"
-      style={{
-        backgroundColor: teamColor ? teamColor.primary : '#FFFFFF',
-        color: teamColor ? teamColor.text : '#111827'
-      }}
+      style={{ backgroundColor: teamColor ? teamColor.primary : '#FFFFFF', color: teamColor ? teamColor.text : '#111827' }}
     >
       <div className="max-w-[1400px] mx-auto px-4">
-        <div className="flex items-center h-12">
+        <div className={`flex items-center ${euroPortal ? 'min-h-12 flex-wrap gap-y-1 py-1' : 'h-12'}`}>
           {selectedTeam ? (
             <button
               onClick={() => { onSelectTeam(null); onSelectType(null); }}
@@ -79,9 +95,15 @@ export default function SubNav({
             </button>
           )}
 
-          <div className="h-full flex items-center mr-4">
-            <TeamsDropdown selectedTeam={selectedTeam} onSelectTeam={onSelectTeam} gameTeams={gameTeams} />
-          </div>
+          {euroPortal ? (
+            <div className="mr-2 min-w-0">
+              <EuroNewsPortalNav branding={branding} {...euroPortal} compact />
+            </div>
+          ) : (
+            <div className="h-full flex items-center mr-4">
+              <TeamsDropdown selectedTeam={selectedTeam} onSelectTeam={onSelectTeam} gameTeams={gameTeams} />
+            </div>
+          )}
 
           <div className="flex items-center space-x-4 h-full overflow-x-auto no-scrollbar">
             {currentTabs.map((tab) => (
@@ -105,7 +127,7 @@ export default function SubNav({
             ))}
           </div>
 
-          <div className="ml-auto flex items-center">
+          <div className="ml-auto flex items-center py-1">
             <button
               onClick={onToggleBookmarks}
               className={`flex items-center gap-2 px-4 py-2 rounded-full text-[13px] font-bold uppercase tracking-wider transition-all ${

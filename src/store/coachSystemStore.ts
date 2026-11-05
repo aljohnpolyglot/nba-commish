@@ -19,7 +19,11 @@ export interface CoachSystemOverride {
   selectedSystem: string;
   selectedProfScore: number;
   bestProfScore: number;
+  selectionMode?: 'auto' | 'manual';
 }
+
+export const AUTO_COACH_SYSTEM_VALUE = '__auto__';
+export const AUTO_COACH_SYSTEM_FALLBACK = 'Five-Out Slasher';
 
 let activeSaveId: string = DEFAULT_SAVE_ID;
 let cache: Map<number, CoachSystemOverride> = new Map();
@@ -72,8 +76,39 @@ export function saveCoachSystem(
   bestProfScore: number,
 ) {
   hydrate();
-  cache.set(teamId, { selectedSystem, selectedProfScore, bestProfScore });
+  const current = cache.get(teamId);
+  const selectionMode = current?.selectionMode === 'auto' && current.selectedSystem === selectedSystem
+    ? 'auto'
+    : 'manual';
+  cache.set(teamId, { selectedSystem, selectedProfScore, bestProfScore, selectionMode });
   persist();
+}
+
+export function saveManualCoachSystem(
+  teamId: number,
+  selectedSystem: string,
+  selectedProfScore: number,
+  bestProfScore: number,
+) {
+  hydrate();
+  cache.set(teamId, { selectedSystem, selectedProfScore, bestProfScore, selectionMode: 'manual' });
+  persist();
+}
+
+export function saveAutoCoachSystem(
+  teamId: number,
+  selectedSystem: string,
+  selectedProfScore: number,
+  bestProfScore: number,
+) {
+  hydrate();
+  cache.set(teamId, { selectedSystem, selectedProfScore, bestProfScore, selectionMode: 'auto' });
+  persist();
+}
+
+export function resolveAutoCoachSystem(sortedProfs?: ReadonlyArray<readonly [string, number]>): string {
+  const best = sortedProfs?.find(([name]) => String(name).trim().length > 0)?.[0];
+  return best || AUTO_COACH_SYSTEM_FALLBACK;
 }
 
 /**

@@ -1,0 +1,2727 @@
+{
+  "champions": [
+    {
+      "season": "1927–28",
+      "era": "Amateur",
+      "winner": "Iraklis"
+    },
+    {
+      "season": "1928–29",
+      "era": "Amateur",
+      "winner": "Panellinios"
+    },
+    {
+      "season": "1929–30",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1930–34",
+      "era": "Amateur",
+      "winner": null,
+      "note": "Not held"
+    },
+    {
+      "season": "1934–35",
+      "era": "Amateur",
+      "winner": "Iraklis"
+    },
+    {
+      "season": "1935–36",
+      "era": "Amateur",
+      "winner": "Near East"
+    },
+    {
+      "season": "1936–37",
+      "era": "Amateur",
+      "winner": "Athens University"
+    },
+    {
+      "season": "1937–38",
+      "era": "Amateur",
+      "winner": null,
+      "note": "Not held"
+    },
+    {
+      "season": "1938–39",
+      "era": "Amateur",
+      "winner": "Panellinios"
+    },
+    {
+      "season": "1939–40",
+      "era": "Amateur",
+      "winner": "Panellinios"
+    },
+    {
+      "season": "1940–45",
+      "era": "Amateur",
+      "winner": null,
+      "note": "Not held due to World War II"
+    },
+    {
+      "season": "1945–46",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1946–47",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1947–48",
+      "era": "Amateur",
+      "winner": null,
+      "note": "Not held"
+    },
+    {
+      "season": "1948–49",
+      "era": "Amateur",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "1949–50",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1950–51",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1951–52",
+      "era": "Amateur",
+      "winner": null,
+      "note": "Not held"
+    },
+    {
+      "season": "1952–53",
+      "era": "Amateur",
+      "winner": "Panellinios"
+    },
+    {
+      "season": "1953–54",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1954–55",
+      "era": "Amateur",
+      "winner": "Panellinios"
+    },
+    {
+      "season": "1955–56",
+      "era": "Amateur",
+      "winner": null,
+      "note": "Not held"
+    },
+    {
+      "season": "1956–57",
+      "era": "Amateur",
+      "winner": "Panellinios"
+    },
+    {
+      "season": "1957–58",
+      "era": "Amateur",
+      "winner": "AEK"
+    },
+    {
+      "season": "1958–59",
+      "era": "Amateur",
+      "winner": "PAOK"
+    },
+    {
+      "season": "1959–60",
+      "era": "Amateur",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "1960–61",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1961–62",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1962–63",
+      "era": "Amateur",
+      "winner": "AEK"
+    },
+    {
+      "season": "1963–64",
+      "era": "Amateur",
+      "winner": "AEK"
+    },
+    {
+      "season": "1964–65",
+      "era": "Amateur",
+      "winner": "AEK"
+    },
+    {
+      "season": "1965–66",
+      "era": "Amateur",
+      "winner": "AEK"
+    },
+    {
+      "season": "1966–67",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1967–68",
+      "era": "Amateur",
+      "winner": "AEK"
+    },
+    {
+      "season": "1968–69",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1969–70",
+      "era": "Amateur",
+      "winner": "AEK"
+    },
+    {
+      "season": "1970–71",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1971–72",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1972–73",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1973–74",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1974–75",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1975–76",
+      "era": "Amateur",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "1976–77",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1977–78",
+      "era": "Amateur",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "1978–79",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1979–80",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1980–81",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1981–82",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1982–83",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1983–84",
+      "era": "Amateur",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1984–85",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1985–86",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1986–87",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1987–88",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1988–89",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1989–90",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1990–91",
+      "era": "Amateur",
+      "winner": "Aris"
+    },
+    {
+      "season": "1991–92",
+      "era": "Amateur",
+      "winner": "PAOK"
+    },
+    {
+      "season": "1992–93",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "1993–94",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "1994–95",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "1995–96",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "1996–97",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "1997–98",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1998–99",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "1999–00",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2000–01",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2001–02",
+      "era": "Professional",
+      "winner": "AEK"
+    },
+    {
+      "season": "2002–03",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2003–04",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2004–05",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2005–06",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2006–07",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2007–08",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2008–09",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2009–10",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2010–11",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2011–12",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "2012–13",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2013–14",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2014–15",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "2015–16",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "2016–17",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2017–18",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2018–19",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2019–20",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2020–21",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2021–22",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "2022–23",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "2023–24",
+      "era": "Professional",
+      "winner": "Panathinaikos"
+    },
+    {
+      "season": "2024–25",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    },
+    {
+      "season": "2025–26",
+      "era": "Professional",
+      "winner": "Olympiacos"
+    }
+  ],
+  "mvp_winners": [
+    {
+      "season": "1987–88",
+      "winners": [
+        {
+          "player": "Nikos Galis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "1988–89",
+      "winners": [
+        {
+          "player": "Nikos Galis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "1989–90",
+      "winners": [
+        {
+          "player": "Nikos Galis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "1990–91",
+      "winners": [
+        {
+          "player": "Nikos Galis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "1991–92",
+      "winners": [
+        {
+          "player": "Nikos Galis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "1992–93",
+      "winners": [
+        {
+          "player": "Fanis Christodoulou",
+          "position": "Forward",
+          "nationality": "Greece",
+          "team": "Panionios"
+        }
+      ]
+    },
+    {
+      "season": "1993–94",
+      "winners": [
+        {
+          "player": "Panagiotis Fasoulas",
+          "position": "Center",
+          "nationality": "Greece",
+          "team": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "1994–95",
+      "winners": [
+        {
+          "player": "Panagiotis Fasoulas",
+          "position": "Center",
+          "nationality": "Greece",
+          "team": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "1995–96",
+      "winners": [
+        {
+          "player": "Giorgos Sigalas",
+          "position": "Forward",
+          "nationality": "Greece",
+          "team": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "1996–97",
+      "winners": [
+        {
+          "player": "David Rivers",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "1997–98",
+      "winners": [
+        {
+          "player": "Peja Stojaković",
+          "position": "Forward",
+          "nationality": "FR Yugoslavia",
+          "team": "PAOK"
+        }
+      ]
+    },
+    {
+      "season": "1998–99",
+      "winners": [
+        {
+          "player": "Dejan Bodiroga",
+          "position": "Forward",
+          "nationality": "FR Yugoslavia",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "1999–2000",
+      "winners": [
+        {
+          "player": "Željko Rebrača",
+          "position": "Center",
+          "nationality": "FR Yugoslavia",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2000–01",
+      "winners": [
+        {
+          "player": "Alphonso Ford",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Peristeri"
+        }
+      ]
+    },
+    {
+      "season": "2001–02",
+      "winners": [
+        {
+          "player": "Dimos Dikoudis",
+          "position": "Forward",
+          "nationality": "Greece",
+          "team": "AEK"
+        }
+      ]
+    },
+    {
+      "season": "2002–03",
+      "winners": [
+        {
+          "player": "Fragiskos Alvertis",
+          "position": "Forward",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2003–04",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Iraklis"
+        }
+      ]
+    },
+    {
+      "season": "2004–05",
+      "winners": [
+        {
+          "player": "Vassilis Spanoulis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Maroussi"
+        }
+      ]
+    },
+    {
+      "season": "2005–06",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        },
+        {
+          "player": "Vassilis Spanoulis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2006–07",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2007–08",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2008–09",
+      "winners": [
+        {
+          "player": "Vassilis Spanoulis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "winners": [
+        {
+          "player": "Mike Batiste",
+          "position": "Center",
+          "nationality": "United States",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "winners": [
+        {
+          "player": "Vassilis Spanoulis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "winners": [
+        {
+          "player": "Stéphane Lasme",
+          "position": "Center",
+          "nationality": "Gabon",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "winners": [
+        {
+          "player": "Sasha Vezenkov",
+          "position": "Forward",
+          "nationality": "Bulgaria",
+          "team": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "winners": [
+        {
+          "player": "Vassilis Spanoulis",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "winners": [
+        {
+          "player": "Nick Calathes",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "winners": [
+        {
+          "player": "Nick Calathes",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "winners": [
+        {
+          "player": "Nick Calathes",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "winners": [],
+      "note": "Canceled due to the COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "winners": [
+        {
+          "player": "Ioannis Papapetrou",
+          "position": "Forward",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "winners": [
+        {
+          "player": "Sasha Vezenkov",
+          "position": "Forward",
+          "nationality": "Bulgaria",
+          "team": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "winners": [
+        {
+          "player": "Sasha Vezenkov",
+          "position": "Forward",
+          "nationality": "Bulgaria",
+          "team": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "winners": [
+        {
+          "player": "Kostas Sloukas",
+          "position": "Guard",
+          "nationality": "Greece",
+          "team": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "winners": [
+        {
+          "player": "Sasha Vezenkov",
+          "position": "Forward",
+          "nationality": "Bulgaria",
+          "team": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "winners": [
+        {
+          "player": "Evan Fournier",
+          "position": "Guard",
+          "nationality": "France",
+          "team": "Olympiacos"
+        }
+      ]
+    }
+  ],
+  "finals_mvp": [
+    {
+      "season": "1987–88",
+      "winners": [
+        {
+          "player": "Nikos Galis",
+          "nationality": "Greece / United States",
+          "club": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "1988–89",
+      "winners": [
+        {
+          "player": "Nikos Galis",
+          "nationality": "Greece / United States",
+          "club": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "1989–90",
+      "winners": [
+        {
+          "player": "Nikos Galis",
+          "nationality": "Greece / United States",
+          "club": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "1990–91",
+      "winners": [
+        {
+          "player": "Nikos Galis",
+          "nationality": "Greece / United States",
+          "club": "Aris"
+        }
+      ]
+    },
+    {
+      "season": "1991–92",
+      "winners": [
+        {
+          "player": "Panagiotis Fasoulas",
+          "nationality": "Greece",
+          "club": "PAOK"
+        }
+      ]
+    },
+    {
+      "season": "1992–93",
+      "winners": [
+        {
+          "player": "Georgios Sigalas",
+          "nationality": "Greece",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "1993–94",
+      "winners": [
+        {
+          "player": "Georgios Sigalas",
+          "nationality": "Greece",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "1994–95",
+      "winners": [
+        {
+          "player": "Eddie Johnson",
+          "nationality": "United States",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "1995–96",
+      "winners": [
+        {
+          "player": "Georgios Sigalas",
+          "nationality": "Greece",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "1996–97",
+      "winners": [
+        {
+          "player": "Georgios Sigalas",
+          "nationality": "Greece",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "1997–98",
+      "winners": [
+        {
+          "player": "Dino Rađja",
+          "nationality": "Croatia",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "1998–99",
+      "winners": [
+        {
+          "player": "Dejan Bodiroga",
+          "nationality": "FR Yugoslavia",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "1999–00",
+      "winners": [
+        {
+          "player": "Dejan Bodiroga",
+          "nationality": "FR Yugoslavia",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2000–01",
+      "winners": [
+        {
+          "player": "Željko Rebrača",
+          "nationality": "FR Yugoslavia",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2001–02",
+      "winners": [
+        {
+          "player": "Dimos Dikoudis",
+          "nationality": "Greece",
+          "club": "AEK"
+        }
+      ]
+    },
+    {
+      "season": "2002–03",
+      "winners": [
+        {
+          "player": "Jaka Lakovič",
+          "nationality": "Slovenia",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2003–04",
+      "winners": [
+        {
+          "player": "Nikos Chatzivrettas",
+          "nationality": "Greece",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2004–05",
+      "winners": [
+        {
+          "player": "Jaka Lakovič",
+          "nationality": "Slovenia",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2005–06",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "nationality": "Greece",
+          "club": "Panathinaikos"
+        },
+        {
+          "player": "Vassilis Spanoulis",
+          "nationality": "Greece",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2006–07",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "nationality": "Greece",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2007–08",
+      "winners": [
+        {
+          "player": "Vassilis Spanoulis",
+          "nationality": "Greece",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2008–09",
+      "winners": [
+        {
+          "player": "Drew Nicholas",
+          "nationality": "United States",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "winners": [
+        {
+          "player": "Mike Batiste",
+          "nationality": "United States",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "nationality": "Greece",
+          "club": "Panathinaikos"
+        },
+        {
+          "player": "Mike Batiste",
+          "nationality": "United States",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "winners": [
+        {
+          "player": "Giorgos Printezis",
+          "nationality": "Greece",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "winners": [
+        {
+          "player": "Roko Ukić",
+          "nationality": "Croatia",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "winners": [
+        {
+          "player": "Dimitris Diamantidis",
+          "nationality": "Greece",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "winners": [
+        {
+          "player": "Giorgos Printezis",
+          "nationality": "Greece",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "winners": [
+        {
+          "player": "Vassilis Spanoulis",
+          "nationality": "Greece",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "winners": [
+        {
+          "player": "Mike James",
+          "nationality": "United States",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "winners": [
+        {
+          "player": "Mike James",
+          "nationality": "United States",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "winners": [
+        {
+          "player": "Deshaun Thomas",
+          "nationality": "United States",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "winners": [],
+      "note": "Not awarded due to the COVID-19 Pandemic"
+    },
+    {
+      "season": "2020–21",
+      "winners": [
+        {
+          "player": "Ioannis Papapetrou",
+          "nationality": "Greece",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "winners": [
+        {
+          "player": "Sasha Vezenkov",
+          "nationality": "Bulgaria / Greece",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "winners": [
+        {
+          "player": "Thomas Walkup",
+          "nationality": "Greece / United States",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "winners": [
+        {
+          "player": "Kendrick Nunn",
+          "nationality": "United States",
+          "club": "Panathinaikos"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "winners": [
+        {
+          "player": "Sasha Vezenkov",
+          "nationality": "Bulgaria / Greece",
+          "club": "Olympiacos"
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "winners": [
+        {
+          "player": "Evan Fournier",
+          "nationality": "France",
+          "club": "Olympiacos"
+        }
+      ]
+    }
+  ],
+  "all_greek_league_teams": [
+    {
+      "season": "2003–04",
+      "players": [
+        {
+          "player": "Roderick Blakney",
+          "team": "Maroussi",
+          "nationality": "Bulgaria / United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikos Chatzis",
+          "team": "AEK",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Iraklis",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Kostas Tsartsaris",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Lazaros Papadopoulos",
+          "team": "Iraklis",
+          "nationality": "Greece",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2004–05",
+      "players": [
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Maroussi",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Pete Mickeal",
+          "team": "Makedonikos",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikos Oikonomou",
+          "team": "Panionios",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Travis Watson",
+          "team": "Panionios",
+          "nationality": "United States",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2005–06",
+      "players": [
+        {
+          "player": "Roderick Blakney",
+          "team": "Maroussi",
+          "nationality": "Bulgaria / United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Ryan Stack",
+          "team": "Aris",
+          "nationality": "North Macedonia / United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Sofoklis Schortsanitis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2006–07",
+      "players": [
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Ramūnas Šiškauskas",
+          "team": "Panathinaikos",
+          "nationality": "Lithuania",
+          "is_mvp": false
+        },
+        {
+          "player": "Stratos Perperoglou",
+          "team": "Panionios",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Panos Vasilopoulos",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Mike Batiste",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2007–08",
+      "players": [
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Anthony Grundy",
+          "team": "Panellinios",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Jeremiah Massey",
+          "team": "Aris",
+          "nationality": "North Macedonia / United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Ioannis Bourousis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2008–09",
+      "players": [
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Šarūnas Jasikevičius",
+          "team": "Panathinaikos",
+          "nationality": "Lithuania",
+          "is_mvp": false
+        },
+        {
+          "player": "Mike Batiste",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Ioannis Bourousis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikola Peković",
+          "team": "Panathinaikos",
+          "nationality": "Montenegro",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "players": [
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Drew Nicholas",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Josh Childress",
+          "team": "Olympiacos",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Kostas Kaimakoglou",
+          "team": "Maroussi",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Mike Batiste",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": true
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "players": [
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Rawle Marshall",
+          "team": "PAOK",
+          "nationality": "Guyana / United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Mike Batiste",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Ioannis Bourousis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "players": [
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Kostas Papanikolaou",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgos Printezis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Mike Batiste",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "players": [
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikos Pappas",
+          "team": "Panionios",
+          "nationality": "Greece / Cyprus",
+          "is_mvp": false
+        },
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Kostas Papanikolaou",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Vlado Janković",
+          "team": "Panionios",
+          "nationality": "Greece / Serbia",
+          "is_mvp": false
+        },
+        {
+          "player": "Stéphane Lasme",
+          "team": "Panathinaikos",
+          "nationality": "Gabon",
+          "is_mvp": true
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "players": [
+        {
+          "player": "D. J. Cooper",
+          "team": "PAOK",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Jonas Mačiulis",
+          "team": "Panathinaikos",
+          "nationality": "Lithuania",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgos Printezis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Stéphane Lasme",
+          "team": "Panathinaikos",
+          "nationality": "Gabon",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "players": [
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Kostas Sloukas",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgos Printezis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Sasha Vezenkov",
+          "team": "Aris",
+          "nationality": "Bulgaria / Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Loukas Mavrokefalidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "players": [
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Dimitris Diamantidis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Okaro White",
+          "team": "Aris",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgos Printezis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Loukas Mavrokefalidis",
+          "team": "AEK",
+          "nationality": "Greece",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "players": [
+        {
+          "player": "Nick Calathes",
+          "team": "Panathinaikos",
+          "nationality": "Greece / United States",
+          "is_mvp": true
+        },
+        {
+          "player": "Vassilis Spanoulis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Kostas Papanikolaou",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgos Printezis",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Chris Singleton",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "players": [
+        {
+          "player": "Nick Calathes",
+          "team": "Panathinaikos",
+          "nationality": "Greece / United States",
+          "is_mvp": true
+        },
+        {
+          "player": "Thad McFadden",
+          "team": "Kymis",
+          "nationality": "Georgia / United States",
+          "is_mvp": false
+        },
+        {
+          "player": "McKenzie Moore",
+          "team": "Lavrio",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Chris Singleton",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikola Milutinov",
+          "team": "Olympiacos",
+          "nationality": "Serbia",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "players": [
+        {
+          "player": "Nick Calathes",
+          "team": "Panathinaikos",
+          "nationality": "Greece / United States",
+          "is_mvp": true
+        },
+        {
+          "player": "Davion Berry",
+          "team": "Panionios",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Ioannis Papapetrou",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Panos Vasilopoulos",
+          "team": "Peristeri",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikola Milutinov",
+          "team": "Olympiacos",
+          "nationality": "Serbia",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "players": [],
+      "note": "Cancelled due to the COVID-19 pandemic."
+    },
+    {
+      "season": "2020–21",
+      "players": [
+        {
+          "player": "Vassilis Mouratos",
+          "team": "Lavrio",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Tyson Carter",
+          "team": "Lavrio",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Ioannis Papapetrou",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Dinos Mitoglou",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "George Papagiannis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "players": [
+        {
+          "player": "Stefan Moody",
+          "team": "Larisa",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Kostas Sloukas",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Dimitris Agravanis",
+          "team": "Promitheas Patras",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Sasha Vezenkov",
+          "team": "Olympiacos",
+          "nationality": "Bulgaria / Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "George Papagiannis",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "players": [
+        {
+          "player": "Sylvain Francisco",
+          "team": "Peristeri",
+          "nationality": "France",
+          "is_mvp": false
+        },
+        {
+          "player": "Kostas Sloukas",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Kostas Papanikolaou",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Sasha Vezenkov",
+          "team": "Olympiacos",
+          "nationality": "Bulgaria / Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Moustapha Fall",
+          "team": "Olympiacos",
+          "nationality": "France",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "players": [
+        {
+          "player": "Kostas Sloukas",
+          "team": "Panathinaikos",
+          "nationality": "Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Kendrick Nunn",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Kostas Papanikolaou",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Alec Peters",
+          "team": "Olympiacos",
+          "nationality": "Bosnia and Herzegovina / United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Mathias Lessort",
+          "team": "Panathinaikos",
+          "nationality": "France",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "players": [
+        {
+          "player": "Kendrick Nunn",
+          "team": "Panathinaikos",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Evan Fournier",
+          "team": "Olympiacos",
+          "nationality": "France",
+          "is_mvp": false
+        },
+        {
+          "player": "Juancho Hernangómez",
+          "team": "Panathinaikos",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Sasha Vezenkov",
+          "team": "Olympiacos",
+          "nationality": "Bulgaria / Greece",
+          "is_mvp": true
+        },
+        {
+          "player": "Nikola Milutinov",
+          "team": "Olympiacos",
+          "nationality": "Serbia",
+          "is_mvp": false
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "players": [
+        {
+          "player": "Breein Tyree",
+          "team": "PAOK",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Tyler Dorsey",
+          "team": "Olympiacos",
+          "nationality": "Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Evan Fournier",
+          "team": "Olympiacos",
+          "nationality": "France",
+          "is_mvp": true
+        },
+        {
+          "player": "Sasha Vezenkov",
+          "team": "Olympiacos",
+          "nationality": "Bulgaria / Greece",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikola Milutinov",
+          "team": "Olympiacos",
+          "nationality": "Serbia",
+          "is_mvp": false
+        }
+      ]
+    }
+  ],
+  "most_spectacular_player": [
+    {
+      "season": "2012–13",
+      "player": "Brent Petway",
+      "team": "Rethymno"
+    },
+    {
+      "season": "2013–14",
+      "player": null,
+      "note": "No award"
+    },
+    {
+      "season": "2014–15",
+      "player": null,
+      "note": "No award"
+    },
+    {
+      "season": "2015–16",
+      "player": "Okaro White",
+      "team": "Aris"
+    },
+    {
+      "season": "2016–17",
+      "player": "Mike James",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2017–18",
+      "player": "Thanasis Antetokounmpo",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2018–19",
+      "player": "Thanasis Antetokounmpo",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2020–21",
+      "player": "Mario Hezonja",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2021–22",
+      "player": "Stefan Moody",
+      "team": "Larisa"
+    },
+    {
+      "season": "2022–23",
+      "player": "Nate Renfro",
+      "team": "PAOK"
+    },
+    {
+      "season": "2023–24",
+      "player": "Mathias Lessort",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2024–25",
+      "player": "Kendrick Nunn",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2025–26",
+      "player": "Greg Brown III",
+      "team": "AEK"
+    }
+  ],
+  "defensive_player_of_the_year": [
+    {
+      "season": "2010–11",
+      "player": "Dimitris Diamantidis",
+      "position": "Point guard",
+      "nationality": "Greece",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2011–12",
+      "player": "Joey Dorsey",
+      "position": "Center",
+      "nationality": "United States",
+      "team": "Olympiacos"
+    },
+    {
+      "season": "2012–13",
+      "player": "Stéphane Lasme",
+      "position": "Center",
+      "nationality": "Gabon",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2013–14",
+      "player": "Stéphane Lasme",
+      "position": "Center",
+      "nationality": "Gabon",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2014–15",
+      "player": "Bryant Dunston",
+      "position": "Center",
+      "nationality": "United States",
+      "team": "Olympiacos"
+    },
+    {
+      "season": "2015–16",
+      "player": "Nick Calathes",
+      "position": "Point guard",
+      "nationality": "Greece / United States",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2016–17",
+      "player": "Nick Calathes",
+      "position": "Point guard",
+      "nationality": "Greece / United States",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2017–18",
+      "player": "Nick Calathes",
+      "position": "Point guard",
+      "nationality": "Greece / United States",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2018–19",
+      "player": "Howard Sant-Roos",
+      "position": "Small forward",
+      "nationality": "Cuba",
+      "team": "AEK"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "note": "Canceled due to the COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "player": "Howard Sant-Roos",
+      "position": "Small forward",
+      "nationality": "Cuba",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2021–22",
+      "player": "Thomas Walkup",
+      "position": "Point guard",
+      "nationality": "United States / Greece",
+      "team": "Olympiacos"
+    },
+    {
+      "season": "2022–23",
+      "player": "Thomas Walkup",
+      "position": "Point guard",
+      "nationality": "United States / Greece",
+      "team": "Olympiacos"
+    },
+    {
+      "season": "2023–24",
+      "player": "Jerian Grant",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2024–25",
+      "player": "Jerian Grant",
+      "position": "Point guard",
+      "nationality": "United States",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2025–26",
+      "player": "Thomas Walkup",
+      "position": "Point guard",
+      "nationality": "United States / Greece",
+      "team": "Olympiacos"
+    }
+  ],
+  "most_improved_player": [
+    {
+      "season": "2003–04",
+      "player": "Vassilis Spanoulis",
+      "club": "Maroussi"
+    },
+    {
+      "season": "2005–06",
+      "player": "Loukas Mavrokefalidis",
+      "club": "PAOK"
+    },
+    {
+      "season": "2009–10",
+      "player": "Kostas Kaimakoglou",
+      "club": "Maroussi"
+    },
+    {
+      "season": "2010–11",
+      "player": "Nick Calathes",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2011–12",
+      "player": "Giorgos Printezis",
+      "club": "Olympiacos"
+    },
+    {
+      "season": "2012–13",
+      "player": "Vlado Janković",
+      "club": "Panionios"
+    },
+    {
+      "season": "2013–14",
+      "player": "Georgios Bogris",
+      "club": "PAOK"
+    },
+    {
+      "season": "2014–15",
+      "player": "Sasha Vezenkov",
+      "club": "Aris"
+    },
+    {
+      "season": "2015–16",
+      "player": "Leonidas Kaselakis",
+      "club": "Nea Kifissia"
+    },
+    {
+      "season": "2016–17",
+      "player": "Nikola Milutinov",
+      "club": "Olympiacos"
+    },
+    {
+      "season": "2017–18",
+      "player": "Christos Saloustros",
+      "club": "Promitheas Patras"
+    },
+    {
+      "season": "2018–19",
+      "player": "Dimitris Kaklamanakis",
+      "club": "Lavrio"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "note": "Cancelled due to COVID-19"
+    },
+    {
+      "season": "2020–21",
+      "player": "Vassilis Mouratos",
+      "club": "Lavrio"
+    },
+    {
+      "season": "2021–22",
+      "player": "Sasha Vezenkov",
+      "club": "Olympiacos"
+    },
+    {
+      "season": "2022–23",
+      "player": "Lefteris Mantzoukas",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2023–24",
+      "player": "Vassilis Toliopoulos",
+      "club": "Aris"
+    },
+    {
+      "season": "2024–25",
+      "player": "Neoklis Avdalas",
+      "club": "Karditsa"
+    },
+    {
+      "season": "2025–26",
+      "player": "Tyler Dorsey",
+      "club": "Olympiacos"
+    }
+  ],
+  "best_young_player": [
+    {
+      "season": "1998–99",
+      "player": "Kostas Tsartsaris",
+      "club": "Near East"
+    },
+    {
+      "season": "1999–00",
+      "player": "Dimos Dikoudis",
+      "club": "AEK"
+    },
+    {
+      "season": "2000–01",
+      "player": "Antonis Fotsis",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2001–02",
+      "player": "Nikos Zisis",
+      "club": "AEK"
+    },
+    {
+      "season": "2002–03",
+      "player": "Vassilis Spanoulis",
+      "club": "Maroussi"
+    },
+    {
+      "season": "2003–04",
+      "player": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2004–05",
+      "player": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2005–06",
+      "player": "Dimitrios Tsaldaris",
+      "club": "Aris"
+    },
+    {
+      "season": "2006–07",
+      "player": "Giorgos Printezis",
+      "club": "Olympia Larissa"
+    },
+    {
+      "season": "2007–08",
+      "player": "Ian Vougioukas",
+      "club": "Rethymno"
+    },
+    {
+      "season": "2008–09",
+      "player": "Kostas Papanikolaou",
+      "club": "Aris"
+    },
+    {
+      "season": "2009–10",
+      "player": "Nikos Pappas",
+      "club": "Kolossos Rodou"
+    },
+    {
+      "season": "2010–11",
+      "player": "Kostas Sloukas",
+      "club": "Aris"
+    },
+    {
+      "season": "2011–12",
+      "player": "Kostas Papanikolaou",
+      "club": "Olympiacos"
+    },
+    {
+      "season": "2012–13",
+      "player": "Sasha Vezenkov",
+      "club": "Aris"
+    },
+    {
+      "season": "2013–14",
+      "player": "Sasha Vezenkov",
+      "club": "Aris"
+    },
+    {
+      "season": "2014–15",
+      "player": "Sasha Vezenkov",
+      "club": "Aris"
+    },
+    {
+      "season": "2015–16",
+      "player": "Ioannis Papapetrou",
+      "club": "Olympiacos"
+    },
+    {
+      "season": "2016–17",
+      "player": "Antonis Koniaris",
+      "club": "PAOK"
+    },
+    {
+      "season": "2017–18",
+      "player": "Antonis Koniaris",
+      "club": "PAOK"
+    },
+    {
+      "season": "2018–19",
+      "player": "Zois Karampelas",
+      "club": "Peristeri"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Nikos Chougkaz",
+      "club": "Ionikos Nikaias"
+    },
+    {
+      "season": "2021–22",
+      "player": "Omiros Netzipoglou",
+      "club": "Aris"
+    },
+    {
+      "season": "2022–23",
+      "player": "Lefteris Mantzoukas",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2023–24",
+      "player": "Neoklis Avdalas",
+      "club": "Karditsa"
+    },
+    {
+      "season": "2024–25",
+      "player": "Neoklis Avdalas",
+      "club": "Karditsa"
+    },
+    {
+      "season": "2025–26",
+      "player": "Nikos Plotas",
+      "club": "Promitheas Patras"
+    }
+  ],
+  "most_popular_player": [
+    {
+      "season": "2014–15",
+      "player": "Vassilis Spanoulis",
+      "team": "Olympiacos"
+    },
+    {
+      "season": "2015–16",
+      "player": "Dimitris Diamantidis",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2016–17",
+      "player": "Vassilis Spanoulis",
+      "team": "Olympiacos"
+    },
+    {
+      "season": "2017–18",
+      "player": "Nick Calathes",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2018–19",
+      "player": "Nick Calathes",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2020–21",
+      "player": "Mario Hezonja",
+      "team": "Panathinaikos"
+    },
+    {
+      "season": "2021–22",
+      "player": "Sasha Vezenkov",
+      "team": "Olympiacos"
+    },
+    {
+      "season": "2022–23",
+      "player": "Sasha Vezenkov",
+      "team": "Olympiacos"
+    },
+    {
+      "season": "2023–24",
+      "player": "Kendrick Nunn",
+      "team": "Panathinaikos"
+    }
+  ],
+  "best_coach": [
+    {
+      "season": "1996–97",
+      "coach": "Dušan Ivković",
+      "nationality": "FR Yugoslavia",
+      "club": "Olympiacos"
+    },
+    {
+      "season": "1997–98",
+      "coach": "Lefteris Subotić",
+      "nationality": "Slovenia / Greece",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "1998–99",
+      "coach": "Lefteris Subotić",
+      "nationality": "Slovenia / Greece",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "1999–00",
+      "coach": "Željko Obradović",
+      "nationality": "FR Yugoslavia",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2000–01",
+      "coach": "Argyris Pedoulakis",
+      "nationality": "Greece",
+      "club": "Peristeri"
+    },
+    {
+      "season": "2001–02",
+      "coach": "Kostas Pilafidis",
+      "nationality": "Greece",
+      "club": "Iraklis"
+    },
+    {
+      "season": "2002–03",
+      "coach": "Argyris Pedoulakis",
+      "nationality": "Greece",
+      "club": "Peristeri"
+    },
+    {
+      "season": "2003–04",
+      "coach": "Panagiotis Giannakis",
+      "nationality": "Greece",
+      "club": "Maroussi"
+    },
+    {
+      "season": "2004–05",
+      "coach": "Željko Obradović",
+      "nationality": "Serbia and Montenegro",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2005–06",
+      "coach": "Panagiotis Giannakis",
+      "nationality": "Greece",
+      "club": "Maroussi"
+    },
+    {
+      "season": "2006–07",
+      "coach": "Željko Obradović",
+      "nationality": "Serbia",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2007–08",
+      "coach": "Soulis Markopoulos",
+      "nationality": "Greece",
+      "club": "Maroussi"
+    },
+    {
+      "season": "2008–09",
+      "coach": "Željko Obradović",
+      "nationality": "Serbia",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2009–10",
+      "coach": "Giorgos Bartzokas",
+      "nationality": "Greece",
+      "club": "Maroussi"
+    },
+    {
+      "season": "2010–11",
+      "coach": "Željko Obradović",
+      "nationality": "Serbia",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2011–12",
+      "coach": "Dušan Ivković",
+      "nationality": "Serbia",
+      "club": "Olympiacos"
+    },
+    {
+      "season": "2012–13",
+      "coach": "Argyris Pedoulakis",
+      "nationality": "Greece",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2013–14",
+      "coach": "Soulis Markopoulos",
+      "nationality": "Greece",
+      "club": "PAOK"
+    },
+    {
+      "season": "2014–15",
+      "coach": "Ioannis Sfairopoulos",
+      "nationality": "Greece",
+      "club": "Olympiacos"
+    },
+    {
+      "season": "2015–16",
+      "coach": "Dimitris Priftis",
+      "nationality": "Greece",
+      "club": "Aris"
+    },
+    {
+      "season": "2016–17",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2017–18",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2018–19",
+      "coach": "Makis Giatras",
+      "nationality": "Greece",
+      "club": "Promitheas Patras"
+    },
+    {
+      "season": "2019–20",
+      "coach": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "coach": "Christos Serelis",
+      "nationality": "Greece",
+      "club": "Lavrio"
+    },
+    {
+      "season": "2021–22",
+      "coach": "Fotis Takianos",
+      "nationality": "Greece",
+      "club": "Larisa"
+    },
+    {
+      "season": "2022–23",
+      "coach": "Giorgos Bartzokas",
+      "nationality": "Greece",
+      "club": "Olympiacos"
+    },
+    {
+      "season": "2023–24",
+      "coach": "Ergin Ataman",
+      "nationality": "Turkey",
+      "club": "Panathinaikos"
+    },
+    {
+      "season": "2024–25",
+      "coach": "Massimo Cancellieri",
+      "nationality": "Italy",
+      "club": "PAOK"
+    },
+    {
+      "season": "2025–26",
+      "coach": "Giorgos Bartzokas",
+      "nationality": "Greece",
+      "club": "Olympiacos"
+    }
+  ]
+}

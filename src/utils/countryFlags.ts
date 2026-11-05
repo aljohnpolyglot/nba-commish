@@ -21,12 +21,12 @@ const FLAGS: Record<string, string> = {
   USA: '🇺🇸', 'United States': '🇺🇸', America: '🇺🇸', American: '🇺🇸',
   Canada: '🇨🇦', Mexico: '🇲🇽', Argentina: '🇦🇷', Brazil: '🇧🇷', Chile: '🇨🇱',
   Uruguay: '🇺🇾', Venezuela: '🇻🇪', Colombia: '🇨🇴', Peru: '🇵🇪',
-  'Dominican Republic': '🇩🇴', Jamaica: '🇯🇲', 'Puerto Rico': '🇵🇷',
+  Dominica: '🇩🇲', 'Dominican Republic': '🇩🇴', Jamaica: '🇯🇲', 'Puerto Rico': '🇵🇷',
   Cuba: '🇨🇺', Bahamas: '🇧🇸', Haiti: '🇭🇹', 'US Virgin Islands': '🇻🇮',
 
   // Africa
   Nigeria: '🇳🇬', Senegal: '🇸🇳', Cameroon: '🇨🇲', 'DR Congo': '🇨🇩',
-  'Congo, DR': '🇨🇩', Congo: '🇨🇬', 'Ivory Coast': '🇨🇮', 'Côte d\'Ivoire': '🇨🇮',
+  'Congo, DR': '🇨🇩', Congo: '🇨🇬', 'Ivory Coast': '🇨🇮', 'Côte d\'Ivoire': '🇨🇮', 'Côte d’Ivoire': '🇨🇮',
   Ghana: '🇬🇭', 'South Africa': '🇿🇦', Egypt: '🇪🇬', Morocco: '🇲🇦', Tunisia: '🇹🇳',
   Algeria: '🇩🇿', Kenya: '🇰🇪', Angola: '🇦🇴', 'South Sudan': '🇸🇸', Sudan: '🇸🇩',
   Mali: '🇲🇱', 'Burkina Faso': '🇧🇫', Guinea: '🇬🇳', Ethiopia: '🇪🇹',
@@ -86,6 +86,24 @@ export const normalizeNationality = (value?: string): string => {
 export const getCountryFlag = (country?: string) => {
   const normalized = normalizeNationality(country);
   return FLAGS[normalized] ?? FLAGS[country ?? ''] ?? '🏳️';
+};
+
+export const getCountryFlagCode = (country?: string): string => {
+  const regionalIndicators = [...getCountryFlag(country)]
+    .map(character => character.codePointAt(0) ?? 0)
+    .filter(codePoint => codePoint >= 0x1f1e6 && codePoint <= 0x1f1ff);
+  if (regionalIndicators.length !== 2) return '';
+  return regionalIndicators
+    .map(codePoint => String.fromCharCode(codePoint - 0x1f1e6 + 97))
+    .join('');
+};
+
+export const getCountryFlagFromCode = (code?: string): string => {
+  const normalized = String(code ?? '').trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) return '🏳️';
+  return [...normalized]
+    .map(character => String.fromCodePoint(0x1f1e6 + character.charCodeAt(0) - 65))
+    .join('');
 };
 
 /** Lookup by a BBGM-style "City, Country" or bare country string.

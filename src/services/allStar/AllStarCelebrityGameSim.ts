@@ -1,32 +1,65 @@
 import { GameState, GameResult } from '../../types';
 import { generateContentWithRetry } from '../llm/utils/api';
-import { fetchRatedCelebrities, RatedCelebrity } from '../../data/celebrities';
+import { fetchRatedCelebrities, fetchRatedCelebritiesForYear, RatedCelebrity } from '../../data/celebrities';
 import { simulateGames } from '../simulationService';
 import { SettingsManager } from '../SettingsManager';
-import { resolveExhibitionRules } from './exhibitionRules';
+import { buildExhibitionLeagueStats } from './exhibitionRules';
 
 export const getCelebrityRosterNames = (state: GameState): string[] => {
-  const roster = state.allStar?.celebrityRoster || state.leagueStats.celebrityRoster;
-  if (roster && roster.length === 20) {
-    return roster;
-  }
+  const [teamOne, teamTwo] = getCelebrityRosterTeams(state);
+  const names = [...teamOne, ...teamTwo];
+  if (names.length >= 2) return names;
   return [];
+};
+
+export const getCelebrityRosterTeams = (state: GameState): [string[], string[]] => {
+  const teamDetails = (state.allStar as any)?.celebrityTeamDetails;
+  if (Array.isArray(teamDetails) && teamDetails.length >= 2) {
+    const teamOne = Array.isArray(teamDetails[0]?.roster) ? teamDetails[0].roster.filter(Boolean) : [];
+    const teamTwo = Array.isArray(teamDetails[1]?.roster) ? teamDetails[1].roster.filter(Boolean) : [];
+    if (teamOne.length > 0 && teamTwo.length > 0) return [teamOne, teamTwo];
+  }
+
+  const roster = state.allStar?.celebrityRoster || state.leagueStats.celebrityRoster;
+  if (!roster || roster.length < 2) return [[], []];
+  const splitIndex = roster.length === 20 ? 10 : Math.ceil(roster.length / 2);
+  return [roster.slice(0, splitIndex), roster.slice(splitIndex)];
+};
+
+export const getCelebrityTeamNames = (state: GameState): [string, string] => {
+  const teamDetails = (state.allStar as any)?.celebrityTeamDetails;
+  const rawNames = Array.isArray(teamDetails) && teamDetails.length >= 2
+    ? [teamDetails[0]?.name, teamDetails[1]?.name]
+    : state.allStar?.celebrityTeams || [];
+  const home = rawNames[0]?.trim() || 'Celebrity Home';
+  const away = rawNames[1]?.trim() || 'Celebrity Away';
+  return [home, away];
+};
+
+const getCelebrityTeamAbbrev = (name: string, fallback: string): string => {
+  const parts = name.trim().split(/\s+/);
+  return (parts[1] || parts[0] || fallback).substring(0, 3).toUpperCase();
 };
 
 export class AllStarCelebrityGameSim {
   static async simulateCelebrityGame(state: GameState): Promise<GameResult> {
     const rosterNames = getCelebrityRosterNames(state);
+    const [teamOne, teamTwo] = getCelebrityRosterTeams(state);
     
-    if (rosterNames.length < 20) {
+    if (teamOne.length === 0 || teamTwo.length === 0 || rosterNames.length < 2) {
       throw new Error("Celebrity roster not fully set.");
     }
 
-    const rated = await fetchRatedCelebrities();
-    
-    // Check if all picks have ratings
-    const ratedMap = new Map(
-      rated.map(c => [c.name.toLowerCase(), c])
-    );
+    const savedProfiles = state.allStar?.celebrityRosterProfiles ?? [];
+    const savedProfileNames = new Set(savedProfiles.map(profile => profile.name.toLowerCase()));
+    const needsCatalog = rosterNames.some(name => !savedProfileNames.has(name.toLowerCase()));
+    const catalog = needsCatalog
+      ? state.leagueType === 'fictional'
+        ? await fetchRatedCelebritiesForYear(state.leagueStats.year, 'fictional')
+        : await fetchRatedCelebrities()
+      : [];
+    const ratedMap = new Map(catalog.map(celebrity => [celebrity.name.toLowerCase(), celebrity]));
+    for (const profile of savedProfiles) ratedMap.set(profile.name.toLowerCase(), profile);
     
     const allRated = rosterNames.every(name => 
       ratedMap.has(name.toLowerCase())
@@ -34,11 +67,9 @@ export class AllStarCelebrityGameSim {
     
     const llmEnabled = SettingsManager.getSettings().enableLLM;
 
-    if (allRated || state.leagueStats.celebrityRosterAutoSelected) {
-      // ALL picks are from rated pool — use GameSim
+    if (allRated) {
       return await this.simulateCelebrityWithGameSim(rosterNames, ratedMap, state);
-    } else if (!llmEnabled) {
-      // LLM off — fill unrated personas with rock-bottom attributes and use GameSim
+    } else if (state.leagueType === 'fictional' || state.leagueStats.celebrityRosterAutoSelected || !llmEnabled) {
       const fallbackRatedMap = new Map(ratedMap);
       for (const name of rosterNames) {
         if (!fallbackRatedMap.has(name.toLowerCase())) {
@@ -54,7 +85,12 @@ export class AllStarCelebrityGameSim {
       return await this.simulateCelebrityWithGameSim(rosterNames, fallbackRatedMap, state);
     } else {
       // Some picks from 1000+ CSV — use LLM
-      return this.simulateCelebrityWithLLM(rosterNames, state);
+      try {
+        return await this.simulateCelebrityWithLLM(rosterNames, state);
+      } catch (error) {
+        console.error('Celebrity Game LLM simulation failed; using local fallback.', error);
+        return this.fallbackCelebResult(state);
+      }
     }
   }
 
@@ -63,9 +99,7 @@ export class AllStarCelebrityGameSim {
     ratedMap: Map<string, RatedCelebrity>,
     state: GameState
   ): Promise<GameResult> {
-    // Split into two teams of 10
-    const team1Names = rosterNames.slice(0, 10);
-    const team2Names = rosterNames.slice(10, 20);
+    const [team1Names, team2Names] = getCelebrityRosterTeams(state);
 
     const toFakePlayer = (name: string, tid: number, index: number) => {
       const r = ratedMap.get(name.toLowerCase());
@@ -79,6 +113,7 @@ export class AllStarCelebrityGameSim {
         overallRating: Math.round(
           (r.ins + r.fg + r.tp + r.dnk + r.drb + r.pss) / 6
         ),
+        imgURL: r.imgUrl,
         pos: r.hgt > 60 ? 'C' : r.hgt > 45 ? 'F' : 'G',
         age: 30,
         ratings: [{
@@ -97,9 +132,8 @@ export class AllStarCelebrityGameSim {
     const team1Players = team1Names.map((n, i) => toFakePlayer(n, -5, i)).filter(Boolean);
     const team2Players = team2Names.map((n, i) => toFakePlayer(n, -6, i)).filter(Boolean);
 
-    const teamNames = state.allStar?.celebrityTeams || ['Team Shannon', 'Team Stephen A'];
-    const homeTeamName = teamNames[0];
-    const awayTeamName = teamNames[1];
+    const [homeTeamName, awayTeamName] = getCelebrityTeamNames(state);
+    const threePointAvailable = state.leagueStats?.threePointLineEnabled !== false;
 
     const fakeTeam1 = { 
       id: -5, 
@@ -107,7 +141,7 @@ export class AllStarCelebrityGameSim {
       strength: 30,
       conference: 'East',
       wins: 0, losses: 0,
-      abbrev: homeTeamName.split(' ')[1]?.substring(0, 3).toUpperCase() || 'SHAN'
+      abbrev: getCelebrityTeamAbbrev(homeTeamName, 'SHAN')
     };
     const fakeTeam2 = { 
       id: -6, 
@@ -115,7 +149,7 @@ export class AllStarCelebrityGameSim {
       strength: 30,
       conference: 'West', 
       wins: 0, losses: 0,
-      abbrev: awayTeamName.split(' ')[1]?.substring(0, 3).toUpperCase() || 'SAS'
+      abbrev: getCelebrityTeamAbbrev(awayTeamName, 'SAS')
     };
 
     const fakeGame = {
@@ -139,7 +173,7 @@ export class AllStarCelebrityGameSim {
       undefined, undefined, undefined, undefined,
       undefined, undefined, undefined, undefined,
       state.leagueStats.year,
-      state.leagueStats
+      buildExhibitionLeagueStats(state.leagueStats, 'celebrity')
     );
 
     const result = simResult.results[0];
@@ -159,28 +193,63 @@ export class AllStarCelebrityGameSim {
   }
 
   static fallbackCelebResult(state: GameState): GameResult {
-    const teamNames = state.allStar?.celebrityTeams || ['Team Shannon', 'Team Stephen A'];
+    const teamNames = getCelebrityTeamNames(state);
+    const [teamOne, teamTwo] = getCelebrityRosterTeams(state);
+    const threePointAvailable = state.leagueStats?.threePointLineEnabled !== false;
+    const buildStats = (names: string[], score: number, team: number) => {
+      const rows = names.map((name, index) => {
+        const pts = Math.max(0, Math.floor(score / Math.max(1, names.length)) + (index < score % Math.max(1, names.length) ? 1 : 0));
+        const threePm = threePointAvailable && pts >= 6 && index % 4 === 0 ? 1 : 0;
+        const fgm = Math.max(0, Math.floor((pts - threePm * 3) / 2));
+        const ftm = Math.max(0, pts - fgm * 2 - threePm * 3);
+        return {
+          name,
+          playerId: name,
+          team,
+          min: 18,
+          pts,
+          reb: Math.max(1, (index * 2) % 7),
+          ast: index % 5,
+          stl: index % 3 === 0 ? 1 : 0,
+          blk: index % 7 === 0 ? 1 : 0,
+          tov: index % 4,
+          fgm,
+          fga: fgm + 2,
+          threePm,
+          threePa: threePointAvailable ? threePm + 1 : 0,
+          ftm,
+          fta: ftm + (ftm > 0 ? 1 : 0),
+        };
+      });
+      const drift = score - rows.reduce((sum, row) => sum + row.pts, 0);
+      if (rows[0] && drift !== 0) rows[0].pts += drift;
+      return rows;
+    };
+    const homeStats = buildStats(teamOne, 50, 1);
+    const awayStats = buildStats(teamTwo, 48, 2);
+    const mvpName = [...homeStats, ...awayStats].sort((a, b) => b.pts - a.pts)[0]?.name ?? 'Unknown';
     return {
+      gameId: 90002,
       homeTeamId: -5,
       awayTeamId: -6,
       homeScore: 50,
       awayScore: 48,
-      homeStats: [],
-      awayStats: [],
-      mvpName: 'Unknown',
+      homeStats,
+      awayStats,
+      mvpName,
       homeTeamName: teamNames[0],
       awayTeamName: teamNames[1],
+      date: state.date,
+      season: state.leagueStats.year,
       isCelebrityGame: true
     } as any;
   }
 
   static async simulateCelebrityWithLLM(rosterNames: string[], state: GameState): Promise<GameResult> {
-    const team1 = rosterNames.slice(0, 10);
-    const team2 = rosterNames.slice(10, 20);
+    const [team1, team2] = getCelebrityRosterTeams(state);
 
-    const teamNames = state.allStar?.celebrityTeams || ['Team Shannon', 'Team Stephen A'];
-    const homeTeamName = teamNames[0];
-    const awayTeamName = teamNames[1];
+    const [homeTeamName, awayTeamName] = getCelebrityTeamNames(state);
+    const threePointAvailable = state.leagueStats?.threePointLineEnabled !== false;
 
     const prompt = `
       You are simulating the NBA All-Star Celebrity Game box score.
@@ -198,6 +267,7 @@ export class AllStarCelebrityGameSim {
       - Musicians/actors shoot poorly
       - One player is the standout MVP
       - Stats must add up correctly (fgm*2 + threePm + ftm = pts)
+      ${threePointAvailable ? '' : '- No three-point line is active: every player must have threePm = 0 and threePa = 0'}
       
       Return ONLY valid JSON, no markdown:
       {
@@ -236,17 +306,39 @@ export class AllStarCelebrityGameSim {
       }
     });
     const result = JSON.parse(response.text || '{}');
+    const normalizeRow = (row: any, team: number) => {
+      if (threePointAvailable) return { ...row, team, playerId: row.name };
+      const pts = Math.max(0, Math.round(Number(row?.pts ?? 0)));
+      const requestedFtm = Math.max(0, Math.round(Number(row?.ftm ?? 0)));
+      const twoMade = Math.max(0, Math.floor((pts - requestedFtm) / 2));
+      const ftm = Math.max(0, pts - twoMade * 2);
+      return {
+        ...row,
+        team,
+        playerId: row.name,
+        pts,
+        fgm: twoMade,
+        fga: Math.max(twoMade, Math.round(Number(row?.fga ?? twoMade))),
+        threePm: 0,
+        threePa: 0,
+        ftm,
+        fta: Math.max(ftm, Math.round(Number(row?.fta ?? ftm))),
+      };
+    };
 
     return {
+      gameId: 90002,
       homeTeamId: -5,
       awayTeamId: -6,
       homeScore: result.homeScore,
       awayScore: result.awayScore,
-      homeStats: result.homeStats.map((s: any) => ({ ...s, team: 1, playerId: s.name })),
-      awayStats: result.awayStats.map((s: any) => ({ ...s, team: 2, playerId: s.name })),
+      homeStats: (Array.isArray(result.homeStats) ? result.homeStats : []).map((s: any) => normalizeRow(s, 1)),
+      awayStats: (Array.isArray(result.awayStats) ? result.awayStats : []).map((s: any) => normalizeRow(s, 2)),
       mvpName: result.mvpName,
       homeTeamName: homeTeamName,
       awayTeamName: awayTeamName,
+      date: state.date,
+      season: state.leagueStats.year,
       isCelebrityGame: true
     } as any;
   }

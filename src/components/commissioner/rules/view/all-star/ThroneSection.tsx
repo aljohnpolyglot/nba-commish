@@ -72,7 +72,7 @@ const Select: React.FC<{ label: string; value: string; onChange: (v: any) => voi
 export const ThroneSection: React.FC<ThroneSectionProps> = (props) => {
   const { state } = useGame();
   const seasonYear = state.leagueStats.year ?? new Date().getFullYear() + 1;
-  const inGrace = getCommissionerSettingsWindow(state).isOpen;
+  const reviewOpen = getCommissionerSettingsWindow(state).isOpen;
 
   return (
     <div className="bg-gradient-to-br from-yellow-500/5 via-amber-900/5 to-slate-800/40 p-6 rounded-3xl border border-yellow-500/20 space-y-6">
@@ -86,13 +86,13 @@ export const ThroneSection: React.FC<ThroneSectionProps> = (props) => {
         A single-evening, 16-player single-elimination 1v1 tournament held on All-Star Saturday. Composite vote (40% fan / 30% player / 20% media / 10% coach) selects the field of 16.
       </p>
 
-      {inGrace ? (
+      {reviewOpen ? (
         <div className="flex items-center gap-3 px-4 py-3 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
           <Clock size={14} className="text-emerald-400 shrink-0" />
           <div>
-            <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest">Grace Period Open</span>
+            <span className="text-[10px] font-bold text-emerald-300 uppercase tracking-widest">League Settings Review Open</span>
             <p className="text-[9px] text-emerald-500/80 font-medium mt-0.5">
-              Schedule not yet generated — changes apply to the upcoming {seasonYear - 1}–{String(seasonYear).slice(2)} season
+              Changes apply to the upcoming {seasonYear - 1}–{String(seasonYear).slice(2)} season
             </p>
           </div>
         </div>
@@ -100,9 +100,9 @@ export const ThroneSection: React.FC<ThroneSectionProps> = (props) => {
         <div className="flex items-center gap-3 px-4 py-3 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
           <AlertTriangle size={14} className="text-amber-400 shrink-0" />
           <div>
-            <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">Grace Period Closed</span>
+            <span className="text-[10px] font-bold text-amber-300 uppercase tracking-widest">League Settings Locked</span>
             <p className="text-[9px] text-amber-500/80 font-medium mt-0.5">
-              Schedule already locked — changes here take effect next season
+              Open the League Settings Review task to make changes
             </p>
           </div>
         </div>
@@ -112,7 +112,7 @@ export const ThroneSection: React.FC<ThroneSectionProps> = (props) => {
         label="Enable The Throne"
         value={props.enabled}
         onChange={props.setEnabled}
-        sub={inGrace ? 'Adds the 1v1 tournament to All-Star Saturday' : 'Takes effect next season — current schedule is locked'}
+        sub={reviewOpen ? 'Adds the 1v1 tournament to All-Star Saturday' : 'Open League Settings Review to make changes'}
       />
 
       {props.enabled && (

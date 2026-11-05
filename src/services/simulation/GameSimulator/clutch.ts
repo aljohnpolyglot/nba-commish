@@ -16,7 +16,7 @@ export function pickGameWinner(
   isOT: boolean,
   players?: NBAPlayer[],
 ): GameResult['gameWinner'] {
-  if (lead > 6) return undefined;
+  if (lead > 3) return undefined;
 
   const candidates = winnerStats.filter(s => s.pts > 0);
   if (candidates.length === 0) return undefined;

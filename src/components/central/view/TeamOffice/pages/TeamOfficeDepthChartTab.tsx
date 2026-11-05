@@ -11,17 +11,16 @@ import React, { useMemo } from 'react';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { StarterService } from '../../../../../services/simulation/StarterService';
-import { getDisplayOverall } from '../../../../../utils/playerRatings';
 import { injurySeverityLevel } from '../../../../../services/simulation/playThroughInjuriesFactor';
-import type { NBAPlayer } from '../../../../../types';
+import type { GameState, NBAPlayer } from '../../../../../types';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
+import { getScoutedDisplayOverall } from '../../../../../utils/scoutingFuzz';
+import { getCourtSlotLabels, getPlayersOnCourt } from '../../../../../services/simulation/courtSize';
 
 interface Props {
   teamId: number;
 }
-
-const STARTER_POS_ORDER = ['PG', 'SG', 'SF', 'PF', 'C'] as const;
 
 // Normalize BBGM depth-context tags (G/GF/F/FC) into the standard 5 positions
 // the depth chart displays. Matches the slot vocabulary used by GamePlan /
@@ -49,36 +48,52 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
   const { state } = useGame();
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const season = state.leagueStats?.year ?? new Date().getFullYear();
+  const playersOnCourt = getPlayersOnCourt(state.leagueStats);
+  const starterSlots = getCourtSlotLabels(playersOnCourt);
+  const courtGridStyle = {
+    '--court-columns': Math.min(5, playersOnCourt),
+  } as React.CSSProperties;
+  const visibleOvr = (player: NBAPlayer) => getScoutedDisplayOverall(state, player, season);
 
   const { starters, bench, thirdUnit, reserves, injured } = useMemo(() => {
     if (!team) return { starters: [] as NBAPlayer[], bench: [] as NBAPlayer[], thirdUnit: [] as NBAPlayer[], reserves: [] as NBAPlayer[], injured: [] as NBAPlayer[] };
 
     const roster = state.players.filter(p => p.tid === teamId && isOnRoster(p));
     const healthy = roster.filter(p => !isInjured(p));
-    const injuredList = roster.filter(isInjured).sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a));
+    const injuredList = roster.filter(isInjured).sort((a, b) => visibleOvr(b) - visibleOvr(a));
 
     // Reuse StarterService so the lineup matches what GamePlan / IdealRotation show.
-    const rawStarters = StarterService.getProjectedStarters(team, state.players, season, healthy);
+    const rawStarters = StarterService.getProjectedStarters(
+      team,
+      state.players,
+      season,
+      healthy,
+      true,
+      playersOnCourt,
+    );
     const starterList = StarterService.sortByPositionSlot(rawStarters, season);
     const starterIds = new Set(starterList.map(p => p.internalId));
 
     const nonStarters = healthy
       .filter(p => !starterIds.has(p.internalId))
-      .sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a));
+      .sort((a, b) => visibleOvr(b) - visibleOvr(a));
 
-    // Second unit: top 5 healthy bench by OVR, slotted PG→C.
-    const benchPool = nonStarters.slice(0, 5);
+    // Second unit: strongest healthy bench unit, ordered by the active court slots.
+    const benchPool = nonStarters.slice(0, playersOnCourt);
     const benchList = StarterService.sortByPositionSlot(benchPool, season);
 
     // Deep-bench handling flips on roster depth:
     //   - ≥14 healthy → "Third Unit": positionally slotted PG→C (5 cards)
     //   - <14 healthy → plain "Reserves": OVR-sorted dump, raw pos labels
-    const deepPool = nonStarters.slice(5);
-    const thirdUnitList = healthy.length >= 14 ? StarterService.sortByPositionSlot(deepPool, season) : [];
-    const reserveList = healthy.length < 14 ? deepPool : [];
+    const deepPool = nonStarters.slice(playersOnCourt);
+    const deepRosterThreshold = playersOnCourt * 2 + 4;
+    const thirdUnitList = healthy.length >= deepRosterThreshold
+      ? StarterService.sortByPositionSlot(deepPool.slice(0, playersOnCourt), season)
+      : [];
+    const reserveList = healthy.length < deepRosterThreshold ? deepPool : deepPool.slice(playersOnCourt);
 
     return { starters: starterList, bench: benchList, thirdUnit: thirdUnitList, reserves: reserveList, injured: injuredList };
-  }, [team, state.players, teamId, season]);
+  }, [team, state, state.players, teamId, season, playersOnCourt]);
 
   if (!team) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
@@ -89,25 +104,28 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
       {/* Starters */}
       <section className="bg-black/40 border border-slate-800 rounded-lg p-3 sm:p-4">
         <div className="flex items-center justify-between mb-3">
-          <div className="text-[10px] font-bold uppercase tracking-widest text-sky-400">Starting Five</div>
+          <div className="text-[10px] font-bold uppercase tracking-widest text-sky-400">Starting Lineup ({playersOnCourt})</div>
           <div className="text-[9px] text-slate-500 uppercase tracking-widest">Full Strength</div>
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
-          {STARTER_POS_ORDER.map((pos, i) => {
+        <div
+          className="grid grid-cols-2 sm:[grid-template-columns:repeat(var(--court-columns),minmax(0,1fr))] gap-2 sm:gap-3"
+          style={courtGridStyle}
+        >
+          {starterSlots.map((pos, i) => {
             const p = starters[i];
             if (!p) {
               return (
-                <div key={pos} className="aspect-[3/4] border-2 border-dashed border-slate-700 rounded-lg flex items-center justify-center text-slate-600 text-xs uppercase">
+                <div key={pos} className="h-[100px] border-2 border-dashed border-slate-700 rounded-lg flex items-center justify-center text-slate-600 text-xs uppercase">
                   {pos}
                 </div>
               );
             }
-            return <DepthChartCard key={p.internalId} player={p} slotLabel={pos} season={season} accent="sky" />;
+            return <DepthChartCard key={p.internalId} player={p} slotLabel={pos} season={season} state={state} accent="sky" />;
           })}
         </div>
       </section>
 
-      {/* Second Unit — hardcoded PG→C slots, same as Starting Five */}
+      {/* Second Unit */}
       <section className="bg-black/40 border border-slate-800 rounded-lg p-3 sm:p-4">
         <div className="flex items-center justify-between mb-3">
           <div className="text-[10px] font-bold uppercase tracking-widest text-emerald-400">Second Unit</div>
@@ -116,40 +134,46 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
         {bench.length === 0 ? (
           <div className="text-slate-500 text-xs">No bench players available.</div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
-            {STARTER_POS_ORDER.map((pos, i) => {
+          <div
+            className="grid grid-cols-2 sm:[grid-template-columns:repeat(var(--court-columns),minmax(0,1fr))] gap-2 sm:gap-3"
+            style={courtGridStyle}
+          >
+            {starterSlots.map((pos, i) => {
               const p = bench[i];
               if (!p) {
                 return (
-                  <div key={pos} className="aspect-[3/4] border-2 border-dashed border-slate-700 rounded-lg flex items-center justify-center text-slate-600 text-xs uppercase">
+                  <div key={pos} className="h-[100px] border-2 border-dashed border-slate-700 rounded-lg flex items-center justify-center text-slate-600 text-xs uppercase">
                     {pos}
                   </div>
                 );
               }
-              return <DepthChartCard key={p.internalId} player={p} slotLabel={pos} season={season} accent="emerald" />;
+              return <DepthChartCard key={p.internalId} player={p} slotLabel={pos} season={season} state={state} accent="emerald" />;
             })}
           </div>
         )}
       </section>
 
-      {/* Third Unit — same 5-slot grid, only on rosters with 14+ healthy */}
+      {/* Third Unit — mirrors the configured unit when roster depth permits. */}
       {thirdUnit.length > 0 && (
         <section className="bg-black/40 border border-slate-800 rounded-lg p-3 sm:p-4">
           <div className="flex items-center justify-between mb-3">
             <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Third Unit</div>
             <div className="text-[9px] text-slate-500 uppercase tracking-widest">Deep Bench</div>
           </div>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 sm:gap-3">
-            {STARTER_POS_ORDER.map((pos, i) => {
+          <div
+            className="grid grid-cols-2 sm:[grid-template-columns:repeat(var(--court-columns),minmax(0,1fr))] gap-2 sm:gap-3"
+            style={courtGridStyle}
+          >
+            {starterSlots.map((pos, i) => {
               const p = thirdUnit[i];
               if (!p) {
                 return (
-                  <div key={pos} className="aspect-[3/4] border-2 border-dashed border-slate-700 rounded-lg flex items-center justify-center text-slate-600 text-xs uppercase">
+                  <div key={pos} className="h-[100px] border-2 border-dashed border-slate-700 rounded-lg flex items-center justify-center text-slate-600 text-xs uppercase">
                     {pos}
                   </div>
                 );
               }
-              return <DepthChartCard key={p.internalId} player={p} slotLabel={pos} season={season} accent="amber" />;
+              return <DepthChartCard key={p.internalId} player={p} slotLabel={pos} season={season} state={state} accent="amber" />;
             })}
           </div>
         </section>
@@ -161,7 +185,7 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
           <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-3">Reserves</div>
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
             {reserves.map(p => (
-              <DepthChartCard key={p.internalId} player={p} slotLabel={normalizePos(p)} season={season} accent="slate" />
+              <DepthChartCard key={p.internalId} player={p} slotLabel={normalizePos(p)} season={season} state={state} accent="slate" />
             ))}
           </div>
         </section>
@@ -173,7 +197,7 @@ export function TeamOfficeDepthChartTab({ teamId }: Props) {
           <div className="text-[10px] font-bold uppercase tracking-widest text-rose-400 mb-3">Injured / Unavailable</div>
           <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-6 gap-2 sm:gap-3">
             {injured.map(p => (
-              <DepthChartCard key={p.internalId} player={p} slotLabel={normalizePos(p)} season={season} accent="rose" />
+              <DepthChartCard key={p.internalId} player={p} slotLabel={normalizePos(p)} season={season} state={state} accent="rose" />
             ))}
           </div>
         </section>
@@ -198,15 +222,17 @@ function DepthChartCard({
   player,
   slotLabel,
   season,
+  state,
   accent,
 }: {
   player: NBAPlayer;
   slotLabel: string;
   season: number;
+  state: GameState;
   accent: Accent;
 }) {
-  void season;
   const styles = ACCENT_STYLES[accent];
+  const displayOvr = getScoutedDisplayOverall(state, player, season);
 
   return (
     <div className={`relative bg-gradient-to-b from-slate-800/70 to-slate-900/90 rounded-lg p-2 border ${styles.border} flex flex-col items-center gap-1`}>
@@ -220,6 +246,7 @@ function DepthChartCard({
         size={64}
         overallRating={player.overallRating}
         ratings={player.ratings}
+        ovrLabel={String(displayOvr)}
       />
       <div className="text-[11px] font-bold text-white text-center line-clamp-1 w-full mt-1">
         <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>

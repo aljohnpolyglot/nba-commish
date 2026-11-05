@@ -4,37 +4,23 @@ import { Trophy, Search, Crown, Hourglass } from 'lucide-react';
 import { useGame } from '../../../../store/GameContext';
 import { SettingsManager } from '../../../../services/SettingsManager';
 import { careerWinShares, upcomingHOFCandidates, HOF_FIRST_BALLOT_WAIT_YEARS, HOF_BORDERLINE_WAIT_YEARS, getHOFCeremonyDateString } from '../../../../services/playerDevelopment/hofChecker';
-import { fetchHOFData, ProcessedHOFPlayer } from '../../../../data/HOFData';
+import { filterExternalHOFInducteesForTimeline, getExternalHOFMaxInductionYear } from '../../../../services/playerDevelopment/hofHistoryWindow';
+import { adaptProcessedHOFPlayer, fetchHOFData, getCachedHOFData, ProcessedHOFPlayer } from '../../../../data/HOFData';
 import type { NBAPlayer } from '../../../../types';
+import { normalizeDate } from '../../../../utils/helpers';
 import HOFSection, { HOFInductee } from './components/HOFSection';
 import { PlayerBioView } from '../PlayerBioView';
+import { CommissionerHofEndorsementPanel } from './CommissionerHofEndorsementPanel';
+import { isStaffRetirementRecordInMode } from '../../../../services/staff/staffRetirement';
+import { StaffHOFSection } from './components/StaffHOFSection';
+import { getPlayerImage } from '../../../../utils/playerImage';
+import { PlayerPortrait } from '../../../shared/PlayerPortrait';
+import { resolveCanonicalPersonId, resolvePlayerByCanonicalPersonId } from '../../../../utils/playerIdentity';
 
 const normalize = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
 
-// Adapt a ProcessedHOFPlayer (external gist shape) into our NBAPlayer-ish shape so
-// the same HOFCard renders both simulated retirees and real-world HOF legends.
-function adaptExternalPlayer(p: ProcessedHOFPlayer): NBAPlayer {
-  return {
-    internalId: `ext-${normalize(p.name)}`,
-    name: p.name,
-    tid: p.tid ?? -1,
-    pos: p.pos,
-    hgt: p.hgt,
-    weight: p.weight,
-    imgURL: p.imgURL,
-    born: p.born,
-    draft: p.draft as any,
-    awards: p.awards,
-    hof: true,
-    retiredYear: p.retiredYear,
-    hofInductionYear: p.inductionYear,
-    status: 'Retired',
-    overallRating: 0,
-  } as unknown as NBAPlayer;
-}
-
 export default function HallofFameView() {
-  const { state } = useGame();
+  const { state, navigateToPlayer } = useGame();
   const [searchQuery, setSearchQuery] = useState('');
   const [externalInductees, setExternalInductees] = useState<ProcessedHOFPlayer[]>([]);
   const [externalLoading, setExternalLoading] = useState(true);
@@ -44,34 +30,56 @@ export default function HallofFameView() {
   const hofThreshold = SettingsManager.getSettings().hofWSThreshold ?? 50;
   // Ceremony cutoff (Sept 6 of each induction year). External classes only
   // appear once their ceremony date has been reached in-game.
-  const currentDate = (state.date ?? `${currentYear - 1}-08-06`).slice(0, 10);
+  const currentDate = normalizeDate(state.date ?? `${currentYear - 1}-08-06`);
   const isFictional = state.leagueType === 'fictional';
+  const hofTimelineInput = {
+    currentYear,
+    leagueType: state.leagueType,
+    moddedLeagueBase: state.moddedLeagueBase,
+    nbaStartYear: state.nbaStartYear,
+  };
+  const externalMaxInductionYear = getExternalHOFMaxInductionYear(hofTimelineInput);
+  const openPlayer = (player: NBAPlayer) => {
+    const canonical = resolvePlayerByCanonicalPersonId(state.players, resolveCanonicalPersonId(player));
+    if (canonical) navigateToPlayer(canonical);
+    else setViewingPlayer(player);
+  };
 
   // Load real-world HOF data on mount — skipped for fictional leagues
   useEffect(() => {
     if (isFictional) { setExternalLoading(false); return; }
     let cancelled = false;
-    fetchHOFData()
+    const cached = getCachedHOFData({ maxInductionYear: externalMaxInductionYear });
+    if (cached.length > 0) {
+      setExternalInductees(cached);
+      setExternalLoading(false);
+    }
+    fetchHOFData({ maxInductionYear: externalMaxInductionYear })
       .then(data => { if (!cancelled) setExternalInductees(data); })
       .catch(err => console.error('[HOF] External fetch failed:', err))
       .finally(() => { if (!cancelled) setExternalLoading(false); });
     return () => { cancelled = true; };
-  }, [isFictional]);
+  }, [externalMaxInductionYear, isFictional]);
+
+  const timelineExternalInductees = useMemo(() => {
+    return filterExternalHOFInducteesForTimeline(externalInductees, hofTimelineInput);
+  }, [externalInductees, currentYear, state.leagueType, state.moddedLeagueBase, state.nbaStartYear]);
 
   // Merge external + in-game inductees, dedupe by normalized name (in-game wins)
   const inductees: HOFInductee[] = useMemo(() => {
     const byName = new Map<string, HOFInductee>();
 
-    externalInductees.forEach(p => {
+    timelineExternalInductees.forEach(p => {
       if (!p.name || !p.inductionYear) return;
       // Date gate: a class only appears after its ceremony (first Saturday of September) in-game
       const ceremonyDate = getHOFCeremonyDateString(p.inductionYear);
       if (currentDate < ceremonyDate) return;
       const key = normalize(p.name);
+      const player = adaptProcessedHOFPlayer(p);
       byName.set(key, {
-        player: adaptExternalPlayer(p),
+        player,
         inductionYear: p.inductionYear,
-        careerWS: 0, // no sim stats for real-world legends
+        careerWS: careerWinShares(player),
       });
     });
 
@@ -90,13 +98,19 @@ export default function HallofFameView() {
     });
 
     return Array.from(byName.values());
-  }, [externalInductees, state.players, currentYear, currentDate]);
+  }, [timelineExternalInductees, state.players, currentYear, currentDate]);
 
   const filteredInductees = useMemo(() => {
     if (!searchQuery.trim()) return inductees;
     const q = searchQuery.toLowerCase();
     return inductees.filter(i => i.player.name.toLowerCase().includes(q));
   }, [inductees, searchQuery]);
+  const filteredStaffHonorees = useMemo(() => {
+    const query = searchQuery.trim().toLowerCase();
+    return (state.staffHallOfFame ?? [])
+      .filter(record => isStaffRetirementRecordInMode(record, state.leagueStats?.uiMode))
+      .filter(record => !query || record.name.toLowerCase().includes(query) || record.teamName.toLowerCase().includes(query));
+  }, [searchQuery, state.leagueStats?.uiMode, state.staffHallOfFame]);
 
   const groupedByYear = useMemo(() => {
     const groups: Record<number, HOFInductee[]> = {};
@@ -110,8 +124,34 @@ export default function HallofFameView() {
   }, [filteredInductees]);
 
   const upcoming = useMemo(() => {
-    return upcomingHOFCandidates(state.players ?? [], currentYear, hofThreshold).slice(0, 8);
-  }, [state.players, currentYear, hofThreshold]);
+    const byId = new Map<string, ReturnType<typeof upcomingHOFCandidates>[number]>();
+    const currentCalendarYear = Number(currentDate.slice(0, 4)) || currentYear;
+    upcomingHOFCandidates(state.players ?? [], currentYear, hofThreshold)
+      .forEach(candidate => byId.set(candidate.player.internalId, candidate));
+
+    (state.players ?? []).forEach(player => {
+      if (player.hof) return;
+      const scheduledYear = Number((player as any).scheduledHofInductionYear ?? 0);
+      if (!scheduledYear || scheduledYear < currentCalendarYear) return;
+      if (currentDate >= getHOFCeremonyDateString(scheduledYear)) return;
+      const retiredYear = Number(player.retiredYear ?? 0);
+      const firstBallot = retiredYear > 0 && scheduledYear === retiredYear + HOF_FIRST_BALLOT_WAIT_YEARS;
+      byId.set(player.internalId, {
+        player,
+        yearsUntilEligible: scheduledYear - currentCalendarYear,
+        eligibleYear: scheduledYear,
+        careerWS: careerWinShares(player),
+        firstBallot,
+        tier: firstBallot ? 'first_ballot' : 'regular',
+        tierLabel: firstBallot ? 'First Ballot' : 'Scheduled Class',
+        waitYears: retiredYear > 0 ? Math.max(0, scheduledYear - retiredYear) : 0,
+      });
+    });
+
+    return Array.from(byId.values())
+      .sort((a, b) => a.eligibleYear - b.eligibleYear || b.careerWS - a.careerWS)
+      .slice(0, 8);
+  }, [state.players, currentYear, currentDate, hofThreshold, state.leagueType, state.moddedLeagueBase, state.nbaStartYear]);
 
   if (viewingPlayer) {
     return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
@@ -119,6 +159,7 @@ export default function HallofFameView() {
 
   return (
     <div className="h-full overflow-y-auto bg-regal-black text-regal-paper selection:bg-regal-gold selection:text-regal-black" style={{ scrollbarWidth: 'thin' }}>
+      <CommissionerHofEndorsementPanel />
       {/* Hero — cinematic basketball background */}
       <header className="relative flex min-h-[70vh] flex-col items-center justify-center overflow-hidden px-6 py-16 text-center">
         <div className="absolute inset-0 z-0">
@@ -165,7 +206,7 @@ export default function HallofFameView() {
           </div>
           <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
             <Trophy size={14} className="text-regal-gold" />
-            <span>{filteredInductees.length} {filteredInductees.length === 1 ? 'Legend' : 'Legends'}</span>
+            <span>{filteredInductees.length + filteredStaffHonorees.length} {(filteredInductees.length + filteredStaffHonorees.length) === 1 ? 'Legend' : 'Legends'}</span>
           </div>
         </div>
 
@@ -181,15 +222,14 @@ export default function HallofFameView() {
             </div>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
               {upcoming.map(c => (
-                <div key={c.player.internalId} onClick={() => setViewingPlayer(c.player)} className="cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 transition-all hover:border-regal-gold/50 hover:bg-zinc-900">
+                <div key={c.player.internalId} onClick={() => openPlayer(c.player)} className="cursor-pointer rounded-xl border border-zinc-800 bg-zinc-900/60 p-3 transition-all hover:border-regal-gold/50 hover:bg-zinc-900">
                   <div className="flex items-center gap-3">
-                    {c.player.imgURL ? (
-                      <img src={c.player.imgURL} alt={c.player.name} className="h-10 w-10 rounded-full object-cover object-top" referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-800 text-zinc-500">
-                        <Trophy size={14} />
-                      </div>
-                    )}
+                    <PlayerPortrait
+                      imgUrl={getPlayerImage(c.player)}
+                      face={c.player.face}
+                      playerName={c.player.name}
+                      size={40}
+                    />
                     <div className="min-w-0 flex-1">
                       <div className="truncate text-sm font-bold text-regal-paper">{c.player.name}</div>
                       <div className="mt-0.5 flex flex-wrap gap-1">
@@ -219,6 +259,7 @@ export default function HallofFameView() {
             </div>
           </section>
         )}
+        <StaffHOFSection records={filteredStaffHonorees} currentDate={currentDate} />
 
         {/* Sections */}
         {externalLoading && inductees.length === 0 ? (
@@ -234,7 +275,7 @@ export default function HallofFameView() {
                   key={group.year}
                   year={group.year}
                   inductees={group.players}
-                  onPlayerClick={setViewingPlayer}
+                  onPlayerClick={openPlayer}
                 />
               ))
             ) : (

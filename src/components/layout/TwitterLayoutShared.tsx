@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { GameResult, SocialPost } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { useInView } from '../../hooks/useInView';
-import { enrichPostWithPhoto, getResolvedUrl, type GamePhotoInfo } from '../../services/social/photoEnricher';
+import { buildGamePhotoInfo, enrichPostWithPhoto, getResolvedPhotoCredit, getResolvedUrl, type GamePhotoInfo } from '../../services/social/photoEnricher';
 import { resolveAnyTeam } from '../../utils/teamLookup';
 import SocialPostCard from '../social/SocialPostCard';
 import { WhoToFollow } from '../social/SidebarComponents';
@@ -16,14 +16,10 @@ export function useGameLookup(): Map<number, GamePhotoInfo> {
       const home = resolveAnyTeam(boxScore.homeTeamId, state.teams, state.nonNBATeams ?? []);
       const away = resolveAnyTeam(boxScore.awayTeamId, state.teams, state.nonNBATeams ?? []);
       if (!home || !away) continue;
-      const topPlayers = [...(boxScore.homeStats || []), ...(boxScore.awayStats || [])]
-        .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))
-        .slice(0, 10)
-        .map((stat) => ({ name: stat.name, gameScore: stat.gameScore ?? 0 }));
-      lookup.set(boxScore.gameId, { homeTeam: home, awayTeam: away, topPlayers, date: boxScore.date || '' });
+      lookup.set(boxScore.gameId, buildGamePhotoInfo(boxScore, home, away, state));
     }
     return lookup;
-  }, [state.boxScores, state.teams, state.nonNBATeams]);
+  }, [state.boxScores, state.leagueStats, state.leagueType, state.moddedLeagueBase, state.nbaStartYear, state.nonNBATeams, state.teams]);
 }
 
 export type TwitterViewState = {
@@ -63,19 +59,24 @@ type LazyPhotoCardProps = {
 
 export const LazyPhotoCard: React.FC<LazyPhotoCardProps> = ({ post, gameLookup, leagueType, onClick, onProfileClick }) => {
   const { ref, inView } = useInView(0.05);
+  const attemptedLookupRef = useRef<Map<number, GamePhotoInfo> | null>(null);
   const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | undefined>(() => {
     const cached = getResolvedUrl(post.id);
     return cached ?? post.mediaUrl ?? undefined;
   });
   useEffect(() => {
-    if (!inView || resolvedMediaUrl) return;
+    if (!inView || attemptedLookupRef.current === gameLookup) return;
+    attemptedLookupRef.current = gameLookup;
     let cancelled = false;
     enrichPostWithPhoto(post, gameLookup, leagueType).then((url) => {
-      if (!cancelled && url) setResolvedMediaUrl(url);
+      if (!cancelled && url && url !== resolvedMediaUrl) setResolvedMediaUrl(url);
     });
     return () => { cancelled = true; };
-  }, [gameLookup, inView, leagueType, post, resolvedMediaUrl]);
-  const enriched: SocialPost = resolvedMediaUrl ? { ...post, mediaUrl: resolvedMediaUrl } : post;
+  }, [gameLookup, inView, leagueType, post.id, resolvedMediaUrl]);
+  const photoCredit = getResolvedPhotoCredit(post.id);
+  const enriched: SocialPost = resolvedMediaUrl
+    ? { ...post, mediaUrl: resolvedMediaUrl, data: { ...post.data, photoCredit } }
+    : post;
   return (
     <div ref={ref}>
       <SocialPostCard post={enriched} onClick={onClick} onProfileClick={onProfileClick} />

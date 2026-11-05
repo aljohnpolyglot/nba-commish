@@ -5,9 +5,14 @@ import { normalizeDate } from '../../../../utils/helpers';
 import { useLeagueLabels } from '../../../../utils/leagueLabels';
 import { AllStarSaturdayCards } from './AllStarSaturdayCards';
 import { findBoxScoreForGame } from '../../../../utils/boxScoreLookup';
+import { didHomeTeamWin } from '../../../../utils/gameOutcome';
+import { getResolvedTeamLogoUrl } from '../../../../utils/teamAssets';
+import { isPbaIsolatedMode } from '../../../../utils/uiMode';
+import { buildPbaAllStarLeagueStats } from '../../../../services/pba/allStar';
+import { ALL_STAR_ASSETS } from '../../../../services/allStar/AllStarSelectionService';
 
-const EAST_LOGO_URL = 'https://static.wikia.nocookie.net/logopedia/images/8/89/Eastern_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191748';
-const WEST_LOGO_URL = 'https://static.wikia.nocookie.net/logopedia/images/0/06/Western_Conference_%28NBA%29_1993.svg/revision/latest?cb=20181220191726';
+const EAST_LOGO_URL = ALL_STAR_ASSETS.eastLogo;
+const WEST_LOGO_URL = ALL_STAR_ASSETS.westLogo;
 
 interface AllStarDayViewProps {
   selectedDateObj: Date;
@@ -24,7 +29,7 @@ interface AllStarDayViewProps {
   onWatchShootingStars: () => void;
   onWatchSkillsChallenge: () => void;
   onWatchHorse: () => void;
-  onViewContestDetails: (type: 'dunk' | 'three') => void;
+  onViewContestDetails: (type: 'dunk' | 'three' | 'skills' | 'shooting-stars') => void;
   onViewBoxScore: (game: Game) => void;
   state: any;
 }
@@ -49,7 +54,11 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
   state
 }) => {
   const labels = useLeagueLabels();
-  const allStarGameTitle = labels.finals === 'League Finals' ? 'All-Star Game' : 'NBA All-Star Game';
+  const isPba = isPbaIsolatedMode(state);
+  const eventLeagueStats = isPba ? buildPbaAllStarLeagueStats(state.leagueStats) : state.leagueStats;
+  const allStarGameTitle = isPba
+    ? 'PBA All-Star Game'
+    : labels.finals === 'League Finals' ? 'All-Star Game' : 'NBA All-Star Game';
   const bracket = allStar?.bracket;
   const risingStarsBracket = allStar?.risingStarsBracket;
   const rsIsTournament = !!risingStarsBracket;
@@ -71,29 +80,55 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
 
   // Box scores — only match by current season's game IDs (no hardcoded team ID fallbacks,
   // which would match stale box scores from previous seasons after allStar state is cleared)
-  const risingStarsBoxScore = allStar?.risingStarsGameId
-    ? risingStarsGame ? findBoxScoreForGame(state.boxScores, allStar.risingStarsGameId, risingStarsGame.date) : undefined
+  const risingStarsBoxScore = risingStarsGame
+    ? findBoxScoreForGame(state.boxScores, allStar?.risingStarsGameId ?? risingStarsGame.gid, risingStarsGame.date)
     : null;
-  const allStarBoxScore = allStar?.allStarGameId
-    ? allStarGame ? findBoxScoreForGame(state.boxScores, allStar.allStarGameId, allStarGame.date) : undefined
+  const allStarBoxScore = allStarGame
+    ? findBoxScoreForGame(state.boxScores, allStar?.allStarGameId ?? allStarGame.gid, allStarGame.date)
     : null;
-  const celebrityBoxScore = allStar?.celebrityGameId
-    ? celebrityGame ? findBoxScoreForGame(state.boxScores, allStar.celebrityGameId, celebrityGame.date) : undefined
+  const celebrityBoxScore = celebrityGame
+    ? findBoxScoreForGame(state.boxScores, allStar?.celebrityGameId ?? celebrityGame.gid, celebrityGame.date)
     : null;
   const celebrityGameResult = allStar?.celebrityGameResult || (celebrityBoxScore ? {
     homeScore: celebrityBoxScore.homeScore,
     awayScore: celebrityBoxScore.awayScore,
+    homeTeamId: celebrityBoxScore.homeTeamId,
+    awayTeamId: celebrityBoxScore.awayTeamId,
+    winnerId: celebrityBoxScore.winnerId,
     homeTeamName: celebrityBoxScore.homeTeamName,
     awayTeamName: celebrityBoxScore.awayTeamName,
   } : null);
 
   const risingStarsTeams = allStar?.risingStarsTeams ?? ['Team USA', 'Team World'];
+  const finalGame = bracket?.games?.find((game: any) => game.round === 'final') ?? bracket?.games?.[0];
+  const homeBracketTeam = bracket?.teams?.find((team: any) => Number(team.tid) === Number(finalGame?.homeTid));
+  const awayBracketTeam = bracket?.teams?.find((team: any) => Number(team.tid) === Number(finalGame?.awayTid));
+  const pbaCaptain = (bucket: 'East' | 'West') =>
+    allStar?.roster?.find((entry: any) => entry.conference === bucket && entry.isCaptain);
+  const pbaCaptainName = (bucket: 'East' | 'West') => {
+    const name = String(pbaCaptain(bucket)?.playerName ?? '').trim();
+    return name ? `Team ${name.split(/\s+/).at(-1)}` : `Team ${bucket === 'East' ? 'A' : 'B'}`;
+  };
+  const pbaCaptainLogo = (bucket: 'East' | 'West') => {
+    const captain = pbaCaptain(bucket);
+    const player = state.players?.find((entry: any) => entry.internalId === captain?.playerId);
+    const team = state.nonNBATeams?.find((entry: any) =>
+      entry.league === 'PBA' && Number(entry.tid ?? entry.id) === Number(player?.tid)
+    );
+    return team ? getResolvedTeamLogoUrl({ ...team, id: team.tid ?? team.id }, state.leagueStats?.year) : captain?.teamLogoUrl;
+  };
+  const homeAllStarName = isPba ? pbaCaptainName('East') : homeBracketTeam?.name ?? allStarBoxScore?.homeTeamName ?? 'East';
+  const awayAllStarName = isPba ? pbaCaptainName('West') : awayBracketTeam?.name ?? allStarBoxScore?.awayTeamName ?? 'West';
+  const homeAllStarLogo = isPba ? pbaCaptainLogo('East') : homeBracketTeam?.logoUrl ?? EAST_LOGO_URL;
+  const awayAllStarLogo = isPba ? pbaCaptainLogo('West') : awayBracketTeam?.logoUrl ?? WEST_LOGO_URL;
 
   return (
     <div className="flex-1 flex flex-col p-0 md:p-0">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-1">All-Star Weekend</h2>
+          <h2 className="text-3xl font-black text-white uppercase tracking-tight mb-1">
+            {isPba ? 'PBA All-Star Weekend' : 'All-Star Weekend'}
+          </h2>
           <p className="text-amber-400 font-bold tracking-widest uppercase text-xs">
             {selectedDateObj.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
           </p>
@@ -102,7 +137,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
 
       <div className="space-y-6">
         {/* ── RISING STARS (Friday) ── */}
-        {isRisingStarsDay && rsIsTournament && risingStarsBracket && (() => {
+        {!isPba && isRisingStarsDay && rsIsTournament && risingStarsBracket && (() => {
           const mvp = allStar?.risingStarsMvp;
           return (
             <div className="space-y-3">
@@ -135,7 +170,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                     </div>
                     <div className="flex items-center justify-between gap-6">
                       <div className="flex-1 text-center">
-                        <div className={`text-3xl font-black mb-0.5 ${bs ? (bs.homeScore >= bs.awayScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                        <div className={`text-3xl font-black mb-0.5 ${bs ? (didHomeTeamWin(bs) ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
                           {bs ? bs.homeScore : '—'}
                         </div>
                         <div className="text-[9px] text-sky-400 font-black uppercase tracking-widest leading-tight">
@@ -145,7 +180,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                       </div>
                       <div className="text-lg font-black text-slate-700 italic">VS</div>
                       <div className="flex-1 text-center">
-                        <div className={`text-3xl font-black mb-0.5 ${bs ? (bs.awayScore > bs.homeScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                        <div className={`text-3xl font-black mb-0.5 ${bs ? (!didHomeTeamWin(bs) ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
                           {bs ? bs.awayScore : '—'}
                         </div>
                         <div className="text-[9px] text-emerald-400 font-black uppercase tracking-widest leading-tight">
@@ -174,14 +209,14 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
           );
         })()}
 
-        {isRisingStarsDay && !rsIsTournament && (
+        {!isPba && isRisingStarsDay && !rsIsTournament && (
           risingStarsBoxScore ? (
             // POST-GAME: score card with box score button
             <div className="bg-gradient-to-br from-blue-900/40 to-indigo-900/40 border border-blue-500/20 rounded-2xl p-6">
               <div className="text-[10px] font-black text-sky-400 uppercase tracking-[0.2em] mb-4">Rising Stars Challenge · Final</div>
               <div className="flex items-center justify-between gap-8 mb-6">
                 <div className="flex-1 text-center">
-                  <div className={`text-4xl font-black mb-1 ${risingStarsBoxScore.homeScore > risingStarsBoxScore.awayScore ? 'text-white' : 'text-slate-600'}`}>
+                  <div className={`text-4xl font-black mb-1 ${didHomeTeamWin(risingStarsBoxScore) ? 'text-white' : 'text-slate-600'}`}>
                     {risingStarsBoxScore.homeScore}
                   </div>
                   <div className="text-[10px] text-sky-400 font-black uppercase tracking-widest">
@@ -190,7 +225,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                 </div>
                 <div className="text-2xl font-black text-slate-800 italic">VS</div>
                 <div className="flex-1 text-center">
-                  <div className={`text-4xl font-black mb-1 ${risingStarsBoxScore.awayScore > risingStarsBoxScore.homeScore ? 'text-white' : 'text-slate-600'}`}>
+                  <div className={`text-4xl font-black mb-1 ${!didHomeTeamWin(risingStarsBoxScore) ? 'text-white' : 'text-slate-600'}`}>
                     {risingStarsBoxScore.awayScore}
                   </div>
                   <div className="text-[10px] text-emerald-400 font-black uppercase tracking-widest">
@@ -250,13 +285,13 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
         )}
 
         {/* ── CELEBRITY GAME (Friday) ── */}
-        {isCelebrityGameDay && (
+        {!isPba && isCelebrityGameDay && (
           celebrityGameResult ? (
             <div className="bg-gradient-to-br from-fuchsia-900/40 to-purple-900/40 border border-fuchsia-500/20 rounded-2xl p-6">
               <div className="text-[10px] font-black text-fuchsia-400 uppercase tracking-[0.2em] mb-4">Celebrity Game · Final</div>
               <div className="flex items-center justify-between gap-8 mb-6">
                 <div className="flex-1 text-center">
-                  <div className={`text-4xl font-black mb-1 ${celebrityGameResult.homeScore > celebrityGameResult.awayScore ? 'text-white' : 'text-slate-600'}`}>
+                  <div className={`text-4xl font-black mb-1 ${didHomeTeamWin(celebrityGameResult) ? 'text-white' : 'text-slate-600'}`}>
                     {celebrityGameResult.homeScore}
                   </div>
                   <div className="text-[10px] text-fuchsia-400 font-black uppercase tracking-widest">
@@ -265,7 +300,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                 </div>
                 <div className="text-2xl font-black text-slate-800 italic">VS</div>
                 <div className="flex-1 text-center">
-                  <div className={`text-4xl font-black mb-1 ${celebrityGameResult.awayScore > celebrityGameResult.homeScore ? 'text-white' : 'text-slate-600'}`}>
+                  <div className={`text-4xl font-black mb-1 ${!didHomeTeamWin(celebrityGameResult) ? 'text-white' : 'text-slate-600'}`}>
                     {celebrityGameResult.awayScore}
                   </div>
                   <div className="text-[10px] text-pink-400 font-black uppercase tracking-widest">
@@ -335,10 +370,10 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
             onWatchShootingStars={onWatchShootingStars}
             onWatchSkillsChallenge={onWatchSkillsChallenge}
             onWatchHorse={onWatchHorse}
-            shootingStarsEnabled={state?.leagueStats?.allStarShootingStars !== false}
-            skillsChallengeEnabled={state?.leagueStats?.allStarSkillsChallenge === true}
-            horseEnabled={state?.leagueStats?.allStarHorse === true}
-            throneEnabled={state?.leagueStats?.allStarThroneEnabled === true}
+            shootingStarsEnabled={eventLeagueStats?.allStarShootingStars !== false}
+            skillsChallengeEnabled={eventLeagueStats?.allStarSkillsChallenge === true}
+            horseEnabled={eventLeagueStats?.allStarHorse === true}
+            throneEnabled={eventLeagueStats?.allStarThroneEnabled === true}
           />
         )}
 
@@ -347,8 +382,8 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
           const bs = findBoxScoreForGame(state.boxScores, g.gid, g.date);
           const homeT = bracket?.teams?.find((t: any) => t.tid === g.homeTid);
           const awayT = bracket?.teams?.find((t: any) => t.tid === g.awayTid);
-          const homeName = homeT?.name ?? (g.homeTid === -1 ? 'East' : 'TBD');
-          const awayName = awayT?.name ?? (g.awayTid === -2 ? 'West' : 'TBD');
+          const homeName = homeT?.name ?? (g.homeTid === -1 ? (isPba ? pbaCaptainName('East') : 'East') : 'TBD');
+          const awayName = awayT?.name ?? (g.awayTid === -2 ? (isPba ? pbaCaptainName('West') : 'West') : 'TBD');
           const isFinal = !!g.isAllStarChampionship;
           return (
             <div key={g.gid} className={`bg-gradient-to-br from-slate-900 to-black border ${isFinal ? 'border-amber-500/30' : 'border-slate-500/20'} rounded-2xl p-6`}>
@@ -360,7 +395,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                   {homeT?.logoUrl && (
                     <img src={homeT.logoUrl} className="w-10 h-10 mx-auto mb-2 object-contain" alt={homeName} referrerPolicy="no-referrer" />
                   )}
-                  <div className={`text-3xl font-black mb-1 ${bs ? (bs.homeScore > bs.awayScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                  <div className={`text-3xl font-black mb-1 ${bs ? (didHomeTeamWin(bs) ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
                     {bs ? bs.homeScore : '—'}
                   </div>
                   <div className="text-[10px] text-slate-300 font-black uppercase tracking-widest">{homeName}</div>
@@ -371,7 +406,7 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                   {awayT?.logoUrl && (
                     <img src={awayT.logoUrl} className="w-10 h-10 mx-auto mb-2 object-contain" alt={awayName} referrerPolicy="no-referrer" />
                   )}
-                  <div className={`text-3xl font-black mb-1 ${bs ? (bs.awayScore > bs.homeScore ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
+                  <div className={`text-3xl font-black mb-1 ${bs ? (!didHomeTeamWin(bs) ? 'text-white' : 'text-slate-600') : 'text-slate-300'}`}>
                     {bs ? bs.awayScore : '—'}
                   </div>
                   <div className="text-[10px] text-slate-300 font-black uppercase tracking-widest">{awayName}</div>
@@ -402,19 +437,33 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
                 <div className="text-[10px] font-black text-amber-400 uppercase tracking-[0.2em] mb-4">{allStarGameTitle} · Final</div>
                 <div className="flex items-center justify-center gap-12 mb-6">
                   <div className="text-center">
-                    <img src={EAST_LOGO_URL} className="w-12 h-12 mx-auto mb-3 object-contain" alt="East" referrerPolicy="no-referrer" />
-                    <div className={`text-5xl font-black mb-1 ${allStarBoxScore.homeScore > allStarBoxScore.awayScore ? 'text-white' : 'text-slate-600'}`}>
+                    {homeAllStarLogo && (
+                      <img
+                        src={homeAllStarLogo}
+                        className="w-12 h-12 mx-auto mb-3 object-contain"
+                        alt={homeAllStarName}
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
+                    <div className={`text-5xl font-black mb-1 ${didHomeTeamWin(allStarBoxScore) ? 'text-white' : 'text-slate-600'}`}>
                       {allStarBoxScore.homeScore}
                     </div>
-                    <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest">East</div>
+                    <div className="text-[10px] text-blue-400 font-black uppercase tracking-widest">{homeAllStarName}</div>
                   </div>
                   <div className="text-3xl font-black text-slate-800 italic">VS</div>
                   <div className="text-center">
-                    <img src={WEST_LOGO_URL} className="w-12 h-12 mx-auto mb-3 object-contain" alt="West" referrerPolicy="no-referrer" />
-                    <div className={`text-5xl font-black mb-1 ${allStarBoxScore.awayScore > allStarBoxScore.homeScore ? 'text-white' : 'text-slate-600'}`}>
+                    {awayAllStarLogo && (
+                      <img
+                        src={awayAllStarLogo}
+                        className="w-12 h-12 mx-auto mb-3 object-contain"
+                        alt={awayAllStarName}
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
+                    <div className={`text-5xl font-black mb-1 ${!didHomeTeamWin(allStarBoxScore) ? 'text-white' : 'text-slate-600'}`}>
                       {allStarBoxScore.awayScore}
                     </div>
-                    <div className="text-[10px] text-red-400 font-black uppercase tracking-widest">West</div>
+                    <div className="text-[10px] text-red-400 font-black uppercase tracking-widest">{awayAllStarName}</div>
                   </div>
                 </div>
                 {/* MVP */}
@@ -455,8 +504,8 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
             <div className="bg-gradient-to-br from-slate-900 to-black border border-white/10 rounded-2xl p-8">
               <div className="flex flex-col items-center text-center mb-8">
                 <div className="w-20 h-20 rounded-2xl bg-white/5 flex items-center justify-center text-4xl mb-4">⭐</div>
-                <h3 className="text-3xl font-black text-white uppercase tracking-tight">75th {allStarGameTitle}</h3>
-                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">East vs West · Sunday Night</p>
+                <h3 className="text-3xl font-black text-white uppercase tracking-tight">{isPba ? allStarGameTitle : `75th ${allStarGameTitle}`}</h3>
+                <p className="text-slate-500 text-xs font-bold uppercase tracking-widest mt-1">{homeAllStarName} vs {awayAllStarName} · Sunday Night</p>
               </div>
 
               <div className="flex items-center justify-center gap-4 mb-8">
@@ -478,9 +527,23 @@ export const AllStarDayView: React.FC<AllStarDayViewProps> = ({
               </div>
 
               <div className="flex items-center justify-center gap-12 opacity-50">
-                <img src={EAST_LOGO_URL} className="w-16 h-16 grayscale" alt="East" referrerPolicy="no-referrer" />
+                {homeAllStarLogo && (
+                  <img
+                    src={homeAllStarLogo}
+                    className="w-16 h-16 grayscale"
+                    alt={homeAllStarName}
+                    referrerPolicy="no-referrer"
+                  />
+                )}
                 <div className="text-xl font-black text-slate-800 italic">VS</div>
-                <img src={WEST_LOGO_URL} className="w-16 h-16 grayscale" alt="West" referrerPolicy="no-referrer" />
+                {awayAllStarLogo && (
+                  <img
+                    src={awayAllStarLogo}
+                    className="w-16 h-16 grayscale"
+                    alt={awayAllStarName}
+                    referrerPolicy="no-referrer"
+                  />
+                )}
               </div>
             </div>
           )

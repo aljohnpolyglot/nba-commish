@@ -1,0 +1,206 @@
+[
+  {
+    "teamId": "BOS",
+    "teamName": "Boston Celtics",
+    "currentPatch": {
+      "sponsor": "Vistaprint",
+      "domain": "vistaprint.com",
+      "valuePerYear": 12000000,
+      "contractYears": 5,
+      "signedSeason": 2020
+    },
+    "history": [
+      {
+        "sponsor": "General Electric",
+        "domain": "ge.com",
+        "valuePerYear": 8000000,
+        "contractYears": 3,
+        "yearsActive": "2017-2020"
+      }
+    ]
+  },
+  {
+    "teamId": "GSW",
+    "teamName": "Golden State Warriors",
+    "currentPatch": {
+      "sponsor": "Rakuten",
+      "domain": "rakuten.com",
+      "valuePerYear": 20000000,
+      "contractYears": 6,
+      "signedSeason": 2017
+    },
+    "history": []
+  },
+  {
+    "teamId": "LAL",
+    "teamName": "Los Angeles Lakers",
+    "currentPatch": {
+      "sponsor": "Bibigo",
+      "domain": "bibigo.com",
+      "valuePerYear": 20000000,
+      "contractYears": 5,
+      "signedSeason": 2021
+    },
+    "history": [
+      {
+        "sponsor": "Wish",
+        "domain": "wish.com",
+        "valuePerYear": 14000000,
+        "contractYears": 3,
+        "yearsActive": "2017-2021"
+      }
+    ]
+  },
+  {
+    "teamId": "CLE",
+    "teamName": "Cleveland Cavaliers",
+    "currentPatch": {
+      "sponsor": "Centerpart",
+      "domain": "clevelandclinic.org",
+      "valuePerYear": 10000000,
+      "contractYears": 4,
+      "signedSeason": 2022
+    },
+    "history": [
+      {
+        "sponsor": "Goodyear",
+        "domain": "goodyear.com",
+        "valuePerYear": 10000000,
+        "contractYears": 5,
+        "yearsActive": "2017-2022"
+      }
+    ]
+  },
+  {
+    "teamId": "MIL",
+    "teamName": "Milwaukee Bucks",
+    "currentPatch": {
+      "sponsor": "Motorola",
+      "domain": "motorola.com",
+      "valuePerYear": 9000000,
+      "contractYears": 4,
+      "signedSeason": 2021
+    },
+    "history": [
+      {
+        "sponsor": "Harley-Davidson",
+        "domain": "harley-davidson.com",
+        "valuePerYear": 10000000,
+        "contractYears": 3,
+        "yearsActive": "2017-2020"
+      }
+    ]
+  },
+  {
+    "teamId": "ORL",
+    "teamName": "Orlando Magic",
+    "currentPatch": {
+      "sponsor": "Disney",
+      "domain": "disney.com",
+      "valuePerYear": 8000000,
+      "contractYears": 7,
+      "signedSeason": 2017
+    },
+    "history": []
+  },
+  {
+    "teamId": "DAL",
+    "teamName": "Dallas Mavericks",
+    "currentPatch": {
+      "sponsor": "Chime",
+      "domain": "chime.com",
+      "valuePerYear": 10000000,
+      "contractYears": 5,
+      "signedSeason": 2020
+    },
+    "history": [
+      {
+        "sponsor": "5300",
+        "domain": "5300.com",
+        "valuePerYear": 5000000,
+        "contractYears": 3,
+        "yearsActive": "2017-2020"
+      }
+    ]
+  },
+  {
+    "teamId": "NYK",
+    "teamName": "New York Knicks",
+    "currentPatch": {
+      "sponsor": "Sphere",
+      "domain": "thesphere.com",
+      "valuePerYear": 15000000,
+      "contractYears": 3,
+      "signedSeason": 2023
+    },
+    "history": [
+      {
+        "sponsor": "SquareSpace",
+        "domain": "squarespace.com",
+        "valuePerYear": 12000000,
+        "contractYears": 5,
+        "yearsActive": "2017-2022"
+      }
+    ]
+  },
+  {
+    "teamId": "MIA",
+    "teamName": "Miami Heat",
+    "currentPatch": {
+      "sponsor": "Carnival",
+      "domain": "carnival.com",
+      "valuePerYear": 11000000,
+      "contractYears": 4,
+      "signedSeason": 2023
+    },
+    "history": [
+      {
+        "sponsor": "Ultimate Software",
+        "domain": "ukg.com",
+        "valuePerYear": 9000000,
+        "contractYears": 4,
+        "yearsActive": "2017-2021"
+      }
+    ]
+  },
+  {
+    "teamId": "CHI",
+    "teamName": "Chicago Bulls",
+    "currentPatch": {
+      "sponsor": "Motorola",
+      "domain": "motorola.com",
+      "valuePerYear": 10000000,
+      "contractYears": 3,
+      "signedSeason": 2022
+    },
+    "history": [
+      {
+        "sponsor": "Zenni Optical",
+        "domain": "zennioptical.com",
+        "valuePerYear": 6000000,
+        "contractYears": 4,
+        "yearsActive": "2018-2022"
+      }
+    ]
+  },
+  {
+    "teamId": "TOR",
+    "teamName": "Toronto Raptors",
+    "currentPatch": {
+      "sponsor": "Sun Life",
+      "domain": "sunlife.ca",
+      "valuePerYear": 5000000,
+      "contractYears": 5,
+      "signedSeason": 2022
+    },
+    "history": [
+      {
+        "sponsor": "Sun Life",
+        "domain": "sunlife.ca",
+        "valuePerYear": 5000000,
+        "contractYears": 5,
+        "yearsActive": "2017-2022"
+      }
+    ]
+  }
+]

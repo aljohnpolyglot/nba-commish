@@ -1,13 +1,16 @@
 import React from 'react';
+import { getLeagueDisplayTag } from '../../../utils/leagueLabels';
 
-export type Phase = 'rs' | 'playoffs' | 'combined';
+export type Phase = 'rs' | 'playoffs' | 'combined' | 'international' | 'college' | 'summerLeague';
 
 export interface SeasonRow {
   season: number;
   seasonLabel?: string;
+  competitionId?: string;
   leagueTag?: string;
   leagueTitle?: string;
   teamAbbrev: string;
+  teamName?: string;
   age: number;
   gp: number; gs: number; minTotal: number; minPG: number;
   fg: number; fga: number; fgPct: number;
@@ -47,6 +50,20 @@ const f0 = (v: number): string => Math.round(v).toString();
 const dash = (v: number): string => v !== 0 ? f1(v) : '—';
 const dashpm = (v: number): string => v > 0 ? `+${v.toFixed(1)}` : v < 0 ? v.toFixed(1) : '—';
 
+export function TeamAbbreviation({ row }: { row: SeasonRow }) {
+  const teamName = row.teamName?.trim();
+  return (
+    <abbr
+      title={teamName}
+      aria-label={teamName ? `${row.teamAbbrev}: ${teamName}` : row.teamAbbrev}
+      tabIndex={teamName ? 0 : undefined}
+      className={teamName ? 'cursor-default rounded-sm no-underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-400' : 'no-underline'}
+    >
+      {row.teamAbbrev}
+    </abbr>
+  );
+}
+
 export function getSeasonLabel(season: number): string {
   return `${season - 1}-${String(season).slice(2)}`;
 }
@@ -56,10 +73,13 @@ export function PhaseTabs({ phase, onChange }: { phase: Phase; onChange: (phase:
     { id: 'rs', label: 'Regular Season' },
     { id: 'playoffs', label: 'Playoffs' },
     { id: 'combined', label: 'Combined' },
+    { id: 'international', label: 'International' },
+    { id: 'college', label: 'College' },
+    { id: 'summerLeague', label: 'Summer League' },
   ];
 
   return (
-    <div className="flex gap-0.5 bg-slate-900 border border-slate-800 rounded-lg p-0.5 shrink-0">
+    <div className="flex max-w-full gap-0.5 overflow-x-auto rounded-lg border border-slate-800 bg-slate-900 p-0.5 custom-scrollbar">
       {tabs.map(tab => (
         <button
           key={tab.id}
@@ -79,12 +99,14 @@ export function SeasonCell({
   ringSeasons,
   cupSeasons,
   cupChampionLabel,
+  pbaConferenceChampionKeys,
 }: {
   row: SeasonRow;
   allStarSeasons: Set<number>;
   ringSeasons: Set<number>;
   cupSeasons: Set<number>;
   cupChampionLabel: string;
+  pbaConferenceChampionKeys?: Set<string>;
 }) {
   if (row.isCareer) return <span>Career</span>;
   if (row.isSubRow) {
@@ -93,8 +115,11 @@ export function SeasonCell({
         {row.seasonLabel ?? getSeasonLabel(row.season)}
         {row.leagueTag && (
           <span title={row.leagueTitle} className="inline-flex items-center rounded-full border border-slate-800 bg-slate-950 px-1.5 py-0.5 text-[8px] font-black uppercase tracking-[0.12em] text-slate-400">
-            {row.leagueTag}
+            {getLeagueDisplayTag(row.competitionId, row.leagueTag)}
           </span>
+        )}
+        {pbaConferenceChampionKeys?.has(`${row.season}|${String(row.competitionId ?? '').toLowerCase()}`) && (
+          <span className="text-yellow-400 text-[9px]" title={`${row.leagueTitle ?? 'PBA conference'} Champion`}>💍</span>
         )}
       </span>
     );
@@ -105,10 +130,10 @@ export function SeasonCell({
       {row.seasonLabel ?? getSeasonLabel(row.season)}
       {row.leagueTag && (
         <span title={row.leagueTitle} className="inline-flex items-center rounded-full border border-slate-700/70 bg-slate-900 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-slate-300">
-          {row.leagueTag}
+          {getLeagueDisplayTag(row.competitionId, row.leagueTag)}
         </span>
       )}
-      {ringSeasons.has(row.season) && !row.isTot && <span className="text-yellow-400 text-[9px]" title="NBA Champion">💍</span>}
+      {ringSeasons.has(row.season) && !row.isTot && <span className="text-yellow-400 text-[9px]" title={`${row.leagueTitle ?? 'League'} Champion`}>💍</span>}
       {cupSeasons.has(row.season) && !row.isTot && <span className="text-amber-400 text-[9px]" title={cupChampionLabel}>🏆</span>}
       {allStarSeasons.has(row.season) && !row.isTot && <span className="text-amber-400 text-[9px]" title="All-Star">★</span>}
     </span>
@@ -133,6 +158,7 @@ export function StatsTable({
   cupSeasons,
   cupChampionLabel,
   groupHeaders,
+  pbaConferenceChampionKeys,
 }: {
   rows: SeasonRow[];
   cols: ColDef[];
@@ -141,6 +167,7 @@ export function StatsTable({
   cupSeasons: Set<number>;
   cupChampionLabel: string;
   groupHeaders?: { label: string; span: number }[];
+  pbaConferenceChampionKeys?: Set<string>;
 }) {
   const bodyRows = rows.filter(row => !row.isCareer);
   const careerRow = rows.find(row => row.isCareer);
@@ -153,12 +180,12 @@ export function StatsTable({
       <div className="mb-3 flex items-center justify-between gap-3">
         <div className="text-xs font-black text-white">
           {isCareer ? 'Career' : (
-            <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} cupChampionLabel={cupChampionLabel} />
+            <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} cupChampionLabel={cupChampionLabel} pbaConferenceChampionKeys={pbaConferenceChampionKeys} />
           )}
         </div>
         {!isCareer && (
           <div className="rounded-full border border-slate-700 bg-slate-950 px-2 py-0.5 text-[10px] font-black uppercase tracking-wider text-slate-300">
-            {row.teamAbbrev}
+            <TeamAbbreviation row={row} />
           </div>
         )}
       </div>
@@ -218,7 +245,7 @@ export function StatsTable({
               {cols.map(col => (
                 <td key={col.key} className={`border-r border-slate-800/40 whitespace-nowrap tabular-nums ${col.align === 'right' ? 'text-right' : 'text-left'} ${row.isSubRow ? `px-2 py-1 text-slate-400 ${col.key === 'tm' ? 'pl-4' : ''}` : row.isTot ? `px-2 py-1.5 font-semibold ${col.highlight ? 'text-white' : col.dim ? 'text-slate-400' : 'text-slate-200'}` : `px-2 py-1.5 ${col.highlight ? 'font-bold text-white' : col.dim ? 'text-slate-500' : 'text-slate-300'}`} ${col.key === 'season' ? 'font-semibold text-slate-200' : ''}`}>
                   {col.key === 'season' ? (
-                    <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} cupChampionLabel={cupChampionLabel} />
+                    <SeasonCell row={row} allStarSeasons={allStarSeasons} ringSeasons={ringSeasons} cupSeasons={cupSeasons} cupChampionLabel={cupChampionLabel} pbaConferenceChampionKeys={pbaConferenceChampionKeys} />
                   ) : col.fmt(row)}
                 </td>
               ))}
@@ -244,7 +271,7 @@ export function StatsTable({
 
 const BASE_COLS: ColDef[] = [
   { key: 'season', label: 'Season', align: 'left', fmt: () => '' },
-  { key: 'tm', label: 'Tm', align: 'left', fmt: row => row.isCareer ? '' : row.teamAbbrev },
+  { key: 'tm', label: 'Tm', title: 'Team', align: 'left', fmt: row => row.isCareer ? '' : <TeamAbbreviation row={row} /> },
   { key: 'age', label: 'Age', align: 'right', dim: true, fmt: row => row.isCareer ? '' : f0(row.age) },
   { key: 'gp', label: 'G', align: 'right', fmt: row => f0(row.gp) },
   { key: 'gs', label: 'GS', align: 'right', dim: true, fmt: row => f0(row.gs) },

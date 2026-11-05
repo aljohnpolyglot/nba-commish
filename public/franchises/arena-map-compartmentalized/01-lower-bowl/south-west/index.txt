@@ -1,0 +1,8 @@
+Lower Bowl — south-west
+=======================
+
+118	sections/118-south-west.svg
+119	sections/119-south-west.svg
+120	sections/120-south-west.svg
+125	sections/125-south-west.svg
+126	sections/126-south-west.svg

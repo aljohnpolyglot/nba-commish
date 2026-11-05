@@ -1,0 +1,49 @@
+Lower Bowl
+==========
+
+Detected sections: 29
+
+[east]
+108	01-lower-bowl/east/sections/108-east.svg	x=2127.60 y=870.70 w=503.30 h=364.60
+109	01-lower-bowl/east/sections/109-east.svg	x=2152.70 y=1082.00 w=514.00 h=336.60
+110	01-lower-bowl/east/sections/110-east.svg	x=2151.30 y=1418.60 w=513.80 h=338.10
+
+[north]
+102	01-lower-bowl/north/sections/102-north.svg	x=1040.10 y=571.40 w=312.80 h=416.10
+103	01-lower-bowl/north/sections/103-north.svg	x=1353.60 y=664.00 w=258.70 h=297.80
+104	01-lower-bowl/north/sections/104-north.svg	x=1612.30 y=626.80 w=258.60 h=335.10
+
+[north-east]
+105	01-lower-bowl/north-east/sections/105-north-east.svg	x=1870.80 y=572.80 w=314.70 h=417.90
+106	01-lower-bowl/north-east/sections/106-north-east.svg	x=2051.70 y=658.80 w=358.40 h=395.20
+107	01-lower-bowl/north-east/sections/107-north-east.svg	x=2157.80 y=793.20 w=340.60 h=307.00
+
+[north-west]
+101	01-lower-bowl/north-west/sections/101-north-west.svg	x=813.30 y=657.40 w=360.30 h=394.50
+124	01-lower-bowl/north-west/sections/124-north-west.svg	x=711.40 y=772.30 w=355.40 h=325.20
+129	01-lower-bowl/north-west/sections/129-north-west.svg	x=275.20 y=897.30 w=370.10 h=187.00
+
+[south]
+115	01-lower-bowl/south/sections/115-south.svg	x=1612.30 y=1876.00 w=259.30 h=372.00
+116	01-lower-bowl/south/sections/116-south.svg	x=1352.50 y=1876.00 w=259.80 h=372.00
+117	01-lower-bowl/south/sections/117-south.svg	x=1051.10 y=1846.60 w=301.40 h=419.20
+
+[south-east]
+111	01-lower-bowl/south-east/sections/111-south-east.svg	x=2197.00 y=1633.90 w=430.20 h=331.00
+112	01-lower-bowl/south-east/sections/112-south-east.svg	x=2174.20 y=1748.30 w=325.50 h=303.20
+113	01-lower-bowl/south-east/sections/113-south-east.svg	x=2051.10 y=1788.00 w=376.30 h=406.90
+114	01-lower-bowl/south-east/sections/114-south-east.svg	x=1871.50 y=1845.90 w=314.50 h=420.80
+
+[south-west]
+118	01-lower-bowl/south-west/sections/118-south-west.svg	x=808.30 y=1779.20 w=362.30 h=420.90
+119	01-lower-bowl/south-west/sections/119-south-west.svg	x=741.40 y=1725.70 w=339.60 h=305.90
+120	01-lower-bowl/south-west/sections/120-south-west.svg	x=575.20 y=1625.90 w=468.00 h=354.20
+125	01-lower-bowl/south-west/sections/125-south-west.svg	x=269.90 y=1749.00 w=368.50 h=191.60
+126	01-lower-bowl/south-west/sections/126-south-west.svg	x=150.80 y=1540.80 w=404.40 h=320.90
+
+[west]
+121	01-lower-bowl/west/sections/121-west.svg	x=539.30 y=1418.60 w=536.20 h=331.80
+122	01-lower-bowl/west/sections/122-west.svg	x=558.70 y=1077.50 w=519.30 h=341.10
+123	01-lower-bowl/west/sections/123-west.svg	x=600.50 y=870.50 w=493.90 h=364.00
+127	01-lower-bowl/west/sections/127-west.svg	x=169.10 y=1265.70 w=352.80 h=307.30
+128	01-lower-bowl/west/sections/128-west.svg	x=150.00 y=968.20 w=407.70 h=325.80

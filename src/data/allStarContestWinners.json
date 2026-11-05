@@ -1,0 +1,1633 @@
+[
+  {
+    "year": 2026,
+    "league": "NBA",
+    "contest": "Shooting Stars",
+    "winners": [
+      "Jalen Brunson",
+      "Karl-Anthony Towns"
+    ],
+    "others": [
+      "Scottie Barnes",
+      "Dylan Harper",
+      "Ron Harper Jr.",
+      "Chet Holmgren",
+      "Jalen Johnson",
+      "Kon Knueppel"
+    ]
+  },
+  {
+    "year": 2026,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Keshad Johnson"
+    ],
+    "others": [
+      "Carter Bryant",
+      "Jaxson Hayes",
+      "Jase Richardson"
+    ]
+  },
+  {
+    "year": 2026,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Damian Lillard"
+    ],
+    "others": [
+      "Devin Booker",
+      "Kon Knueppel",
+      "Tyrese Maxey",
+      "Donovan Mitchell",
+      "Jamal Murray",
+      "Bobby Portis",
+      "Norman Powell"
+    ]
+  },
+  {
+    "year": 2025,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Donovan Mitchell",
+      "Evan Mobley"
+    ],
+    "others": [
+      "Draymond Green",
+      "Moses Moody",
+      "Chris Paul",
+      "Zaccharie Risacher",
+      "Alex Sarr",
+      "Victor Wembanyama"
+    ]
+  },
+  {
+    "year": 2025,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Mac McClung"
+    ],
+    "others": [
+      "Matas Buzelis",
+      "Stephon Castle",
+      "Andre Jackson Jr."
+    ]
+  },
+  {
+    "year": 2025,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Tyler Herro"
+    ],
+    "others": [
+      "Jalen Brunson",
+      "Cade Cunningham",
+      "Darius Garland",
+      "Buddy Hield",
+      "Cameron Johnson",
+      "Damian Lillard",
+      "Norman Powell"
+    ]
+  },
+  {
+    "year": 2024,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Tyrese Haliburton",
+      "Bennedict Mathurin",
+      "Myles Turner"
+    ],
+    "others": [
+      "Paolo Banchero",
+      "Scottie Barnes",
+      "Anthony Edwards",
+      "Tyrese Maxey",
+      "Victor Wembanyama",
+      "Trae Young"
+    ]
+  },
+  {
+    "year": 2024,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Mac McClung"
+    ],
+    "others": [
+      "Jaylen Brown",
+      "Jaime Jaquez Jr.",
+      "Jacob Toppin"
+    ]
+  },
+  {
+    "year": 2024,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Damian Lillard"
+    ],
+    "others": [
+      "Malik Beasley",
+      "Jalen Brunson",
+      "Tyrese Haliburton",
+      "Lauri Markkanen",
+      "Donovan Mitchell",
+      "Karl-Anthony Towns",
+      "Trae Young"
+    ]
+  },
+  {
+    "year": 2023,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Jordan Clarkson",
+      "Walker Kessler",
+      "Collin Sexton"
+    ],
+    "others": [
+      "Alex Antetokounmpo",
+      "Thanasis Antetokounmpo",
+      "Paolo Banchero",
+      "Jrue Holiday",
+      "Jaden Ivey",
+      "Jabari Smith Jr."
+    ]
+  },
+  {
+    "year": 2023,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Mac McClung"
+    ],
+    "others": [
+      "KJ Martin",
+      "Trey Murphy III",
+      "Jericho Sims"
+    ]
+  },
+  {
+    "year": 2023,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Damian Lillard"
+    ],
+    "others": [
+      "Tyrese Haliburton",
+      "Tyler Herro",
+      "Buddy Hield",
+      "Kevin Huerter",
+      "Lauri Markkanen",
+      "Julius Randle",
+      "Jayson Tatum"
+    ]
+  },
+  {
+    "year": 2022,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Jarrett Allen",
+      "Darius Garland",
+      "Evan Mobley"
+    ],
+    "others": [
+      "Alex Antetokounmpo",
+      "Giannis Antetokounmpo",
+      "Thanasis Antetokounmpo",
+      "Scottie Barnes",
+      "Cade Cunningham",
+      "Josh Giddey"
+    ]
+  },
+  {
+    "year": 2022,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Obi Toppin"
+    ],
+    "others": [
+      "Cole Anthony",
+      "Jalen Green",
+      "Juan Toscano-Anderson"
+    ]
+  },
+  {
+    "year": 2022,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Karl-Anthony Towns"
+    ],
+    "others": [
+      "Desmond Bane",
+      "Luke Kennard",
+      "Zach LaVine",
+      "CJ McCollum",
+      "Patty Mills",
+      "Fred VanVleet",
+      "Trae Young"
+    ]
+  },
+  {
+    "year": 2021,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Domantas Sabonis"
+    ],
+    "others": [
+      "Robert Covington",
+      "Luka Doncic",
+      "Chris Paul",
+      "Julius Randle",
+      "Nikola Vucevic"
+    ]
+  },
+  {
+    "year": 2021,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Anfernee Simons"
+    ],
+    "others": [
+      "Cassius Stanley",
+      "Obi Toppin"
+    ]
+  },
+  {
+    "year": 2021,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Stephen Curry"
+    ],
+    "others": [
+      "Jaylen Brown",
+      "Mike Conley",
+      "Zach LaVine",
+      "Donovan Mitchell",
+      "Jayson Tatum"
+    ]
+  },
+  {
+    "year": 2020,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Bam Adebayo"
+    ],
+    "others": [
+      "Patrick Beverley",
+      "Spencer Dinwiddie",
+      "Shai Gilgeous-Alexander",
+      "Khris Middleton",
+      "Derrick Rose",
+      "Domantas Sabonis",
+      "Pascal Siakam",
+      "Jayson Tatum"
+    ]
+  },
+  {
+    "year": 2020,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Derrick Jones Jr."
+    ],
+    "others": [
+      "Pat Connaughton",
+      "Aaron Gordon",
+      "Dwight Howard"
+    ]
+  },
+  {
+    "year": 2020,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Buddy Hield"
+    ],
+    "others": [
+      "Davis Bertans",
+      "Devin Booker",
+      "Devonte' Graham",
+      "Joe Harris",
+      "Zach LaVine",
+      "Duncan Robinson",
+      "Trae Young"
+    ]
+  },
+  {
+    "year": 2019,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Jayson Tatum"
+    ],
+    "others": [
+      "Mike Conley",
+      "Luka Doncic",
+      "De'Aaron Fox",
+      "Nikola Jokic",
+      "Kyle Kuzma",
+      "Nikola Vucevic",
+      "Trae Young"
+    ]
+  },
+  {
+    "year": 2019,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Hamidou Diallo"
+    ],
+    "others": [
+      "Miles Bridges",
+      "John Collins",
+      "Dennis Smith Jr."
+    ]
+  },
+  {
+    "year": 2019,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Joe Harris"
+    ],
+    "others": [
+      "Devin Booker",
+      "Seth Curry",
+      "Stephen Curry",
+      "Danny Green",
+      "Buddy Hield",
+      "Damian Lillard",
+      "Khris Middleton",
+      "Dirk Nowitzki",
+      "Kemba Walker"
+    ]
+  },
+  {
+    "year": 2018,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Spencer Dinwiddie"
+    ],
+    "others": [
+      "Andre Drummond",
+      "Joel Embiid",
+      "Buddy Hield",
+      "Al Horford",
+      "Lauri Markkanen",
+      "Jamal Murray",
+      "Lou Williams"
+    ]
+  },
+  {
+    "year": 2018,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Donovan Mitchell"
+    ],
+    "others": [
+      "Larry Nance Jr.",
+      "Victor Oladipo",
+      "Dennis Smith Jr."
+    ]
+  },
+  {
+    "year": 2018,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Devin Booker"
+    ],
+    "others": [
+      "Bradley Beal",
+      "Wayne Ellington",
+      "Paul George",
+      "Eric Gordon",
+      "Tobias Harris",
+      "Kyle Lowry",
+      "Klay Thompson"
+    ]
+  },
+  {
+    "year": 2017,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Kristaps Porzingis"
+    ],
+    "others": [
+      "Devin Booker",
+      "DeMarcus Cousins",
+      "Anthony Davis",
+      "Gordon Hayward",
+      "Nikola Jokic",
+      "Isaiah Thomas",
+      "John Wall"
+    ]
+  },
+  {
+    "year": 2017,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Glenn Robinson III"
+    ],
+    "others": [
+      "Aaron Gordon",
+      "Derrick Jones Jr.",
+      "DeAndre Jordan"
+    ]
+  },
+  {
+    "year": 2017,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Eric Gordon"
+    ],
+    "others": [
+      "Kyrie Irving",
+      "Kyle Lowry",
+      "Wesley Matthews",
+      "CJ McCollum",
+      "Klay Thompson",
+      "Kemba Walker",
+      "Nick Young"
+    ]
+  },
+  {
+    "year": 2016,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Karl-Anthony Towns"
+    ],
+    "others": [
+      "Jordan Clarkson",
+      "DeMarcus Cousins",
+      "Anthony Davis",
+      "Draymond Green",
+      "CJ McCollum",
+      "Emmanuel Mudiay",
+      "Isaiah Thomas"
+    ]
+  },
+  {
+    "year": 2016,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Zach LaVine"
+    ],
+    "others": [
+      "Will Barton",
+      "Andre Drummond",
+      "Aaron Gordon"
+    ]
+  },
+  {
+    "year": 2016,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Klay Thompson"
+    ],
+    "others": [
+      "Devin Booker",
+      "Stephen Curry",
+      "James Harden",
+      "Kyle Lowry",
+      "CJ McCollum",
+      "Khris Middleton",
+      "JJ Redick"
+    ]
+  },
+  {
+    "year": 2015,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Patrick Beverley"
+    ],
+    "others": [
+      "Trey Burke",
+      "Brandon Knight",
+      "Kyle Lowry",
+      "Elfrid Payton",
+      "Dennis Schroder",
+      "Jeff Teague",
+      "Isaiah Thomas"
+    ]
+  },
+  {
+    "year": 2015,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Zach LaVine"
+    ],
+    "others": [
+      "Giannis Antetokounmpo",
+      "Victor Oladipo",
+      "Mason Plumlee"
+    ]
+  },
+  {
+    "year": 2015,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Stephen Curry"
+    ],
+    "others": [
+      "Marco Belinelli",
+      "James Harden",
+      "Kyrie Irving",
+      "Kyle Korver",
+      "Wesley Matthews",
+      "JJ Redick",
+      "Klay Thompson"
+    ]
+  },
+  {
+    "year": 2014,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "John Wall"
+    ],
+    "others": [
+      "Harrison Barnes",
+      "Paul George",
+      "Damian Lillard",
+      "Ben McLemore",
+      "Terrence Ross"
+    ]
+  },
+  {
+    "year": 2014,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Marco Belinelli"
+    ],
+    "others": [
+      "Arron Afflalo",
+      "Bradley Beal",
+      "Stephen Curry",
+      "Kyrie Irving",
+      "Joe Johnson",
+      "Damian Lillard",
+      "Kevin Love"
+    ]
+  },
+  {
+    "year": 2013,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Damian Lillard"
+    ],
+    "others": [
+      "Jrue Holiday",
+      "Brandon Knight",
+      "Jeremy Lin",
+      "Tony Parker",
+      "Jeff Teague"
+    ]
+  },
+  {
+    "year": 2013,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Terrence Ross"
+    ],
+    "others": [
+      "Eric Bledsoe",
+      "Jeremy Evans",
+      "Kenneth Faried",
+      "Gerald Green",
+      "James White"
+    ]
+  },
+  {
+    "year": 2013,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Kyrie Irving"
+    ],
+    "others": [
+      "Ryan Anderson",
+      "Matt Bonner",
+      "Stephen Curry",
+      "Paul George",
+      "Steve Novak"
+    ]
+  },
+  {
+    "year": 2012,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Tony Parker"
+    ],
+    "others": [
+      "Kyrie Irving",
+      "Rajon Rondo",
+      "John Wall",
+      "Russell Westbrook",
+      "Deron Williams"
+    ]
+  },
+  {
+    "year": 2012,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Jeremy Evans"
+    ],
+    "others": [
+      "Chase Budinger",
+      "Paul George",
+      "Derrick Williams"
+    ]
+  },
+  {
+    "year": 2012,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Kevin Love"
+    ],
+    "others": [
+      "Ryan Anderson",
+      "Mario Chalmers",
+      "Kevin Durant",
+      "James Jones",
+      "Anthony Morrow"
+    ]
+  },
+  {
+    "year": 2011,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Stephen Curry"
+    ],
+    "others": [
+      "Chris Paul",
+      "Derrick Rose",
+      "John Wall"
+    ]
+  },
+  {
+    "year": 2011,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Blake Griffin"
+    ],
+    "others": [
+      "DeMar DeRozan",
+      "Serge Ibaka",
+      "JaVale McGee"
+    ]
+  },
+  {
+    "year": 2011,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "James Jones"
+    ],
+    "others": [
+      "Ray Allen",
+      "Kevin Durant",
+      "Daniel Gibson",
+      "Paul Pierce",
+      "Dorell Wright"
+    ]
+  },
+  {
+    "year": 2010,
+    "league": "NBA",
+    "contest": "H-O-R-S-E",
+    "winners": [
+      "Kevin Durant"
+    ],
+    "others": [
+      "Omri Casspi",
+      "Rajon Rondo"
+    ]
+  },
+  {
+    "year": 2010,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Steve Nash"
+    ],
+    "others": [
+      "Brandon Jennings",
+      "Russell Westbrook",
+      "Deron Williams"
+    ]
+  },
+  {
+    "year": 2010,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Nate Robinson"
+    ],
+    "others": [
+      "Shannon Brown",
+      "DeMar DeRozan",
+      "Gerald Wallace"
+    ]
+  },
+  {
+    "year": 2010,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Paul Pierce"
+    ],
+    "others": [
+      "Chauncey Billups",
+      "Daequan Cook",
+      "Stephen Curry",
+      "Channing Frye",
+      "Danilo Gallinari"
+    ]
+  },
+  {
+    "year": 2009,
+    "league": "NBA",
+    "contest": "H-O-R-S-E",
+    "winners": [
+      "Kevin Durant"
+    ],
+    "others": [
+      "Joe Johnson",
+      "O.J. Mayo"
+    ]
+  },
+  {
+    "year": 2009,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Derrick Rose"
+    ],
+    "others": [
+      "Devin Harris",
+      "Tony Parker",
+      "Mo Williams"
+    ]
+  },
+  {
+    "year": 2009,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Nate Robinson"
+    ],
+    "others": [
+      "Rudy Fernandez",
+      "Dwight Howard",
+      "J.R. Smith"
+    ]
+  },
+  {
+    "year": 2009,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Daequan Cook"
+    ],
+    "others": [
+      "Mike Bibby",
+      "Danny Granger",
+      "Jason Kapono",
+      "Rashard Lewis",
+      "Roger Mason"
+    ]
+  },
+  {
+    "year": 2008,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Deron Williams"
+    ],
+    "others": [
+      "Jason Kidd",
+      "Chris Paul",
+      "Dwyane Wade"
+    ]
+  },
+  {
+    "year": 2008,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Dwight Howard"
+    ],
+    "others": [
+      "Rudy Gay",
+      "Gerald Green",
+      "Jamario Moon"
+    ]
+  },
+  {
+    "year": 2008,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Jason Kapono"
+    ],
+    "others": [
+      "Daniel Gibson",
+      "Richard Hamilton",
+      "Steve Nash",
+      "Dirk Nowitzki",
+      "Peja Stojakovic"
+    ]
+  },
+  {
+    "year": 2007,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Dwyane Wade"
+    ],
+    "others": [
+      "Kobe Bryant",
+      "LeBron James",
+      "Chris Paul"
+    ]
+  },
+  {
+    "year": 2007,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Gerald Green"
+    ],
+    "others": [
+      "Dwight Howard",
+      "Nate Robinson",
+      "Tyrus Thomas"
+    ]
+  },
+  {
+    "year": 2007,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Jason Kapono"
+    ],
+    "others": [
+      "Gilbert Arenas",
+      "Damon Jones",
+      "Mike Miller",
+      "Dirk Nowitzki",
+      "Jason Terry"
+    ]
+  },
+  {
+    "year": 2006,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Dwyane Wade"
+    ],
+    "others": [
+      "LeBron James",
+      "Steve Nash",
+      "Chris Paul"
+    ]
+  },
+  {
+    "year": 2006,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Nate Robinson"
+    ],
+    "others": [
+      "Andre Iguodala",
+      "Josh Smith",
+      "Hakim Warrick"
+    ]
+  },
+  {
+    "year": 2006,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Dirk Nowitzki"
+    ],
+    "others": [
+      "Ray Allen",
+      "Gilbert Arenas",
+      "Chauncey Billups",
+      "Quentin Richardson",
+      "Jason Terry"
+    ]
+  },
+  {
+    "year": 2005,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Steve Nash"
+    ],
+    "others": [
+      "Gilbert Arenas",
+      "Earl Boykins",
+      "Luke Ridnour"
+    ]
+  },
+  {
+    "year": 2005,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Josh Smith"
+    ],
+    "others": [
+      "Chris Andersen",
+      "J.R. Smith",
+      "Amar'e Stoudemire"
+    ]
+  },
+  {
+    "year": 2005,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Quentin Richardson"
+    ],
+    "others": [
+      "Ray Allen",
+      "Joe Johnson",
+      "Kyle Korver",
+      "Voshon Lenard",
+      "Vladimir Radmanovic"
+    ]
+  },
+  {
+    "year": 2004,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Baron Davis"
+    ],
+    "others": [
+      "Earl Boykins",
+      "Derek Fisher",
+      "Stephon Marbury"
+    ]
+  },
+  {
+    "year": 2004,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Fred Jones"
+    ],
+    "others": [
+      "Chris Andersen",
+      "Ricky Davis",
+      "Jason Richardson"
+    ]
+  },
+  {
+    "year": 2004,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Voshon Lenard"
+    ],
+    "others": [
+      "Chauncey Billups",
+      "Kyle Korver",
+      "Rashard Lewis",
+      "Cuttino Mobley",
+      "Peja Stojakovic"
+    ]
+  },
+  {
+    "year": 2003,
+    "league": "NBA",
+    "contest": "Skills Challenge",
+    "winners": [
+      "Jason Kidd"
+    ],
+    "others": [
+      "Stephon Marbury",
+      "Tony Parker",
+      "Gary Payton"
+    ]
+  },
+  {
+    "year": 2003,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Jason Richardson"
+    ],
+    "others": [
+      "Richard Jefferson",
+      "Desmond Mason",
+      "Amar'e Stoudemire"
+    ]
+  },
+  {
+    "year": 2003,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Peja Stojakovic"
+    ],
+    "others": [
+      "Brent Barry",
+      "Pat Garrity",
+      "Wesley Person",
+      "Antoine Walker",
+      "David Wesley"
+    ]
+  },
+  {
+    "year": 2002,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Jason Richardson"
+    ],
+    "others": [
+      "Steve Francis",
+      "Desmond Mason",
+      "Gerald Wallace"
+    ]
+  },
+  {
+    "year": 2002,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Peja Stojakovic"
+    ],
+    "others": [
+      "Ray Allen",
+      "Mike Miller",
+      "Steve Nash",
+      "Wesley Person",
+      "Paul Pierce",
+      "Quentin Richardson",
+      "Steve Smith"
+    ]
+  },
+  {
+    "year": 2001,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Desmond Mason"
+    ],
+    "others": [
+      "Jonathan Bender",
+      "Baron Davis",
+      "Corey Maggette",
+      "DeShawn Stevenson",
+      "Stromile Swift"
+    ]
+  },
+  {
+    "year": 2001,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Ray Allen"
+    ],
+    "others": [
+      "Pat Garrity",
+      "Allan Houston",
+      "Rashard Lewis",
+      "Steve Nash",
+      "Dirk Nowitzki",
+      "Bryon Russell",
+      "Peja Stojakovic"
+    ]
+  },
+  {
+    "year": 2000,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Vince Carter"
+    ],
+    "others": [
+      "Ricky Davis",
+      "Steve Francis",
+      "Larry Hughes",
+      "Tracy McGrady",
+      "Jerry Stackhouse"
+    ]
+  },
+  {
+    "year": 2000,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Jeff Hornacek"
+    ],
+    "others": [
+      "Ray Allen",
+      "Mike Bibby",
+      "Hubert Davis",
+      "Allen Iverson",
+      "Dirk Nowitzki",
+      "Terry Porter",
+      "Bob Sura"
+    ]
+  },
+  {
+    "year": 1998,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Jeff Hornacek"
+    ],
+    "others": [
+      "Hubert Davis",
+      "Dale Ellis",
+      "Sam Mack",
+      "Reggie Miller",
+      "Tracy Murray",
+      "Glen Rice",
+      "Charlie Ward"
+    ]
+  },
+  {
+    "year": 1997,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Kobe Bryant"
+    ],
+    "others": [
+      "Ray Allen",
+      "Chris Carr",
+      "Michael Finley",
+      "Darvin Ham",
+      "Bob Sura"
+    ]
+  },
+  {
+    "year": 1997,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Steve Kerr"
+    ],
+    "others": [
+      "Dale Ellis",
+      "Tim Legler",
+      "Terry Mills",
+      "Sam Perkins",
+      "Glen Rice",
+      "John Stockton",
+      "Walt Williams"
+    ]
+  },
+  {
+    "year": 1996,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Brent Barry"
+    ],
+    "others": [
+      "Darrell Armstrong",
+      "Doug Christie",
+      "Michael Finley",
+      "Greg Minor",
+      "Jerry Stackhouse"
+    ]
+  },
+  {
+    "year": 1996,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Tim Legler"
+    ],
+    "others": [
+      "Dana Barros",
+      "Hubert Davis",
+      "Steve Kerr",
+      "George McCloud",
+      "Glen Rice",
+      "Clifford Robinson",
+      "Dennis Scott"
+    ]
+  },
+  {
+    "year": 1995,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Harold Miner"
+    ],
+    "others": [
+      "Tony Dumas",
+      "Antonio Harvey",
+      "Tim Perry",
+      "Isaiah Rider",
+      "Jamie Watson"
+    ]
+  },
+  {
+    "year": 1995,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Glen Rice"
+    ],
+    "others": [
+      "Nick Anderson",
+      "Dana Barros",
+      "Scott Burrell",
+      "Steve Kerr",
+      "Dan Majerle",
+      "Reggie Miller",
+      "Chuck Person"
+    ]
+  },
+  {
+    "year": 1994,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Isaiah Rider"
+    ],
+    "others": [
+      "Antonio Davis",
+      "Allan Houston",
+      "Shawn Kemp",
+      "Robert Pack",
+      "James Robinson"
+    ]
+  },
+  {
+    "year": 1994,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Mark Price"
+    ],
+    "others": [
+      "B.J. Armstrong",
+      "Dana Barros",
+      "Dell Curry",
+      "Dale Ellis",
+      "Steve Kerr",
+      "Eric Murdock",
+      "Mitch Richmond"
+    ]
+  },
+  {
+    "year": 1993,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Harold Miner"
+    ],
+    "others": [
+      "Mahmoud Abdul-Rauf",
+      "David Benoit",
+      "Cedric Ceballos",
+      "Tim Perry",
+      "Kenny Smith",
+      "Clarence Weatherspoon"
+    ]
+  },
+  {
+    "year": 1993,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Mark Price"
+    ],
+    "others": [
+      "B.J. Armstrong",
+      "Dana Barros",
+      "Craig Hodges",
+      "Dan Majerle",
+      "Reggie Miller",
+      "Terry Porter",
+      "Kenny Smith"
+    ]
+  },
+  {
+    "year": 1992,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Cedric Ceballos"
+    ],
+    "others": [
+      "Nick Anderson",
+      "Stacey Augmon",
+      "Larry Johnson",
+      "Shawn Kemp",
+      "John Starks",
+      "Doug West"
+    ]
+  },
+  {
+    "year": 1992,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Craig Hodges"
+    ],
+    "others": [
+      "Dell Curry",
+      "Craig Ehlo",
+      "Jeff Hornacek",
+      "Jim Les",
+      "Drazen Petrovic",
+      "Mitch Richmond",
+      "John Stockton"
+    ]
+  },
+  {
+    "year": 1991,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Dee Brown"
+    ],
+    "others": [
+      "Rex Chapman",
+      "Blue Edwards",
+      "Kendall Gill",
+      "Shawn Kemp",
+      "Kenny Smith",
+      "Otis Smith",
+      "Kenny Williams"
+    ]
+  },
+  {
+    "year": 1991,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Craig Hodges"
+    ],
+    "others": [
+      "Danny Ainge",
+      "Clyde Drexler",
+      "Tim Hardaway",
+      "Hersey Hawkins",
+      "Terry Porter",
+      "Glen Rice",
+      "Dennis Scott"
+    ]
+  },
+  {
+    "year": 1990,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Dominique Wilkins"
+    ],
+    "others": [
+      "Kenny Battle",
+      "Rex Chapman",
+      "Shawn Kemp",
+      "Scottie Pippen",
+      "Kenny Smith",
+      "Billy Thompson",
+      "Kenny Walker"
+    ]
+  },
+  {
+    "year": 1990,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Craig Hodges"
+    ],
+    "others": [
+      "Larry Bird",
+      "Craig Ehlo",
+      "Bob Hansen",
+      "Michael Jordan",
+      "Reggie Miller",
+      "Mark Price",
+      "Jon Sundvold"
+    ]
+  },
+  {
+    "year": 1989,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Kenny Walker"
+    ],
+    "others": [
+      "Clyde Drexler",
+      "Ron Harper",
+      "Shelton Jones",
+      "Jerome Kersey",
+      "Chris Morris",
+      "Tim Perry",
+      "Spud Webb"
+    ]
+  },
+  {
+    "year": 1989,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Dale Ellis"
+    ],
+    "others": [
+      "Michael Adams",
+      "Danny Ainge",
+      "Derek Harper",
+      "Gerald Henderson",
+      "Craig Hodges",
+      "Dale Ellis",
+      "Reggie Miller",
+      "Jon Sundvold"
+    ]
+  },
+  {
+    "year": 1988,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Michael Jordan"
+    ],
+    "others": [
+      "Greg Anderson",
+      "Clyde Drexler",
+      "Jerome Kersey",
+      "Otis Smith",
+      "Spud Webb",
+      "Dominique Wilkins"
+    ]
+  },
+  {
+    "year": 1988,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Larry Bird"
+    ],
+    "others": [
+      "Danny Ainge",
+      "Dale Ellis",
+      "Craig Hodges",
+      "Mark Price",
+      "Detlef Schrempf",
+      "Byron Scott",
+      "Trent Tucker"
+    ]
+  },
+  {
+    "year": 1987,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Michael Jordan"
+    ],
+    "others": [
+      "Tom Chambers",
+      "Johnny Dawkins",
+      "Clyde Drexler",
+      "Ron Harper",
+      "Jerome Kersey",
+      "Terence Stansbury",
+      "Gerald Wilkins"
+    ]
+  },
+  {
+    "year": 1987,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Larry Bird"
+    ],
+    "others": [
+      "Danny Ainge",
+      "Michael Cooper",
+      "Dale Ellis",
+      "Craig Hodges",
+      "Detlef Schrempf",
+      "Byron Scott",
+      "Kiki Vandeweghe"
+    ]
+  },
+  {
+    "year": 1986,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Spud Webb"
+    ],
+    "others": [
+      "Roy Hinson",
+      "Jerome Kersey",
+      "Paul Pressey",
+      "Terence Stansbury",
+      "Terry Tyler",
+      "Dominique Wilkins",
+      "Gerald Wilkins"
+    ]
+  },
+  {
+    "year": 1986,
+    "league": "NBA",
+    "contest": "Three-Point Shootout",
+    "winners": [
+      "Larry Bird"
+    ],
+    "others": [
+      "Dale Ellis",
+      "Sleepy Floyd",
+      "Craig Hodges",
+      "Kyle Macy",
+      "Norm Nixon",
+      "Trent Tucker",
+      "Leon Wood"
+    ]
+  },
+  {
+    "year": 1985,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Dominique Wilkins"
+    ],
+    "others": [
+      "Clyde Drexler",
+      "Julius Erving",
+      "Darrell Griffith",
+      "Michael Jordan",
+      "Larry Nance",
+      "Terence Stansbury",
+      "Orlando Woolridge"
+    ]
+  },
+  {
+    "year": 1984,
+    "league": "NBA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Larry Nance"
+    ],
+    "others": [
+      "Michael Cooper",
+      "Clyde Drexler",
+      "Julius Erving",
+      "Darrell Griffith",
+      "Edgar Jones",
+      "Ralph Sampson",
+      "Dominique Wilkins",
+      "Orlando Woolridge"
+    ]
+  },
+  {
+    "year": 1976,
+    "league": "ABA",
+    "contest": "Slam Dunk",
+    "winners": [
+      "Julius Erving"
+    ],
+    "others": []
+  }
+]

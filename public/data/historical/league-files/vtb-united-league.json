@@ -1,0 +1,1891 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "vtb-united-league-league-file.2289865425522118",
+  "competitionKey": "vtb-united-league",
+  "competitionName": "VTB United League",
+  "leagueKey": "vtb-united-league",
+  "generatedAt": "2026-07-19T12:59:01.405Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "vtb-united-league-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/35/VTB-United-League/stats/2026/Averages/Qualified/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/vtb-united-league/vtb-united-league-2026-bbgm.json",
+        "sourceHash": "d2bb2e62b095af1ccd2d4c87be96a42cc21cca071c183ec3324d22299d05f703",
+        "fetchedAt": "2026-07-19T12:59:01.405Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 16,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrei Kirilenko",
+                "canonicalKey": "person:andrei-kirilenko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrei Kirilenko",
+                "canonicalKey": "person:andrei-kirilenko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lokomotiv Kuban",
+        "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "vtb-united-league:zalgiris-kaunas"
+        },
+        "won": 20,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "E.J. Rowland",
+                "canonicalKey": "person:e-j-rowland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "VEF Riga",
+                "canonicalKey": "vtb-united-league:vef-riga"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Viktor Khryapa",
+                "canonicalKey": "person:viktor-khryapa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sergey Karasev",
+                "canonicalKey": "person:sergey-karasev"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sergey Karasev",
+                "canonicalKey": "person:sergey-karasev"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Nizhny Novgorod",
+        "canonicalKey": "vtb-united-league:nizhny-novgorod"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 25,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Goudelock",
+                "canonicalKey": "person:andrew-goudelock"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "vtb-united-league:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Kaun",
+                "canonicalKey": "person:sasha-kaun"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edgaras Ulanovas",
+                "canonicalKey": "person:edgaras-ulanovas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Neptunas",
+                "canonicalKey": "vtb-united-league:neptunas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Kaun",
+                "canonicalKey": "person:sasha-kaun"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edgaras Ulanovas",
+                "canonicalKey": "person:edgaras-ulanovas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Neptunas",
+                "canonicalKey": "vtb-united-league:neptunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Khimki",
+        "canonicalKey": "vtb-united-league:khimki"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 35,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrey Vorontsevich",
+                "canonicalKey": "person:andrey-vorontsevich"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrey Vorontsevich",
+                "canonicalKey": "person:andrey-vorontsevich"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Janis Timma",
+                "canonicalKey": "person:janis-timma"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "VEF Riga",
+                "canonicalKey": "vtb-united-league:vef-riga"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrey Vorontsevich",
+                "canonicalKey": "person:andrey-vorontsevich"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Janis Timma",
+                "canonicalKey": "person:janis-timma"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "VEF Riga",
+                "canonicalKey": "vtb-united-league:vef-riga"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "UNICS Kazan",
+        "canonicalKey": "vtb-united-league:unics-kazan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 37,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Artem Klimenko",
+                "canonicalKey": "person:artem-klimenko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Avtodor Saratov",
+                "canonicalKey": "vtb-united-league:avtodor-saratov"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Artem Klimenko",
+                "canonicalKey": "person:artem-klimenko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Avtodor Saratov",
+                "canonicalKey": "vtb-united-league:avtodor-saratov"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Khimki",
+        "canonicalKey": "vtb-united-league:khimki"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 31,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alexey Shved",
+                "canonicalKey": "person:alexey-shved"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "vtb-united-league:khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikita Kurbanov",
+                "canonicalKey": "person:nikita-kurbanov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ivan Ukhov",
+                "canonicalKey": "person:ivan-ukhov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Parma Basket Perm",
+                "canonicalKey": "vtb-united-league:parma-basket-perm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikita Kurbanov",
+                "canonicalKey": "person:nikita-kurbanov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ivan Ukhov",
+                "canonicalKey": "person:ivan-ukhov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Parma Basket Perm",
+                "canonicalKey": "vtb-united-league:parma-basket-perm"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Khimki",
+        "canonicalKey": "vtb-united-league:khimki"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 27,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sergio Rodriguez",
+                "canonicalKey": "person:sergio-rodriguez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dmitry Kulagin",
+                "canonicalKey": "person:dmitry-kulagin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaiah Briscoe",
+                "canonicalKey": "person:isaiah-briscoe"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BC Kalev-Cramo",
+                "canonicalKey": "vtb-united-league:bc-kalev-cramo"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dmitry Kulagin",
+                "canonicalKey": "person:dmitry-kulagin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaiah Briscoe",
+                "canonicalKey": "person:isaiah-briscoe"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BC Kalev-Cramo",
+                "canonicalKey": "vtb-united-league:bc-kalev-cramo"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Khimki",
+        "canonicalKey": "vtb-united-league:khimki"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 31,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alexey Shved",
+                "canonicalKey": "person:alexey-shved"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "vtb-united-league:khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikita Kurbanov",
+                "canonicalKey": "person:nikita-kurbanov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maurice Ndour",
+                "canonicalKey": "person:maurice-ndour"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "vtb-united-league:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikita Mikhailovskii",
+                "canonicalKey": "person:nikita-mikhailovskii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Avtodor Saratov",
+                "canonicalKey": "vtb-united-league:avtodor-saratov"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maurice Ndour",
+                "canonicalKey": "person:maurice-ndour"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "vtb-united-league:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikita Mikhailovskii",
+                "canonicalKey": "person:nikita-mikhailovskii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Avtodor Saratov",
+                "canonicalKey": "vtb-united-league:avtodor-saratov"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Khimki",
+          "canonicalKey": "vtb-united-league:khimki"
+        },
+        "won": 18,
+        "lost": 1
+      }
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "UNICS Kazan",
+        "canonicalKey": "vtb-united-league:unics-kazan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zenit St. Petersburg",
+          "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+        },
+        "won": 23,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mantas Kalnietis",
+                "canonicalKey": "person:mantas-kalnietis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Hackett",
+                "canonicalKey": "person:daniel-hackett"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Brown",
+                "canonicalKey": "person:john-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "vtb-united-league:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikita Mikhailovskii",
+                "canonicalKey": "person:nikita-mikhailovskii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Avtodor Saratov",
+                "canonicalKey": "vtb-united-league:avtodor-saratov"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Brown",
+                "canonicalKey": "person:john-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "vtb-united-league:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikita Mikhailovskii",
+                "canonicalKey": "person:nikita-mikhailovskii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Avtodor Saratov",
+                "canonicalKey": "vtb-united-league:avtodor-saratov"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zenit St. Petersburg",
+        "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 28,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mario Hezonja",
+                "canonicalKey": "person:mario-hezonja"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "vtb-united-league:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jordan Mickey",
+                "canonicalKey": "person:jordan-mickey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrey Martyuk",
+                "canonicalKey": "person:andrey-martyuk"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jordan Mickey",
+                "canonicalKey": "person:jordan-mickey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrey Martyuk",
+                "canonicalKey": "person:andrey-martyuk"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "UNICS Kazan",
+        "canonicalKey": "vtb-united-league:unics-kazan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lokomotiv Kuban",
+        "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 40,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Milutinov",
+                "canonicalKey": "person:nikola-milutinov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nenad Dimitrijevic",
+                "canonicalKey": "person:nenad-dimitrijevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "vtb-united-league:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Evgenii Baburin",
+                "canonicalKey": "person:evgenii-baburin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nizhny Novgorod",
+                "canonicalKey": "vtb-united-league:nizhny-novgorod"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrey Martyuk",
+                "canonicalKey": "person:andrey-martyuk"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Evgenii Baburin",
+                "canonicalKey": "person:evgenii-baburin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nizhny Novgorod",
+                "canonicalKey": "vtb-united-league:nizhny-novgorod"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrey Martyuk",
+                "canonicalKey": "person:andrey-martyuk"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "UNICS Kazan",
+        "canonicalKey": "vtb-united-league:unics-kazan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 36,
+        "lost": 14
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nenad Dimitrijevic",
+                "canonicalKey": "person:nenad-dimitrijevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "vtb-united-league:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Melo Trimble",
+                "canonicalKey": "person:melo-trimble"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vince Hunter",
+                "canonicalKey": "person:vince-hunter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kirill Elatoncev",
+                "canonicalKey": "person:kirill-elatoncev"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vince Hunter",
+                "canonicalKey": "person:vince-hunter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kirill Elatoncev",
+                "canonicalKey": "person:kirill-elatoncev"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Zenit St. Petersburg",
+        "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 48,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dwayne Bacon",
+                "canonicalKey": "person:dwayne-bacon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Melo Trimble",
+                "canonicalKey": "person:melo-trimble"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonius Cleveland",
+                "canonicalKey": "person:antonius-cleveland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kirill Elatoncev",
+                "canonicalKey": "person:kirill-elatoncev"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonius Cleveland",
+                "canonicalKey": "person:antonius-cleveland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kirill Elatoncev",
+                "canonicalKey": "person:kirill-elatoncev"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "vtb-united-league:lokomotiv-kuban"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "vtb-united-league:cska-moscow"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "UNICS Kazan",
+        "canonicalKey": "vtb-united-league:unics-kazan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "vtb-united-league:cska-moscow"
+        },
+        "won": 48,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Melo Trimble",
+                "canonicalKey": "person:melo-trimble"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Melo Trimble",
+                "canonicalKey": "person:melo-trimble"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "vtb-united-league:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Georgy Zhbanov",
+                "canonicalKey": "person:georgy-zhbanov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Georgy Zhbanov",
+                "canonicalKey": "person:georgy-zhbanov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "vtb-united-league:zenit-st-petersburg"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,8 +1,13 @@
 import { type GameState } from '../../../types';
 import { type RetireeRecord, type FarewellRecord, type MortalityRecord } from '../../playerDevelopment/retirementChecker';
-import { type HOFInduction, getHOFCeremonyDate } from '../../playerDevelopment/hofChecker';
+import { type HOFInduction, getHOFCeremonyDateString } from '../../playerDevelopment/hofChecker';
 import { type JerseyRetirementRecord } from '../../playerDevelopment/jerseyRetirementChecker';
 import { SettingsManager } from '../../SettingsManager';
+import type { FamilyLineageEvent } from '../../playerFamilyLineage';
+import { getLeagueCalendarDates } from '../../leagueCalendar';
+import { toISODateString } from '../../../utils/dateUtils';
+import { normalizeDate } from '../../../utils/helpers';
+import { getLeagueLabels } from '../../../utils/leagueLabels';
 
 type HistoryEntry = NonNullable<GameState['history']>[number];
 type NewsItem = NonNullable<GameState['news']>[number];
@@ -22,13 +27,14 @@ export interface SeasonRolloverNewsArgs {
   newInductees: HOFInduction[];
   newJerseyRetirements: JerseyRetirementRecord[];
   deaths: MortalityRecord[];
+  familyLineageEvents: FamilyLineageEvent[];
 }
 
 export interface SeasonRolloverNewsResult {
   pctStr: string;
   prunedBets: NonNullable<GameState['bets']>;
   prunedBoxScores: NonNullable<GameState['boxScores']>;
-  rolloverNews: NewsItem;
+  rolloverNews: NewsItem | null;
   retirementNewsItems: NewsItem[];
   playerOptionNewsItems: NewsItem[];
   teamOptionNewsItems: NewsItem[];
@@ -36,12 +42,14 @@ export interface SeasonRolloverNewsResult {
   hofNewsItems: NewsItem[];
   jerseyRetirementNewsItems: NewsItem[];
   mortalityNewsItems: NewsItem[];
+  familyLineageNewsItems: NewsItem[];
   teamOptionHistoryEntries: HistoryEntry[];
   retirementHistoryEntries: HistoryEntry[];
   farewellHistoryEntries: HistoryEntry[];
   hofHistoryEntries: HistoryEntry[];
   jerseyRetirementHistoryEntries: HistoryEntry[];
   mortalityHistoryEntries: HistoryEntry[];
+  familyLineageHistoryEntries: HistoryEntry[];
 }
 
 export function buildSeasonRolloverNewsAndPruning({
@@ -59,48 +67,31 @@ export function buildSeasonRolloverNewsAndPruning({
   newInductees,
   newJerseyRetirements,
   deaths,
+  familyLineageEvents,
 }: SeasonRolloverNewsArgs): SeasonRolloverNewsResult {
   const isPba = state.leagueStats?.uiMode === 'pba_isolated';
+  const isEuro = state.leagueStats?.uiMode === 'euro_isolated';
+  const leagueName = getLeagueLabels(
+    state.leagueType,
+    state.leagueStats?.uiMode,
+    state.leagueStats?.leagueName,
+  ).leagueName;
   const capM = (newSalaryCap / 1_000_000).toFixed(1);
   const pctStr = inflationPctApplied >= 0
     ? `+${inflationPctApplied.toFixed(1)}%`
     : `${inflationPctApplied.toFixed(1)}%`;
-  const pbaSeasonLabel = `${nextYear - 1}-${String(nextYear).slice(-2)}`;
-
-  const rolloverNews = {
-    id: `rollover-${nextYear}-${Date.now()}`,
-    headline: isPba
-      ? `${pbaSeasonLabel} PBA Season Opens`
-      : `${nextYear} NBA Season Underway — Salary Cap Set at $${capM}M`,
-    content: isPba
-      ? `The ${pbaSeasonLabel} PBA season is underway with teams moving into the Philippine Cup calendar.`
-      : `The ${nextYear} NBA season is officially underway. The salary cap has been set at $${capM}M (${pctStr} from last season). ${expiredCount} players became free agents as their contracts expired.`,
+  const rolloverNews = isPba || isEuro ? null : {
+    id: `rollover-${nextYear}`,
+    headline: `${nextYear} ${leagueName} Season Underway — Salary Cap Set at $${capM}M`,
+    content: `The ${nextYear} ${leagueName} season is officially underway. The salary cap has been set at $${capM}M (${pctStr} from last season). ${expiredCount} players became free agents as their contracts expired.`,
     date: state.date,
     type: 'league',
+    category: 'League News',
     isNew: true,
     read: false,
   } as unknown as NewsItem;
 
-  const retirementNewsItems = newRetirees.map((retiree): NewsItem => {
-    const pgStr = retiree.careerGP > 0
-      ? `${(retiree.careerPts / retiree.careerGP).toFixed(1)} PPG / ${(retiree.careerReb / retiree.careerGP).toFixed(1)} RPG / ${(retiree.careerAst / retiree.careerGP).toFixed(1)} APG over ${retiree.careerGP} games`
-      : 'career stats unavailable';
-    const accolades: string[] = [];
-    if (retiree.allStarAppearances > 0) accolades.push(`${retiree.allStarAppearances}× All-Star`);
-    if (retiree.championships > 0) accolades.push(`${retiree.championships}× Champion`);
-    const accoladeStr = accolades.length > 0 ? ` His career included ${accolades.join(', ')}.` : '';
-    return {
-      id: `retire-${retiree.playerId}-${Date.now()}`,
-      headline: retiree.isLegend
-        ? `Legend Retires: ${retiree.name} Ends Storied Career After ${retiree.careerGP} Games`
-        : `${retiree.name} Announces Retirement`,
-      content: `${retiree.name} (age ${retiree.age}) has officially announced his retirement.${accoladeStr} He averaged ${pgStr}.`,
-      date: state.date,
-      type: retiree.isLegend ? 'player' : 'roster',
-      isNew: true,
-      read: false,
-    } as unknown as NewsItem;
-  });
+  const retirementNewsItems: NewsItem[] = [];
 
   const playerOptionNewsItems = playerOptionNews.map((text, idx) => ({
     id: `player-option-${currentYear}-${idx}-${Date.now()}`,
@@ -122,11 +113,15 @@ export function buildSeasonRolloverNewsAndPruning({
     read: false,
   }) as unknown as NewsItem);
 
-  const teamOptionHistoryEntries = teamOptionNews.map((text): HistoryEntry => ({
-    text,
-    date: optionDateStr,
-    type: 'Signing',
-  }));
+  const teamOptionHistoryEntries = teamOptionNews.map((text): HistoryEntry => {
+    const player = state.players.find(candidate => text.includes(candidate.name));
+    return {
+      text,
+      date: optionDateStr,
+      type: 'Contract Option',
+      ...(player ? { playerIds: [player.internalId], tid: player.tid } : {}),
+    } as HistoryEntry;
+  });
 
   const retirementHistoryEntries = newRetirees.map((retiree): HistoryEntry => {
     const pgStr = retiree.careerGP > 0
@@ -168,13 +163,8 @@ export function buildSeasonRolloverNewsAndPruning({
   } as HistoryEntry));
 
   const hofNewsItems = newInductees.flatMap((inductee, idx): NewsItem[] => {
-    const ceremonyDate = getHOFCeremonyDate(inductee.inductionYear).toLocaleDateString('en-US', {
-      timeZone: 'UTC',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-    if (state.date !== ceremonyDate) return [];
+    const ceremonyDate = getHOFCeremonyDateString(inductee.inductionYear);
+    if (normalizeDate(state.date) !== ceremonyDate) return [];
     const accolades: string[] = [];
     if (inductee.mvps > 0) accolades.push(`${inductee.mvps}× MVP`);
     if (inductee.allStarAppearances > 0) accolades.push(`${inductee.allStarAppearances}× All-Star`);
@@ -189,7 +179,7 @@ export function buildSeasonRolloverNewsAndPruning({
       id: `hof-${inductee.playerId}-${Date.now()}-${idx}`,
       headline: `${inductee.name} Inducted Into ${hallLabel}${ballotStr || tierStr}`,
       content: `${inductee.name} has been inducted into the ${formalHallLabel}${ballotStr || tierStr}. Career: ${careerLabel}${accoladeStr}.`,
-      date: ceremonyDate,
+      date: state.date,
       type: 'player',
       isNew: true,
       read: false,
@@ -197,17 +187,12 @@ export function buildSeasonRolloverNewsAndPruning({
   });
 
   const hofHistoryEntries = newInductees.flatMap((inductee): HistoryEntry[] => {
-    const ceremonyDate = getHOFCeremonyDate(inductee.inductionYear).toLocaleDateString('en-US', {
-      timeZone: 'UTC',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-    if (state.date !== ceremonyDate) return [];
+    const ceremonyDate = getHOFCeremonyDateString(inductee.inductionYear);
+    if (normalizeDate(state.date) !== ceremonyDate) return [];
     const hallLabel = inductee.league === 'PBA' ? 'PBA Hall of Fame' : 'Hall of Fame';
     return [{
       text: `${inductee.name} inducted into the ${hallLabel} (Class of ${inductee.inductionYear})${inductee.firstBallot ? ' — First-Ballot' : inductee.tier === 'borderline' ? ' — Borderline' : ' — Multi-Ballot'}.`,
-      date: ceremonyDate,
+      date: state.date,
       type: 'Retirement',
       playerIds: [inductee.playerId],
     } as HistoryEntry];
@@ -254,7 +239,40 @@ export function buildSeasonRolloverNewsAndPruning({
     playerIds: [death.playerId],
   } as HistoryEntry));
 
-  const cutoffDate = `${currentYear - 1}-10-01`;
+  const draftLabel = isPba
+    ? 'PBA Draft'
+    : state.leagueType === 'fictional' ? 'league draft' : 'NBA Draft';
+  const familyLineageNewsItems = familyLineageEvents.map((event): NewsItem => {
+    const headline = event.kind === 'twins'
+      ? `${event.playerNames[0]} and ${event.playerNames[1]} Enter the ${draftLabel}`
+      : event.kind === 'parent_child'
+        ? `${event.prospectName} Continues ${event.relativeName}'s Basketball Legacy`
+        : `${event.prospectName} Follows ${event.relativeName} Into Pro Basketball`;
+    const content = event.kind === 'twins'
+      ? `Twins ${event.playerNames[0]} and ${event.playerNames[1]} are eligible for the ${event.introducedYear} ${draftLabel}. Their careers will begin as separate prospects, even as their family story follows them into the league.`
+      : event.kind === 'parent_child'
+        ? `${event.prospectName}, the child of ${event.relativeName}, is eligible for the ${event.introducedYear} ${draftLabel}.`
+        : `${event.prospectName}, the ${event.relationLabel} of ${event.relativeName}, is eligible for the ${event.introducedYear} ${draftLabel}.`;
+    return {
+      id: `${event.id}-${event.introducedYear}`,
+      headline,
+      content,
+      date: state.date,
+      type: 'player',
+      isNew: true,
+      read: false,
+    } as unknown as NewsItem;
+  });
+  const familyLineageHistoryEntries = familyLineageEvents.map((event): HistoryEntry => ({
+    text: event.kind === 'twins'
+      ? `Twins ${event.playerNames[0]} and ${event.playerNames[1]} entered the ${event.introducedYear} draft class.`
+      : `${event.prospectName}, the ${event.relationLabel} of ${event.relativeName}, entered the ${event.introducedYear} draft class.`,
+    date: state.date,
+    type: 'Family',
+    playerIds: event.playerIds,
+  } as HistoryEntry));
+
+  const cutoffDate = toISODateString(getLeagueCalendarDates(currentYear, state.leagueStats).regularSeasonStart);
   const prunedBets = (state.bets ?? []).filter(bet => bet.status === 'pending' || bet.date >= cutoffDate);
 
   const maxBoxScoreYears = SettingsManager.getSettings().maxBoxScoreYears ?? 2;
@@ -278,11 +296,13 @@ export function buildSeasonRolloverNewsAndPruning({
     hofNewsItems,
     jerseyRetirementNewsItems,
     mortalityNewsItems,
+    familyLineageNewsItems,
     teamOptionHistoryEntries,
     retirementHistoryEntries,
     farewellHistoryEntries,
     hofHistoryEntries,
     jerseyRetirementHistoryEntries,
     mortalityHistoryEntries,
+    familyLineageHistoryEntries,
   };
 }

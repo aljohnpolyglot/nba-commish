@@ -35,7 +35,7 @@ export const MentorshipModal: React.FC<MentorshipModalProps> = ({
       if (r.mentorId && r.id !== player.id) mentoringMap.set(r.mentorId, r.name);
     }
     return roster
-      .filter(p => p.id !== player.id && p.exp >= 5)
+      .filter(p => p.id !== player.id && p.age >= 28 && p.exp >= 5)
       .map(p => ({
         player: p,
         exp: p.mentorExp ?? 0,
@@ -124,7 +124,7 @@ export const MentorshipModal: React.FC<MentorshipModalProps> = ({
               {filtered.length === 0 ? (
                 <div className="py-16 text-center text-slate-500 italic text-sm">
                   {potentialMentors.length === 0
-                    ? 'No veterans with 5+ NBA seasons on your roster.'
+                    ? 'No veterans with 5+ professional seasons on your roster.'
                     : 'No veterans match your search.'}
                 </div>
               ) : (

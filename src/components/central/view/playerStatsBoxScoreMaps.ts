@@ -4,17 +4,40 @@ import { Phase, SeasonMode, ShotLocAgg, StatType } from './PlayerStatsTypes';
 import { safePct, zeroStatRow } from './playerStatsMath';
 import { PBA_COMPETITIONS } from '../../../data/templates/philippines/competitions';
 import { isPbaCompetitionId, makeCountedPbaRegularBoxSet, pbaBoxIdentity } from '../../../services/pba/competitionGames';
+import { getCanonicalEuroStatCompetitionId } from '../../../services/euro/statsArchive';
+import {
+  ADVANCED_STAT_FORMULA_VERSION,
+  calculateIndividualOrtg,
+  getCalibratedEwa,
+  getCalibratedPer,
+} from '../../../utils/advancedStatCalibration';
 
 type BoxScoreStatsPhase = Exclude<Phase, 'cup'>;
 
 interface BoxScoreStatsOptions {
   competitionIds?: Set<string>;
+  teamIds?: Set<number>;
   phase?: BoxScoreStatsPhase;
 }
 
+const finiteBoxStat = (value: unknown): number => (
+  typeof value === 'number' && Number.isFinite(value) ? value : 0
+);
+
+const finiteLineRebounds = (line: any): number => {
+  const reported = line.reb ?? line.trb;
+  return typeof reported === 'number' && Number.isFinite(reported)
+    ? reported
+    : finiteBoxStat(line.orb) + finiteBoxStat(line.drb);
+};
+
 function matchesBoxScoreStatsFilter(state: GameState, box: any, options: BoxScoreStatsOptions) {
   if (box.isAllStar || box.isRisingStars || box.isCelebrityGame) return null;
-  const competitionId = String(box.competitionId ?? '').toLowerCase();
+  if (options.teamIds && (
+    !options.teamIds.has(Number(box.homeTeamId))
+    || !options.teamIds.has(Number(box.awayTeamId))
+  )) return null;
+  const competitionId = getCanonicalEuroStatCompetitionId({ competitionId: box.competitionId } as any);
   if (options.competitionIds && !options.competitionIds.has(competitionId)) return null;
   const meta = classifyBoxScoreGame(
     box,
@@ -25,54 +48,63 @@ function matchesBoxScoreStatsFilter(state: GameState, box: any, options: BoxScor
     state.leagueStats.year,
     state.leagueStats,
   );
-  if (meta.isPreseason || meta.isPlayIn || meta.excludeFromRecord || meta.isAllStar) return null;
-  if (options.phase === 'regular' && meta.isPlayoff) return null;
-  if (options.phase === 'playoffs' && !meta.isPlayoff) return null;
+  if (meta.isAllStar) return null;
+  if (options.phase === 'preseason') {
+    if (!meta.isPreseason) return null;
+  } else if (meta.isPreseason || meta.excludeFromRecord) {
+    return null;
+  }
+  if (meta.isPlayIn && !options.competitionIds) return null;
+  if (options.phase === 'regular' && (meta.isPlayoff || meta.isPlayIn)) return null;
+  if (options.phase === 'playoffs' && !meta.isPlayoff && !meta.isPlayIn) return null;
   return meta;
 }
 
 function addBoxScoreLine(row: NBAGMStat & Record<string, number>, ln: any) {
-  const reb = ln.reb ?? ln.trb ?? ((ln.orb ?? 0) + (ln.drb ?? 0));
+  const reb = finiteLineRebounds(ln);
+  const minutes = finiteBoxStat(ln.min);
   row.gp += 1;
-  row.gs += (ln.gs ?? 0) > 0 ? 1 : 0;
-  row.min += ln.min ?? 0;
-  row.fg += ln.fgm ?? 0;
-  row.fga += ln.fga ?? 0;
-  row.tp += ln.threePm ?? 0;
-  row.tpa += ln.threePa ?? 0;
-  row.fp = (row.fp ?? 0) + (ln.fourPm ?? 0);
-  row.fpa = (row.fpa ?? 0) + (ln.fourPa ?? 0);
-  row.ft += ln.ftm ?? 0;
-  row.fta += ln.fta ?? 0;
-  row.orb += ln.orb ?? 0;
-  row.drb += ln.drb ?? 0;
+  row.gs += finiteBoxStat(ln.gs) > 0 ? 1 : 0;
+  row.min += minutes;
+  row.fg += finiteBoxStat(ln.fgm);
+  row.fga += finiteBoxStat(ln.fga);
+  row.tp += finiteBoxStat(ln.threePm);
+  row.tpa += finiteBoxStat(ln.threePa);
+  row.fp = finiteBoxStat(row.fp) + finiteBoxStat(ln.fourPm);
+  row.fpa = finiteBoxStat(row.fpa) + finiteBoxStat(ln.fourPa);
+  row.ft += finiteBoxStat(ln.ftm);
+  row.fta += finiteBoxStat(ln.fta);
+  row.orb += finiteBoxStat(ln.orb);
+  row.drb += finiteBoxStat(ln.drb);
   row.trb += reb;
-  row.ast += ln.ast ?? 0;
-  row.stl += ln.stl ?? 0;
-  row.blk += ln.blk ?? 0;
-  row.tov += ln.tov ?? 0;
-  row.pf += ln.pf ?? 0;
-  row.pts += ln.pts ?? 0;
-  row.pm = (row.pm ?? 0) + (ln.pm ?? 0);
-  row.ws = (row.ws ?? 0) + (ln.ws ?? 0);
-  row.ows = (row.ows ?? 0) + (ln.ows ?? 0);
-  row.dws = (row.dws ?? 0) + (ln.dws ?? 0);
-  row.vorp = (row.vorp ?? 0) + (ln.vorp ?? 0);
-  row.ewa = (row.ewa ?? 0) + (ln.ewa ?? 0);
-  row._perSum = (row._perSum ?? 0) + (ln.per ?? 0);
-  row._usgPctSum = (row._usgPctSum ?? 0) + (ln.usgPct ?? 0);
-  row._ortgSum = (row._ortgSum ?? 0) + (ln.ortg ?? 0);
-  row._drtgSum = (row._drtgSum ?? 0) + (ln.drtg ?? 0);
-  row._bpmSum = (row._bpmSum ?? 0) + (ln.bpm ?? 0);
-  row._obpmSum = (row._obpmSum ?? 0) + (ln.obpm ?? 0);
-  row._dbpmSum = (row._dbpmSum ?? 0) + (ln.dbpm ?? 0);
-  row._orbPctSum = (row._orbPctSum ?? 0) + (ln.orbPct ?? 0);
-  row._drbPctSum = (row._drbPctSum ?? 0) + (ln.drbPct ?? 0);
-  row._trbPctSum = (row._trbPctSum ?? 0) + (ln.trbPct ?? 0);
-  row._astPctSum = (row._astPctSum ?? 0) + (ln.astPct ?? 0);
-  row._stlPctSum = (row._stlPctSum ?? 0) + (ln.stlPct ?? 0);
-  row._blkPctSum = (row._blkPctSum ?? 0) + (ln.blkPct ?? 0);
-  row._tovPctSum = (row._tovPctSum ?? 0) + (ln.tovPct ?? 0);
+  row.ast += finiteBoxStat(ln.ast);
+  row.stl += finiteBoxStat(ln.stl);
+  row.blk += finiteBoxStat(ln.blk);
+  row.tov += finiteBoxStat(ln.tov);
+  row.pf += finiteBoxStat(ln.pf);
+  row.pts += finiteBoxStat(ln.pts);
+  row.pm = finiteBoxStat(row.pm) + finiteBoxStat(ln.pm);
+  row.ws = finiteBoxStat(row.ws) + finiteBoxStat(ln.ws);
+  row.ows = finiteBoxStat(row.ows) + finiteBoxStat(ln.ows);
+  row.dws = finiteBoxStat(row.dws) + finiteBoxStat(ln.dws);
+  row.vorp = finiteBoxStat(row.vorp) + finiteBoxStat(ln.vorp);
+  row.ewa = finiteBoxStat(row.ewa) + getCalibratedEwa(ln);
+  const calibratedPer = getCalibratedPer(ln);
+  row._perSum = finiteBoxStat(row._perSum) + calibratedPer;
+  row._perMinuteSum = finiteBoxStat(row._perMinuteSum) + calibratedPer * finiteBoxStat(ln.min);
+  row._usgPctSum = finiteBoxStat(row._usgPctSum) + finiteBoxStat(ln.usgPct) * minutes;
+  row._ortgSum = finiteBoxStat(row._ortgSum) + finiteBoxStat(ln.ortg) * minutes;
+  row._drtgSum = finiteBoxStat(row._drtgSum) + finiteBoxStat(ln.drtg) * minutes;
+  row._bpmSum = finiteBoxStat(row._bpmSum) + finiteBoxStat(ln.bpm) * minutes;
+  row._obpmSum = finiteBoxStat(row._obpmSum) + finiteBoxStat(ln.obpm) * minutes;
+  row._dbpmSum = finiteBoxStat(row._dbpmSum) + finiteBoxStat(ln.dbpm) * minutes;
+  row._orbPctSum = finiteBoxStat(row._orbPctSum) + finiteBoxStat(ln.orbPct) * minutes;
+  row._drbPctSum = finiteBoxStat(row._drbPctSum) + finiteBoxStat(ln.drbPct) * minutes;
+  row._trbPctSum = finiteBoxStat(row._trbPctSum) + finiteBoxStat(ln.trbPct) * minutes;
+  row._astPctSum = finiteBoxStat(row._astPctSum) + finiteBoxStat(ln.astPct) * minutes;
+  row._stlPctSum = finiteBoxStat(row._stlPctSum) + finiteBoxStat(ln.stlPct) * minutes;
+  row._blkPctSum = finiteBoxStat(row._blkPctSum) + finiteBoxStat(ln.blkPct) * minutes;
+  row._tovPctSum = finiteBoxStat(row._tovPctSum) + finiteBoxStat(ln.tovPct) * minutes;
 }
 
 function finalizeBoxScoreStat(row: NBAGMStat & Record<string, number>): NBAGMStat {
@@ -81,24 +113,25 @@ function finalizeBoxScoreStat(row: NBAGMStat & Record<string, number>): NBAGMSta
   row.fpp = safePct(row.fp ?? 0, row.fpa ?? 0);
   row.ftp = safePct(row.ft, row.fta);
   const gp = row.gp || 1;
-  row.per = (row._perSum ?? 0) / gp;
-  row.usgPct = (row._usgPctSum ?? 0) / gp;
-  row.drtg = (row._drtgSum ?? 0) / gp;
-  row.bpm = (row._bpmSum ?? 0) / gp;
-  row.obpm = (row._obpmSum ?? 0) / gp;
-  row.dbpm = (row._dbpmSum ?? 0) / gp;
-  row.orbPct = (row._orbPctSum ?? 0) / gp;
-  row.drbPct = (row._drbPctSum ?? 0) / gp;
-  row.rebPct = (row._trbPctSum ?? 0) / gp;
-  row.astPct = (row._astPctSum ?? 0) / gp;
-  row.stlPct = (row._stlPctSum ?? 0) / gp;
-  row.blkPct = (row._blkPctSum ?? 0) / gp;
-  row.tovPct = (row._tovPctSum ?? 0) / gp;
+  const minutes = row.min || 1;
+  row.per = row.min > 0 ? (row._perMinuteSum ?? 0) / minutes : (row._perSum ?? 0) / gp;
+  row.usgPct = (row._usgPctSum ?? 0) / minutes;
+  row.drtg = (row._drtgSum ?? 0) / minutes;
+  row.bpm = (row._bpmSum ?? 0) / minutes;
+  row.obpm = (row._obpmSum ?? 0) / minutes;
+  row.dbpm = (row._dbpmSum ?? 0) / minutes;
+  row.orbPct = (row._orbPctSum ?? 0) / minutes;
+  row.drbPct = (row._drbPctSum ?? 0) / minutes;
+  row.rebPct = (row._trbPctSum ?? 0) / minutes;
+  row.astPct = (row._astPctSum ?? 0) / minutes;
+  row.stlPct = (row._stlPctSum ?? 0) / minutes;
+  row.blkPct = (row._blkPctSum ?? 0) / minutes;
+  row.tovPct = (row._tovPctSum ?? 0) / minutes;
   const tsDenom = 2 * (row.fga + 0.44 * row.fta);
   row.tsPct = tsDenom > 0 ? (row.pts / tsDenom) * 100 : 0;
   row.efgPct = row.fga > 0 ? ((row.fg + 0.5 * row.tp + (row.fp ?? 0)) / row.fga) * 100 : 0;
-  const poss = row.fga + 0.44 * row.fta - row.orb + row.tov;
-  row.ortg = poss > 0 ? (row.pts * 100) / poss : 0;
+  row.ortg = calculateIndividualOrtg(row);
+  row._advancedStatVersion = ADVANCED_STAT_FORMULA_VERSION;
   return row;
 }
 
@@ -131,7 +164,9 @@ export function buildBoxScoreStatsByPlayer(
         const key = `${playerId}|${season}|${side.tid}`;
         if (!rows.has(key)) {
           const row = zeroStatRow(season, side.tid) as NBAGMStat & Record<string, number>;
-          (row as any).competitionId = box.competitionId ?? (meta as any).competitionId;
+          (row as any).competitionId = getCanonicalEuroStatCompetitionId({
+            competitionId: box.competitionId ?? (meta as any).competitionId,
+          } as any);
           rows.set(key, row);
         }
         addBoxScoreLine(rows.get(key)!, line);
@@ -148,12 +183,51 @@ export function buildBoxScoreStatsByPlayer(
   return byPlayer;
 }
 
+export function buildCompetitionSeasonPlayers(
+  state: GameState,
+  competitionId: string,
+  participantTids: Set<number>,
+  season = state.leagueStats.year,
+) {
+  const canonicalCompetitionId = getCanonicalEuroStatCompetitionId({ competitionId } as any);
+  const liveStats = buildBoxScoreStatsByPlayer(state, {
+    competitionIds: new Set([canonicalCompetitionId]),
+    phase: 'regular',
+  });
+  return state.players
+    .filter(player => !(player.euroAcademyPlayer && !player.promotedFromAcademy))
+    .filter(player => (
+      participantTids.has(player.tid)
+      || liveStats.has(player.internalId)
+      || (player.stats ?? []).some(stat =>
+        stat.season === season
+        && getCanonicalEuroStatCompetitionId(stat as NBAGMStat & Record<string, unknown>) === canonicalCompetitionId,
+      )
+    ))
+    .map(player => {
+      const liveSeasonRows = (liveStats.get(player.internalId) ?? []).filter(stat => stat.season === season);
+      const archiveSeasonRows = (player.stats ?? []).filter(stat =>
+        stat.season === season
+        && !stat.playoffs
+        && getCanonicalEuroStatCompetitionId(stat as NBAGMStat & Record<string, unknown>) === canonicalCompetitionId,
+      );
+      return {
+        ...player,
+        stats: [
+          ...(player.stats ?? []).filter(stat => stat.season !== season),
+          ...(liveSeasonRows.length > 0 ? liveSeasonRows : archiveSeasonRows),
+        ],
+      };
+    });
+}
+
 export function buildBoxScoreShotLocMap(
   state: GameState,
   statType: StatType,
   season: SeasonMode,
   phase: BoxScoreStatsPhase,
   competitionIds?: Set<string>,
+  teamIds?: Set<number>,
 ): Map<string, ShotLocAgg> {
   if (statType !== 'shotLocations') return new Map();
   const map = new Map<string, ShotLocAgg>();
@@ -184,7 +258,7 @@ export function buildBoxScoreShotLocMap(
   });
 
   for (const box of state.boxScores as any[]) {
-    const meta = matchesBoxScoreStatsFilter(state, box, { competitionIds, phase });
+    const meta = matchesBoxScoreStatsFilter(state, box, { competitionIds, teamIds, phase });
     if (!meta) continue;
     if (countedPbaRegularBoxes && isPbaCompetitionId(box.competitionId) && !countedPbaRegularBoxes.has(pbaBoxIdentity(box))) continue;
     const boxSeason = Number(box.season ?? meta.seasonYear);
@@ -228,7 +302,7 @@ export function buildBoxScoreShotLocMap(
   return map;
 }
 
-export function buildCupStatsByPlayer(state: GameState): Map<string, NBAGMStat> {
+export function buildCupStatsByPlayer(state: GameState, teamIds?: Set<number>): Map<string, NBAGMStat> {
   const out = new Map<string, NBAGMStat>();
   const ensure = (pid: string, tid: number): NBAGMStat => {
     let row = out.get(pid);
@@ -269,6 +343,10 @@ export function buildCupStatsByPlayer(state: GameState): Map<string, NBAGMStat> 
   };
 
   for (const box of state.boxScores) {
+    if (teamIds && (
+      !teamIds.has(Number((box as any).homeTeamId))
+      || !teamIds.has(Number((box as any).awayTeamId))
+    )) continue;
     const meta = classifyBoxScoreGame(
       box as any,
       state.schedule,
@@ -288,41 +366,17 @@ export function buildCupStatsByPlayer(state: GameState): Map<string, NBAGMStat> 
         if (!ln?.playerId) continue;
         const row = ensure(`${meta.seasonYear}:${ln.playerId}`, tid);
         row.season = meta.seasonYear;
-        row.gp += 1;
-        row.gs += (ln.gs ?? 0) > 0 ? 1 : 0;
-        row.min += ln.min ?? 0;
-        row.fg += ln.fgm ?? 0;
-        row.fga += ln.fga ?? 0;
-        row.tp += ln.threePm ?? 0;
-        row.tpa += ln.threePa ?? 0;
-        row.fp = (row.fp ?? 0) + (ln.fourPm ?? 0);
-        row.fpa = (row.fpa ?? 0) + (ln.fourPa ?? 0);
-        row.ft += ln.ftm ?? 0;
-        row.fta += ln.fta ?? 0;
-        row.orb += ln.orb ?? 0;
-        row.drb += ln.drb ?? 0;
-        row.trb += ln.reb ?? ((ln.orb ?? 0) + (ln.drb ?? 0));
-        row.ast += ln.ast ?? 0;
-        row.stl += ln.stl ?? 0;
-        row.blk += ln.blk ?? 0;
-        row.tov += ln.tov ?? 0;
-        row.pf += ln.pf ?? 0;
-        row.pts += ln.pts ?? 0;
-        row.pm = (row.pm ?? 0) + (ln.pm ?? 0);
+        addBoxScoreLine(row as NBAGMStat & Record<string, number>, ln);
       }
     }
   }
 
-  for (const row of out.values()) {
-    row.fgp = safePct(row.fg, row.fga);
-    row.tpp = safePct(row.tp, row.tpa);
-    row.fpp = safePct(row.fp ?? 0, row.fpa ?? 0);
-    row.ftp = safePct(row.ft, row.fta);
-  }
+  for (const row of out.values()) finalizeBoxScoreStat(row as NBAGMStat & Record<string, number>);
   return out;
 }
 
-export function buildCurrentSeasonStatsByPhase(state: GameState) {
+export function buildCurrentSeasonStatsByPhase(state: GameState, teamIds?: Set<number>) {
+  const preseason = new Map<string, NBAGMStat>();
   const regular = new Map<string, NBAGMStat>();
   const playoffs = new Map<string, NBAGMStat>();
   const combined = new Map<string, NBAGMStat>();
@@ -336,56 +390,13 @@ export function buildCurrentSeasonStatsByPhase(state: GameState) {
     return row;
   };
 
-  const applyLine = (row: NBAGMStat, ln: any) => {
-    row.gp += 1;
-    row.gs += (ln.gs ?? 0) > 0 ? 1 : 0;
-    row.min += ln.min ?? 0;
-    row.fg += ln.fgm ?? 0;
-    row.fga += ln.fga ?? 0;
-    row.tp += ln.threePm ?? 0;
-    row.tpa += ln.threePa ?? 0;
-    row.fp = (row.fp ?? 0) + (ln.fourPm ?? 0);
-    row.fpa = (row.fpa ?? 0) + (ln.fourPa ?? 0);
-    row.ft += ln.ftm ?? 0;
-    row.fta += ln.fta ?? 0;
-    row.orb += ln.orb ?? 0;
-    row.drb += ln.drb ?? 0;
-    row.trb += ln.reb ?? ((ln.orb ?? 0) + (ln.drb ?? 0));
-    row.ast += ln.ast ?? 0;
-    row.stl += ln.stl ?? 0;
-    row.blk += ln.blk ?? 0;
-    row.tov += ln.tov ?? 0;
-    row.pf += ln.pf ?? 0;
-    row.pts += ln.pts ?? 0;
-    row.pm = (row.pm ?? 0) + (ln.pm ?? 0);
-    row.ws = (row.ws ?? 0) + (ln.ws ?? 0);
-    row.ows = (row.ows ?? 0) + (ln.ows ?? 0);
-    row.dws = (row.dws ?? 0) + (ln.dws ?? 0);
-    row.vorp = (row.vorp ?? 0) + (ln.vorp ?? 0);
-    row.ewa = (row.ewa ?? 0) + (ln.ewa ?? 0);
-    row.per = ((row.per ?? 0) * (row.gp - 1) + (ln.per ?? 0)) / row.gp;
-    row.tsPct = ((row.tsPct ?? 0) * (row.gp - 1) + (ln.tsPct ?? 0)) / row.gp;
-    row.efgPct = ((row.efgPct ?? 0) * (row.gp - 1) + (ln.efgPct ?? 0)) / row.gp;
-    row.usgPct = ((row.usgPct ?? 0) * (row.gp - 1) + (ln.usgPct ?? 0)) / row.gp;
-    row.ortg = ((row.ortg ?? 0) * (row.gp - 1) + (ln.ortg ?? 0)) / row.gp;
-    row.drtg = ((row.drtg ?? 0) * (row.gp - 1) + (ln.drtg ?? 0)) / row.gp;
-    row.bpm = ((row.bpm ?? 0) * (row.gp - 1) + (ln.bpm ?? 0)) / row.gp;
-    row.obpm = ((row.obpm ?? 0) * (row.gp - 1) + (ln.obpm ?? 0)) / row.gp;
-    row.dbpm = ((row.dbpm ?? 0) * (row.gp - 1) + (ln.dbpm ?? 0)) / row.gp;
-    row.orbPct = ((row.orbPct ?? 0) * (row.gp - 1) + (ln.orbPct ?? 0)) / row.gp;
-    row.drbPct = ((row.drbPct ?? 0) * (row.gp - 1) + (ln.drbPct ?? 0)) / row.gp;
-    row.rebPct = ((row.rebPct ?? 0) * (row.gp - 1) + (ln.trbPct ?? 0)) / row.gp;
-    row.astPct = ((row.astPct ?? 0) * (row.gp - 1) + (ln.astPct ?? 0)) / row.gp;
-    row.stlPct = ((row.stlPct ?? 0) * (row.gp - 1) + (ln.stlPct ?? 0)) / row.gp;
-    row.blkPct = ((row.blkPct ?? 0) * (row.gp - 1) + (ln.blkPct ?? 0)) / row.gp;
-    row.tovPct = ((row.tovPct ?? 0) * (row.gp - 1) + (ln.tovPct ?? 0)) / row.gp;
-    row.fgp = safePct(row.fg, row.fga);
-    row.tpp = safePct(row.tp, row.tpa);
-    row.fpp = safePct(row.fp ?? 0, row.fpa ?? 0);
-    row.ftp = safePct(row.ft, row.fta);
-  };
+  const applyLine = (row: NBAGMStat, ln: any) => addBoxScoreLine(row as NBAGMStat & Record<string, number>, ln);
 
   for (const box of state.boxScores as any[]) {
+    if (teamIds && (
+      !teamIds.has(Number(box.homeTeamId))
+      || !teamIds.has(Number(box.awayTeamId))
+    )) continue;
     const meta = classifyBoxScoreGame(
       box,
       state.schedule,
@@ -397,9 +408,9 @@ export function buildCurrentSeasonStatsByPhase(state: GameState) {
     );
     const boxSeason = box.season ?? meta.seasonYear;
     if (boxSeason !== state.leagueStats.year) continue;
-    if (meta.isPreseason || meta.isPlayIn || meta.excludeFromRecord) continue;
+    if (meta.isPlayIn || (!meta.isPreseason && meta.excludeFromRecord)) continue;
 
-    const bucket = meta.isPlayoff ? playoffs : regular;
+    const bucket = meta.isPreseason ? preseason : meta.isPlayoff ? playoffs : regular;
     const sides = [
       { tid: box.homeTeamId, lines: box.homeStats ?? [] },
       { tid: box.awayTeamId, lines: box.awayStats ?? [] },
@@ -410,19 +421,23 @@ export function buildCurrentSeasonStatsByPhase(state: GameState) {
         if (!ln?.playerId || seen.has(ln.playerId)) continue;
         seen.add(ln.playerId);
         applyLine(ensure(bucket, ln.playerId, side.tid), ln);
-        applyLine(ensure(combined, ln.playerId, side.tid), ln);
+        if (!meta.isPreseason) applyLine(ensure(combined, ln.playerId, side.tid), ln);
       }
     }
   }
 
-  return { regular, playoffs, combined };
+  for (const map of [preseason, regular, playoffs, combined]) {
+    for (const row of map.values()) finalizeBoxScoreStat(row as NBAGMStat & Record<string, number>);
+  }
+  return { preseason, regular, playoffs, combined };
 }
 
 export function buildShotLocMap(
-  boxScores: GameState['boxScores'],
+  state: GameState,
   statType: StatType,
   season: SeasonMode,
   phase: Phase,
+  teamIds?: Set<number>,
 ): Map<string, ShotLocAgg> {
   if (statType !== 'shotLocations') return new Map();
   const map = new Map<string, ShotLocAgg>();
@@ -445,16 +460,27 @@ export function buildShotLocMap(
     pip: 0,
   });
 
-  for (const game of boxScores as any[]) {
-    const date = new Date(game.date ?? '');
-    if (isNaN(date.getTime())) continue;
-    const year = date.getFullYear();
-    const gameSeasonYear = date.getMonth() < 9 ? year : year + 1;
+  for (const game of state.boxScores as any[]) {
+    if (teamIds && (
+      !teamIds.has(Number(game.homeTeamId))
+      || !teamIds.has(Number(game.awayTeamId))
+    )) continue;
+    const meta = classifyBoxScoreGame(
+      game,
+      state.schedule,
+      state.playoffs,
+      state.nbaCup,
+      state.nbaCupHistory,
+      state.leagueStats.year,
+      state.leagueStats,
+    );
+    const gameSeasonYear = Number(game.season ?? meta.seasonYear);
     if (season !== 'career' && season !== 'all' && gameSeasonYear !== season) continue;
 
-    const isPlayoff = !!(game.isPlayoff || game.isPlayIn);
-    if (phase === 'regular' && isPlayoff) continue;
-    if (phase === 'playoffs' && !isPlayoff) continue;
+    if (phase === 'preseason' && !meta.isPreseason) continue;
+    if (phase !== 'preseason' && meta.isPreseason) continue;
+    if (phase === 'regular' && (meta.isPlayoff || meta.isPlayIn)) continue;
+    if (phase === 'playoffs' && !meta.isPlayoff && !meta.isPlayIn) continue;
 
     const process = (stats: any[]) => {
       for (const line of stats ?? []) {

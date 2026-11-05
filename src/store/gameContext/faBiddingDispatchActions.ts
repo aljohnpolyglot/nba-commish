@@ -6,8 +6,25 @@ import {
   getCurrentOffseasonFAMoratoriumEnd,
   parseGameDate,
 } from '../../utils/dateUtils';
-import { clearWaiverMarkers } from '../../utils/contractCleanup';
-import { formatContractTotalUSD } from '../../utils/salaryUtils';
+import {
+  getBiannualExceptionAvailability,
+  getCapThresholds,
+  getMLEAvailability,
+  getTeamHardCapUSD,
+  getTeamPayrollUSD,
+} from '../../utils/salaryUtils';
+import { getTwoWayRosterLimit } from '../../utils/rosterLimits';
+import { submitPbaLocalFreeAgencyBid } from '../../services/pba/localFreeAgencyAi';
+import { areTwoWayContractsEnabled } from '../../utils/contractTypes';
+import {
+  areWnbaDevelopmentalContractsEnabled,
+  getWnbaDevelopmentalBaseStipendUSD,
+  isWnbaDevelopmentalServiceEligible,
+} from '../../services/wnba/developmentalContracts';
+import { normalizeAspireSideDeal, type AspireSideDeal } from '../../services/aspireSideDeals';
+import { isUnavailableInternationalTournamentPlayer } from '../../utils/prospectUtils';
+import { applyFAMarketTickPass } from '../logic/turn/simulation/freeAgencyMarketPass';
+import { buildFreeAgencyDailySummary, mergeFreeAgencySummaries } from '../../services/freeAgency/freeAgencyDailySummary';
 
 type SetGameState = Dispatch<SetStateAction<GameState>>;
 
@@ -23,7 +40,21 @@ export function handleFaBiddingDispatchAction({
   stateRef,
 }: HandleFaBiddingDispatchActionArgs): boolean {
   if (action.type === 'SUBMIT_FA_BID') {
-    const { playerId, playerName, teamId, teamName, teamLogoUrl, salaryUSD, years, option, twoWay, nonGuaranteed } = action.payload as {
+    const {
+      playerId,
+      playerName,
+      teamId,
+      teamName,
+      teamLogoUrl,
+      salaryUSD,
+      years,
+      option,
+      twoWay,
+      nonGuaranteed,
+      fundingSource = 'standard',
+      mleType,
+      aspireSideDeal,
+    } = action.payload as {
       playerId: string;
       playerName: string;
       teamId: number;
@@ -34,11 +65,79 @@ export function handleFaBiddingDispatchAction({
       option: 'NONE' | 'PLAYER' | 'TEAM';
       twoWay?: boolean;
       nonGuaranteed?: boolean;
+      fundingSource?: 'standard' | 'mle' | 'biannual';
+      mleType?: 'room' | 'non_taxpayer' | 'taxpayer' | null;
+      aspireSideDeal?: AspireSideDeal;
     };
     setState(prev => {
       if (prev.leagueStats?.uiMode === 'euro_isolated') return prev;
+      if (prev.leagueStats?.uiMode === 'pba_isolated') {
+        return submitPbaLocalFreeAgencyBid(prev, {
+          playerId,
+          playerName,
+          teamId,
+          teamName,
+          teamLogoUrl,
+          salaryUSD,
+          years,
+        });
+      }
+      const playerOptionsActive = prev.leagueStats?.playerOptionsEnabled !== false;
+      const developmentalBid = !!twoWay && areWnbaDevelopmentalContractsEnabled(prev.leagueStats);
+      const finalOption = developmentalBid ? 'NONE' : option === 'PLAYER' && !playerOptionsActive ? 'NONE' : option;
+      const twoWayLegal = !!twoWay && areTwoWayContractsEnabled(prev.leagueStats) && getTwoWayRosterLimit(prev.leagueStats as any) > 0;
+      const nonGuaranteedLegal = !!nonGuaranteed && prev.leagueStats?.nonGuaranteedContractsEnabled !== false;
       const currentDay = prev.day ?? 0;
       const currentPlayer = prev.players.find(p => p.internalId === playerId);
+      if (!currentPlayer || isUnavailableInternationalTournamentPlayer(currentPlayer)) return prev;
+      const finalAspireSideDeal = normalizeAspireSideDeal(prev, teamId, playerId, salaryUSD, aspireSideDeal);
+      if (aspireSideDeal && !finalAspireSideDeal) return prev;
+      if (finalAspireSideDeal) {
+        const reservedAspireUSD = (prev.faBidding?.markets ?? [])
+          .filter(market => !market.resolved && market.playerId !== playerId)
+          .flatMap(market => market.bids ?? [])
+          .filter(bid => bid.isUserBid && bid.status === 'active')
+          .reduce((sum, bid) => sum + Number(bid.aspireSideDeal?.amountUSD ?? 0), 0);
+        if (reservedAspireUSD + finalAspireSideDeal.amountUSD > Number(prev.stats?.personalWealth ?? 0) * 1_000_000) return prev;
+      }
+      if (twoWay && !twoWayLegal) return prev;
+      if (developmentalBid && currentPlayer && !isWnbaDevelopmentalServiceEligible(currentPlayer, prev.leagueStats.year, prev.leagueStats)) return prev;
+      const bidSalaryUSD = developmentalBid ? getWnbaDevelopmentalBaseStipendUSD(prev.leagueStats) : salaryUSD;
+      const bidYears = developmentalBid ? 1 : years;
+      const currentTeam = prev.teams.find(team => team.id === teamId);
+      if (!currentTeam) return prev;
+      const thresholds = getCapThresholds(prev.leagueStats);
+      const teamPayroll = getTeamPayrollUSD(
+        prev.players,
+        teamId,
+        currentTeam,
+        prev.leagueStats.year,
+        prev.leagueStats,
+      );
+      if (
+        !twoWayLegal && teamPayroll + bidSalaryUSD >
+        getTeamHardCapUSD(prev.leagueStats, thresholds, teamId, prev.leagueStats.year)
+      ) return prev;
+      const totalSeasons = Math.max(1, Math.floor(bidYears));
+      if (!twoWayLegal && fundingSource === 'biannual') {
+        const bae = getBiannualExceptionAvailability({
+          teamId,
+          payrollUSD: teamPayroll,
+          signingUSD: bidSalaryUSD,
+          contractSeasons: totalSeasons,
+          acquisitionType: 'signing',
+          season: prev.leagueStats.year,
+          currentDate: prev.date,
+          schedule: prev.schedule,
+          thresholds,
+          leagueStats: prev.leagueStats,
+        });
+        if (bae.blocked) return prev;
+      }
+      if (!twoWayLegal && fundingSource === 'mle') {
+        const mle = getMLEAvailability(teamId, teamPayroll, bidSalaryUSD, thresholds, prev.leagueStats);
+        if (mle.blocked || mle.type !== mleType || bidSalaryUSD > mle.available) return prev;
+      }
       if (prev.gameMode === 'gm' && currentPlayer && (currentPlayer.tid === -1 || currentPlayer.status === 'Free Agent') && prev.date) {
         const currentDate = parseGameDate(prev.date);
         const faStart = getCurrentOffseasonEffectiveFAStart(currentDate, prev.leagueStats as any, prev.schedule as any);
@@ -63,11 +162,14 @@ export function handleFaBiddingDispatchAction({
         teamId,
         teamName,
         teamLogoUrl,
-        salaryUSD,
-        years,
-        option,
-        ...(twoWay ? { twoWay: true } : {}),
-        ...(nonGuaranteed ? { nonGuaranteed: true } : {}),
+        salaryUSD: bidSalaryUSD,
+        years: bidYears,
+        option: finalOption,
+        ...(twoWayLegal ? { twoWay: true } : {}),
+        ...(nonGuaranteedLegal ? { nonGuaranteed: true } : {}),
+        fundingSource: twoWayLegal ? 'standard' : fundingSource,
+        ...(!twoWayLegal && fundingSource === 'mle' ? { mleType: mleType ?? null } : {}),
+        ...(finalAspireSideDeal ? { aspireSideDeal: finalAspireSideDeal } : {}),
         isUserBid: true,
         submittedDay: currentDay,
         expiresDay: decisionDay,
@@ -122,71 +224,47 @@ export function handleFaBiddingDispatchAction({
     const { playerId } = (action as any).payload as { playerId: string };
     const decision = action.type === 'MATCH_RFA_OFFER' ? 'match' : 'decline';
     setState(prev => {
-      const markets = (prev.faBidding?.markets ?? []).slice();
+      const markets = prev.faBidding?.markets ?? [];
       const idx = markets.findIndex(market => market.playerId === playerId && market.pendingMatch);
       if (idx < 0) return prev;
       const market = markets[idx];
-      const userTid = (prev as any).userTeamId ?? -999;
-      if (decision === 'match') {
-        const offerBid = market.bids.find(bid => bid.id === market.pendingMatchOfferBidId);
-        if (!offerBid) return prev;
-        const player = prev.players.find(p => p.internalId === playerId);
-        const team = prev.teams.find(t => t.id === userTid);
-        if (!player || !team) return prev;
-        const finalYears = offerBid.years;
-        const currentYear = prev.leagueStats?.year ?? new Date().getFullYear();
-        const newContract = {
-          amount: Math.round(offerBid.salaryUSD / 1_000),
-          exp: currentYear + finalYears - 1,
-          hasPlayerOption: offerBid.option === 'PLAYER',
-        };
-        const newContractYears = Array.from({ length: finalYears }, (_, index) => {
-          const year = currentYear + index;
-          return {
-            season: `${year - 1}-${String(year).slice(-2)}`,
-            guaranteed: Math.round(offerBid.salaryUSD * Math.pow(1.05, index)),
-            option: index === finalYears - 1 && offerBid.option === 'PLAYER' ? 'Player'
-              : index === finalYears - 1 && offerBid.option === 'TEAM' ? 'Team' : '',
-          };
-        });
-        const histYears = ((player as any).contractYears ?? []).filter((contractYear: any) => {
-          const year = parseInt(contractYear.season.split('-')[0], 10) + 1;
-          return year < currentYear;
-        });
-        const updatedPlayers = prev.players.map(item =>
-          item.internalId === playerId
-            ? clearWaiverMarkers({
-                ...item,
-                tid: userTid,
-                status: 'Active' as const,
-                contract: newContract,
-                contractYears: [...histYears, ...newContractYears],
-              } as any)
-            : item,
-        );
-        markets[idx] = { ...market, resolved: true, pendingMatch: false, matchedByPriorTeam: true };
-        const signingTeam = prev.teams.find(t => t.id === offerBid.teamId);
-        const totalValue = formatContractTotalUSD(offerBid.salaryUSD, finalYears);
-        const histEntry = {
-          text: `${team.name} matched ${signingTeam?.name ?? 'opposing'} offer sheet on ${player.name}: ${totalValue}/${finalYears}yr.`,
-          date: prev.date,
-          type: 'Signing',
-          playerIds: [player.internalId],
-        };
-        return {
-          ...prev,
-          players: updatedPlayers,
-          faBidding: { markets },
-          history: [...((prev as any).history ?? []), histEntry] as any,
-        } as any;
+      if (prev.gameMode !== 'gm' || market.pendingMatchPriorTid !== prev.userTeamId) return prev;
+      const markedMarket = { ...market, manualRfaDecision: decision };
+      const resolved = applyFAMarketTickPass({
+        ...prev,
+        faResolveAllToday: true,
+        faBidding: { markets: [markedMarket] },
+      }).stateWithSim;
+      const resolvedMarket = resolved.faBidding?.markets?.find(candidate => candidate.playerId === playerId);
+      const resolvedPlayer = resolved.players.find(player => player.internalId === playerId);
+      if (!resolvedMarket?.resolved || resolvedPlayer?.tid == null || resolvedPlayer.tid < 0) {
+        return { ...prev, lastOutcome: `The offer-sheet ${decision} could not be completed. Review roster and cap space, then try again.` };
       }
-
-      markets[idx] = {
-        ...market,
-        pendingMatchExpiresDay: (prev.day ?? 0) - 1,
-        pendingMatchPriorTid: -1,
+      const summary = buildFreeAgencyDailySummary(
+        prev,
+        resolved,
+        prev.pendingFreeAgencySummary?.day ?? 1,
+        prev.pendingFreeAgencySummary?.totalDays ?? 15,
+      );
+      summary.decisions.forEach(item => {
+        if (item.playerId === playerId) item.isUserTarget = true;
+      });
+      const mergedSummary = mergeFreeAgencySummaries(prev.pendingFreeAgencySummary, summary, true);
+      return {
+        ...resolved,
+        faResolveAllToday: prev.faResolveAllToday,
+        faBidding: {
+          markets: markets.map((candidate, index) => index === idx ? resolvedMarket : candidate),
+        },
+        pendingRFAOfferSheets: ((prev as any).pendingRFAOfferSheets ?? []).filter((sheet: any) => sheet.playerId !== playerId),
+        pendingFreeAgencySummary: {
+          ...mergedSummary,
+          combined: prev.pendingFreeAgencySummary?.combined,
+          commissionerReview: prev.pendingFreeAgencySummary?.commissionerReview,
+          signingConfirmation: prev.pendingFreeAgencySummary?.signingConfirmation,
+        },
+        lastOutcome: null,
       };
-      return { ...prev, faBidding: { markets } };
     });
     return true;
   }

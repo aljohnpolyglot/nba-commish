@@ -1,10 +1,11 @@
 import React from 'react';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Minus, Plus } from 'lucide-react';
 import { TeamDropdown } from '../shared/TeamDropdown';
 import { isTradeEligible } from '../../utils/signingMoratorium';
 import { isRecentlySignedLocked, isWalkingExpiring } from '../../services/trade/tradeValueEngine';
 import { formatPickLabel } from '../../services/draft/draftClassStrength';
 import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getTeamFullName } from '../../utils/teamNames';
 import type { DraftPick, NBAPlayer, NBATeam } from '../../types';
 import { OutgoingPickPill, OutgoingPill, PlayerRow } from './TradeMachineRows';
 
@@ -31,6 +32,7 @@ export const TradeMachineTeamColumn: React.FC<{
   cashCapRemaining: number;
   cashUSD: number;
   setCashUSD: (value: number) => void;
+  formatCash: (value: number) => string;
   activeTab: 'roster' | 'picks';
   setActiveTab: (tab: 'roster' | 'picks') => void;
   displayRoster: Array<NBAPlayer & { isIncoming?: boolean }>;
@@ -38,6 +40,7 @@ export const TradeMachineTeamColumn: React.FC<{
   canClickAssets: boolean;
   currentSeason: number;
   postDeadlinePreFA: boolean;
+  credibleResignExpiringIds?: Set<string>;
   rslCtx: { currentDate: string; leagueStats: any };
   onTogglePlayer: (player: NBAPlayer & { isIncoming?: boolean }) => void;
   onTogglePick: (pick: DraftPick) => void;
@@ -70,6 +73,7 @@ export const TradeMachineTeamColumn: React.FC<{
   cashCapRemaining,
   cashUSD,
   setCashUSD,
+  formatCash,
   activeTab,
   setActiveTab,
   displayRoster,
@@ -77,6 +81,7 @@ export const TradeMachineTeamColumn: React.FC<{
   canClickAssets,
   currentSeason,
   postDeadlinePreFA,
+  credibleResignExpiringIds,
   rslCtx,
   onTogglePlayer,
   onTogglePick,
@@ -97,6 +102,7 @@ export const TradeMachineTeamColumn: React.FC<{
         otherTeamId={otherTeamId}
         isOpen={dropdownOpen}
         onToggle={onToggleDropdown}
+        showRecords={false}
       />
     </div>
 
@@ -136,21 +142,30 @@ export const TradeMachineTeamColumn: React.FC<{
       )}
 
       {selectedTeamId !== null && (
-        <div className="px-4 pb-3 flex items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
-          <span>Cash:</span>
-          <input
-            type="range"
-            min={0}
-            max={cashCapRemaining}
-            step={250_000}
-            value={Math.min(cashUSD, cashCapRemaining)}
-            onChange={e => setCashUSD(parseInt(e.target.value, 10))}
-            className="flex-1 accent-indigo-500"
-          />
-          <span className={`tabular-nums ${cashUSD > 0 ? 'text-emerald-300' : 'text-slate-600'}`}>
-            ${(cashUSD / 1_000_000).toFixed(2)}M
+        <div className="px-4 pb-3 flex flex-wrap items-center gap-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+          <span className="mr-auto">Cash sent</span>
+          <button
+            type="button"
+            aria-label="Decrease cash consideration"
+            disabled={cashUSD <= 0}
+            onClick={() => setCashUSD(Math.max(0, cashUSD - 250_000))}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 transition-colors hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <Minus size={12} />
+          </button>
+          <span className={`min-w-20 text-center tabular-nums text-xs ${cashUSD > 0 ? 'text-emerald-300' : 'text-slate-500'}`}>
+            {formatCash(cashUSD)}
           </span>
-          <span className="text-[9px] text-slate-600">cap left ${(cashCapRemaining / 1_000_000).toFixed(1)}M</span>
+          <button
+            type="button"
+            aria-label="Increase cash consideration"
+            disabled={cashUSD >= cashCapRemaining}
+            onClick={() => setCashUSD(Math.min(cashCapRemaining, cashUSD + 250_000))}
+            className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 transition-colors hover:border-slate-500 hover:text-white disabled:cursor-not-allowed disabled:opacity-30"
+          >
+            <Plus size={12} />
+          </button>
+          <span className="w-full text-right text-[9px] text-slate-600">{formatCash(Math.max(0, cashCapRemaining - cashUSD))} available</span>
         </div>
       )}
     </div>
@@ -177,7 +192,7 @@ export const TradeMachineTeamColumn: React.FC<{
             && rslCtx.leagueStats?.postSigningMoratoriumEnabled !== false
             && !isTradeEligible(player, rslCtx.currentDate, rslCtx.leagueStats as any);
           const walking = !isSel && !(player as any).isIncoming
-            && (isWalkingExpiring(player, currentSeason, postDeadlinePreFA)
+            && (isWalkingExpiring(player, currentSeason, postDeadlinePreFA, credibleResignExpiringIds)
               || isRecentlySignedLocked(player, rslCtx.currentDate, rslCtx.leagueStats)
               || moratoriumLocked);
           return (
@@ -216,12 +231,14 @@ export const TradeMachineTeamColumn: React.FC<{
                 }`}
               >
                 <div className="w-10 h-10 rounded-full bg-slate-950 border border-slate-800 flex items-center justify-center p-2 shadow-inner flex-shrink-0">
-                  <img src={origTeam?.logoUrl} alt="" className="w-full h-full object-contain" />
+                  {origTeam?.logoUrl
+                    ? <img src={origTeam.logoUrl} alt="" className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                    : <span className="text-[8px] font-black text-indigo-300">{origTeam?.abbrev?.slice(0, 3) ?? 'PK'}</span>}
                 </div>
                 <div className="flex-1 text-left min-w-0">
                   <div className="text-sm font-black text-white uppercase tracking-tight">{formatPickLabel(pick, currentYear, lotterySlotByTid, false).toUpperCase()}</div>
                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-                    {stepienBlocks ? <span className="text-rose-400">Stepien Rule</span> : <>Via {origTeam?.name}</>}
+                    {stepienBlocks ? <span className="text-rose-400">Stepien Rule</span> : <>Via {origTeam ? getTeamFullName(origTeam) : 'Unknown team'}</>}
                   </div>
                 </div>
                 {isSelected && <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)]" />}

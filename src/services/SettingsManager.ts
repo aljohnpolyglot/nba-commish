@@ -21,13 +21,13 @@ export interface GameSettings {
   signingDifficulty: number; // default 50
   /** Career Win Shares required for Hall of Fame induction. Commissioner-only. Default 50 (real NBA benchmark is ~100). */
   hofWSThreshold: number; // default 50
-  /** Show the Executive Outcome panel after each simulated day. Only relevant when LLM is on. */
-  showExecutiveOutcome: boolean; // default true
-  /** Player name hover card style. 'k2' = full K2 ratings + stats grid; 'simple' = compact OVR + 3 stats. */
-  tooltipStyle: 'k2' | 'simple'; // default 'k2'
   /** Game simulation engine. 'realistic' = possession-by-possession (default, better advanced stats).
    *  'fast' = heuristic box-score generator (sub-second per game, used for season-long sim). */
-  simulatorMode: 'realistic' | 'fast'; // default 'realistic'
+  simulatorMode: 'realistic' | 'fast' | 'hybrid'; // default 'hybrid'
+  /** Historical real-player rating anchor. 0 = normal sim development, 100 = full historical curve. */
+  realPlayerDeterminism: number; // default 0
+  /** Presentation only: familiar league name (NBA) or country/division code (USA-1). */
+  leagueDisplayMode: 'name' | 'code';
 }
 
 const DEFAULT_SETTINGS: GameSettings = {
@@ -44,10 +44,13 @@ const DEFAULT_SETTINGS: GameSettings = {
   tradeDifficulty: 50,
   signingDifficulty: 50,
   hofWSThreshold: 50,
-  showExecutiveOutcome: false,
-  tooltipStyle: 'k2',
-  simulatorMode: 'realistic',
+  simulatorMode: 'hybrid',
+  realPlayerDeterminism: 0,
+  leagueDisplayMode: 'name',
 };
+
+const REAL_PLAYER_DETERMINISM_USER_SET_KEY = '__realPlayerDeterminismUserSet20260709';
+const REAL_PLAYER_DETERMINISM_RESET_KEY = '__realPlayerDeterminismDefaultReset20260709';
 
 export class SettingsManager {
   private static readonly STORAGE_KEY = 'nba_commish_settings';
@@ -59,8 +62,15 @@ export class SettingsManager {
         const parsed = JSON.parse(stored);
         if (parsed.__llmDefaultOff20260518 !== true) {
           parsed.enableLLM = false;
-          parsed.showExecutiveOutcome = false;
           parsed.__llmDefaultOff20260518 = true;
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed));
+        }
+        if (Object.prototype.hasOwnProperty.call(parsed, 'showExecutiveOutcome')) {
+          delete parsed.showExecutiveOutcome;
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed));
+        }
+        if (Object.prototype.hasOwnProperty.call(parsed, 'tooltipStyle')) {
+          delete parsed.tooltipStyle;
           localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed));
         }
         // Migration: llmPerformance was 1-10, now 1|2|3
@@ -71,6 +81,26 @@ export class SettingsManager {
         // Migration: add simulationDepth if missing
         if (parsed.simulationDepth === undefined) {
           parsed.simulationDepth = DEFAULT_SETTINGS.simulationDepth;
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed));
+        }
+        if (
+          (
+            parsed.__realPlayerDeterminismDefault20260704 === true &&
+            parsed.realPlayerDeterminism === 100
+          ) ||
+          (
+            parsed.realPlayerDeterminism === 100 &&
+            parsed[REAL_PLAYER_DETERMINISM_USER_SET_KEY] !== true &&
+            parsed[REAL_PLAYER_DETERMINISM_RESET_KEY] !== true
+          )
+        ) {
+          parsed.realPlayerDeterminism = DEFAULT_SETTINGS.realPlayerDeterminism;
+          delete parsed.__realPlayerDeterminismDefault20260704;
+          parsed[REAL_PLAYER_DETERMINISM_RESET_KEY] = true;
+          localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed));
+        }
+        if (parsed.realPlayerDeterminism === undefined) {
+          parsed.realPlayerDeterminism = DEFAULT_SETTINGS.realPlayerDeterminism;
           localStorage.setItem(this.STORAGE_KEY, JSON.stringify(parsed));
         }
         return { ...DEFAULT_SETTINGS, ...parsed };
@@ -87,7 +117,11 @@ export class SettingsManager {
 
   static saveSettings(settings: GameSettings): void {
     try {
-      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(settings));
+      const next: any = { ...settings };
+      if (typeof next.realPlayerDeterminism === 'number') {
+        next[REAL_PLAYER_DETERMINISM_USER_SET_KEY] = true;
+      }
+      localStorage.setItem(this.STORAGE_KEY, JSON.stringify(next));
     } catch (e) {
       console.error('Failed to save settings', e);
     }

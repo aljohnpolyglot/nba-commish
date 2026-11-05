@@ -1,4 +1,5 @@
-import type { SponsorshipSlot, SponsorIndustry } from '../../types/tycoon';
+import type { SponsorIndustry, SponsorPerformanceBonus, SponsorshipSlot } from '../../types/tycoon';
+import { getSponsorBonusProfile, SPONSOR_DEAL_RULES } from './sponsorPerkLibrary';
 
 // ─────────────────────────────────────────────────────────────────────────
 // Slot-level metadata
@@ -24,6 +25,17 @@ export const SLOT_OFFER_TITLE: Record<SponsorshipSlot, string> = {
   court: 'Court Logo',
   stadium: 'Arena Naming',
   practice: 'Practice Facility',
+};
+
+export const SPONSOR_SLOT_PAYMENT_MULTIPLIER: Record<SponsorshipSlot, number> = {
+  kit: SPONSOR_DEAL_RULES.coreSlotMultipliers.kit,
+  sleeve: SPONSOR_DEAL_RULES.coreSlotMultipliers.sleeve,
+  back: SPONSOR_DEAL_RULES.coreSlotMultipliers.back,
+  shorts: SPONSOR_DEAL_RULES.coreSlotMultipliers.shorts,
+  training: SPONSOR_DEAL_RULES.coreSlotMultipliers.training,
+  court: SPONSOR_DEAL_RULES.coreSlotMultipliers.court,
+  stadium: SPONSOR_DEAL_RULES.coreSlotMultipliers.stadium,
+  practice: SPONSOR_DEAL_RULES.coreSlotMultipliers.practice,
 };
 
 export type VisibilityTier = 'Prime' | 'High' | 'Medium' | 'Low';
@@ -242,20 +254,6 @@ export const DEAL_BREAKDOWN_RATIOS: Record<'premium' | 'gambling' | 'tech' | 'lo
 };
 
 // ─────────────────────────────────────────────────────────────────────────
-// Strategic Fit rubric
-// ─────────────────────────────────────────────────────────────────────────
-
-export type StrategicFitGrade = 'A+' | 'A' | 'B' | 'C' | 'D';
-
-export const STRATEGIC_FIT_GRADES: Record<StrategicFitGrade, { label: string; tint: string; copy: string }> = {
-  'A+': { label: 'Outstanding',  tint: 'text-emerald-300', copy: 'Outstanding match — premier opportunity for your club brand and long-term growth.' },
-  'A':  { label: 'Excellent',    tint: 'text-emerald-300', copy: 'Excellent match for your club\'s brand and long-term growth strategy.' },
-  'B':  { label: 'Good',         tint: 'text-emerald-400', copy: 'Solid commercial fit — supports club positioning with limited tradeoffs.' },
-  'C':  { label: 'Fair',         tint: 'text-amber-300',   copy: 'Workable deal but partial brand misalignment — weigh against alternatives.' },
-  'D':  { label: 'Poor',         tint: 'text-rose-400',    copy: 'Significant brand or audience mismatch — consider declining.' },
-};
-
-// ─────────────────────────────────────────────────────────────────────────
 // Negotiation window
 // ─────────────────────────────────────────────────────────────────────────
 
@@ -296,15 +294,15 @@ export const IMPACT_TIER_TINT: Record<ImpactTier, string> = {
 
 /** Visibility tier → typical impact tier mapping for the SPONSORSHIP IMPACT panel.
  *  Used as a sensible default until a real performance model exists. */
-export const SLOT_DEFAULT_IMPACT: Record<SponsorshipSlot, { brandExposure: ImpactTier; fanRecognition: ImpactTier; socialMedia: ImpactTier; commercial: ImpactTier; marketFit: ImpactTier }> = {
-  kit:      { brandExposure: 'High',      fanRecognition: 'High',   socialMedia: 'High',   commercial: 'High',   marketFit: 'Excellent' },
-  stadium:  { brandExposure: 'Excellent', fanRecognition: 'High',   socialMedia: 'Medium', commercial: 'High',   marketFit: 'High' },
-  sleeve:   { brandExposure: 'High',      fanRecognition: 'Medium', socialMedia: 'Medium', commercial: 'High',   marketFit: 'High' },
-  back:     { brandExposure: 'High',      fanRecognition: 'Medium', socialMedia: 'Medium', commercial: 'Medium', marketFit: 'High' },
-  court:    { brandExposure: 'High',      fanRecognition: 'Medium', socialMedia: 'Low',    commercial: 'Medium', marketFit: 'High' },
-  shorts:   { brandExposure: 'Medium',    fanRecognition: 'Low',    socialMedia: 'Low',    commercial: 'Medium', marketFit: 'Medium' },
-  training: { brandExposure: 'Medium',    fanRecognition: 'Low',    socialMedia: 'Medium', commercial: 'Low',    marketFit: 'Medium' },
-  practice: { brandExposure: 'Low',       fanRecognition: 'Low',    socialMedia: 'Low',    commercial: 'Low',    marketFit: 'Medium' },
+export const SLOT_DEFAULT_IMPACT: Record<SponsorshipSlot, { brandExposure: ImpactTier; fanRecognition: ImpactTier; socialMedia: ImpactTier; commercial: ImpactTier }> = {
+  kit:      { brandExposure: 'High',      fanRecognition: 'High',   socialMedia: 'High',   commercial: 'High' },
+  stadium:  { brandExposure: 'Excellent', fanRecognition: 'High',   socialMedia: 'Medium', commercial: 'High' },
+  sleeve:   { brandExposure: 'High',      fanRecognition: 'Medium', socialMedia: 'Medium', commercial: 'High' },
+  back:     { brandExposure: 'High',      fanRecognition: 'Medium', socialMedia: 'Medium', commercial: 'Medium' },
+  court:    { brandExposure: 'High',      fanRecognition: 'Medium', socialMedia: 'Low',    commercial: 'Medium' },
+  shorts:   { brandExposure: 'Medium',    fanRecognition: 'Low',    socialMedia: 'Low',    commercial: 'Medium' },
+  training: { brandExposure: 'Medium',    fanRecognition: 'Low',    socialMedia: 'Medium', commercial: 'Low' },
+  practice: { brandExposure: 'Low',       fanRecognition: 'Low',    socialMedia: 'Low',    commercial: 'Low' },
 };
 
 /** Default payment cadence + termination terms used in the CONTRACT TERMS panel. */
@@ -342,4 +340,32 @@ export function breakdownAnnualValue(
     performanceBonus: Math.round(valuePerYear * ratios.performanceBonus),
     appearanceClauses: Math.round(valuePerYear * ratios.appearanceClauses),
   };
+}
+
+export function buildSponsorPerformanceBonuses(
+  signedBaseAnnualValueEUR: number,
+  archetype: 'premium' | 'gambling' | 'tech' | 'local' | 'generic' | undefined,
+  bonusProfileId?: string,
+): SponsorPerformanceBonus[] {
+  const fallbackProfile = archetype === 'premium' ? 'premium' : archetype === 'local' ? 'local' : 'standard';
+  const profile = getSponsorBonusProfile(bonusProfileId) ?? getSponsorBonusProfile(fallbackProfile);
+  if (!profile) return [];
+  const label = (type: string, target: string | number): string => {
+    if (type === 'continental_qualification') return 'Qualify for continental competition';
+    if (type === 'league_title') return 'Win domestic league';
+    if (type === 'domestic_cup') return 'Win domestic cup';
+    if (type === 'playoff_qualification') return 'Reach playoffs';
+    if (type === 'average_home_attendance') return `Average home attendance above ${Math.round(Number(target) * 100)}%`;
+    if (type === 'home_sellouts') return `${target} home sellouts`;
+    if (type === 'academy_promotions') return `${target} academy promotion${Number(target) === 1 ? '' : 's'}`;
+    return type.replace(/_/g, ' ');
+  };
+  return profile.bonuses.map(condition => ({
+    id: condition.type,
+    type: condition.type,
+    target: condition.target,
+    label: label(condition.type, condition.target),
+    rate: condition.rate,
+    amountEUR: Math.round(signedBaseAnnualValueEUR * condition.rate),
+  }));
 }

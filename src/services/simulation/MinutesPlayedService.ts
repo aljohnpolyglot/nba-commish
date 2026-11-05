@@ -23,7 +23,7 @@ import { NBAPlayer as Player, NBATeam as Team } from '../../types';
 import { convertTo2KRating } from '../../utils/helpers';
 import { R } from './StatGenerator/helpers';
 import { StarterService } from './StarterService';
-import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
+import { getPlayerInjuryProfileForPlayer } from '../../utils/durabilityUtils';
 import { injurySeverityLevel } from './playThroughInjuriesFactor';
 import { getTeamRotationManagementEffects } from '../staff/staffGameplayEffects';
 import { applyManManagementToPool } from './rotationManagement';
@@ -33,7 +33,7 @@ import { applyManManagementToPool } from './rotationManagement';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface RotationResult {
-  /** Ordered player list: index 0–4 = starters, 5+ = bench by depth. */
+  /** Ordered player list: configured starter unit first, then bench by depth. */
   players: Player[];
   /** Total number of players in the rotation (7–13). */
   depth: number;
@@ -173,7 +173,7 @@ const NBA_AVG_INJURY_FREQ = 10;
  *   > 2.0  → extremely prone     → 30 min cap  (Zion, early-career Embiid)
  */
 function durabilityMinuteCap(player: Player): number {
-  const profile = getPlayerInjuryProfile(player.name);
+  const profile = getPlayerInjuryProfileForPlayer(player);
   if (!profile) return 40;
 
   const yearsPro = Math.max(1, (player.age ?? 26) - 19);
@@ -214,6 +214,7 @@ export class MinutesPlayedService {
     gamesRemaining: number = 41,
     depthOverride?: number,
     playThroughInjuries: number = 0,
+    playersOnCourt: number = 5,
   ): RotationResult {
     const roster  = overridePlayers ?? players.filter(p => p.tid === team.id);
     const healthy = roster.filter(p => !p.injury || p.injury.gamesRemaining <= 0);
@@ -227,12 +228,15 @@ export class MinutesPlayedService {
           return injurySeverityLevel(g) <= playThroughInjuries;
         })
       : healthy;
-    let pool      = playable.length >= 5 ? playable : roster.slice(0, Math.max(5, roster.length));
+    const starterCount = Math.max(1, Math.min(playersOnCourt, roster.length || playersOnCourt));
+    let pool = playable.length >= starterCount
+      ? playable
+      : roster.slice(0, Math.max(starterCount, roster.length));
 
     // Next-man-up: if short-handed (< 8 healthy bodies), pull the next available player
     // from the team's own roster — least-injured first (day-to-day before long-term).
     // Mirrors NBA "next man up" culture: the 9th/10th guy steps in, not a FA signing.
-    const MIN_ROTATION = 8;
+    const MIN_ROTATION = Math.min(roster.length, Math.max(8, starterCount + 3));
     if (pool.length < MIN_ROTATION) {
       const alreadyIn = new Set(pool.map(p => p.internalId));
       const callups = roster
@@ -247,6 +251,15 @@ export class MinutesPlayedService {
     // qualifying minutes is benched if we won't fall below MIN_ROTATION.
     // Guards against rookies / new arrivals with no stats: no stats → keep.
     {
+      const protectedDepth = Math.min(
+        pool.length,
+        Math.max(starterCount, depthOverride ?? starterCount),
+      );
+      const protectedPlayerIds = new Set(
+        sortByOVR(pool, season)
+          .slice(0, protectedDepth)
+          .map(player => player.internalId),
+      );
       const perSamples = pool.flatMap(p =>
         ((p as any).stats ?? []).filter((s: any) => s.season === season && !s.playoffs && (s.gp ?? 0) > 0)
       );
@@ -255,6 +268,7 @@ export class MinutesPlayedService {
         : 15;
       const PER_FLOOR = leaguePERAvg * 0.55;
       const trimmed = pool.filter(p => {
+        if (protectedPlayerIds.has(p.internalId)) return true;
         const pStats = ((p as any).stats ?? []).filter((s: any) => s.season === season && !s.playoffs && (s.gp ?? 0) > 0);
         if (pStats.length === 0) return true;
         const gp = pStats.reduce((a: number, s: any) => a + ((s.gp as number) ?? 0), 0);
@@ -275,24 +289,33 @@ export class MinutesPlayedService {
     const { depth: finalDepth, starMpg }   = ageAdjustment(
       sortByOVR(pool, season), ctxDepth, baseMpg + starMpgMod, season
     );
+    const blowoutDepthFloor = Math.abs(lead) > 25
+      ? 13
+      : Math.abs(lead) > 18
+        ? 12
+        : Math.abs(lead) > 10
+          ? 11
+          : 0;
+    const contextAdjustedDepth = Math.max(finalDepth, Math.min(pool.length, blowoutDepthFloor));
     // depthOverride (e.g. rotationDepthOverride=12 for All-Star) bypasses the
     // standings-based depth so that all selected players actually get into the rotation.
     // Floor raised from 8 to 9 so regular-season Ideal/Gameplan plans show a realistic
     // 9-man rotation instead of playoff-tight 8. Playoff games already tighten naturally
     // via the blowout/age pipeline; 9 is still plausible for deeper playoff teams.
     const management = getTeamRotationManagementEffects(team as any);
+    const maxRotation = Math.min(pool.length, Math.max(13, starterCount + 5));
     const depth = depthOverride
       ? Math.min(depthOverride, pool.length)
-      : Math.max(9, Math.min(13, finalDepth + management.depthShift));
+      : Math.max(Math.min(pool.length, Math.max(9, starterCount + 3)), Math.min(maxRotation, contextAdjustedDepth + management.depthShift));
 
     // ── Ordered rotation — StarterService for role-aware starters + bench ───
-    // StarterService.getRotation returns [5 starters, N bench] sorted by role fit
+    // StarterService.getRotation returns [configured starters, N bench] by role fit.
     // then OVR. Pass `depth` through so the bench fill honors the full rotation
     // (All-Star override=12 was getting clipped to StarterService's legacy 10-cap).
     const managedPool = applyManManagementToPool(team, pool, season);
     const originalById = new Map(pool.map(player => [player.internalId, player] as const));
     const roleOrdered = StarterService
-      .getRotation(team, players, lead, season, managedPool, true, depth)
+      .getRotation(team, players, lead, season, managedPool, true, depth, starterCount)
       .map(player => originalById.get(player.internalId) ?? player);
 
     const finalRotation = roleOrdered.slice(0, depth);
@@ -318,18 +341,31 @@ export class MinutesPlayedService {
     gamesRemaining: number = 41,
     depthOverride?: number,
     playThroughInjuries: number = 0,
+    playersOnCourt: number = 5,
   ): Player[] {
-    return this.getRotation(team, players, lead, season, overridePlayers, conferenceRank, gbFromLeader, gamesRemaining, depthOverride, playThroughInjuries).players;
+    return this.getRotation(
+      team,
+      players,
+      lead,
+      season,
+      overridePlayers,
+      conferenceRank,
+      gbFromLeader,
+      gamesRemaining,
+      depthOverride,
+      playThroughInjuries,
+      playersOnCourt,
+    ).players;
   }
 
   // ── B: HOW MANY MINUTES ───────────────────────────────────────────────────
 
   /**
    * Allocate playing time for every player in the rotation.
-   * Minutes sum to (regulation length + overtime length) × 5 after clamping.
+   * Minutes sum to game length × configured players on court after clamping.
    *
    * @param rotation  Ordered array from getRotation() / getRotationPlayers().
-   *                  Slots 0-4 are starters; 5+ are bench by depth.
+   *                  The configured starting unit comes first, then bench depth.
    * @param season    Season year for rating lookups.
    * @param lead      Score differential for blowout detection.
    * @param otCount   Number of OT periods.
@@ -347,6 +383,8 @@ export class MinutesPlayedService {
     overtimeDuration: number = 5,
     numQuarters: number = 4,
     minuteProfile: RotationMinuteProfile = 'default',
+    playersOnCourt: number = 5,
+    maxPlayerMinutes?: number,
   ): MinuteAllocation {
     const isBlowout    = Math.abs(lead) > 15;
     const isBigBlowout = Math.abs(lead) > 25;
@@ -372,9 +410,9 @@ export class MinutesPlayedService {
             ? (i < 2 ? 0.8 : i < 7 ? 0.35 : -0.35)
             : 0;
         const blowoutAdjust = isBigBlowout
-          ? (i < 5 ? -1.4 : i >= 7 ? 1.0 : 0.5)
+          ? (i < playersOnCourt ? -1.4 : i >= playersOnCourt + 2 ? 1.0 : 0.5)
           : isBlowout
-            ? (i < 5 ? -0.8 : i >= 7 ? 0.5 : 0.25)
+            ? (i < playersOnCourt ? -0.8 : i >= playersOnCourt + 2 ? 0.5 : 0.25)
             : 0;
         const playoffAdjust = isPlayoffs && !isBlowout
           ? (i < 7 ? 0.6 : -0.4)
@@ -383,7 +421,7 @@ export class MinutesPlayedService {
         const fatigue = endu < 40 ? (40 - endu) * 0.08 : 0;
         baseMins -= fatigue;
         baseMins = Math.min(baseMins, durabilityMinuteCap(p));
-      } else if (i < 5) {
+      } else if (i < playersOnCourt) {
         if (isYouthMode && starMpgTarget !== undefined) {
           // Youth starters: star gets target, each next slot steps down 2 min.
           // Slot 0: ~31, Slot 1: ~29, Slot 2: ~27, Slot 3: ~25, Slot 4: ~23
@@ -394,7 +432,7 @@ export class MinutesPlayedService {
           // ~37, Giannis ~33, Jokic ~34). Playoffs can ride the full target for
           // the short-rotation effect. Without this clamp the Ideal's drift-
           // absorber tops the star off to 41-42 which looked fake.
-          const regCap = 36;
+          const regCap = maxPlayerMinutes ?? 36;
           const effectiveTarget = isPlayoffs ? starMpgTarget : Math.min(regCap, starMpgTarget);
           baseMins = effectiveTarget + (Math.random() - 0.5) * 2; // ±1 min wobble
         } else {
@@ -402,7 +440,7 @@ export class MinutesPlayedService {
           // Slot 1: ~star+1, Slot 2: ~star-3, Slot 3: ~star-7, Slot 4: ~star-12
           const slotDrops = [-3, -5, -8, -13];
           const slotDrop = slotDrops[i - 1] ?? -13;
-          const starRef = Math.min(37, (starMpgTarget ?? 36) + 1);
+          const starRef = Math.min(maxPlayerMinutes ?? 37, (starMpgTarget ?? 36) + 1);
           const normalRef = isBigBlowout ? Math.min(31, starRef) : isBlowout ? Math.min(34, starRef) : starRef;
           baseMins = Math.max(20, normalRef + slotDrop + (Math.random() - 0.5) * 4);
         }
@@ -411,10 +449,13 @@ export class MinutesPlayedService {
         baseMins -= fatigue;
         // Durability cap: injury-prone stars (AD, Kawhi, Zion) play fewer minutes
         // than the standings model would otherwise suggest (load management).
-        baseMins = Math.min(baseMins, durabilityMinuteCap(p));
+        const playerMinuteCap = maxPlayerMinutes == null
+          ? durabilityMinuteCap(p)
+          : Math.max(durabilityMinuteCap(p), maxPlayerMinutes);
+        baseMins = Math.min(baseMins, playerMinuteCap);
       } else {
         // Bench — depth-tiered base minutes
-        const depthSlot = Math.min(i - 5, BENCH_TIERS.length - 1);
+        const depthSlot = Math.min(i - playersOnCourt, BENCH_TIERS.length - 1);
         const { base, spread } = BENCH_TIERS[depthSlot];
         const blowoutBonus = isBigBlowout ? 8 : isBlowout ? 4 : 0;
         // Youth teams boost deep bench slots so young reserves actually play
@@ -433,27 +474,32 @@ export class MinutesPlayedService {
           if ((lr?.pss ?? 50) > 65)                            baseMins += 1.5;  // playmaker → pushes over 20-min threshold
           if (((lr?.hgt ?? 50) + (lr?.reb ?? 50)) / 2 > 62)   baseMins += 1.0;  // rebounder → pushes over 12-min threshold
         }
+        if (isBigBlowout) baseMins = Math.max(8, baseMins);
+        else if (isBlowout) baseMins = Math.max(6, baseMins);
       }
 
       // Scale up for OT: a player who'd play 37 min in regulation plays ~44 min in 2OT.
       // Hard cap with jitter: ~38-40 min regular season, ~44-46 min playoffs.
       // Jitter prevents robotic "40:00" exactly — produces natural values like 38:17, 39:28.
       // Reg-season lowered from 40→38 to keep stars under 40 MPG (real-world norm).
-      const MAX_BASE = isEuroClubProfile
+      const defaultMaxBase = isEuroClubProfile
         ? (isPlayoffs ? 34 : 31)
         : (isPlayoffs ? 44 : 38);
+      const MAX_BASE = maxPlayerMinutes == null
+        ? defaultMaxBase
+        : Math.max(defaultMaxBase, Math.min(gameLengthMin, maxPlayerMinutes));
       const MAX_JITTER = 2; // ±0-2 min randomness
-      const maxMinutes = (MAX_BASE + Math.random() * MAX_JITTER) * otMultiplier;
+      const maxMinutes = Math.min(gameLengthMin, (MAX_BASE + Math.random() * MAX_JITTER) * otMultiplier);
       const scaledMins = Math.max(1, baseMins) * otMultiplier;
       return Math.min(maxMinutes, scaledMins);
     });
 
     // Hard clamp: trim bench first (deepest → shallowest), starters last
-    const TARGET = gameLengthMin * 5;
+    const TARGET = gameLengthMin * playersOnCourt;
     let total    = weights.reduce((a, b) => a + b, 0);
 
     const trimOrder = Array.from(
-      { length: Math.min(weights.length, 13) },
+      { length: weights.length },
       (_, k) => weights.length - 1 - k,
     );
     let ti = 0;
@@ -461,20 +507,27 @@ export class MinutesPlayedService {
       const idx = trimOrder[ti];
       // Deep bench in blowouts should keep ~8-12 min (garbage time quarter).
       // Starters/6th-man always trimmed down to 4-min absolute floor.
-      const minFloor = idx >= 5
+      const minFloor = idx >= playersOnCourt
         ? (isBigBlowout ? 8 : isBlowout ? 6 : 4)
         : 4;
-      if (weights[idx] > minFloor) { weights[idx] -= 1; total -= 1; }
+      if (weights[idx] > minFloor) {
+        const reduction = Math.min(1, weights[idx] - minFloor);
+        weights[idx] -= reduction;
+        total -= reduction;
+      }
       else { ti++; }
     }
 
     // Scale up if small rotation left minutes unallocated (initial total < TARGET).
-    // Without this, a 7-player rotation allocates ~225 min instead of 240, leaving a
-    // 15-min shortfall that coordinated.ts then dumps onto one player as a "rounding fix."
+    // Without this, a short rotation can leave a team-minute shortfall that
+    // coordinated.ts then dumps onto one player as a rounding fix.
     if (total < TARGET && weights.length > 0) {
       const scale = TARGET / total;
       for (let i = 0; i < weights.length; i++) {
-        weights[i] = Math.min(gameLengthMin, weights[i] * scale);
+        const configuredCap = maxPlayerMinutes == null
+          ? gameLengthMin
+          : Math.min(gameLengthMin, maxPlayerMinutes * otMultiplier);
+        weights[i] = Math.min(configuredCap, weights[i] * scale);
       }
       total = weights.reduce((a, b) => a + b, 0);
     }

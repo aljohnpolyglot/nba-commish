@@ -1,5 +1,6 @@
-import { NBACupState, NBAPlayer, Game, GameResult } from '../../types';
+import { NBACupState, NBAPlayer, Game, GameResult, LeagueStats } from '../../types';
 import { seededRandom } from './seededRandom';
+import { getAwardSettingActive } from '../awards/awardEraProgression';
 
 interface KOPerfEntry {
   playerId: string;
@@ -160,26 +161,32 @@ export function computeCupAwards(
  * Idempotent: if a player already has the same award for cup.year, it is not
  * duplicated (so re-running doesn't pile up entries).
  */
-export function applyCupAwardsToPlayers(cup: NBACupState, players: NBAPlayer[]): NBAPlayer[] {
+export function applyCupAwardsToPlayers(
+  cup: NBACupState,
+  players: NBAPlayer[],
+  leagueStats?: Partial<LeagueStats>,
+): NBAPlayer[] {
   if (!cup.mvpPlayerId && !cup.allTournamentTeam?.length && cup.championTid == null) return players;
 
   const allTeamIds = new Set((cup.allTournamentTeam ?? []).map(e => String(e.playerId)));
   const mvpId = cup.mvpPlayerId ? String(cup.mvpPlayerId) : undefined;
   const champTid = cup.championTid;
   const season = cup.year;
+  const enabled = (awardId: string) =>
+    !leagueStats || getAwardSettingActive(leagueStats, awardId, season);
 
   const has = (player: NBAPlayer, type: string): boolean =>
     !!(player as any).awards?.some((a: any) => a.season === season && a.type === type);
 
   return players.map(p => {
     const additions: Array<{ season: number; type: string }> = [];
-    if (mvpId && String(p.internalId) === mvpId && !has(p, 'NBA Cup MVP')) {
+    if (enabled('nba-cup-mvp') && mvpId && String(p.internalId) === mvpId && !has(p, 'NBA Cup MVP')) {
       additions.push({ season, type: 'NBA Cup MVP' });
     }
-    if (allTeamIds.has(String(p.internalId)) && !has(p, 'NBA Cup All-Tournament Team')) {
+    if (enabled('nba-cup-all-tournament') && allTeamIds.has(String(p.internalId)) && !has(p, 'NBA Cup All-Tournament Team')) {
       additions.push({ season, type: 'NBA Cup All-Tournament Team' });
     }
-    if (champTid != null && p.tid === champTid && !has(p, 'NBA Cup Champion')) {
+    if (enabled('nba-cup-champion') && champTid != null && p.tid === champTid && !has(p, 'NBA Cup Champion')) {
       additions.push({ season, type: 'NBA Cup Champion' });
     }
     if (additions.length === 0) return p;

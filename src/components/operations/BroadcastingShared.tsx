@@ -12,41 +12,57 @@ import {
   FICTIONAL_BROADCASTER_BADGE,
   getBroadcasterDisplayName,
 } from '../../utils/broadcastingUtils';
+import { resolveBroadcastPartnerLogoUrl } from '../../data/historicalBroadcastRights';
 
 export const TOTAL_REV_TARGET = 14.3;
 export const BASE_LP_SUBS = 15;
 export const OPTIMAL_LP_PRICE = 19.99;
 
 export const BROADCASTERS = [
-  { id: 'espn', name: 'ESPN / ABC', category: 'National TV', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/ESPN_wordmark.svg/1280px-ESPN_wordmark.svg.png', fee: 2.6, reach: 0.95, approval: 0.85, type: 'national', specialty: 'Balanced', defaultPhases: ['preseason', 'openingweek', 'regularseason', 'christmasdaygames', 'playoffsround1', 'playoffsround2', 'conferencefinals', 'nbafinals', 'nbadraftlottery', 'nbadraft'], defaultSchedule: ['Wednesday', 'Friday', 'Saturday', 'Sunday'] },
-  { id: 'nbc', name: 'NBC / Peacock', category: 'National TV', logo: 'https://upload.wikimedia.org/wikipedia/commons/7/7a/NBC_logo_2022_%28vertical%29.svg', fee: 2.5, reach: 0.92, approval: 0.9, type: 'national', specialty: 'Balanced', defaultPhases: ['preseason', 'openingweek', 'regularseason', 'allstarweekend', 'playoffsround1', 'playoffsround2', 'conferencefinals'], defaultSchedule: ['Monday', 'Tuesday', 'Sunday'] },
-  { id: 'amazon', name: 'Amazon Prime', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Amazon_Prime_Video_logo.svg/3840px-Amazon_Prime_Video_logo.svg.png', fee: 1.8, reach: 0.75, approval: 0.7, type: 'streaming', specialty: 'Revenue', defaultPhases: ['preseason', 'regularseason', 'nbacupinseason', 'playintournament', 'playoffsround1', 'playoffsround2'], defaultSchedule: ['Thursday', 'Friday', 'Saturday'] },
-  { id: 'tnt', name: 'TNT Sports', category: 'National TV', logo: 'https://upload.wikimedia.org/wikipedia/commons/0/00/TNT_Sports_Logo_%282017%29.png', fee: 1.2, reach: 0.85, approval: 0.95, type: 'national', specialty: 'Fan Favorite', defaultPhases: ['regularseason', 'playoffsround1', 'playoffsround2', 'conferencefinals'], defaultSchedule: ['Tuesday', 'Thursday'] },
-  { id: 'netflix', name: 'Netflix', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Netflix_2016_N_logo.svg/960px-Netflix_2016_N_logo.svg.png', fee: 0.9, reach: 0.88, approval: 0.82, type: 'streaming', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'apple', name: 'Apple TV+', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Apple_TV_logo.svg/960px-Apple_TV_logo.svg.png', fee: 1.5, reach: 0.6, approval: 0.78, type: 'streaming', specialty: 'Revenue', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'youtube', name: 'YouTube', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png', fee: 0.5, reach: 0.98, approval: 0.96, type: 'streaming', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'cbs', name: 'CBS Sports', category: 'National TV', logo: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7V6VM0kdDSSLVxjYSkeD5pSbOpDfOgvdA1Q&s', fee: 1.1, reach: 0.88, approval: 0.84, type: 'national', specialty: 'Balanced', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'fox', name: 'FOX Sports', category: 'National TV', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/FOX_Sports_logo.svg/1280px-FOX_Sports_logo.svg.png', fee: 1.3, reach: 0.86, approval: 0.8, type: 'national', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'meta', name: 'Meta / Facebook', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/2023_Facebook_icon.svg/960px-2023_Facebook_icon.svg.png', fee: 0.4, reach: 0.9, approval: 0.65, type: 'streaming', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'hulu', name: 'Hulu', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Hulu_logo_%282018%29.svg/960px-Hulu_logo_%282018%29.svg.png', fee: 0.7, reach: 0.72, approval: 0.8, type: 'streaming', specialty: 'Balanced', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'disney', name: 'Disney+', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Disney%2B_logo.svg/960px-Disney%2B_logo.svg.png', fee: 0.8, reach: 0.8, approval: 0.85, type: 'streaming', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'hbo', name: 'Max (HBO)', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/HBO_Max_2024.svg/250px-HBO_Max_2024.svg.png', fee: 1, reach: 0.68, approval: 0.88, type: 'streaming', specialty: 'Revenue', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'paramount', name: 'Paramount+', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/en/1/1e/Paramount_Global.svg', fee: 0.6, reach: 0.65, approval: 0.75, type: 'streaming', specialty: 'Balanced', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'abc', name: 'ABC', category: 'National TV', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/American_Broadcasting_Company_Logo.svg/250px-American_Broadcasting_Company_Logo.svg.png', fee: 1.4, reach: 0.98, approval: 0.92, type: 'national', specialty: 'Reach', defaultPhases: ['regularseason', 'christmasdaygames', 'nbafinals'], defaultSchedule: ['Saturday', 'Sunday'] },
-  { id: 'fubo', name: 'Fubo', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/c/cb/Fubo_2023.svg', fee: 0.3, reach: 0.45, approval: 0.7, type: 'streaming', specialty: 'Niche', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'sling', name: 'Sling TV', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Sling_TV_logo.svg/1280px-Sling_TV_logo.svg.png', fee: 0.25, reach: 0.4, approval: 0.68, type: 'streaming', specialty: 'Niche', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'tencent', name: 'Tencent', category: 'Streaming', logo: 'https://upload.wikimedia.org/wikipedia/commons/2/22/Tencent_Logo.svg', fee: 0.8, reach: 0.5, approval: 0.6, type: 'streaming', specialty: 'International', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'pif', name: 'Saudi PIF', category: 'National TV', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Public_Investment_Fund_%28Saudi_Arabia%29_logo.svg/960px-Public_Investment_Fund_%28Saudi_Arabia%29_logo.svg.png', fee: 3.5, reach: 0.3, approval: 0.15, type: 'national', specialty: 'Revenue (Extreme)', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'fanduel', name: 'FanDuel', category: 'National TV', logo: 'https://cdn.worldvectorlogo.com/logos/fanduel-logo-2022.svg', fee: 0.9, reach: 0.55, approval: 0.4, type: 'national', specialty: 'Revenue', defaultPhases: ['regularseason'], defaultSchedule: [] },
-  { id: 'streameast', name: 'Streameast', category: 'Special', logo: 'https://pbs.twimg.com/media/Gz7WM8yWQAIH-7g.jpg', fee: 0, reach: 0.99, approval: 1.2, type: 'special', specialty: 'Piracy', defaultPhases: ['preseason', 'openingweek', 'regularseason', 'nbacupinseason', 'christmasdaygames', 'allstarweekend', 'playintournament', 'playoffsround1', 'playoffsround2', 'conferencefinals', 'nbafinals', 'nbadraftlottery', 'nbadraft'], defaultSchedule: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
+  { id: 'dumont', name: 'DuMont', category: 'National TV', logo: resolveBroadcastPartnerLogoUrl('dumont'), fee: 0.000039, reach: 0.18, approval: 0.58, type: 'national', specialty: 'Early Television', defaultPhases: ['regularseason'], defaultSchedule: ['Saturday'] },
+  { id: 'sni', name: 'SNI / Hughes', category: 'Syndication', logo: resolveBroadcastPartnerLogoUrl('sni'), fee: 0.000325, reach: 0.35, approval: 0.62, type: 'national', specialty: 'Syndication', defaultPhases: ['regularseason'], defaultSchedule: ['Saturday', 'Sunday'] },
+  { id: 'usa', name: 'USA Network', category: 'Cable', logo: resolveBroadcastPartnerLogoUrl('usa'), fee: 0.019, reach: 0.48, approval: 0.72, type: 'national', specialty: 'Early Cable', defaultPhases: ['regularseason', 'playoffsround1'], defaultSchedule: ['Thursday', 'Friday'] },
+  { id: 'espn', name: 'ESPN / ABC', category: 'National TV', logo: resolveBroadcastPartnerLogoUrl('espn'), fee: 2.6, reach: 0.95, approval: 0.85, type: 'national', specialty: 'Balanced', defaultPhases: ['preseason', 'openingweek', 'regularseason', 'christmasdaygames', 'playoffsround1', 'playoffsround2', 'conferencefinals', 'nbafinals', 'nbadraftlottery', 'nbadraft'], defaultSchedule: ['Wednesday', 'Friday', 'Saturday', 'Sunday'] },
+  { id: 'nbc', name: 'NBC / Peacock', category: 'National TV', logo: resolveBroadcastPartnerLogoUrl('nbc'), fee: 2.5, reach: 0.92, approval: 0.9, type: 'national', specialty: 'Balanced', defaultPhases: ['preseason', 'openingweek', 'regularseason', 'allstarweekend', 'playoffsround1', 'playoffsround2', 'conferencefinals'], defaultSchedule: ['Monday', 'Tuesday', 'Sunday'] },
+  { id: 'amazon', name: 'Amazon Prime', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('amazon'), fee: 1.8, reach: 0.75, approval: 0.7, type: 'streaming', specialty: 'Revenue', defaultPhases: ['preseason', 'regularseason', 'nbacupinseason', 'playintournament', 'playoffsround1', 'playoffsround2'], defaultSchedule: ['Thursday', 'Friday', 'Saturday'] },
+  { id: 'tnt', name: 'TNT Sports', category: 'National TV', logo: resolveBroadcastPartnerLogoUrl('tnt'), fee: 1.2, reach: 0.85, approval: 0.95, type: 'national', specialty: 'Fan Favorite', defaultPhases: ['regularseason', 'playoffsround1', 'playoffsround2', 'conferencefinals'], defaultSchedule: ['Tuesday', 'Thursday'] },
+  { id: 'netflix', name: 'Netflix', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('netflix'), fee: 0.9, reach: 0.88, approval: 0.82, type: 'streaming', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'apple', name: 'Apple TV+', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('apple'), fee: 1.5, reach: 0.6, approval: 0.78, type: 'streaming', specialty: 'Revenue', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'youtube', name: 'YouTube', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('youtube'), fee: 0.5, reach: 0.98, approval: 0.96, type: 'streaming', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'cbs', name: 'CBS Sports', category: 'National TV', logo: resolveBroadcastPartnerLogoUrl('cbs'), fee: 1.1, reach: 0.88, approval: 0.84, type: 'national', specialty: 'Balanced', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'fox', name: 'FOX Sports', category: 'National TV', logo: resolveBroadcastPartnerLogoUrl('fox'), fee: 1.3, reach: 0.86, approval: 0.8, type: 'national', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'meta', name: 'Meta / Facebook', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('meta'), fee: 0.4, reach: 0.9, approval: 0.65, type: 'streaming', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'hulu', name: 'Hulu', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('hulu'), fee: 0.7, reach: 0.72, approval: 0.8, type: 'streaming', specialty: 'Balanced', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'disney', name: 'Disney+', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('disney'), fee: 0.8, reach: 0.8, approval: 0.85, type: 'streaming', specialty: 'Reach', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'hbo', name: 'Max (HBO)', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('hbo'), fee: 1, reach: 0.68, approval: 0.88, type: 'streaming', specialty: 'Revenue', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'paramount', name: 'Paramount+', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('paramount'), fee: 0.6, reach: 0.65, approval: 0.75, type: 'streaming', specialty: 'Balanced', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'abc', name: 'ABC', category: 'National TV', logo: resolveBroadcastPartnerLogoUrl('abc'), fee: 1.4, reach: 0.98, approval: 0.92, type: 'national', specialty: 'Reach', defaultPhases: ['regularseason', 'christmasdaygames', 'nbafinals'], defaultSchedule: ['Saturday', 'Sunday'] },
+  { id: 'fubo', name: 'Fubo', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('fubo'), fee: 0.3, reach: 0.45, approval: 0.7, type: 'streaming', specialty: 'Niche', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'sling', name: 'Sling TV', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('sling'), fee: 0.25, reach: 0.4, approval: 0.68, type: 'streaming', specialty: 'Niche', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'tencent', name: 'Tencent', category: 'Streaming', logo: resolveBroadcastPartnerLogoUrl('tencent'), fee: 0.8, reach: 0.5, approval: 0.6, type: 'streaming', specialty: 'International', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'pif', name: 'Saudi PIF', category: 'National TV', logo: resolveBroadcastPartnerLogoUrl('pif'), fee: 3.5, reach: 0.3, approval: 0.15, type: 'national', specialty: 'Revenue (Extreme)', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'fanduel', name: 'FanDuel', category: 'National TV', logo: resolveBroadcastPartnerLogoUrl('fanduel'), fee: 0.9, reach: 0.55, approval: 0.4, type: 'national', specialty: 'Revenue', defaultPhases: ['regularseason'], defaultSchedule: [] },
+  { id: 'streameast', name: 'Streameast', category: 'Special', logo: resolveBroadcastPartnerLogoUrl('streameast'), fee: 0, reach: 0.99, approval: 1.2, type: 'special', specialty: 'Piracy', defaultPhases: ['preseason', 'openingweek', 'regularseason', 'nbacupinseason', 'christmasdaygames', 'allstarweekend', 'playintournament', 'playoffsround1', 'playoffsround2', 'conferencefinals', 'nbafinals', 'nbadraftlottery', 'nbadraft'], defaultSchedule: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'] },
 ] as const;
 
 export type BroadcasterId = (typeof BROADCASTERS)[number]['id'];
-export type Broadcaster = (typeof BROADCASTERS)[number];
+export type Broadcaster = {
+  id: BroadcasterId;
+  name: string;
+  category: string;
+  logo: string | null;
+  fee: number;
+  reach: number;
+  approval: number;
+  type: 'national' | 'streaming' | 'special';
+  specialty: string;
+  defaultPhases: readonly string[];
+  defaultSchedule: readonly string[];
+};
 export type BroadcastPhase = { id: string; name: string; baseViewers: number; days: number };
 export type BroadcastScheduleDay = { day: string; pri: number; sec: number; tipoff: string };
 export type BroadcastFilter = 'All' | 'National TV' | 'Streaming';
-export type BroadcastingViewStep = 'roster' | 'phases' | 'weekly' | 'leaguepass' | 'dashboard';
+export type BroadcastingViewStep = 'roster' | 'phases' | 'weekly' | 'dashboard';
 
 export const PHASE_DATA: BroadcastPhase[] = [
   { id: 'preseason', name: 'Preseason', baseViewers: 0.5, days: 21 },
@@ -100,6 +116,17 @@ export const getGrade = (val: number, thresholds: { S: number; A: number; B: num
 
 export const gradeColor = (grade: string) =>
   ({ S: 'text-purple-400', A: 'text-emerald-400', B: 'text-blue-400', C: 'text-amber-400', D: 'text-rose-400', F: 'text-rose-600' })[grade] ?? 'text-rose-600';
+
+export const formatBroadcastFee = (valueInBillions: number) => {
+  if (!Number.isFinite(valueInBillions) || valueInBillions <= 0) return 'FREE';
+  const usd = valueInBillions * 1_000_000_000;
+  const compact = (value: number, digits: number) =>
+    value.toFixed(digits).replace(/\.?0+$/, '');
+  if (usd >= 1_000_000_000) return `$${compact(usd / 1_000_000_000, 2)}B`;
+  if (usd >= 1_000_000) return `$${compact(usd / 1_000_000, 1)}M`;
+  if (usd >= 1_000) return `$${compact(usd / 1_000, 0)}K`;
+  return `$${Math.round(usd).toLocaleString('en-US')}`;
+};
 
 export const getBroadcastPartnerName = (id: string, isFictional: boolean) =>
   getBroadcasterDisplayName(id, isFictional);
@@ -185,13 +212,9 @@ export const BroadcasterCard: React.FC<BroadcasterCardProps> = ({
           <FictionalBadge id={broadcaster.id} size="lg" />
         ) : (
           <div className="w-12 h-12 bg-white rounded-xl p-2 flex items-center justify-center overflow-hidden shrink-0 border border-zinc-700">
-            <img
-              src={broadcaster.logo}
-              alt={name}
-              className="max-w-full max-h-full object-contain"
-              referrerPolicy="no-referrer"
-              onError={(event) => { (event.target as HTMLImageElement).style.display = 'none'; }}
-            />
+            {broadcaster.logo
+              ? <img src={broadcaster.logo} alt={name} className="max-w-full max-h-full object-contain" referrerPolicy="no-referrer" />
+              : <span className="text-xs font-black text-slate-800">{name.slice(0, 3).toUpperCase()}</span>}
           </div>
         )}
         <div className="flex-1 min-w-0">
@@ -209,7 +232,7 @@ export const BroadcasterCard: React.FC<BroadcasterCardProps> = ({
       <div className="mt-4 grid grid-cols-3 gap-2">
         <div className="text-center">
           <div className="text-[9px] text-zinc-500 uppercase">Fee</div>
-          <div className="text-xs font-bold text-emerald-400">{broadcaster.fee === 0 ? 'FREE' : `$${broadcaster.fee}B`}</div>
+          <div className="text-xs font-bold text-emerald-400">{formatBroadcastFee(broadcaster.fee)}</div>
         </div>
         <div className="text-center">
           <div className="text-[9px] text-zinc-500 uppercase">Reach</div>

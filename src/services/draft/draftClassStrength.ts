@@ -21,7 +21,7 @@
  */
 
 import type { NBAPlayer } from '../../types';
-import { calcPot2K } from '../trade/tradeValueEngine';
+import { getProspectDisplayPotential } from '../../utils/playerRatings';
 
 /** Years into the future we score class strength for (0=current, 1=next, 2=+2). */
 const SCOUT_HORIZON_YEARS = 2;
@@ -53,7 +53,7 @@ export function computeDraftClassStrength(
 
   const pots = players
     .filter(p => p.tid === -2 && p.draft?.year === year)
-    .map(p => calcPot2K(p, currentYear))
+    .map(p => getProspectDisplayPotential(p, currentYear))
     .filter(v => v > 0)
     .sort((a, b) => b - a)
     .slice(0, SAMPLE_SIZE);

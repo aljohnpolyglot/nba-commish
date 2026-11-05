@@ -118,10 +118,39 @@ const getModelForAction = (actionType?: string): string => {
     return SettingsManager.getModelForTask('simulation');
 };
 
+const NATIVE_COMMISSIONER_ACTIONS = new Set([
+  'EXECUTIVE_TRADE',
+  'FORCE_TRADE',
+  'SIGN_FREE_AGENT',
+  'ADJUST_FINANCIALS',
+  'SUSPEND_PLAYER',
+  'DRUG_TEST_PERSON',
+  'WAIVE_PLAYER',
+  'EXERCISE_TEAM_OPTION',
+  'DECLINE_TEAM_OPTION',
+  'CONVERT_CONTRACT_TYPE',
+  'FIRE_PERSONNEL',
+  'RETIRE_PERSONNEL',
+  'SABOTAGE_PLAYER',
+  'FINE_PERSON',
+  'GIVE_MONEY',
+  'VISIT_NON_NBA_TEAM',
+  'INVITE_PERFORMANCE',
+  'TRAVEL',
+  'INVITE_DINNER',
+  'GO_TO_CLUB',
+  'ENDORSE_HOF',
+  'GLOBAL_GAMES',
+  'TRANSFER_FUNDS',
+  'SET_CHRISTMAS_GAMES',
+  'ADD_PRESEASON_INTERNATIONAL',
+  'CELEBRITY_ROSTER',
+]);
+
 export async function advanceDay(currentState: GameState, action: UserAction | null, storySeeds: string[] = [], dailyResults: any[] = [], pendingHypnosis: any[] = [], recentDMs: any[] = []): Promise<any> {
   const settings = SettingsManager.getSettings();
-  if (!settings.enableLLM) {
-    let outcomeText = "The day has passed with standard league activities.";
+  if (!settings.enableLLM || action?.payload?.nativeOnly === true || (action?.type && NATIVE_COMMISSIONER_ACTIONS.has(action.type))) {
+    let outcomeText = action?.payload?.outcomeText ?? "The day has passed with standard league activities.";
     if (action?.type === 'SIMULATE_TO_DATE') {
       // Build a rich summary from dailyResults
       if (dailyResults && dailyResults.length > 0) {
@@ -180,13 +209,13 @@ export async function advanceDay(currentState: GameState, action: UserAction | n
         personalWealth: 0,
         legacy: 0
       },
-      newEmails: [],
-      newNews: [],
-      newSocialPosts: []
+      newEmails: action?.payload?.nativeEmails ?? [],
+      newNews: action?.payload?.nativeNews ?? [],
+      newSocialPosts: action?.payload?.nativeSocialPosts ?? []
     };
   }
 
-  const gamePhase = getGamePhase(currentState.date);
+  const gamePhase = getGamePhase(currentState.date, currentState.leagueStats);
   let leagueContext = "";
   
   if (action && (action.type === 'EXECUTIVE_TRADE' || action.type === 'FORCE_TRADE') && action.payload?.teamAId !== undefined && action.payload?.teamBId !== undefined) {
@@ -309,7 +338,7 @@ export async function generateLeaguePulse(
         return { newEmails: [], newNews: [], newSocialPosts: [] };
     }
 
-    const gamePhase = getGamePhase(currentState.date);
+    const gamePhase = getGamePhase(currentState.date, currentState.leagueStats);
     const leagueContext = generateLeagueContext(currentState.players, currentState.teams, currentState.staff!, currentState.commissionerName);
     const leagueSummaryContext = generateLeagueSummaryContext(currentState.teams, currentState.players, dailyResults, currentState.leagueStats?.year);
     const prompt = generateLeaguePulsePrompt(currentState, gamePhase, leagueContext, leagueSummaryContext);

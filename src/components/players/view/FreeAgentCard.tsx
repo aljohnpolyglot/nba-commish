@@ -1,17 +1,20 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import { NBAPlayer, NonNBATeam } from '../../../types';
-import { getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
 import { getPlayerImage } from '../../central/view/bioCache';
 import { useGame } from '../../../store/GameContext';
-import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
-import { isPlausibleActiveMarket } from '../../../services/freeAgencyBidding';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { CountryFlag } from '../../shared/CountryFlag';
 import { formatFuzzedRating } from '../../../utils/scoutingFuzz';
 import { isNonNbaIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { isPbaRosterLocal } from '../../../services/pba/importManager';
 import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { isExternalLeagueStatus } from '../../../constants';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { getPlayerNationalityCountries } from '../../../utils/playerNationality';
 
 const LEAGUE_LOGOS: Record<string, string> = {
   PBA: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Philippine_Basketball_Association_logo.svg/200px-Philippine_Basketball_Association_logo.svg.png',
@@ -25,20 +28,19 @@ interface FreeAgentCardProps {
   player: NBAPlayer;
   nonNBATeams?: NonNBATeam[];
   onClick: (player: NBAPlayer) => void;
-  onViewOffers?: (player: NBAPlayer) => void;
 }
 
-export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeams = [], onClick, onViewOffers }) => {
+export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeams = [], onClick }) => {
   const { state } = useGame();
   const nonNbaIsolated = isNonNbaIsolatedMode(state);
   const pbaMode = isPbaIsolatedMode(state);
-  const showImportBadge = pbaMode && !isPbaRosterLocal(player, state.leagueStats as any);
   const simYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const pbaLocal = pbaMode && isPbaRosterLocal(player, state.leagueStats as any);
+  const showImportBadge = pbaMode && !pbaLocal;
   const age = getDisplayAge(player, simYear);
   const ovr = getDisplayOverall(player, simYear);
   const displayOvr = formatFuzzedRating(ovr, state, player);
-  const country = getCountryFromLoc(player.born?.loc);
-  const countryCode = getCountryCode(country);
+  const countries = getPlayerNationalityCountries(player as NBAPlayer & { nationality?: unknown }).slice(0, 2);
 
   const resolvedTeam = player.tid >= 0
     ? resolveAnyTeam(player.tid, state.teams, nonNBATeams)
@@ -50,21 +52,18 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   const nbaTeam = isNBA
     ? state.teams.find(t => t.id === player.tid) ?? null
     : null;
-  const teamLogo = nbaTeam?.logoUrl || nonNBATeam?.imgURL || (resolvedTeam as any)?.logoUrl || null;
-  const leagueLogo = !nonNbaIsolated && !nbaTeam && player.status ? LEAGUE_LOGOS[player.status] || null : null;
+  const teamLogo = resolvedTeam ? getResolvedTeamLogoUrl(resolvedTeam, simYear) || null : null;
+  const leagueLogo = player.tid !== -1 && !nonNbaIsolated && !nbaTeam && player.status ? LEAGUE_LOGOS[player.status] || null : null;
 
   let orgLabel = 'Free Agent';
   if (nbaTeam) {
     // BBGM's NBATeam.name already contains the full "Los Angeles Lakers" form — don't double-prefix region.
     orgLabel = nbaTeam.name;
   } else if (nonNBATeam) {
-    // BBGM stores region + name separately — combine them for full team name
-    orgLabel = nonNBATeam.region
-      ? `${nonNBATeam.region} ${nonNBATeam.name}`.trim()
-      : nonNBATeam.name;
+    orgLabel = getTeamFullName(nonNBATeam);
   } else if (resolvedTeam) {
     orgLabel = resolvedTeam.name;
-  } else if (!nonNbaIsolated && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
+  } else if (player.tid !== -1 && !nonNbaIsolated && isExternalLeagueStatus(player.status)) {
     orgLabel = player.status!;
   }
 
@@ -81,15 +80,6 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
   const isSuspended = player.suspension && player.suspension.gamesRemaining > 0;
   const isAvailable = !isInjured && !isSuspended;
 
-  const activeBidCount = (() => {
-    const market = state.faBidding?.markets?.find(m =>
-      m.playerId === player.internalId &&
-      !m.resolved &&
-      isPlausibleActiveMarket(m as any, state, player)
-    );
-    return market?.bids?.filter(b => b.status === 'active' && !b.isUserBid).length ?? 0;
-  })();
-
   return (
     <motion.div
       layout
@@ -104,19 +94,17 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
       <div className="p-4">
         <div className="flex items-center gap-4 relative z-10">
           <div className="relative flex-shrink-0">
-            <div className={`w-16 h-16 rounded-2xl bg-slate-800 overflow-hidden border ${isAvailable ? 'border-slate-700' : 'border-rose-500/50'} flex items-center justify-center relative`}>
-              {(() => {
-                const img = getPlayerImage(player);
-                const face = (player as any).face;
-                if (img) return <img src={img} alt={player.name} loading="lazy" className={`w-full h-full object-cover group-hover:scale-110 transition-transform duration-500 ${!isAvailable ? 'grayscale-[0.5]' : ''}`} referrerPolicy="no-referrer" onError={e => { e.currentTarget.style.display = 'none'; }} />;
-                if (isRealFaceConfig(face)) return <div className="absolute left-1/2 top-1/2 w-[136%] h-[136%]" style={{ transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div>;
-                return <span className="text-xl font-black text-slate-500">{player.name[0]}</span>;
-              })()}
-            </div>
-            {/* OVR Badge — matches PlayerCard.tsx style */}
-            <div className="absolute -bottom-1 -right-1 w-8 h-8 bg-slate-950 rounded-full flex items-center justify-center border-2 border-slate-800">
-              <span className="text-[10px] font-black text-white">{displayOvr}</span>
-            </div>
+            <PlayerPortrait
+              imgUrl={getPlayerImage(player)}
+              face={(player as any).face}
+              playerName={player.name}
+              playerIdentity={player}
+              teamLogoUrl={teamLogo ?? undefined}
+              fallbackTeamLogoUrl={player.status === 'PBA' ? LEAGUE_LOGOS.PBA : undefined}
+              overallRating={ovr}
+              ovrLabel={displayOvr}
+              size={64}
+            />
           </div>
 
           <div className="flex-1 min-w-0">
@@ -126,7 +114,7 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
               </h4>
               {!isAvailable && (
                 <span className="text-[8px] font-black text-rose-500 bg-rose-500/10 px-1.5 py-0.5 rounded uppercase tracking-tighter whitespace-nowrap flex-shrink-0">
-                  {isInjured ? `OUT` : 'SUSP'}
+                  {isInjured ? 'OUT' : /red card/i.test(player.suspension?.reason ?? '') ? 'RED CARD' : 'SUSP'}
                 </span>
               )}
             </div>
@@ -146,14 +134,9 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
               )}
             </div>
             <div className="flex items-center gap-1.5 mt-1">
-              {countryCode && (
-                <img
-                  src={`https://flagcdn.com/w20/${countryCode}.png`}
-                  alt=""
-                  loading="lazy"
-                  className="w-3 h-2 object-cover rounded-[1px] flex-shrink-0"
-                />
-              )}
+              {countries.map(country => (
+                <CountryFlag key={country} country={country} className="h-2 w-3" imageClassName="h-full w-full rounded-[1px] object-cover" />
+              ))}
               {teamLogo && (
                 <img
                   src={teamLogo}
@@ -179,16 +162,6 @@ export const FreeAgentCard: React.FC<FreeAgentCardProps> = ({ player, nonNBATeam
           )}
         </div>
       </div>
-      {activeBidCount > 0 && onViewOffers && (
-        <div className="px-4 pb-3 -mt-1">
-          <button
-            onClick={e => { e.stopPropagation(); onViewOffers(player); }}
-            className="w-full text-[9px] font-black uppercase tracking-widest py-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-400 hover:bg-amber-500/20 transition-colors"
-          >
-            {activeBidCount} Competing Offer{activeBidCount > 1 ? 's' : ''}
-          </button>
-        </div>
-      )}
       {/* Accent Glow */}
       <div className="absolute top-0 right-0 w-24 h-24 bg-indigo-500/5 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-indigo-500/10 transition-all" />
     </motion.div>

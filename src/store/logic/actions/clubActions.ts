@@ -2,19 +2,7 @@ import { GameState, UserAction } from '../../../types';
 import { advanceDay } from '../../../services/llm/llm';
 import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { CLUB_DATA } from '../../../data/clubs';
-
-const EMAIL_SUBJECTS = [
-    "Last Night",
-    "That Was Fun 😄",
-    "About Last Night...",
-    "You Left Something",
-    "Hey You",
-    "Great Time Last Night!",
-    "Miss You Already",
-    "We Should Do That Again",
-    "Still Smiling 😊",
-    "Quick Question",
-];
+import { createNightlifeMessage } from '../../../services/messages/nightlifeContacts';
 
 export const handleGoToClub = async (state: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { location, contacts } = action.payload;
@@ -65,30 +53,10 @@ export const handleGoToClub = async (state: GameState, action: UserAction, simRe
 
     // 50% chance of a DM from a girl
     if (Math.random() < 0.5) {
-        const girlNames = ["Tiffany", "Brittany", "Ashley", "Jessica", "Chloe", "Madison", "Alexis", "Sasha"];
-        const girlName = girlNames[Math.floor(Math.random() * girlNames.length)];
-        const messages = [
-            "Hey... remember last night? 😉",
-            "That was a wild night at the club! Hope you're feeling okay today lol",
-            "You were definitely the life of the party last night!",
-            "Had so much fun with you at the club. We should do it again sometime.",
-            "Still thinking about that dance last night... call me?",
-            "You left your sunglasses at the table last night! I have them if you want to meet up."
-        ];
-        const message = messages[Math.floor(Math.random() * messages.length)];
-        const subject = EMAIL_SUBJECTS[Math.floor(Math.random() * EMAIL_SUBJECTS.length)];
-
+        const encounter = createNightlifeMessage(state, location, result.date ?? state.date);
         if (!result.newEmails) result.newEmails = [];
-        result.newEmails.push({
-            id: `club-dm-${Date.now()}`,
-            sender: girlName,
-            senderRole: "Someone you met last night",
-            subject,
-            body: message,
-            date: result.date,
-            read: false,
-            replied: false
-        });
+        result.newEmails.push(encounter.message);
+        result.nightlifeContacts = encounter.contacts;
     }
 
     // Ensure isClubbing is set to false in the new state

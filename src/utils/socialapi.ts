@@ -1,5 +1,6 @@
 import { generateSocialStats } from './socialhelpers';
 import { fetchAvatarData, getAvatarByHandle } from '../services/avatarService';
+import { getSocialHandles } from '../data/social/handles';
 
 /**
  * Find the avatar URL for a handle from existing social feed posts.
@@ -18,8 +19,28 @@ function findAvatarFromPosts(handle: string, state: any): string | undefined {
 
 export const fetchProfileData = async (handle: string, dispatchAction: (action: any) => void, state?: any) => {
   const cleanHandle = handle.replace('@', '');
-  const avatars = await fetchAvatarData().catch(() => []);
+  const isFictional = state?.leagueType === 'fictional';
+  const avatars = isFictional ? [] : await fetchAvatarData().catch(() => []);
   const gistAvatar = getAvatarByHandle(cleanHandle, avatars);
+
+  if (isFictional) {
+    const handleData = Object.values(getSocialHandles('fictional'))
+      .find(entry => entry.handle.toLowerCase() === cleanHandle.toLowerCase());
+    const stats = generateSocialStats(cleanHandle);
+    const profileData = {
+      name: handleData?.name ?? cleanHandle,
+      handle: `@${cleanHandle}`,
+      bio: '',
+      location: 'Global',
+      website: '',
+      followingCount: stats.following,
+      followersCount: stats.followers,
+      verified: handleData?.verified ?? false,
+      avatarUrl: findAvatarFromPosts(cleanHandle, state) || handleData?.avatarUrl,
+    };
+    dispatchAction({ type: 'CACHE_PROFILE', payload: { handle: cleanHandle, profile: profileData } });
+    return profileData;
+  }
 
   try {
     const API = "https://twitterfollowers.mogatas-princealjohn-05082003.workers.dev";

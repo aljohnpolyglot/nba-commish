@@ -1,27 +1,30 @@
 import React from 'react';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
+import { isSocialPostVisible } from '../../services/social/socialPostVisibility';
 import SocialPostCard from './SocialPostCard';
+import type { SocialPost } from '../../types';
 
 interface ThreadViewProps {
   postId?: string;
   onBack?: () => void;
   onProfileClick?: (handle: string) => void;
   onPostClick?: (postId: string) => void;
+  posts?: SocialPost[];
 }
 
-export const ThreadView: React.FC<ThreadViewProps> = ({ postId, onBack, onProfileClick, onPostClick }) => {
+export const ThreadView: React.FC<ThreadViewProps> = ({ postId, onBack, onProfileClick, onPostClick, posts }) => {
   const { state, toggleLike, toggleRetweet, addReply, generateReplies, isGeneratingReplies } = useGame();
   const [replyContent, setReplyContent] = React.useState('');
 
   const post = React.useMemo(
-    () => (state.socialFeed || []).find(p => p.id === postId),
-    [state.socialFeed, postId]
+    () => (posts ?? state.socialFeed ?? []).find(p => p.id === postId && isSocialPostVisible(p, state.date)),
+    [state.date, state.socialFeed, postId, posts]
   );
 
   const replies = React.useMemo(
-    () => (state.socialFeed || []).filter(p => p.replyToId === postId),
-    [state.socialFeed, postId]
+    () => (posts ?? state.socialFeed ?? []).filter(p => p.replyToId === postId && isSocialPostVisible(p, state.date)),
+    [state.date, state.socialFeed, postId, posts]
   );
 
   const isLoading = postId ? (isGeneratingReplies[postId] ?? false) : false;
@@ -77,7 +80,7 @@ export const ThreadView: React.FC<ThreadViewProps> = ({ postId, onBack, onProfil
         <>
           {/* Parent post if this is a reply */}
           {post.replyToId && (() => {
-            const parent = (state.socialFeed || []).find(p => p.id === post.replyToId);
+            const parent = (posts ?? state.socialFeed ?? []).find(p => p.id === post.replyToId);
             return parent ? (
               <div className="opacity-70 border-b border-[#2f3336]">
                 <SocialPostCard

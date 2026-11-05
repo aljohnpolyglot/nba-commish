@@ -1,32 +1,31 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { TrendingUp, TrendingDown } from 'lucide-react';
 import { buildFullDraftSlotMap, comparePicks, formatPickLabel } from '../../../../../services/draft/draftClassStrength';
 import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
 import { resolveAnyTeam } from '../../../../../utils/teamLookup';
+import { getUnconsumedDraftPicks } from '../../../../../services/draft/DraftPickGenerator';
+import { forfeitTeamDraftPicks } from '../../../../../services/aspireSideDeals';
+import type { DraftPick } from '../../../../../types';
 
 interface DraftPicksProps {
   teamId: number;
 }
 
 export function DraftPicks({ teamId }: DraftPicksProps) {
-  const { state } = useGame();
+  const { state, dispatchAction } = useGame();
+  const [forfeitPick, setForfeitPick] = useState<DraftPick | null>(null);
+  const [forfeitReason, setForfeitReason] = useState('League rules violation');
   const noDraft = isNoDraftLeague(state.leagueStats as any);
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const currentYear = state.leagueStats?.year || 2026;
-  const draftComplete = Boolean((state as any).draftComplete);
   const lotterySlotByTid = useMemo(
     () => buildFullDraftSlotMap((state as any).draftLotteryResult, state.teams),
     [(state as any).draftLotteryResult, state.teams],
   );
-  // After this year's draft runs, the current-year pick is consumed. Hide it
-  // so it doesn't linger as a ghost entry until rollover runs on Jun 30.
-  const picks = (state.draftPicks || []).filter(p => {
-    if (p.tid !== teamId) return false;
-    if (draftComplete && p.season === currentYear) return false;
-    return true;
-  });
+  const availablePicks = getUnconsumedDraftPicks(state);
+  const picks = availablePicks.filter(p => p.tid === teamId);
 
   if (noDraft) {
     return (
@@ -50,7 +49,7 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
   const seasons = Object.keys(picksBySeason).map(Number).sort();
 
   // Traded-away picks (owned by other teams but originally from this team)
-  const tradedAway = (state.draftPicks || []).filter(p => p.originalTid === teamId && p.tid !== teamId);
+  const tradedAway = availablePicks.filter(p => p.originalTid === teamId && p.tid !== teamId);
 
   return (
     <div className="max-w-3xl mx-auto">
@@ -144,6 +143,9 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
                         {!isOwnPick && (
                           <div className="w-3 h-3 bg-blue-500 rounded-full shadow-[0_0_10px_rgba(59,130,246,0.5)] flex-shrink-0" />
                         )}
+                        {state.gameMode !== 'gm' && (
+                          <button onClick={() => setForfeitPick(pick)} className="rounded-lg bg-rose-600/15 px-3 py-2 text-[9px] font-black uppercase tracking-wider text-rose-300 hover:bg-rose-600 hover:text-white">Forfeit</button>
+                        )}
                       </div>
                     );
                   })}
@@ -190,6 +192,25 @@ export function DraftPicks({ teamId }: DraftPicksProps) {
               </div>
             </div>
           )}
+        </div>
+      )}
+      {forfeitPick && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center bg-black/85 p-4">
+          <div role="dialog" aria-label="Forfeit draft pick" className="w-full max-w-md rounded-2xl border border-rose-500/30 bg-slate-950 p-6 shadow-2xl">
+            <h2 className="text-xl font-black text-white">Forfeit this pick?</h2>
+            <p className="mt-2 text-sm text-slate-400">{formatPickLabel(forfeitPick, currentYear, lotterySlotByTid, false)} will be permanently removed from the draft.</p>
+            <label className="mt-5 block text-[10px] font-black uppercase tracking-widest text-slate-400">Reason
+              <input value={forfeitReason} onChange={event => setForfeitReason(event.target.value)} className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-medium normal-case tracking-normal text-white outline-none focus:border-rose-400" />
+            </label>
+            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+              <button onClick={() => setForfeitPick(null)} className="rounded-xl border border-slate-700 px-5 py-3 text-xs font-black uppercase tracking-wider text-slate-300">Cancel</button>
+              <button disabled={!forfeitReason.trim()} onClick={() => {
+                const resolved = forfeitTeamDraftPicks(state, teamId, 1, forfeitReason.trim(), [forfeitPick.dpid]);
+                if (resolved !== state) dispatchAction({ type: 'UPDATE_STATE', payload: { draftPicks: resolved.draftPicks, history: resolved.history } } as any);
+                setForfeitPick(null);
+              }} className="rounded-xl bg-rose-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white disabled:opacity-40">Confirm Forfeiture</button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -4,6 +4,8 @@ import { useGame } from '../../../../../store/GameContext';
 import { NBATeam, NBAPlayer } from '../../../../../types';
 import { getActiveLeagueTeams, isOnRoster } from '../../../../../utils/teamLookup';
 import { calculateDisplayTeamOverall } from '../../../../../utils/playerRatings';
+import { getTeamFullName } from '../../../../../utils/teamNames';
+import { presentFranchisePickerTeam } from '../../../../setup/franchisePickerIdentity';
 
 interface HomeProps {
   onSelectTeam: (teamId: number) => void;
@@ -22,9 +24,11 @@ interface HomeProps {
   highlightedTeamIds?: number[];
   /** Label for highlighted teams. */
   highlightedLabel?: string;
+  seasonYear?: number;
+  preserveProvidedBranding?: boolean;
 }
 
-export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pickerMode, selectedTid, title, subtitle, highlightedTeamIds, highlightedLabel }: HomeProps) {
+export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pickerMode, selectedTid, title, subtitle, highlightedTeamIds, highlightedLabel, seasonYear, preserveProvidedBranding }: HomeProps) {
   const { state, dispatchAction } = useGame();
   // Non-NBA GMs (Endesa/Euroleague) see their own league's teams here, not NBA.
   // teamsProp override (setup-flow franchise picker) wins over the auto-resolution.
@@ -71,9 +75,13 @@ export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pic
 
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
         {sortedTeams.map((team) => {
+          const displayTeam = presentFranchisePickerTeam(team, {
+            seasonYear: seasonYear ?? state.leagueStats?.year,
+            preserveProvidedBranding: preserveProvidedBranding ?? state.leagueType === 'fictional',
+          });
           const roster = players.filter(p => p.tid === team.id && isOnRoster(p));
           const teamOverall = calculateDisplayTeamOverall(team.id, players, roster);
-          const teamColor = team.colors?.[0] || '#552583';
+          const teamColor = displayTeam.colors?.[0] || '#552583';
           const isUserTeam = team.id === userTid;
           const isHighlighted = highlightedSet.has(team.id);
 
@@ -115,23 +123,23 @@ export function Home({ onSelectTeam, teams: teamsProp, players: playersProp, pic
               )}
 
               <div className="h-20 w-20 mb-4 relative z-10 flex items-center justify-center">
-                {team.logoUrl ? (
+                {displayTeam.logoUrl ? (
                   <img
-                    src={team.logoUrl}
-                    alt={team.name}
+                    src={displayTeam.logoUrl}
+                    alt={displayTeam.name}
                     className="w-full h-full object-contain drop-shadow-lg group-hover:scale-110 transition-transform duration-300"
                     referrerPolicy="no-referrer"
                   />
                 ) : (
                   <div className="w-16 h-16 rounded-full bg-[#21262d] flex items-center justify-center font-black text-xl text-[#8b949e]">
-                    {team.abbrev}
+                    {displayTeam.abbrev}
                   </div>
                 )}
               </div>
 
               <div className="w-full text-center relative z-10">
                 <h3 className="font-black uppercase tracking-tight text-sm text-[#e6edf3] leading-tight mb-1">
-                  {team.region && !team.name.includes(team.region) ? `${team.region} ${team.name}` : team.name}
+                  {getTeamFullName(displayTeam)}
                 </h3>
                 <div className="text-[10px] font-bold text-[#8b949e] uppercase tracking-wider">
                   {team.wins}-{team.losses} | {roster.length} Players

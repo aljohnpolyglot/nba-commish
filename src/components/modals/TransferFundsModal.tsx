@@ -1,7 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useGame } from '../../store/GameContext';
-import { X, DollarSign, ArrowRightLeft } from 'lucide-react';
+import { X, ArrowRightLeft } from 'lucide-react';
 import { getLeagueCurrencyCode } from '../../utils/helpers';
+import { ChevronAmountControl } from '../shared/actions/ChevronAmountControl';
+import {
+  getAvailableLeagueBudget,
+  getLeagueReserve,
+} from '../../services/logic/leagueTreasury';
 
 interface TransferFundsModalProps {
   isOpen: boolean;
@@ -12,8 +17,20 @@ interface TransferFundsModalProps {
 export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, onClose, onConfirm }) => {
   const { state } = useGame();
   const currencyCode = getLeagueCurrencyCode(state.leagueStats);
-  const [transferAmount, setTransferAmount] = useState<number>(0);
+  const availableBudgetM = getAvailableLeagueBudget(state.stats);
+  const leagueReserveM = getLeagueReserve(state.stats);
+  const [transferAmount, setTransferAmount] = useState<number>(100_000);
   const [transferDirection, setTransferDirection] = useState<'league_to_personal' | 'personal_to_league'>('league_to_personal');
+  const availableUSD = (transferDirection === 'league_to_personal' ? availableBudgetM : state.stats.personalWealth) * 1_000_000;
+  const amountStep = availableUSD < 1_000_000 ? 10_000 : availableUSD < 10_000_000 ? 50_000 : 100_000;
+  const recommendedAmount = useMemo(
+    () => Math.max(amountStep, Math.round((availableUSD * 0.05) / amountStep) * amountStep),
+    [amountStep, availableUSD],
+  );
+
+  useEffect(() => {
+    if (isOpen) setTransferAmount(recommendedAmount);
+  }, [isOpen, recommendedAmount, transferDirection]);
 
   if (!isOpen) return null;
 
@@ -23,7 +40,7 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, 
     const amountInMillions = transferAmount / 1000000;
 
     if (transferDirection === 'league_to_personal') {
-      if (amountInMillions > state.stats.leagueFunds) return;
+      if (amountInMillions > availableBudgetM) return;
       await onConfirm({ from: 'league', amount: transferAmount });
     } else {
       if (amountInMillions > state.stats.personalWealth) return;
@@ -48,7 +65,7 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, 
               <ArrowRightLeft className="text-indigo-500" />
               Transfer Funds
             </h2>
-            <p className="text-sm text-slate-400 mt-1">Move money between your personal wealth and league funds.</p>
+            <p className="text-sm text-slate-400 mt-1">League spending is limited by the current season budget.</p>
           </div>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-white rounded-lg hover:bg-slate-800 transition-colors">
             <X size={24} />
@@ -57,10 +74,14 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, 
         </div>
 
         <div className="overflow-y-auto p-4 sm:p-6 lg:p-8">
-          <div className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 sm:grid-cols-2 sm:gap-6">
+          <div className="mb-6 grid grid-cols-1 gap-4 sm:mb-8 sm:grid-cols-3 sm:gap-4">
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 sm:p-6">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">League Funds</p>
-              <p className="text-2xl font-mono font-bold text-emerald-400 sm:text-3xl">${state.stats.leagueFunds.toFixed(2)}M</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">League Reserve</p>
+              <p className="text-2xl font-mono font-bold text-emerald-400">${leagueReserveM.toFixed(2)}M</p>
+            </div>
+            <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 sm:p-6">
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Available Budget</p>
+              <p className="text-2xl font-mono font-bold text-cyan-400">${availableBudgetM.toFixed(2)}M</p>
             </div>
             <div className="rounded-xl border border-slate-800 bg-slate-900/50 p-4 sm:p-6">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Personal Wealth</p>
@@ -92,23 +113,17 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, 
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-slate-400 mb-2">Amount (USD)</label>
-              <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <DollarSign size={20} className="text-slate-500" />
-                </div>
-                <input
-                  type="number"
-                  min="0"
-                  step="1000"
-                  value={transferAmount || ''}
-                  onChange={(e) => setTransferAmount(Number(e.target.value))}
-                  className="w-full bg-slate-900 border border-slate-700 rounded-xl py-4 pl-12 pr-4 text-white font-mono text-lg focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all"
-                  placeholder="0"
-                />
-              </div>
+              <ChevronAmountControl
+                value={transferAmount}
+                step={amountStep}
+                recommendedValue={recommendedAmount}
+                currencyCode={currencyCode}
+                label="Transfer Amount"
+                valueCaption="Funds Transfer"
+                onChange={setTransferAmount}
+              />
               <p className="text-xs text-slate-500 mt-2">
-                {transferAmount > 0 ? `Transferring ${formatCurrency(transferAmount)}` : 'Enter exact amount in dollars (e.g., 100000 for $100,000)'}
+                {transferAmount > 0 ? `Transferring ${formatCurrency(transferAmount)}` : 'Select an amount with the chevrons.'}
               </p>
             </div>
 
@@ -116,7 +131,7 @@ export const TransferFundsModal: React.FC<TransferFundsModalProps> = ({ isOpen, 
               onClick={handleTransfer}
               disabled={
                 transferAmount <= 0 || 
-                (transferDirection === 'league_to_personal' && (transferAmount / 1000000) > state.stats.leagueFunds) ||
+                (transferDirection === 'league_to_personal' && (transferAmount / 1000000) > availableBudgetM) ||
                 (transferDirection === 'personal_to_league' && (transferAmount / 1000000) > state.stats.personalWealth)
               }
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 py-4 font-bold text-white transition-colors hover:bg-indigo-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500"

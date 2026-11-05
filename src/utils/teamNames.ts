@@ -35,10 +35,13 @@ export function getTeamFullName(team: TeamLike | null | undefined): string {
   const region = (team.region ?? team.location ?? '').trim();
   if (!name) return region;
   if (!region) return name;
-  // Already starts with region (BBGM standard pattern) → use as-is
-  if (name.toLowerCase().startsWith(region.toLowerCase() + ' ') || name.toLowerCase() === region.toLowerCase()) {
+  const normalizedNameCore = name.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  const normalizedName = ` ${normalizedNameCore} `;
+  const normalizedRegion = region.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim();
+  if (normalizedName.includes(` ${normalizedRegion} `) || name.toLowerCase() === region.toLowerCase()) {
     return name;
   }
+  if (` ${normalizedRegion} `.endsWith(` ${normalizedNameCore} `)) return region;
   return `${region} ${name}`;
 }
 
@@ -52,4 +55,15 @@ export function getTeamNickname(team: TeamLike | null | undefined): string {
     return name.slice(region.length).trim();
   }
   return name;
+}
+
+export function getCanonicalEuroClubAbbrev(team: TeamLike | null | undefined): string {
+  if (!team) return '';
+  const current = String(team.abbrev ?? team.abbreviation ?? '').trim().toUpperCase();
+  const identity = getTeamFullName(team)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+  if (identity.includes('bayern') && (!current || current === 'FC' || current === 'BM')) return 'BAY';
+  return current;
 }

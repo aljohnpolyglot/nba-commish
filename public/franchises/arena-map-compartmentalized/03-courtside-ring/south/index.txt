@@ -1,0 +1,13 @@
+Courtside Ring — south
+======================
+
+C21	sections/c21-south.svg
+C22	sections/c22-south.svg
+C23	sections/c23-south.svg
+C24	sections/c24-south.svg
+C25	sections/c25-south.svg
+C26	sections/c26-south.svg
+C27	sections/c27-south.svg
+C28	sections/c28-south.svg
+C29	sections/c29-south.svg
+C30	sections/c30-south.svg

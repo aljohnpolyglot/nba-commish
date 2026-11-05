@@ -4,8 +4,13 @@ import { getCoachPhoto, getNBA2KCoach, getTeamStaff } from '../lib/staffService'
 import { useGame } from '../../../../../../store/GameContext';
 import { PersonnelActionsModal, type PersonnelActionType } from '../../../PersonnelActionsModal';
 import type { Personnel } from '../../../LeagueOfficeSearcher';
+import { PersonnelBioView } from '../../../PersonnelBioView';
+import { PersonnelRatingsView } from '../../../PersonnelRatingsView';
+import { PersonSelectorModal } from '../../../../../modals/PersonSelectorModal';
 import { computeStaffOverall, attrsForCoach, seedForStaff, staffOverallFor } from '../../../../../../services/staff/displayAttributes';
-import { deterministicStaffImageId, getStaffImageUrl, resolveStaffImageId } from '../../../../../../utils/staffPortrait';
+import { getStaffImageUrl } from '../../../../../../utils/staffPortrait';
+import { getTeamFullName } from '../../../../../../utils/teamNames';
+import { useManagedTeamActivity } from '../../../../../../hooks/useManagedTeamActivity';
 
 const TACTIC_SLIDERS = [
   { label: 'Tempo', key: 'tempo' },
@@ -211,17 +216,30 @@ function displayRole(role: string) {
 }
 
 function portraitForStaff(staff: any) {
+  const source = String(staff?.source ?? '');
+  const strictPortrait = source === 'historical-nba-coaches' || (source.startsWith('pba') && staff?.isPlaceholder !== true);
+  if (strictPortrait) {
+    return staff.playerPortraitUrl ?? undefined;
+  }
   return staff.playerPortraitUrl
     ?? getCoachPhoto(staff.name)
     ?? getNBA2KCoach(staff.name)?.image
-    ?? getStaffImageUrl(resolveStaffImageId(staff))
-    ?? getStaffImageUrl(deterministicStaffImageId(staff.name))
-    ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(staff.name ?? 'Staff')}&background=1a1a2e&color=FDB927&size=256&bold=true`;
+    ?? getStaffImageUrl(staff.staffImageId)
+    ?? undefined;
 }
 
 export function CoachingStaffTab({ team, canEdit }: { team: any; canEdit: boolean }) {
   const { state, dispatchAction } = useGame();
+  const teamActivity = useManagedTeamActivity();
   const [actionPerson, setActionPerson] = useState<any | null>(null);
+  const [ratingsPerson, setRatingsPerson] = useState<any | null>(null);
+  const [bioPerson, setBioPerson] = useState<Personnel | null>(null);
+  const [retirementPerson, setRetirementPerson] = useState<any | null>(null);
+  const teamId = Number(team?.id ?? team?.tid);
+  const canHostTeamActivity = canEdit
+    && state.gameMode === 'gm'
+    && Number.isFinite(teamId)
+    && state.userTeamId === teamId;
   const staffRows = useMemo(() => {
     const order = [
       'Head Coach',
@@ -235,7 +253,7 @@ export function CoachingStaffTab({ team, canEdit }: { team: any; canEdit: boolea
       'Head of Analytics',
     ];
     const persistedMembers = (team?.tycoon?.staffMembers ?? []) as any[];
-    const teamLabel = String(team?.teamName ?? (team?.region && team?.name ? `${team.region} ${team.name}` : team?.name) ?? '').trim();
+    const teamLabel = String(team?.teamName ?? getTeamFullName(team) ?? '').trim();
     const teamKeys = Array.from(new Set([teamLabel, team?.name, team?.region].map(value => String(value ?? '').trim()).filter(Boolean)));
     const fallbackDirectoryMembers = persistedMembers.length > 0 ? [] : (() => {
       const staticCoaches = ((state as any).staff?.coaches ?? []) as any[];
@@ -280,11 +298,74 @@ export function CoachingStaffTab({ team, canEdit }: { team: any; canEdit: boolea
           portrait: portraitForStaff(member),
         };
       })
-      .filter(Boolean) as Array<{ role: string; member: any; rating: number; portrait: string }>;
+      .filter(Boolean) as Array<{ role: string; member: any; rating: number; portrait?: string }>;
   }, [team, (state as any).staff?.coaches]);
+
+  const personnelFor = (entry: { role: string; member: any; portrait?: string }): Personnel => {
+    const { role, member, portrait } = entry;
+    return {
+      id: member.id ?? `staff-${role}`,
+      name: member.name,
+      type: 'coach',
+      jobTitle: displayRole(role),
+      team: getTeamFullName(team),
+      teamLogoUrl: team.logoUrl ?? team.imgURL ?? team.teamLogoUrl ?? team.imgURLSmall,
+      playerPortraitUrl: portrait,
+      bornYear: member.bornYear,
+      careerStartYear: member.careerStartYear,
+      hiredYear: member.hiredYear,
+      yearsWithTeam: member.yearsWithTeam,
+      careerHistory: member.career_history ?? member.coaching_career,
+      basketballReferenceUrl: member.basketballReferenceUrl,
+      bioText: member.bioText,
+      nationality: member.nationality,
+      honors: Array.isArray(member.awardsSummary) ? member.awardsSummary : undefined,
+      careerRows: Array.isArray(member.playingCareerRows)
+        ? member.playingCareerRows.map((row: any) => ({
+            years: String(row.years ?? ''),
+            organization: String(row.team ?? row.organization ?? ''),
+            role: row.role ?? (row.position && row.position !== '—' ? `Player · ${row.position}` : 'Player'),
+          }))
+        : undefined,
+      attributes: attrsForCoach(member.name, seedForStaff(member), {
+        role,
+        attributeProfile: member.attributeProfile,
+        attributeOverrides: member.attributeOverrides,
+      }),
+    };
+  };
 
   const handleStaffAction = (action: PersonnelActionType) => {
     if (!actionPerson) return;
+    if (action === 'dinner' || action === 'movie') {
+      const person = personnelFor(actionPerson);
+      teamActivity.open({
+        id: person.id,
+        name: person.name,
+        title: person.jobTitle ?? 'Staff',
+        organization: person.team ?? getTeamFullName(team),
+        type: 'coach',
+        playerPortraitUrl: person.playerPortraitUrl,
+        teamLogoUrl: person.teamLogoUrl,
+      }, action, teamId);
+      setActionPerson(null);
+      return;
+    }
+    if (action === 'view_bio') {
+      setBioPerson(personnelFor(actionPerson));
+      setActionPerson(null);
+      return;
+    }
+    if (action === 'view_ratings') {
+      setRatingsPerson(actionPerson);
+      setActionPerson(null);
+      return;
+    }
+    if (action === 'retire_now') {
+      setRetirementPerson(actionPerson);
+      setActionPerson(null);
+      return;
+    }
     if (action === 'fire') {
       void dispatchAction({
         type: 'FIRE_PERSONNEL',
@@ -293,7 +374,7 @@ export function CoachingStaffTab({ team, canEdit }: { team: any; canEdit: boolea
             id: actionPerson.member.id ?? `staff-${actionPerson.role}`,
             name: actionPerson.member.name,
             title: displayRole(actionPerson.role),
-            organization: team?.teamName ?? team?.name,
+            organization: getTeamFullName(team),
             type: 'coach',
             playerPortraitUrl: actionPerson.portrait,
           }],
@@ -307,54 +388,91 @@ export function CoachingStaffTab({ team, canEdit }: { team: any; canEdit: boolea
     <div className="flex flex-col h-full overflow-y-auto max-h-[560px] pr-2 scrollbar-hide">
       <h3 className="text-sm font-black uppercase tracking-widest mb-4 text-yellow-500">Coaching Staff</h3>
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-        {staffRows.map(({ role, member, rating, portrait }) => (
-          <button
-            key={role}
-            onClick={() => setActionPerson({ role, member, rating, portrait })}
-            className={`relative min-h-[145px] rounded-lg border border-slate-700 bg-slate-950/40 p-4 text-left transition-all ${canEdit ? 'hover:border-yellow-500/60 hover:bg-slate-900/70' : 'cursor-default hover:border-slate-600'}`}
-          >
-            {role === 'Head Coach' && <Star size={14} className="absolute left-3 top-3 text-yellow-400 fill-yellow-400" />}
-            <div className="absolute right-3 top-3 h-9 w-9 rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-300 flex items-center justify-center text-xs font-black">
-              {Math.round(rating)}
-            </div>
-            <div className="flex flex-col items-center text-center gap-2 pt-2">
-              <img
-                src={portrait}
-                alt={member.name}
-                className="h-16 w-16 rounded-full object-cover object-top"
-                referrerPolicy="no-referrer"
-                onError={event => {
-                  event.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name ?? 'Staff')}&background=1a1a2e&color=FDB927&size=256&bold=true`;
-                }}
-              />
-              <div className="min-w-0 w-full">
-                <div className="truncate text-sm font-black text-white">{member.name}</div>
-                <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-yellow-400">{displayRole(role)}</div>
+        {staffRows.map(({ role, member, rating, portrait }) => {
+          const initials = String(member.name ?? 'Staff').split(' ').map((part: string) => part[0]).join('').slice(0, 2).toUpperCase();
+          return (
+            <button
+              key={role}
+              onClick={() => setActionPerson({ role, member, rating, portrait })}
+              className={`relative min-h-[145px] rounded-lg border border-slate-700 bg-slate-950/40 p-4 text-left transition-all ${canEdit ? 'hover:border-yellow-500/60 hover:bg-slate-900/70' : 'cursor-default hover:border-slate-600'}`}
+            >
+              {role === 'Head Coach' && <Star size={14} className="absolute left-3 top-3 text-yellow-400 fill-yellow-400" />}
+              <div className="absolute right-3 top-3 h-9 w-9 rounded-full border border-emerald-500/50 bg-emerald-500/10 text-emerald-300 flex items-center justify-center text-xs font-black">
+                {Math.round(rating)}
               </div>
-            </div>
-          </button>
-        ))}
+              <div className="flex flex-col items-center text-center gap-2 pt-2">
+                {portrait ? (
+                  <img
+                    src={portrait}
+                    alt={member.name}
+                    className="h-16 w-16 rounded-full object-cover object-top"
+                    referrerPolicy="no-referrer"
+                    onError={event => { event.currentTarget.style.display = 'none'; }}
+                  />
+                ) : (
+                  <div className="h-16 w-16 rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-sm font-black text-slate-400">
+                    {initials}
+                  </div>
+                )}
+                <div className="min-w-0 w-full">
+                  <div className="truncate text-sm font-black text-white">{member.name}</div>
+                  <div className="mt-1 text-[9px] font-black uppercase tracking-widest text-yellow-400">{displayRole(role)}</div>
+                </div>
+              </div>
+            </button>
+          );
+        })}
         {staffRows.length === 0 && <div className="col-span-full text-gray-400 text-sm italic">No staff information available for this team.</div>}
       </div>
       {actionPerson && (
         <PersonnelActionsModal
-          person={{
-            id: actionPerson.member.id ?? `staff-${actionPerson.role}`,
-            name: actionPerson.member.name,
-            type: 'coach',
-            jobTitle: displayRole(actionPerson.role),
-            team: team?.teamName ?? team?.name,
-            playerPortraitUrl: actionPerson.portrait,
-          } as Personnel}
+          person={personnelFor(actionPerson)}
           isOpen={true}
           onClose={() => setActionPerson(null)}
           filterActions={(canEdit
-            ? ['view_ratings', 'view_candidates', ...((actionPerson.member.contractYears ?? 1) > 0 ? ['fire' as PersonnelActionType] : [])]
-            : ['view_ratings']
+            ? ['view_bio', 'view_ratings', ...(canHostTeamActivity ? ['dinner' as PersonnelActionType, 'movie' as PersonnelActionType] : []), 'view_candidates', 'retire_now', ...((actionPerson.member.contractYears ?? 1) > 0 ? ['fire' as PersonnelActionType] : [])]
+            : ['view_bio', 'view_ratings']
           ) as PersonnelActionType[]}
           onActionSelect={handleStaffAction}
         />
       )}
+      {bioPerson && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-6">
+          <button className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setBioPerson(null)} aria-label="Close coach bio" />
+          <div className="relative z-10 h-[94vh] w-full max-w-[1400px] overflow-hidden rounded-3xl border border-blue-400/30 bg-slate-900 shadow-2xl">
+            <PersonnelBioView person={bioPerson} onBack={() => setBioPerson(null)} />
+          </div>
+        </div>
+      )}
+      {retirementPerson && (
+        <PersonSelectorModal
+          title="Retire Coach"
+          actionType="retire_now"
+          preSelectedContact={{
+            id: retirementPerson.member.id ?? `staff-${retirementPerson.role}`,
+            name: retirementPerson.member.name,
+            title: displayRole(retirementPerson.role),
+            organization: getTeamFullName(team),
+            type: 'coach',
+            playerPortraitUrl: retirementPerson.portrait,
+          }}
+          skipPersonSelection
+          onClose={() => setRetirementPerson(null)}
+          onSelect={async contacts => {
+            setRetirementPerson(null);
+            await dispatchAction({ type: 'RETIRE_PERSONNEL', payload: { contacts } });
+          }}
+        />
+      )}
+      {ratingsPerson && (
+        <div className="fixed inset-0 z-[90] flex items-center justify-center p-3 sm:p-6">
+          <button className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setRatingsPerson(null)} aria-label="Close ratings" />
+          <div className="relative z-10 h-[94vh] w-full max-w-[1400px] overflow-hidden rounded-3xl border border-blue-400/30 bg-slate-900 shadow-2xl">
+            <PersonnelRatingsView person={personnelFor(ratingsPerson)} onBack={() => setRatingsPerson(null)} />
+          </div>
+        </div>
+      )}
+      {teamActivity.portals}
     </div>
   );
 }

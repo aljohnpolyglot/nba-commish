@@ -1,25 +1,58 @@
 import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { useHubScope } from '../../../hooks/useHubScope';
-import { NBAPlayer, NBATeam, Game } from '../../../types';
+import { NBATeam, Game, PlayerGameStats } from '../../../types';
 import { getOpeningNightDate } from '../../../utils/dateUtils';
 import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
-import { PlayerBioView } from './PlayerBioView';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { getOwnTeamId } from '../../../utils/helpers';
 import { PlayerNameWithHover } from '../../shared/PlayerNameWithHover';
 import { FEAT_CATEGORIES, type FeatEntry } from './StatisticalFeatsViewShared';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { basketballSeasonFromDate, getCurrentSeasonYear, isSeasonWithinTimeline, timelineInputFromState } from '../../../utils/historicalTimeline';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { didHomeTeamWin } from '../../../utils/gameOutcome';
+import { findBoxScoreForScheduledGame } from '../../../utils/boxScoreLookup';
 interface StatisticalFeatsViewProps {
   onGameClick?: (game: Game) => void;
 }
 
+const teamIdOf = (team: { id?: number; tid?: number } | null | undefined) =>
+  Number(team?.id ?? team?.tid);
+
+const isUsableTeamLabel = (value: string | undefined | null) => {
+  const label = String(value ?? '').trim();
+  return label !== '' && label !== '.' && label !== '-' && label !== '\u2014' && label.toLowerCase() !== 'undefined';
+};
+
+const initialsFromTeamName = (name: string) => {
+  const initials = name
+    .split(/\s+/)
+    .map(part => part.replace(/[^a-z0-9]/gi, ''))
+    .filter(Boolean)
+    .map(part => part[0]?.toUpperCase())
+    .join('');
+  return initials.slice(0, 4);
+};
+
+const teamDisplayName = (team: NBATeam | null | undefined, fallbackTid: number) => {
+  const fullName = getTeamFullName(team).trim();
+  return fullName || `Team ${fallbackTid}`;
+};
+
+const teamShortLabel = (team: NBATeam | null | undefined, fallbackTid: number) => {
+  if (isUsableTeamLabel(team?.abbrev)) return String(team?.abbrev).trim();
+  const fullName = teamDisplayName(team, fallbackTid);
+  return initialsFromTeamName(fullName) || fullName;
+};
+
 export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGameClick }) => {
-  const { state, navigateToTeam } = useGame();
+  const { state, navigateToPlayer, navigateToTeam } = useGame();
+  const timeline = timelineInputFromState(state);
+  const currentSeasonYear = getCurrentSeasonYear(timeline);
   const ownTid = getOwnTeamId(state);
-  const { teams: scopedTeams, players: scopedPlayers, tids: scopedTids } = useHubScope();
+  const { teams: scopedTeams, players: scopedPlayers, tids: scopedTids, hubTab } = useHubScope();
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
-  const [selectedPlayer, setSelectedPlayer] = useState<NBAPlayer | null>(null);
   const [activeFilters, setActiveFilters] = useState<string[]>(FEAT_CATEGORIES);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedTeam, setSelectedTeam] = useState<string>('all');
@@ -31,18 +64,22 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
     const years = new Set<number>();
     state.boxScores.forEach(g => {
       if (g.isAllStar || g.isRisingStars) return;
-      try {
-        const d = new Date(g.date);
-        const m = d.getMonth() + 1;
-        const yr = m >= 7 ? d.getFullYear() + 1 : d.getFullYear();
-        if (yr > 2000) years.add(yr);
-      } catch {}
+      if (hubTab && String(g.competitionId ?? '') !== hubTab) return;
+      const savedSeason = Number(g.season);
+      const yr = Number.isFinite(savedSeason) && savedSeason > 0
+        ? savedSeason
+        : basketballSeasonFromDate(g.date);
+      if (yr && yr > 2000 && isSeasonWithinTimeline(yr, timeline, { includeCurrentSeason: true })) years.add(yr);
     });
     return Array.from(years).sort((a, b) => b - a);
-  }, [state.boxScores]);
+  }, [hubTab, state.boxScores, timeline]);
 
-  const [selectedSeason, setSelectedSeason] = useState(state.leagueStats.year);
-  const currentYear = selectedSeason.toString();
+  const [selectedSeason, setSelectedSeason] = useState(currentSeasonYear);
+  React.useEffect(() => {
+    if (availableSeasons.length > 0 && !availableSeasons.includes(selectedSeason)) {
+      setSelectedSeason(availableSeasons[0]);
+    }
+  }, [availableSeasons, selectedSeason]);
   const { feats, summaryCounts } = useMemo(() => {
     const extracted: FeatEntry[] = [];
     const counts: Record<string, number> = {
@@ -54,36 +91,45 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
       '5×5': 0
     };
 
-    const OPENING_NIGHT_MS = getOpeningNightDate(selectedSeason).getTime();
-    const seasonEnd = `${selectedSeason}-06-30`;
+    const OPENING_NIGHT_MS = getOpeningNightDate(selectedSeason, state.leagueStats, state.schedule).getTime();
 
     state.boxScores.forEach(game => {
       if (game.isAllStar || game.isRisingStars) return;
-      try {
-        const d = new Date(game.date);
-        const m = d.getMonth() + 1;
-        const yr = m >= 7 ? d.getFullYear() + 1 : d.getFullYear();
-        if (yr !== selectedSeason) return;
-      } catch { return; }
-      const schedGame = state.schedule.find((g: any) => g.gid === game.gameId);
+      if (hubTab && String(game.competitionId ?? '') !== hubTab) return;
+      const savedSeason = Number(game.season);
+      const yr = Number.isFinite(savedSeason) && savedSeason > 0
+        ? savedSeason
+        : basketballSeasonFromDate(game.date);
+      if (yr !== selectedSeason) return;
+      const schedGame = state.schedule.find((g: Game) => g.gid === game.gameId);
       const isPreseason = schedGame?.isPreseason === true ||
         (() => { try { return new Date(game.date).getTime() < OPENING_NIGHT_MS; } catch { return false; } })();
       if (isPreseason) return;
 
-      const homeTeam = scopedTeams.find(t => t.id === game.homeTeamId);
-      const awayTeam = scopedTeams.find(t => t.id === game.awayTeamId);
+      const legacyGame = game as typeof game & { homeTid?: number; awayTid?: number };
+      const homeTid = Number(game.homeTeamId ?? legacyGame.homeTid);
+      const awayTid = Number(game.awayTeamId ?? legacyGame.awayTid);
+      if (!Number.isFinite(homeTid) || !Number.isFinite(awayTid)) return;
+      if (scopedTids.size > 0 && (!scopedTids.has(homeTid) || !scopedTids.has(awayTid))) return;
+
+      const homeTeam = resolveAnyTeam(homeTid, state.teams, state.nonNBATeams ?? [])
+        ?? scopedTeams.find(t => teamIdOf(t) === homeTid)
+        ?? null;
+      const awayTeam = resolveAnyTeam(awayTid, state.teams, state.nonNBATeams ?? [])
+        ?? scopedTeams.find(t => teamIdOf(t) === awayTid)
+        ?? null;
       if (!homeTeam || !awayTeam) return;
 
-      const isHomeWin = game.homeScore > game.awayScore;
+      const isHomeWin = didHomeTeamWin(game);
 
-      const processStats = (stats: any[], team: NBATeam, opp: NBATeam, isHome: boolean) => {
+      const processStats = (stats: PlayerGameStats[], team: NBATeam, opp: NBATeam, isHome: boolean) => {
         stats.forEach(stat => {
           const player = scopedPlayers.find(p => p.internalId === stat.playerId);
           if (!player) return;
 
           const pts = stat.pts || 0;
           const ast = stat.ast || 0;
-          const reb = stat.reb || stat.trb || (stat.orb || 0) + (stat.drb || 0) || 0;
+          const reb = stat.reb ?? (stat as any).trb ?? ((stat.orb || 0) + (stat.drb || 0)) ?? 0;
           const stl = stat.stl || 0;
           const blk = stat.blk || 0;
 
@@ -124,9 +170,11 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
               player,
               playerName: player.name,
               teamId: team.id,
-              teamAbbrev: team.abbrev,
+              teamAbbrev: teamShortLabel(team, team.id),
+              teamName: teamDisplayName(team, team.id),
               oppTeamId: opp.id,
-              oppAbbrev: isHome ? opp.abbrev : `@${opp.abbrev}`,
+              oppAbbrev: isHome ? teamShortLabel(opp, opp.id) : `@${teamShortLabel(opp, opp.id)}`,
+              oppName: teamDisplayName(opp, opp.id),
               date: game.date || '',
               isWin,
               result: game.isOT
@@ -160,14 +208,17 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
     });
 
     return { feats: extracted, summaryCounts: counts };
-  }, [state.boxScores, scopedPlayers, scopedTeams, state.schedule, selectedSeason]);
+  }, [hubTab, state.boxScores, scopedPlayers, scopedTeams, scopedTids, state.schedule, state.teams, state.nonNBATeams, state.leagueStats, selectedSeason]);
   const filteredFeats = useMemo(() => {
     return feats.filter(feat => {
-      if (selectedTeam !== 'all' && feat.teamAbbrev !== selectedTeam) return false;
+      if (selectedTeam !== 'all' && String(feat.teamId) !== selectedTeam) return false;
       if (searchQuery) {
         const query = searchQuery.toLowerCase();
         if (!feat.playerName.toLowerCase().includes(query) &&
-            !feat.teamAbbrev.toLowerCase().includes(query)) return false;
+            !feat.teamAbbrev.toLowerCase().includes(query) &&
+            !feat.teamName.toLowerCase().includes(query) &&
+            !feat.oppAbbrev.toLowerCase().includes(query) &&
+            !feat.oppName.toLowerCase().includes(query)) return false;
       }
       if (!feat.featsFound.some(f => activeFilters.includes(f))) return false;
       return true;
@@ -206,7 +257,7 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
   const paginatedData = filteredAndSorted.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
 
   const sortedTeams = useMemo(
-    () => [...scopedTeams].sort((a, b) => (a.abbrev ?? a.name).localeCompare(b.abbrev ?? b.name)),
+    () => [...scopedTeams].sort((a, b) => teamShortLabel(a, teamIdOf(a)).localeCompare(teamShortLabel(b, teamIdOf(b)))),
     [scopedTeams],
   );
   const toggleFilter = (feat: string) => {
@@ -236,17 +287,6 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
       setSelectedBoxScoreGame(game);
     }
   };
-
-  if (selectedPlayer) {
-    return (
-      <PlayerBioView
-        player={selectedPlayer}
-        onBack={() => setSelectedPlayer(null)}
-        onGameClick={handleGameClick}
-        onTeamClick={navigateToTeam}
-      />
-    );
-  }
 
   return (
     <div className="flex-1 flex flex-col h-full bg-[#0a0a0a] text-white overflow-hidden rounded-[2.5rem] border border-white/10 relative shadow-2xl">
@@ -294,7 +334,7 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
             >
               <option value="all">ALL TEAMS</option>
               {sortedTeams.map(t => (
-                <option key={t.id} value={t.abbrev}>{t.abbrev}</option>
+                <option key={teamIdOf(t)} value={String(teamIdOf(t))}>{teamShortLabel(t, teamIdOf(t))}</option>
               ))}
             </select>
           </div>
@@ -381,13 +421,14 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
                   <td className="px-3 py-2 text-slate-400 font-mono text-[10px]">{row.date}</td>
                   <td 
                     className="px-3 py-2 font-bold text-white cursor-pointer hover:text-indigo-400 transition-colors"
-                    onClick={() => setSelectedPlayer(row.player)}
+                    onClick={() => navigateToPlayer(row.player)}
                   >
                     <PlayerNameWithHover player={row.player}>{row.playerName}</PlayerNameWithHover>
                   </td>
                   <td 
                     className="px-3 py-2 cursor-pointer hover:text-indigo-400 transition-colors"
                     onClick={() => navigateToTeam(row.teamId)}
+                    title={row.teamName}
                   >
                     {row.teamAbbrev}
                   </td>
@@ -395,6 +436,7 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
                   <td 
                     className="px-3 py-2 cursor-pointer hover:text-indigo-400 transition-colors"
                     onClick={() => navigateToTeam(row.oppTeamId)}
+                    title={row.oppName}
                   >
                     {row.oppAbbrev.replace('@', '')}
                   </td>
@@ -487,14 +529,14 @@ export const StatisticalFeatsView: React.FC<StatisticalFeatsViewProps> = ({ onGa
       {selectedBoxScoreGame && (
         <BoxScoreModal
           game={selectedBoxScoreGame}
-          result={state.boxScores.find(b => b.gameId === selectedBoxScoreGame.gid)}
+          result={findBoxScoreForScheduledGame(state.boxScores, selectedBoxScoreGame)}
           homeTeam={resolveAnyTeam(selectedBoxScoreGame.homeTid, state.teams, state.nonNBATeams ?? [])!}
           awayTeam={resolveAnyTeam(selectedBoxScoreGame.awayTid, state.teams, state.nonNBATeams ?? [])!}
           players={state.players}
           onClose={() => setSelectedBoxScoreGame(null)}
           onPlayerClick={(player) => {
             setSelectedBoxScoreGame(null);
-            setSelectedPlayer(player);
+            navigateToPlayer(player);
           }}
         />
       )}

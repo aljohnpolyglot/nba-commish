@@ -10,4 +10,4 @@ export {
   handleDeclineTeamOption,
   handleConvertContractType,
 } from './contractPlayerActions';
-export { handleFirePersonnel } from './personnelPlayerActions';
+export { handleFirePersonnel, handleRetirePersonnel } from './personnelPlayerActions';

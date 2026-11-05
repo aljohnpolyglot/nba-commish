@@ -4,15 +4,23 @@ import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
 import { convertTo2KRating } from '../../../../../utils/helpers';
-import { calculatePlayerOverallForYear, getDisplayPotential } from '../../../../../utils/playerRatings';
+import { calculatePlayerOverallForYear } from '../../../../../utils/playerRatings';
+import { fuzzRatingValue, getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../../../utils/scoutingFuzz';
 import { computeMoodScore } from '../../../../../utils/mood/moodScore';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
 import { formatPlayerSalaryDisplay, getPlayerContractExpiryDisplay, getPlayerCurrentSalaryUSD } from '../../../../../utils/salaryUtils';
-import type { NBAPlayer } from '../../../../../types';
+import type { GameState, NBAPlayer } from '../../../../../types';
 import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
 import { getDisplayAge } from '../../../../../store/playerRatingStore';
 import { getFatigueBarColor, getFatigueTextColor, getInjuryRisk, getMoodBarColor } from '../../../../shared/playerWellness';
+import { areNonGuaranteedContractsEnabled, areTwoWayContractsEnabled, isNonGuaranteedContract, isTwoWayContract } from '../../../../../utils/contractTypes';
+import { getTeamFullName } from '../../../../../utils/teamNames';
+import { StarterService } from '../../../../../services/simulation/StarterService';
+import { getCourtSlotLabels, getPlayersOnCourt } from '../../../../../services/simulation/courtSize';
+import { normalizePositionLabel } from '../../../../../utils/positionUtils';
+import { getCalibratedPer } from '../../../../../utils/advancedStatCalibration';
+import { areWnbaDevelopmentalContractsEnabled, getWnbaDevelopmentalContractLabel } from '../../../../../services/wnba/developmentalContracts';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -29,13 +37,12 @@ function posRank(pos: string | undefined): number {
   return POS_RANK[pos ?? ''] ?? 5;
 }
 
-function getK2WithDelta(p: NBAPlayer, currentYear: number): { k2: number; delta: number | null } {
-  const currR = p.ratings?.[p.ratings.length - 1];
-  const k2 = convertTo2KRating(p.overallRating, currR?.hgt ?? 50, currR?.tp ?? 50);
+function getK2WithDelta(state: GameState, p: NBAPlayer, currentYear: number): { k2: number; delta: number | null } {
+  const k2 = getScoutedDisplayOverall(state, p, currentYear);
   if (!p.ratings || p.ratings.length < 2) return { k2, delta: null };
   const prevOvr = calculatePlayerOverallForYear(p as any, currentYear - 1);
   const prevR = p.ratings.find(r => r.season === currentYear - 1) ?? p.ratings[p.ratings.length - 2];
-  const prevK2 = convertTo2KRating(prevOvr, prevR?.hgt ?? 50, prevR?.tp ?? 50);
+  const prevK2 = fuzzRatingValue(convertTo2KRating(prevOvr, prevR?.hgt ?? 50, prevR?.tp ?? 50), state, p, `ovr-${currentYear - 1}`);
   return { k2, delta: k2 - prevK2 };
 }
 
@@ -50,7 +57,7 @@ function getLastSeasonStats(p: NBAPlayer) {
     pts: (last.pts ?? 0) / gp,
     reb: ((last.orb ?? 0) + (last.drb ?? 0)) / gp || (last.trb ?? 0) / gp,
     ast: (last.ast ?? 0) / gp,
-    per: last.per ?? 0,
+    per: getCalibratedPer(last),
   };
 }
 
@@ -97,8 +104,13 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
   const { state } = useGame();
   const quick = usePlayerQuickActions();
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const playersOnCourt = getPlayersOnCourt(state.leagueStats);
   const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
   const showNbaContractMix = !hideNbaContractBadges;
+  const twoWayContractsEnabled = showNbaContractMix && areTwoWayContractsEnabled(state.leagueStats);
+  const developmentalActive = areWnbaDevelopmentalContractsEnabled(state.leagueStats);
+  const secondaryContractLabel = getWnbaDevelopmentalContractLabel(state.leagueStats);
+  const nonGuaranteedContractsEnabled = showNbaContractMix && areNonGuaranteedContractsEnabled(state.leagueStats);
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamColor = team?.colors?.[0] ?? '#1a1a2e';
@@ -128,26 +140,20 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
   const allRows = useMemo((): RowData[] => {
     const active = teamPlayers.filter(p => isOnRoster(p) && p.contract);
 
-    // Identify starters: top K2 player per position group
-    const byPosGroup = new Map<number, NBAPlayer>();
-    active.forEach(p => {
-      const rank = posRank(p.pos);
-      const groupKey = Math.floor(rank);
-      const currR = p.ratings?.[p.ratings.length - 1];
-      const k2 = convertTo2KRating(p.overallRating, currR?.hgt ?? 50, currR?.tp ?? 50);
-      const best = byPosGroup.get(groupKey);
-      if (!best) {
-        byPosGroup.set(groupKey, p);
-      } else {
-        const bestR = best.ratings?.[best.ratings.length - 1];
-        const bestK2 = convertTo2KRating(best.overallRating, bestR?.hgt ?? 50, bestR?.tp ?? 50);
-        if (k2 > bestK2) byPosGroup.set(groupKey, p);
-      }
-    });
-    const starterIds = new Set([...byPosGroup.values()].slice(0, 5).map(p => p.internalId));
+    const projectedStarters = team
+      ? StarterService.getProjectedStarters(
+          team,
+          state.players,
+          currentYear,
+          active,
+          true,
+          playersOnCourt,
+        )
+      : [];
+    const starterIds = new Set(projectedStarters.map(player => player.internalId));
 
     return active.map(p => {
-      const { k2, delta: k2Delta } = getK2WithDelta(p, currentYear);
+      const { k2, delta: k2Delta } = getK2WithDelta(state, p, currentYear);
       const stats = getLastSeasonStats(p);
       const { score: moodScore } = computeMoodScore(
         p, team, state.date, false, false, false, teamPlayers, currentYear,
@@ -159,7 +165,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
         jerseyNum: (p as any).jerseyNumber ?? '—',
         k2,
         k2Delta,
-        pot: getDisplayPotential(p, currentYear),
+        pot: getScoutedDisplayPotential(state, p, currentYear, currentYear),
         age: getDisplayAge(p, currentYear),
         currentSalaryUSD: getPlayerCurrentSalaryUSD(p as any, currentYear),
         currentSalaryLabel: formatPlayerSalaryDisplay(p as any, currentYear, state.nonNBATeams ?? []),
@@ -175,13 +181,13 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
         per: stats?.per ?? 0,
         trainingFatigue: Math.max(0, Math.min(100, Math.round((p as any).trainingFatigue ?? 0))),
         moodScore,
-        isTwoWay: !hideNbaContractBadges && !!(p as any).twoWay,
-        isNonGuaranteed: !hideNbaContractBadges && !!(p as any).nonGuaranteed,
-        posRankVal: posRank(p.pos),
+        isTwoWay: twoWayContractsEnabled && isTwoWayContract(p, state.leagueStats),
+        isNonGuaranteed: nonGuaranteedContractsEnabled && isNonGuaranteedContract(p, state.leagueStats),
+        posRankVal: posRank(normalizePositionLabel(p.pos, p.hgt)),
         isStarter: starterIds.has(p.internalId),
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamId, hideNbaContractBadges, state.nonNBATeams]);
+  }, [teamPlayers, team, state.date, state.leagueStats, state.players, currentYear, teamId, twoWayContractsEnabled, nonGuaranteedContractsEnabled, state.nonNBATeams, playersOnCourt]);
 
   const rows = useMemo((): RowData[] => {
     if (starterOrder) {
@@ -196,7 +202,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
       let av: any = 0, bv: any = 0;
       if (col === 'name')   { av = a.player.name; bv = b.player.name; }
       else if (col === 'num')    { av = parseInt(a.jerseyNum) || 99; bv = parseInt(b.jerseyNum) || 99; }
-      else if (col === 'pos')    { av = a.player.pos ?? ''; bv = b.player.pos ?? ''; }
+      else if (col === 'pos')    { av = normalizePositionLabel(a.player.pos, a.player.hgt); bv = normalizePositionLabel(b.player.pos, b.player.hgt); }
       else if (col === 'age')    { av = a.age;  bv = b.age; }
       else if (col === 'k2')     { av = a.k2;   bv = b.k2; }
       else if (col === 'pot')    { av = a.pot;  bv = b.pot; }
@@ -215,21 +221,14 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
     });
   }, [allRows, sort, starterOrder]);
 
-  // Projected starters for sidebar — always top K2 per position group
   const projectedStarters = useMemo(() => {
-    const groups = new Map<number, RowData>();
-    allRows.forEach(r => {
-      const key = Math.floor(r.posRankVal);
-      const best = groups.get(key);
-      if (!best || r.k2 > best.k2) groups.set(key, r);
-    });
-    return [...groups.entries()]
-      .sort((a, b) => a[0] - b[0])
-      .slice(0, 5)
-      .map(([, r]) => r);
-  }, [allRows]);
+    return allRows
+      .filter(row => row.isStarter)
+      .sort((a, b) => a.posRankVal - b.posRankVal || b.k2 - a.k2)
+      .slice(0, playersOnCourt)
+  }, [allRows, playersOnCourt]);
 
-  const POS_LABELS = ['PG', 'G/SG', 'SF', 'PF', 'C'];
+  const positionLabels = getCourtSlotLabels(playersOnCourt);
 
   if (quick.fullPageView) return quick.fullPageView;
 
@@ -249,7 +248,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
               )}
               <div>
                 <div className="text-xs font-black text-slate-100">
-                  {team ? `${team.region} ${team.name}` : '—'}
+                  {team ? getTeamFullName(team) : '—'}
                 </div>
                 <div className="text-[9px] text-slate-500 mt-0.5 tabular-nums">
                   {team?.wins ?? 0}–{team?.losses ?? 0}
@@ -261,7 +260,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
           {/* Projected Starters */}
           <div className="rounded-lg border border-[#30363d] bg-slate-900/50 p-3 flex flex-col gap-2 flex-1">
             <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-800 pb-2">
-              Projected Starters
+              Projected Lineup ({playersOnCourt})
             </div>
             {projectedStarters.map((r, i) => (
               <div
@@ -273,7 +272,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                   className="text-[8px] font-black uppercase tracking-widest shrink-0 w-5 text-center"
                   style={{ color: teamColor }}
                 >
-                  {POS_LABELS[i] ?? r.player.pos}
+                  {positionLabels[i] ?? normalizePositionLabel(r.player.pos, r.player.hgt)}
                 </span>
                 <PlayerPortrait playerName={r.player.name} imgUrl={r.player.imgURL} face={(r.player as any).face} size={20} />
                 <div className="flex-1 min-w-0">
@@ -301,7 +300,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
               <>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-violet-500/50 border border-violet-500/60 inline-block" />
-                  Two-Way
+                  {secondaryContractLabel}
                 </span>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-amber-500/30 border border-amber-500/50 inline-block" />
@@ -360,7 +359,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
 
                   // Show divider between starters and bench in starter order mode
                   const prevRow = rows[idx - 1];
-                  const showBenchDivider = starterOrder && idx === 5 && prevRow?.isStarter;
+                  const showBenchDivider = starterOrder && idx === playersOnCourt && prevRow?.isStarter;
 
                   return (
                     <React.Fragment key={p.internalId}>
@@ -397,7 +396,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                             <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} face={(p as any).face} size={24} />
                             <span className="font-semibold truncate max-w-[100px] text-slate-100">{p.name}</span>
                             {r.isTwoWay && (
-                              <span className="text-[7px] font-black uppercase px-1 py-0.5 rounded bg-violet-500/30 text-violet-300 border border-violet-500/50 shrink-0">2W</span>
+                              <span className="text-[7px] font-black uppercase px-1 py-0.5 rounded bg-violet-500/30 text-violet-300 border border-violet-500/50 shrink-0">{developmentalActive ? 'DEV' : '2W'}</span>
                             )}
                             {r.isNonGuaranteed && (
                               <span className="text-[7px] font-black uppercase px-1 py-0.5 rounded bg-amber-500/30 text-amber-300 border border-amber-500/50 shrink-0">NG</span>
@@ -405,7 +404,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                           </div>
                         </td>
 
-                        <td className="text-center text-slate-400 px-1.5">{p.pos}</td>
+                        <td className="text-center text-slate-400 px-1.5">{normalizePositionLabel(p.pos, p.hgt)}</td>
                         <td className="text-center text-slate-400 tabular-nums px-1.5">{r.age}</td>
 
                         <td className="text-right tabular-nums px-1.5 whitespace-nowrap">
@@ -448,7 +447,7 @@ export function TeamOfficeCoachRosterView({ teamId }: Props) {
                           <div className="flex items-center gap-1.5">
                             <div className="flex-1">
                               <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                                <span className={getFatigueTextColor(r.trainingFatigue)}>{r.trainingFatigue}</span>
+                                <span className={getFatigueTextColor(r.trainingFatigue)}>{r.trainingFatigue}%</span>
                                 <span className={`px-1 py-0.5 rounded border text-[7px] ${fatigueRisk.color}`}>{fatigueRisk.label}</span>
                               </div>
                               <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">

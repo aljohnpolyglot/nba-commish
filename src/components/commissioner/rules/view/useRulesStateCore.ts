@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { LeagueStats, Rule } from '../../../../types';
-import { generateAwardDetails, generateRuleDetails } from '../../../../services/llm/llm';
+import { generateRuleDetails } from '../../../../services/llm/llm';
 import { createRulesViewDefaults } from './rulesStateViewDefaults';
 import { useLeagueLabels } from '../../../../utils/leagueLabels';
 import {
@@ -27,14 +27,11 @@ export const useRulesState = (
   const viewDefaults = createRulesViewDefaults(leagueStats);
 
   const [localRules, setLocalRules] = useState<Rule[]>(leagueStats.rules);
-  const [localAwards, setLocalAwards] = useState<Rule[]>(leagueStats.awards || []);
   const [newRule, setNewRule] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isGeneratingAward, setIsGeneratingAward] = useState(false);
-  const [awardModalOpen, setAwardModalOpen] = useState(false);
   const [expandedRule, setExpandedRule] = useState<string | null>(null);
-  const [expandedAward, setExpandedAward] = useState<string | null>(null);
+  const [awardSettings, setAwardSettings] = useState(leagueStats.awardSettings);
 
   const formatState = materializeRulesStateSection(useFormatRulesState(leagueStats, viewDefaults));
   const allStarState = materializeRulesStateSection(useAllStarRulesState(viewDefaults));
@@ -48,6 +45,8 @@ export const useRulesState = (
     ...gameState,
     ...economyState,
     ...honorsState,
+    awardSettings,
+    setAwardSettings,
     draftEligibilityRule: formatState.eligibilityRule,
     setDraftEligibilityRule: formatState.setEligibilityRule,
   };
@@ -96,59 +95,6 @@ export const useRulesState = (
     resetRulesConfig(baseline, setRule);
   };
 
-  const handleAddAward = async (name: string, criteria: string) => {
-    setIsGeneratingAward(true);
-    try {
-      const details = await generateAwardDetails(criteria.trim());
-      let finalTitle = name.trim() || details.title;
-      if (finalTitle.toLowerCase().includes('mvp') && !finalTitle.includes('(')) {
-        finalTitle = 'MVP (Michael Jordan Trophy)';
-      } else if (finalTitle.toLowerCase().includes('defensive player') && !finalTitle.includes('(')) {
-        finalTitle = 'Defensive Player of the Year (Hakeem Olajuwon Trophy)';
-      }
-
-      const updatedAwards = [
-        ...localAwards,
-        { id: `award-${Date.now()}`, title: finalTitle, description: details.description },
-      ];
-      setLocalAwards(updatedAwards);
-      setAwardModalOpen(false);
-
-      await dispatchAction({
-        type: 'ANNOUNCE_CHANGE',
-        payload: {
-          description: `The Commissioner has established a new award: ${finalTitle}. Criteria: ${details.description}`,
-          statUpdates: {
-            awards: updatedAwards,
-            morale: { fans: 2, players: 3, owners: 0, legacy: 1 },
-            viewership: 1,
-          },
-        },
-      });
-    } catch (error) {
-      console.error('Failed to generate award details:', error);
-    } finally {
-      setIsGeneratingAward(false);
-    }
-  };
-
-  const handleRemoveAward = async (id: string) => {
-    const awardToRemove = localAwards.find(award => award.id === id);
-    const updatedAwards = localAwards.filter(award => award.id !== id);
-    setLocalAwards(updatedAwards);
-    await dispatchAction({
-      type: 'ANNOUNCE_CHANGE',
-      payload: {
-        description: `The Commissioner has abolished the ${awardToRemove?.title || 'award'}.`,
-        statUpdates: {
-          awards: updatedAwards,
-          morale: { fans: -3, players: -4, owners: 0, legacy: -2 },
-          viewership: -1,
-        },
-      },
-    });
-  };
-
   const handleRemoveRule = async (id: string) => {
     const updatedRules = localRules.filter(rule => rule.id !== id);
     setLocalRules(updatedRules);
@@ -184,32 +130,24 @@ export const useRulesState = (
 
   return {
     rules,
+    seasonYear: leagueStats.year,
     setRule,
     isPbaMode: leagueStats.uiMode === 'pba_isolated',
+    uiMode: leagueStats.uiMode,
     localRules,
     setLocalRules,
-    localAwards,
-    setLocalAwards,
     newRule,
     setNewRule,
     isSaving,
     setIsSaving,
     isGenerating,
     setIsGenerating,
-    isGeneratingAward,
-    setIsGeneratingAward,
-    awardModalOpen,
-    setAwardModalOpen,
     expandedRule,
     setExpandedRule,
-    expandedAward,
-    setExpandedAward,
     ...flatState,
     hasConfigChanges,
     handleSaveConfig,
     handleResetConfig,
-    handleAddAward,
-    handleRemoveAward,
     handleRemoveRule,
     handleAddRule,
   };

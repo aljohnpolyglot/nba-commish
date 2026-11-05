@@ -42,7 +42,6 @@ export function selectCountedPbaRegularBoxScores(
     return boxScores.filter((box: any) => box?.competitionId === spec.id && isPbaRegularPhase(box?.competitionPhase));
   }
 
-  const gamesPerTeam = Math.floor(Number(spec.gamesPerTeam ?? Math.max((spec.teamCount ?? 0) - 1, 0)));
   const regular = boxScores
     .filter((box: any) =>
       box?.competitionId === spec.id &&
@@ -51,7 +50,11 @@ export function selectCountedPbaRegularBoxScores(
     )
     .sort((a: any, b: any) => pbaGameSortKey(a).localeCompare(pbaGameSortKey(b)));
 
-  const expectedTotal = Math.floor(((spec.teamCount ?? 0) * gamesPerTeam) / 2);
+  const representedTeamCount = new Set(regular.flatMap((box: any) => [Number(box.homeTeamId), Number(box.awayTeamId)])
+    .filter(Number.isFinite)).size;
+  const teamCount = Math.max(Number(spec.teamCount ?? 0), representedTeamCount);
+  const gamesPerTeam = Math.floor(Number(spec.gamesPerTeam ?? Math.max(teamCount - 1, 0)));
+  const expectedTotal = Math.floor((teamCount * gamesPerTeam) / 2);
   const capRows = (rows: any[]): any[] => {
     if (gamesPerTeam <= 0) return rows;
     if (expectedTotal > 0 && rows.length <= expectedTotal) return rows;

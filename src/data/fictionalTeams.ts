@@ -30,7 +30,7 @@ export interface FictionalTeamDef {
 const BBGM_POP: Record<string, number> = {
   ATL: 5.3, BOS: 7.3, BKN: 21.5, CHA: 1.5, CHI: 9.1, CLE: 1.7, DAL: 6.6,
   DEN: 2.7, DET: 4.0, HOU: 6.2, IND: 1.6, LA: 15.6, LAE: 15.6, MEM: 1.3,
-  MIA: 6.1, MIL: 1.5, MIN: 2.8, NOL: 1.1, NYC: 21.5, OKC: 1.4, ORL: 2.2,
+  MIA: 6.1, MIL: 1.5, MIN: 2.8, NOH: 1.1, NOL: 1.1, NYC: 21.5, OKC: 1.4, ORL: 2.2,
   PHI: 5.5, PHO: 4.3, POR: 2.0, SA: 2.0, SAC: 1.8, SF: 6.5, TOR: 6.6,
   UTA: 2.3, WAS: 6.2,
 };
@@ -90,7 +90,7 @@ export const FICTIONAL_TEAMS: FictionalTeamDef[] = [
   { tid: 25, region: 'Dallas',        name: 'Snipers',       abbrev: 'DAL', colors: ['#000000', '#e08200', '#436431'], pop: getPopulation('DAL'), conference: 'West', cid: 1, did: 5 },
   { tid: 26, region: 'Houston',       name: 'Apollos',       abbrev: 'HOU', colors: ['#4c91c2', '#c4c4c3', '#ffffff'], pop: getPopulation('HOU'), conference: 'West', cid: 1, did: 5 },
   { tid: 27, region: 'Memphis',       name: 'Blues',         abbrev: 'MEM', colors: ['#000000', '#ff6c49', '#00aedc'], pop: getPopulation('MEM'), conference: 'West', cid: 1, did: 5 },
-  { tid: 28, region: 'New Orleans',   name: 'Bayou',         abbrev: 'NOL', colors: ['#195869', '#4edd61', '#0e3e33'], pop: getPopulation('NOL'), conference: 'West', cid: 1, did: 5 },
+  { tid: 28, region: 'New Orleans',   name: 'Bayou',         abbrev: 'NOH', colors: ['#195869', '#4edd61', '#0e3e33'], pop: getPopulation('NOH'), conference: 'West', cid: 1, did: 5 },
   { tid: 29, region: 'San Antonio',   name: 'Churros',       abbrev: 'SA',  colors: ['#4a2b14', '#30d9ff', '#704723'], pop: getPopulation('SA'),  conference: 'West', cid: 1, did: 5 },
 ];
 
@@ -98,4 +98,6 @@ export const FICTIONAL_TEAMS: FictionalTeamDef[] = [
  *  `logos-primary` is the standard full-color logo set (LAE, etc) — what BBGM
  *  actually displays. `logos-secondary` is alternate/wordmark variants. */
 export const fictionalLogoUrl = (abbrev: string): string =>
-  `https://play.basketball-gm.com/img/logos-primary/${abbrev}.svg`;
+  abbrev === 'NOH' || abbrev === 'NOL'
+    ? 'https://play.basketball-gm.com/img/logos/NOL.png'
+    : `https://play.basketball-gm.com/img/logos-primary/${abbrev}.svg`;

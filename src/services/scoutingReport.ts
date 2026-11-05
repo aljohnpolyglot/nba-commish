@@ -14,8 +14,9 @@
 import type { NBAPlayer } from '../types';
 import { findTopComparisons } from '../utils/playerComparisons';
 import { convertTo2KRating } from '../utils/helpers';
-import { estimatePotentialBbgm } from '../utils/playerRatings';
+import { getDisplayOverall, isGeneratedDraftFill, resolveDisplayPotentialBbgm } from '../utils/playerRatings';
 import { ARCHETYPE_PROFILES } from './genDraftPlayers';
+import { buildMidrankPercentiles } from './scouting/percentileProfiles';
 
 // ── Thresholds (BBGM rating scale 0–99) ──────────────────────────────────────
 
@@ -53,12 +54,27 @@ function clamp(v: number, lo: number, hi: number): number {
   return Math.max(lo, Math.min(hi, v));
 }
 
+type ProjectionContext = 'nba' | 'pba';
+
+function scoutingYearFor(player: NBAPlayer): number {
+  const draftYear = Number((player as any).draft?.year);
+  if (Number.isFinite(draftYear) && draftYear > 0) return draftYear;
+  const age = Number((player as any).age);
+  const bornYear = Number((player as any).born?.year);
+  if (Number.isFinite(age) && Number.isFinite(bornYear) && bornYear > 0) return bornYear + age;
+  return new Date().getFullYear();
+}
+
+function resolveScoutingPotentialBbgm(player: NBAPlayer, context: ProjectionContext): number {
+  return resolveDisplayPotentialBbgm(player, scoutingYearFor(player), undefined, {
+    floorAtEstimated: context !== 'pba' && !isGeneratedDraftFill(player),
+  });
+}
+
 // ── Projection labels ─────────────────────────────────────────────────────────
 
 // Thresholds operate on K2 SCALE (60–99) since that's what users see in the UI.
 // Callers convert raw BBGM → K2 before invoking these helpers.
-type ProjectionContext = 'nba' | 'pba';
-
 export function projectionCeiling(potK2: number, context: ProjectionContext = 'nba'): string {
   if (context === 'pba') {
     if (potK2 >= 82) return 'PBA Franchise Player';
@@ -90,14 +106,18 @@ export function projectionFloor(ovrK2: number, context: ProjectionContext = 'nba
 // ── Attribute strength/weakness templates ─────────────────────────────────────
 
 interface AttrEntry {
+  key: string;
+  label: string;
   val: number;
   strengths: string[];
   weaknesses: string[];
 }
 
 function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[] {
-  return [
+  const attributes: AttrEntry[] = [
     {
+      key: 'tp',
+      label: 'Outside shooting',
       val: r.tp,
       strengths: [
         'Deadly accurate from beyond the arc; a true floor-spacing threat.',
@@ -111,6 +131,8 @@ function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[
       ],
     },
     {
+      key: 'spd',
+      label: 'Foot speed',
       val: r.spd,
       strengths: [
         'Blazing first step that leaves defenders trailing in the open court.',
@@ -124,6 +146,8 @@ function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[
       ],
     },
     {
+      key: 'diq',
+      label: 'Defensive awareness',
       val: r.diq,
       strengths: [
         'Exceptional defensive instincts; rarely out of position on rotations.',
@@ -137,6 +161,8 @@ function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[
       ],
     },
     {
+      key: 'pss',
+      label: 'Passing vision',
       val: r.pss,
       strengths: [
         'Elite court vision; sees plays two steps before they develop.',
@@ -150,6 +176,8 @@ function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[
       ],
     },
     {
+      key: 'reb',
+      label: 'Rebounding',
       val: r.reb,
       strengths: [
         'Relentless on the glass with a knack for tracking down boards.',
@@ -163,9 +191,11 @@ function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[
       ],
     },
     {
+      key: 'stre',
+      label: 'Functional strength',
       val: r.stre,
       strengths: [
-        'Already possesses an NBA-ready body; welcomes contact in the paint.',
+        'Already possesses a pro-ready body; welcomes contact in the paint.',
         'Superior frame used to create space and bully smaller defenders.',
         "Impressive core strength that won't be pushed around inside.",
       ],
@@ -176,6 +206,8 @@ function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[
       ],
     },
     {
+      key: 'oiq',
+      label: 'Offensive decision-making',
       val: r.oiq,
       strengths: [
         'Advanced offensive IQ; manipulates defenses with timing and angles.',
@@ -189,6 +221,8 @@ function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[
       ],
     },
     {
+      key: 'dnk',
+      label: 'Above-the-rim finishing',
       val: r.dnk,
       strengths: [
         'Explosive above-the-rim finisher; challenges shot-blockers fearlessly.',
@@ -202,7 +236,87 @@ function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[
       ],
     },
     {
-      val: (player as any).durability ?? 70,
+      key: 'ins',
+      label: 'Interior scoring',
+      val: r.ins,
+      strengths: [
+        'Polished interior scorer with touch and craft around the basket.',
+        'Creates efficient paint offense with angles, footwork, and soft touch.',
+        'Reliable scorer inside who converts difficult chances through traffic.',
+      ],
+      weaknesses: [
+        'Limited touch around the basket makes interior scoring unreliable.',
+        'Struggles to create clean finishes once defenders close off the rim.',
+        'Interior scoring lacks the craft needed against length and contact.',
+      ],
+    },
+    {
+      key: 'fg',
+      label: 'Shot making',
+      val: r.fg,
+      strengths: [
+        'Comfortable shot-maker from multiple spots inside the arc.',
+        'Shows reliable touch on pull-ups and contested mid-range attempts.',
+        'Can manufacture a clean look late in the clock without forcing the issue.',
+      ],
+      weaknesses: [
+        'Shot-making touch is inconsistent outside of clean catch-and-shoot looks.',
+        'Has trouble converting contested attempts away from the rim.',
+        'Needs a more dependable in-between game to punish defensive coverages.',
+      ],
+    },
+    {
+      key: 'drb',
+      label: 'Ball handling',
+      val: r.drb,
+      strengths: [
+        'Secure ball-handler who changes direction without losing control.',
+        'Creates separation with a controlled handle and purposeful pace changes.',
+        'Comfortable advancing the ball and attacking pressure off the dribble.',
+      ],
+      weaknesses: [
+        'Loose handle becomes vulnerable when defenders apply pressure.',
+        'Struggles to change direction without exposing the ball.',
+        'Ball security limits how much creation responsibility he can handle.',
+      ],
+    },
+    {
+      key: 'endu',
+      label: 'Conditioning',
+      val: r.endu,
+      strengths: [
+        'Maintains his pace and execution deep into heavy-minute games.',
+        'Excellent conditioning supports a demanding two-way workload.',
+        'Motor stays consistent across long stretches without visible fatigue.',
+      ],
+      weaknesses: [
+        'Conditioning fades under sustained pace and heavy minutes.',
+        'Energy and execution decline noticeably late in extended stretches.',
+        'Needs better conditioning before handling a dependable rotation workload.',
+      ],
+    },
+    {
+      key: 'jmp',
+      label: 'Explosiveness',
+      val: r.jmp,
+      strengths: [
+        'Explosive leaper who plays above traffic at both ends.',
+        'Quick elevation creates finishing and recovery opportunities others cannot reach.',
+        'Vertical burst consistently changes plays around the rim.',
+      ],
+      weaknesses: [
+        'Limited vertical burst reduces his margin around the rim.',
+        'Struggles to elevate quickly in traffic or on defensive recoveries.',
+        'Below-average explosiveness narrows his finishing and shot-contest windows.',
+      ],
+    },
+  ];
+  const rawDurability = (player as any).durability;
+  const durability = Number(rawDurability);
+  if (rawDurability != null && Number.isFinite(durability)) attributes.push({
+      key: 'durability',
+      label: 'Durability',
+      val: durability,
       strengths: [
         'Iron-man durability; rarely misses time despite a heavy workload.',
         'Remarkably clean injury history; coaches trust him for big minutes.',
@@ -212,8 +326,8 @@ function buildAttrData(r: Record<string, number>, player: NBAPlayer): AttrEntry[
         'Recurring lower-body injuries have repeatedly derailed his development.',
         'Fragile frame may struggle with the increased physical demands ahead.',
       ],
-    },
-  ];
+  });
+  return attributes;
 }
 
 // ── Structured report (the new canonical form) ──────────────────────────────
@@ -226,25 +340,80 @@ export interface StructuredScoutingReport {
   medicalConcern: boolean;
 }
 
+export interface StructuredScoutingReportOptions {
+  youth?: boolean;
+  scoutRating?: number;
+  cohortProspects?: NBAPlayer[];
+}
+
+const softenYouthConcern = (text: string): string => {
+  const replacements: Array<[RegExp, string]> = [
+    [/Defenses dare him to shoot; three-point range is a major hole\./, 'Outside shooting confidence and range are still developing.'],
+    [/Flat-footed shooter whose outside stroke needs a complete overhaul\./, 'Outside shooting mechanics need patient development.'],
+    [/Lack of foot speed makes it hard to keep up at the next level\./, 'Foot speed will need to improve as the competition gets quicker.'],
+    [/Heavy-footed; struggles to recover when beaten off the dribble\./, 'Recovery footwork is an important development area.'],
+    [/Defensive discipline is a major red flag for scouts\./, 'Defensive positioning and discipline need patient development.'],
+    [/Limited vision leads to forced passes and costly turnovers\./, 'Passing reads under pressure are still developing.'],
+    [/Lacks the hunger to compete for contested rebounds\./, 'Rebounding engagement in traffic needs to become more consistent.'],
+    [/Doesn't show enough energy when chasing loose balls\./, 'Needs to pursue loose balls more consistently.'],
+    [/Low basketball IQ; struggles to read defensive shell adjustments\./, 'Offensive reads against changing coverages are still developing.'],
+    [/Timid finisher who settles for soft layups over power attempts\./, 'Needs more confidence finishing through contact.'],
+    [/Recurring lower-body injuries have repeatedly derailed his development\./, 'Past lower-body injuries warrant careful workload management.'],
+    [/Fragile frame may struggle with the increased physical demands ahead\./, 'Physical readiness for stronger competition will take time.'],
+  ];
+  return replacements.reduce((value, [pattern, replacement]) => value.replace(pattern, replacement), text);
+};
+
 export function generateStructuredScoutingReport(
   player: NBAPlayer,
   context: ProjectionContext = 'nba',
+  options: StructuredScoutingReportOptions = {},
 ): StructuredScoutingReport {
   const r = getRatings(player);
   const ovr = player.overallRating ?? r.ovr;
-  const storedPot = (player.ratings as any)?.[player.ratings?.length - 1]?.pot as number | undefined;
-  const rawPot = (storedPot != null && storedPot > 0) ? storedPot : estimatePotentialBbgm(ovr, player.age ?? 20);
-  const pot = Math.max(ovr, rawPot);
-  const ovrK2 = convertTo2KRating(ovr, r.hgt, r.tp);
+  const pot = resolveScoutingPotentialBbgm(player, context);
+  const ovrK2 = getDisplayOverall(player);
   const potK2 = convertTo2KRating(pot, r.hgt, r.tp);
   const pid = player.internalId ?? player.name ?? 'unknown';
 
   const strengths: { text: string; score: number }[] = [];
   const weaknesses: { text: string; score: number }[] = [];
 
+  const age = Number(player.age ?? 99);
+  const youth = options.youth === true;
+  const strengthThreshold = youth ? 54 : 58;
+  const concernThreshold = youth ? (age <= 17 ? 30 : 33) : 36;
+  const requestedCohort = options.cohortProspects ?? [];
+  const positionCohort = requestedCohort.filter(candidate => posBucketFor(candidate.pos) === posBucketFor(player.pos));
+  const cohort = positionCohort.length >= 5 ? positionCohort : requestedCohort;
+  const percentileByAttribute = new Map<string, number>();
+  if (!youth && cohort.length >= 2) {
+    const playerId = player.internalId ?? player.name;
+    for (const attribute of buildAttrData(r, player)) {
+      const entries = cohort.flatMap(candidate => {
+        const match = buildAttrData(getRatings(candidate), candidate).find(row => row.key === attribute.key);
+        return match ? [{ id: candidate.internalId ?? candidate.name, score: match.val }] : [];
+      });
+      const percentile = buildMidrankPercentiles(entries).get(playerId);
+      if (percentile != null) percentileByAttribute.set(attribute.key, percentile);
+    }
+  }
   buildAttrData(r, player).forEach((a, i) => {
-    if (a.val >= 58) strengths.push({ text: pick(a.strengths, pid, i), score: a.val });
-    if (a.val <= 36) weaknesses.push({ text: pick(a.weaknesses, pid, i), score: 100 - a.val });
+    const percentile = percentileByAttribute.get(a.key);
+    if (percentile != null) {
+      if ((percentile >= 75 && a.val >= 45) || a.val >= 70) {
+        strengths.push({ text: pick(a.strengths, pid, i), score: Math.max(percentile, a.val) });
+      }
+      if ((percentile <= 40 && a.val <= 65) || a.val <= 43) {
+        const text = a.val <= 43
+          ? pick(a.weaknesses, pid, i)
+          : `${a.label} trails his position group and remains a development priority.`;
+        weaknesses.push({ text, score: Math.max(100 - percentile, 100 - a.val) });
+      }
+      return;
+    }
+    if (a.val >= strengthThreshold) strengths.push({ text: pick(a.strengths, pid, i), score: a.val });
+    if (a.val <= concernThreshold) weaknesses.push({ text: pick(a.weaknesses, pid, i), score: 100 - a.val });
   });
 
   strengths.sort((a, b) => b.score - a.score);
@@ -253,8 +422,10 @@ export function generateStructuredScoutingReport(
   return {
     ceiling: projectionCeiling(potK2, context),
     floor: projectionFloor(ovrK2, context),
-    strengths: strengths.slice(0, 5).map(s => s.text),
-    weaknesses: weaknesses.slice(0, 5).map(w => w.text),
+    strengths: strengths.slice(0, youth ? 4 : 3).map(s => s.text),
+    weaknesses: weaknesses
+      .slice(0, youth ? (Number(options.scoutRating ?? 50) < 60 || age <= 17 ? 2 : 3) : 3)
+      .map(w => youth ? softenYouthConcern(w.text) : w.text),
     medicalConcern: ((player as any).durability ?? 70) <= 35,
   };
 }
@@ -428,10 +599,8 @@ export interface RiskProfile {
 export function getRiskProfile(player: NBAPlayer, context: ProjectionContext = 'nba'): RiskProfile {
   const r = getRatings(player);
   const ovr = player.overallRating ?? r.ovr;
-  const storedPot = (player.ratings as any)?.[player.ratings?.length - 1]?.pot as number | undefined;
-  const rawPot = (storedPot != null && storedPot > 0) ? storedPot : estimatePotentialBbgm(ovr, player.age ?? 20);
-  const pot = Math.max(ovr, rawPot);
-  const ovrK2 = convertTo2KRating(ovr, r.hgt, r.tp);
+  const pot = resolveScoutingPotentialBbgm(player, context);
+  const ovrK2 = getDisplayOverall(player);
   const potK2 = convertTo2KRating(pot, r.hgt, r.tp);
   const age = player.age ?? 20;
   const dur = (player as any).durability ?? 70;
@@ -635,13 +804,14 @@ export function getComparisonsWithSimilarity(
   player: NBAPlayer,
   activePlayers: NBAPlayer[],
   n = 3,
+  context: ProjectionContext = 'nba',
 ): ComparisonWithSim[] {
   const lastIdx = (player.ratings?.length ?? 0) - 1;
   const last: any = lastIdx >= 0 ? player.ratings![lastIdx] : null;
   if (!last) return [];
 
   const rawOvr = player.overallRating ?? last.ovr ?? 50;
-  const rawPot = Math.max(rawOvr, player.potential ?? last.pot ?? rawOvr);
+  const rawPot = resolveScoutingPotentialBbgm(player, context);
   const growthRatio = rawPot > rawOvr ? rawPot / Math.max(rawOvr, 1) : 1;
 
   const scaleAttr = (v: number | undefined): number => {
@@ -680,8 +850,8 @@ export function getComparisonsWithSimilarity(
   // comparisons, so current NBA OVR has to line up with the prospect's POT.
   const toK2 = (p: NBAPlayer): number => {
     const pr: any = p.ratings?.[p.ratings.length - 1] ?? {};
-    const compPot = p.potential ?? pr.pot ?? p.overallRating ?? pr.ovr ?? 50;
-    return convertTo2KRating(Math.max(p.overallRating ?? pr.ovr ?? 50, compPot), pr.hgt ?? 50, pr.tp ?? 50);
+    const compPot = resolveDisplayPotentialBbgm(p, scoutingYearFor(p));
+    return convertTo2KRating(compPot, pr.hgt ?? 50, pr.tp ?? 50);
   };
   const withK2 = activePlayers
     .map(p => {
@@ -721,11 +891,12 @@ export function batchComparisonsDeduped(
   activePlayers: NBAPlayer[],
   topN = 3,
   maxPerRank = 3,
+  context: ProjectionContext = 'nba',
 ): Map<string, ComparisonWithSim[]> {
   // Fetch raw top-(topN × 4) comps per prospect — enough alternatives for dedup
   const rawComps = new Map<string, ComparisonWithSim[]>();
   for (const p of prospects) {
-    rawComps.set(p.internalId, getComparisonsWithSimilarity(p, activePlayers, topN * 4));
+    rawComps.set(p.internalId, getComparisonsWithSimilarity(p, activePlayers, topN * 4, context));
   }
 
   // Greedy assignment: for each rank slot independently, cap each comp at maxPerRank
@@ -805,12 +976,7 @@ export function getClassPercentiles(
       id: p.internalId ?? p.name,
       score: computeSkillScores(p)[axis],
     }));
-    scored.sort((a, b) => a.score - b.score); // ascending
-    scored.forEach((entry, i) => {
-      // Percentile rank: (rank+1)/n × 100, so the worst is ~1, the best is 100.
-      const pct = Math.round(((i + 1) / n) * 100);
-      byAxis[axis].set(entry.id, pct);
-    });
+    byAxis[axis] = buildMidrankPercentiles(scored);
   }
 
   return {

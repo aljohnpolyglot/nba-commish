@@ -1,19 +1,29 @@
 import type { Game } from '../../types';
 import type { CompetitionDayOfWeek, CompetitionSpec } from './types';
 import { selectEuroleagueParticipants } from '../../utils/euroleagueQualification';
+import { normalizeDate } from '../../utils/helpers';
 import { getActivePbaCompetitionId } from '../../utils/uiMode';
-import { dateForCompetitionSeason } from './competitionSeasonState';
+import { dateForCompetitionSeason, matchesScheduleSeason } from './competitionSeasonState';
+import { deconflictCompetitionSchedules } from './competitionScheduleDeconflict';
+import { selectQualifiedDomesticCupTids } from './domesticCupStandings';
+
+export { deconflictCompetitionSchedules } from './competitionScheduleDeconflict';
 
 type CompetitionTeamSource = {
-  nonNBATeams?: Array<{ tid: number; league?: string; pop?: number }>;
+  nonNBATeams?: Array<{ tid: number; league?: string; endesaRelegated?: boolean }>;
   clubAliasMap?: Record<number, number>;
+  euroleagueSeededTids?: number[];
+  euroleagueSeedSeason?: number;
+  euroCompetitionTeamTids?: Record<string, number[]>;
+  euroleagueSelectionSeason?: number;
+  leagueStats?: { year?: number; uiMode?: string; pbaConference?: string; pbaConferencePhase?: string } | null;
   userTeamId?: number | null;
+  schedule?: Game[];
 };
 
 type CompetitionScheduleRepairState = CompetitionTeamSource & {
   date: string;
   schedule: Game[];
-  leagueStats?: { uiMode?: string; pbaConference?: string; pbaConferencePhase?: string } | null;
 };
 
 const DAY_TO_INDEX: Record<CompetitionDayOfWeek, number> = {
@@ -41,32 +51,28 @@ function capTeamCount(tids: number[], count?: number, userTeamId?: number | null
 
 export function selectCompetitionTeamTids(spec: CompetitionSpec, source: CompetitionTeamSource): number[] {
   const teams = source.nonNBATeams ?? [];
+  const qualifiedCupTids = selectQualifiedDomesticCupTids(spec, source);
+  if (qualifiedCupTids?.length) return qualifiedCupTids;
+  const seededSourceTids = source.euroCompetitionTeamTids?.[spec.id];
+  if (seededSourceTids?.length) {
+    return capTeamCount(uniqueTids(seededSourceTids), spec.teamCount, source.userTeamId);
+  }
+  const activeEndesaTeams = teams.filter(team => team.league === 'Endesa' && team.endesaRelegated !== true);
   if (spec.teamSelector === 'allEndesa') {
-    return capTeamCount(uniqueTids(teams.filter(t => t.league === 'Endesa').map(t => t.tid)), spec.teamCount, source.userTeamId);
+    return capTeamCount(uniqueTids(activeEndesaTeams.map(team => team.tid)), spec.teamCount, source.userTeamId);
   }
   if (spec.teamSelector === 'allEuroleague') {
     return selectEuroleagueParticipants(source, spec.teamCount).tids;
   }
-  // Domestic-cup selectors (Supercopa, Copa del Rey) — Endesa-only, sorted by
-  // market size as a stand-in for "qualified contender". Real Supercopa uses
-  // top 4 from the previous Endesa season, but for a fresh save and to keep
-  // the selector deterministic we pick the largest-population clubs (Real,
-  // Barça, Valencia, Málaga …).
-  if (spec.teamSelector === 'supercopaQualified' || spec.teamSelector === 'top8EndesaMidseason') {
-    const ranked = teams
-      .filter(t => t.league === 'Endesa')
-      .sort((a, b) => (b.pop ?? 0) - (a.pop ?? 0))
-      .map(t => t.tid);
-    return capTeamCount(uniqueTids(ranked), spec.teamCount, source.userTeamId);
-  }
   if (spec.teamSelector === 'allPBA') {
-    return capTeamCount(uniqueTids(teams.filter(t => t.league === 'PBA').map(t => t.tid)), spec.teamCount, source.userTeamId);
+    return uniqueTids(teams.filter(t => t.league === 'PBA').map(t => t.tid));
   }
-  // Fallback: Endesa clubs only. Previously this fell through to "Endesa OR
-  // Euroleague" which let Anadolu Efes / Panathinaikos / AEK end up in the
-  // Supercopa bracket — never what a domestic Spanish tournament wants.
+  if (spec.teamSelector.startsWith('league:')) {
+    const league = spec.teamSelector.slice('league:'.length);
+    return capTeamCount(uniqueTids(teams.filter(team => team.league === league).map(team => team.tid)), spec.teamCount, source.userTeamId);
+  }
   return capTeamCount(
-    uniqueTids(teams.filter(t => t.league === 'Endesa').map(t => t.tid)),
+    uniqueTids(activeEndesaTeams.map(team => team.tid)),
     spec.teamCount,
     source.userTeamId,
   );
@@ -91,30 +97,45 @@ function makeGame(gid: number, homeTid: number, awayTid: number, date: Date, spe
     awayScore: 0,
     played: false,
     date: iso(date),
+    season: inferCompetitionSeason(spec, date),
     competitionId: spec.id,
     competitionPhase: phase,
   };
 }
 
-function nextRoundDate(date: Date, days: CompetitionDayOfWeek[]): Date {
+function nextRoundDate(date: Date, days: CompetitionDayOfWeek[], spacingDays = 7): Date {
   const cursor = new Date(date);
-  cursor.setUTCDate(cursor.getUTCDate() + 7);
+  cursor.setUTCDate(cursor.getUTCDate() + Math.max(1, spacingDays));
   return nextSlot(cursor, days);
 }
 
 function inferCompetitionSeason(spec: CompetitionSpec, seasonStart: Date): number {
+  if (!spec.id.startsWith('pba-')) {
+    return seasonStart.getUTCMonth() + 1 >= 9
+      ? seasonStart.getUTCFullYear() + 1
+      : seasonStart.getUTCFullYear();
+  }
   const crossesCalendarYear =
     spec.seasonStart.month > spec.seasonEnd.month ||
     (spec.seasonStart.month === spec.seasonEnd.month && spec.seasonStart.day > spec.seasonEnd.day);
-  return crossesCalendarYear ? seasonStart.getUTCFullYear() + 1 : seasonStart.getUTCFullYear();
+  if (!crossesCalendarYear) return seasonStart.getUTCFullYear();
+  return seasonStart.getUTCMonth() + 1 >= spec.seasonStart.month
+    ? seasonStart.getUTCFullYear() + 1
+    : seasonStart.getUTCFullYear();
 }
 
-function allAllowedDates(start: Date, end: Date, days: CompetitionDayOfWeek[]): Date[] {
+function allAllowedDates(
+  start: Date,
+  end: Date,
+  days: CompetitionDayOfWeek[],
+  blackoutRanges: Array<{ start: Date; end: Date }> = [],
+): Date[] {
   const allowed = new Set(days.map(d => DAY_TO_INDEX[d]));
   const cursor = new Date(start);
   const dates: Date[] = [];
   while (cursor.getTime() <= end.getTime()) {
-    if (allowed.has(cursor.getUTCDay())) dates.push(new Date(cursor));
+    const blackedOut = blackoutRanges.some(range => cursor >= range.start && cursor <= range.end);
+    if (allowed.has(cursor.getUTCDay()) && !blackedOut) dates.push(new Date(cursor));
     cursor.setUTCDate(cursor.getUTCDate() + 1);
   }
   return dates.length > 0 ? dates : [new Date(start)];
@@ -150,6 +171,33 @@ function buildRoundRobinPairs(spec: CompetitionSpec, teams: { tid: number }[]): 
   buildLeg(false);
   if (requestedGamesPerTeam >= (teams.length - 1) * 2) buildLeg(true);
   return pairs;
+}
+
+function regularSeasonEnd(spec: CompetitionSpec, season: number): Date {
+  const end = spec.regularSeasonEnd ?? spec.seasonEnd;
+  return new Date(dateForCompetitionSeason(spec, season, end.month, end.day));
+}
+
+function spreadRoundDates(spec: CompetitionSpec, seasonStart: Date, roundCount: number): Date[] {
+  const days: CompetitionDayOfWeek[] = spec.daysOfWeek?.length ? spec.daysOfWeek : ['Sat'];
+  const first = nextSlot(seasonStart, days);
+  if (spec.roundSpacingDays) {
+    const dates = [first];
+    while (dates.length < roundCount) {
+      dates.push(nextRoundDate(dates[dates.length - 1], days, spec.roundSpacingDays));
+    }
+    return dates;
+  }
+  const season = inferCompetitionSeason(spec, seasonStart);
+  const blackoutRanges = (spec.blackoutPeriods ?? []).map(period => ({
+    start: new Date(dateForCompetitionSeason(spec, season, period.start.month, period.start.day)),
+    end: new Date(dateForCompetitionSeason(spec, season, period.end.month, period.end.day)),
+  }));
+  const slots = allAllowedDates(first, regularSeasonEnd(spec, season), days, blackoutRanges);
+  if (roundCount <= 1) return [slots[0]];
+  return Array.from({ length: roundCount }, (_, index) =>
+    slots[Math.round((index * (slots.length - 1)) / (roundCount - 1))],
+  );
 }
 
 function pbaDenseRoundRobin(spec: CompetitionSpec, teams: { tid: number }[], seasonStart: Date, gidStart: number): Game[] {
@@ -206,42 +254,20 @@ function pbaDenseRoundRobin(spec: CompetitionSpec, teams: { tid: number }[], sea
 }
 
 function roundRobin(spec: CompetitionSpec, teams: { tid: number }[], seasonStart: Date, gidStart: number): Game[] {
-  const games: Game[] = [];
-  const days: CompetitionDayOfWeek[] = spec.daysOfWeek?.length ? spec.daysOfWeek : ['Sat'];
+  const pairs = buildRoundRobinPairs(spec, teams);
+  const rounds = [...new Set(pairs.map(pair => pair.round))].sort((a, b) => a - b);
+  const dates = spreadRoundDates(spec, seasonStart, rounds.length);
+  const dateByRound = new Map(rounds.map((round, index) => [round, dates[index]]));
   let gid = gidStart;
-  let date = nextSlot(seasonStart, days);
-
-  const pool = teams.length % 2 === 0 ? [...teams] : [...teams, { tid: -1 }];
-  const rounds = pool.length - 1;
-  const requestedGamesPerTeam = Number(spec.gamesPerTeam ?? rounds);
-  const firstLegRounds = requestedGamesPerTeam > 0 && requestedGamesPerTeam < rounds
-    ? Math.max(1, Math.floor(requestedGamesPerTeam))
-    : rounds;
-  const half = pool.length / 2;
   const phaseForRound = (round: number) => spec.format === 'regular-league' ? `r${round}` : 'group';
-  const buildLeg = (reverseHomeAway: boolean) => {
-    let rotation = [...pool];
-    const roundLimit = reverseHomeAway ? rounds : firstLegRounds;
-    for (let round = 1; round <= roundLimit; round++) {
-      for (let i = 0; i < half; i++) {
-        const a = rotation[i];
-        const b = rotation[rotation.length - 1 - i];
-        if (a.tid !== -1 && b.tid !== -1) {
-          const homeTid = reverseHomeAway ? b.tid : a.tid;
-          const awayTid = reverseHomeAway ? a.tid : b.tid;
-          games.push(makeGame(gid++, homeTid, awayTid, date, spec, phaseForRound(reverseHomeAway ? rounds + round : round)));
-        }
-      }
-      date = nextRoundDate(date, days);
-      rotation = [rotation[0], rotation[rotation.length - 1], ...rotation.slice(1, -1)];
-    }
-  };
-
-  buildLeg(false);
-  if (requestedGamesPerTeam >= (teams.length - 1) * 2) {
-    buildLeg(true);
-  }
-  return games;
+  return pairs.map(pair => makeGame(
+    gid++,
+    pair.homeTid,
+    pair.awayTid,
+    dateByRound.get(pair.round) ?? dates[0] ?? seasonStart,
+    spec,
+    phaseForRound(pair.round),
+  ));
 }
 
 export function generateForCompetition(
@@ -253,10 +279,21 @@ export function generateForCompetition(
   if (teams.length < 2) return [];
   if (spec.format === 'regular-league' || spec.format === 'group-knockout') {
     if (spec.id.startsWith('pba-')) return pbaDenseRoundRobin(spec, teams, seasonStart, gidStart);
+    const groupCount = Math.min(Math.max(1, Math.floor(spec.groupCount ?? 1)), Math.floor(teams.length / 2));
+    if (spec.format === 'group-knockout' && groupCount > 1) {
+      const groups = Array.from({ length: groupCount }, () => [] as { tid: number }[]);
+      teams.forEach((team, index) => groups[index % groupCount].push(team));
+      let nextGid = gidStart;
+      return groups.flatMap(group => {
+        const games = roundRobin({ ...spec, groupCount: undefined }, group, seasonStart, nextGid);
+        nextGid += games.length;
+        return games;
+      });
+    }
     return roundRobin(spec, teams, seasonStart, gidStart);
   }
   const days: CompetitionDayOfWeek[] = spec.daysOfWeek?.length ? spec.daysOfWeek : ['Sat'];
-  let date = nextSlot(seasonStart, days);
+  const date = nextSlot(seasonStart, days);
   let gid = gidStart;
   const selected = teams.slice(0, spec.format === 'tournament' ? 4 : 8);
   const games: Game[] = [];
@@ -264,9 +301,13 @@ export function generateForCompetition(
   // 8-team knockouts, Final for 4-team tournaments) are written by
   // injectSingleEliminationProgression once the prior round has been played —
   // so the Final isn't hardcoded to seed[0]–seed[2] before SFs happen.
-  for (let i = 0; i + 1 < selected.length; i += 2) {
-    games.push(makeGame(gid++, selected[i].tid, selected[i + 1].tid, date, spec, selected.length > 4 ? 'qf' : 'sf'));
-    date = nextSlot(new Date(date.getTime() + 86_400_000), days);
+  const seedPairs = selected.length === 8
+    ? [[0, 7], [3, 4], [1, 6], [2, 5]]
+    : selected.length === 4
+      ? [[0, 3], [1, 2]]
+      : Array.from({ length: Math.floor(selected.length / 2) }, (_, index) => [index * 2, index * 2 + 1]);
+  for (const [left, right] of seedPairs) {
+    games.push(makeGame(gid++, selected[left].tid, selected[right].tid, date, spec, selected.length > 4 ? 'qf' : 'sf'));
   }
   return games;
 }
@@ -311,22 +352,41 @@ export function generatePreseasonFriendlies(
       const dayOffset = passOffset + (i % 7);
       const date = new Date(windowStart);
       date.setUTCDate(windowStart.getUTCDate() + dayOffset);
-      games.push({
+      games.push(buildPreseasonFriendlyGame({
         gid: gid++,
         homeTid: reverseHA ? b : a,
         awayTid: reverseHA ? a : b,
-        homeScore: 0,
-        awayScore: 0,
-        played: false,
-        date: iso(date),
-        isPreseason: true,
-      } as Game);
+        date,
+        season: scheduleYear,
+      }));
     }
   };
 
   buildPass(false, 0);
   buildPass(true, 7);
   return games;
+}
+
+export function buildPreseasonFriendlyGame(input: {
+  gid: number;
+  homeTid: number;
+  awayTid: number;
+  date: Date | string;
+  season: number;
+}): Game {
+  return {
+    gid: input.gid,
+    homeTid: input.homeTid,
+    awayTid: input.awayTid,
+    homeScore: 0,
+    awayScore: 0,
+    played: false,
+    date: new Date(input.date).toISOString(),
+    season: input.season,
+    isPreseason: true,
+    isExhibition: true,
+    excludeFromRecord: true,
+  };
 }
 
 function expectedRegularSeasonGames(spec: CompetitionSpec, teamCount: number): number {
@@ -369,20 +429,19 @@ export function repairCompetitionSchedules(
   let nextGid = Math.max(700_000, ...schedule.map(game => game.gid)) + 1;
 
   for (const spec of specs.filter(s => (s.format === 'regular-league' || s.format === 'group-knockout') && shouldHandleCompetitionSpec(state, s))) {
-    const teamTids = selectCompetitionTeamTids(spec, state);
+    const teamTids = selectCompetitionTeamTids(spec, { ...state, schedule });
     const expected = expectedRegularSeasonGames(spec, teamTids.length);
     if (expected === 0) continue;
 
     const seasonStart = dateForCompetitionSeason(spec, season, spec.seasonStart.month, spec.seasonStart.day);
-    const seasonEnd = dateForCompetitionSeason(spec, season, spec.seasonEnd.month, spec.seasonEnd.day);
-    const current = schedule.filter(game => game.competitionId === spec.id);
+    const current = schedule.filter(game =>
+      game.competitionId === spec.id && matchesScheduleSeason(game, season),
+    );
     const regularCurrent = current.filter(game => game.competitionPhase === 'group' || game.competitionPhase?.startsWith('r'));
-    const otherCurrent = current.filter(game => !(game.competitionPhase === 'group' || game.competitionPhase?.startsWith('r')));
-    const inWindow = regularCurrent.filter(game => game.date >= seasonStart && game.date <= seasonEnd);
     const participants = new Set(regularCurrent.flatMap(game => [game.homeTid, game.awayTid]));
-    const isSparse = inWindow.length < Math.floor(expected * 0.8) || teamTids.some(tid => !participants.has(tid));
+    const isSparse = regularCurrent.length < Math.floor(expected * 0.8) || teamTids.some(tid => !participants.has(tid));
     const unplayedRegular = regularCurrent.filter(game => !game.played);
-    const isOverScheduled = inWindow.length > expected && unplayedRegular.length > 0;
+    const isOverScheduled = regularCurrent.length > expected && unplayedRegular.length > 0;
     if (!isSparse && !isOverScheduled) continue;
 
     const played = regularCurrent.filter(game => game.played);
@@ -391,13 +450,48 @@ export function repairCompetitionSchedules(
     const regenerated = generateForCompetition(spec, teamTids.map(tid => ({ tid })), repairStart, nextGid)
       .filter(game => !playedKeys.has(gameKey(game)));
     nextGid += regenerated.length;
+    const currentRegularGids = new Set(regularCurrent.map(game => game.gid));
     schedule = [
-      ...schedule.filter(game => game.competitionId !== spec.id),
-      ...otherCurrent,
+      ...schedule.filter(game => !currentRegularGids.has(game.gid)),
       ...played,
       ...regenerated,
     ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime() || a.gid - b.gid);
   }
 
-  return schedule;
+  for (const spec of specs.filter(s => (s.format === 'knockout' || s.format === 'tournament') && shouldHandleCompetitionSpec(state, s))) {
+    const seasonStart = dateForCompetitionSeason(spec, season, spec.seasonStart.month, spec.seasonStart.day);
+    const seasonEnd = dateForCompetitionSeason(spec, season, spec.seasonEnd.month, spec.seasonEnd.day);
+    if (spec.qualificationRule === 'domestic-standings' && normalizeDate(state.date) < normalizeDate(seasonStart)) {
+      schedule = schedule.filter(game => game.played || game.competitionId !== spec.id);
+      continue;
+    }
+    const teamTids = selectCompetitionTeamTids(spec, { ...state, schedule });
+    if (teamTids.length < 2) continue;
+    const seasonGames = schedule.filter(game =>
+      game.competitionId === spec.id && game.date >= seasonStart && game.date <= seasonEnd,
+    );
+    const initialPhase = teamTids.length > 4 ? 'qf' : 'sf';
+    const initialRound = seasonGames.filter(game => game.competitionPhase === initialPhase);
+    const expectedInitialGames = Math.floor(Math.min(teamTids.length, spec.format === 'tournament' ? 4 : 8) / 2);
+    const repairInitialRound = seasonGames.length > 0
+      && !seasonGames.some(game => game.played)
+      && (
+        initialRound.length !== expectedInitialGames
+        || new Set(initialRound.map(game => normalizeDate(game.date))).size > 1
+      );
+    if ((seasonGames.length > 0 && !repairInitialRound) || new Date(state.date).getTime() > new Date(seasonEnd).getTime()) continue;
+    const start = new Date(Math.max(new Date(seasonStart).getTime(), new Date(state.date).getTime()));
+    const generated = generateForCompetition(spec, teamTids.map(tid => ({ tid })), start, nextGid);
+    nextGid += generated.length;
+    schedule = [
+      ...schedule.filter(game => game.played || game.competitionId !== spec.id),
+      ...generated,
+    ].sort(
+      (left, right) => new Date(left.date).getTime() - new Date(right.date).getTime() || left.gid - right.gid,
+    );
+  }
+
+  return state.leagueStats?.uiMode === 'euro_isolated'
+    ? deconflictCompetitionSchedules(schedule, specs)
+    : schedule;
 }

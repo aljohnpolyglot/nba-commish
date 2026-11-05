@@ -147,6 +147,15 @@ const DELAY_MS = 50;
 
 function sleep(ms: number): Promise<void> { return new Promise(r => setTimeout(r, ms)); }
 
+export function shouldBypassImageCacheDownload(url: string): boolean {
+  try {
+    const resolved = new URL(url, window.location.origin);
+    return resolved.origin !== window.location.origin;
+  } catch {
+    return true;
+  }
+}
+
 async function downloadAndCache(db: IDBDatabase, url: string): Promise<void> {
   try {
     if (blobUrlMap.has(url)) return;
@@ -158,7 +167,7 @@ async function downloadAndCache(db: IDBDatabase, url: string): Promise<void> {
       return;
     }
 
-    if (url.includes('ak-static.cms.nba.com') || url.includes('cdn.nba.com')) return;
+    if (shouldBypassImageCacheDownload(url)) return;
 
     // Quota check before download — skip if storage too full
     if (await shouldSkipCaching(db)) return;

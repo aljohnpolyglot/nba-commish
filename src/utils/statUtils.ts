@@ -1,4 +1,5 @@
 import { NBAGMStat } from '../types';
+import { getCalibratedOrtg, getCalibratedPer } from './advancedStatCalibration';
 
 export type StatCategory =
   | 'PTS' | 'REB' | 'ORB' | 'DRB' | 'AST' | 'STL' | 'BLK' | 'TOV' | 'PF' | 'MIN' | 'PM'
@@ -35,11 +36,11 @@ export function getStatValue(stat: NBAGMStat | undefined, cat: StatCategory): nu
     case 'FG%':   return stat.fga > 0 ? ((stat.fg  || 0) / stat.fga) * 100 : 0;
     case '3P%':   return stat.tpa > 0 ? ((stat.tp  || 0) / stat.tpa) * 100 : 0;
     case 'FT%':   return stat.fta > 0 ? ((stat.ft  || 0) / stat.fta) * 100 : 0;
-    case 'PER':   return stat.per    || 0;
+    case 'PER':   return getCalibratedPer(stat);
     case 'TS%':   return stat.tsPct  || 0;
     case 'eFG%':  return stat.efgPct || 0;
     case 'USG%':  return stat.usgPct || 0;
-    case 'ORtg':  return stat.ortg   || 0;
+    case 'ORtg':  return getCalibratedOrtg(stat);
     case 'DRtg':  return stat.drtg   || 0;
     case 'BPM':   return stat.bpm    || 0;
     case 'WS':    return stat.ws     || 0;

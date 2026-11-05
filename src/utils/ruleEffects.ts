@@ -238,19 +238,12 @@ export const calculateRuleChangeEffects = (oldStats: LeagueStats, newStats: Part
         }
     }
 
-    // Scoring (Dunk/Midrange)
+    // Scoring
     if (newStats.dunkValue !== undefined && newStats.dunkValue !== oldStats.dunkValue) {
         const diff = newStats.dunkValue - (oldStats.dunkValue || 2);
         fanMorale += diff * 3;
         viewership += diff * 2;
         legacy -= Math.abs(diff) * 2;
-    }
-
-    if (newStats.midrangeValue !== undefined && newStats.midrangeValue !== oldStats.midrangeValue) {
-        const diff = newStats.midrangeValue - (oldStats.midrangeValue || 2);
-        // Buffing midrange might bring back the "old game"
-        legacy += diff > 0 ? 2 : -2;
-        fanMorale += diff * 1;
     }
 
     // Coach Challenges
@@ -371,14 +364,6 @@ export const calculateRuleChangeEffects = (oldStats: LeagueStats, newStats: Part
         // Further = harder = less scoring
         fanMorale -= diff * 0.5;
         legacy += diff > 0 ? 1 : -1;
-    }
-
-    // Half Court Shot Value
-    if (newStats.halfCourtShotValue !== undefined && newStats.halfCourtShotValue !== oldStats.halfCourtShotValue) {
-        const diff = newStats.halfCourtShotValue - (oldStats.halfCourtShotValue || 3);
-        fanMorale += diff * 2;
-        viewership += diff * 1;
-        legacy -= diff > 0 ? 1 : 0;
     }
 
     return {

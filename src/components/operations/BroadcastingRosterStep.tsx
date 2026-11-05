@@ -5,6 +5,8 @@ import {
   BroadcasterCard,
   BroadcastFilter,
 } from './BroadcastingShared';
+import type { BroadcastTalentRecord } from '../../services/broadcasting/broadcastTalent';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
 
 type BroadcastingRosterStepProps = {
   filteredBroadcasters: readonly Broadcaster[];
@@ -17,6 +19,7 @@ type BroadcastingRosterStepProps = {
   toggleBroadcaster: (id: string) => void;
   readOnly: boolean;
   isFictional: boolean;
+  broadcastTalent: BroadcastTalentRecord[];
 };
 
 export const BroadcastingRosterStep: React.FC<BroadcastingRosterStepProps> = ({
@@ -30,6 +33,7 @@ export const BroadcastingRosterStep: React.FC<BroadcastingRosterStepProps> = ({
   toggleBroadcaster,
   readOnly,
   isFictional,
+  broadcastTalent,
 }) => (
   <motion.div
     key="roster"
@@ -83,5 +87,39 @@ export const BroadcastingRosterStep: React.FC<BroadcastingRosterStepProps> = ({
         />
       ))}
     </div>
+
+    <section className="space-y-3 border-t border-zinc-800 pt-6">
+      <div>
+        <h3 className="text-lg font-black uppercase tracking-tight text-white">On-Air Talent</h3>
+        <p className="mt-1 text-xs text-zinc-500">Former players currently working league broadcasts.</p>
+      </div>
+      {broadcastTalent.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {broadcastTalent.map(talent => (
+            <article
+              key={talent.id}
+              className="flex min-w-0 items-center gap-3 rounded-2xl border border-zinc-800 bg-zinc-900/55 p-3"
+            >
+              <PlayerPortrait
+                imgUrl={talent.portraitUrl}
+                playerName={talent.playerName}
+                size={52}
+              />
+              <div className="min-w-0">
+                <p className="truncate text-sm font-black text-white">{talent.playerName}</p>
+                <p className="truncate text-xs font-bold text-indigo-300">{talent.role}</p>
+                <p className="mt-1 truncate text-[10px] uppercase tracking-wide text-zinc-500">
+                  {talent.outlet} · Since {talent.joinedYear}
+                </p>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-950/40 px-4 py-6 text-center text-xs text-zinc-500">
+          No former players have joined the broadcast desk yet.
+        </div>
+      )}
+    </section>
   </motion.div>
 );

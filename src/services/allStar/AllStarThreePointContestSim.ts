@@ -1,4 +1,5 @@
 import { NBAPlayer, AllStarPlayer } from '../../types';
+import { isCurrentNbaPlayer } from './allStarSelectionHelpers';
 
 export interface ThreePointContestResult {
   round1: { playerId: string; playerName: string; score: number }[];
@@ -12,26 +13,37 @@ const EXCLUDED_FROM_THREE_CONTEST = ['Stephen Curry', 'Klay Thompson'];
 
 export class AllStarThreePointContestSim {
   static selectContestants(players: NBAPlayer[], season: number, numContestants: number = 8): NBAPlayer[] {
-    const eligible = players.filter(p => {
-      if (EXCLUDED_FROM_THREE_CONTEST.includes(p.name)) return false;
-      
-      const stat = p.stats?.find(s => s.season === season && !s.playoffs);
+    const eligible = players.filter(p =>
+      isCurrentNbaPlayer(p) && !EXCLUDED_FROM_THREE_CONTEST.includes(p.name)
+    );
+    const selectionStats = new Map(eligible.map(player => {
+      const stat = player.stats
+        ?.filter(row => !row.playoffs && Number(row.season) <= season && Number(row.gp ?? 0) > 0)
+        .sort((left, right) => Number(right.season) - Number(left.season))[0];
+      return [player.internalId, stat] as const;
+    }));
+    const score = (player: NBAPlayer) => {
+      const stat = selectionStats.get(player.internalId);
+      const gp = Math.max(1, Number(stat?.gp ?? 0));
+      const attemptsPerGame = Number(stat?.tpa ?? 0) / gp;
+      const percentage = Number(stat?.tpa ?? 0) > 0
+        ? Number(stat?.tp ?? 0) / Number(stat?.tpa)
+        : 0;
+      const threeRating = Number(player.ratings?.[player.ratings.length - 1]?.tp ?? 0);
+      return attemptsPerGame * 20 + percentage * 100 + threeRating / 10;
+    };
+    const primary = eligible.filter(player => {
+      const stat = selectionStats.get(player.internalId);
       if (!stat) return false;
-      
-      const gp = stat.gp || 1;
-      const tpaPerGame = stat.tpa / gp;
-      return tpaPerGame >= 3.5;
-    });
+      const gp = Math.max(1, Number(stat.gp ?? 0));
+      return Number(stat.tpa ?? 0) / gp >= 3.5;
+    }).sort((left, right) => score(right) - score(left));
+    const primaryIds = new Set(primary.map(player => player.internalId));
+    const fallback = eligible
+      .filter(player => !primaryIds.has(player.internalId))
+      .sort((left, right) => score(right) - score(left));
 
-    return eligible
-      .sort((a, b) => {
-        const statA = a.stats?.find(s => s.season === season && !s.playoffs);
-        const statB = b.stats?.find(s => s.season === season && !s.playoffs);
-        const pctA = statA && statA.tpa > 0 ? statA.tp / statA.tpa : 0;
-        const pctB = statB && statB.tpa > 0 ? statB.tp / statB.tpa : 0;
-        return pctB - pctA;
-      })
-      .slice(0, numContestants);
+    return [...primary, ...fallback].slice(0, numContestants);
   }
 
   static simulate(contestants: NBAPlayer[], season: number): ThreePointContestResult {

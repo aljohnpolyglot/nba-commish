@@ -9,34 +9,23 @@
  */
 
 import { Game, MediaRights, NBATeam } from '../types';
+import { resolveBroadcastPartnerLogoUrl } from '../data/historicalBroadcastRights';
+import { PBA_BROADCASTER_NAMES } from '../data/pbaBroadcastRights';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 export const BROADCASTER_LOGOS: Record<string, string> = {
-  espn:       'https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/ESPN_wordmark.svg/1280px-ESPN_wordmark.svg.png',
-  nbc:        'https://upload.wikimedia.org/wikipedia/commons/7/7a/NBC_logo_2022_%28vertical%29.svg',
-  amazon:     'https://upload.wikimedia.org/wikipedia/commons/thumb/1/11/Amazon_Prime_Video_logo.svg/3840px-Amazon_Prime_Video_logo.svg.png',
-  tnt:        'https://upload.wikimedia.org/wikipedia/commons/0/00/TNT_Sports_Logo_%282017%29.png',
-  netflix:    'https://upload.wikimedia.org/wikipedia/commons/thumb/1/18/Netflix_2016_N_logo.svg/960px-Netflix_2016_N_logo.svg.png',
-  apple:      'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f7/Apple_TV_logo.svg/960px-Apple_TV_logo.svg.png',
-  youtube:    'https://upload.wikimedia.org/wikipedia/commons/e/ef/Youtube_logo.png',
-  cbs:        'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ7V6VM0kdDSSLVxjYSkeD5pSbOpDfOgvdA1Q&s',
-  fox:        'https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/FOX_Sports_logo.svg/1280px-FOX_Sports_logo.svg.png',
-  meta:       'https://upload.wikimedia.org/wikipedia/commons/thumb/b/b9/2023_Facebook_icon.svg/960px-2023_Facebook_icon.svg.png',
-  hulu:       'https://upload.wikimedia.org/wikipedia/commons/thumb/f/f9/Hulu_logo_%282018%29.svg/960px-Hulu_logo_%282018%29.svg.png',
-  disney:     'https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Disney%2B_logo.svg/960px-Disney%2B_logo.svg.png',
-  hbo:        'https://upload.wikimedia.org/wikipedia/commons/thumb/4/44/HBO_Max_2024.svg/250px-HBO_Max_2024.svg.png',
-  paramount:  'https://upload.wikimedia.org/wikipedia/en/1/1e/Paramount_Global.svg',
-  abc:        'https://upload.wikimedia.org/wikipedia/commons/thumb/5/54/American_Broadcasting_Company_Logo.svg/250px-American_Broadcasting_Company_Logo.svg.png',
-  fubo:       'https://upload.wikimedia.org/wikipedia/commons/c/cb/Fubo_2023.svg',
-  sling:      'https://upload.wikimedia.org/wikipedia/commons/thumb/5/53/Sling_TV_logo.svg/1280px-Sling_TV_logo.svg.png',
-  tencent:    'https://upload.wikimedia.org/wikipedia/commons/2/22/Tencent_Logo.svg',
-  pif:        'https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Public_Investment_Fund_%28Saudi_Arabia%29_logo.svg/960px-Public_Investment_Fund_%28Saudi_Arabia%29_logo.svg.png',
-  fanduel:    'https://cdn.worldvectorlogo.com/logos/fanduel-logo-2022.svg',
-  streameast: 'https://pbs.twimg.com/media/Gz7WM8yWQAIH-7g.jpg',
+  ...Object.fromEntries(
+    ['dumont', 'sni', 'usa', 'espn', 'nbc', 'amazon', 'tnt', 'netflix', 'apple', 'youtube', 'cbs', 'fox', 'meta', 'hulu', 'disney', 'hbo', 'paramount', 'abc', 'fubo', 'sling', 'tencent', 'pif', 'fanduel', 'streameast']
+      .map(id => [id, resolveBroadcastPartnerLogoUrl(id, 128) ?? '']),
+  ),
 };
 
 export const BROADCASTER_NAMES: Record<string, string> = {
+  ...PBA_BROADCASTER_NAMES,
+  dumont:     'DuMont',
+  sni:        'SNI/Hughes',
+  usa:        'USA Network',
   espn:       'ESPN/ABC',
   nbc:        'NBC/Peacock',
   amazon:     'Amazon Prime',
@@ -126,7 +115,12 @@ export const FICTIONAL_BROADCASTER_BADGE: Record<string, BroadcasterBadge> = {
 };
 
 /** IDs that count as "national TV" (high-prestige, broad reach). */
-const NATIONAL_TV_IDS = new Set(['espn', 'nbc', 'abc', 'tnt', 'cbs', 'fox', 'pif', 'fanduel']);
+const NATIONAL_TV_IDS = new Set([
+  'espn', 'nbc', 'abc', 'tnt', 'cbs', 'fox', 'pif', 'fanduel',
+  'pba-vintage', 'pba-viva', 'pba-nbn-ibc', 'pba-abc', 'pba-solar',
+  'pba-aktv', 'pba-tv5', 'pba-sports5', 'pba-espn5', 'pba-one-sports',
+  'pba-rush', 'pba-a2z', 'rptv',
+]);
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
@@ -158,6 +152,11 @@ export const DEFAULT_MEDIA_RIGHTS: MediaRights = {
   mediaRev: 6.9,
   lpRev:    3.6,
   salaryCap: 154.6,
+  reach: 91,
+  production: 92,
+  security: 94,
+  growth: 90,
+  approval: 84,
   isLocked: false, // stays unlocked until the player finalizes or Oct-23 deadline
   phaseAssignments: {
     preseason:         ['espn', 'nbc', 'amazon'],
@@ -213,6 +212,9 @@ export const getPhaseIdForGame = (game: Game): string => {
     (game as any).isDunkContest ||
     (game as any).isThreePointContest
   ) return 'allstarweekend';
+  if (game.competitionId === 'pba-commissioners-cup') return 'christmasdaygames';
+  if (game.competitionId === 'pba-governors-cup') return 'nbacupinseason';
+  if (game.competitionId === 'pba-philippine-cup') return 'regularseason';
 
   const dateStr = (game.date || '').split('T')[0];
   const parts   = dateStr.split('-').map(Number);
@@ -233,13 +235,14 @@ const computeGameHype = (
   homeTeam: NBATeam | undefined,
   awayTeam: NBATeam | undefined,
   allTeams: NBATeam[],
+  knownMaxPop?: number,
 ): number => {
   if ((game as any).isAllStar || (game as any).isCelebrityGame) return 1.0;
   if ((game as any).isPlayoff) return 0.75; // all playoff games are high-hype
   if ((game as any).isPlayIn)  return 0.65;
 
   const pops   = allTeams.map(t => t.pop || 1);
-  const maxPop = Math.max(...pops, 1);
+  const maxPop = knownMaxPop ?? Math.max(...pops, 1);
   const homePop = homeTeam?.pop || 1;
   const awayPop = awayTeam?.pop  || 1;
   const marketHype = (homePop + awayPop) / (2 * maxPop);
@@ -266,7 +269,9 @@ export const pickBroadcasterForGame = (
 ): { broadcaster: string; broadcasterName: string; tipoffTime: string } => {
   const phaseId   = getPhaseIdForGame(game);
   const day       = getDayOfWeek(game.date);
-  const tipoffTime = TIPOFF_BY_DAY[day] || '7:30 PM ET';
+  const tipoffTime = String(game.competitionId ?? '').startsWith('pba-')
+    ? '7:30 PM PHT'
+    : TIPOFF_BY_DAY[day] || '7:30 PM ET';
 
   const phaseBC = mediaRights.phaseAssignments?.[phaseId] ?? mediaRights.activeBroadcasters;
   const dayBC   = mediaRights.scheduleAssignments?.[day]  ?? [];
@@ -276,7 +281,12 @@ export const pickBroadcasterForGame = (
   const candidates   = intersection.length > 0 ? intersection : phaseBC;
 
   if (candidates.length === 0) {
-    return { broadcaster: 'leaguepass', broadcasterName: 'NBA League Pass', tipoffTime };
+    const pbaGame = String(game.competitionId ?? '').startsWith('pba-');
+    return {
+      broadcaster: pbaGame ? 'pba-league-feed' : 'leaguepass',
+      broadcasterName: pbaGame ? 'PBA League Feed' : 'NBA League Pass',
+      tipoffTime,
+    };
   }
 
   const hype = computeGameHype(game, homeTeam, awayTeam, allTeams);
@@ -327,6 +337,7 @@ export const attachBroadcastersToGames = (
   teams: NBATeam[],
 ): Game[] => {
   const teamMap = new Map(teams.map(t => [t.id, t]));
+  const maxPop = Math.max(...teams.map(team => team.pop || 1), 1);
 
   // ── Step 1: Group unplayed games by calendar date ────────────────────────
   const byDate = new Map<string, Game[]>();
@@ -344,7 +355,7 @@ export const attachBroadcastersToGames = (
     const scored = dayGames
       .map(g => ({
         gid:  g.gid,
-        hype: computeGameHype(g, teamMap.get(g.homeTid), teamMap.get(g.awayTid), teams),
+        hype: computeGameHype(g, teamMap.get(g.homeTid), teamMap.get(g.awayTid), teams, maxPop),
       }))
       .sort((a, b) => b.hype - a.hype);
 

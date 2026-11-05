@@ -5,12 +5,14 @@ export type OffseasonConfirmSpec = {
   title: string;
   body: string;
   confirmLabel: string;
+  secondaryLabel?: string;
 };
 
 type StepSpecArgs = {
   row: OffseasonChecklistRow;
   status: OffseasonRowStatus;
   isEuroMode: boolean;
+  isPbaMode?: boolean;
   dueSponsorSlotLabels: string[];
   openStaffCount: number;
 };
@@ -19,17 +21,39 @@ export function getOffseasonStepConfirmSpec({
   row,
   status,
   isEuroMode,
+  isPbaMode = false,
   dueSponsorSlotLabels,
   openStaffCount,
 }: StepSpecArgs): OffseasonConfirmSpec {
   const resume = status === 'in-progress';
   switch (row) {
+    case 'governorsBoardMeeting':
+      return {
+        eyebrow: 'Governors Board',
+        title: 'New Season Recap',
+        body: 'Look over salary-cap, rule, and team identity changes taking effect this season.',
+        confirmLabel: 'Open Recap',
+      };
     case 'seasonSummary':
       return {
         eyebrow: 'Season Review',
         title: 'Open League History',
         body: 'Take a quick look back at the completed season and jump straight to the league history page before draft night.',
         confirmLabel: 'View History',
+      };
+    case 'performanceReview':
+      return {
+        eyebrow: 'Team Ownership',
+        title: resume ? 'Resume Performance Review' : 'Annual Performance Review',
+        body: 'Meet with ownership to review the completed season and receive your decision before the rest of the offseason begins.',
+        confirmLabel: resume ? 'Resume Review' : 'Begin Review',
+      };
+    case 'strategyReview':
+      return {
+        eyebrow: 'Media Day',
+        title: resume ? 'Return to Media Day' : 'Season Outlook',
+        body: 'Tell the media what fans should expect this season, then review your Target List, Trading Block, and Untouchables in the Trade Hub.',
+        confirmLabel: resume ? 'Return to Media Day' : 'Enter Media Day',
       };
     case 'retiredPlayersReview':
       return {
@@ -38,19 +62,39 @@ export function getOffseasonStepConfirmSpec({
         body: 'Honor this season\'s retirees, see which jerseys go up to the rafters, and check who\'s next in line for the Hall.',
         confirmLabel: resume ? 'Resume Review' : 'Open Review',
       };
+    case 'memorialDecisions':
+      return {
+        eyebrow: 'League Office',
+        title: resume ? 'Return to Memorial Decisions' : 'Memorial Decisions',
+        body: 'Review the messages awaiting your decision and choose whether to honor each player or respectfully take no action.',
+        confirmLabel: 'Open Inbox',
+      };
     case 'hofCeremony':
       return {
-        eyebrow: 'Hall of Fame Weekend',
-        title: resume ? 'Resume Enshrinement' : 'Attend the Ceremony',
-        body: 'Welcome this year\'s Hall of Fame class on enshrinement weekend. Once concluded, the step is cleared from your checklist.',
-        confirmLabel: resume ? 'Resume Ceremony' : 'Enter Ceremony',
+        eyebrow: 'League History',
+        title: resume ? 'Resume Hall of Fame Review' : 'Review the Hall of Fame Class',
+        body: 'Review this year\'s class and open any inductee profile. The league processes enshrinement on the scheduled date even if you continue.',
+        confirmLabel: resume ? 'Resume Review' : 'Open Review',
       };
     case 'draftLottery':
       return {
         eyebrow: 'Summer Checklist',
-        title: resume ? 'Resume Draft Lottery' : 'Open Draft Lottery',
-        body: 'This moves you into the draft lottery step. Continue only if you want to handle the lottery flow now.',
-        confirmLabel: resume ? 'Resume Lottery' : 'Open Lottery',
+        title: isPbaMode
+          ? resume ? 'Resume Draft Order Review' : 'Review Draft Order'
+          : resume ? 'Resume Draft Lottery' : 'Open Draft Lottery',
+        body: isPbaMode
+          ? 'Review the reverse-order PBA Draft board. No lottery movement is applied.'
+          : 'This moves you into the draft lottery step. Continue only if you want to handle the lottery flow now.',
+        confirmLabel: isPbaMode
+          ? resume ? 'Resume Review' : 'Review Order'
+          : resume ? 'Resume Lottery' : 'Open Lottery',
+      };
+    case 'draftOrderReview':
+      return {
+        eyebrow: 'NBA Draft',
+        title: resume ? 'Resume Draft Order Review' : 'Review Draft Order',
+        body: 'Review the official two-round order, current owners, traded-pick provenance, and your complete pick inventory before the Draft begins.',
+        confirmLabel: resume ? 'Resume Review' : 'Review Order',
       };
     case 'expansionDraft':
       return {
@@ -105,23 +149,32 @@ export function getOffseasonStepConfirmSpec({
       return {
         eyebrow: 'Player Market',
         title: resume ? 'Return to Player Market' : 'Open Player Market',
-        body: 'This opens the Euro player market for listings, bids, release clauses, and unattached players before camp.',
-        confirmLabel: resume ? 'Return to Market' : 'Open Market',
+        body: 'Use the transfer market for listings, bids, loans, and release clauses, or browse the existing Free Agents market to offer a contract to an unattached player before camp.',
+        confirmLabel: resume ? 'Return to Market' : 'Open Transfer Market',
+        secondaryLabel: 'Browse Free Agents',
       };
     case 'trainingCamp':
-      if (isEuroMode) {
-        return {
-          eyebrow: 'Summer Checklist',
-          title: 'Finish Training Camp',
-          body: 'This marks training camp complete and unlocks the final Jump to Preseason action.',
-          confirmLabel: 'Mark Done',
-        };
-      }
       return {
         eyebrow: 'Summer Checklist',
         title: resume ? 'Resume Training Camp' : 'Open Training Camp',
-        body: 'This moves you into training camp. Continue only if you want to work on camp decisions now. If you want to skip camp instead, use Sim to Preseason.',
-        confirmLabel: resume ? 'Resume Training Camp' : 'Open Training Camp',
+        body: isEuroMode
+          ? 'Enter the training center to review development plans and prepare your Euro club for preseason.'
+          : 'This moves you into training camp. Continue only if you want to work on camp decisions now. If you want to skip camp instead, use Sim to Preseason.',
+        confirmLabel: resume ? 'Resume Training Camp' : 'Enter Training Camp',
+      };
+    case 'internationalTournament':
+      return {
+        eyebrow: 'International Basketball',
+        title: resume ? 'Return to the Tournament' : 'Follow the Tournament',
+        body: 'Follow the national teams, results, standings, and medal rounds before training camp begins.',
+        confirmLabel: resume ? 'Resume Tournament' : 'Enter Tournament',
+      };
+    case 'summerLeague':
+      return {
+        eyebrow: 'Summer League',
+        title: resume ? 'Return to Summer League' : 'Enter Summer League',
+        body: 'Set the July roster, follow the preliminary slate, and review the championship and tournament honors.',
+        confirmLabel: resume ? 'Return to Summer League' : 'Enter Summer League',
       };
     case 'sponsorRenewals':
       if (dueSponsorSlotLabels.length === 0) {
@@ -142,22 +195,31 @@ export function getOffseasonStepConfirmSpec({
       return {
         eyebrow: 'Club Office',
         title: 'Check Facilities',
-        body: 'Open the facilities desk to look over upgrades before players report.',
+        body: 'Review the facilities desk after the schedule draw and before entering the player market.',
         confirmLabel: 'Open Facilities',
       };
     case 'budgetLock':
       return {
         eyebrow: 'Club Office',
         title: 'Set Season Budget',
-        body: 'Lock in next season\'s ticketing, travel, medical, scouting, and academy budget once the rest of your summer business is set.',
+        body: 'Review and lock next season\'s ticketing, travel, medical, scouting, and academy budget after facilities and the player market are complete.',
         confirmLabel: 'Open Review',
+      };
+    case 'euroScheduleDraw':
+      return {
+        eyebrow: 'Summer Checklist',
+        title: 'Schedule Draw',
+        body: 'Review your released domestic, cup, and continental fixtures before finalizing schedule-dependent budgets.',
+        confirmLabel: 'Review Fixtures',
       };
     case 'preseasonFriendlies':
       return {
-        eyebrow: 'Summer Checklist',
-        title: 'Preseason Tune-Ups',
-        body: 'Look over your preseason and friendly slate, then mark the step complete when you are ready.',
-        confirmLabel: 'Review Games',
+        eyebrow: 'Preseason',
+        title: isEuroMode ? 'Plan Club Friendlies' : 'Preseason Tune-Ups',
+        body: isEuroMode
+          ? 'Invite European clubs and choose the dates and venues for your preseason tune-ups before the schedule draw.'
+          : 'Look over your preseason and friendly slate, then mark the step complete when you are ready.',
+        confirmLabel: isEuroMode ? 'Plan Friendlies' : 'Review Games',
       };
     case 'youthPromotion':
       return {
@@ -250,6 +312,20 @@ export function getOffseasonStepConfirmSpec({
         title: resume ? 'Resume Staff Signings' : 'Staff Signings',
         body: `${openStaffCount} staff role${openStaffCount === 1 ? '' : 's'} open or expiring across coaching and support staff. Finish them before training camp.`,
         confirmLabel: resume ? 'Resume' : 'Review Staff',
+      };
+    case 'endesaNbaDraft':
+      return {
+        eyebrow: 'Player Movement',
+        title: resume ? 'Resume NBA Draft Decisions' : 'NBA Draft Decisions',
+        body: 'Review which of your players plan to enter the next NBA Draft class.',
+        confirmLabel: resume ? 'Resume Review' : 'Open Review',
+      };
+    case 'endesaBroadcastMeeting':
+      return {
+        eyebrow: 'Club Finances',
+        title: resume ? 'Resume Media Rights Meeting' : 'Media Rights Meeting',
+        body: 'Review the domestic and continental media-rights distributions before setting the season budget.',
+        confirmLabel: resume ? 'Resume Meeting' : 'Open Meeting',
       };
     default: {
       const unreachableRow: never = row;

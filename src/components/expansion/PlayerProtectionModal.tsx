@@ -1,24 +1,19 @@
-// PlayerProtectionModal — ZenGM-style Player-Protection für Expansion Draft.
-//
-// Pro Bestandsteam wählt der GM bis zu `perTeamLimit` Spieler, die NICHT von
-// den Expansion-Teams gedraftet werden können. AI-Teams werden silent beim
-// Mount via autoSelectAllTeams gefüllt — der User sieht nur sein eigenes Team
-// (oder im Commissioner-Mode kann er durch alle cyclen).
-//
-// Auto-Select-Heuristik: phase-bewusst (rebuilding=POT, contending=OVR, middle=
-// hybrid) + Family-Lock (siblings sind unkündbar, vgl. CLAUDE.md).
-// Submit dispatcht SET_EXPANSION_PROTECTIONS.
-
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Shield, Sparkles, RotateCcw, Lock, ChevronLeft, ChevronRight, Users, ArrowUpDown, Check } from 'lucide-react';
+import { X, Shield, Sparkles, RotateCcw, Lock, ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import type { NBAPlayer } from '../../types';
-import { convertTo2KRating } from '../../utils/helpers';
 import { hasFamilyOnRoster } from '../../utils/familyTies';
 import { getDisplayPotential } from '../../utils/playerRatings';
-import { getDisplayAge } from '../../store/playerRatingStore';
+import { getDisplayAge, getDisplayOverall } from '../../store/playerRatingStore';
 import { getTeamFullName } from '../../utils/teamNames';
+import { formatExternalSalary } from '../../constants';
+import { getHistoricalTeamSnapshot } from '../../utils/teamAssets';
+import {
+  PlayerProtectionRoster,
+  type ProtectionSortDir,
+  type ProtectionSortKey,
+} from './PlayerProtectionRoster';
 import {
   autoSelectAllTeams,
   autoSelectProtections,
@@ -40,10 +35,10 @@ type ExistingTeam = {
   name: string;
   abbreviation?: string;
   location?: string;
+  logoUrl?: string;
+  imgURL?: string;
+  imgURLSmall?: string;
 };
-
-type SortKey = 'k2' | 'pot' | 'age' | 'pos' | 'name' | 'yrs' | 'salary';
-type SortDir = 'asc' | 'desc';
 
 // Wraps getTeamFullName mit Fallback auf "Team {tid}" wenn keine Daten.
 function teamDisplayName(team: ExistingTeam | undefined, fallbackTid: number): string {
@@ -58,22 +53,29 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const perTeamLimit = state.expansionProtectionSettings?.perTeamLimit ?? 8;
   const expansionTeamCount = state.expansionSchedule?.teams.length ?? 0;
+  const isPbaExpansion = state.expansionSchedule?.league === 'pba';
 
   const existingTeams = useMemo(() => {
-    const teams = (state.teams ?? []) as ExistingTeam[];
-    return teams.filter(t => (t.id ?? t.tid ?? -1) >= 0);
-  }, [state.teams]);
+    const teams = (isPbaExpansion
+      ? state.nonNBATeams.filter(team => team.league === 'PBA')
+      : state.teams ?? []) as ExistingTeam[];
+    const incoming = new Set(state.expansionTeamIds ?? []);
+    return teams.filter(t => (t.id ?? t.tid ?? -1) >= 0 && !incoming.has(t.id ?? t.tid ?? -1));
+  }, [isPbaExpansion, state.expansionTeamIds, state.nonNBATeams, state.teams]);
 
   const existingTeamIds = useMemo(() => {
     return existingTeams
       .map(team => team.id ?? team.tid)
       .filter((tid): tid is number => tid !== undefined);
   }, [existingTeams]);
+  const managedUserTid = isGM && existingTeamIds.includes(userTid) ? userTid : -999;
 
   const [protections, setProtections] = useState<Record<number, string[]>>({});
-  const [activeTid, setActiveTid] = useState<number>(userTid >= 0 ? userTid : (existingTeamIds[0] ?? 0));
-  const [sortKey, setSortKey] = useState<SortKey>('k2');
-  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  const [activeTid, setActiveTid] = useState<number>(
+    managedUserTid >= 0 ? managedUserTid : (existingTeamIds[0] ?? 0),
+  );
+  const [sortKey, setSortKey] = useState<ProtectionSortKey>('ovr');
+  const [sortDir, setSortDir] = useState<ProtectionSortDir>('desc');
 
   useEffect(() => {
     const aiResults = autoSelectAllTeams(
@@ -81,13 +83,13 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
       existingTeamIds,
       perTeamLimit,
       currentYear,
-      userTid >= 0 ? [userTid] : [],
+      managedUserTid >= 0 ? [managedUserTid] : [],
     );
     const initial: Record<number, string[]> = {};
     for (const [tid, result] of Object.entries(aiResults)) {
       initial[parseInt(tid, 10)] = result.protected;
     }
-    if (userTid >= 0) initial[userTid] = [];
+    if (managedUserTid >= 0) initial[managedUserTid] = [];
     setProtections(initial);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -103,13 +105,17 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
   const activeProtectedSet = new Set(activeProtected);
   const familyLocked = useMemo(
     () => new Set(
-      activeRoster.filter(p => hasFamilyOnRoster(p, activeRoster)).map(p => p.internalId)
+      activeRoster.filter(p => hasFamilyOnRoster(p, activeRoster, currentYear)).map(p => p.internalId)
     ),
-    [activeRoster]
+    [activeRoster, currentYear]
   );
   const activeTeam = useMemo(
     () => existingTeams.find(team => (team.id ?? team.tid) === activeTid),
     [existingTeams, activeTid]
+  );
+  const activeTeamSnapshot = useMemo(
+    () => getHistoricalTeamSnapshot(activeTeam, currentYear),
+    [activeTeam, currentYear],
   );
 
   const sortedRoster = useMemo(() => {
@@ -127,7 +133,7 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
       const yearsLeft = Math.max(0, effectiveExp - currentYear);
       return {
         player,
-        k2: convertTo2KRating(player.overallRating ?? 60, 50),
+        ovr: getDisplayOverall(player),
         pot: getDisplayPotential(player, currentYear),
         age: getDisplayAge(player, currentYear),
         yearsLeft,
@@ -138,7 +144,7 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
     const dir = sortDir === 'desc' ? -1 : 1;
     return enriched.sort((a, b) => {
       switch (sortKey) {
-        case 'k2':     return (a.k2 - b.k2) * dir;
+        case 'ovr':    return (a.ovr - b.ovr) * dir;
         case 'pot':    return (a.pot - b.pot) * dir;
         case 'salary': return (a.salaryUSD - b.salaryUSD) * dir;
         case 'age': {
@@ -154,7 +160,7 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
     });
   }, [activeRoster, activePhase, currentYear, sortKey, sortDir]);
 
-  const toggleSort = (key: SortKey) => {
+  const toggleSort = (key: ProtectionSortKey) => {
     if (sortKey === key) {
       setSortDir(d => (d === 'desc' ? 'asc' : 'desc'));
     } else {
@@ -195,252 +201,142 @@ export const PlayerProtectionModal: React.FC<Props> = ({ onClose, onConfirm }) =
     if (nextTid != null) setActiveTid(nextTid);
   };
 
-  const userProtectionCount = (protections[userTid >= 0 ? userTid : -1] ?? []).length;
-  const userRosterSize = (state.players ?? []).filter(p => (p as NBAPlayer).tid === userTid).length;
+  const userProtectionCount = (protections[managedUserTid] ?? []).length;
+  const userRosterSize = (state.players ?? []).filter(p => (p as NBAPlayer).tid === managedUserTid).length;
   const userMinExpected = Math.min(perTeamLimit, userRosterSize);
-  const canSubmit = userTid < 0 || userProtectionCount >= userMinExpected || userProtectionCount === userRosterSize;
+  const canSubmit = managedUserTid < 0
+    || userProtectionCount >= userMinExpected
+    || userProtectionCount === userRosterSize;
+  const formatSalary = (salaryUSD: number) => isPbaExpansion
+    ? formatExternalSalary(salaryUSD, 'PBA')
+    : `$${(salaryUSD / 1_000_000).toFixed(1)}M`;
 
   return (
     <AnimatePresence>
       <motion.div
-        initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 md:p-4"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        className="fixed inset-0 z-[220] flex items-stretch justify-center overflow-y-auto bg-[#020617]/90 p-0 backdrop-blur-md sm:items-center sm:p-4"
         onClick={onClose}
       >
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-zinc-900 text-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] flex flex-col overflow-hidden"
-          onClick={(e) => e.stopPropagation()}
+          initial={{ scale: 0.97, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          exit={{ scale: 0.97, opacity: 0 }}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="player-protection-title"
+          data-testid="player-protection-modal"
+          className="flex h-[100dvh] w-full max-w-7xl flex-col overflow-hidden bg-[#07111f] text-white shadow-[0_30px_100px_rgba(0,0,0,0.65)] sm:h-auto sm:max-h-[calc(100dvh-2rem)] sm:rounded-3xl sm:border sm:border-slate-800"
+          onClick={event => event.stopPropagation()}
         >
-          {/* Header */}
-          <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 border-b border-zinc-800">
-            <div className="min-w-0">
-              <h2 className="text-xl font-bold flex items-center gap-2">
-                <Shield className="w-5 h-5 text-indigo-400" /> Player Protection
-              </h2>
-              <p className="text-xs text-zinc-400 mt-0.5">
+          <div className="flex items-start justify-between gap-4 border-b border-slate-800 px-4 py-4 sm:px-7 sm:py-5">
+            <div className="flex min-w-0 items-start gap-3 sm:gap-4">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl bg-violet-500/10 ring-1 ring-violet-400/10 sm:h-14 sm:w-14">
+                <Shield className="h-7 w-7 text-violet-400 sm:h-8 sm:w-8" />
+              </div>
+              <div className="min-w-0">
+                <h2 id="player-protection-title" className="text-xl font-black uppercase tracking-tight sm:text-3xl">Player Protection</h2>
+                <p className="mt-1 text-xs leading-relaxed text-slate-400 sm:text-sm">
                 Protect up to {perTeamLimit} players per team. Unprotected players can be claimed by the {expansionTeamCount} expansion team{expansionTeamCount !== 1 ? 's' : ''}.
-              </p>
+                </p>
+              </div>
             </div>
-            <button onClick={onClose} className="text-zinc-400 hover:text-white flex-shrink-0">
-              <X className="w-5 h-5" />
+            <button type="button" onClick={onClose} aria-label="Close player protection" className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-slate-800/80 text-slate-300 transition hover:bg-slate-700 hover:text-white">
+              <X className="h-6 w-6" />
             </button>
           </div>
 
-          {/* Team-Header */}
-          <div className="flex items-center justify-between gap-2 px-4 sm:px-6 py-3 border-b border-zinc-800 bg-zinc-950">
-            {!isGM && (
-              <button onClick={() => cycleTeam(-1)} className="p-1.5 hover:bg-zinc-800 rounded" title="Previous team">
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-            )}
-            <div className="flex-1 text-center">
-              <div className="text-sm font-semibold">
-                {teamDisplayName(activeTeam, activeTid)}
+          <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5 custom-scrollbar">
+            <section className="flex min-h-full flex-col rounded-3xl border border-slate-800 bg-[#091523] p-3 shadow-inner shadow-black/10 sm:p-5">
+              <div className="mb-4 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                  {!isGM && (
+                    <button type="button" onClick={() => cycleTeam(-1)} aria-label="Previous team" className="rounded-xl border border-slate-700 p-2 text-slate-400 transition hover:border-violet-400/60 hover:text-white">
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                  )}
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-slate-950/70 sm:h-16 sm:w-16">
+                    {activeTeamSnapshot.logoUrl ? (
+                      <img src={activeTeamSnapshot.logoUrl} alt="" className="h-12 w-12 object-contain sm:h-14 sm:w-14" />
+                    ) : (
+                      <Shield className="h-8 w-8 text-violet-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-lg font-black uppercase tracking-tight sm:text-2xl">{teamDisplayName(activeTeam, activeTid)}</h3>
+                    <p className="mt-1 text-xs font-black uppercase tracking-wider text-slate-400">
+                      <span className="text-violet-400">{activeProtected.length}</span> / {Math.min(perTeamLimit, activeRoster.length)} protected
+                    </p>
+                    {familyLocked.size > 0 && (
+                      <p className="mt-1 flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-amber-400">
+                        <Lock className="h-3 w-3" /> {familyLocked.size} family protected
+                      </p>
+                    )}
+                  </div>
+                  {!isGM && (
+                    <button type="button" onClick={() => cycleTeam(1)} aria-label="Next team" className="rounded-xl border border-slate-700 p-2 text-slate-400 transition hover:border-violet-400/60 hover:text-white">
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 sm:flex">
+                  <button type="button" onClick={handleReset} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-950/40 px-4 text-sm font-black text-slate-200 transition hover:border-slate-500 hover:bg-slate-800">
+                    <RotateCcw className="h-4 w-4" /> Reset
+                  </button>
+                  <button type="button" onClick={handleAutoSelect} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 px-5 text-sm font-black text-white shadow-lg shadow-orange-950/30 transition hover:brightness-110" title={`Auto-select ${perTeamLimit} players`}>
+                    <Sparkles className="h-4 w-4" /> Auto Select
+                  </button>
+                </div>
               </div>
-              <div className="text-xs text-zinc-500 mt-0.5">
-                {activeProtected.length} / {Math.min(perTeamLimit, activeRoster.length)} protected
-              </div>
-            </div>
-            {!isGM && (
-              <button onClick={() => cycleTeam(1)} className="p-1.5 hover:bg-zinc-800 rounded" title="Next team">
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            )}
+
+              <PlayerProtectionRoster
+                rows={sortedRoster}
+                protectedIds={activeProtectedSet}
+                familyLocked={familyLocked}
+                protectionLimit={perTeamLimit}
+                sortKey={sortKey}
+                sortDir={sortDir}
+                onSort={toggleSort}
+                onToggle={handleToggle}
+                formatSalary={formatSalary}
+              />
+            </section>
           </div>
 
-          {/* Action-Bar */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-2 border-b border-zinc-800">
-            <div className="text-xs text-zinc-400">
-              {familyLocked.size > 0 && (
-                <span className="flex items-center gap-1">
-                  <Lock className="w-3 h-3" /> {familyLocked.size} family-locked
-                </span>
-              )}
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2">
-              <button
-                onClick={handleReset}
-                className="px-3 py-1 text-xs bg-zinc-800 hover:bg-zinc-700 rounded flex items-center gap-1"
-              >
-                <RotateCcw className="w-3 h-3" /> Reset
-              </button>
-              <button
-                onClick={handleAutoSelect}
-                className="px-3 py-1 text-xs bg-amber-600 hover:bg-amber-500 rounded font-semibold flex items-center gap-1"
-                title={`Auto-select ${perTeamLimit} via ${activePhase} heuristic`}
-              >
-                <Sparkles className="w-3 h-3" /> Auto Select
-              </button>
-            </div>
-          </div>
-
-          {/* Roster-Liste */}
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {activeRoster.length === 0 ? (
-              <div className="text-center py-12 text-zinc-500">
-                <Users className="w-10 h-10 mx-auto mb-2 opacity-40" />
-                <p className="text-sm">No active players on this roster.</p>
-              </div>
-            ) : (
-              <table className="w-full text-sm">
-                <thead className="sticky top-0 bg-zinc-900 border-b border-zinc-800 text-xs text-zinc-400">
-                  <tr>
-                    <th className="text-left px-3 py-2 w-8">#</th>
-                    <SortHeader label="Player"   colKey="name"   align="left"   sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                    <SortHeader label="Pos"      colKey="pos"    align="center" width="w-12" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                    <SortHeader label="Age"      colKey="age"    align="center" width="w-12" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                    <SortHeader label="K2"       colKey="k2"     align="center" width="w-12" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                    <SortHeader label="POT"      colKey="pot"    align="center" width="w-12" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                    <SortHeader label="Contract" colKey="salary" align="center" width="w-20" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                    <SortHeader label="Yrs"      colKey="yrs"    align="center" width="w-14" sortKey={sortKey} sortDir={sortDir} onClick={toggleSort} />
-                    <th className="text-center px-2 py-2 w-14">Protect</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sortedRoster.map(({ player, k2, pot, age, yearsLeft, salaryUSD }, idx) => {
-                    const isProtected = activeProtectedSet.has(player.internalId);
-                    const isFamilyLocked = familyLocked.has(player.internalId);
-                    const isLimitReached = !isProtected && activeProtected.length >= perTeamLimit;
-                    const disabled = isFamilyLocked || isLimitReached;
-                    const salaryM = salaryUSD / 1_000_000;
-                    const isExpiring = yearsLeft === 0;
-                    return (
-                      <tr
-                        key={player.internalId}
-                        className={`border-b border-zinc-800/50 transition-colors ${
-                          isProtected ? 'bg-indigo-950/30' : 'hover:bg-zinc-800/40'
-                        }`}
-                      >
-                        <td className="px-3 py-2 text-zinc-500 text-xs">{idx + 1}</td>
-                        <td className="px-2 py-2">
-                          <div className="flex items-center gap-2">
-                            {player.imgURL && <img src={player.imgURL} alt="" className="w-6 h-6 rounded-full object-cover" />}
-                            <span className="font-medium">{player.name}</span>
-                            {isFamilyLocked && <Lock className="w-3 h-3 text-amber-400" />}
-                          </div>
-                        </td>
-                        <td className="text-center text-xs text-zinc-400">{player.pos || '—'}</td>
-                        <td className="text-center text-xs text-zinc-400">{age}</td>
-                        <td className="text-center font-mono">{k2}</td>
-                        <td className="text-center font-mono text-emerald-400/80">{pot}</td>
-                        <td className="text-center text-xs text-zinc-300">
-                          {salaryM > 0 ? `$${salaryM.toFixed(1)}M` : '—'}
-                        </td>
-                        <td className="text-center text-xs">
-                          {isExpiring ? (
-                            <span className="px-1.5 py-0.5 bg-rose-500/20 text-rose-300 rounded text-[10px] font-bold uppercase tracking-wider">
-                              Exp
-                            </span>
-                          ) : (
-                            <span className="text-zinc-400">{yearsLeft}</span>
-                          )}
-                        </td>
-                        <td className="text-center">
-                          <ProtectCheckbox
-                            checked={isProtected}
-                            disabled={disabled}
-                            onChange={() => handleToggle(player.internalId)}
-                          />
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            )}
-          </div>
-
-          {/* Footer */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between px-4 sm:px-6 py-4 border-t border-zinc-800 bg-zinc-950">
-            <div className="text-xs text-zinc-400 text-center sm:text-left">
+          <div className="flex flex-col gap-3 border-t border-slate-800 bg-[#07111f] px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+            <div className="text-center text-xs font-black uppercase tracking-wide text-slate-400 sm:text-left">
               {!canSubmit ? (
-                <span className="text-amber-400">
+                <span className="inline-flex items-center gap-2 text-violet-400">
+                  <Shield className="h-4 w-4" />
                   {isGM
                     ? `Protect at least ${userMinExpected} players (currently ${userProtectionCount}).`
                     : `Your team must protect at least ${userMinExpected} players (currently ${userProtectionCount}).`}
                 </span>
               ) : isGM ? (
-                <span>
+                <span className="text-emerald-400">
                   Ready · {userProtectionCount} protected for {teamDisplayName(activeTeam, activeTid)}
                 </span>
               ) : (
-                <span>All teams ready · {Object.keys(protections).length} rosters configured</span>
+                <span className="text-emerald-400">All teams ready · {Object.keys(protections).length} rosters configured</span>
               )}
             </div>
-            <div className="flex flex-col-reverse sm:flex-row gap-2">
-              <button onClick={onClose} className="w-full sm:w-auto px-4 py-2 text-sm text-zinc-300 hover:text-white">Cancel</button>
+            <div className="grid grid-cols-2 gap-2 sm:flex">
+              <button type="button" onClick={onClose} className="min-h-12 rounded-xl bg-slate-800 px-6 text-sm font-black text-white transition hover:bg-slate-700">Cancel</button>
               <button
+                type="button"
                 onClick={() => onConfirm(protections)}
                 disabled={!canSubmit}
-                className="w-full sm:w-auto px-5 py-2 text-sm bg-indigo-600 hover:bg-indigo-500 disabled:bg-zinc-700 disabled:text-zinc-500 rounded font-semibold"
+                className="inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-violet-600 px-6 text-sm font-black text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-600"
               >
-                Advance to Draft
+                Advance to Draft <ArrowRight className="h-4 w-4" />
               </button>
             </div>
           </div>
-
-          {/* Custom Scrollbar (slim, dark) — gilt nur für .custom-scrollbar */}
-          <style>{`
-            .custom-scrollbar::-webkit-scrollbar { width: 6px; height: 6px; }
-            .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
-            .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(99, 102, 241, 0.35); border-radius: 3px; }
-            .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: rgba(99, 102, 241, 0.6); }
-            .custom-scrollbar { scrollbar-width: thin; scrollbar-color: rgba(99,102,241,0.35) transparent; }
-          `}</style>
         </motion.div>
       </motion.div>
     </AnimatePresence>
   );
 };
-
-// ─── Sub-Komponenten ───────────────────────────────────────────────────────
-
-const SortHeader: React.FC<{
-  label: string;
-  colKey: SortKey;
-  align?: 'left' | 'center';
-  width?: string;
-  sortKey: SortKey;
-  sortDir: SortDir;
-  onClick: (k: SortKey) => void;
-}> = ({ label, colKey, align = 'center', width = '', sortKey, sortDir, onClick }) => {
-  const isActive = sortKey === colKey;
-  return (
-    <th className={`px-2 py-2 ${width} ${align === 'left' ? 'text-left' : 'text-center'}`}>
-      <button
-        onClick={() => onClick(colKey)}
-        className={`inline-flex items-center gap-1 hover:text-white transition-colors ${
-          isActive ? 'text-indigo-300' : 'text-zinc-400'
-        }`}
-      >
-        {label}
-        {isActive ? (
-          <span className="text-[9px]">{sortDir === 'desc' ? '▼' : '▲'}</span>
-        ) : (
-          <ArrowUpDown className="w-2.5 h-2.5 opacity-40" />
-        )}
-      </button>
-    </th>
-  );
-};
-
-const ProtectCheckbox: React.FC<{
-  checked: boolean;
-  disabled: boolean;
-  onChange: () => void;
-}> = ({ checked, disabled, onChange }) => (
-  <button
-    type="button"
-    onClick={(e) => { e.stopPropagation(); if (!disabled) onChange(); }}
-    disabled={disabled}
-    aria-pressed={checked}
-    className={`w-5 h-5 rounded-md border-2 inline-flex items-center justify-center transition-all ${
-      checked
-        ? 'bg-indigo-600 border-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]'
-        : 'bg-zinc-900 border-zinc-700 hover:border-indigo-500'
-    } ${disabled ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer'}`}
-  >
-    {checked && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-  </button>
-);

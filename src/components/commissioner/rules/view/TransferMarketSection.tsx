@@ -5,7 +5,7 @@ import { EURO_ISOLATED_DEFAULTS } from '../../../../constants';
 
 const InfoTooltip = ({ text }: { text: string }) => (
     <div className="group relative inline-flex items-center justify-center ml-1">
-        <Info size={12} className="text-slate-500 cursor-help hover:text-indigo-400 transition-colors" />
+        <Info size={12} className="text-slate-500 cursor-default hover:text-indigo-400 transition-colors" />
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-56 p-2 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none shadow-xl border border-slate-700 text-center leading-relaxed">
             {text}
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
@@ -68,7 +68,7 @@ export const TransferMarketSection: React.FC<Props> = ({ transferMarket, setTran
                     {/* ─── Windows ───────────────────────────────────────── */}
                     <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                            <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest">Transfer Windows</h3>
+                            <h3 className="text-xs font-bold text-amber-400 uppercase tracking-widest">Recruitment Activity</h3>
                             {windowDatesLocked && (
                                 <span className="inline-flex items-center gap-1 text-[9px] font-bold text-slate-500 uppercase">
                                     <Lock size={10} /> Locked
@@ -76,13 +76,13 @@ export const TransferMarketSection: React.FC<Props> = ({ transferMarket, setTran
                             )}
                         </div>
                         <p className="text-[10px] text-slate-500">
-                            Listings + bids only open inside these calendar spans. Active auctions resolve normally even after a window closes.
+                            These periods tune when new listings and bids are active. Existing negotiations still resolve normally.
                         </p>
 
                         {/* Summer window */}
                         <div className="bg-slate-900/60 rounded-2xl p-4 border border-amber-500/20 space-y-3">
                             <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                <span className="font-bold uppercase tracking-wider">Summer Window</span>
+                                <span className="font-bold uppercase tracking-wider">Offseason Activity</span>
                                 <span className="font-black text-amber-300">{summerSpan}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -114,7 +114,7 @@ export const TransferMarketSection: React.FC<Props> = ({ transferMarket, setTran
                         {/* Winter window */}
                         <div className="bg-slate-900/60 rounded-2xl p-4 border border-blue-500/20 space-y-3">
                             <div className="flex items-center justify-between text-[10px] text-slate-400">
-                                <span className="font-bold uppercase tracking-wider">Winter Window</span>
+                                <span className="font-bold uppercase tracking-wider">In-Season Activity</span>
                                 <span className="font-black text-blue-300">{winterSpan}</span>
                             </div>
                             <div className="grid grid-cols-2 gap-2">
@@ -191,7 +191,7 @@ export const TransferMarketSection: React.FC<Props> = ({ transferMarket, setTran
                                 onChange={e => update('bidderPool', e.target.value as TM['bidderPool'])}
                                 className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-[11px] py-2 px-3 focus:outline-none focus:border-indigo-500 appearance-none uppercase font-bold"
                             >
-                                <option value="euro">Euro Only (Euroleague + Endesa)</option>
+                                <option value="euro">European Leagues Only</option>
                                 <option value="plus_nba">Euro + NBA</option>
                                 <option value="all">All Leagues (+ WNBA / CBA / PBA / NBL)</option>
                             </select>

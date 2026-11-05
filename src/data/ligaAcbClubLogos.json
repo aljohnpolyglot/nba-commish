@@ -1,0 +1,541 @@
+{
+  "generatedAt": "2026-08-09T21:10:08.110Z",
+  "sourceTitle": "Liga ACB",
+  "sourceUrl": "https://en.wikipedia.org/wiki/Liga_ACB",
+  "detectedOuterGroup": "Clubs",
+  "totalClubs": 53,
+  "logosFound": 50,
+  "logosMissing": 3,
+  "clubs": [
+    {
+      "group": "2026–27",
+      "displayName": "Asisa Joventut",
+      "articleTitle": "Joventut Badalona",
+      "pageUrl": "https://en.wikipedia.org/wiki/Joventut_Badalona",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/2/23/Joventut_Badalona_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/2/23/Joventut_Badalona_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Joventut Badalona logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Barça",
+      "articleTitle": "FC Barcelona Bàsquet",
+      "pageUrl": "https://en.wikipedia.org/wiki/FC_Barcelona_B%C3%A0squet",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/4/47/FC_Barcelona_%28crest%29.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/4/47/FC_Barcelona_%28crest%29.svg/250px-FC_Barcelona_%28crest%29.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "FC Barcelona logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Casademont Zaragoza",
+      "articleTitle": "Basket Zaragoza",
+      "pageUrl": "https://en.wikipedia.org/wiki/Basket_Zaragoza",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/bc/Casademont_Zaragoza.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/b/bc/Casademont_Zaragoza.svg/250px-Casademont_Zaragoza.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Casademont Zaragoza logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "FIATC Girona",
+      "articleTitle": "Bàsquet Girona",
+      "pageUrl": "https://en.wikipedia.org/wiki/B%C3%A0squet_Girona",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/2/2b/B%C3%A0squet_Girona.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/2/2b/B%C3%A0squet_Girona.svg/250px-B%C3%A0squet_Girona.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Bàsquet Girona logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Ilerna Lleida",
+      "articleTitle": "Força Lleida CE",
+      "pageUrl": "https://en.wikipedia.org/wiki/For%C3%A7a_Lleida_CE",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/9/93/Hiopos_Lleida.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Hiopos_Lleida.png/250px-Hiopos_Lleida.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Hiopos Lleida logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Kids&Us Manresa",
+      "articleTitle": "Bàsquet Manresa",
+      "pageUrl": "https://en.wikipedia.org/wiki/B%C3%A0squet_Manresa",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/4/4b/Kids%26Us_Manresa_logo.webp",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/4/4b/Kids%26Us_Manresa_logo.webp/250px-Kids%26Us_Manresa_logo.webp.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Bàsquet Manresa logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Kosner Baskonia",
+      "articleTitle": "Saski Baskonia",
+      "pageUrl": "https://en.wikipedia.org/wiki/Saski_Baskonia",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/6/6a/Saski_Baskonia.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/6/6a/Saski_Baskonia.png/250px-Saski_Baskonia.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Kosner Baskonia logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "La Laguna Tenerife",
+      "articleTitle": "CB Canarias",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Canarias",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/c/c0/La_Laguna_Tenerife.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/c/c0/La_Laguna_Tenerife.svg/250px-La_Laguna_Tenerife.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "La Laguna Tenerife logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Leyma Coruña",
+      "articleTitle": "Básquet Coruña",
+      "pageUrl": "https://en.wikipedia.org/wiki/B%C3%A1squet_Coru%C3%B1a",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/9/97/B%C3%A1squet_Coru%C3%B1a.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/9/97/B%C3%A1squet_Coru%C3%B1a.svg/250px-B%C3%A1squet_Coru%C3%B1a.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Leyma Coruña logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Monbus Obradoiro",
+      "articleTitle": "Obradoiro CAB",
+      "pageUrl": "https://en.wikipedia.org/wiki/Obradoiro_CAB",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/3/3e/Obradoiro_CAB_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/3/3e/Obradoiro_CAB_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Monbus Obradoiro logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "MoraBanc Andorra",
+      "articleTitle": "BC Andorra",
+      "pageUrl": "https://en.wikipedia.org/wiki/BC_Andorra",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/6/62/BC_Andorra_logo.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/6/62/BC_Andorra_logo.svg/250px-BC_Andorra_logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "MoraBanc Andorra logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Real Madrid",
+      "articleTitle": "Real Madrid Baloncesto",
+      "pageUrl": "https://en.wikipedia.org/wiki/Real_Madrid_Baloncesto",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/be/Real_Madrid_Baloncesto.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/b/be/Real_Madrid_Baloncesto.png/250px-Real_Madrid_Baloncesto.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Real Madrid logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Recoletas Salud San Pablo Burgos",
+      "articleTitle": "CB San Pablo Burgos",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_San_Pablo_Burgos",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/e/ee/San_Pablo_Burgos.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/e/ee/San_Pablo_Burgos.svg/250px-San_Pablo_Burgos.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "San Pablo Burgos logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Río Breogán",
+      "articleTitle": "CB Breogán",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Breog%C3%A1n",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/5/5f/CB_Breog%C3%A1n.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/5/5f/CB_Breog%C3%A1n.svg/250px-CB_Breog%C3%A1n.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Río Breogán logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Surne Bilbao",
+      "articleTitle": "Bilbao Basket",
+      "pageUrl": "https://en.wikipedia.org/wiki/Bilbao_Basket",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/9/9d/Surne_Bilbao_Basket.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9d/Surne_Bilbao_Basket.svg/250px-Surne_Bilbao_Basket.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Surne Bilbao Basket logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "UCAM Murcia",
+      "articleTitle": "UCAM Murcia CB",
+      "pageUrl": "https://en.wikipedia.org/wiki/UCAM_Murcia_CB",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/7/7a/CB_Murcia_logo.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/7/7a/CB_Murcia_logo.svg/250px-CB_Murcia_logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "UCAM Murcia logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Unicaja",
+      "articleTitle": "Baloncesto Málaga",
+      "pageUrl": "https://en.wikipedia.org/wiki/Baloncesto_M%C3%A1laga",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/4/46/Fundaci%C3%B3n_Unicaja_Baloncesto.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/4/46/Fundaci%C3%B3n_Unicaja_Baloncesto.svg/250px-Fundaci%C3%B3n_Unicaja_Baloncesto.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Unicaja logo",
+      "error": null
+    },
+    {
+      "group": "2026–27",
+      "displayName": "Valencia Basket",
+      "articleTitle": "Valencia Basket",
+      "pageUrl": "https://en.wikipedia.org/wiki/Valencia_Basket",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/e/e8/Valencia_Basket_logo.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/e/e8/Valencia_Basket_logo.svg/330px-Valencia_Basket_logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Valencia Basket logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Askatuak",
+      "articleTitle": "Askatuak SBT",
+      "pageUrl": "https://en.wikipedia.org/wiki/Askatuak_SBT",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/3/3f/Askatuak_SBT.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/3/3f/Askatuak_SBT.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Askatuak SBT logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Cáceres",
+      "articleTitle": "Cáceres CB",
+      "pageUrl": "https://en.wikipedia.org/wiki/C%C3%A1ceres_CB",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/1/19/Last_Caceres_CB.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/1/19/Last_Caceres_CB.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Cáceres CB logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Cajabilbao",
+      "articleTitle": "CB Cajabilbao",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Cajabilbao",
+      "logoUrl": null,
+      "logoThumbUrl": null,
+      "logoAlt": null,
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Cajamadrid",
+      "articleTitle": "CD Cajamadrid",
+      "pageUrl": "https://en.wikipedia.org/wiki/CD_Cajamadrid",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": null,
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Cantabria Lobos",
+      "articleTitle": "Cantabria Baloncesto",
+      "pageUrl": "https://en.wikipedia.org/wiki/Cantabria_Baloncesto",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/af/Cantabria_Baloncesto.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/a/af/Cantabria_Baloncesto.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Alerta Cantabria logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "CB Zaragoza",
+      "articleTitle": "CB Zaragoza",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Zaragoza",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/a4/CB_Zaragoza_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a4/CB_Zaragoza_logo.jpg/250px-CB_Zaragoza_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Club Baloncesto Zaragoza logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Círcol Catòlic",
+      "articleTitle": "Círcol Catòlic de Badalona",
+      "pageUrl": "https://en.wikipedia.org/wiki/C%C3%ADrcol_Cat%C3%B2lic_de_Badalona",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/c/c5/Elcircol.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/c/c5/Elcircol.jpg",
+      "logoAlt": "Círcol Cotonifici Badalona logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Ciudad de Huelva",
+      "articleTitle": "CB Ciudad de Huelva",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Ciudad_de_Huelva",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/6/6f/CB_Ciudad_de_Huelva.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/6/6f/CB_Ciudad_de_Huelva.jpg",
+      "logoAlt": "Ciudad de Huelva logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Collado Villalba",
+      "articleTitle": "CB Collado Villalba",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Collado_Villalba",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": null,
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Espanyol",
+      "articleTitle": "RCD Espanyol Bàsquet",
+      "pageUrl": "https://en.wikipedia.org/wiki/RCD_Espanyol_B%C3%A0squet",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/2/29/Kit_shorts_whitesides.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/2/29/Kit_shorts_whitesides.png",
+      "logoAlt": null,
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Estudiantes",
+      "articleTitle": "CB Estudiantes",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Estudiantes",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/4/4b/Club_Baloncesto_Estudiantes_Madrid_%28logo%29.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/4/4b/Club_Baloncesto_Estudiantes_Madrid_%28logo%29.svg/250px-Club_Baloncesto_Estudiantes_Madrid_%28logo%29.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Movistar Estudiantes logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Fuenlabrada",
+      "articleTitle": "Baloncesto Fuenlabrada",
+      "pageUrl": "https://en.wikipedia.org/wiki/Baloncesto_Fuenlabrada",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/5/54/Logo_of_Baloncesto_Fuenlabrada.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/5/54/Logo_of_Baloncesto_Fuenlabrada.png/250px-Logo_of_Baloncesto_Fuenlabrada.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Flexicar Fuenlabrada logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Fundación Granada",
+      "articleTitle": "Fundación CB Granada",
+      "pageUrl": "https://en.wikipedia.org/wiki/Fundaci%C3%B3n_CB_Granada",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/1/11/Coviran_Granada.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/1/11/Coviran_Granada.png/250px-Coviran_Granada.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Coviran Granada logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Gran Canaria",
+      "articleTitle": "CB Gran Canaria",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Gran_Canaria",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/c/c7/CB_Gran_Canaria_logo.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/c/c7/CB_Gran_Canaria_logo.svg/250px-CB_Gran_Canaria_logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Dreamland Gran Canaria logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Gijón",
+      "articleTitle": "Gijón Baloncesto",
+      "pageUrl": "https://en.wikipedia.org/wiki/Gij%C3%B3n_Baloncesto",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/f/fb/Gijon_baloncesto.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/f/fb/Gijon_baloncesto.jpg/120px-Gijon_baloncesto.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Gijón Baloncesto logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Gipuzkoa",
+      "articleTitle": "Gipuzkoa Basket",
+      "pageUrl": "https://en.wikipedia.org/wiki/Gipuzkoa_Basket",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/a/aa/Donostia_Gipuzkoa_Basket.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/aa/Donostia_Gipuzkoa_Basket.png/250px-Donostia_Gipuzkoa_Basket.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Acunsa GBC logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Girona",
+      "articleTitle": "CB Sant Josep",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Sant_Josep",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/e/ed/Nou_logo_CB_Sant_Josep.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/e/ed/Nou_logo_CB_Sant_Josep.jpg/120px-Nou_logo_CB_Sant_Josep.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Sant Josep logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Granada",
+      "articleTitle": "CB Granada",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Granada",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/5/5f/CB_Granada.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/5/5f/CB_Granada.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "CB Granada logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Granollers",
+      "articleTitle": "CB Granollers",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Granollers",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/ab/CBGranollers_Logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/a/ab/CBGranollers_Logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "CB Granollers logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "L'Hospitalet",
+      "articleTitle": "CB L'Hospitalet",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_L'Hospitalet",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/7/76/CB_L%27Hospitalet.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/7/76/CB_L%27Hospitalet.png/250px-CB_L%27Hospitalet.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "CB L'Hospitalet logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "León",
+      "articleTitle": "Baloncesto León",
+      "pageUrl": "https://en.wikipedia.org/wiki/Baloncesto_Le%C3%B3n",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/0/0a/BaloncestoLeon.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/0/0a/BaloncestoLeon.jpg/250px-BaloncestoLeon.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Baloncesto León logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Lleida",
+      "articleTitle": "CE Lleida Bàsquet",
+      "pageUrl": "https://en.wikipedia.org/wiki/CE_Lleida_B%C3%A0squet",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/6/68/Lleida_B%C3%A0squetbol.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/6/68/Lleida_B%C3%A0squetbol.svg/250px-Lleida_B%C3%A0squetbol.svg.png",
+      "logoAlt": "Lleida Bàsquet logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Llíria",
+      "articleTitle": "CEB Llíria",
+      "pageUrl": "https://en.wikipedia.org/wiki/CEB_Ll%C3%ADria",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": null,
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Lucentum Alicante",
+      "articleTitle": "CB Lucentum Alicante",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Lucentum_Alicante",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/a2/CB_Lucentum-Alicante.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/a/a2/CB_Lucentum-Alicante.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Lucentum Alicante logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Menorca",
+      "articleTitle": "Menorca Bàsquet",
+      "pageUrl": "https://en.wikipedia.org/wiki/Menorca_B%C3%A0squet",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/7/71/MenorcaBasquet.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/7/71/MenorcaBasquet.png/250px-MenorcaBasquet.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Menorca Bàsquet logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "OAR Ferrol",
+      "articleTitle": "CB OAR Ferrol",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_OAR_Ferrol",
+      "logoUrl": null,
+      "logoThumbUrl": null,
+      "logoAlt": null,
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Ourense",
+      "articleTitle": "Club Ourense Baloncesto",
+      "pageUrl": "https://en.wikipedia.org/wiki/Club_Ourense_Baloncesto",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/d/dc/COB_Basketball.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/d/dc/COB_Basketball.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Club Ourense Baloncesto logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Oximesa",
+      "articleTitle": "CD Oximesa",
+      "pageUrl": "https://en.wikipedia.org/wiki/CD_Oximesa",
+      "logoUrl": null,
+      "logoThumbUrl": null,
+      "logoAlt": null,
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Palencia",
+      "articleTitle": "Palencia Baloncesto",
+      "pageUrl": "https://en.wikipedia.org/wiki/Palencia_Baloncesto",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/a9/Palencia_Baloncesto_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/Palencia_Baloncesto_logo.png/250px-Palencia_Baloncesto_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Palencia Baloncesto logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Peñas Huesca",
+      "articleTitle": "CB Peñas Huesca",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Pe%C3%B1as_Huesca",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/b8/CB_Pe%C3%B1as_Huesca.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/b/b8/CB_Pe%C3%B1as_Huesca.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "CB Peñas Huesca logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Real Betis",
+      "articleTitle": "Real Betis Baloncesto",
+      "pageUrl": "https://en.wikipedia.org/wiki/Real_Betis_Baloncesto",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": null,
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Salamanca",
+      "articleTitle": "CB Salamanca",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Salamanca",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/c/cb/CB_Salamanca.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/c/cb/CB_Salamanca.jpg",
+      "logoAlt": "Club Baloncesto Salamanca logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Tenerife AB",
+      "articleTitle": "Tenerife AB",
+      "pageUrl": "https://en.wikipedia.org/wiki/Tenerife_AB",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/6/6f/Kit_shorts.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": null,
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Tenerife CB",
+      "articleTitle": "Tenerife CB",
+      "pageUrl": "https://en.wikipedia.org/wiki/Tenerife_CB",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/0/03/Tenerife_Baloncesto.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/0/03/Tenerife_Baloncesto.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Tenerife Baloncesto logo",
+      "error": null
+    },
+    {
+      "group": "Former",
+      "displayName": "Valladolid",
+      "articleTitle": "CB Valladolid",
+      "pageUrl": "https://en.wikipedia.org/wiki/CB_Valladolid",
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/1/18/CB_Valladolid_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/1/18/CB_Valladolid_logo.png/250px-CB_Valladolid_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Valladolid logo",
+      "error": null
+    }
+  ]
+}

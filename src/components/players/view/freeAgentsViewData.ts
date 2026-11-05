@@ -1,14 +1,18 @@
 import { calcPot2K } from '../../../services/trade/tradeValueEngine';
 import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
 import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
-import { getGameDateParts } from '../../../utils/dateUtils';
 import { getCountryFromLoc } from '../../../utils/helpers';
-import { getStandardRosterLimit, getTrainingCampRosterLimit, getTwoWayRosterLimit } from '../../../utils/rosterLimits';
+import { getSigningRosterLimit, getStandardRosterLimit, getTwoWayRosterLimit } from '../../../utils/rosterLimits';
 import { getCapThresholds, getMLEAvailability, getTeamCapProfileFromState, getTeamPayrollUSD } from '../../../utils/salaryUtils';
+import { isMleEnabled } from '../../../utils/ruleFlags';
+import { areNonGuaranteedContractsEnabled, areTwoWayContractsEnabled, isNonGuaranteedContract, isTwoWayContract } from '../../../utils/contractTypes';
+import { isLeagueTrainingCampWindow } from '../../../services/leagueCalendar';
+import { getWnbaDevelopmentalContractLabel } from '../../../services/wnba/developmentalContracts';
+import { isUnavailableInternationalTournamentPlayer } from '../../../utils/prospectUtils';
 
 export const MARKET_POOLS_FULL = [
   { id: 'all', label: 'All Available', icon: 'Globe' },
-  { id: 'nba', label: 'NBA Free Agents', icon: 'Briefcase' },
+  { id: 'nba', label: 'Free Agents', icon: 'Briefcase' },
   { id: 'euroleague', label: 'Euroleague', icon: 'Trophy' },
   { id: 'pba', label: 'PBA', icon: 'Trophy' },
   { id: 'bleague', label: 'B-League', icon: 'Trophy' },
@@ -42,9 +46,10 @@ export const getMarketPools = (leagueType: string, nonNbaIsolated: boolean) =>
   nonNbaIsolated ? MARKET_POOLS_EURO : leagueType === 'fictional' ? MARKET_POOLS_FICTIONAL : MARKET_POOLS_FULL;
 
 export const getFreeAgents = (players: any[], seasonYear: number, nonNbaIsolated: boolean) => players.filter((player) => {
+  if (isUnavailableInternationalTournamentPlayer(player)) return false;
   if (player.status === 'Retired' || player.hof || player.tid === -100) return false;
   if (player.tid === -2 || player.status === 'Prospect' || player.status === 'Draft Prospect') return false;
-  if (nonNbaIsolated && (player.tid ?? -1) >= 0) return false;
+  if (nonNbaIsolated && (player.tid ?? -1) >= 0 && player.status !== 'Free Agent') return false;
   const isInternational = INTERNATIONAL_STATUSES.includes(player.status || '');
   const isNBAFreeAgent = player.tid === -1 || player.status === 'Free Agent';
   if (!isInternational && !isNBAFreeAgent) return false;
@@ -65,17 +70,22 @@ export const getUpcomingFAs = (players: any[], seasonYear: number) => players.fi
 export const getUserRosterSlots = (state: any, isGM: boolean, nonNbaIsolated: boolean) => {
   if (!isGM || state.userTeamId == null) return null;
   const roster = state.players.filter((player: any) => player.tid === state.userTeamId);
-  const twoWayCount = nonNbaIsolated ? 0 : roster.filter((player: any) => (player as any).twoWay).length;
-  const ngCount = nonNbaIsolated ? 0 : roster.filter((player: any) => !!(player as any).nonGuaranteed && !(player as any).twoWay).length;
+  const maxTwoWay = nonNbaIsolated ? 0 : getTwoWayRosterLimit(state.leagueStats);
+  const twoWayEnabled = !nonNbaIsolated && areTwoWayContractsEnabled(state.leagueStats);
+  const nonGuaranteedEnabled = !nonNbaIsolated && areNonGuaranteedContractsEnabled(state.leagueStats);
+  const isActiveTwoWay = (player: any) => twoWayEnabled && isTwoWayContract(player, state.leagueStats);
+  const twoWayCount = twoWayEnabled ? roster.filter(isActiveTwoWay).length : 0;
+  const ngCount = nonGuaranteedEnabled
+    ? roster.filter((player: any) => isNonGuaranteedContract(player, state.leagueStats)).length
+    : 0;
   const standardCount = roster.length - twoWayCount;
-  const { month, day } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
-  const isTrainingCamp = (month >= 7 && month <= 9) || (month === 10 && day <= 21);
-  const maxStandard = isTrainingCamp ? getTrainingCampRosterLimit(state.leagueStats) : getStandardRosterLimit(state.leagueStats);
-  const maxTwoWay = getTwoWayRosterLimit(state.leagueStats);
+  const isTrainingCamp = state.offseasonChecklist?.freeAgency === 'in-progress'
+    || isLeagueTrainingCampWindow(state.date ?? new Date(), state.leagueStats);
+  const maxStandard = getSigningRosterLimit(state.leagueStats, isTrainingCamp);
   const thresholds = getCapThresholds(state.leagueStats as any);
   const userTeam = state.teams.find((team: any) => team.id === state.userTeamId);
   const profile = getTeamCapProfileFromState(state, state.userTeamId, thresholds);
-  const payroll = getTeamPayrollUSD(state.players, state.userTeamId, userTeam, state.leagueStats?.year);
+  const payroll = getTeamPayrollUSD(state.players, state.userTeamId, userTeam, state.leagueStats?.year, state.leagueStats as any);
   const mle = getMLEAvailability(state.userTeamId, payroll, 0, thresholds, state.leagueStats as any);
   const reservedMleUSD = (state.faBidding?.markets ?? [])
     .filter((market: any) => !market?.resolved)
@@ -95,11 +105,14 @@ export const getUserRosterSlots = (state: any, isGM: boolean, nonNbaIsolated: bo
     maxGuaranteed: getStandardRosterLimit(state.leagueStats),
     maxStandard,
     maxTwoWay,
+    secondaryContractLabel: getWnbaDevelopmentalContractLabel(state.leagueStats),
+    twoWayEnabled,
     isTrainingCamp,
     totalCount: roster.length,
     standardLeft: Math.max(0, maxStandard - standardCount),
     twoWayLeft: Math.max(0, maxTwoWay - twoWayCount),
     capSpaceUSD: profile.capSpaceUSD as number,
+    mleEnabled: isMleEnabled(state.leagueStats),
     mleAvailable: mleAvailableNet,
     mleType: (mle?.type as string | null) ?? null,
   };

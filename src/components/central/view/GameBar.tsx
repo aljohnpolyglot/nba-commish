@@ -46,7 +46,7 @@ export const GameBar: React.FC<GameBarProps> = ({ teamId, schedule, currentDate,
   };
 
   return (
-    <div ref={scrollRef} className="flex gap-2 md:gap-3 overflow-x-auto pb-2 md:pb-4 pt-2 custom-scrollbar px-1">
+    <div ref={scrollRef} className="flex gap-2 md:gap-3 overflow-x-auto pb-2 md:pb-4 pt-2 scrollbar-hide px-1">
       {teamGames.map((game, index) => {
         const isHome = game.homeTid === teamId;
         const opponentId = isHome ? game.awayTid : game.homeTid;

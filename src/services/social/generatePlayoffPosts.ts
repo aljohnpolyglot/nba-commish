@@ -2,6 +2,11 @@ import { getSocialHandles } from '../../data/social/handles';
 import { getAvatarByHandle } from '../avatarService';
 import { type GameResult } from '../simulation/StatGenerator';
 import type { Game, NBAPlayer, NBATeam, PlayoffBracket, SocialPost } from '../../types';
+import { getTeamFullName } from '../../utils/teamNames';
+import type { SocialContext, SocialTemplate } from './types';
+import { NBA_CENTRAL_TEMPLATES } from './templates/nbaCentral';
+import { LEGION_HOOPS_TEMPLATES } from './templates/legionHoops';
+import { BLEACHER_REPORT_TEMPLATES } from './templates/bleacherReport';
 
 type GeneratePlayoffPostsParams = {
   avatars: any[];
@@ -13,6 +18,24 @@ type GeneratePlayoffPostsParams = {
   playoffs: PlayoffBracket;
   schedule: Game[];
   teams: NBATeam[];
+};
+
+const resolveBestHandlePost = (templates: SocialTemplate[], context: SocialContext): string | null => {
+  const template = templates
+    .flatMap(candidate => {
+      try {
+        if (!candidate.condition(context)) return [];
+        const priority = typeof candidate.priority === 'function' ? candidate.priority(context) : candidate.priority;
+        return [{ candidate, priority }];
+      } catch {
+        return [];
+      }
+    })
+    .sort((left, right) => right.priority - left.priority)[0]?.candidate;
+  if (!template) return null;
+  const base = typeof template.template === 'function' ? template.template(context) : template.template;
+  const resolved = template.resolve?.(base, context) ?? base;
+  return typeof resolved === 'string' ? resolved : resolved.content;
 };
 
 export const generatePlayoffPosts = ({
@@ -29,6 +52,7 @@ export const generatePlayoffPosts = ({
   const posts: SocialPost[] = [];
   const multiplier = daysToSimulate <= 1 ? 1.0 : Math.max(0.1, 1.0 / daysToSimulate);
   const clinchedSeriesIds = new Set<string>();
+  let activePostDate = date;
 
   const roundName = (round: number, conf?: 'East' | 'West'): string => {
     if (round === 1) return conf ? `${conf}ern First Round` : 'First Round';
@@ -48,7 +72,7 @@ export const generatePlayoffPosts = ({
     const handleObj = Object.values(getSocialHandles(leagueType)).find((entry) => entry.id === handle);
     if (!handleObj) return null;
     const avatarUrl = getAvatarByHandle(handleObj.handle, avatars) || handleObj.avatarUrl;
-    const postDate = new Date(date);
+    const postDate = new Date(activePostDate);
     postDate.setHours(20 + Math.floor(Math.random() * 3), Math.floor(Math.random() * 60));
     return {
       id: crypto.randomUUID(),
@@ -69,6 +93,7 @@ export const generatePlayoffPosts = ({
   };
 
   for (const result of gameResults) {
+    activePostDate = result.date || date;
     const schedGame = schedule.find((game) => game.gid === result.gameId);
     if (!schedGame?.isPlayoff || !schedGame.playoffSeriesId) continue;
 
@@ -135,7 +160,7 @@ export const generatePlayoffPosts = ({
         }
       }
 
-      if (Math.random() < 0.75 * multiplier) {
+      {
         const reactions = !isChampionship
           ? [
               `${winner.abbrev} advance. ${loser.abbrev} eliminated. ${rAbbr} done.`,
@@ -160,7 +185,7 @@ export const generatePlayoffPosts = ({
         }
       }
 
-      if (topPlayer && Math.random() < 0.65 * multiplier) {
+      if (topPlayer) {
         const lines = !isChampionship
           ? [
               `${topPlayer.name} in the ${rAbbr}: ${topStat.pts}/${topStat.reb}/${topStat.ast}. What a series.`,
@@ -256,44 +281,32 @@ export const generatePlayoffPosts = ({
         if (post) posts.push(post);
       }
 
-      if (Math.random() < 0.7 * multiplier) {
-        const reactions = isGame7 ? [
-          `GAME 7. ${winner.abbrev} vs ${loser.abbrev}. Winner takes all. 🎯`,
-          `We are getting a GAME 7. ${higherSeedTeam.abbrev} vs ${lowerSeedTeam.abbrev} — it goes to the wire.`,
-          `${winner.abbrev} force Game 7. This ${rAbbr} is everything.`,
-        ] : winnerWinsInSeries === winsNeeded - 1 ? [
-          `${winner.abbrev} ONE WIN AWAY from advancing. ${winnerWinsInSeries}-${loserWinsInSeries}.`,
-          `${winner.abbrev} are CLOSING IN. ${winnerWinsInSeries}-${loserWinsInSeries}. One more.`,
-          `${loser.abbrev} must win or go home. ${winner.abbrev} lead ${winnerWinsInSeries}-${loserWinsInSeries}.`,
-        ] : loserOnBrink ? [
-          `${loser.abbrev} KEEPS THE SEASON ALIVE. Series: ${winnerWinsInSeries}-${loserWinsInSeries}.`,
-          `${loser.abbrev} survive. They live to fight another day. ${winnerWinsInSeries}-${loserWinsInSeries}.`,
-        ] : leaderTeam ? [
-          `${leaderTeam.abbrev} now lead ${leaderWins}-${trailerWins} in the ${rAbbr}.`,
-          `${leaderTeam.abbrev} taking control. ${leaderWins}-${trailerWins}.`,
-          leaderWins === winsNeeded - 1
-            ? `${leaderTeam.abbrev} one win away from advancing. ${leaderWins}-${trailerWins}.`
-            : `${leaderTeam.abbrev} lead ${leaderWins}-${trailerWins}. ${winsNeeded - leaderWins} more to advance.`,
-        ] : [
-          `${higherSeedTeam.abbrev} vs ${lowerSeedTeam.abbrev} is tied ${higherWins}-${lowerWins}. Anyone's series.`,
-          `All square. ${rAbbr} is tied at ${higherWins}-${lowerWins}. This just got real.`,
-          `Tied ${higherWins} apiece. The ${rAbbr} just got interesting. 👀`,
+      if (topPlayer && topStat) {
+        const playerTeam = result.homeStats.some(stat => stat.playerId === topStat.playerId)
+          ? teams.find(team => team.id === result.homeTeamId)
+          : teams.find(team => team.id === result.awayTeamId);
+        const opponent = playerTeam?.id === winner.id ? loser : winner;
+        const context: SocialContext = {
+          game: result,
+          player: topPlayer,
+          players,
+          team: playerTeam,
+          teams,
+          opponent,
+          stats: topStat,
+          date: activePostDate,
+        };
+        const handleTemplates: Array<[string, SocialTemplate[]]> = [
+          ['nba_central', NBA_CENTRAL_TEMPLATES],
+          ['legion_hoops', LEGION_HOOPS_TEMPLATES],
+          ['bleacher_report', BLEACHER_REPORT_TEMPLATES],
         ];
-        const content = reactions[Math.floor(Math.random() * reactions.length)];
-        const post = makePost('nba_central', content, leaderTeam?.logoUrl ?? winner.logoUrl);
-        if (post) posts.push(post);
-      }
-
-      if (topPlayer && topStat && topStat.pts >= 20 && Math.random() < 0.7 * multiplier) {
-        const label = isGame7 ? 'Game 7' : `Game ${totalGames}`;
-        const lines = [
-          `${topPlayer.name} in ${label}:\n\n${topStat.pts} PTS\n${topStat.reb} REB\n${topStat.ast} AST\n\n${tag}`,
-          `${topPlayer.name} tonight in ${label}: ${topStat.pts}/${topStat.reb}/${topStat.ast}. Playoff mode. 🔒`,
-          `${topStat.pts}/${topStat.reb}/${topStat.ast} from ${topPlayer.name}. ${winner.abbrev} win ${label}.`,
-          `${topPlayer.name} shows UP. ${topStat.pts}pts, ${topStat.reb}reb, ${topStat.ast}ast. ${label} goes to ${winner.abbrev}.`,
-        ];
-        const post = makePost('legion_hoops', lines[Math.floor(Math.random() * lines.length)], undefined, topPlayer.imgURL);
-        if (post) posts.push(post);
+        for (const [handle, templates] of handleTemplates) {
+          const content = resolveBestHandlePost(templates, context);
+          if (!content) continue;
+          const post = makePost(handle, content, playerTeam?.logoUrl, topPlayer.imgURL);
+          if (post) posts.push(post);
+        }
       }
 
       if (Math.random() < 0.55 * multiplier) {

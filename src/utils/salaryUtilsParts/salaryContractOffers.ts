@@ -4,6 +4,10 @@ import { computeLocalPBASalaryUSD, getPBARosterEconomyConfig } from '../../servi
 import { isPbaRosterLocal } from '../../services/pba/importManager';
 import { getDisplayAge } from '../../store/playerRatingStore';
 import { convertTo2KRating } from '../helpers';
+import { resolvePotentialBbgm } from '../playerRatings';
+import { areBirdRightsEnabled, isRookieExtensionEnabled, isSupermaxEnabled } from '../ruleFlags';
+import { getNbaYearsOfService } from '../playerExperience';
+import { getWnbaMinimumSalaryUSD } from '../../services/wnba/economy';
 
 export type ContractTier = 'Superstar' | 'Star' | 'All-Star' | 'Starter' | 'Bench' | 'Charity';
 
@@ -27,12 +31,102 @@ function getPbaImportSalaryFloorUSD(salaryCapUSD: number, minSalaryUSD: number, 
 }
 
 function isPbaImportLike(player: NBAPlayer, leagueStats?: ContractLeagueStats): boolean {
-  if (leagueStats?.uiMode === 'pba_isolated') return !isPbaRosterLocal(player, leagueStats);
-  if ((player as any).status !== 'PBA') return false;
-  const born = (player as any).born ?? {};
-  const nationality = String((born as any).country ?? (player as any).nationality ?? '').toLowerCase();
-  const loc = String((born as any).loc ?? '').toLowerCase();
-  return !nationality.includes('philippines') && !loc.includes('philippines');
+  return leagueStats?.uiMode === 'pba_isolated' && !isPbaRosterLocal(player, leagueStats);
+}
+
+function isHistoricalRealPlayer(player: NBAPlayer): boolean {
+  return typeof (player as any).srID === 'string' || typeof (player as any).slug === 'string';
+}
+
+function getContractSeason(leagueStats: ContractLeagueStats, player: NBAPlayer): number {
+  const leagueYear = Number((leagueStats as any).year ?? 0);
+  if (Number.isFinite(leagueYear) && leagueYear > 0) return leagueYear;
+  return (player as any).stats?.reduce((m: number, s: any) => Math.max(m, Number(s?.season ?? 0)), 0) ?? 0;
+}
+
+function perGameValue(stat: any, key: string): number {
+  const value = Number(stat?.[key] ?? 0);
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const gp = Math.max(1, Number(stat?.gp ?? 0));
+  return value > gp * 2 ? value / gp : value;
+}
+
+function getRecentRegularSeasonSignal(player: NBAPlayer, season: number) {
+  const row = [...((player as any).stats ?? [])]
+    .filter((s: any) => !s?.playoffs && (s?.gp ?? 0) > 0 && (season <= 0 || Number(s?.season ?? 0) <= season))
+    .sort((a: any, b: any) => Number(b?.season ?? 0) - Number(a?.season ?? 0))[0];
+  if (!row) return { gp: 0, mpg: 0, weighted: 0 };
+  const gp = Number(row.gp ?? 0);
+  const mpg = perGameValue(row, 'min');
+  const weighted = perGameValue(row, 'pts') + perGameValue(row, 'trb') * 0.7 + perGameValue(row, 'ast') * 0.7;
+  return { gp, mpg, weighted };
+}
+
+export function getLateCareerMarketAdjustment(
+  player: NBAPlayer,
+  age: number,
+  ovr: number,
+  score: number,
+  currentSeason: number,
+  protectedMaxDeal = false,
+): { multiplier: number; roleDeal: boolean } {
+  if (age < 34 || protectedMaxDeal) return { multiplier: 1, roleDeal: false };
+
+  const awards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
+  const hasRecentStarSignal = awards.some(a =>
+    Number(a?.season ?? 0) >= currentSeason - 1 &&
+    /mvp|most valuable|all.nba|all-league|all-star/i.test(String(a?.type ?? '')),
+  );
+  if (hasRecentStarSignal && (ovr >= 84 || score >= 84)) return { multiplier: 1, roleDeal: false };
+
+  let multiplier =
+    age >= 40 ? 0.36 :
+    age >= 38 ? 0.44 :
+    age >= 36 ? 0.58 :
+    0.74;
+
+  if (ovr >= 86 || score >= 86) multiplier += 0.10;
+  else if (ovr >= 82 || score >= 82) multiplier += 0.06;
+  else if (ovr >= 78 || score >= 78) multiplier += 0.03;
+
+  const recent = getRecentRegularSeasonSignal(player, currentSeason);
+  if (recent.weighted >= 24 || recent.mpg >= 30) multiplier += 0.18;
+  else if (recent.weighted >= 18 || recent.mpg >= 24) multiplier += 0.11;
+  else if (recent.weighted >= 12 || recent.mpg >= 18) multiplier += 0.05;
+  if (recent.gp > 0 && recent.gp < 40) multiplier -= 0.08;
+
+  const finalMultiplier = Math.max(0.32, Math.min(1, multiplier));
+  return { multiplier: finalMultiplier, roleDeal: finalMultiplier < 0.88 };
+}
+
+export function getProductionMarketAdjustment(
+  player: NBAPlayer,
+  age: number,
+  ovr: number,
+  score: number,
+  currentSeason: number,
+  protectedMaxDeal = false,
+): { multiplier: number; roleDeal: boolean } {
+  if (age >= 34 || protectedMaxDeal) return { multiplier: 1, roleDeal: false };
+
+  const recent = getRecentRegularSeasonSignal(player, currentSeason);
+  let multiplier: number;
+  if (recent.gp === 0) {
+    multiplier = ovr >= 85 ? 0.82 : ovr >= 80 ? 0.68 : ovr >= 76 ? 0.55 : 0.42;
+  } else if (recent.mpg < 15 || recent.weighted < 8) {
+    multiplier = 0.52;
+  } else if (recent.mpg < 22 || recent.weighted < 13) {
+    multiplier = 0.68;
+  } else if (recent.mpg < 28 || recent.weighted < 18) {
+    multiplier = 0.84;
+  } else {
+    multiplier = 1;
+  }
+
+  if (recent.gp > 0 && recent.gp < 20) multiplier -= 0.06;
+  const ratingFloor = score >= 90 ? 0.85 : score >= 85 ? 0.75 : score >= 80 ? 0.62 : score >= 76 ? 0.50 : 0.40;
+  const finalMultiplier = Math.max(ratingFloor, Math.min(1, multiplier));
+  return { multiplier: finalMultiplier, roleDeal: finalMultiplier < 0.80 };
 }
 
 function computePbaLocalContractOfferUSD(
@@ -48,7 +142,9 @@ function computePbaLocalContractOfferUSD(
 
 export type ContractLeagueStats = Pick<
   import('../../types').LeagueStats,
+  | 'year'
   | 'salaryCap'
+  | 'historicalContractScaleCap'
   | 'uiMode'
   | 'pbaLocalEligibilityMode'
   | 'minContractType'
@@ -57,13 +153,34 @@ export type ContractLeagueStats = Pick<
   | 'maxContractStaticPercentage'
   | 'minContractLength'
   | 'maxContractLengthStandard'
+  | 'maxContractLengthBird'
   | 'supermaxEnabled'
   | 'supermaxPercentage'
   | 'supermaxMinYears'
   | 'rookieExtEnabled'
   | 'rookieExtPct'
   | 'rookieExtRosePct'
+  | 'rookieScaleType'
+  | 'birdRightsEnabled'
+  | 'playerOptionsEnabled'
+  | 'salaryCapEnabled'
+  | 'salaryCapType'
+  | 'historicalEraStartYear'
+  | 'historicalEconomyScale'
 >;
+
+function getContractScaleCapUSD(leagueStats: ContractLeagueStats): number {
+  if (leagueStats.uiMode === 'pba_isolated') {
+    return getPBARosterEconomyConfig(leagueStats, 'pba_isolated').salaryCapUSD;
+  }
+  const rawCap = Number(leagueStats.salaryCap ?? 0);
+  if (Number.isFinite(rawCap) && rawCap > 0) {
+    return rawCap > 1_000_000 ? rawCap : rawCap * 1_000_000;
+  }
+  const historicalBasis = Number((leagueStats as any).historicalContractScaleCap ?? 0);
+  if (Number.isFinite(historicalBasis) && historicalBasis > 0) return historicalBasis;
+  return BASE_CAP_M * 1_000_000;
+}
 
 export function isSupermaxAwardQualified(
   awards: Array<{ season: number; type: string }>,
@@ -86,42 +203,44 @@ export function computeContractOffer(
   moodTraits: string[] = [],
   moodScore: number = 0,
 ): ContractOffer {
-  const salaryCapUSD = leagueStats.salaryCap ?? (BASE_CAP_M * 1_000_000);
+  const salaryCapUSD = getContractScaleCapUSD(leagueStats);
   const capM = salaryCapUSD / 1_000_000;
-  const yearsOfService = (player as any).stats
-    ? (player as any).stats.filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length
-    : 0;
+  const playerCurrentSeason = getContractSeason(leagueStats, player);
+  const yearsOfService = getNbaYearsOfService(player, playerCurrentSeason > 0 ? playerCurrentSeason : Number.POSITIVE_INFINITY);
   const svcIdx = Math.min(yearsOfService, 10);
   const playerAwards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
-  const playerCurrentSeason = (player as any).stats?.reduce((m: number, s: any) => Math.max(m, s.season ?? 0), 0) ?? 0;
 
-  const supermaxEnabled = leagueStats.supermaxEnabled ?? true;
+  const birdRightsActive = areBirdRightsEnabled(leagueStats);
+  const hasBirdRights = birdRightsActive && ((player as any).hasBirdRights ?? false);
+  const supermaxEnabled = isSupermaxEnabled(leagueStats);
   const supermaxPct = (leagueStats.supermaxPercentage ?? 35) / 100;
   const supermaxMinYrs = leagueStats.supermaxMinYears ?? 8;
   let isSupermaxEligible: boolean;
   if ((player as any).superMaxEligible !== undefined) {
     isSupermaxEligible = supermaxEnabled && !!(player as any).superMaxEligible;
   } else {
-    const hasBirdRights = (player as any).hasBirdRights ?? false;
     isSupermaxEligible = supermaxEnabled && hasBirdRights &&
       isSupermaxAwardQualified(playerAwards, playerCurrentSeason, yearsOfService, supermaxMinYrs);
   }
 
-  const hasBirdRightsForRookieExt = (player as any).hasBirdRights ?? false;
-  const rookieExtEnabled = leagueStats.rookieExtEnabled ?? true;
+  const hasBirdRightsForRookieExt = hasBirdRights;
+  const rookieExtEnabled = isRookieExtensionEnabled(leagueStats);
   const rookieExtPct = (leagueStats.rookieExtPct ?? 25) / 100;
   const rookieExtRosePct = (leagueStats.rookieExtRosePct ?? 30) / 100;
   const inRookieExtWindow = hasBirdRightsForRookieExt && yearsOfService >= 3 && yearsOfService <= 4;
   const rookieRoseQualified = inRookieExtWindow &&
     isSupermaxAwardQualified(playerAwards, playerCurrentSeason, yearsOfService, 3);
 
+  const maxContractType = leagueStats.maxContractType ?? 'service_tiered';
   let maxContractUSD: number;
   if (isSupermaxEligible) {
     maxContractUSD = capM * supermaxPct * 1_000_000;
   } else if (rookieExtEnabled && inRookieExtWindow) {
     const pct = rookieRoseQualified ? rookieExtRosePct : rookieExtPct;
     maxContractUSD = capM * pct * 1_000_000;
-  } else if ((leagueStats.maxContractType ?? 'service_tiered') === 'service_tiered') {
+  } else if (maxContractType === 'none') {
+    maxContractUSD = salaryCapUSD * 0.45;
+  } else if (maxContractType === 'service_tiered') {
     maxContractUSD = capM * MAX_CONTRACT_PCT[svcIdx] * 1_000_000;
   } else {
     const pct = (leagueStats.maxContractStaticPercentage ?? 25) / 100;
@@ -129,7 +248,13 @@ export function computeContractOffer(
   }
 
   let minSalaryUSD: number;
-  if ((leagueStats.minContractType ?? 'dynamic') === 'dynamic') {
+  if (leagueStats.uiMode === 'pba_isolated') {
+    minSalaryUSD = getPBARosterEconomyConfig(leagueStats, 'pba_isolated').minSalaryUSD;
+  } else if (leagueStats.uiMode === 'wnba_isolated') {
+    minSalaryUSD = getWnbaMinimumSalaryUSD(playerCurrentSeason, yearsOfService);
+  } else if ((leagueStats.minContractType ?? 'dynamic') === 'none') {
+    minSalaryUSD = 0;
+  } else if ((leagueStats.minContractType ?? 'dynamic') === 'dynamic') {
     minSalaryUSD = (MIN_CONTRACT_BASE_M[svcIdx] / BASE_CAP_M) * capM * 1_000_000;
   } else {
     minSalaryUSD = ((leagueStats.minContractStaticAmount ?? 1.273) as number) * 1_000_000;
@@ -137,11 +262,14 @@ export function computeContractOffer(
 
   const lastRating = (player as any).ratings?.[(player as any).ratings?.length - 1];
   const bbgmOvr = lastRating?.ovr ?? player.overallRating ?? 60;
-  const bbgmPot = lastRating?.pot ?? bbgmOvr;
   const hgtAttr = lastRating?.hgt ?? 50;
   const ovr = convertTo2KRating(bbgmOvr, hgtAttr);
-  const pot = convertTo2KRating(bbgmPot, hgtAttr);
   const age = getDisplayAge(player, playerCurrentSeason || new Date().getFullYear());
+  const storedPot = Number(lastRating?.pot ?? (player as any).potential ?? bbgmOvr);
+  const bbgmPot = isHistoricalRealPlayer(player)
+    ? resolvePotentialBbgm(bbgmOvr, age, undefined)
+    : (Number.isFinite(storedPot) ? storedPot : bbgmOvr);
+  const pot = convertTo2KRating(bbgmPot, hgtAttr);
   const potWeight = age < 24 ? 0.65 : age < 28 ? 0.50 : age < 32 ? 0.35 : 0.20;
   const score = ovr * (1 - potWeight) + pot * potWeight;
 
@@ -152,6 +280,16 @@ export function computeContractOffer(
   else if (score >= 78) tier = 'Starter';
   else if (score >= 72) tier = 'Bench';
   else tier = 'Charity';
+
+  if (maxContractType === 'none' && !isSupermaxEligible && !(rookieExtEnabled && inRookieExtWindow)) {
+    const noMaxMarketPct =
+      score >= 95 ? 1.40 :
+      score >= 90 ? 1.00 :
+      score >= 85 ? 0.75 :
+      score >= 78 ? 0.55 :
+      0.45;
+    maxContractUSD = Math.max(maxContractUSD, salaryCapUSD * noMaxMarketPct);
+  }
 
   const normalised = Math.max(0, score - 68) / (99 - 68);
   let salaryUSD = (isSupermaxEligible || rookieRoseQualified)
@@ -170,7 +308,21 @@ export function computeContractOffer(
     salaryUSD *= 1.10;
   }
 
-  const scale = EXTERNAL_SALARY_SCALE[(player as any).status ?? ''];
+  const salaryStatus = leagueStats.uiMode === 'euro_isolated' && player.status === 'Free Agent'
+    ? player.euroMarketSalaryStatus ?? player.status
+    : player.status;
+  const scale = EXTERNAL_SALARY_SCALE[salaryStatus ?? ''];
+  const usesNbaMarket = !scale && leagueStats.uiMode !== 'pba_isolated' && !isPbaImportLike(player, leagueStats);
+  const protectedMaxDeal = isSupermaxEligible || rookieRoseQualified;
+  const productionMarket = usesNbaMarket
+    ? getProductionMarketAdjustment(player, age, ovr, score, playerCurrentSeason, protectedMaxDeal)
+    : { multiplier: 1, roleDeal: false };
+  salaryUSD *= productionMarket.multiplier;
+  const lateCareer = usesNbaMarket
+    ? getLateCareerMarketAdjustment(player, age, ovr, score, playerCurrentSeason, isSupermaxEligible || rookieRoseQualified)
+    : { multiplier: 1, roleDeal: false };
+  salaryUSD *= lateCareer.multiplier;
+
   if (scale) {
     const externalPeakUSD = salaryCapUSD * scale.maxPct;
     salaryUSD = Math.min(salaryUSD, externalPeakUSD * 3);
@@ -195,6 +347,13 @@ export function computeContractOffer(
   const lastSeasonStats = ((player as any).stats ?? []).filter((s: any) => !s.playoffs).at(-1);
   const injuryPenalty = (lastSeasonStats?.gp ?? 82) < 40 ? 1 : 0;
   const isEliteProspect = bbgmPot > 99 || pot >= 97;
+  const minLengthRaw = Number(leagueStats.minContractLength ?? 1);
+  const minLength = Number.isFinite(minLengthRaw) ? Math.max(1, minLengthRaw) : 1;
+  const maxLengthSource = hasBirdRights
+    ? (leagueStats.maxContractLengthBird ?? leagueStats.maxContractLengthStandard ?? 5)
+    : (leagueStats.maxContractLengthStandard ?? 5);
+  const maxLengthRaw = Number(maxLengthSource ?? 5);
+  const maxLength = Math.max(minLength, Number.isFinite(maxLengthRaw) ? maxLengthRaw : 5);
 
   let years: number;
   if (isEliteProspect) years = 5;
@@ -205,14 +364,23 @@ export function computeContractOffer(
 
   years = Math.max(1, years - injuryPenalty);
   if (moodScore < -2) years = Math.min(years, 2);
-  if (moodTraits.includes('LOYAL')) years = Math.min(years + 1, 5);
-  years = Math.min(years, leagueStats.maxContractLengthStandard ?? 5);
-  years = Math.max(leagueStats.minContractLength ?? 1, years);
+  if (maxLength > 5 && score >= 82 && !lateCareer.roleDeal) {
+    const longEraBonus = score >= 92 ? 3 : score >= 86 ? 2 : 1;
+    years = Math.min(maxLength, years + longEraBonus);
+  }
+  if (moodTraits.includes('LOYAL')) years = Math.min(years + 1, maxLength);
+  years = Math.min(years, maxLength);
+  if (lateCareer.roleDeal && age >= 39) years = Math.min(years, 1);
+  else if (lateCareer.roleDeal && age >= 35) years = Math.min(years, 2);
+  if (productionMarket.multiplier < 0.60) years = Math.min(years, 2);
+  else if (productionMarket.roleDeal) years = Math.min(years, 3);
+  years = Math.max(minLength, years);
 
   const optV = Math.abs((Math.cos(varSeed + 42) * 10000) % 1);
-  const hasPlayerOption =
+  const hasPlayerOption = leagueStats.playerOptionsEnabled !== false && (
     (ovr >= 85 && optV > 0.20) ||
-    (ovr >= 76 && optV > 0.50);
+    (ovr >= 76 && optV > 0.50)
+  ) && !lateCareer.roleDeal && !productionMarket.roleDeal;
 
   return { salaryUSD, years, tier, hasPlayerOption };
 }
@@ -242,6 +410,9 @@ export function computeExternalBuyout(
   leagueStats: ContractLeagueStats & { teamBuyoutMaxUSD?: number; year?: number },
 ): ExternalBuyout {
   const status = player.status ?? '';
+  if (leagueStats.uiMode === 'pba_isolated' && status === 'PBA') {
+    return { applicable: false, estimatedBuyoutUSD: 0, teamMaxContributionUSD: 0, recommendedTeamContribUSD: 0, playerContributionUSD: 0, league: status };
+  }
   if (!(EXTERNAL_STATUSES as readonly string[]).includes(status)) {
     return { applicable: false, estimatedBuyoutUSD: 0, teamMaxContributionUSD: 0, recommendedTeamContribUSD: 0, playerContributionUSD: 0, league: status };
   }
@@ -249,7 +420,7 @@ export function computeExternalBuyout(
   if (mult === 0) {
     return { applicable: false, estimatedBuyoutUSD: 0, teamMaxContributionUSD: 0, recommendedTeamContribUSD: 0, playerContributionUSD: 0, league: status };
   }
-  const cap = leagueStats.salaryCap ?? 154_647_000;
+  const cap = getContractScaleCapUSD(leagueStats as any);
   const teamMaxContributionUSD = leagueStats.teamBuyoutMaxUSD ?? Math.round(cap * 0.00586);
   const marketOffer = computeContractOffer(player, leagueStats as any);
   const baseUSD = marketOffer.salaryUSD * mult;
@@ -278,24 +449,23 @@ export function getContractLimits(
   player: NBAPlayer,
   leagueStats: ContractLeagueStats,
 ): ContractLimits {
-  const salaryCapUSD = leagueStats.salaryCap ?? (BASE_CAP_M * 1_000_000);
+  const salaryCapUSD = getContractScaleCapUSD(leagueStats);
   const capM = salaryCapUSD / 1_000_000;
-  const yearsOfService = (player as any).stats
-    ? (player as any).stats.filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length
-    : 0;
+  const currentSeason = getContractSeason(leagueStats, player);
+  const yearsOfService = getNbaYearsOfService(player, currentSeason > 0 ? currentSeason : Number.POSITIVE_INFINITY);
   const svcIdx = Math.min(yearsOfService, 10);
-  const supermaxEnabled = leagueStats.supermaxEnabled ?? true;
+  const birdRightsActive = areBirdRightsEnabled(leagueStats);
+  const supermaxEnabled = isSupermaxEnabled(leagueStats);
   const supermaxPct = (leagueStats.supermaxPercentage ?? 35) / 100;
   const supermaxMinYrs = leagueStats.supermaxMinYears ?? 8;
   const awards: Array<{ season: number; type: string }> = (player as any).awards ?? [];
-  const currentSeason = (player as any).stats?.reduce((m: number, s: any) => Math.max(m, s.season ?? 0), 0) ?? 0;
-  const hasBirdRightsForSupermax = (player as any).hasBirdRights ?? false;
+  const hasBirdRightsForSupermax = birdRightsActive && ((player as any).hasBirdRights ?? false);
   const cachedSupermax = (player as any).superMaxEligible === true;
   const freshSupermax = hasBirdRightsForSupermax &&
     isSupermaxAwardQualified(awards, currentSeason, yearsOfService, supermaxMinYrs);
   const isSupermaxEligible = supermaxEnabled && (cachedSupermax || freshSupermax);
 
-  const rookieExtEnabled = leagueStats.rookieExtEnabled ?? true;
+  const rookieExtEnabled = isRookieExtensionEnabled(leagueStats);
   const rookieExtPct = (leagueStats.rookieExtPct ?? 25) / 100;
   const rookieExtRosePct = (leagueStats.rookieExtRosePct ?? 30) / 100;
   const inRookieExtWindow = hasBirdRightsForSupermax && yearsOfService >= 3 && yearsOfService <= 4;
@@ -307,8 +477,8 @@ export function getContractLimits(
   let maxPct: number;
   let maxSalaryUSD: number;
   if (maxType === 'none') {
-    maxPct = 1;
-    maxSalaryUSD = salaryCapUSD * 10;
+    maxPct = 1.5;
+    maxSalaryUSD = salaryCapUSD * maxPct;
   } else if (isSupermaxEligible) {
     maxPct = supermaxPct;
     maxSalaryUSD = capM * supermaxPct * 1_000_000;
@@ -326,7 +496,11 @@ export function getContractLimits(
   const minType = (leagueStats as any).minContractType ?? 'dynamic';
   const staticMinM = (leagueStats as any).minContractStaticAmount ?? 1.273;
   let minSalaryUSD: number;
-  if (minType === 'none') {
+  if (leagueStats.uiMode === 'pba_isolated') {
+    minSalaryUSD = getPBARosterEconomyConfig(leagueStats, 'pba_isolated').minSalaryUSD;
+  } else if (leagueStats.uiMode === 'wnba_isolated') {
+    minSalaryUSD = getWnbaMinimumSalaryUSD(currentSeason, yearsOfService);
+  } else if (minType === 'none') {
     minSalaryUSD = 0;
   } else if (minType === 'static') {
     minSalaryUSD = staticMinM * 1_000_000;

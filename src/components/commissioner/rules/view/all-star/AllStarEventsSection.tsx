@@ -2,6 +2,12 @@ import React from 'react';
 import { Trophy } from 'lucide-react';
 
 interface AllStarEventsSectionProps {
+    pbaMode: boolean;
+    wnbaMode: boolean;
+    allStarDanceContestEnabled: boolean;
+    setAllStarDanceContestEnabled: (val: boolean) => void;
+    pbaAllStarDanceContestEnabled: boolean;
+    setPbaAllStarDanceContestEnabled: (val: boolean) => void;
     allStarDunkContest: boolean;
     setAllStarDunkContest: (val: boolean) => void;
     allStarDunkContestPlayers: number;
@@ -93,8 +99,15 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {!props.wnbaMode && <div className="space-y-4">
+                    <EventToggle
+                        label={props.pbaMode ? 'PBA All-Star Dance Contest' : 'All-Star Dance Contest'}
+                        value={props.pbaMode ? props.pbaAllStarDanceContestEnabled : props.allStarDanceContestEnabled}
+                        onChange={props.pbaMode ? props.setPbaAllStarDanceContestEnabled : props.setAllStarDanceContestEnabled}
+                    />
+                </div>}
                 {/* Dunk Contest */}
-                <div className="space-y-4">
+                {!props.wnbaMode && <div className="space-y-4">
                     <EventToggle label="Slam Dunk Contest" value={props.allStarDunkContest} onChange={props.setAllStarDunkContest} />
                     {props.allStarDunkContest && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -102,7 +115,7 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                             <EventInput label="Participants" value={props.allStarDunkContestPlayers} onChange={props.setAllStarDunkContestPlayers} />
                         </div>
                     )}
-                </div>
+                </div>}
 
                 {/* 3-Point Contest */}
                 <div className="space-y-4">
@@ -116,7 +129,7 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                 </div>
 
                 {/* Shooting Stars */}
-                <div className="space-y-4">
+                {!props.wnbaMode && <div className="space-y-4">
                     <EventToggle label="Shooting Stars" value={props.allStarShootingStars} onChange={props.setAllStarShootingStars} />
                     {props.allStarShootingStars && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -124,7 +137,7 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                             <EventInput label="Teams" value={props.allStarShootingStarsTeams} onChange={props.setAllStarShootingStarsTeams} min={2} max={30} />
                         </div>
                     )}
-                </div>
+                </div>}
 
                 {/* Skills Challenge */}
                 <div className="space-y-4">
@@ -138,7 +151,7 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                 </div>
 
                 {/* HORSE Tournament */}
-                <div className="space-y-4">
+                {!props.wnbaMode && <div className="space-y-4">
                     <EventToggle label="H-O-R-S-E" value={props.allStarHorse} onChange={props.setAllStarHorse} />
                     {props.allStarHorse && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-top-2 duration-200">
@@ -148,7 +161,7 @@ export const AllStarEventsSection: React.FC<AllStarEventsSectionProps> = (props)
                             <EventCheckbox label="No global repeat" value={props.allStarHorseNoGlobalRepeat} onChange={props.setAllStarHorseNoGlobalRepeat} />
                         </div>
                     )}
-                </div>
+                </div>}
 
             </div>
         </div>

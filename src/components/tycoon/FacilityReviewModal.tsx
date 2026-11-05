@@ -1,19 +1,10 @@
 import React from 'react';
-import { HeartPulse, Info, Plane, Search, SlidersHorizontal, Ticket, Trophy, X, CheckCircle2 } from 'lucide-react';
+import { HeartPulse, Info, Plane, Search, Settings2, Ticket, Trophy, X, CheckCircle2 } from 'lucide-react';
 import type { NBATeam } from '../../types';
 import type { TravelPreferences } from '../../types/tycoon';
-import { ACADEMY_COST_BY_TIER, defaultAcademyBudgetForTier } from '../../services/tycoon/economyScale';
+import { normalizeAcademyBudgetEUR } from '../../services/tycoon/economyScale';
 import { MEDICAL_BUDGET_MIN_EUR } from '../../services/tycoon/medicalEngine';
 import { formatCurrencyWithCode } from '../../utils/helpers';
-
-/**
- * FacilityReviewModal — read-only review of the team's operating levers
- * (Ticket, Medical, Scouting, Academy, Travel). Standalone modal: no ledger
- * sidebar, no Budget Review content. User clicks Open Sliders to jump into
- * the editable Front Office page, or Mark Done to close.
- *
- * Pair with BudgetReviewModal — that one is the ledger-only sibling.
- */
 
 export interface FacilityReviewValues {
   ticketPriceMultiplier: number;
@@ -49,7 +40,7 @@ function readValues(team: NBATeam | null): FacilityReviewValues {
     travelPreferences: tycoon?.travelPreferences ?? travelDefaults,
     medicalBudget: tycoon?.medicalBudget ?? MEDICAL_BUDGET_MIN_EUR,
     scoutingInvestment: tycoon?.scoutingInvestment ?? 250_000,
-    academyBudget: tycoon?.academyBudget ?? defaultAcademyBudgetForTier(tycoon?.tier),
+    academyBudget: normalizeAcademyBudgetEUR(tycoon?.academyBudget, tycoon?.tier, tycoon?.currentEconomyIndex ?? 1),
   };
 }
 
@@ -68,14 +59,13 @@ export const FacilityReviewModal: React.FC<FacilityReviewModalProps> = ({
   // default true would scale €3M → €3T.
   const fmt = (value: number) => formatCurrencyWithCode(value, currency, false);
   const values = readValues(team);
-  const academySpend = ACADEMY_COST_BY_TIER[values.academyBudget] ?? 0;
   const travelAvg = (values.travelPreferences.hotel + values.travelPreferences.flight + values.travelPreferences.bus) / 3;
 
   const cards = [
     { icon: <Ticket size={22} />,     tone: 'sky',     label: 'Ticket Price',         value: `${values.ticketPriceMultiplier.toFixed(2)}x`, sub: 'Matchday revenue lever' },
     { icon: <HeartPulse size={22} />, tone: 'emerald', label: 'Medical Budget',       value: fmt(values.medicalBudget),                     sub: 'Recovery and injury prevention' },
     { icon: <Search size={22} />,     tone: 'violet',  label: 'Scouting & Analytics', value: fmt(values.scoutingInvestment),                sub: 'Market coverage and rating bands' },
-    { icon: <Trophy size={22} />,     tone: 'amber',   label: 'Youth Academy',        value: fmt(academySpend),                             sub: `Investment tier ${values.academyBudget}/5` },
+    { icon: <Trophy size={22} />,     tone: 'amber',   label: 'Youth Academy',        value: fmt(values.academyBudget),                     sub: 'Annual youth development budget' },
     { icon: <Plane size={22} />,      tone: 'cyan',    label: 'Travel Standards',     value: `${travelAvg.toFixed(1)}/5`,                   sub: `Hotel ${values.travelPreferences.hotel.toFixed(1)} / Flight ${values.travelPreferences.flight.toFixed(1)} / Bus ${values.travelPreferences.bus.toFixed(1)}` },
   ] as const;
 
@@ -96,7 +86,7 @@ export const FacilityReviewModal: React.FC<FacilityReviewModalProps> = ({
             <span className="inline-block rounded-md bg-amber-500/15 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.35em] text-amber-300">Offseason</span>
             <h2 className="mt-2 text-2xl font-black uppercase tracking-tight sm:text-3xl">Facility Review</h2>
             <p className="mt-1 max-w-3xl text-sm text-slate-400">
-              Review the current operating budgets before preseason. Open the sliders if you want to adjust academy, medical, scouting, travel, or arena pricing.
+              Review the current operating budgets before preseason. Edit the budget if you want to adjust academy, medical, scouting, travel, or arena pricing.
             </p>
           </div>
           <button onClick={onClose} className="rounded-lg p-2 text-slate-400 hover:bg-white/10 hover:text-white">
@@ -139,7 +129,7 @@ export const FacilityReviewModal: React.FC<FacilityReviewModalProps> = ({
                 onClick={onOpenSliders}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/5 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-emerald-200 hover:bg-emerald-400/10 sm:w-auto"
               >
-                <SlidersHorizontal size={14} /> Open Sliders
+                <Settings2 size={14} /> Edit Budget
               </button>
             )}
             <button

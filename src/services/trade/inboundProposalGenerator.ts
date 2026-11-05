@@ -12,7 +12,7 @@
 
 import type { NBAPlayer, NBATeam, DraftPick, LeagueStats, TradeProposal } from '../../types';
 import {
-  calcOvr2K, calcPot2K, calcPlayerTV, getPickTV, isRecentlySignedLocked, isSalaryLegal, isUntouchable, isWalkingExpiring,
+  buildLeagueRelativeTradePercentiles, calcOvr2K, calcPot2K, calcPlayerTV, getPickTV, isContenderChampionshipCore, isRecentlySignedLocked, isSalaryLegal, isUntouchable, isWalkingExpiring,
   getTradeCandidateFloor, type TeamMode, type PickValueContext,
 } from './tradeValueEngine';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
@@ -20,6 +20,8 @@ import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 import { wouldStepienViolateForTid } from './stepienRule';
 import { DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
 import { isTradeExcludedPlayer } from './tradeFinderShared';
+import { buildCredibleResignExpiringIds } from './expiringResignSignal';
+import { getTradeAssetsForTeam } from '../freeAgency/eurostashRights';
 
 const TV_PARITY_TOLERANCE = 0.15;    // ±15% on either side = "fair" trade
 const MAX_COMBO_SIZE = 3;            // up to 3 players per side
@@ -117,7 +119,21 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
   if ((leagueStats as any)?.tradesAllowed === false) return [];
   const tradablePickWindow = (leagueStats as any)?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS;
   const stepienEnabled = (leagueStats as any)?.stepienRuleEnabled !== false;
-  const tvCtx = mvpRank ? { leaguePerAvg: 15, isRegularSeason: false, mvpRank } : undefined;
+  const tvCtx = {
+    leaguePerAvg: 15,
+    isRegularSeason: false,
+    ...(mvpRank ? { mvpRank } : {}),
+    leaguePlayerPercentile: allowPbaRoster
+      ? buildLeagueRelativeTradePercentiles(players, currentYear)
+      : undefined,
+    credibleResignExpiringIds: buildCredibleResignExpiringIds({
+      players,
+      teams,
+      currentYear,
+      date: proposedDate,
+      leagueStats,
+    }),
+  };
 
   const minLivePickSeason = Math.max(minTradableSeason, currentYear);
   const liveDraftPicks = draftPicks.filter(dp => dp.season >= currentYear);
@@ -131,12 +147,12 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
 
   // ── Resolve user's block assets ────────────────────────────────────────────
   const userMode: TeamMode = roleToMode(teamOutlooks.get(userTid)?.role ?? 'neutral');
-  const isWalking = (p: NBAPlayer) => isWalkingExpiring(p, currentYear, isPostDeadlinePreFA);
+  const isWalking = (p: NBAPlayer) => isWalkingExpiring(p, currentYear, isPostDeadlinePreFA, tvCtx?.credibleResignExpiringIds);
   const isLocked = recentlySignedLockMs
     ? (p: NBAPlayer) => isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)
     : (_p: NBAPlayer) => false;
-  const userBlockPlayers = players
-    .filter(p => p.tid === userTid && blockPlayerIds.includes(p.internalId))
+  const userBlockPlayers = getTradeAssetsForTeam(players, userTid)
+    .filter(p => blockPlayerIds.includes(p.internalId))
     .filter(p => !isWalking(p) && !isLocked(p));
   const userBlockPicks = liveDraftPicks.filter(dp => dp.tid === userTid && dp.season >= minLivePickSeason && blockPickIds.includes(dp.dpid));
 
@@ -161,10 +177,12 @@ export function generateInboundProposalsForUser(input: InboundProposalInput): Tr
     const theirMode = roleToMode(theirOutlook.role);
 
     // Their tradeable roster — non-external, non-untouchable from their POV.
-    const theirRoster = players
-      .filter(p => p.tid === team.id && !isTradeExcludedPlayer(p, allowPbaRoster))
-      .filter(p => !isWalking(p) && !isLocked(p))
+    const rawTheirRoster = getTradeAssetsForTeam(players, team.id)
+      .filter(p => !isTradeExcludedPlayer(p, allowPbaRoster))
+      .filter(p => !isWalking(p) && !isLocked(p));
+    const theirRoster = rawTheirRoster
       .filter(p => !isUntouchable(p, theirMode, currentYear, mvpRank))
+      .filter(p => !isContenderChampionshipCore(p, rawTheirRoster, theirMode, currentYear, mvpRank))
       .map(p => ({ player: p, tv: Math.max(MIN_BODY_PLAYER_TV, calcPlayerTV(p, theirMode, currentYear, tvCtx)), salary: (p.contract?.amount ?? 0) * 1000, ovr: calcOvr2K(p) }))
       .filter(r => r.tv >= deadWeightFloor)
       .sort((a, b) => b.tv - a.tv)

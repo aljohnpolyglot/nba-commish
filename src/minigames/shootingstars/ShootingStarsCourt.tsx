@@ -1,6 +1,7 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { ShotLocation } from '../shared/liveContestTypes';
+import { ContestBall } from '../../components/allstar/ContestBall';
 
 interface ShootingStarsCourtProps {
   activeShooterPos?: { x: number; y: number };
@@ -116,6 +117,7 @@ export const ShootingStarsCourt: React.FC<ShootingStarsCourtProps> = ({
           </motion.g>
         )}
       </AnimatePresence>
+      {activeShooterPos && <ContestBall shooter={activeShooterPos} isShooting={isShooting} />}
     </svg>
   </div>
 );

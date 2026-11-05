@@ -22,13 +22,23 @@
  */
 export const LEAGUE_MULTIPLIERS: Record<string, number> = {
   Euroleague:   0.980,  // just below NBA — top Euroleague players approach NBA starter level
-  PBA:          0.510,
+  EuroCup:      0.850,
+  PBA:          0.650,
   'B-League':   0.850,
   Endesa:       0.830,  // +0.03 bump — Endesa top players were landing too low (72-ish ceiling)
   'G-League':   0.780,  // +0.03 bump — best G-League guys were topping out at 72, should reach ~75+
   WNBA:         1.000,  // WNBA rated on full BBGM scale — no downscaling
   'China CBA':     0.700,  // Chinese Basketball Association — below Euroleague/Endesa
   'NBL Australia': 0.750,  // National Basketball League (Australia) — strong developmental league
+  'France Elite':   0.800,
+  'Italy Serie A':  0.820,
+  'Germany BBL':    0.810,
+  'Greece A1':      0.820,
+  'Turkey BSL':     0.830,
+  'Lithuania LKL':  0.790,
+  'Israel BSL':     0.790,
+  VTB:              0.840,
+  ABA:              0.820,
 };
 
 function calcRawOvr(ratings: any): number {

@@ -1,6 +1,7 @@
 import { NBAPlayer as Player } from '../../../types';
 import { R } from '../StatGenerator/helpers';
 import { PlayerComposite } from './types';
+import type { GameRuleConfig } from '../types';
 
 // Critical: BBGM rating set is hgt/stre/spd/jmp/endu/ins/dnk/ft/fg/tp/oiq/diq/drb/pss/reb.
 // There is NO `blk` or `stl` rating — those stats are DERIVED from primitives.
@@ -13,7 +14,11 @@ import { PlayerComposite } from './types';
 
 const norm = (v: number) => Math.max(0, Math.min(1, v / 100));
 
-export function buildComposite(p: Player, season: number): PlayerComposite {
+export function buildComposite(
+  p: Player,
+  season: number,
+  dribbleRule: GameRuleConfig['dribbleRule'] = 'continuous',
+): PlayerComposite {
   const r = (k: string) => R(p, k, season);
 
   const fg   = r('fg');
@@ -31,20 +36,39 @@ export function buildComposite(p: Player, season: number): PlayerComposite {
   const endu = r('endu');
   const hgt  = r('hgt');
   const jmp  = r('jmp');
+  const pos = String(p.pos ?? '').toUpperCase();
 
   // Derived defense primitives from the fast engine's per-team distributePie weights,
   // normalized to a 0–1 raw scale so the realistic engine can square them per-shot.
   const blockRaw = (hgt * 2.5 + jmp * 1.5 + diq * 0.5) / 4.5;
   const stealRaw = (diq * 2.0 + spd * 1.0) / 3.0;
+  const isBigLike = hgt >= 66 || pos.includes('C');
+  const isRimOnlyBig = isBigLike && tp < 32 && fg < 48 && Math.max(ins, dnk) >= 60;
+  const isNonShootingBig = isBigLike && tp < 42 && fg < 54;
+  const threeSkillRaw = 0.85 * tp + 0.15 * oiq;
+  const threeVolumeRaw =
+    isRimOnlyBig ? threeSkillRaw * 0.25 :
+    isNonShootingBig ? threeSkillRaw * 0.45 :
+    isBigLike && tp < 45 ? threeSkillRaw * 0.65 :
+    tp < 38 ? threeSkillRaw * 0.80 :
+    threeSkillRaw;
+
+  const driving = dribbleRule === 'continuous'
+    ? norm(0.40 * drb + 0.30 * spd + 0.30 * dnk)
+    : dribbleRule === 'single_bounce_no_shot'
+      ? norm(0.10 * drb + 0.15 * spd + 0.15 * dnk)
+      : norm(0.08 * spd + 0.08 * dnk);
+  const usageBallSkill = dribbleRule === 'continuous' ? drb : pss;
 
   return {
     id: p.internalId,
     // Offense
     rim:        norm(0.55 * dnk + 0.30 * ins + 0.15 * stre),
     midRange:   norm(0.75 * fg  + 0.25 * oiq),
-    three:      norm(0.85 * tp  + 0.15 * oiq),
+    three:      norm(threeSkillRaw),
+    threeVolume: norm(threeVolumeRaw),
     lowPost:    norm(0.65 * ins + 0.20 * stre + 0.15 * hgt),
-    driving:    norm(0.40 * drb + 0.30 * spd + 0.30 * dnk),
+    driving,
     // Elite-skewed passing — Jokic/Doncic land near 1.0 while mid-tier passers stay
     // around 0.45 so pickAssister's power-law can concentrate APG on the lead playmaker.
     passing:    Math.max(0, Math.min(1, Math.pow((0.70 * pss + 0.30 * oiq) / 100, 1.4))),
@@ -61,7 +85,7 @@ export function buildComposite(p: Player, season: number): PlayerComposite {
     // raw 0.80 was only 1.6× a guard at 0.55, vs the real-NBA 2.5× edge.
     rebound:       Math.pow(norm(0.50 * reb + 0.30 * hgt + 0.10 * stre + 0.10 * jmp), 1.4),
     // Other
-    usage:         norm(0.5 * (p.overallRating ?? 50) + 0.25 * fg + 0.15 * drb + 0.10 * oiq),
+    usage:         norm(0.5 * (p.overallRating ?? 50) + 0.25 * fg + 0.15 * usageBallSkill + 0.10 * oiq),
     endurance:     norm(endu),
     ovr:           p.overallRating ?? 50,
   };

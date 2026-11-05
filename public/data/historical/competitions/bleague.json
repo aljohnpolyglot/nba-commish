@@ -1,0 +1,208 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "bleague-history.1381429568742784",
+  "competitionKey": "bleague",
+  "competitionName": "B.League",
+  "leagueKey": "bleague",
+  "generatedAt": "2026-08-01T22:47:34.314Z",
+  "sources": [
+    {
+      "role": "champions",
+      "source": {
+        "provider": "wikipedia",
+        "pageTitle": "B.League",
+        "pageUrl": "https://en.wikipedia.org/w/index.php?title=B.League&oldid=1367030871",
+        "revisionId": 1367030871,
+        "fetchedAt": "2026-08-01T22:47:34.314Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2017,
+      "seasonLabel": "2016–17",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Link Tochigi Brex",
+        "sourcePageTitle": "Link Tochigi Brex",
+        "sourceHref": "/wiki/Link_Tochigi_Brex",
+        "canonicalKey": "club:link-tochigi-brex"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Kawasaki Brave Thunders",
+        "sourcePageTitle": "Kawasaki Brave Thunders",
+        "sourceHref": "/wiki/Kawasaki_Brave_Thunders",
+        "canonicalKey": "club:kawasaki-brave-thunders"
+      },
+      "result": "85–79"
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2017–18",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Alvark Tokyo",
+        "sourcePageTitle": "Alvark Tokyo",
+        "sourceHref": "/wiki/Alvark_Tokyo",
+        "canonicalKey": "club:alvark-tokyo"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Chiba Jets",
+        "sourcePageTitle": "Chiba Jets",
+        "sourceHref": "/wiki/Chiba_Jets",
+        "canonicalKey": "club:chiba-jets"
+      },
+      "result": "85–60"
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2018–19",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Alvark Tokyo",
+        "sourcePageTitle": "Alvark Tokyo",
+        "sourceHref": "/wiki/Alvark_Tokyo",
+        "canonicalKey": "club:alvark-tokyo"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Chiba Jets",
+        "sourcePageTitle": "Chiba Jets",
+        "sourceHref": "/wiki/Chiba_Jets",
+        "canonicalKey": "club:chiba-jets"
+      },
+      "result": "71–67"
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2019–20",
+      "status": "cancelled",
+      "result": "Cancelled due to the COVID-19 pandemic"
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2020–21",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Chiba Jets",
+        "sourcePageTitle": "Chiba Jets",
+        "sourceHref": "/wiki/Chiba_Jets",
+        "canonicalKey": "club:chiba-jets"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Utsunomiya Brex",
+        "sourcePageTitle": "Utsunomiya Brex",
+        "sourceHref": "/wiki/Utsunomiya_Brex",
+        "canonicalKey": "club:utsunomiya-brex"
+      },
+      "result": "2–1 (best-of-three series)"
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2021–22",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Utsunomiya Brex",
+        "sourcePageTitle": "Utsunomiya Brex",
+        "sourceHref": "/wiki/Utsunomiya_Brex",
+        "canonicalKey": "club:utsunomiya-brex"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Ryukyu Golden Kings",
+        "sourcePageTitle": "Ryukyu Golden Kings",
+        "sourceHref": "/wiki/Ryukyu_Golden_Kings",
+        "canonicalKey": "club:ryukyu-golden-kings"
+      },
+      "result": "2–0 (best-of-three series)"
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2022–23",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Ryukyu Golden Kings",
+        "sourcePageTitle": "Ryukyu Golden Kings",
+        "sourceHref": "/wiki/Ryukyu_Golden_Kings",
+        "canonicalKey": "club:ryukyu-golden-kings"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Chiba Jets",
+        "sourcePageTitle": "Chiba Jets",
+        "sourceHref": "/wiki/Chiba_Jets",
+        "canonicalKey": "club:chiba-jets"
+      },
+      "result": "2–0 (best-of-three series)"
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2023–24",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Hiroshima Dragonflies",
+        "sourcePageTitle": "Hiroshima Dragonflies",
+        "sourceHref": "/wiki/Hiroshima_Dragonflies",
+        "canonicalKey": "club:hiroshima-dragonflies"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Ryukyu Golden Kings",
+        "sourcePageTitle": "Ryukyu Golden Kings",
+        "sourceHref": "/wiki/Ryukyu_Golden_Kings",
+        "canonicalKey": "club:ryukyu-golden-kings"
+      },
+      "result": "2–1 (best-of-three series)"
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2024–25",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Utsunomiya Brex",
+        "sourcePageTitle": "Utsunomiya Brex",
+        "sourceHref": "/wiki/Utsunomiya_Brex",
+        "canonicalKey": "club:utsunomiya-brex"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Ryukyu Golden Kings",
+        "sourcePageTitle": "Ryukyu Golden Kings",
+        "sourceHref": "/wiki/Ryukyu_Golden_Kings",
+        "canonicalKey": "club:ryukyu-golden-kings"
+      },
+      "result": "2–1 (best-of-three series)"
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2025–26",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Nagasaki Velca",
+        "sourcePageTitle": "Nagasaki Velca",
+        "sourceHref": "/wiki/Nagasaki_Velca",
+        "canonicalKey": "club:nagasaki-velca"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Ryukyu Golden Kings",
+        "sourcePageTitle": "Ryukyu Golden Kings",
+        "sourceHref": "/wiki/Ryukyu_Golden_Kings",
+        "canonicalKey": "club:ryukyu-golden-kings"
+      },
+      "result": "2–1 (best-of-three series)"
+    }
+  ]
+}

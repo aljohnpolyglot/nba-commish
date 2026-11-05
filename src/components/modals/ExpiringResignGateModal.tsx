@@ -3,10 +3,12 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Bell, Bot, CheckCircle, Eye, Users, X } from 'lucide-react';
 import type { NBAPlayer } from '../../types';
 import { useGame } from '../../store/GameContext';
-import { computeAge, convertTo2KRating, formatCurrencyWithCode, getLeagueCurrencyCode } from '../../utils/helpers';
-import { getDisplayPotential } from '../../utils/playerRatings';
+import { computeAge, formatCurrencyWithCode, getLeagueCurrencyCode } from '../../utils/helpers';
+import { getDisplayOverall, getDisplayPotential } from '../../utils/playerRatings';
 import { getActiveLeagueTeams } from '../../utils/teamLookup';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { formatExternalSalary } from '../../constants';
+import type { OffseasonContractDecisionKind } from '../../services/freeAgency/offseasonContractDecision';
 
 export type ResignIntentLabel = 'ready_to_extend' | 'open' | 'testing_market' | 'farewell' | 'not_expiring';
 
@@ -15,6 +17,7 @@ export interface ExpiringRow {
   intent: ResignIntentLabel;
   offerSalaryUSD: number;
   offerYears: number;
+  decisionKind: OffseasonContractDecisionKind;
   resignBlockReason?: string;
 }
 
@@ -45,6 +48,18 @@ const ratingTone = (rating: number) =>
   rating >= 80 ? 'text-sky-300' :
   rating >= 74 ? 'text-amber-300' :
   'text-slate-300';
+
+const decisionLabel = (kind: OffseasonContractDecisionKind): string | null => {
+  switch (kind) {
+    case 'ROOKIE_TEAM_OPTION_DUE': return 'Rookie option due';
+    case 'TEAM_OPTION_DUE': return 'Team option due';
+    case 'PLAYER_OPTION_DUE': return 'Player option due';
+    case 'ROOKIE_EXIT_RFA_QO': return 'Rookie exit · RFA/QO';
+    case 'RFA_QO_DUE': return 'RFA/QO decision';
+    case 'NON_GUARANTEE_DECISION': return 'Guarantee decision';
+    default: return null;
+  }
+};
 
 const hashString = (value: string) => {
   let hash = 0;
@@ -79,11 +94,11 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
   const { state } = useGame();
   const [confirmAssistant, setConfirmAssistant] = useState(false);
   const currency = getLeagueCurrencyCode(state.leagueStats);
+  const formatMoney = (value: number) => state.leagueStats?.uiMode === 'pba_isolated'
+    ? formatExternalSalary(value, 'PBA')
+    : formatCurrencyWithCode(value, currency, false);
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const teams = useMemo(
-    () => state.leagueStats?.uiMode === 'euro_isolated' ? getActiveLeagueTeams(state as any) : state.teams,
-    [state],
-  );
+  const teams = useMemo(() => getActiveLeagueTeams(state), [state]);
   const willingRows = rows.filter(r => (r.intent === 'ready_to_extend' || r.intent === 'open') && !r.resignBlockReason);
   const totalMarket = rows.reduce((sum, r) => sum + r.offerSalaryUSD, 0);
   const hasRows = rows.length > 0;
@@ -135,7 +150,7 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
               <Kpi label="Expiring" value={String(rows.length)} />
               <Kpi label="Can Sign" value={String(willingRows.length)} tone="text-emerald-300" />
               <Kpi label="Test FA" value={String(rows.length - willingRows.length)} tone="text-amber-300" />
-              <Kpi label="Total Salary" value={formatCurrencyWithCode(totalMarket, currency, false)} tone="text-violet-300" />
+              <Kpi label="Total Salary" value={formatMoney(totalMarket)} tone="text-violet-300" />
             </div>
             <button onClick={onDismiss} className="absolute right-5 top-5 text-slate-500 hover:text-white transition-colors">
               <X size={18} />
@@ -158,18 +173,18 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                     There are no current offseason expiring contracts on your roster that need a talks decision here.
                   </p>
                 </div>
-              ) : rows.map(({ player, intent, offerSalaryUSD, offerYears, resignBlockReason }) => {
+              ) : rows.map(({ player, intent, offerSalaryUSD, offerYears, resignBlockReason, decisionKind }) => {
                 const offered = offeredIds.has(player.internalId);
                 const rejected = rejectedIds.has(player.internalId);
                 const decided = offered || rejected;
                 const willingToSign = (intent === 'ready_to_extend' || intent === 'open') && !resignBlockReason;
                 const badge = intentBadge(intent);
-                const ratings = player.ratings?.[player.ratings.length - 1] ?? {};
-                const ovr = convertTo2KRating(player.overallRating ?? ratings.ovr ?? 60, ratings.hgt ?? 50, ratings.tp);
+                const ovr = getDisplayOverall(player, currentYear);
                 const pot = getDisplayPotential(player, currentYear, currentYear, { floorAtEstimated: true });
                 const interestTeams = interestTeamsFor(player);
                 const visibleInterest = interestTeams.slice(0, 3);
                 const age = computeAge(player, currentYear);
+                const contractDecisionLabel = decisionLabel(decisionKind);
                 return (
                   <div key={player.internalId} className={`grid gap-3 border-l-4 px-4 py-3 ${badge.row ?? 'border-l-slate-700'} lg:grid-cols-[minmax(260px,1.35fr)_120px_150px_180px_190px] lg:items-center`}>
                     <div className="flex items-center gap-3 min-w-0">
@@ -194,7 +209,7 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                     </div>
                     <div>
                       <div className="text-[10px] uppercase tracking-widest text-slate-500 font-black">Asking Price</div>
-                      <div className="text-sm font-black text-white tabular-nums">{formatCurrencyWithCode(offerSalaryUSD, currency, false)}</div>
+                      <div className="text-sm font-black text-white tabular-nums">{formatMoney(offerSalaryUSD)}</div>
                       <div className="text-[10px] text-slate-500">{offerYears} year{offerYears === 1 ? '' : 's'}</div>
                     </div>
                     <div className="flex min-w-0 items-center gap-1.5">
@@ -213,7 +228,14 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                         </span>
                       )}
                     </div>
-                    {decided ? (
+                    {contractDecisionLabel && !willingToSign ? (
+                      <div className="flex flex-col gap-1">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-indigo-300">
+                          {contractDecisionLabel}
+                        </span>
+                        <span className="text-[10px] text-slate-500">Complete this contract decision before free agency.</span>
+                      </div>
+                    ) : decided ? (
                       <span className={`shrink-0 text-[10px] font-black uppercase tracking-widest px-2 py-1 ${offered ? 'text-emerald-400' : 'text-slate-500'}`}>
                         {offered ? 'Offered' : 'Letting Walk'}
                       </span>
@@ -328,16 +350,25 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                   <div className="p-5">
                     <div className="rounded-xl border border-white/10 divide-y divide-white/10 overflow-hidden mb-4">
                       {willingRows.map(row => {
-                        const ratings = row.player.ratings?.[row.player.ratings.length - 1] ?? {};
-                        const ovr = convertTo2KRating(row.player.overallRating ?? ratings.ovr ?? 60, ratings.hgt ?? 50, ratings.tp);
+                        const ovr = getDisplayOverall(row.player, currentYear);
                         const pot = getDisplayPotential(row.player, currentYear, currentYear, { floorAtEstimated: true });
                         const age = computeAge(row.player, currentYear);
                         return (
                           <div key={row.player.internalId} className="grid grid-cols-[1fr_88px_140px] gap-3 items-center px-3 py-2 text-sm">
-                            <div className="min-w-0">
-                              <div className="font-bold text-white truncate">{row.player.name}</div>
-                              <div className="text-[10px] text-slate-500">
-                                {[row.player.pos ?? 'G', age == null ? null : `${age}yrs`].filter(Boolean).join(' ')}
+                            <div className="flex min-w-0 items-center gap-2">
+                              <PlayerPortrait
+                                imgUrl={row.player.imgURL}
+                                face={(row.player as any).face}
+                                playerName={row.player.name}
+                                overallRating={row.player.overallRating}
+                                ratings={row.player.ratings}
+                                size={34}
+                              />
+                              <div className="min-w-0">
+                                <div className="font-bold text-white truncate">{row.player.name}</div>
+                                <div className="text-[10px] text-slate-500">
+                                  {[row.player.pos ?? 'G', age == null ? null : `${age}yrs`].filter(Boolean).join(' ')}
+                                </div>
                               </div>
                             </div>
                             <div className="flex gap-1.5 justify-end">
@@ -346,7 +377,7 @@ export const ExpiringResignGateModal: React.FC<ExpiringResignGateModalProps> = (
                               <span className={`font-black tabular-nums ${ratingTone(pot)}`}>{pot}</span>
                             </div>
                             <div className="text-right font-black text-white tabular-nums">
-                              {formatCurrencyWithCode(row.offerSalaryUSD * row.offerYears, currency, false)}/{row.offerYears}yr{row.offerYears === 1 ? '' : 's'}
+                              {formatMoney(row.offerSalaryUSD * row.offerYears)}/{row.offerYears}yr{row.offerYears === 1 ? '' : 's'}
                             </div>
                           </div>
                         );

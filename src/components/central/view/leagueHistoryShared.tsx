@@ -1,20 +1,22 @@
 import React from 'react';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { getPhotoByName } from '../../../data/realPlayerDataFetcher';
 
-export const resolveLeagueHistoryPortraitUrl = (player: any, name: string) =>
-  player?.imgURL || ((player as any)?.face ? undefined : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=94a3b8`);
+export const resolveLeagueHistoryPortraitUrl = (player: any, name: string, allowSource = true) =>
+  player?.imgURL || ((player as any)?.face ? undefined : (allowSource ? getPhotoByName(name) : undefined) || `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=94a3b8`);
 
 type AwardCellProps = {
   award: any;
   isCurrent?: boolean;
   onClick?: () => void;
+  emptyLabel?: string;
 };
 
-export const AwardCell: React.FC<AwardCellProps> = ({ award, isCurrent, onClick }) => {
+export const AwardCell: React.FC<AwardCellProps> = ({ award, isCurrent, onClick, emptyLabel }) => {
   if (!award) {
     return (
       <span className={`italic text-xs ${isCurrent ? 'text-slate-500' : 'text-slate-700'}`}>
-        {isCurrent ? 'TBA' : '—'}
+        {emptyLabel ?? (isCurrent ? 'TBA' : '—')}
       </span>
     );
   }
@@ -28,6 +30,7 @@ export const AwardCell: React.FC<AwardCellProps> = ({ award, isCurrent, onClick 
       <PlayerPortrait
         imgUrl={award.imgURL}
         face={award.face}
+        disableNameFallback={award.disableNameFallback}
         playerName={award.name}
         teamLogoUrl={award.teamLogoUrl}
         size={28}

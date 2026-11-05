@@ -1,140 +1,124 @@
-# Product State: NBA Commish Sim
+# Product State — NBA Commish Sim
 
-## 1. Product Summary
+Stand: 16. August 2026. Produktreife: **Beta / Worktree in aktiver Entwicklung**. Vorhandener Source ist nicht automatisch browser-, phone-, Save/Load- oder long-sim-verifiziert; die offene Evidenz steht in [`TODO.md`](./TODO.md).
 
-NBA Commish Sim ist eine browser-basierte Tiefen-Management-Simulation der NBA-Saison. Zwei vollwertige Spielmodi: **Commissioner** (gesamte Liga steuern — Regeln, Suspensionen, Trades, Ökonomie, Narrative) und **GM** (ein Team — Roster, Trades, Free Agency, Draft, Extensions). Dazu kommen zwei Liga-Quellen: **Fictional** (vollständig lokal generiert, offline) und **Modded** (Community-Realwelt-Daten via externe Quellen). Zielgruppe: Strategie-/Sport-Sim-Spieler, die NBA-CBA-Realismus + langfristige Liga-Evolution + LLM-erzeugtes Storytelling wollen. Erfolgskriterium: Mehrere Saisons ohne Ökonomie-Drift, ohne Roster-Korruption, ohne FA-Pool-Hunger durchspielbar mit kohärenter Narrative.
+## Produkt
 
-Produktreife: **Beta**. Kern-Loops (Sim, Trades, Draft, FA, All-Star, Playoffs, Rollover) laufen. Offseason-Orchestrierung wurde Mai 2026 (Sessions 52/53) auf einen Single-Source-of-Truth-Plan umgestellt. Bekannte Drift-Quellen werden über `[OSPLAN]`-Drift-Warnings im DevTools-Log getrackt.
+NBA Commish Sim ist eine browserbasierte Single-Player-Basketball-Management-Simulation. Zwei Rollen teilen denselben Save und dieselben Simulationsregeln:
 
-## 2. Users and Jobs To Be Done
+- **Commissioner** steuert Liga-Regeln, Kalender, Disziplin, Finanzen, Events, Expansion und ligaweite Entscheidungen.
+- **GM** führt einen Club durch Roster, Staff, Training, Free Agency, Trades, Draft, Transfers, Finanzen und Offseason-Aufgaben.
+- **God Mode** ist ein save-eigener Zusatzschalter für Heal Player, Edit Ratings, Player Creator und ligaweite Simulationseinstellungen; kein dritter Spielmodus. Direkte Pace-/Statistikfaktoren und Tragic-Death-Frequency bleiben dort von menschlich beschließbaren Commissioner-Regeln getrennt.
 
-| Nutzertyp | Job |
-|-----------|-----|
-| **Sim-Enthusiast** | Realistische NBA-Saison ohne Ökonomie-Bugs durchsimulieren, Hall-of-Fame-Karrieren tracken |
-| **Liga-Architekt** | Eigene Regelsets ausprobieren (4PT-Linie, Apron-Tweaks, Format-Mods, Custom All-Star-Events) |
-| **Story-Spieler** | LLM-generierte News, Tweets, Player-Quotes als Narrative-Layer über klassischen Box-Scores |
-| **GM-Spieler** | Eine Franchise über mehrere Saisons aufbauen, Cap-Management, Trade-Hunt, Draft-Picks rebuilden |
-| **Sandbox-Spieler** | Eine komplett fiktive Liga ohne externe Downloads oder Realwelt-Abhängigkeiten starten |
+LLM-generierte Texte sind optional. Simulation, Saves, Actions, News-Grundlagen und Spielausgänge funktionieren ohne API-Key.
 
-## 3. Current Capabilities
+## Spielwelten und Liga-Buckets
 
-### Spielmodi
-- **Commissioner Mode** (Core) — Vollzugriff auf alle 30 Teams, alle Trades genehmigen/forcen, alle Regeln editieren, AI-Aktionen überschreiben.
-- **GM Mode** (Core) — Ein Team unter den Augen einer KI-Liga; AI verwaltet die anderen 29; User-Aktionen werden gegen CBA-Regeln und Cap-Limits validiert.
+- **NBA Current/Historical:** moderne und historische Starts bis einschließlich 2026/27. Teamwahl ist capability-gated und benötigt ein spielbares Roster sowie mindestens einen identitätsgenauen Rookie-/Draft-Portraittreffer aus eingebetteten Roster-Bildern oder dem gemeinsamen Fallback. Jeder Historical Start ist ab Branch-Datum ein What-if; spätere reale Ergebnisse, Draftpositionen, Awards oder Karrieren werden nicht nachträglich als Branch-Wahrheit verwendet.
+- **Fictional:** lokal generierte Teams, Branding, Spieler, Staff und Referees ohne externe Roster-Fetches beim Start.
+- **PBA isolated:** Philippine-Cup-/Commissioner-/GM-Routing, Imports, PBA-Regeln, Media Rights, Muse Decision und PBA All-Star-Lifecycle in einem eigenen Bucket.
+- **EuroMode isolated:** zehn auswählbare Märkte für Spanien, Frankreich, Italien, Deutschland, Griechenland, Türkei, Litauen, Israel, Serbien/ABA und Russland/VTB; dazu nationale Cups/Super Cups, EuroLeague, EuroCup sowie getrennte VTB-/ABA-History.
+- **Euro-Offseason:** Auslaufende Verträge werden vor dem `Transfer Market` geprüft. Der spielbare Juli-Fokus trennt Club-zu-Club-Transfers/Leihen vom `Signing Market` für freie und unsigned Spieler; dessen Filter umfassen Europe, NBA, G League, Other International und Undrafted. Bestehende In-Season-Rekrutierungsaktivität bleibt aktiv, während Competition-Registrierungsfristen die maßgeblichen harten Kadergrenzen bilden.
+- **WNBA isolated:** der 2026-Current-Roster-Start öffnet nach dem real abgeschlossenen Draft am 8. Mai mit 330 Regular-Season-Spielen. Die laufende Scouting-/Mock-Draft-Klasse ist 2027; aktive 2026-Draftees bleiben im Club-Roster und werden nicht erneut als Prospects geführt.
+- **External/background universe:** WNBA, PBA, G League, B League, CBA, NBL und europäische Clubs können parallel im selben Save existieren.
+- **G-League-Portraits:** Ein gebündelter 2026-Fallbackkatalog liefert 510 eindeutige HD-Headshots und deckt 457 von 561 aktuellen G-League-Rosterzeilen ab. Er ist saison- und statusgebunden und überschreibt weder höherwertige Bilder noch andere Liga-Buckets.
+- **Interne Real-History:** Alle 18 gebündelten Real-League-Files besitzen versionierte History-Daten. B.League, CBA, NBL, G League, Summer League und Israel ergänzen Awards/Honor Teams aus dem League File um revisionierte Finals; Endesa und die europäischen Domestic-/Cup-Reader verwenden lokale Detailquellen. Die zehn EuroMode-Märkte zeigen sämtliche verfügbaren Domestic-Saison-Awards unter ihren nativen Namen und Epochen einschließlich Co-Winnern, Coach-/Executive-Honors sowie All-League-/All-Defensive-/All-Rookie-Gruppen. Noch nicht spielbare Hubs erhalten keinen erfundenen UI-Einstieg, ihre History ist aber über denselben internen Reader verfügbar. Schedule, Transactions und Start Today sind ausdrücklich nicht Teil dieses Datenstands.
+- **Community BBGM import:** eine importierte Liga übernimmt Name, Saisonlänge, Teams, Conference-/Division-Struktur, Playoffserien, First-Round-Byes und unterstützte Pace-/Statistikfaktoren. Ratingzeilen ohne vorberechnetes OVR/POT bleiben spielbar, weil die vorhandenen Attribute über die gemeinsamen Rating-Helpers ausgewertet werden. Fast und Realistic lesen dieselben importierten Liga-Faktoren.
+- **Multi-League:** Spieler, Teams, Schedules, Standings, Playoffs, Awards, Free Agency und Rollover bleiben nach Liga und Competition getrennt.
 
-### Liga-Typen
-- **Fictional League** (Core, in-flight polish) — 30 lokal generierte Teams, generierte Spieler, generierte Staff- und Referee-Daten, keine externen Fetches beim Start, offline-fähig. Aktuell NBA-only, also ohne `nonNBATeams`.
-- **Modded League** (Core) — Community-gepflegte Realwelt-Roster, Bilder, Verträge, Awards und Auslandsligen via externe Datenquellen.
+## Saison- und Spielsimulation
 
-### Ökonomie & CBA
-- **CBA Apron P0+P1** (Core) — 1st-Apron-Trade-Aggregation-Block, taxpayer MLE Gating, S&T-Restrictions, Hard-Cap-Triggers Section 36.
-- **Multi-Season-Pipeline** (Core) — 5-Pass-Signing-System (Best-Fit → Two-Way → NG-Camp → Min-Roster-Fill → Floor) in `AIFreeAgentHandler.runAIFreeAgencyRound`.
-- **Bird Rights / Supermax** (Core) — `superMaxEligible` und `hasBirdRights` automatisch computed bei Rollover und Team-Option-Exercise.
-- **External-League-Ökonomie** (Core) — 8 Auslandsligen (Euroleague/PBA/B-League/Endesa/G-League/CBA/NBL/WNBA) mit eigenem Salary-Scale, Mother-Team-Interest, Buyout-Slider.
-- **Fictional-League-Ausnahme** (Core) — Fictional-Saves skippen die gesamte External-League-Init; alle Auslandsliga-Systeme bleiben dort leer/inaktiv statt mit Mock-Daten gefüllt zu werden.
+- **Fast** und **Realistic** teilen Regeln, Gameplans, Staff-/Familiarity-Effekte, Rotation Resolution und Boxscore-Schreibpfade.
+- Fictional-Starts reichen bis 1891 zurück und speichern die damaligen Game Laws: 9-gegen-9, zwei 15-Minuten-Hälften, Ein-Punkt-Körbe, keine Freiwürfe/Shot Clock/Dribbling, Center Jump und die damalige Teamfoul-/temporäre Sperrlogik. Der Save übernimmt spätere Regeländerungen saisoniert, bis der Commissioner die Regeln bewusst anpasst. Beide Engines reconciliieren Ein-Punkt-Boxscores ohne erfundene Freiwürfe.
+- Home-Court Advantage ist ligaweit von 0 bis 100 einstellbar, Standard 50. Commissioner Rules und God Mode schreiben denselben Save-Wert; Fast und Realistic lesen denselben Effekt. Crowd-, Travel-, Neutral-Site-, Playoff- und COVID-spezifische Vertiefung bleibt offen.
+- PBA und WNBA besitzen liga- und engine-spezifische Kalibrierungsprofile für Tempo, Wurfvolumen/-mix, Effizienz, Freiwürfe, Rebounds, Defense Events, Turnovers und Fouls. Gespeicherte League-/Commissioner-Werte bleiben dabei die gemeinsame Basis; NBA erhält kein solches Profil.
+- Day Sim, Multi-Day/Lazy Sim, Play-Ziele und automatische Kalenderereignisse decken Regular Season, NBA Cup, All-Star, Trade Deadline, Playoffs, Draft und Rollover ab.
+- Euro/FIBA-Rotationen verwenden ein flacheres gespeichertes Profil; Auto-, Ideal- und Gameplan-Minuten laufen über denselben Resolver.
+- Away Games und Travel-Entscheidungen beeinflussen bereits Fatigue; distanz-/zeitzonenbasierte Route Stress bleibt ein Ausbau.
+- Offseason State/Plan ist die Entscheidungsquelle für Moratorium, Bird Rights, Open FA, Pre-Camp und Rollover. `[OSPLAN]` dient der Diagnose, nicht als sichtbare Spielmechanik.
+- Media Day lässt den GM seine bestehende Season Strategy als öffentliche Aussage formulieren. Die kurze Reporterfrage, Antwortauswahl und Bestätigung schreiben den vorhandenen Team-Status und öffnen danach direkt den vorhandenen Trade Hub.
 
-### Sim-Engine
-- **Game Sim** (Core) — Quartersweise Possession-basiert, mit Coach-Decisions, DNPs, Injury-Roll, Fatigue-Multiplier.
-- **Dual Simulator Modes** (Core) — `Realistic` für possession-by-possession Rotation/Minutes-Flow, `Fast` für schnelle StatGenerator-Sims. Spieler-Guide: `docs/simulator-guide.md`.
-- **Lazy Sim** (Core) — `runLazySim` für >30-Tage-Skips, mit `[OSPLAN]`-Plan-derived-Dispatch.
-- **Calendar Events** (Core) — Lottery, Draft, Trade Deadline, All-Star Weekend, Playoffs, Rollover, External Routing — alle automatisch via `buildAutoResolveEvents` orchestriert.
+## Roster, Draft, Free Agency und CBA
 
-### All-Star Weekend
-- **Bracket-Events** (Core) — Dunk Contest, 3PT Contest, Rising Stars (5 Formate inkl. 4-Team-Tournament + USA-vs-World), All-Star Game.
-- **The Throne** (Core, opt-in) — Saturday 1v1 Tournament mit composite voting (Fan/Player/Media/Coach), mandatory title defense, gold-pulsing UI.
-- **Satellite Events** (Experimental) — Shooting Stars, Skills Challenge, HORSE, 1v1 — Sim-Services + Toggles vorhanden, UI-Surfaces per Event noch in Entwicklung.
+- Multi-Pass-AI-Free-Agency erhält Two-Way-, Non-Guaranteed-, Minimum- und Roster-Fill-Reihenfolge.
+- Automatische NBA-Roster-Cuts und MLE-Upgrades bewerten Spieler auf der gemeinsamen K2-Skala. Top-5-Teamkern, K2-80+-Stars, laufende Regular-Season-Einsätze, relevante Garantien, Verletzungen und frisch abgeschlossene Verträge sind gegen unbeabsichtigte AI-Waivers geschützt.
+- Gespeicherte Bid Markets, User Offers, AI Bids, Contract Options, Bird Rights, Supermax, RFA Offer Sheets und Match Windows sind aktiv.
+- Moderne NBA Cap-/Tax-/Apron-Regeln, MLE, BAE, Sign-and-Trade-, Aggregation-, Cash-, TPE- und Hard-Cap-Gates werden über gemeinsame Rule Helpers geprüft.
+- Die BAE besitzt einen saisonalen Team-Ledger und funktioniert in Signing, AI Free Agency, Markets und qualifizierten Trades. Eine native Waiver-Claim-Oberfläche fehlt noch.
+- Draft Lottery, Live Draft Board, Draft History, Rookie Contracts, generated future classes und Draft-and-Stash-/External-Player-Pfade sind vorhanden.
+- NBA- und Fictional-GMs können direkte Vertragsangebote optional mit einem aus Personal Wealth bezahlten Fake-Brand-`ASPIRE`-Deal verstärken. Der sichtbare 0–100-Risk-Wert wird vor Abschluss mit einem save-stabilen d100 geprüft; Entdeckung kann bis zu fünf künftige Erstrundenpicks entfernen. Commissioner entscheiden entsprechende Ermittlungsfälle im Inbox-Panel und können verfügbare Picks im Team Office manuell forfeiten, einschließlich PBA. PBA-, Euro- und WNBA-Signings haben keinen ASPIRE-Pfad.
+- Aktive Spielerinnen des aktuellen WNBA-Realrosters verwenden auf sichtbaren K2-Flächen eine liga-relative Präsentationsskala; Draft Prospects und Simulationswerte bleiben unverändert. Prospect-Zeilen zeigen ihr College/Programm statt negativer All-Star-Team-Platzhalter, und die acht FIBA-bezogenen 2027-Prospects besitzen offizielle Portrait-Fallbacks.
+- Opening Fantasy Draft ist im Worktree eine Setup-Alternative zu Current Roster für Fictional und Modded NBA/Historical/WNBA/PBA/Euro. Ordinary Fixed/Snake/Random, Blind Pack, Briefcase, Wheel und Budget verwenden das aktive Liga-Minimum und Standardverträge, bewahren Salaries, halten andere Liga-Buckets unverändert und schreiben ein eigenes chronologisches History-Event. Die Draft-UI nutzt den vollständigen App-Bereich ohne zusätzliche Opening-Rosters-Sidebar. Browser-/Phone-/IndexedDB-/Cross-Mode-Evidenz bleibt pending.
+- Historische NBA-Klassen ergänzen fehlende reale Draftberechtigte aus dem lokalen Removed-Player-Snapshot. Derselbe Spieler kann saisonierte NBL-/B.League-/G-League-/PBA-/China-/Europa-History tragen, bleibt aber eine Identität und betritt nur seine kanonische Draftklasse; reale Runde, Pick und Zielteam werden im What-if-Branch nicht vorgegeben.
+- Retirement, Hall of Fame, Retired Jerseys, Family/Lineage und cutoff-sichere Career History werden im Save fortgeschrieben. Ein neuer Retiree mit branch-eigener Staff Probability über 40 % erhält die gespeicherte Personality-Grundlage `leader`; ein tatsächlicher Staff-Join bleibt eine getrennte Entscheidung. Sichtbarkeit, Suche und weitere Personality Badges sind noch deferred.
+- NBA und Fictional erzeugen bei wichtigen Player-Todesfällen genau eine gespeicherte Memorial-Mail. Commissioner entscheiden `IGNORE` oder `HONOR`; GM erhalten die Entscheidung nur für einen eigenen aktiven Spieler oder eine Club-Legende. Honor plant eine formale Würdigung beziehungsweise Schweigeminute beim nächsten Heimspiel, schreibt History und nutzt das bestehende Ergebnis-/Affinity-System. Nach zwei Tagen übernimmt bei Lazy Sim der zuständige Assistant und sendet eine Abschlussmail. Reale Todesdaten werden identity- und cutoff-sicher ergänzt; historische Source-Retirees ohne belegtes Datum bleiben von Zufallstoden ausgeschlossen. Euro, PBA und WNBA sind noch nicht Teil dieses Features.
+- NBA Commissioner ab 2024 können zwischen Mitte September und Ende November einmal pro Saison die save-stabil gerollte Netflix-Anfrage `Starting 5` erhalten. `IGNORE` schließt sie; `RESPOND` öffnet einen mobilen Picker für genau fünf aktive NBA-Spieler. Die gespeicherte Resolution zeigt League-/Relationship-Resultate und verändert keine Roster, Ratings, Verträge oder Schedules. GM, WNBA, Fictional, Euro und PBA sind nicht Teil der ersten Version.
+- Der gemeinsame Generated-Portrait-Renderer unterstützt bestehende vollständige Face-Deskriptoren sowie kompakte Haut-, Haar-, Augen-, Bart- und Headband-Konfigurationen; reale Portraits behalten auf ihren Flächen Priorität.
 
-### Draft & Player Development
-- **Generated Draft Classes** (Core) — Infinite-Sim-Support via `genDraftPlayers.ts` mit realistischer Path-Mix (College/Europe/G-League/Endesa/NBL/B-League).
-- **Faces.js** (Core) — ZenGM-Pattern Face-Generation mit reject-loop für non-basketball Accessories.
-- **Progression Engine** (Core) — Age + OVR-Viability Retirement, BBGM-style Growth + Decline Curves.
-- **Team Training** (Core, neu Session 50) — Per-Team-Trainingsplan beeinflusst Familiarity, Defensive Aura, Fatigue, Injury-Risk; affektiert tatsächliche Spielergebnisse.
+## Staff, Training und Club Management
 
-### UI & Storytelling
-- **Player Portraits** (Core) — `imgURL` → NBA-CDN → Faces.js → Initialen Fallback-Kette mit IndexedDB-Bild-Cache.
-- **LLM Narrative** (Core) — Gemini-driven News, Player-Quotes, Charania-Tweets, Coach-Reactions.
-- **Mood System** (Core) — 7 BBGM-inspirierte Traits (LOYAL, DIVA, MERCENARY, COMPETITIVE, FAMOUS, HOMEBODY, …) beeinflussen Trade-Acceptance, FA-Bidding, Re-Signing-Probability.
-- **Family Ties** (Core, Session ~Apr 19) — Sibling/Relative-Field, Trade-Block-Protection, Mood-Bonus, Family Tree Tab in PlayerBio.
+- Head Coach und Support Staff besitzen Verträge, Career Stints, Hiring, Firing, Retirement und Backfill-Grundlagen.
+- Gespeicherte Branch-Staff-Identitäten gewinnen vor historischen/current Source-Fallbacks. `Years with team` folgt dem laufenden Hire-Stint; Promotions bewahren Team-Tenure, echte Returns beginnen neu.
+- GM kann offene `Staff Hires` nach einer Assistant-GM-Bestätigung überspringen. Der bestehende Hiring-/Contract-Writer besetzt dabei nur den verwalteten Club und verwendet dessen NBA-, PBA- oder Euro-Staff-Markt.
+- Main Coaching Staff entwickelt sich aus Team Success, Head-Coach-Mentorship, Organization Bonus und gespeicherten Ceiling/Growth/Volatility-Profilen statt aus Tenure allein.
+- Coaching, Medical/Recovery, Player Development, Academy Development, Scouting und Rotation Management beeinflussen die jeweiligen Gameplay-Systeme.
+- Der sichtbare Training Center konzentriert sich auf Roster Development: individueller Growth Focus, Intensität und Mentorship. Der frühere Kalender-/Dashboard- und Systems-Workflow ist aus der UI entfernt; vorhandene Scheduler-Daten bleiben save-kompatibel.
+- Defense Gameplan und Defensive-System-Familiarity wirken in der Simulation. Defender Detail, Rival Gameplan und Matchup Assignments sind gespeichert und sichtbar, aber ihre tieferen individuellen Sim-Bridges sind noch nicht vollständig.
+- Sponsorships besitzen Core- und Endorsement-Slots, Open/Replace/Renew/End-Flows, Perks und Save Healing.
+- Franchise Portal berechnet dynamische Branch-Werte aus Markt, Arena, Sponsoring, Erfolg, Era-Scale und Wirtschaftswachstum. Jersey Sales berücksichtigt neben aktueller Leistung einen cutoff-sicheren All-Star-Legacy-Faktor, sodass langjährige Stars kommerziell relevant bleiben; die Nachfrage verändert weder OVR noch Awards. Jersey Sales öffnet Player Bio; Arena/Ticketing zeigt Live-Preisränge.
+- Das Team Office zeigt beim eigenen GM-Club einen 0–100-Team-Chemistry-Meter mit einer Dezimalstelle und bietet dort Dinner und Movie Night für den aktuellen Kader an. Jeder eindeutige aktive eingeladene Spieler bringt `+0.1` Chemistry, maximal `+1.0` je Aktivität; Einzelaktivitäten geben mehr persönliche Affinity als große Gruppen. Gastzahlabhängige Kosten werden vor Abschluss angezeigt, gegen Personal Wealth geprüft und dort abgezogen. Bis 2026 nutzt die Filmwahl era-sichere Titel aus dem Jahrzehntarchiv ohne 30-Tage-Verfall; nach Quellenende greift der vorhandene Future-Fallback. Der bestätigte maximale Gameplay-Effekt ist ein temporärer Teamkontext von `+5 OIQ/+5 DIQ` bei Chemistry 100; Simulation-Skalierung, Cooldown und Decay sind noch nicht implementiert.
+- GM Mode speichert einen eigenen Arbeitsvertrag mit Jahresgehalt, Restlaufzeit, Tenure, Employment Status und zwei Review-Saisons Grace. Beim Rollover läuft ein animiertes Annual Performance Review durch echte Season Wins, Playoff-Ausgang und drei nacheinander eingeblendete Finance-Fakten, bevor Assessment/Impact erscheinen. Ein Ownership-Sentiment-Meter fährt zum kumulierten Approval-Wert; `Review Summary` öffnet Approved/Dismissed danach als eigenen kompakten Entscheidungsdialog. Approval kann trotz Restvertrag zu Dismissed führen. Retained verändert den Vertrag nicht, während null Jahre einen separaten Renewal-/No-offer-Screen öffnen. Erwartungen stammen derzeit aus Teamstrategie, Markt/Franchisewert, Winning Culture und Spending; echte Owner-Attribute bleiben ein späterer Ausbau.
+- Dismissed, Decline und No-offer öffnen den save-eigenen GM-Jobmarkt. Angebotskarten zeigen Market Size, Franchise Value, Vorjahresrecord, Strategy/Pitch, Salary, Term und geschätzte State Income Tax; ein weiterhin gültiges Angebot des bisherigen Clubs ist als `Re-sign` markiert. Jährlich gestaffelte AI-GM-Verträge erzeugen echte Vacancies, nicht gewählte Clubs erhalten vorhandene oder save-stabil generierte Ersatz-GMs. Angebote bleiben aktuell in der aktiven Liga.
+- GM-Gehalt wird monatlich vom Owner über das vorhandene Payslip Ledger auf Personal Wealth gezahlt, nie aus Team Budget, Club Cash oder Player Payroll. Ohne aktiven Vertrag entstehen keine neuen Paychecks. Der NBA-Kern verwendet progressive State-Income-Tax-Brackets; unbekannte Fictional-/External-Orte bleiben über einen neutralen Fallback spielbar. Commissioner-/Legacy-Paychecks bleiben halbmonatlich.
 
-### Offseason (GM Mode)
-- **2K-Style Tasks-Checklist** (Core, Session 53/54) — 8-Row-Checklist (Lottery/Options/QO/MyFAs/Draft/Rookie-Contracts/FA/Camp) statt Tag-für-Tag-Klicks. Sidebar-Label EN: "Tasks" (vorher AUFGABEN). Auto-Checkmark fired für `pending` UND `in_progress` Rows.
-- **FA-Day-Counter** (Core, Session 54) — 1/13-Step-Through der FA-Window mit Auto-Skip der Moratorium-Phase. Footer-Label EN: "Day" (vorher Tag).
-- **Auto-Resolve-All** (Core) — One-Click bis Opening Night via `assistantGM=true`.
-- **Calendar-Advance auf Event-Daten** (Core, Session 54) — Klick auf Lottery/FA-Row sprint `state.date` direkt zum Event-Tag.
-- **RFA-Pending-Badge auf QO-Row** (Core, Session 54) — sichtbar wenn restricted FAs offen sind.
-- **Expiring-Contracts-Headsup-Banner** (Core, Session 54) — Anzahl Player-Options + Team-Options + Bird-Rights vor Options-Row-Klick.
-- **Full Qualifying Offer Modal** (Core, Session 54) — pro Spieler Tender / Match-Eligibility / Decline statt Auto-Resolve-Placeholder.
-- **Rookie-Contracts Auto-Disclaimer** (Core, Session 54) — informiert User dass R1-Picks per CBA auto-guaranteed sind, dismissable.
-- **Enter-Preseason CTA** (Core, Session 54) — beendet Offseason-Mode atomar (`OFFSEASON_EXIT`); Calendar-UI kommt zurück.
+## Events und Wettbewerbe
 
-### Coaching (neu Session 54)
-- **Coaching Hub** (Core) — eigene Top-Level-View `CoachingHubView` (Sidebar-Eintrag). GM-Mode öffnet auf User-Team direkt; Commissioner zeigt Team-Picker. Mirror des TeamOffice-Pattern.
-- **Defense Gameplan** (Core, Phase 1: UI+Persist) — Team-Level-Defense-Base. 5 Templates (Drop & Recover / Switch Everything / Blitz the Stars / Wall Up / No Middle Death) + Custom. 8 Felder (PnR-BallHandler/Roll-Man, Off-Ball-Screens, ISO-Coverage, Double-Policy Post/Drive, Pickup, Zone-vs-Man). Sim-Wiring Phase 3 deferred.
-- **Defender Detail** (Core, Phase 1) — Per-Defender-Baseline (NICHT per-Opponent). Body-Pressure / Deny-Level / Closeout-Style / Help-Behavior / Rebound-Behavior + optional Per-Defender Scheme-Override.
-- **Rival Gameplan** (Core, Phase 1) — Per-Opponent-Targeting (max 2 Targets pro Rival). 6 Actions (Always Double / Blitz on PnR / Force Weak Hand / Top Lock Off-Ball / Switch & Hunt / Pack & Sag). Set once per Season, Auto-Reconcile bei Trade/Cut/Retire.
-- **Matchup Assignments** (Core, Phase 1) — Lockdown (Top-3 Defender für toughste Assignments) + Hide (Top-3 weg von Elite-Scorers). FIRST/SECOND/THIRD Chevron-Pattern.
-- **Defensive System Library** (Core) — Man / Zones / Junk-Defenses / PnR-Variants / Press inkl. Roster-Fit-Scorer.
-- **AI Coach Paradigm** (Core, Session 54 Phase 2) — Context-aware tägliche Plans pro AI-Team basierend auf Saisonphase + W-L (Game-Day skip / Camp 85 / Preseason 60 / Playoffs Recovery 30 oder Offensive 70 / Reg-Saison Tier-by-WinPct). User-Team unverändert.
-- **AI Auto-Setup** (Core, Session 54) — One-Shot Dev-Focus + Mentor-Backfill bei Save-Load (empty-only) + Aug 15. Pos × Top-Attribut → Archetype; ≤23-jähriger paart mit höchst-OVR ≥28-jährigem same Pos same Team.
+- **NBA Cup:** gespeicherter Group-/Knockout-Lifecycle mit eigener History und Awards. MVP, All-Tournament Team und Champion sind im Commissioner-Katalog einzeln schaltbar. Historische Editionen lösen vollständige, kurze und frühere Franchise-Namen über die gemeinsame Teamidentität auf; vorhandene Source-Champions/Runner-ups bleiben auch dann sichtbar, wenn nur das aktive Logo nicht auflösbar ist.
+- **NBA Summer League:** source-faithful History/Detail/Roster-UI, GM-Rosterwahl, Commissioner-Autoauflösung, Preliminary Games, Final, Standings, Boxscores, Leaders, Awards, Sponsorname, History und Player-Bio-Verknüpfung. Moderne Source-Editionen liefern Games, Standings, Teams/Rosters, Stats und Bracket. Exakte Save-/Jahresdaten haben Vorrang vor Source-Fallbacks; nicht vorhandene historische Spieler bleiben über eine cutoff-sichere Bio erreichbar. In Zukunftssaisons werden Club-Nachwuchs, freie/G-League-Spieler und schwächere Camp Invites zu vollständigen 15er-AI-Rostern kombiniert. Champion, Championship MVP, MVP, First Team und Second Team sind im Commissioner-Katalog einzeln schaltbar; die Award Writer respektieren die gespeicherten Einstellungen. 2006–2012 öffnen ihre externe Jahresdetailseite. Pre-2013 werden keine Turnierchampions erfunden.
+- **International:** gespeicherte FIBA World Cups/Olympics mit National Teams, Groups, Knockout, Boxscores, Awards und History.
+- **EuroBasket:** 1935–2029 Edition Catalog; spielbarer 24-Team-Europe-Field in NBA- und Euro-Universen. Historische Hotlinks und Ergebnisse sind branch-cutoff-sicher. EuroBasket zählt bewusst nicht in die World-Cup/Olympics Medal Count.
+- **International Preseason und Euro Friendlies:** NBA Commissioner kann verfügbare externe Clubs mit NBA-Teams paaren, konkrete Termine setzen oder eine Recommended Slate automatisch übernehmen. Euro-GM plant nach der League Assembly und vor dem Schedule Draw bis zur gespeicherten Preseason-Grenze Home-/Away-Friendlies gegen rosterfähige europäische Clubs. Diese Spiele sind Exhibition und verändern keine offiziellen Standings, Records, Awards oder Career Stats; Kosten, Objectives und zusätzliche Chemistry-/Scouting-Folgen bleiben spätere Vertiefungen.
+- **External Club Visits:** Der vorhandene Teamkatalog jeder era-verfügbaren External League bleibt im Visit-/Scouting-Flow auswählbar, auch wenn ein Historical-NBA-Save nur einen kompakten aktiven Player-Markt für diese Liga hält. Der Besuch simuliert keine Background League.
+- **All-Star:** Rising Stars, Dunk, 3PT und All-Star Game; The Throne als vollständiger Opt-in-1v1-Flow. Shooting Stars, Skills Challenge und H-O-R-S-E besitzen eigene Tabs, Announcement-Gates und gemeinsame Live-Contest-Starts aus Hub und Schedule, gespeicherte Resultate, genau-einmalige Awards/News, History und Lazy Sim. WNBA verwendet eigene cutoff-sichere Game-/MVP-/3PT-/Skills-/Host-History und ein reales Jahresfenster für Game, 3PT und Skills; historische Sonderevent-/No-game-Ausgaben bleiben ausdrücklich sichtbar, und aktive Rosters kommen nur aus den isolierten WNBA-Hauptligateams. PBA behält unabhängig davon seinen lokalen Roster-/Contest-/Venue-Lifecycle. Der frühere generische 1v1-Schalter wird bei Legacy-Saves zu The Throne migriert. All-Star-Voting verwendet denselben cutoff-sicheren Karriere-Legacy-Faktor wie Jersey Sales. Der Dunk-Sandbox-Pool zeigt 2K Driving Dunk; 3PT-Karten normalisieren gespeicherte Quote auf eine echte Prozentanzeige.
+- **All-Star Dance Contest:** PBA ist standardmäßig aktiv; NBA/Fictional Commissioner können ihn einschalten. Der normale All-Star-Game-Einstieg bietet Watch/Pass, Lazy Sim schreibt dasselbe Ergebnis, und die bestehende All-Star-Ergebnisfläche zeigt nur `Dance Champions` unter dem MVP. Die zwei gespeicherten All-Star-Seiten, Captains, Portraits, Clubfarben, Jersey Numbers, Kategorie-Scores, Player Awards, News und History bleiben save-owned. Rein kosmetisch; keine Ratings-, Stats- oder Lineup-Effekte.
+- **Dance Contest Sandbox:** Das Hauptmenü öffnet zuerst den gemeinsamen NBA-Spielerpool, lässt zwei getrennte 12-Spieler-Teams samt Captains wählen und startet anschließend dieselbe vollständige Dance-Präsentation ohne den PBA-Save zu verändern. Dunk-, Olympics-, Dance- und gemeinsame Live-Contest-Selector verwenden den zentralen Portrait-Fallback.
+- **PBA Commissioner Events:** Opening Night verwendet zwei PBA-Clubs und ein era-verfügbares Philippine Venue und wird in den Philippine-Cup-Spielplan übernommen. Der All-Star-Host-Task wählt für die aktuelle Saison ein Venue statt eines NBA-Host-Teams. Der Draft der historischen Start-Saison gilt als bereits abgeschlossen; spätere Branch-Saisons behalten ihren normalen Commissioner-Draft. Free Agency öffnet den vorhandenen lokalen/importierten Player-Markt und dessen Team-Grid-Signing; manuelle und Assistant-Performer-Buchung teilen Philippine-artist-Pool, Event-Slots, Kalender und Announcements.
+- **PBA Fictional Expansion:** Ab 2026 kann Commissioner Mode Kandidaten aus dem PBA-Pool bewerten und annehmen. GM Mode erhält das gespeicherte Board-Ergebnis. Neue Clubs werden als PBA-Teams mit PHP-Bid-Profil, lokalen Player Protections, eigenem Expansion Draft und PBA Future Picks angelegt; NBA-Team-, Schedule- und Playoff-State bleibt unberührt.
+- **PBA GM Start:** Nach Saison- und Teamwahl kann die Karriere am Opening Day des Philippine, Commissioner’s oder Governors’ Cup beginnen. Die gewählte Conference wird unmittelbar aktiver Save-State; es gibt keinen Offseason-Task-Rail, keinen Zeitjump und keine Simulation früherer Cups.
+- **Commissioner Treasury:** `League Reserve` und `Available Budget` sind getrennte Save-Werte. Laufende Einnahmen erhöhen nicht automatisch die Spending Authority; Ausgaben verbrauchen Reserve und Saisonbudget, während der Rollover das nächste Budget neu autorisiert. Das Finance-Dashboard bietet Revenue-, Reserve- und Budget-Verlauf.
+- **PBA Muse Decision:** GM-only Offseason-Entscheidung aus gespeichertem occupation-bearing Pool. Commissioner überspringt die teambezogene Aufgabe.
+- **PBA Opening Ceremony:** jährliche kalenderneutrale Cutscene nach dem Governors' Cup und nach der GM-only Muse Selection, direkt vor dem nächsten Philippine Cup. Sie verwendet die gespeicherten PBA-Teams, Branding, Senior-Roster, Portraits und Muses; pro Club führt der Spieler mit den höchsten Training-Center-Mentorship-Punkten die Parade als Kapitän an. Skip, X/Escape und Exit schließen den Task vollständig, ohne Spielzeit oder Saisonstate fortzuschreiben.
+- **Celebrity Game:** PBA-Pools sind vorhanden, das Event bleibt standardmäßig aus.
 
-### All-Star Weekend
-- **Throne Watch-Live Overlay** (Core, Session 54) — `ThroneWatchOverlay.tsx`, Round-by-Round Replay mit Per-Match-Commentary. Wired in AllStarDayView "Open Throne" CTA.
+## League Office, Referees und Narrative
 
-### Training (neu Session 54 Tier A)
-- **Defensive Aura** (Core) — Multiplier scaled mit MOST-PRACTICED Defensive-System-Familiarity. Belohnt Spezialisierung.
-- **Dashboard Status Bar** (Core) — Top-of-Dashboard Summary mit heutigem Plan + Top-3 Familiarities (Off+Def interleaved) + B2B-Default + Normal-Default Quick-Presets (next 14 Tage).
+- Reale und fiktive Referee-Pools werden era-/mode-sicher in den Save geschrieben; Crews, Year-0- und jährliche Retirements, Commissioner Review, Picker, League Office und Bio lesen dieselbe Identität.
+- Reale Officials erhalten keine erfundenen Integrity-, Bias- oder Rigging-Attribute. Ihre Bio kann belegte Source-Ratings ausschließlich als neutral formulierte Whistle-, Scoring-, Consistency- und Crew-Tendenz zeigen.
+- Fictional Commissioner können im bestehenden Game Preview einmal pro noch ungespieltem Spiel einem ausdrücklich fiktiven Official ein Angebot aus Personal Cash machen. Ablehnung kostet nichts, ein bezahlter Fehlschlag verändert das Spiel nicht und nur ein gespeicherter Erfolg aktiviert das konsistente alternative Ergebnis.
+- Saved Broadcasting Talent ersetzt statische Präsentationslisten: historische NBA-Careers sind cutoff-sicher, neue Branch-Retirees können in allen unterstützten Modes deterministisch Broadcasting-Karrieren beginnen und beenden.
+- Spielerdisziplin besitzt historische, cutoff-sichere Records sowie neue Fine-/Suspension-Entscheidungen, Templates, Beträge, Toasts, History und Player-Bio-Anzeige.
+- Player Bio bündelt Career, Contracts, Discipline, Morale, Contract Thoughts, Re-sign Probability, International Stats und Summer-League-Stats.
+- News, Social Feed, Messages, Staff Chats und Commissioner Actions verwenden gespeicherten Gameplay-Kontext; LLM-Texte dürfen keinen State mutieren. League News besitzt era-abhängige NBA-, Euro-, WNBA-, PBA- und neutrale Identitäten. NBA/WNBA leiten stabile Close-Game-, Upset-, Performance-, Tabellen-, Championship-, Finals-MVP-, Einzelaward- und Honor-Team-Stories aus cutoff-sicheren Save-Fakten ab und deduplizieren identische Game-IDs. EuroMode kombiniert seinen save-eigenen 16+4-Katalog für Transfers, Leihen, Awards, Titel, Final Four, Movement, Continental-Plätze/Lizenzen, Media Rights, Finanzen, Academy und Coach/Staff mit stabilen konkreten Game-Recaps. PBA besitzt einen getrennten 16+4-Katalog für Conference-/Standings-, Award-, Championship-/Finals-MVP-, Grand-Slam-, All-Star-, Draft-, Import- und Game-Stories; Recaps und Titel der unmittelbar abgeschlossenen Conference-Saison bleiben über den Jahreswechsel sichtbar. All-Star-Captain-News verwenden das gespeicherte First-/Last-Name-Teamlabel. PBA fällt auf First Name zurück, andere Modes auf Last Name. WNBA und PBA verwenden weiterhin ausschließlich ihre mode-spezifischen Assets. World Cup, Olympics und EuroBasket sowie neutrale Coach-/Verlängerungsnews bleiben ligaübergreifend wiederverwendbar; Länder- und Clubfilter stammen aus den aktiven Wettbewerben. Der gemeinsame Imagn-Fotopass sucht game-/branch-/era-sicher nach Player-, Team-, Gegner- und Action-Kontext; falsche Sportarten und spätere Real-Life-Fotos werden verworfen. Reale Fotos zeigen ihren Provider-Credit auch im exportierten Score-Overlay; Getty wird als `Credit: Getty Images` gekennzeichnet. Ohne echtes Foto bleiben vorhandene Portraits/Teamassets oder eine bildlose Karte, nicht ein dynamisch generiertes Ersatzbild.
 
-## 4. Core Workflows
+## Persistenz und Datenintegrität
 
-### 4.1 Reguläre Saison simulieren (Commissioner)
-PlayButton → 1 Tag / 1 Woche / Bis Trade-Deadline / Bis Playoffs → Game-Result-Modal pro Tag → User kann jeden Tag in Trade-Machine, Free-Agents-View, Settings springen.
+- Ein gemeinsamer `GameState` wird gzip-komprimiert in IndexedDB gespeichert.
+- Editierbare Side Stores müssen mit `saveId` skopiert sein.
+- Historische Quellen dürfen nur vor dem Branch abgeschlossene Fakten anreichern.
+- External Sources werden erst ab ihrer belegten `coverageStart`-Saison aktiviert. Fehlende frühere Jahre ziehen kein späteres Roster vor; nach `coverageThrough` erzeugt ausschließlich der Save die weitere Ligaentwicklung.
+- League/Team/All-Star/Playoff/HOF-/Jersey-/Career-History trennt immutable Source-Cutoffs von späteren gespeicherten Branch-Ergebnissen; bereits datumssicher angekündigte All-Star-Hosts sind die einzige Future-Host-Ausnahme.
+- Real-world Roster-/History-Quellen sind Read-only-Provenance; spielbare Branch-Ergebnisse gehören dem Save.
+- Club Identity ist von Competition Identity getrennt: derselbe Club und dieselben Spieler werden nicht für Domestic, EuroLeague, EuroCup oder National-Team-Wettbewerbe geklont.
+- PBA-/External-OVR wird über den gemeinsamen League Multiplier berechnet; sichtbare Ratings verwenden K2/2K-Display-Helpers.
 
-### 4.2 Trade ausführen
-TradeMachineModal → Team 1 + Team 2 wählen (auto-sortiert nach Standings) → Spieler/Picks/Cash hinzufügen → Salary-Eyebrow zeigt Live-CBA-Validität → "Propose" oder "Override Deadline & Confirm" (Commissioner-only past Feb 15).
+## Bekannte Grenzen
 
-### 4.3 Offseason GM-Mode (2K-Style)
-Calendar erreicht Jun 15 → AUFGABEN-Sidebar erscheint rechts → User klickt Row für Row durch (Modal-Stacks für Options + QOs, eingebettete Views für Draft + FA + Camp) → "Auto-Resolve all remaining" springt zu Opening Night.
+- Mehrere große Worktree-Pässe sind noch nicht vollständig im Browser, auf Phone, über Save/Load oder als Long Sim verifiziert.
+- Staff Source-of-Truth/Tenure ist im Source gehärtet; Exact-Save-, Promotion/Return-, Phone- und Save/Load-Verifikation steht noch aus.
+- Der Future-Event-Source-Audit ist im Worktree gehärtet; Before/On/After-Event-, Legacy-Save- und Multi-League-Verifikation steht noch aus.
+- PBA Commissioner Opening Night/Venue, Team-Grid-Signings, Assistant-Performer-Parität und Fictional Expansion sind im Worktree umgesetzt, aber noch nicht über Browser, Phone, Save/Load, Expansion-Year-/Conference-Rollover und Long-Sim abgenommen.
+- PBA Governors Board zeigt gebündelte National-Team-Fenster im Saisonkalender; echte Gilas-Duty, Roster Release, Fatigue und Schedule-Pause sind noch nicht implementiert.
+- Der fictional Rig-Game-Offer-/Outcome-Lifecycle und die League-Reserve/Budget-Trennung sind im Worktree umgesetzt, aber noch nicht über Exact Save, Browser/Phone und Save/Load abgenommen. Team Chemistry besitzt Anzeige, gastzahlabhängige persönliche Kosten und einen roster-validierten Dinner-/Movie-Writer; der temporäre OIQ-/DIQ-Sim-Effekt, Cooldowns und Decay fehlen weiterhin. Komplexe Claim-, Pick-Swap-, Staff-Firing-, Defensive-Detail- und Travel-Route-Systeme sind deferred.
+- Ein Gameplay Worker ist noch offen. Die All-Star-Satellite-Flows und Summer-History-/Award-Plumbing sind im Worktree implementiert, aber noch nicht über Browser, Phone und Save/Load abgenommen.
 
-### 4.4 All-Star Weekend
-February-Mid → Calendar erreicht Friday → User watcht Rising Stars → Saturday → Dunk + 3PT + Throne (wenn aktiviert) → Sunday → All-Star Game → Awards in `player.awards` geschrieben → AllStarHistoryView updated.
-
-### 4.5 Draft
-DraftLottery (May 14) auto-fired → DraftSimulatorView (June 26) → Pick-für-Pick interactive oder "Sim to Pick X" / "Sim All" → `draftComplete = true` → Rookie-Contracts auto-seeded.
-
-## 5. Product Constraints and Known Limits
-
-- **Coaching Phase 3 Sim-Wiring noch deferred** — Defense Gameplan / Defender Detail / Rival Gameplan / Matchup Assignments persistieren und renderen, aber `GameSim` liest sie noch nicht. StatGenerator-Knob-Pass folgt.
-- **Fictional Branding noch nicht vollständig durchgezogen** — mehrere Unterflächen verwenden noch harte `NBA`-Texte (Schedule / Playoffs / Rules / All-Star / DayView). Funktional ok, aber inkonsistent.
-- **Fictional League ist aktuell NBA-only** — keine eigenen fiktiven Auslandsligen, keine Fictional-External-Economy, keine alternativen Feeder-Leagues.
-- **Save-Format ist gzipped** — Roh-IndexedDB-Reads zeigen `{__gz, data}`, nicht das State-Objekt. `DecompressionStream('gzip')` ist Pflicht.
-- **Per-Save-Persistenz** — Alle Side-Stores (Gameplan, Rotation-Presets, Image-Cache) MÜSSEN auf `state.saveId` skopt sein, sonst leakt zwischen Saves.
-- **Pass 5 cannot help full rosters** — Teams 15/15 mit Cheap-Deals brauchen NBA-Style Shortfall-Distribution. Funktion noch nicht geschrieben.
-- **`playerCurrentSeason` derived aus `player.stats` MAX-Year** — stale für retired/revived Players.
-- **Hard-Cap-Triggers (CBA #9)** — Konzept fehlt noch; Teams sind aktuell nur über/unter Apron via raw Payroll.
-- **Round-Robin Rising-Stars-Format** — Toggle exposed, Sim-Logik deferred.
-- **Echtes Elam-Ending in GameSim** — `targetScore`-Field auf Bracket-Games gesetzt aber von GameSim ignoriert.
-- **Browser-only** — Keine Server-Komponente, kein Multi-User. Alles in IndexedDB im Browser.
-
-## 6. Non-Goals
-
-- Multi-User / Online-Liga (Single-Player-Save).
-- Mobile-Native-App (Web-PWA optional, aber Desktop-First-UI).
-- Echte Lizenz-Daten (NBA-Player-Photos werden best-effort über CDN gefetcht; offiziell ungelizenziert).
-- Salary-Forecasting über mehrere Jahre (Cap-Inflation editor existiert, Year-N-Projections nicht).
-- Pre-1996 Historical-Replays als First-Class-Mode (BBGM-Imports gehen, sind aber kein Hauptpfad).
-
-## 7. Relationship To Other Control Documents
-
-- `ROADMAP.md` — Wo wir hinwollen (Phasen, Near-Term, Later-Opportunities).
-- `ARCHITECTURE.md` — Wie das System gebaut ist (Codemap, Invariants, Boundaries).
-- `CLAUDE.md` — Operational Anweisungen für Coding-Agents (Pipeline-Reihenfolge, Save-Format, Debug-Snippet).
-- `TODO.md` — Was als Nächstes zu tun ist (Bugs, Deferred-Items, QUEUED-Listen).
-- `CHANGELOG.md` — Was schon gemacht wurde (Sessions 1–53).
-
-## 8. Open Questions
-
-- Soll Fictional langfristig eigene Feeder-Leagues / internationale Ökosysteme bekommen oder bewusst ein cleanes NBA-only-Sandbox-Setup bleiben?
-- Wann landet GM-Mode-Mehrteam-Switch (z.B. Trade-Force-Approval als ehemaliger Commissioner)?
-- Soll der `[OSPLAN]`-Drift-Tracker zu einem In-App-Debug-Panel ausgebaut werden?
-- Welche Auslandsliga sollte als nächstes integriert werden? (BSL Türkei? VTB Russia?)
-- Soll Pass-5-Shortfall-Distribution NBA-genau implementiert werden, oder reicht ein simpler Bonus-Pool-Spread?
+Die belastbare, priorisierte Restliste steht in [`TODO.md`](./TODO.md); reine Zukunftsideen stehen in [`NEW_FEATURES.md`](./NEW_FEATURES.md).

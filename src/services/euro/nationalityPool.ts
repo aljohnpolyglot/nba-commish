@@ -8,9 +8,19 @@ const LEAGUE_TID_RANGES: Record<string, [number, number]> = {
   pba:        [2000, 2100],
   wnba:       [3000, 3100],
   bleague:    [4000, 4100],
-  gleague:    [6000, 6100],
-  chinacba:   [7000, 7100],
-  nblaus:     [8000, 8100],
+  gleague:    [16000, 17000],
+  chinacba:   [17000, 18000],
+  nblaus:     [18000, 19000],
+  'french-jeep-elite': [13000, 14000],
+  'italian-serie-a': [8000, 9000],
+  'german-bbl': [9000, 10000],
+  'greek-heba-a1': [6000, 7000],
+  'turkish-bsl': [7000, 8000],
+  'lithuanian-lkl': [10000, 11000],
+  'israeli-bsl': [11000, 12000],
+  'vtb-united-league': [12000, 13000],
+  'adriatic-league': [14000, 15000],
+  eurocup: [15000, 16000],
 };
 
 const FALLBACK_POOL: NationalityPoolEntry[] = [

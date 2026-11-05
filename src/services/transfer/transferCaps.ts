@@ -66,8 +66,8 @@ const DEFAULT_CAPS: TransferCaps = {
 export function getTransferCaps(tid: number): TransferCaps {
   const lg = getTransferMarketLeague(tid);
   if (!lg) return DEFAULT_CAPS;
-  if (lg.name === 'Euroleague') return EUROLEAGUE_CAPS;
-  if (lg.name === 'Liga Endesa') return ENDESA_CAPS;
+  if (lg.leagueId === 'euroleague') return EUROLEAGUE_CAPS;
+  if (lg.leagueId === 'endesa') return ENDESA_CAPS;
   return DEFAULT_CAPS;
 }
 

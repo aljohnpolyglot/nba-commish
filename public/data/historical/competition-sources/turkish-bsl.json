@@ -1,0 +1,1167 @@
+{
+  "turkish_champions": {
+    "education_cup": [
+      {
+        "year": "1943",
+        "champion": "Harp Okulu"
+      }
+    ],
+    "spring_cup": [
+      {
+        "year": "1944",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1945",
+        "champion": "Galatasaray"
+      }
+    ],
+    "turkish_basketball_championship": [
+      {
+        "year": "1946",
+        "champion": "Beykoz"
+      },
+      {
+        "year": "1947",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1948",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1949",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1950",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1951",
+        "champion": "Harp Okulu"
+      },
+      {
+        "year": "1952",
+        "champion": "Harp Okulu"
+      },
+      {
+        "year": "1953",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1954",
+        "champion": "Modaspor"
+      },
+      {
+        "year": "1955",
+        "champion": "Galatasaray & Modaspor",
+        "note": "Shared title"
+      },
+      {
+        "year": "1956",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1957",
+        "champion": "Fenerbahçe"
+      },
+      {
+        "year": "1958",
+        "champion": "Modaspor"
+      },
+      {
+        "year": "1959",
+        "champion": "Fenerbahçe"
+      },
+      {
+        "year": "1960",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1961",
+        "champion": "Darüşşafaka"
+      },
+      {
+        "year": "1962",
+        "champion": "Darüşşafaka"
+      },
+      {
+        "year": "1963",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1964",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1965",
+        "champion": "Fenerbahçe"
+      },
+      {
+        "year": "1966",
+        "champion": "Galatasaray"
+      },
+      {
+        "year": "1967",
+        "champion": "Altınordu"
+      }
+    ],
+    "basketball_super_league": [
+      {
+        "season": "1966–67",
+        "champion": "Altınordu"
+      },
+      {
+        "season": "1967–68",
+        "champion": "İTÜ"
+      },
+      {
+        "season": "1968–69",
+        "champion": "Galatasaray"
+      },
+      {
+        "season": "1969–70",
+        "champion": "İTÜ"
+      },
+      {
+        "season": "1970–71",
+        "champion": "İTÜ"
+      },
+      {
+        "season": "1971–72",
+        "champion": "İTÜ"
+      },
+      {
+        "season": "1972–73",
+        "champion": "İTÜ"
+      },
+      {
+        "season": "1973–74",
+        "champion": "Muhafızgücü"
+      },
+      {
+        "season": "1974–75",
+        "champion": "Beşiktaş"
+      },
+      {
+        "season": "1975–76",
+        "champion": "Eczacıbaşı"
+      },
+      {
+        "season": "1976–77",
+        "champion": "Eczacıbaşı"
+      },
+      {
+        "season": "1977–78",
+        "champion": "Eczacıbaşı"
+      },
+      {
+        "season": "1978–79",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "1979–80",
+        "champion": "Eczacıbaşı"
+      },
+      {
+        "season": "1980–81",
+        "champion": "Eczacıbaşı"
+      },
+      {
+        "season": "1981–82",
+        "champion": "Eczacıbaşı"
+      },
+      {
+        "season": "1982–83",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "1983–84",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "1984–85",
+        "champion": "Galatasaray"
+      },
+      {
+        "season": "1985–86",
+        "champion": "Galatasaray"
+      },
+      {
+        "season": "1986–87",
+        "champion": "Karşıyaka"
+      },
+      {
+        "season": "1987–88",
+        "champion": "Eczacıbaşı"
+      },
+      {
+        "season": "1988–89",
+        "champion": "Eczacıbaşı"
+      },
+      {
+        "season": "1989–90",
+        "champion": "Galatasaray"
+      },
+      {
+        "season": "1990–91",
+        "champion": "Fenerbahçe"
+      },
+      {
+        "season": "1991–92",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "1992–93",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "1993–94",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "1994–95",
+        "champion": "Ülker"
+      },
+      {
+        "season": "1995–96",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "1996–97",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "1997–98",
+        "champion": "Ülker"
+      },
+      {
+        "season": "1998–99",
+        "champion": "Tofaş"
+      },
+      {
+        "season": "1999–00",
+        "champion": "Tofaş"
+      },
+      {
+        "season": "2000–01",
+        "champion": "Ülker"
+      },
+      {
+        "season": "2001–02",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "2002–03",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "2003–04",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "2004–05",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "2005–06",
+        "champion": "Ülker"
+      },
+      {
+        "season": "2006–07",
+        "champion": "Fenerbahçe Ülker"
+      },
+      {
+        "season": "2007–08",
+        "champion": "Fenerbahçe Ülker"
+      },
+      {
+        "season": "2008–09",
+        "champion": "Efes Pilsen"
+      },
+      {
+        "season": "2009–10",
+        "champion": "Fenerbahçe Ülker"
+      },
+      {
+        "season": "2010–11",
+        "champion": "Fenerbahçe Ülker"
+      },
+      {
+        "season": "2011–12",
+        "champion": "Beşiktaş Milangaz"
+      },
+      {
+        "season": "2012–13",
+        "champion": "Galatasaray Medical Park"
+      },
+      {
+        "season": "2013–14",
+        "champion": "Fenerbahçe Ülker"
+      },
+      {
+        "season": "2014–15",
+        "champion": "Pınar Karşıyaka"
+      },
+      {
+        "season": "2015–16",
+        "champion": "Fenerbahçe"
+      },
+      {
+        "season": "2016–17",
+        "champion": "Fenerbahçe"
+      },
+      {
+        "season": "2017–18",
+        "champion": "Fenerbahçe Doğuş"
+      },
+      {
+        "season": "2018–19",
+        "champion": "Anadolu Efes"
+      },
+      {
+        "season": "2019–20",
+        "champion": null,
+        "note": "Cancelled due to the COVID-19 pandemic"
+      },
+      {
+        "season": "2020–21",
+        "champion": "Anadolu Efes"
+      },
+      {
+        "season": "2021–22",
+        "champion": "Fenerbahçe Beko"
+      },
+      {
+        "season": "2022–23",
+        "champion": "Anadolu Efes"
+      },
+      {
+        "season": "2023–24",
+        "champion": "Fenerbahçe Beko"
+      },
+      {
+        "season": "2024–25",
+        "champion": "Fenerbahçe Beko"
+      },
+      {
+        "season": "2025–26",
+        "champion": "Fenerbahçe Beko"
+      }
+    ]
+  },
+  "bsl_mvp": [
+    {
+      "season": "2020–21",
+      "player": "Alperen Şengün",
+      "position": "C",
+      "nationality": "Turkey",
+      "team": "Beşiktaş Icrypex"
+    },
+    {
+      "season": "2021–22",
+      "player": "Alpha Kaba",
+      "position": "F/C",
+      "nationality": "Guinea",
+      "team": "Gaziantep Basketbol"
+    },
+    {
+      "season": "2022–23",
+      "player": "Tyrique Jones",
+      "position": "F/C",
+      "nationality": "United States",
+      "team": "Türk Telekom"
+    },
+    {
+      "season": "2023–24",
+      "player": "Austin Wiley",
+      "position": "C",
+      "nationality": "United States",
+      "team": "Tofaş"
+    },
+    {
+      "season": "2024–25",
+      "player": "Marcquise Reed",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Tofaş"
+    },
+    {
+      "season": "2025–26",
+      "player": "Marcquise Reed",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Trabzonspor"
+    }
+  ],
+  "bsl_finals_mvp": [
+    {
+      "season": "2008–09",
+      "player": "Bootsy Thornton",
+      "position": "SG",
+      "nationality": "United States",
+      "club": "Efes Pilsen"
+    },
+    {
+      "season": "2009–10",
+      "player": "Tarence Kinsey",
+      "position": "SF",
+      "nationality": "United States",
+      "club": "Fenerbahçe"
+    },
+    {
+      "season": "2010–11",
+      "player": "Oğuz Savaş",
+      "position": "C",
+      "nationality": "Turkey",
+      "club": "Fenerbahçe"
+    },
+    {
+      "season": "2011–12",
+      "player": "Carlos Arroyo",
+      "position": "PG",
+      "nationality": "Puerto Rico",
+      "club": "Beşiktaş"
+    },
+    {
+      "season": "2012–13",
+      "player": "Jamont Gordon",
+      "position": "SG",
+      "nationality": "United States",
+      "club": "Galatasaray"
+    },
+    {
+      "season": "2013–14",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "club": null,
+      "note": "No MVP awarded"
+    },
+    {
+      "season": "2014–15",
+      "player": "Bobby Dixon",
+      "position": "PG",
+      "nationality": "Turkey",
+      "club": "Karşıyaka"
+    },
+    {
+      "season": "2015–16",
+      "player": "Luigi Datome",
+      "position": "SF",
+      "nationality": "Italy",
+      "club": "Fenerbahçe"
+    },
+    {
+      "season": "2016–17",
+      "player": "Bogdan Bogdanović",
+      "position": "SG",
+      "nationality": "Serbia",
+      "club": "Fenerbahçe"
+    },
+    {
+      "season": "2017–18",
+      "player": "Brad Wanamaker",
+      "position": "SG",
+      "nationality": "United States",
+      "club": "Fenerbahçe"
+    },
+    {
+      "season": "2018–19",
+      "player": "Shane Larkin",
+      "position": "PG",
+      "nationality": "Turkey",
+      "club": "Anadolu Efes"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "club": null,
+      "note": "Not awarded due to COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "player": "Rodrigue Beaubois",
+      "position": "SG",
+      "nationality": "France",
+      "club": "Anadolu Efes"
+    },
+    {
+      "season": "2021–22",
+      "player": "Jan Veselý",
+      "position": "C",
+      "nationality": "Czech Republic",
+      "club": "Fenerbahçe"
+    },
+    {
+      "season": "2022–23",
+      "player": "Vasilije Micić",
+      "position": "PG / SG",
+      "nationality": "Serbia",
+      "club": "Anadolu Efes"
+    },
+    {
+      "season": "2023–24",
+      "player": "Nigel Hayes-Davis",
+      "position": "SF / PF",
+      "nationality": "United States",
+      "club": "Fenerbahçe"
+    },
+    {
+      "season": "2024–25",
+      "player": "Khem Birch",
+      "position": "C",
+      "nationality": "Canada",
+      "club": "Fenerbahçe"
+    },
+    {
+      "season": "2025–26",
+      "player": "Wade Baldwin",
+      "position": "SG",
+      "nationality": "United States",
+      "club": "Fenerbahçe"
+    }
+  ],
+  "turkish_scoring_leaders": [
+    {
+      "season": "1966–67",
+      "player": "Hüseyin Alp",
+      "nationality": "Turkey",
+      "team": "Altınordu",
+      "value": 553,
+      "metric": "total_points"
+    },
+    {
+      "season": "1967–68",
+      "player": "Ümit Nacaroglu",
+      "nationality": "Turkey",
+      "team": "Kurtuluş",
+      "value": 657,
+      "metric": "total_points"
+    },
+    {
+      "season": "1968–69",
+      "player": "Hüseyin Kozluca",
+      "nationality": "Turkey",
+      "team": "Fenerbahçe",
+      "value": 736,
+      "metric": "total_points"
+    },
+    {
+      "season": "1969–70",
+      "player": "Firuz Koçaş",
+      "nationality": "Turkey",
+      "team": "Altay",
+      "value": 579,
+      "metric": "total_points"
+    },
+    {
+      "season": "1970–71",
+      "player": "Barış Küce",
+      "nationality": "Turkey",
+      "team": "Muhafızgücü",
+      "value": 652,
+      "metric": "total_points"
+    },
+    {
+      "season": "1971–72",
+      "player": "Barış Küce",
+      "nationality": "Turkey",
+      "team": "TED Ankara Kolejliler",
+      "value": 718,
+      "metric": "total_points"
+    },
+    {
+      "season": "1972–73",
+      "player": "Tom Davis",
+      "nationality": "United States",
+      "team": "Beşiktaş",
+      "value": 556,
+      "metric": "total_points"
+    },
+    {
+      "season": "1973–74",
+      "player": "Hüseyin Alp",
+      "nationality": "Turkey",
+      "team": "İTÜ",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1974–75",
+      "player": "Zeki Tosun",
+      "nationality": "Turkey",
+      "team": "Beşiktaş",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1975–76",
+      "player": "Erman Kunter",
+      "nationality": "Turkey",
+      "team": "İTÜ",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1976–77",
+      "player": "Zeki Tosun",
+      "nationality": "Turkey",
+      "team": "İTÜ",
+      "value": 648,
+      "metric": "total_points"
+    },
+    {
+      "season": "1977–78",
+      "player": "Serdar Koçyiğit",
+      "nationality": "Turkey",
+      "team": "DSI Spor",
+      "value": 490,
+      "metric": "total_points"
+    },
+    {
+      "season": "1978–79",
+      "player": "Erman Kunter",
+      "nationality": "Turkey",
+      "team": "Beşiktaş",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1979–80",
+      "player": "Erman Kunter",
+      "nationality": "Turkey",
+      "team": "Beşiktaş",
+      "value": 814,
+      "metric": "total_points"
+    },
+    {
+      "season": "1980–81",
+      "player": "Erman Kunter",
+      "nationality": "Turkey",
+      "team": "Beşiktaş",
+      "value": 848,
+      "metric": "total_points"
+    },
+    {
+      "season": "1981–82",
+      "player": "Erman Kunter",
+      "nationality": "Turkey",
+      "team": "Beşiktaş",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1982–83",
+      "player": "Jerry Scott",
+      "nationality": "United States",
+      "team": "İTÜ",
+      "value": 1055,
+      "metric": "total_points"
+    },
+    {
+      "season": "1983–84",
+      "player": "Michael Scearce",
+      "nationality": "United States",
+      "team": "Güney Sanayi",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1984–85",
+      "player": "Paul Dawkins",
+      "nationality": "United States",
+      "team": "Galatasaray",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1985–86",
+      "player": "Paul Dawkins",
+      "nationality": "United States",
+      "team": "Galatasaray",
+      "value": 602,
+      "metric": "total_points"
+    },
+    {
+      "season": "1986–87",
+      "player": "Michael Kennedy",
+      "nationality": "Jamaica",
+      "team": "İTÜ",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1987–88",
+      "player": "Erman Kunter",
+      "nationality": "Turkey",
+      "team": "Fenerbahçe",
+      "value": 692,
+      "metric": "total_points"
+    },
+    {
+      "season": "1988–89",
+      "player": "Hüsnü Çakırgil",
+      "nationality": "Turkey",
+      "team": "Beslenspor",
+      "value": 641,
+      "metric": "total_points"
+    },
+    {
+      "season": "1989–90",
+      "player": "Harun Erdenay",
+      "nationality": "Turkey",
+      "team": "İTÜ",
+      "value": 592,
+      "metric": "total_points"
+    },
+    {
+      "season": "1990–91",
+      "player": "Erman Kunter",
+      "nationality": "Turkey",
+      "team": "Beşiktaş",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1991–92",
+      "player": "Mike Cumberland",
+      "nationality": "United States",
+      "team": "Beslenspor",
+      "value": 750,
+      "metric": "total_points"
+    },
+    {
+      "season": "1992–93",
+      "player": "Harun Erdenay",
+      "nationality": "Turkey",
+      "team": "İTÜ",
+      "value": null,
+      "metric": "total_points"
+    },
+    {
+      "season": "1993–94",
+      "player": "Joel DeBortoli",
+      "nationality": "United States",
+      "team": "Bakırköyspor",
+      "value": 25.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1994–95",
+      "player": "George Gilmore",
+      "nationality": "United States",
+      "team": "Darüşşafaka",
+      "value": 25.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1995–96",
+      "player": "Lamont Strothers",
+      "nationality": "United States",
+      "team": "Darüşşafaka",
+      "value": 23.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1996–97",
+      "player": "Lamont Strothers",
+      "nationality": "United States",
+      "team": "Darüşşafaka",
+      "value": 23.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1997–98",
+      "player": "Michael Ansley",
+      "nationality": "United States",
+      "team": "Darüşşafaka",
+      "value": 23.8,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1998–99",
+      "player": "İbrahim Kutluay",
+      "nationality": "Turkey",
+      "team": "Fenerbahçe",
+      "value": 24.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "1999–00",
+      "player": "Damir Mršić",
+      "nationality": "Bosnia and Herzegovina",
+      "team": "Troy Pilsner",
+      "value": 22.8,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2000–01",
+      "player": "Bud Eley",
+      "nationality": "United States",
+      "team": "Beşiktaş",
+      "value": 23.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2001–02",
+      "player": "Bekir Yarangüme",
+      "nationality": "Turkey",
+      "team": "TED Ankara Kolejliler",
+      "value": 21.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2002–03",
+      "player": "Dewayne Jefferson",
+      "nationality": "United States",
+      "team": "Pınar Karşıyaka",
+      "value": 23.4,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2003–04",
+      "player": "Marc Salyers",
+      "nationality": "United States",
+      "team": "Oyak Renault",
+      "value": 25.3,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2004–05",
+      "player": "Harun Erdenay",
+      "nationality": "Turkey",
+      "team": "İTÜ",
+      "value": 21.4,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2005–06",
+      "player": "Malik Dixon",
+      "nationality": "United States",
+      "team": "Galatasaray",
+      "value": 22.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2006–07",
+      "player": "Gerald Fitch",
+      "nationality": "United States",
+      "team": "Galatasaray",
+      "value": 19.7,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2007–08",
+      "player": "Gary Neal",
+      "nationality": "United States",
+      "team": "Pınar Karşıyaka",
+      "value": 23.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2008–09",
+      "player": "Alex Gordon",
+      "nationality": "United States",
+      "team": "Oyak Renault",
+      "value": 20.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2009–10",
+      "player": "Quincy Douby",
+      "nationality": "North Macedonia",
+      "team": "Darüşşafaka",
+      "value": 23.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2010–11",
+      "player": "Ali Karadeniz",
+      "nationality": "Turkey",
+      "team": "Trabzonspor",
+      "value": 23,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2011–12",
+      "player": "Jonathan Gibson",
+      "nationality": "United States",
+      "team": "Trabzonspor",
+      "value": 19.9,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2012–13",
+      "player": "Ali Karadeniz",
+      "nationality": "Turkey",
+      "team": "Mersin BB",
+      "value": 21.4,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2013–14",
+      "player": "Darius Washington",
+      "nationality": "North Macedonia",
+      "team": "Olin Edirne",
+      "value": 23.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2014–15",
+      "player": "Matt Walsh",
+      "nationality": "United States",
+      "team": "Eskişehir Basket",
+      "value": 18.4,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2015–16",
+      "player": "Adrien Moerman",
+      "nationality": "France",
+      "team": "Banvit",
+      "value": 18,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2016–17",
+      "player": "Ricky Ledo",
+      "nationality": "United States",
+      "team": "Yeşilgiresun Belediye",
+      "value": 21.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2017–18",
+      "player": "Erving Walker",
+      "nationality": "United States",
+      "team": "Demir İnşaat Büyükçekmece",
+      "value": 18.5,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2018–19",
+      "player": "Kenny Hayes",
+      "nationality": "United States",
+      "team": "Arel Üniversitesi Büyükçekmece",
+      "value": 21.7,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "nationality": null,
+      "team": null,
+      "value": null,
+      "metric": "points_per_game",
+      "note": "Season was cancelled due to the pandemic"
+    },
+    {
+      "season": "2020–21",
+      "player": "Paco Cruz",
+      "nationality": "Mexico",
+      "team": "HDI Sigorta Afyon Belediye",
+      "value": 19.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2021–22",
+      "player": "Jarmar Gulley",
+      "nationality": "United States",
+      "team": "Gaziantep Basketbol",
+      "value": 20,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2022–23",
+      "player": "Jordon Crawford",
+      "nationality": "United States",
+      "team": "ONVO Büyükçekmece",
+      "value": 19.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2023–24",
+      "player": "Marcquise Reed",
+      "nationality": "United States",
+      "team": "ONVO Büyükçekmece",
+      "value": 21.1,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2024–25",
+      "player": "Marcquise Reed",
+      "nationality": "United States",
+      "team": "Tofaş",
+      "value": 17.6,
+      "metric": "points_per_game"
+    },
+    {
+      "season": "2025–26",
+      "player": "Marcquise Reed",
+      "nationality": "United States",
+      "team": "Trabzonspor",
+      "value": 23.4,
+      "metric": "points_per_game"
+    }
+  ],
+  "bsl_assist_leaders": [
+    {
+      "season": "2004–05",
+      "player": "Mark Dickel",
+      "nationality": "New Zealand / Australia",
+      "team": "Erdemirspor",
+      "value": 8.7
+    },
+    {
+      "season": "2005–06",
+      "player": "Kerem Tunçeri",
+      "nationality": "Turkey",
+      "team": "Beşiktaş Cola Turka",
+      "value": 6.4
+    },
+    {
+      "season": "2006–07",
+      "player": "Marques Green",
+      "nationality": "United States / North Macedonia",
+      "team": "CASA TED Kolejliler",
+      "value": 5.6
+    },
+    {
+      "season": "2007–08",
+      "player": "Hakan Köseoğlu",
+      "nationality": "Turkey",
+      "team": "Kepez Belediyespor",
+      "value": 6.9
+    },
+    {
+      "season": "2008–09",
+      "player": "Hakan Köseoğlu",
+      "nationality": "Turkey",
+      "team": "Pınar Karşıyaka",
+      "value": 8
+    },
+    {
+      "season": "2009–10",
+      "player": "Hakan Köseoğlu",
+      "nationality": "Turkey",
+      "team": "Erdemir Zonguldak",
+      "value": 8.8
+    },
+    {
+      "season": "2010–11",
+      "player": "Barış Ermiş",
+      "nationality": "Turkey",
+      "team": "Banvit",
+      "value": 6.3
+    },
+    {
+      "season": "2011–12",
+      "player": "Mire Chatman",
+      "nationality": "United States",
+      "team": "Pınar Karşıyaka",
+      "value": 6.4
+    },
+    {
+      "season": "2012–13",
+      "player": "Ben Woodside",
+      "nationality": "United States",
+      "team": "TED Ankara Kolejliler",
+      "value": 7
+    },
+    {
+      "season": "2013–14",
+      "player": "Barış Güney",
+      "nationality": "Turkey",
+      "team": "Olin Edirne",
+      "value": 7.1
+    },
+    {
+      "season": "2014–15",
+      "player": "Marques Green",
+      "nationality": "North Macedonia",
+      "team": "TED Ankara Kolejliler",
+      "value": 8.9
+    },
+    {
+      "season": "2015–16",
+      "player": "Thomas Heurtel",
+      "nationality": "France",
+      "team": "Anadolu Efes",
+      "value": 5.7
+    },
+    {
+      "season": "2016–17",
+      "player": "Jordan Theodore",
+      "nationality": "North Macedonia",
+      "team": "Banvit",
+      "value": 7.2
+    },
+    {
+      "season": "2017–18",
+      "player": "Šarūnas Vasiliauskas",
+      "nationality": "Lithuania",
+      "team": "Trabzonspor",
+      "value": 6.3
+    },
+    {
+      "season": "2018–19",
+      "player": "Vasilije Micić",
+      "nationality": "Serbia",
+      "team": "Anadolu Efes",
+      "value": 6.6
+    },
+    {
+      "season": "2019–20",
+      "player": "Trae Golden",
+      "nationality": "United States",
+      "team": "Bahçeşehir Basketbol",
+      "value": 7.8
+    },
+    {
+      "season": "2020–21",
+      "player": "Chris Wright",
+      "nationality": "United States",
+      "team": "HDI Sigorta Afyon Belediye",
+      "value": 8.3
+    },
+    {
+      "season": "2021–22",
+      "player": "Luka Rupnik",
+      "nationality": "Slovenia",
+      "team": "Semt77 Yalovaspor",
+      "value": 8.1
+    },
+    {
+      "season": "2022–23",
+      "player": "Alex Pérez",
+      "nationality": "Mexico",
+      "team": "Konyaspor",
+      "value": 7.5
+    },
+    {
+      "season": "2023–24",
+      "player": "Nate Mason",
+      "nationality": "United States",
+      "team": "Yukatel Merkezefendi",
+      "value": 7.1
+    },
+    {
+      "season": "2024–25",
+      "player": "Alex Pérez",
+      "nationality": "Mexico",
+      "team": "Tofaş",
+      "value": 6.4
+    },
+    {
+      "season": "2025–26",
+      "player": "Keye van der Vuurst de Vries",
+      "nationality": "Netherlands",
+      "team": "ONVO Büyükçekmece",
+      "value": 8.7
+    }
+  ]
+}

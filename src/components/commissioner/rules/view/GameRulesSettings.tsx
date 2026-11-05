@@ -8,6 +8,7 @@ import { ScoringCourtSection } from './game-rules/ScoringCourtSection';
 import { PersonnelSubsSection } from './game-rules/PersonnelSubsSection';
 import { FoulsLimitsSection } from './game-rules/FoulsLimitsSection';
 import { CoachingStrategySection } from './game-rules/CoachingStrategySection';
+import { FinePolicySection } from './game-rules/FinePolicySection';
 
 interface GameRulesSettingsProps {
     rules: LeagueStats;
@@ -59,6 +60,8 @@ export const GameRulesSettings: React.FC<GameRulesSettingsProps> = ({ rules, set
                         shootoutRounds={b('shootoutRounds').value as number}       setShootoutRounds={b('shootoutRounds').set as any}
                         startOfPossessionMethod={b('startOfPossessionMethod').value as any} setStartOfPossessionMethod={b('startOfPossessionMethod').set as any}
                         possessionPattern={b('possessionPattern').value as any}    setPossessionPattern={b('possessionPattern').set as any}
+                        madeBasketRestart={b('madeBasketRestart').value as any}    setMadeBasketRestart={b('madeBasketRestart').set as any}
+                        homeCourtAdvantage={b('homeCourtAdvantage').value as number} setHomeCourtAdvantage={b('homeCourtAdvantage').set as any}
                     />
                     <TimingViolationsSection
                         shotClockEnabled={b('shotClockEnabled').value as boolean}              setShotClockEnabled={b('shotClockEnabled').set as any}
@@ -85,9 +88,9 @@ export const GameRulesSettings: React.FC<GameRulesSettingsProps> = ({ rules, set
                         fourPointLine={b('fourPointLine').value as boolean}                    setFourPointLine={b('fourPointLine').set as any}
                         fourPointLineDistance={b('fourPointLineDistance').value as number}     setFourPointLineDistance={b('fourPointLineDistance').set as any}
                         dunkValue={b('dunkValue').value as number}                              setDunkValue={b('dunkValue').set as any}
-                        midrangeValue={b('midrangeValue').value as number}                      setMidrangeValue={b('midrangeValue').set as any}
+                        fieldGoalValue={b('fieldGoalValue').value as any}                       setFieldGoalValue={b('fieldGoalValue').set as any}
+                        freeThrowsEnabled={b('freeThrowsEnabled').value as boolean}             setFreeThrowsEnabled={b('freeThrowsEnabled').set as any}
                         heaveRuleEnabled={b('heaveRuleEnabled').value as boolean}              setHeaveRuleEnabled={b('heaveRuleEnabled').set as any}
-                        halfCourtShotValue={b('halfCourtShotValue').value as number}            setHalfCourtShotValue={b('halfCourtShotValue').set as any}
                         backcourtViolationEnabled={b('backcourtViolationEnabled').value as boolean} setBackcourtViolationEnabled={b('backcourtViolationEnabled').set as any}
                         travelingEnabled={b('travelingEnabled').value as boolean}              setTravelingEnabled={b('travelingEnabled').set as any}
                         doubleDribbleEnabled={b('doubleDribbleEnabled').value as boolean}      setDoubleDribbleEnabled={b('doubleDribbleEnabled').set as any}
@@ -105,15 +108,22 @@ export const GameRulesSettings: React.FC<GameRulesSettingsProps> = ({ rules, set
                     />
                     <PersonnelSubsSection
                         maxPlayersOnCourt={b('maxPlayersOnCourt').value as number}              setMaxPlayersOnCourt={b('maxPlayersOnCourt').set as any}
+                        minPlayersPerTeam={b('minPlayersPerTeam').value as number}
                         substitutionLimitEnabled={b('substitutionLimitEnabled').value as boolean} setSubstitutionLimitEnabled={b('substitutionLimitEnabled').set as any}
                         maxSubstitutions={b('maxSubstitutions').value as number}                setMaxSubstitutions={b('maxSubstitutions').set as any}
                         noDribbleRule={b('noDribbleRule').value as boolean}                    setNoDribbleRule={b('noDribbleRule').set as any}
+                        dribbleRule={b('dribbleRule').value as any}                            setDribbleRule={b('dribbleRule').set as any}
                         multiballEnabled={b('multiballEnabled').value as boolean}              setMultiballEnabled={b('multiballEnabled').set as any}
                         multiballCount={b('multiballCount').value as number}                    setMultiballCount={b('multiballCount').set as any}
                     />
                     <FoulsLimitsSection
                         foulOutLimit={b('foulOutLimit').value as number}                        setFoulOutLimit={b('foulOutLimit').set as any}
                         teamFoulPenalty={b('teamFoulPenalty').value as number}                  setTeamFoulPenalty={b('teamFoulPenalty').set as any}
+                        teamFoulPenaltyMode={b('teamFoulPenaltyMode').value as any}              setTeamFoulPenaltyMode={b('teamFoulPenaltyMode').set as any}
+                        teamFoulPenaltyPoints={b('teamFoulPenaltyPoints').value as number}       setTeamFoulPenaltyPoints={b('teamFoulPenaltyPoints').set as any}
+                        temporaryDisqualificationFoulLimit={b('temporaryDisqualificationFoulLimit').value as number} setTemporaryDisqualificationFoulLimit={b('temporaryDisqualificationFoulLimit').set as any}
+                        temporaryDisqualificationUntilNextScore={b('temporaryDisqualificationUntilNextScore').value as boolean} setTemporaryDisqualificationUntilNextScore={b('temporaryDisqualificationUntilNextScore').set as any}
+                        temporaryDisqualificationAllowsSubstitute={b('temporaryDisqualificationAllowsSubstitute').value as boolean} setTemporaryDisqualificationAllowsSubstitute={b('temporaryDisqualificationAllowsSubstitute').set as any}
                         flagrantFoulPenaltyEnabled={b('flagrantFoulPenaltyEnabled').value as boolean} setFlagrantFoulPenaltyEnabled={b('flagrantFoulPenaltyEnabled').set as any}
                         clearPathFoulEnabled={b('clearPathFoulEnabled').value as boolean}      setClearPathFoulEnabled={b('clearPathFoulEnabled').set as any}
                         illegalScreenEnabled={b('illegalScreenEnabled').value as boolean}      setIllegalScreenEnabled={b('illegalScreenEnabled').set as any}
@@ -136,6 +146,7 @@ export const GameRulesSettings: React.FC<GameRulesSettingsProps> = ({ rules, set
                     />
                 </div>
             </div>
+            <FinePolicySection />
         </div>
     );
 };

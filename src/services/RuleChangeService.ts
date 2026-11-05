@@ -29,6 +29,13 @@ class RuleChangeService {
         checkChange('gamesPerSeason', '[Schedule] Games Per Season');
         checkChange('divisionGames', '[Schedule] Division Games');
         checkChange('conferenceGames', '[Schedule] Conference Games');
+        if (
+            newStats.leagueCalendar?.preseasonGamesPerTeam !== undefined
+            && newStats.leagueCalendar.preseasonGamesPerTeam !== oldStats.leagueCalendar?.preseasonGamesPerTeam
+        ) {
+            changes.push(`[Schedule] Preseason Games Per Team: ${newStats.leagueCalendar.preseasonGamesPerTeam}`);
+        }
+        checkChange('jerseyPatchProgramEnabled', '[Commercial] Jersey Patch Program', v => v ? 'Enabled' : 'Disabled');
         checkChange('numQuarters', '[Structure] Quarters');
         checkChange('overtimeEnabled', '[Timing] Overtime', v => v ? 'Enabled' : 'Disabled');
         checkChange('overtimeDuration', '[Timing] OT Duration', v => `${v}m`);
@@ -63,9 +70,7 @@ class RuleChangeService {
         checkChange('fourPointLine', '[Scoring] 4PT Line', v => v ? 'Enabled' : 'Disabled');
         checkChange('fourPointLineDistance', '[Scoring] 4PT Distance', v => `${v}ft`);
         checkChange('dunkValue', '[Scoring] Dunk Value', v => `${v}pts`);
-        checkChange('midrangeValue', '[Scoring] Midrange Value', v => `${v}pts`);
         checkChange('heaveRuleEnabled', '[Scoring] Heave Rule', v => v ? 'On' : 'Off');
-        checkChange('halfCourtShotValue', '[Scoring] Half-Court Value', v => `${v}pts`);
 
         // Fouls
         checkChange('foulOutLimit', '[Fouls] Foul Limit');
@@ -99,18 +104,32 @@ class RuleChangeService {
         checkChange('minGamesRequirement', 'Min Games for Awards');
         checkChange('minAgeRequirement', 'Min Age');
         checkChange('draftEligibilityRule', 'Draft Eligibility Rule');
+        checkChange('playoffsEnabled', '[Playoffs] Postseason', v => v ? 'Enabled' : 'Disabled');
         checkChange('playIn', 'Play-In Tournament', v => v ? 'Enabled' : 'Disabled');
+        checkChange('playoffsByConf', '[Playoffs] Seeding', v => v ? 'By Conference' : 'League-wide');
+        checkChange('numPlayoffTeams', '[Playoffs] Field Size');
+        checkChange('numPlayoffByes', '[Playoffs] Opening-Round Byes');
+        if (
+            newStats.numGamesPlayoffSeries
+            && JSON.stringify(newStats.numGamesPlayoffSeries) !== JSON.stringify(oldStats.numGamesPlayoffSeries)
+        ) {
+            changes.push(`[Playoffs] Series by Round: ${newStats.numGamesPlayoffSeries.map(games => `Best of ${games}`).join(', ')}`);
+        }
         checkChange('inSeasonTournament', 'In-Season Tournament', v => v ? 'Enabled' : 'Disabled');
         checkChange('draftType', 'Draft Format');
+        checkChange('tradesAllowed', '[Economy] Trades', v => v ? 'Enabled' : 'Disabled');
         
         // All-Star Weekend
         checkChange('allStarGameEnabled', '[All-Star] All-Star Game', v => v ? 'Enabled' : 'Disabled');
         checkChange('allStarFormat', '[All-Star] Game Format');
         checkChange('allStarTeams', '[All-Star] Number of Teams');
+        checkChange('allStarPlayerCaptainNameStyle', '[All-Star] Player Team Names', v => v === 'first_name' ? 'First name' : 'Last name');
         checkChange('allStarMirrorLeagueRules', '[All-Star] Mirror League Rules', v => v ? 'Yes' : 'No');
         checkChange('allStarGameFormat', '[All-Star] Game Mode', v => v === 'timed' ? 'Timed' : v === 'elam_ending' ? 'Elam Ending' : 'Target Score');
         checkChange('allStarGameTargetScore', '[All-Star] Target Score', v => `${v}pts`);
         checkChange('allStarDunkContest', '[All-Star] Dunk Contest', v => v ? 'Enabled' : 'Disabled');
+        checkChange('allStarDanceContestEnabled', '[All-Star] Dance Contest', v => v ? 'Enabled' : 'Disabled');
+        checkChange('pbaAllStarDanceContestEnabled', '[All-Star] PBA Dance Contest', v => v ? 'Enabled' : 'Disabled');
         checkChange('allStarThreePointContest', '[All-Star] 3PT Contest', v => v ? 'Enabled' : 'Disabled');
         checkChange('allStarShootingStars', '[All-Star] Shooting Stars', v => v ? 'Enabled' : 'Disabled');
         checkChange('allStarShootingStarsTeams', '[All-Star] Shooting Stars Teams', v => `${v}`);
@@ -120,7 +139,6 @@ class RuleChangeService {
         checkChange('allStarHorseParticipants', '[All-Star] H-O-R-S-E Participants', v => `${v}`);
         checkChange('allStarHorseNoPlayerRepeat', '[All-Star] H-O-R-S-E Player Repeats', v => v ? 'Disabled' : 'Allowed');
         checkChange('allStarHorseNoGlobalRepeat', '[All-Star] H-O-R-S-E Global Repeats', v => v ? 'Disabled' : 'Allowed');
-        checkChange('allStarOneOnOneEnabled', '[All-Star] 1v1 Tournament', v => v ? 'Enabled' : 'Disabled');
         
         // Rising Stars & Celebrity
         checkChange('risingStarsEnabled', '[Rising Stars] Game', v => v ? 'Enabled' : 'Disabled');

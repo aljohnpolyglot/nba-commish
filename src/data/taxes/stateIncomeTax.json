@@ -1,0 +1,807 @@
+[
+    {
+        "state": "Alabama",
+        "singleFilerRates": "2.00% > $0",
+        "marriedFilingJointlyRates": "2.00% > $0"
+    },
+    {
+        "state": "Alabama",
+        "singleFilerRates": "4.00% > $500",
+        "marriedFilingJointlyRates": "4.00% > $1,000"
+    },
+    {
+        "state": "Alabama",
+        "singleFilerRates": "5.00% > $3,000",
+        "marriedFilingJointlyRates": "5.00% > $6,000"
+    },
+    {
+        "state": "Alaska",
+        "singleFilerRates": "None",
+        "marriedFilingJointlyRates": "None"
+    },
+    {
+        "state": "Arizona",
+        "singleFilerRates": "2.50% > $0",
+        "marriedFilingJointlyRates": "2.50% > $0"
+    },
+    {
+        "state": "Arkansas",
+        "singleFilerRates": "2.00% > $0",
+        "marriedFilingJointlyRates": "2.00% > $0"
+    },
+    {
+        "state": "Arkansas",
+        "singleFilerRates": "3.90% > $4,500",
+        "marriedFilingJointlyRates": "3.90% > $4,500"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "1.00% > $0",
+        "marriedFilingJointlyRates": "1.00% > $0"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "2.00% > $10,756",
+        "marriedFilingJointlyRates": "2.00% > $21,512"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "4.00% > $25,499",
+        "marriedFilingJointlyRates": "4.00% > $50,998"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "6.00% > $40,245",
+        "marriedFilingJointlyRates": "6.00% > $80,490"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "8.00% > $55,866",
+        "marriedFilingJointlyRates": "8.00% > $111,732"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "9.30% > $70,606",
+        "marriedFilingJointlyRates": "9.30% > $141,732"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "10.30% > $360,659",
+        "marriedFilingJointlyRates": "10.30% > $721,318"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "11.30% > $432,787",
+        "marriedFilingJointlyRates": "11.30% > $865,574"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "12.30% > $721,314",
+        "marriedFilingJointlyRates": "12.30% > $1,000,000"
+    },
+    {
+        "state": "California",
+        "singleFilerRates": "13.30% > $1,000,000",
+        "marriedFilingJointlyRates": "13.30% > $1,442,628"
+    },
+    {
+        "state": "Colorado",
+        "singleFilerRates": "4.40% > $0",
+        "marriedFilingJointlyRates": "4.40% > $0"
+    },
+    {
+        "state": "Connecticut",
+        "singleFilerRates": "2.00% > $0",
+        "marriedFilingJointlyRates": "2.00% > $0"
+    },
+    {
+        "state": "Connecticut",
+        "singleFilerRates": "4.50% > $10,000",
+        "marriedFilingJointlyRates": "4.50% > $20,000"
+    },
+    {
+        "state": "Connecticut",
+        "singleFilerRates": "5.50% > $50,000",
+        "marriedFilingJointlyRates": "5.50% > $100,000"
+    },
+    {
+        "state": "Connecticut",
+        "singleFilerRates": "6.00% > $100,000",
+        "marriedFilingJointlyRates": "6.00% > $200,000"
+    },
+    {
+        "state": "Connecticut",
+        "singleFilerRates": "6.50% > $200,000",
+        "marriedFilingJointlyRates": "6.50% > $400,000"
+    },
+    {
+        "state": "Connecticut",
+        "singleFilerRates": "6.90% > $250,000",
+        "marriedFilingJointlyRates": "6.90% > $500,000"
+    },
+    {
+        "state": "Connecticut",
+        "singleFilerRates": "6.99% > $500,000",
+        "marriedFilingJointlyRates": "6.99% > $1,000,000"
+    },
+    {
+        "state": "Delaware",
+        "singleFilerRates": "2.20% > $2,000",
+        "marriedFilingJointlyRates": "2.20% > $2,000"
+    },
+    {
+        "state": "Delaware",
+        "singleFilerRates": "3.90% > $5,000",
+        "marriedFilingJointlyRates": "3.90% > $5,000"
+    },
+    {
+        "state": "Delaware",
+        "singleFilerRates": "4.80% > $10,000",
+        "marriedFilingJointlyRates": "4.80% > $10,000"
+    },
+    {
+        "state": "Delaware",
+        "singleFilerRates": "5.20% > $20,000",
+        "marriedFilingJointlyRates": "5.20% > $20,000"
+    },
+    {
+        "state": "Delaware",
+        "singleFilerRates": "5.55% > $25,000",
+        "marriedFilingJointlyRates": "5.55% > $25,000"
+    },
+    {
+        "state": "Delaware",
+        "singleFilerRates": "6.60% > $60,000",
+        "marriedFilingJointlyRates": "6.60% > $60,000"
+    },
+    {
+        "state": "Florida",
+        "singleFilerRates": "None",
+        "marriedFilingJointlyRates": "None"
+    },
+    {
+        "state": "Georgia",
+        "singleFilerRates": "5.39% > $0",
+        "marriedFilingJointlyRates": "5.39% > $0"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "1.40% > $0",
+        "marriedFilingJointlyRates": "1.40% > $0"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "3.20% > $9,600",
+        "marriedFilingJointlyRates": "3.20% > $19,200"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "5.50% > $14,400",
+        "marriedFilingJointlyRates": "5.50% > $28,800"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "6.40% > $19,200",
+        "marriedFilingJointlyRates": "6.40% > $38,400"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "6.80% > $24,000",
+        "marriedFilingJointlyRates": "6.80% > $48,000"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "7.20% > $36,000",
+        "marriedFilingJointlyRates": "7.20% > $72,000"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "7.60% > $48,000",
+        "marriedFilingJointlyRates": "7.60% > $96,000"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "7.90% > $125,000",
+        "marriedFilingJointlyRates": "7.90% > $250,000"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "8.25% > $175,000",
+        "marriedFilingJointlyRates": "8.25% > $350,000"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "9.00% > $225,000",
+        "marriedFilingJointlyRates": "9.00% > $450,000"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "10.0% > $275,000",
+        "marriedFilingJointlyRates": "10.0% > $550,000"
+    },
+    {
+        "state": "Hawaii",
+        "singleFilerRates": "11.0% > $325,000",
+        "marriedFilingJointlyRates": "11.0% > $650,000"
+    },
+    {
+        "state": "Idaho",
+        "singleFilerRates": "5.695% > $4,673",
+        "marriedFilingJointlyRates": "5.695% > $9,346"
+    },
+    {
+        "state": "Illinois",
+        "singleFilerRates": "4.95% > $0",
+        "marriedFilingJointlyRates": "4.95% > $0"
+    },
+    {
+        "state": "Indiana",
+        "singleFilerRates": "3.00% > $0",
+        "marriedFilingJointlyRates": "3.00% > $0"
+    },
+    {
+        "state": "Iowa",
+        "singleFilerRates": "3.80% > $0",
+        "marriedFilingJointlyRates": "3.80% > $0"
+    },
+    {
+        "state": "Kansas",
+        "singleFilerRates": "5.20% > $0",
+        "marriedFilingJointlyRates": "5.20% > $0"
+    },
+    {
+        "state": "Kansas",
+        "singleFilerRates": "5.58% > $23,000",
+        "marriedFilingJointlyRates": "5.58% > $46,000"
+    },
+    {
+        "state": "Kentucky",
+        "singleFilerRates": "4.00% > $0",
+        "marriedFilingJointlyRates": "4.00% > $0"
+    },
+    {
+        "state": "Louisiana",
+        "singleFilerRates": "3.00% > $0",
+        "marriedFilingJointlyRates": "3.00% > $0"
+    },
+    {
+        "state": "Maine",
+        "singleFilerRates": "5.80% > $0",
+        "marriedFilingJointlyRates": "5.80% > $0"
+    },
+    {
+        "state": "Maine",
+        "singleFilerRates": "6.75% > $26,800",
+        "marriedFilingJointlyRates": "6.75% > $53,600"
+    },
+    {
+        "state": "Maine",
+        "singleFilerRates": "7.15% > $63,450",
+        "marriedFilingJointlyRates": "7.15% > $126,900"
+    },
+    {
+        "state": "Maryland",
+        "singleFilerRates": "2.00% > $0",
+        "marriedFilingJointlyRates": "2.00% > $0"
+    },
+    {
+        "state": "Maryland",
+        "singleFilerRates": "3.00% > $1,000",
+        "marriedFilingJointlyRates": "3.00% > $1,000"
+    },
+    {
+        "state": "Maryland",
+        "singleFilerRates": "4.00% > $2,000",
+        "marriedFilingJointlyRates": "4.00% > $2,000"
+    },
+    {
+        "state": "Maryland",
+        "singleFilerRates": "4.75% > $3,000",
+        "marriedFilingJointlyRates": "4.75% > $3,000"
+    },
+    {
+        "state": "Maryland",
+        "singleFilerRates": "5.00% > $100,000",
+        "marriedFilingJointlyRates": "5.00% > $150,000"
+    },
+    {
+        "state": "Maryland",
+        "singleFilerRates": "5.25% > $125,000",
+        "marriedFilingJointlyRates": "5.25% > $175,000"
+    },
+    {
+        "state": "Maryland",
+        "singleFilerRates": "5.50% > $150,000",
+        "marriedFilingJointlyRates": "5.50% > $225,000"
+    },
+    {
+        "state": "Maryland",
+        "singleFilerRates": "5.75% > $250,000",
+        "marriedFilingJointlyRates": "5.75% > $300,000"
+    },
+    {
+        "state": "Massachusetts",
+        "singleFilerRates": "5.00% > $0",
+        "marriedFilingJointlyRates": "5.00% > $0"
+    },
+    {
+        "state": "Massachusetts",
+        "singleFilerRates": "9.00% > $1,083,150",
+        "marriedFilingJointlyRates": "9.00% > $1,083,150"
+    },
+    {
+        "state": "Michigan",
+        "singleFilerRates": "4.25% > $0",
+        "marriedFilingJointlyRates": "4.25% > $0"
+    },
+    {
+        "state": "Minnesota",
+        "singleFilerRates": "5.35% > $0",
+        "marriedFilingJointlyRates": "5.35% > $0"
+    },
+    {
+        "state": "Minnesota",
+        "singleFilerRates": "6.80% > $32,570",
+        "marriedFilingJointlyRates": "6.80% > $47,620"
+    },
+    {
+        "state": "Minnesota",
+        "singleFilerRates": "7.85% > $106,990",
+        "marriedFilingJointlyRates": "7.85% > $189,180"
+    },
+    {
+        "state": "Minnesota",
+        "singleFilerRates": "9.85% > $198,630",
+        "marriedFilingJointlyRates": "9.85% > $330,410"
+    },
+    {
+        "state": "Mississippi",
+        "singleFilerRates": "4.40% > $10,000",
+        "marriedFilingJointlyRates": "4.40% > $10,000"
+    },
+    {
+        "state": "Missouri",
+        "singleFilerRates": "2.00% > $1,313",
+        "marriedFilingJointlyRates": "1.50% > $1,313"
+    },
+    {
+        "state": "Missouri",
+        "singleFilerRates": "2.50% > $2,626",
+        "marriedFilingJointlyRates": "2.50% > $2,626"
+    },
+    {
+        "state": "Missouri",
+        "singleFilerRates": "3.00% > $3,939",
+        "marriedFilingJointlyRates": "3.00% > $3,939"
+    },
+    {
+        "state": "Missouri",
+        "singleFilerRates": "3.50% > $5,252",
+        "marriedFilingJointlyRates": "3.50% > $5,252"
+    },
+    {
+        "state": "Missouri",
+        "singleFilerRates": "4.00% > $6,565",
+        "marriedFilingJointlyRates": "4.00% > $6,565"
+    },
+    {
+        "state": "Missouri",
+        "singleFilerRates": "4.50% > $7,878",
+        "marriedFilingJointlyRates": "4.50% > $7,878"
+    },
+    {
+        "state": "Missouri",
+        "singleFilerRates": "4.70% > $9,191",
+        "marriedFilingJointlyRates": "4.70% > $9,191"
+    },
+    {
+        "state": "Montana",
+        "singleFilerRates": "4.70% > $0",
+        "marriedFilingJointlyRates": "4.70% > $0"
+    },
+    {
+        "state": "Montana",
+        "singleFilerRates": "5.90% > $21,100",
+        "marriedFilingJointlyRates": "5.90% > $42,200"
+    },
+    {
+        "state": "Nebraska",
+        "singleFilerRates": "2.46% > $0",
+        "marriedFilingJointlyRates": "2.46% > $0"
+    },
+    {
+        "state": "Nebraska",
+        "singleFilerRates": "3.51% > $4,030",
+        "marriedFilingJointlyRates": "3.51% > $8,040"
+    },
+    {
+        "state": "Nebraska",
+        "singleFilerRates": "5.01% > $24,120",
+        "marriedFilingJointlyRates": "5.01% > $48,250"
+    },
+    {
+        "state": "Nebraska",
+        "singleFilerRates": "5.20% > $38,870",
+        "marriedFilingJointlyRates": "5.20% > $77,730"
+    },
+    {
+        "state": "Nevada",
+        "singleFilerRates": "None",
+        "marriedFilingJointlyRates": "None"
+    },
+    {
+        "state": "New Hampshire",
+        "singleFilerRates": "None",
+        "marriedFilingJointlyRates": "None"
+    },
+    {
+        "state": "New Jersey",
+        "singleFilerRates": "1.400% > $0",
+        "marriedFilingJointlyRates": "1.400% > $0"
+    },
+    {
+        "state": "New Jersey",
+        "singleFilerRates": "1.750% > $20,000",
+        "marriedFilingJointlyRates": "1.750% > $20,000"
+    },
+    {
+        "state": "New Jersey",
+        "singleFilerRates": "",
+        "marriedFilingJointlyRates": "2.450% > $50,000"
+    },
+    {
+        "state": "New Jersey",
+        "singleFilerRates": "3.500% > $35,000",
+        "marriedFilingJointlyRates": "3.500% > $70,000"
+    },
+    {
+        "state": "New Jersey",
+        "singleFilerRates": "5.525% > $40,000",
+        "marriedFilingJointlyRates": "5.525% > $80,000"
+    },
+    {
+        "state": "New Jersey",
+        "singleFilerRates": "6.370% > $75,000",
+        "marriedFilingJointlyRates": "6.370% > $150,000"
+    },
+    {
+        "state": "New Jersey",
+        "singleFilerRates": "8.970% > $500,000",
+        "marriedFilingJointlyRates": "8.970% > $500,000"
+    },
+    {
+        "state": "New Jersey",
+        "singleFilerRates": "10.750% > $1,000,000",
+        "marriedFilingJointlyRates": "10.750% > $1,000,000"
+    },
+    {
+        "state": "New Mexico",
+        "singleFilerRates": "1.50% > $0",
+        "marriedFilingJointlyRates": "1.50% > $0"
+    },
+    {
+        "state": "New Mexico",
+        "singleFilerRates": "3.20% > $5,500",
+        "marriedFilingJointlyRates": "3.20% > $8,000"
+    },
+    {
+        "state": "New Mexico",
+        "singleFilerRates": "4.30% > $16,500",
+        "marriedFilingJointlyRates": "4.30% > $25,000"
+    },
+    {
+        "state": "New Mexico",
+        "singleFilerRates": "4.70% > $33,500",
+        "marriedFilingJointlyRates": "4.70% > $50,000"
+    },
+    {
+        "state": "New Mexico",
+        "singleFilerRates": "4.90% > $66,500",
+        "marriedFilingJointlyRates": "4.90% > $100,000"
+    },
+    {
+        "state": "New Mexico",
+        "singleFilerRates": "5.90% > $210,000",
+        "marriedFilingJointlyRates": "5.90% > $315,500"
+    },
+    {
+        "state": "New York",
+        "singleFilerRates": "4.00% > $0",
+        "marriedFilingJointlyRates": "4.00% > $0"
+    },
+    {
+        "state": "New York",
+        "singleFilerRates": "4.50% > $8,500",
+        "marriedFilingJointlyRates": "4.50% > $17,150"
+    },
+    {
+        "state": "New York",
+        "singleFilerRates": "5.25% > $11,700",
+        "marriedFilingJointlyRates": "5.25% > $23,600"
+    },
+    {
+        "state": "New York",
+        "singleFilerRates": "5.50% > $13,900",
+        "marriedFilingJointlyRates": "5.50% > $27,900"
+    },
+    {
+        "state": "New York",
+        "singleFilerRates": "6.00% > $80,650",
+        "marriedFilingJointlyRates": "6.00% > $161,550"
+    },
+    {
+        "state": "New York",
+        "singleFilerRates": "6.85% > $215,400",
+        "marriedFilingJointlyRates": "6.85% > $323,200"
+    },
+    {
+        "state": "New York",
+        "singleFilerRates": "9.65% > $1,077,550",
+        "marriedFilingJointlyRates": "9.65% > $2,155,350"
+    },
+    {
+        "state": "New York",
+        "singleFilerRates": "10.30% > $5,000,000",
+        "marriedFilingJointlyRates": "10.30% > $5,000,000"
+    },
+    {
+        "state": "New York",
+        "singleFilerRates": "10.90% > $25,000,000",
+        "marriedFilingJointlyRates": "10.90% > $25,000,000"
+    },
+    {
+        "state": "North Carolina",
+        "singleFilerRates": "4.25% > $0",
+        "marriedFilingJointlyRates": "4.25% > $0"
+    },
+    {
+        "state": "North Dakota",
+        "singleFilerRates": "1.95% > $48,475",
+        "marriedFilingJointlyRates": "1.95% > $80,975"
+    },
+    {
+        "state": "North Dakota",
+        "singleFilerRates": "2.50% > $244,825",
+        "marriedFilingJointlyRates": "2.50% > $298,075"
+    },
+    {
+        "state": "Ohio",
+        "singleFilerRates": "2.750% > $26,050",
+        "marriedFilingJointlyRates": "2.750% > $26,050"
+    },
+    {
+        "state": "Oklahoma",
+        "singleFilerRates": "0.25% > $0",
+        "marriedFilingJointlyRates": "0.25% > $0"
+    },
+    {
+        "state": "Oklahoma",
+        "singleFilerRates": "0.75% > $1,000",
+        "marriedFilingJointlyRates": "0.75% > $2,000"
+    },
+    {
+        "state": "Oklahoma",
+        "singleFilerRates": "1.75% > $2,500",
+        "marriedFilingJointlyRates": "1.75% > $5,000"
+    },
+    {
+        "state": "Oklahoma",
+        "singleFilerRates": "2.75% > $3,750",
+        "marriedFilingJointlyRates": "2.75% > $7,500"
+    },
+    {
+        "state": "Oklahoma",
+        "singleFilerRates": "3.75% > $4,900",
+        "marriedFilingJointlyRates": "3.75% > $9,800"
+    },
+    {
+        "state": "Oklahoma",
+        "singleFilerRates": "4.75% > $7,200",
+        "marriedFilingJointlyRates": "4.75% > $14,400"
+    },
+    {
+        "state": "Oregon",
+        "singleFilerRates": "4.75% > $0",
+        "marriedFilingJointlyRates": "4.75% > $0"
+    },
+    {
+        "state": "Oregon",
+        "singleFilerRates": "6.75% > $4,400",
+        "marriedFilingJointlyRates": "6.75% > $8,800"
+    },
+    {
+        "state": "Oregon",
+        "singleFilerRates": "8.75% > $11,050",
+        "marriedFilingJointlyRates": "8.75% > $22,100"
+    },
+    {
+        "state": "Oregon",
+        "singleFilerRates": "9.90% > $125,000",
+        "marriedFilingJointlyRates": "9.90% > $250,000"
+    },
+    {
+        "state": "Pennsylvania",
+        "singleFilerRates": "3.07% > $0",
+        "marriedFilingJointlyRates": "3.07% > $0"
+    },
+    {
+        "state": "Rhode Island",
+        "singleFilerRates": "3.75% > $0",
+        "marriedFilingJointlyRates": "3.75% > $0"
+    },
+    {
+        "state": "Rhode Island",
+        "singleFilerRates": "4.75% > $79,900",
+        "marriedFilingJointlyRates": "4.75% > $79,900"
+    },
+    {
+        "state": "Rhode Island",
+        "singleFilerRates": "5.99% > $181,650",
+        "marriedFilingJointlyRates": "5.99% > $181,650"
+    },
+    {
+        "state": "South Carolina",
+        "singleFilerRates": "0.00% > $0",
+        "marriedFilingJointlyRates": "0.00% > $0"
+    },
+    {
+        "state": "South Carolina",
+        "singleFilerRates": "3.00% > $3,560",
+        "marriedFilingJointlyRates": "3.00% > $3,560"
+    },
+    {
+        "state": "South Carolina",
+        "singleFilerRates": "6.20% > $17,830",
+        "marriedFilingJointlyRates": "6.20% > $17,830"
+    },
+    {
+        "state": "South Dakota",
+        "singleFilerRates": "None",
+        "marriedFilingJointlyRates": "None"
+    },
+    {
+        "state": "Tennessee",
+        "singleFilerRates": "None",
+        "marriedFilingJointlyRates": "None"
+    },
+    {
+        "state": "Texas",
+        "singleFilerRates": "None",
+        "marriedFilingJointlyRates": "None"
+    },
+    {
+        "state": "Utah",
+        "singleFilerRates": "4.55% > $0",
+        "marriedFilingJointlyRates": "4.55% > $0"
+    },
+    {
+        "state": "Vermont",
+        "singleFilerRates": "3.35% > $0",
+        "marriedFilingJointlyRates": "3.35% > $0"
+    },
+    {
+        "state": "Vermont",
+        "singleFilerRates": "6.60% > $47,900",
+        "marriedFilingJointlyRates": "6.60% > $79,950"
+    },
+    {
+        "state": "Vermont",
+        "singleFilerRates": "7.60% > $116,000",
+        "marriedFilingJointlyRates": "7.60% > $193,300"
+    },
+    {
+        "state": "Vermont",
+        "singleFilerRates": "8.75% > $242,000",
+        "marriedFilingJointlyRates": "8.75% > $294,600"
+    },
+    {
+        "state": "Virginia",
+        "singleFilerRates": "2.00% > $0",
+        "marriedFilingJointlyRates": "2.00% > $0"
+    },
+    {
+        "state": "Virginia",
+        "singleFilerRates": "3.00% > $3,000",
+        "marriedFilingJointlyRates": "3.00% > $3,000"
+    },
+    {
+        "state": "Virginia",
+        "singleFilerRates": "5.00% > $5,000",
+        "marriedFilingJointlyRates": "5.00% > $5,000"
+    },
+    {
+        "state": "Virginia",
+        "singleFilerRates": "5.75% > $17,000",
+        "marriedFilingJointlyRates": "5.75% > $17,000"
+    },
+    {
+        "state": "Washington",
+        "singleFilerRates": "None",
+        "marriedFilingJointlyRates": "None"
+    },
+    {
+        "state": "West Virginia",
+        "singleFilerRates": "2.22% > $0",
+        "marriedFilingJointlyRates": "2.22% > $0"
+    },
+    {
+        "state": "West Virginia",
+        "singleFilerRates": "2.96% > $10,000",
+        "marriedFilingJointlyRates": "2.96% > $10,000"
+    },
+    {
+        "state": "West Virginia",
+        "singleFilerRates": "3.33% > $25,000",
+        "marriedFilingJointlyRates": "3.33% > $25,000"
+    },
+    {
+        "state": "West Virginia",
+        "singleFilerRates": "4.44% > $40,000",
+        "marriedFilingJointlyRates": "4.44% > $40,000"
+    },
+    {
+        "state": "West Virginia",
+        "singleFilerRates": "4.82% > $60,000",
+        "marriedFilingJointlyRates": "4.82% > $60,000"
+    },
+    {
+        "state": "Wisconsin",
+        "singleFilerRates": "3.50% > $0",
+        "marriedFilingJointlyRates": "3.50% > $0"
+    },
+    {
+        "state": "Wisconsin",
+        "singleFilerRates": "4.40% > $14,680",
+        "marriedFilingJointlyRates": "4.40% > $19,580"
+    },
+    {
+        "state": "Wisconsin",
+        "singleFilerRates": "5.30% > $29,370",
+        "marriedFilingJointlyRates": "5.30% > $39,150"
+    },
+    {
+        "state": "Wisconsin",
+        "singleFilerRates": "7.65% > $323,290",
+        "marriedFilingJointlyRates": "7.65% > $431,060"
+    },
+    {
+        "state": "Wyoming",
+        "singleFilerRates": "None",
+        "marriedFilingJointlyRates": "None"
+    },
+    {
+        "state": "Washington, D.C.",
+        "singleFilerRates": "4.00% > $0",
+        "marriedFilingJointlyRates": "4.00% > $0"
+    },
+    {
+        "state": "Washington, D.C.",
+        "singleFilerRates": "6.00% > $10,000",
+        "marriedFilingJointlyRates": "6.00% > $10,000"
+    },
+    {
+        "state": "Washington, D.C.",
+        "singleFilerRates": "6.50% > $40,000",
+        "marriedFilingJointlyRates": "6.50% > $40,000"
+    },
+    {
+        "state": "Washington, D.C.",
+        "singleFilerRates": "8.50% > $60,000",
+        "marriedFilingJointlyRates": "8.50% > $60,000"
+    },
+    {
+        "state": "Washington, D.C.",
+        "singleFilerRates": "9.25% > $250,000",
+        "marriedFilingJointlyRates": "9.25% > $250,000"
+    },
+    {
+        "state": "Washington, D.C.",
+        "singleFilerRates": "9.75% > $500,000",
+        "marriedFilingJointlyRates": "9.75% > $500,000"
+    },
+    {
+        "state": "Washington, D.C.",
+        "singleFilerRates": "10.75% > $1,000,000",
+        "marriedFilingJointlyRates": "10.75% > $1,000,000"
+    }
+]

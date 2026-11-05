@@ -4,8 +4,12 @@ import { ArrowLeftRight, Check, X } from 'lucide-react';
 import type { InboxBid, MockClub, MyListing } from './mockData';
 import { useGame } from '../../store/GameContext';
 import { estimatePlayerValueEUR } from '../../services/transfer/transferMarket';
+import { getSeasonEconomyIndex } from '../../services/tycoon/clubFinance';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { getPlayerImage } from '../central/view/bioCache';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
 import { ClubChip, fmtEUR, OvrPotPair, StatusPill, statusColor } from './EuroTransferMarketShared';
+import { CountryFlag } from '../shared/CountryFlag';
 
 export const ViewBidsModal: React.FC<{
   listingId: string | null;
@@ -31,7 +35,8 @@ export const ViewBidsModal: React.FC<{
     if (!listing || filteredBids.length > 0) return null;
     const player = (state.players ?? []).find((entry: any) => entry.internalId === listing.player.id);
     if (!player) return null;
-    const estimated = estimatePlayerValueEUR(player as any, state as any);
+    const currentYear = Number(state.leagueStats?.year ?? new Date().getFullYear());
+    const estimated = estimatePlayerValueEUR(player as any, currentYear, getSeasonEconomyIndex(state, currentYear));
     if (!Number.isFinite(estimated) || estimated <= 0) return null;
     if (listing.askingEUR <= estimated * 1.3) return null;
     const gap = Math.round(((listing.askingEUR - estimated) / estimated) * 100);
@@ -90,7 +95,7 @@ export const ViewBidsModal: React.FC<{
                       <div key={bid.id} className="flex items-center gap-3 px-5 py-3">
                         <div className="min-w-0 flex-1">
                           <div className="flex items-center gap-2">
-                            <span className="truncate text-sm font-bold text-white">{bid.bidder.name}</span>
+                            <ClubChip c={bid.bidder} small />
                             {bid.bidder.league === 'NBA' && (
                               <span className="rounded border border-amber-500/30 bg-amber-500/20 px-1.5 py-0.5 text-[8px] font-black uppercase text-amber-300">NBA</span>
                             )}
@@ -165,7 +170,7 @@ export const OfferDetailsModal: React.FC<{
                 <PlayerPortrait imgUrl={bid.player.imgURL} face={bid.player.face} playerName={bid.player.name} size={56} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-black text-white">{bid.player.name}</div>
-                  <div className="text-[10px] text-slate-500">{bid.player.flag} {bid.player.position} · {bid.player.age}y</div>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-500"><CountryFlag country={bid.player.nationality} className="inline-flex h-3 w-4 rounded-[2px]" /><span>{bid.player.position} · {bid.player.age}y</span></div>
                   <div className="mt-1"><OvrPotPair ovr={bid.player.ovr} pot={bid.player.pot} small /></div>
                 </div>
               </div>
@@ -226,9 +231,12 @@ export const OfferDetailsModal: React.FC<{
 
 export const TransferResolutionModal: React.FC = () => {
   const { state, dispatchAction } = useGame() as any;
-  const rawPending: Array<{ playerName: string; accepted: boolean; sellerTeamName: string; feeEUR: number; reason?: string; userInitiated?: boolean }> =
+  const rawPending: Array<{ playerId?: string; playerName: string; accepted: boolean; sellerTid?: number; sellerTeamName: string; feeEUR: number; reason?: string; userInitiated?: boolean }> =
     state.pendingTransferToasts ?? [];
   const pending = rawPending.filter(item => item.userInitiated === true);
+  const rawLoanPending: Array<{ playerId?: string; playerName: string; accepted: boolean; parentTid?: number; parentTeamName: string; borrowerTid?: number; borrowerTeamName?: string; feeEUR: number; reason?: string; userInitiated?: boolean; eventType?: 'decision' | 'arrival' | 'departure' | 'return'; returnedToUser?: boolean }> =
+    state.pendingLoanToasts ?? [];
+  const loanPending = rawLoanPending.filter(item => item.userInitiated === true);
 
   useEffect(() => {
     if (rawPending.length === pending.length) return;
@@ -238,22 +246,45 @@ export const TransferResolutionModal: React.FC = () => {
     });
   }, [dispatchAction, pending, rawPending]);
 
-  if (pending.length === 0) return null;
+  useEffect(() => {
+    if (rawLoanPending.length === loanPending.length) return;
+    dispatchAction({
+      type: 'UPDATE_STATE' as any,
+      payload: { pendingLoanToasts: loanPending },
+    });
+  }, [dispatchAction, loanPending, rawLoanPending]);
 
-  const current = pending[0];
+  if (pending.length === 0 && loanPending.length === 0) return null;
+
+  const isLoan = pending.length === 0;
+  const current = isLoan
+    ? {
+        ...loanPending[0],
+        sellerTid: loanPending[0].eventType === 'departure' ? loanPending[0].borrowerTid : loanPending[0].parentTid,
+        sellerTeamName: loanPending[0].eventType === 'departure' ? loanPending[0].borrowerTeamName ?? 'Borrowing club' : loanPending[0].parentTeamName,
+      }
+    : pending[0];
   const accepted = current.accepted;
+  const loanEvent = isLoan ? loanPending[0]?.eventType ?? 'decision' : null;
+  const player = (state.players ?? []).find((item: any) => item.internalId === current.playerId)
+    ?? (state.players ?? []).find((item: any) => item.name === current.playerName);
+  const sellerTeam = [...(state.teams ?? []), ...(state.nonNBATeams ?? [])].find((team: any) => Number(team.id ?? team.tid) === Number(current.sellerTid))
+    ?? [...(state.teams ?? []), ...(state.nonNBATeams ?? [])].find((team: any) => team.name === current.sellerTeamName);
+  const sellerLogo = sellerTeam ? getResolvedTeamLogoUrl(sellerTeam, state.leagueStats?.year) : undefined;
   const dismiss = () => {
     dispatchAction({
       type: 'UPDATE_STATE' as any,
-      payload: { pendingTransferToasts: pending.slice(1) },
+      payload: isLoan
+        ? { pendingLoanToasts: loanPending.slice(1) }
+        : { pendingTransferToasts: pending.slice(1) },
     });
   };
-  const feeM = (current.feeEUR / 1_000_000).toFixed(current.feeEUR >= 10_000_000 ? 1 : 2).replace(/\.?0+$/, '');
+  const remaining = pending.length + loanPending.length - 1;
 
   return (
     <AnimatePresence>
       <motion.div
-        key={`${current.playerName}-${current.feeEUR}-${pending.length}`}
+        key={`${isLoan ? 'loan' : 'transfer'}-${current.playerName}-${current.feeEUR}-${pending.length}-${loanPending.length}`}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -272,21 +303,22 @@ export const TransferResolutionModal: React.FC = () => {
         >
           <div className={`border-b px-6 py-5 ${accepted ? 'border-emerald-500/20 bg-emerald-500/[0.08]' : 'border-rose-500/20 bg-rose-500/[0.08]'}`}>
             <p className={`mb-1 text-[10px] font-black uppercase tracking-[0.35em] ${accepted ? 'text-emerald-300' : 'text-rose-300'}`}>
-              {accepted ? 'Transfer Complete' : 'Offer Turned Down'}
+              {accepted ? (isLoan ? loanEvent === 'return' ? 'Loan Completed' : 'Loan Agreed' : 'Transfer Complete') : 'Offer Turned Down'}
             </p>
             <h2 className="text-xl font-black uppercase tracking-tight text-white">
-              {accepted ? 'Nice Doing Business' : 'Bid Rejected'}
+              {accepted ? (isLoan ? loanEvent === 'departure' ? 'Player Loaned Out' : loanEvent === 'return' ? loanPending[0]?.returnedToUser ? 'Player Rejoined Your Team' : 'Loan Spell Ended' : 'Player Incoming' : 'Nice Doing Business') : 'Offer Rejected'}
             </h2>
           </div>
           <div className="space-y-5 p-6">
-            <div className="rounded-xl border border-slate-700/60 bg-slate-800/60 p-4">
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Player</div>
-              <div className="text-lg font-black text-white">{current.playerName}</div>
-            </div>
-
-            <div className="rounded-xl border border-slate-700/60 bg-slate-800/60 p-4">
-              <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{accepted ? 'Selling Club' : 'Bidding On'}</div>
-              <div className="text-sm font-bold text-white">{current.sellerTeamName}</div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="flex items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-800/60 p-4">
+                <PlayerPortrait imgUrl={player ? getPlayerImage(player) : undefined} face={player?.face} playerName={current.playerName} size={48} />
+                <div className="min-w-0"><div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">Player</div><div className="truncate text-base font-black text-white">{current.playerName}</div></div>
+              </div>
+              <div className="flex items-center gap-3 rounded-xl border border-slate-700/60 bg-slate-800/60 p-4">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-slate-950/70 p-2 ring-1 ring-white/10">{sellerLogo ? <img src={sellerLogo} alt="" className="h-full w-full object-contain" /> : <span className="text-xs font-black text-slate-500">CLUB</span>}</div>
+                <div className="min-w-0"><div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-500">{isLoan ? loanEvent === 'departure' ? 'Borrowing Club' : 'Parent Club' : accepted ? 'Selling Club' : 'Bidding On'}</div><div className="truncate text-sm font-bold text-white">{current.sellerTeamName}</div></div>
+              </div>
             </div>
 
             <div className={`rounded-xl border p-4 text-center ${
@@ -295,14 +327,16 @@ export const TransferResolutionModal: React.FC = () => {
                 : 'border-rose-500/30 bg-gradient-to-br from-rose-500/15 to-rose-600/5'
             }`}>
               <div className={`text-[10px] font-bold uppercase tracking-wider ${accepted ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {accepted ? 'Transfer Fee' : 'Your Offer'}
+                {accepted ? (isLoan ? loanEvent === 'return' ? 'Loan Spell' : 'Loan Fee' : 'Transfer Fee') : 'Your Offer'}
               </div>
-              <div className={`mt-1 text-3xl font-black ${accepted ? 'text-emerald-300' : 'text-rose-300'}`}>€{feeM}M</div>
+              <div className={`mt-1 text-3xl font-black ${accepted ? 'text-emerald-300' : 'text-rose-300'}`}>{isLoan && loanEvent === 'return' ? 'Complete' : fmtEUR(current.feeEUR)}</div>
             </div>
 
             <p className="text-center text-[11px] leading-relaxed text-slate-300">
               {accepted
-                ? `Funds wired and paperwork filed. ${current.sellerTeamName} thanks you for the deal — looking forward to doing business again.`
+                ? isLoan
+                  ? current.reason ?? `${current.playerName} will join the squad for the agreed loan spell.`
+                  : `Funds wired and paperwork filed. ${current.sellerTeamName} thanks you for the deal — looking forward to doing business again.`
                 : current.reason ?? 'Offer was not accepted.'}
             </p>
 
@@ -312,7 +346,7 @@ export const TransferResolutionModal: React.FC = () => {
                 accepted ? 'bg-emerald-500 hover:bg-emerald-400' : 'bg-rose-500 hover:bg-rose-400'
               }`}
             >
-              {pending.length > 1 ? `Next (${pending.length - 1} more)` : 'Done'}
+              {remaining > 0 ? `Next (${remaining} more)` : 'Done'}
             </button>
           </div>
         </motion.div>
@@ -366,7 +400,7 @@ export const ConfirmTransferModal: React.FC<{
                 <PlayerPortrait imgUrl={bid.player.imgURL} face={bid.player.face} playerName={bid.player.name} size={44} />
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-black text-white">{bid.player.name}</div>
-                  <div className="text-[10px] text-slate-500">{bid.player.flag} {bid.player.position} · {bid.player.age}y · {bid.player.contractYearsLeft}y left</div>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-500"><CountryFlag country={bid.player.nationality} className="inline-flex h-3 w-4 rounded-[2px]" /><span>{bid.player.position} · {bid.player.age}y · {bid.player.contractYearsLeft}y left</span></div>
                 </div>
                 <OvrPotPair ovr={bid.player.ovr} pot={bid.player.pot} small />
               </div>
@@ -451,7 +485,7 @@ export const TransferCompleteModal: React.FC<{
                 <PlayerPortrait imgUrl={bid.player.imgURL} face={bid.player.face} playerName={bid.player.name} size={44} />
                 <div className="min-w-0">
                   <div className="truncate text-sm font-black text-white">{bid.player.name}</div>
-                  <div className="text-[10px] text-slate-500">{bid.player.flag} {bid.player.position} · {bid.player.age}y</div>
+                  <div className="flex items-center gap-1 text-[10px] text-slate-500"><CountryFlag country={bid.player.nationality} className="inline-flex h-3 w-4 rounded-[2px]" /><span>{bid.player.position} · {bid.player.age}y</span></div>
                 </div>
               </div>
             </div>

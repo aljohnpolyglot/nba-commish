@@ -1,21 +1,26 @@
 import React, { useMemo, useState } from 'react';
-import { Briefcase, Search, Star, Users, X } from 'lucide-react';
+import { Briefcase, Search, Star, Users } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { DEFAULT_CAP_INFLATION_AVERAGE } from '../../../../../constants';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
 import { getCountryFlag, normalizeNationality } from '../../../../../utils/countryFlags';
 import { getTeamFullName } from '../../../../../utils/teamNames';
 import { makePlaceholderCoach, makePlaceholderGM } from '../../../../../services/staff/staffFallback';
 import { MyFace, isRealFaceConfig } from '../../../../shared/MyFace';
-import { getStaffImageUrl, deterministicStaffImageId, resolveStaffImageId } from '../../../../../utils/staffPortrait';
-import { inferEuroStaffLeagueId, normalizeStaffPoolRole } from '../../../../../services/euro/staffPool';
+import { getStaffImageUrl, resolveStaffImageId } from '../../../../../utils/staffPortrait';
+import { getStaffAskProfile, inferEuroStaffLeagueId, isEuroStaffLeagueId, mergeStaffCandidateBuckets, normalizeStaffPoolRole } from '../../../../../services/euro/staffPool';
 import { fetchCoachData, getCoachBio, getNBA2KCoach, getTeamStaff, getCoachContractSnapshot, getStaffCareerSnapshot, OWNER_IMAGES } from '../../../../../services/staffService';
-import { ensureStaffPhotoData, resolveCoachPortrait, resolveStaffPortrait, useStaffPhotoStore } from '../../../../../store/staffPhotoStore';
+import { ensureStaffPhotoData, resolveCoachPortrait, sanitizeStaffPhotoUrl, useStaffPhotoStore } from '../../../../../store/staffPhotoStore';
 import { StaffSigningModal, type StaffCandidate } from '../StaffSigning/StaffSigningModal';
-import { getStaffMarketSalary, getStaffRoleBaseSalary, normalizeStaffSalary, type StaffMarket } from '../../../../../services/tycoon/economyScale';
+import { StaffOfferModal, type StaffOfferDecision } from '../StaffSigning/StaffOfferModal';
+import { StaffDecisionModal } from '../StaffSigning/StaffDecisionModal';
+import { getStaffMarketSalary, getStaffRoleBaseSalary, normalizeStaffSalary, resolveStaffMarketForTeam } from '../../../../../services/tycoon/economyScale';
 import { SectionTitle } from '../shared/helpers';
-import { FacilityKpi } from '../shared/FacilityKpi';
+import { StaffSummaryCard } from '../shared/StaffSummaryCard';
 import { PersonnelActionsModal, type PersonnelActionType } from '../../PersonnelActionsModal';
 import type { Personnel } from '../../LeagueOfficeSearcher';
+import { PersonnelBioView } from '../../PersonnelBioView';
+import { PersonnelRatingsView } from '../../PersonnelRatingsView';
 import {
   buildStaffAttrs,
   buildDisplayAttributes,
@@ -24,31 +29,44 @@ import {
   resolveStaffRating,
   computeStaffOverall,
   attrsForCoach,
-  STAFF_ATTRIBUTE_GROUPS,
-  getStaffAttributeTooltip,
 } from '../../../../../services/staff/displayAttributes';
+import { displayStaffRole } from '../../../../../services/staff/staffCareerRows';
 import { getStaffGameplayTooltip } from '../../../../../services/staff/staffGameplayEffects';
-import { parseCareerLines, resolveHistoryLogo, splitCoachingRow, splitPlayingRow } from '../shared/staffCareerUtils';
+import { CountryFlag } from '../../../../shared/CountryFlag';
+import { getSeasonEconomyIndex } from '../../../../../services/tycoon/clubFinance';
+import { getPbaHistoricalEconomyFactor } from '../../../../../services/pba/historicalEconomy';
 import { getLocalRegenPortraitFallbackUrl } from '../../../../../utils/newgenPortrait';
+import type { StaffOfferRejection } from '../../../../../types/tycoon';
+import { getActiveTeamStaffMembers, hasPersistedStaffRoster } from '../../../../../services/staff/activeStaffContracts';
+import { useManagedTeamActivity } from '../../../../../hooks/useManagedTeamActivity';
+
+export function resolveOwnerPrimaryPortrait(owner: any, fictionalLeague: boolean): string | null {
+  return owner?.playerPortraitUrl
+    ?? (OWNER_IMAGES as Record<string, string>)[owner?.name ?? '']
+    ?? (fictionalLeague ? getStaffImageUrl(resolveStaffImageId(owner ?? {})) : null)
+    ?? null;
+}
 
 export const StaffSection: React.FC<{
   state: any;
   team: any;
-  onHireStaff: (hire: any) => void;
-  onFireStaff: (role: string) => void;
+  onHireStaff: (hire: any) => boolean;
+  onFireStaff: (role: string, person?: any) => void;
   onPromoteStaff: (person: any, fromRole: string, toRole: string) => void;
-}> = ({ state, team, onHireStaff, onFireStaff, onPromoteStaff }) => {
-  const parseCareerLinesForYear = (value: string | undefined) =>
-    parseCareerLines(String(value ?? '').replace(/present/gi, String(currentYear)));
+  onRecordStaffRejection: (rejection: StaffOfferRejection) => void;
+}> = ({ state, team, onHireStaff, onFireStaff, onPromoteStaff, onRecordStaffRejection }) => {
+  const teamActivity = useManagedTeamActivity();
   const formatYearsLeftLabel = (years: number) => `${years} ${years === 1 ? 'Year' : 'Years'} Left`;
   const [signingOpen, setSigningOpen] = useState(false);
-  const [signingMode, setSigningMode] = useState<'hire' | 'extension'>('hire');
+  const [offerCandidate, setOfferCandidate] = useState<{ candidate: StaffCandidate; mode: 'hire' | 'extension' } | null>(null);
+  const [staffDecision, setStaffDecision] = useState<StaffOfferDecision | null>(null);
   const [selectedRole, setSelectedRole] = useState('Head Coach');
   const [actionPerson, setActionPerson] = useState<{ role: string; person: any; years: number; salary: number } | null>(null);
-  const [fireConfirm, setFireConfirm] = useState<{ role: string; name: string } | null>(null);
-  const [ratingsPerson, setRatingsPerson] = useState<{ role: string; person: any; years: number; salary: number } | null>(null);
-  const [ratingsTab, setRatingsTab] = useState<'attributes' | 'career'>('attributes');
-  const [resignPool, setResignPool] = useState<any[] | null>(null);
+  const [candidateAction, setCandidateAction] = useState<{ role: string; candidate: StaffCandidate } | null>(null);
+  const [fireConfirm, setFireConfirm] = useState<{ role: string; name: string; person?: any } | null>(null);
+  const [ratingsPerson, setRatingsPerson] = useState<Personnel | null>(null);
+  const [bioPerson, setBioPerson] = useState<Personnel | null>(null);
+  const [candidateRole, setCandidateRole] = useState<string | null>(null);
   const [, setCoachDataVersion] = useState(0);
   const staffPhotoVersion = useStaffPhotoStore(s => s.version);
   void staffPhotoVersion;
@@ -62,29 +80,152 @@ export const StaffSection: React.FC<{
       cancelled = true;
     };
   }, []);
+  React.useEffect(() => {
+    if (!signingOpen) {
+      setCandidateRole(null);
+      return;
+    }
+    const timer = window.setTimeout(() => setCandidateRole(selectedRole), 0);
+    return () => window.clearTimeout(timer);
+  }, [selectedRole, signingOpen]);
   const firedRoles: string[] = (team.tycoon?.firedStaffRoles ?? []);
   const tycoonTier = team.tycoon?.tier;
   const currentYear: number = state.leagueStats?.year ?? new Date().getFullYear();
+  const teamId = Number(team?.id ?? team?.tid);
+  const canHostTeamActivity = state.gameMode === 'gm'
+    && Number.isFinite(teamId)
+    && state.userTeamId === teamId;
+  const coachAchievementCount = (personOrName: any, kind: 'coy' | 'champion'): number => {
+    const name = typeof personOrName === 'string' ? personOrName : personOrName?.name;
+    const key = String(name ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!key) return 0;
+    const ids = new Set([personOrName?.id, personOrName?.sourcePlayerId].filter(Boolean).map(String));
+    const achievements = Array.isArray(personOrName?.coachAchievements) ? personOrName.coachAchievements : [];
+    const matchesKind = (type: unknown) => kind === 'coy'
+      ? /coach of the year|best coach|\bcoy\b/i.test(String(type ?? ''))
+      : /champion/i.test(String(type ?? ''));
+    const rows = new Set<string>();
+    for (const achievement of achievements) {
+      if (matchesKind(achievement?.type) || matchesKind(achievement?.label)) {
+        rows.add(`${achievement?.season}|${achievement?.competitionId ?? ''}|${achievement?.type ?? ''}|${achievement?.label ?? ''}`);
+      }
+    }
+    for (const award of (state.historicalAwards ?? []) as any[]) {
+      const season = Number(award?.season);
+      if (!Number.isFinite(season) || season > currentYear) continue;
+      const type = String(award?.type ?? '').toLowerCase();
+      if (!matchesKind(type)) continue;
+      const idMatch = award?.coachId && ids.has(String(award.coachId));
+      const winner = award?.coachName ?? (kind === 'coy' ? award?.name ?? award?.coy?.name : undefined);
+      const nameMatch = String(winner ?? '').toLowerCase().replace(/[^a-z0-9]/g, '') === key;
+      if (idMatch || nameMatch) rows.add(`${season}|${award?.competitionId ?? ''}|${type}`);
+    }
+    return rows.size;
+  };
+  const coachOfYearCount = (personOrName: any): number => coachAchievementCount(personOrName, 'coy');
+  const coachChampionshipCount = (personOrName: any): number => coachAchievementCount(personOrName, 'champion');
+  const coachAwardsSummary = (person: any): string[] => {
+    const coyCount = coachOfYearCount(person);
+    const championshipCount = coachChampionshipCount(person);
+    return [
+      coyCount > 0 ? `${coyCount}x Coach of the Year` : null,
+      championshipCount > 0 ? `${championshipCount}x Champion as Coach` : null,
+    ].filter((value): value is string => !!value);
+  };
   const currency: string = state.leagueStats?.currency ?? 'EUR';
+  const rejectedOffers = (team.tycoon?.staffOfferRejections ?? []) as StaffOfferRejection[];
+  const findRejectedOffer = (candidate: StaffCandidate) => {
+    const candidateName = candidate.name.trim().toLowerCase();
+    return rejectedOffers.find(rejection =>
+      rejection.candidateId === candidate.id
+      || rejection.candidateName.trim().toLowerCase() === candidateName
+    );
+  };
+  const openStaffOffer = (candidate: StaffCandidate, role: string, mode: 'hire' | 'extension') => {
+    setSelectedRole(role);
+    setSigningOpen(false);
+    setCandidateAction(null);
+    const previousRejection = findRejectedOffer(candidate);
+    if (previousRejection) {
+      setStaffDecision({
+        candidate,
+        role,
+        mode,
+        salary: previousRejection.salary,
+        years: previousRejection.years,
+        bonus: previousRejection.bonus,
+        ratio: 0,
+        accepted: false,
+        previouslyRejected: true,
+      });
+      return;
+    }
+    setOfferCandidate({ candidate, mode });
+  };
   const tid = team.id ?? team.tid;
-  const staffMarket: StaffMarket = tid >= 0 && tid < 100
-    ? 'nba'
-    : tid >= 2000 && tid < 2100
-      ? 'pba'
-      : 'euro';
+  const staffMarket = resolveStaffMarketForTeam(team);
+  const staffEconomyIndex = staffMarket === 'euro'
+    ? getSeasonEconomyIndex(state, currentYear)
+    : staffMarket === 'pba'
+      ? getPbaHistoricalEconomyFactor(
+          currentYear,
+          Number(state.leagueStats?.inflationAverage ?? DEFAULT_CAP_INFLATION_AVERAGE) / 100,
+        )
+      : 1;
   const teamName = getTeamFullName(team);
   const teamLogoUrl = team.logoUrl ?? team.imgURL ?? team.teamLogoUrl ?? team.imgURLSmall;
   const isGMOwnTeam = state.gameMode === 'gm' && (team.id ?? team.tid) === state.userTeamId;
   const commName: string | undefined = state.commissionerName;
-  const resolveCoachPhoto = (name?: string, savedPortrait?: string): string | undefined =>
-    resolveCoachPortrait(name, savedPortrait);
+  const isStrictStaffPortraitSource = (person: any): boolean => {
+    const source = String(person?.source ?? '');
+    return source === 'historical-nba-coaches' || (source.startsWith('pba') && person?.isPlaceholder !== true);
+  };
+  const isHistoricalNbaBranch = state.leagueType === 'modded'
+    && state.moddedLeagueBase === 'nba'
+    && Number(state.nbaStartYear ?? 2026) < 2026;
+  const isModernRealStaffMember = (person: any): boolean => {
+    const source = String(person?.source ?? '');
+    const id = String(person?.id ?? '');
+    return source === 'nba-real-staff' || id.startsWith('nba-real-staff-');
+  };
+  const hasEnteredStaffMarket = (person: any): boolean => {
+    const nba2k = getNBA2KCoach(person?.name ?? '');
+    const career = getStaffCareerSnapshot({
+      ...person,
+      careerStartYear: person?.careerStartYear ?? nba2k?.coaching_career ?? person?.coaching_career,
+      coaching_career: person?.coaching_career ?? nba2k?.coaching_career,
+      startSeason: person?.startSeason ?? nba2k?.coaching_career,
+    }, currentYear);
+    return career.careerStartYear != null ? career.careerStartYear <= currentYear : currentYear >= 2026;
+  };
+  const generatedStaffImageId = (person: any): number | undefined => {
+    if (String(person?.source ?? '').startsWith('fictional-generated-staff')) return undefined;
+    if (typeof person?.staffImageId === 'number') return person.staffImageId;
+    const source = String(person?.source ?? '');
+    const id = String(person?.id ?? '');
+    const generated = person?.isPlaceholder === true
+      || source.startsWith('generated')
+      || source.includes('fallback')
+      || id.startsWith('nba-ai-staff-');
+    return generated ? resolveStaffImageId(person) : undefined;
+  };
+  const staffIdentityKey = (person: any): string => {
+    const sourcePlayerId = String(person?.sourcePlayerId ?? '').trim();
+    if (sourcePlayerId) return `player:${sourcePlayerId}`;
+    const name = String(person?.name ?? '').trim().toLowerCase();
+    if (name) return `name:${name}`;
+    const id = String(person?.id ?? '').trim();
+    return id ? `id:${id}` : '';
+  };
+  const resolveCoachPhoto = (name?: string, savedPortrait?: string, strict = false): string | undefined =>
+    strict ? sanitizeStaffPhotoUrl(savedPortrait) : resolveCoachPortrait(name, savedPortrait);
   let coach: any = (state.staff?.coaches ?? []).find((s: any) => s.team === team.name || s.team === teamName)
-    ?? makePlaceholderCoach(team);
+    ?? makePlaceholderCoach(team, { currentYear, leagueId: staffMarket });
   // Ensure coach record carries the best available portrait URL so the card
   // can render it via renderPortrait's portraitUrl parameter (which now wins
   // over the random Staff{N}.png fallback).
   if (coach && !coach.isPlaceholder) {
-    coach = { ...coach, playerPortraitUrl: resolveCoachPhoto(coach.name, coach.playerPortraitUrl) };
+    coach = { ...coach, playerPortraitUrl: resolveCoachPhoto(coach.name, coach.playerPortraitUrl, isStrictStaffPortraitSource(coach)) };
   }
   // In GM mode on the user's own team, show the user's identity as GM — replace placeholder name only when no real coach is hired yet.
   if (isGMOwnTeam && commName && coach?.isPlaceholder) {
@@ -96,7 +237,8 @@ export const StaffSection: React.FC<{
     ? gmFromState
     : makePlaceholderGM(team);
   const owner = (state.staff?.owners ?? []).find((s: any) => s.team === team.name || s.team === teamName);
-  const persistentStaff = new Map<string, any>((team.tycoon?.staffMembers ?? []).map((s: any) => [s.role, s]));
+  const persistedStaffRosterExists = hasPersistedStaffRoster(team);
+  const persistentStaff = new Map<string, any>(getActiveTeamStaffMembers(team, currentYear).map((s: any) => [s.role, s]));
   const getStaffFace = (person: any) => isRealFaceConfig(person?.face) ? person.face : undefined;
   const hydrateStaffPerson = (person: any, role: string) => {
     if (!person) return person;
@@ -116,7 +258,7 @@ export const StaffSection: React.FC<{
     return {
       ...person,
       nationality: normalizeNationality(person?.nationality ?? nba2k?.nationality ?? bio?.nationality ?? person?.born?.loc ?? 'Unknown'),
-      yearsWithTeam: person?.yearsWithTeam ?? career.yearsWithTeam,
+      yearsWithTeam: career.yearsWithTeam,
       hiredYear: person?.hiredYear ?? career.hiredYear ?? (career.yearsWithTeam > 0 ? currentYear - career.yearsWithTeam : undefined),
       careerStartYear: person?.careerStartYear ?? career.careerStartYear ?? undefined,
       bornYear: person?.bornYear ?? career.bornYear ?? undefined,
@@ -137,9 +279,12 @@ export const StaffSection: React.FC<{
     const p = (pos ?? '').toLowerCase().replace(/\s+/g, ' ').trim();
     return p === 'assistant coach' || p === 'lead assistant coach' || p === 'assistant  coach';
   };
-  const realACPool = realTeamCoaches
-    .filter(c => isACPosition(c.position))
-    .filter(c => c.name !== coach?.name);
+  const activeHeadCoachName = String(persistentStaff.get('Head Coach')?.name ?? (!persistedStaffRosterExists ? coach?.name : '') ?? '').trim().toLowerCase();
+  const realACPool = (isHistoricalNbaBranch && staffMarket === 'nba') || persistedStaffRosterExists
+    ? []
+    : realTeamCoaches
+      .filter(c => isACPosition(c.position))
+      .filter(c => c.name.trim().toLowerCase() !== activeHeadCoachName);
   // Build a real-coach record shaped like a persisted staffMember so the rest
   // of the render pipeline (attrs, photos, attributes seed) treats it the same.
   const realCoachToPerson = (c: any) => {
@@ -150,7 +295,7 @@ export const StaffSection: React.FC<{
       nationality: normalizeNationality(c.nationality ?? 'American'),
       position: c.position,
       playerPortraitUrl: resolveCoachPhoto(c.name, undefined),
-      staffImageId: deterministicStaffImageId(c.name),
+      staffImageId: undefined,
       isPlaceholder: false,
       isRealAutoFill: true,
       salary: contract?.annualSalary ?? undefined,
@@ -169,6 +314,7 @@ export const StaffSection: React.FC<{
       yearsExperience: career.yearsExperience,
       yearsWithTeam: career.yearsWithTeam,
       externalSalary: shouldTrustExternalSalary ? contract?.annualSalary ?? null : null,
+      economyScale: staffEconomyIndex,
     };
   };
   let realACCursor = 0;
@@ -187,7 +333,7 @@ export const StaffSection: React.FC<{
     return null;
   };
   const roles = [
-    { role: 'Head Coach', person: resolvePerson('Head Coach', coach), group: 'Coaching', focus: 'Tactics, rotations, game-day decisions', salary: getStaffRoleBaseSalary(tycoonTier, 'Head Coach', staffMarket), years: (() => {
+    { role: 'Head Coach', person: resolvePerson('Head Coach', persistedStaffRosterExists ? null : coach), group: 'Coaching', focus: 'Tactics, rotations, game-day decisions', salary: getStaffRoleBaseSalary(tycoonTier, 'Head Coach', staffMarket), years: (() => {
       const persisted = persistentStaff.get('Head Coach')?.contractYears;
       if (persisted != null) return persisted;
       const contract = getCoachContractSnapshot(coach?.name, currentYear);
@@ -212,10 +358,17 @@ export const StaffSection: React.FC<{
     // the player progression engine: their development + motivating attrs
     // multiply per-player progression deltas during the season.
     { role: 'Player Development Coach', person: resolvePerson('Player Development Coach', null), group: 'Performance', focus: 'Individual workouts and off-season skill growth', salary: getStaffRoleBaseSalary(tycoonTier, 'Player Development Coach', staffMarket), years: persistentStaff.get('Player Development Coach')?.contractYears ?? 0 },
-    { role: 'Chief Scout', person: resolvePerson('Chief Scout', gm), group: 'Scouting & Analytics', focus: 'Player evaluation and market intelligence', salary: getStaffRoleBaseSalary(tycoonTier, 'Chief Scout', staffMarket), years: persistentStaff.get('Chief Scout')?.contractYears ?? 2 },
+    { role: 'Chief Scout', person: resolvePerson('Chief Scout', persistedStaffRosterExists ? null : gm), group: 'Scouting & Analytics', focus: 'Player evaluation and market intelligence', salary: getStaffRoleBaseSalary(tycoonTier, 'Chief Scout', staffMarket), years: persistentStaff.get('Chief Scout')?.contractYears ?? (persistedStaffRosterExists ? 0 : 2) },
     { role: 'Head of Analytics', person: resolvePerson('Head of Analytics', null), group: 'Scouting & Analytics', focus: 'Shot profile, lineup data, and opponent models', salary: getStaffRoleBaseSalary(tycoonTier, 'Head of Analytics', staffMarket), years: persistentStaff.get('Head of Analytics')?.contractYears ?? 0 },
+    ...(staffMarket === 'euro' ? [
+      { role: 'Head of Academy', person: resolvePerson('Head of Academy', null), group: 'Youth Academy', focus: 'Academy development and long-term player growth', salary: getStaffRoleBaseSalary(tycoonTier, 'Head of Academy', staffMarket), years: persistentStaff.get('Head of Academy')?.contractYears ?? 0 },
+      { role: 'Regional Scout', person: resolvePerson('Regional Scout', null), group: 'Youth Academy', focus: 'International youth identification', salary: getStaffRoleBaseSalary(tycoonTier, 'Regional Scout', staffMarket), years: persistentStaff.get('Regional Scout')?.contractYears ?? 0 },
+      { role: 'Regional Scout 2', person: resolvePerson('Regional Scout 2', null), group: 'Youth Academy', focus: 'International youth identification', salary: getStaffRoleBaseSalary(tycoonTier, 'Regional Scout 2', staffMarket), years: persistentStaff.get('Regional Scout 2')?.contractYears ?? 0 },
+      { role: 'Regional Scout 3', person: resolvePerson('Regional Scout 3', null), group: 'Youth Academy', focus: 'International youth identification', salary: getStaffRoleBaseSalary(tycoonTier, 'Regional Scout 3', staffMarket), years: persistentStaff.get('Regional Scout 3')?.contractYears ?? 0 },
+      { role: 'Regional Scout 4', person: resolvePerson('Regional Scout 4', null), group: 'Youth Academy', focus: 'International youth identification', salary: getStaffRoleBaseSalary(tycoonTier, 'Regional Scout 4', staffMarket), years: persistentStaff.get('Regional Scout 4')?.contractYears ?? 0 },
+    ] : []),
   ];
-  const rolesWithLiveSalaries = roles.map(item => {
+  const rawRolesWithLiveSalaries = roles.map(item => {
     const person = item.person ? hydrateStaffPerson(item.person, item.role) : item.person;
     const persisted = persistentStaff.get(item.role);
     const years = persisted?.contractYears ?? person?.contractYears ?? item.years;
@@ -227,30 +380,56 @@ export const StaffSection: React.FC<{
         persisted?.rating ?? person?.rating,
         { market: staffMarket, ...getSalaryContext(person, persisted) },
       )
-      : item.salary;
+      : Math.round(item.salary * staffEconomyIndex);
     return { ...item, person, years, salary };
+  });
+  const seenStaffPeople = new Set<string>();
+  const rolesWithLiveSalaries = rawRolesWithLiveSalaries.map(item => {
+    if (item.person && Number(item.years) <= 0) {
+      return { ...item, person: null, years: 0 };
+    }
+    const key = staffIdentityKey(item.person);
+    if (key && seenStaffPeople.has(key)) return { ...item, person: null, years: 0 };
+    if (key) seenStaffPeople.add(key);
+    return item;
   });
   const filledRoles = rolesWithLiveSalaries.filter((r) => r.person).length;
   const openRoleCount = rolesWithLiveSalaries.filter((r) => !r.person).length;
-  const expiringRoleCount = rolesWithLiveSalaries.filter((r) => r.person && Number(r.years) <= 0).length;
-  const dueRoleCount = openRoleCount + expiringRoleCount;
   const totalCost = rolesWithLiveSalaries.reduce((sum, r) => sum + (r.person ? r.salary : 0), 0);
   const avgSkill = Math.round(rolesWithLiveSalaries.reduce((sum, r) => sum + (r.person ? staffOverallFor(r.role, r.person) : 58), 0) / rolesWithLiveSalaries.length);
-  const needCandidatePools = signingOpen || !!actionPerson || !!resignPool;
-  // Single source of truth for FA candidates: read from state.staffFreeAgents,
-  // filter by user's league (so a Manresa GM never sees Euroleague-only FAs)
-  // and target position. The pool is guaranteed depth=10 per position via
-  // ensureStaffPoolDepth, so no on-the-fly emergency generation here.
-  const userLeagueId = inferEuroStaffLeagueId(team.tid ?? team.id ?? 0);
+  const needCandidatePools = candidateRole !== null;
+  // Single source of truth for FA candidates: read real staff FAs, retired
+  // player-to-staff joins, and the staff directory without trimming the list.
+  const userLeagueId = inferEuroStaffLeagueId(team.tid ?? team.id ?? 0, state.leagueType, {
+    teamLeague: (team as any).league,
+    uiMode: state.leagueStats?.uiMode,
+  });
   const candidatePool = useMemo(() => {
     if (!needCandidatePools) return new Map<string, StaffCandidate[]>();
     const normalizeNameKey = (value: string | undefined | null) => String(value ?? '').trim().toLowerCase();
+    const buildAsk = (member: any, identity: string, baseSalary: number) => {
+      const profile = getStaffAskProfile(member, identity);
+      const salary = Math.max(5_000, Math.round(baseSalary * profile.salaryAskMultiplier / 5_000) * 5_000);
+      return {
+        salary,
+        askYears: profile.salaryAskYears,
+        askBonus: Math.round(salary * profile.salaryAskBonusRate / 5_000) * 5_000,
+      };
+    };
     const isAllowedNationality = (_nationalityRaw: unknown) => true;
     const staffCandidateRating = (member: any, computed: number) => {
       if (userLeagueId !== 'pba') return computed;
-      const stored = Number(member?.rating ?? member?.reputation ?? computed);
-      const value = Number.isFinite(stored) ? stored : computed;
-      return Math.max(42, Math.min(64, Math.round(value)));
+      const value = Number.isFinite(computed) ? computed : Number(member?.rating ?? member?.reputation ?? 50);
+      return Math.max(20, Math.min(70, Math.round(value)));
+    };
+    const isGeneratedPoolMember = (member: any) => {
+      const source = String(member?.source ?? '').toLowerCase();
+      const id = String(member?.id ?? '').toLowerCase();
+      return source.includes('generated')
+        || source.includes('fallback')
+        || source.includes('ai-staff')
+        || id.startsWith('euro-staff-fa-')
+        || id.startsWith('nba-ai-staff-');
     };
     const employedNames = new Set<string>();
     for (const nbaTeam of (state.teams ?? []) as any[]) {
@@ -272,11 +451,13 @@ export const StaffSection: React.FC<{
     );
     const map = new Map<string, StaffCandidate[]>();
     for (const r of rolesWithLiveSalaries) {
+      if (r.role !== candidateRole) continue;
       // Assistant Coach 2/3 are slot variants — they share the 'Assistant Coach'
       // pool. The base role name is what the FA pool tracks.
       const poolRole = r.role.replace(/ \d+$/, '');
-      const acceptedPoolRoles = poolRole === 'Head Coach'
-        ? new Set(['Head Coach', 'Assistant Coach'])
+      const coachingTrackRoles = new Set(['Head Coach', 'Assistant Coach', 'Player Development Coach', 'Youth Coach']);
+      const acceptedPoolRoles = coachingTrackRoles.has(poolRole)
+        ? coachingTrackRoles
         : new Set([poolRole]);
       const fromFreeAgency = (state.staffFreeAgents ?? [])
         .filter((member: any) => {
@@ -285,21 +466,40 @@ export const StaffSection: React.FC<{
           if (!acceptedPoolRoles.has(memberRole)) return false;
           // Tolerate legacy save members without leagueId (pre-pool-refactor).
           if (!member.leagueId && userLeagueId === 'pba') return false;
-          if (member.leagueId && member.leagueId !== userLeagueId) return false;
+          const nbaCanSeeEuropeanCandidate = userLeagueId === 'nba' && isEuroStaffLeagueId(member.leagueId);
+          if (
+            member.leagueId
+            && member.leagueId !== userLeagueId
+            && !(isEuroStaffLeagueId(userLeagueId) && isEuroStaffLeagueId(member.leagueId))
+            && !nbaCanSeeEuropeanCandidate
+          ) return false;
+          if (isHistoricalNbaBranch && userLeagueId === 'nba' && isModernRealStaffMember(member) && !hasEnteredStaffMarket(member)) return false;
           return isAllowedNationality(member.nationality);
         })
         .map((member: any, index: number): StaffCandidate => {
-          // Seed comes from the FA's stored identity (name + reputation), so
-          // the attributes the modal shows here are the SAME attributes that
-          // the card and ratings-modal will render after hire.
           const seed = seedForStaff(member);
+          const generatedDepth = isGeneratedPoolMember(member);
+          const attributeProfile = member.attributeProfile
+            ?? (userLeagueId === 'nba' && generatedDepth ? 'nba' : undefined);
           const attrs = attrsForCoach(member.name, seed, {
             role: r.role,
-            attributeProfile: member.attributeProfile,
+            attributeProfile,
             attributeOverrides: member.attributeOverrides,
           });
           const career = getStaffCareerSnapshot(member, currentYear);
-          const computedRating = resolveStaffRating(r.role, { ...member, coachingYears: Math.max(1, career.yearsExperience), playingYears: 0 });
+          const memberRole = normalizeStaffPoolRole(member.position ?? member.jobTitle ?? member.role);
+          const roleOverall = computeStaffOverall(r.role, attrs);
+          const persistedRating = resolveStaffRating(r.role, {
+            ...member,
+            attributeProfile,
+            coachingYears: Math.max(1, career.yearsExperience),
+            playingYears: 0,
+          });
+          const computedRating = coachingTrackRoles.has(poolRole) && coachingTrackRoles.has(memberRole)
+            ? roleOverall
+            : poolRole === 'Head of Analytics' && generatedDepth
+              ? Math.max(persistedRating, roleOverall)
+              : persistedRating;
           const rating = staffCandidateRating(member, computedRating);
           const baseSalary = normalizeStaffSalary(
             tycoonTier,
@@ -310,10 +510,13 @@ export const StaffSection: React.FC<{
               yearsExperience: career.yearsExperience,
               yearsWithTeam: career.yearsWithTeam,
               market: staffMarket,
+              economyScale: staffEconomyIndex,
             },
           );
+          const candidateId = member.id ?? `staff-fa-${r.role}-${member.name}-${index}`;
+          const ask = buildAsk(member, candidateId, baseSalary);
           return {
-            id: member.id ?? `staff-fa-${r.role}-${member.name}-${index}`,
+            id: candidateId,
             role: r.role,
             name: member.name,
             nationality: normalizeNationality(member.nationality ?? 'Unknown'),
@@ -321,19 +524,25 @@ export const StaffSection: React.FC<{
             teamLogoUrl: member.formerTeamLogoUrl ?? member.teamLogoUrl,
             lastRole: member.formerRole ?? member.position ?? member.jobTitle ?? member.role ?? 'N/A',
             lastTeam: member.formerTeam ?? member.team ?? 'N/A',
-            salary: baseSalary,
+            ...ask,
             rating,
             years: Math.max(1, career.yearsExperience),
             coachingYears: Math.max(1, career.yearsExperience),
             playingYears: 0,
-            career_history: member.career_history ?? getNBA2KCoach(member.name)?.career_history,
-            coaching_career: member.coaching_career ?? getNBA2KCoach(member.name)?.coaching_career,
+            careerStartYear: career.careerStartYear ?? member.careerStartYear,
+            hiredYear: career.hiredYear ?? member.hiredYear,
+            roleStartYear: member.roleStartYear,
+            isGeneratedDepth: generatedDepth,
+            career_history: member.career_history,
+            coaching_career: member.coaching_career ?? (isStrictStaffPortraitSource(member) ? undefined : getNBA2KCoach(member.name)?.coaching_career),
+            awardsSummary: Array.from(new Set([...(Array.isArray(member.awardsSummary) ? member.awardsSummary : []), ...coachAwardsSummary(member)])),
             face: member.face,
-            staffImageId: resolveStaffImageId(member),
+            staffImageId: isStrictStaffPortraitSource(member) ? undefined : generatedStaffImageId(member),
             playerPortraitUrl: member.playerPortraitUrl,
+            attributeProfile,
             attributeOverrides: member.attributeOverrides,
             attributes: buildAttributes(r.role, seed, member.name, {
-              attributeProfile: member.attributeProfile,
+              attributeProfile,
               attributeOverrides: member.attributeOverrides,
             }),
           };
@@ -342,11 +551,13 @@ export const StaffSection: React.FC<{
         .filter(member => {
           if (userLeagueId === 'pba') return false;
           if (!member?.name) return false;
+          if (state.leagueType === 'fictional' && member.team && member.team !== 'Unemployed') return false;
+          if (isHistoricalNbaBranch && userLeagueId === 'nba' && !hasEnteredStaffMarket(member)) return false;
           if (employedNames.has(normalizeNameKey(member.name))) return false;
           if (occupiedStaffNames.has(normalizeNameKey(member.name))) return false;
           if (!isAllowedNationality(member.nationality)) return false;
           const directoryRole = normalizeStaffPoolRole(member.role ?? member.jobTitle ?? member.position);
-          return directoryRole === poolRole;
+          return acceptedPoolRoles.has(directoryRole);
         })
         .map((member: any, index: number): StaffCandidate => {
           const seed = seedForStaff(member);
@@ -356,36 +567,48 @@ export const StaffSection: React.FC<{
             attributeOverrides: member.attributeOverrides,
           });
           const career = getStaffCareerSnapshot(member, currentYear);
-          const rating = resolveStaffRating(r.role, { ...member, coachingYears: Math.max(1, career.yearsExperience), playingYears: 0 });
+          const directoryRole = normalizeStaffPoolRole(member.role ?? member.jobTitle ?? member.position);
+          const rating = coachingTrackRoles.has(poolRole) && coachingTrackRoles.has(directoryRole)
+            ? computeStaffOverall(r.role, attrs)
+            : resolveStaffRating(r.role, { ...member, coachingYears: Math.max(1, career.yearsExperience), playingYears: 0 });
+          const candidateId = member.id ?? `staff-dir-${poolRole.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${member.name}-${index}`;
+          const baseSalary = normalizeStaffSalary(
+            tycoonTier,
+            r.role,
+            member.salary,
+            rating,
+            {
+              yearsExperience: career.yearsExperience,
+              yearsWithTeam: career.yearsWithTeam,
+              market: staffMarket,
+              economyScale: staffEconomyIndex,
+            },
+          );
+          const ask = buildAsk(member, candidateId, baseSalary);
           return {
-            id: member.id ?? `staff-dir-${poolRole.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${member.name}-${index}`,
+            id: candidateId,
             role: r.role,
             name: member.name,
             nationality: normalizeNationality(member.nationality ?? 'Unknown'),
             flag: getCountryFlag(normalizeNationality(member.nationality ?? 'Unknown')),
             teamLogoUrl: member.formerTeamLogoUrl ?? member.teamLogoUrl,
             lastRole: member.formerRole ?? member.jobTitle ?? member.role ?? member.position ?? 'N/A',
-            lastTeam: member.formerTeam ?? member.team ?? (typeof member.position === 'string' ? member.position : 'N/A'),
-            salary: normalizeStaffSalary(
-              tycoonTier,
-              r.role,
-              member.salary,
-              rating,
-              {
-                yearsExperience: career.yearsExperience,
-                yearsWithTeam: career.yearsWithTeam,
-                market: staffMarket,
-              },
-            ),
+            lastTeam: member.formerTeam ?? member.team ?? 'N/A',
+            ...ask,
             rating,
             years: Math.max(1, career.yearsExperience),
             coachingYears: Math.max(1, career.yearsExperience),
             playingYears: 0,
-            career_history: member.career_history ?? getNBA2KCoach(member.name)?.career_history,
-            coaching_career: member.coaching_career ?? getNBA2KCoach(member.name)?.coaching_career,
+            careerStartYear: career.careerStartYear ?? member.careerStartYear,
+            hiredYear: career.hiredYear ?? member.hiredYear,
+            roleStartYear: member.roleStartYear,
+            career_history: member.career_history,
+            coaching_career: member.coaching_career ?? (isStrictStaffPortraitSource(member) ? undefined : getNBA2KCoach(member.name)?.coaching_career),
+            awardsSummary: Array.from(new Set([...(Array.isArray(member.awardsSummary) ? member.awardsSummary : []), ...coachAwardsSummary(member)])),
             face: member.face,
-            staffImageId: resolveStaffImageId(member),
+            staffImageId: isStrictStaffPortraitSource(member) ? undefined : generatedStaffImageId(member),
             playerPortraitUrl: member.playerPortraitUrl,
+            attributeProfile: member.attributeProfile,
             attributeOverrides: member.attributeOverrides,
             attributes: buildAttributes(r.role, seed, member.name, {
               attributeProfile: member.attributeProfile,
@@ -393,10 +616,21 @@ export const StaffSection: React.FC<{
             }),
           };
         });
+      const teamByTid = new Map<number, any>([
+        ...((state.teams ?? []) as any[]).map((candidate: any) => [Number(candidate.id ?? candidate.tid), candidate] as const),
+        ...((state.nonNBATeams ?? []) as any[]).map((candidate: any) => [Number(candidate.tid ?? candidate.id), candidate] as const),
+      ]);
+      const teamNameByTid = new Map<number, string>();
+      const teamLogoByTid = new Map<number, string | undefined>();
+      for (const [candidateTid, candidateTeam] of teamByTid) {
+        teamNameByTid.set(candidateTid, getTeamFullName(candidateTeam));
+        teamLogoByTid.set(candidateTid, candidateTeam.logoUrl ?? candidateTeam.imgURL ?? candidateTeam.teamLogoUrl);
+      }
       const fromRetiredJoins = ((state.players ?? []) as any[])
         .filter((player: any) => {
           if (!player?.name) return false;
           if (!player?.postCareerStaffJoined) return false;
+          if (isHistoricalNbaBranch && Number(player.tid ?? -1) >= 0 && Number(player.tid ?? -1) < 100) return false;
           if (employedNames.has(normalizeNameKey(player.name))) return false;
           if (occupiedStaffNames.has(normalizeNameKey(player.name))) return false;
           const joinedRole = normalizeStaffPoolRole(player.postCareerStaffRole);
@@ -412,28 +646,15 @@ export const StaffSection: React.FC<{
           const lastTid = [...statTids, ...txTids, player.draft?.tid]
             .reverse()
             .find((tid: any) => typeof tid === 'number' && tid >= 0);
-          const inferredLeagueId = (() => {
-            if (typeof lastTid !== 'number') return 'nba';
-            if (lastTid >= 0 && lastTid < 100) return 'nba';
-            if (lastTid >= 1000 && lastTid < 1100) return 'euroleague';
-            if (lastTid >= 5000 && lastTid < 5100) return 'endesa';
-            if (lastTid >= 2000 && lastTid < 2100) return 'pba';
-            if (lastTid >= 4000 && lastTid < 4100) return 'bleague';
-            if (lastTid >= 7000 && lastTid < 7100) return 'chinacba';
-            if (lastTid >= 8000 && lastTid < 8100) return 'nblaus';
-            return 'endesa';
-          })();
-          return inferredLeagueId === userLeagueId;
+          const lastTeam = typeof lastTid === 'number' ? teamByTid.get(lastTid) : undefined;
+          const inferredLeagueId = inferEuroStaffLeagueId(lastTid ?? -1, state.leagueType, {
+            teamLeague: lastTeam && 'league' in lastTeam ? lastTeam.league : undefined,
+            uiMode: state.leagueStats.uiMode,
+          });
+          if (inferredLeagueId === userLeagueId) return true;
+          return inferredLeagueId === 'nba' && userLeagueId !== 'pba';
         })
         .map((player: any, index: number): StaffCandidate => {
-          const teamNameByTid = new Map<number, string>([
-            ...((state.teams ?? []) as any[]).map((t: any) => [Number(t.id ?? t.tid), getTeamFullName(t)] as const),
-            ...((state.nonNBATeams ?? []) as any[]).map((t: any) => [Number(t.tid ?? t.id), getTeamFullName(t)] as const),
-          ]);
-          const teamLogoByTid = new Map<number, string | undefined>([
-            ...((state.teams ?? []) as any[]).map((t: any) => [Number(t.id ?? t.tid), t.logoUrl ?? t.imgURL ?? t.teamLogoUrl] as const),
-            ...((state.nonNBATeams ?? []) as any[]).map((t: any) => [Number(t.tid ?? t.id), t.logoUrl ?? t.imgURL ?? t.teamLogoUrl] as const),
-          ]);
           const playingTids = new Set<number>();
           for (const stat of (player.stats ?? [])) {
             const tid = Number(stat?.tid);
@@ -495,19 +716,27 @@ export const StaffSection: React.FC<{
             ...player,
             ...attrs,
             coachingYears: 0,
-            playingYears: Math.max(
-              1,
-              ((player.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length) || 1,
-            ),
+            playingYears: Math.max(1, regularStats.length),
           });
           const rating = staffCandidateRating(player, computedRating);
-          const yearsExperience = Math.max(
-            1,
-            ((player.stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length) || 1,
-          );
+          const yearsExperience = Math.max(1, regularStats.length);
           const playingYears = yearsExperience;
+          const candidateId = player.internalId ? `retired-join-${player.internalId}` : `retired-join-${player.name}-${index}`;
+          const baseSalary = normalizeStaffSalary(
+            tycoonTier,
+            r.role,
+            getStaffMarketSalary(undefined, r.role, rating, {
+              market: staffMarket,
+              yearsExperience,
+              yearsWithTeam: 0,
+              economyScale: staffEconomyIndex,
+            }),
+            rating,
+            { yearsExperience, yearsWithTeam: 0, market: staffMarket, economyScale: staffEconomyIndex },
+          );
+          const ask = buildAsk(player, candidateId, baseSalary);
           return {
-            id: player.internalId ? `retired-join-${player.internalId}` : `retired-join-${player.name}-${index}`,
+            id: candidateId,
             role: r.role,
             name: player.name,
             nationality: normalizeNationality(player.born?.loc?.split(',').pop()?.trim() ?? player.nationality ?? 'Unknown'),
@@ -526,23 +755,13 @@ export const StaffSection: React.FC<{
               fgPct: attFG > 0 ? (madeFG / attFG) * 100 : 0,
               seasons: regularStats.length,
             },
-            salary: normalizeStaffSalary(
-              tycoonTier,
-              r.role,
-              getStaffMarketSalary(undefined, r.role, rating, {
-                market: staffMarket,
-                yearsExperience,
-                yearsWithTeam: 0,
-              }),
-              rating,
-              { yearsExperience, yearsWithTeam: 0, market: staffMarket },
-            ),
+            ...ask,
             rating,
             years: 0,
             coachingYears: 0,
             playingYears,
             face: player.face,
-            staffImageId: player.staffImageId ?? deterministicStaffImageId(player.name),
+            staffImageId: player.staffImageId,
             playerPortraitUrl: player.imgURL,
             attributeOverrides: player.attributeOverrides,
             attributes: buildAttributes(r.role, seed, player.name, {
@@ -561,40 +780,24 @@ export const StaffSection: React.FC<{
       };
 
       const retiredBucket = dedupeByName(fromRetiredJoins).sort((a, b) => b.rating - a.rating);
-      const faBucket = dedupeByName(fromFreeAgency).sort((a, b) => b.rating - a.rating);
+      const sourceFaBucket = dedupeByName(fromFreeAgency.filter(candidate => !candidate.isGeneratedDepth)).sort((a, b) => b.rating - a.rating);
+      const generatedDepthBucket = dedupeByName(fromFreeAgency.filter(candidate => candidate.isGeneratedDepth)).sort((a, b) => b.rating - a.rating);
       const directoryBucket = dedupeByName(fromDirectory).sort((a, b) => b.rating - a.rating);
 
-      const targetCountByRole: Record<string, number> = {
-        'Head Coach': 60,
-        'Assistant Coach': 48,
-        'Player Development Coach': 40,
-      };
-      const targetCount = targetCountByRole[poolRole] ?? 36;
-
-      // Keep all retired-join staff visible, then fill with strongest market FAs,
-      // then directory backfill only if still under target.
-      const keep: StaffCandidate[] = [...retiredBucket];
-      const seen = new Set(keep.map(candidate => normalizeNameKey(candidate.name)));
-      const pushUnique = (candidate: StaffCandidate) => {
-        const key = normalizeNameKey(candidate.name);
-        if (!key || seen.has(key)) return;
-        seen.add(key);
-        keep.push(candidate);
-      };
-      for (const candidate of faBucket) {
-        if (keep.length >= targetCount) break;
-        pushUnique(candidate);
-      }
-      for (const candidate of directoryBucket) {
-        if (keep.length >= targetCount) break;
-        pushUnique(candidate);
-      }
+      const keep = mergeStaffCandidateBuckets({
+        retired: retiredBucket,
+        source: sourceFaBucket,
+        directory: directoryBucket,
+        generated: generatedDepthBucket,
+      });
       map.set(r.role, keep);
     }
     return map;
-  }, [currentYear, needCandidatePools, rolesWithLiveSalaries, staffMarket, state.players, state.staff?.coaches, state.staffFreeAgents, userLeagueId, tycoonTier]);
-  const renderPortrait = (face: any, initials: string, size = 'w-16 h-20', staffImageId?: number, name?: string, portraitUrl?: string) => {
-    const staffImg = resolveStaffPortrait({ name, savedPortrait: portraitUrl, staffImageId });
+  }, [candidateRole, currentYear, isHistoricalNbaBranch, needCandidatePools, rolesWithLiveSalaries, staffEconomyIndex, staffMarket, state.historicalAwards, state.leagueStats.uiMode, state.leagueType, state.nonNBATeams, state.players, state.staff?.coaches, state.staffFreeAgents, state.teams, userLeagueId, tycoonTier]);
+  const renderPortrait = (face: any, initials: string, size = 'w-16 h-20', staffImageId?: number, name?: string, portraitUrl?: string, strictPortrait = false) => {
+    const staffImg = strictPortrait
+      ? sanitizeStaffPhotoUrl(portraitUrl)
+      : resolveCoachPortrait(name, portraitUrl) ?? getStaffImageUrl(staffImageId);
     return (
       <div className={`${size} rounded-xl overflow-hidden bg-slate-800 border border-slate-700 shrink-0 relative`}>
         {staffImg ? (
@@ -626,22 +829,15 @@ export const StaffSection: React.FC<{
   return (
     <div className="space-y-6">
       <SectionTitle icon={<Users size={22} />} title="Staff" subtitle="Manage your coaching, performance, and support team." />
-      <div className="grid sm:grid-cols-2 xl:grid-cols-4 gap-3">
-        <FacilityKpi icon={<Users size={22} />} label="Total Staff" value={`${filledRoles}/${roles.length}`} sub={`${roles.length - filledRoles} open roles`} />
-        <FacilityKpi icon={<Briefcase size={22} />} label="Annual Cost" value={formatCurrencyWithCode(totalCost, currency, false)} sub="Current yearly payroll" />
-        <FacilityKpi icon={<Star size={22} />} label="Average Skill" value={`${avgSkill}/100`} sub={avgSkill >= 80 ? 'Elite staff group' : 'Solid staff group'} />
-        <FacilityKpi
-          icon={<Search size={22} />}
-          label="Roles Due"
-          value={String(dueRoleCount)}
-          sub={dueRoleCount === 0
-            ? 'No interviews or renewals needed'
-            : `${openRoleCount} open · ${expiringRoleCount} renewals due`}
-        />
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <StaffSummaryCard icon={<Users size={20} />} label="Total Staff" value={`${filledRoles}/${roles.length}`} accent="blue" progress={filledRoles / Math.max(1, roles.length)} />
+        <StaffSummaryCard icon={<Briefcase size={20} />} label="Annual Cost" value={formatCurrencyWithCode(totalCost, currency, false)} accent="violet" progress={filledRoles / Math.max(1, roles.length)} />
+        <StaffSummaryCard icon={<Star size={20} />} label="Average Skill" value={`${avgSkill}/100`} accent="cyan" progress={avgSkill / 100} />
+        <StaffSummaryCard icon={<Search size={20} />} label="Open Roles" value={String(openRoleCount)} accent="orange" progress={(roles.length - openRoleCount) / Math.max(1, roles.length)} />
       </div>
       <div className="grid xl:grid-cols-[1fr_390px] gap-6">
         <div className="space-y-6">
-          {['Coaching', 'Performance', 'Scouting & Analytics'].map((group) => (
+          {['Coaching', 'Performance', 'Scouting & Analytics', ...(staffMarket === 'euro' ? ['Youth Academy'] : [])].map((group) => (
             <section key={group} className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
               <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">{group}</div>
               <div className="grid md:grid-cols-2 2xl:grid-cols-3 gap-4">
@@ -669,36 +865,35 @@ export const StaffSection: React.FC<{
                     return (
                       <button
                         key={item.role}
-                        onClick={() => { setSelectedRole(item.role); setSigningMode('hire'); setSigningOpen(true); }}
+                        onClick={() => {
+                          setSelectedRole(item.role);
+                          setSigningOpen(true);
+                        }}
                         title={tooltip}
                         className="text-left rounded-xl border border-dashed border-slate-700 bg-slate-950/40 p-6 transition-all hover:border-amber-400/50 hover:bg-amber-400/5 flex flex-col items-center justify-center text-center min-h-[280px]"
                       >
                         <div className="w-14 h-14 rounded-full border border-dashed border-slate-600 flex items-center justify-center text-2xl font-black text-slate-500">+</div>
-                        <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-amber-300">{item.role}</div>
+                        <div className="mt-4 text-[10px] font-black uppercase tracking-widest text-amber-300">{displayStaffRole(item.role)}</div>
                         <div className="mt-1 text-sm font-black text-slate-300">Open Position</div>
                         <div className="mt-5 inline-flex items-center justify-center rounded-lg border border-amber-400/40 bg-amber-400/10 px-4 h-9 text-[11px] font-black uppercase tracking-widest text-amber-200">{ctaLabel}</div>
                       </button>
                     );
                   }
+                  const renewalDue = Number(item.years) <= 0;
                   return (
                     <button
                       key={item.role}
                       onClick={() => setActionPerson({ role: item.role, person: item.person, years: item.years, salary: item.salary })}
                       title={tooltip}
-                      className="text-left rounded-xl border border-slate-800 bg-slate-950/70 p-4 transition-all hover:border-slate-600"
+                      className={`text-left rounded-xl border bg-slate-950/70 p-4 transition-all ${renewalDue ? 'border-rose-400/60 shadow-[0_0_0_1px_rgba(251,113,133,0.18)] hover:border-rose-300/80' : 'border-slate-800 hover:border-slate-600'}`}
                     >
                       <div className="flex items-start gap-3">
-                        {renderPortrait(face, initials, 'w-16 h-20', item.person?.staffImageId, item.person?.name, item.person?.playerPortraitUrl)}
+                        {renderPortrait(face, initials, 'w-16 h-20', item.person?.staffImageId, item.person?.name, item.person?.playerPortraitUrl, isStrictStaffPortraitSource(item.person))}
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
                               <div className="text-sm font-black text-white truncate">{item.person?.name}</div>
-                              <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{item.role}</div>
-                              {Number(item.years) <= 0 && (
-                                <div className="mt-1 inline-flex rounded border border-rose-400/40 bg-rose-500/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-widest text-rose-300">
-                                  Renewal Due
-                                </div>
-                              )}
+                              <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{displayStaffRole(item.role)}</div>
                             </div>
                             <div className="w-11 h-11 rounded-full border border-emerald-400/40 bg-emerald-400/10 text-emerald-300 flex items-center justify-center text-sm font-black">
                               {rating}
@@ -708,8 +903,11 @@ export const StaffSection: React.FC<{
                         </div>
                       </div>
                       <div className="mt-4 flex items-center justify-between text-[10px] font-black uppercase tracking-widest">
-                        <span className={Number(item.years) <= 0 ? 'text-rose-300' : 'text-slate-500'}>{formatYearsLeftLabel(item.years)}</span>
+                        <span className={Number(item.years) <= 1 ? 'text-rose-300' : 'text-slate-500'}>{formatYearsLeftLabel(item.years)}</span>
                         <span className="text-slate-400">{formatCurrencyWithCode(item.salary, currency, false)}/yr</span>
+                      </div>
+                      <div className="mt-3 flex items-center justify-end border-t border-slate-800 pt-3 text-[10px] font-black uppercase tracking-widest text-amber-300">
+                        <span>Manage ›</span>
                       </div>
                     </button>
                   );
@@ -727,7 +925,7 @@ export const StaffSection: React.FC<{
               const gmName = isGMOwnTeam && commName ? commName : gm.name;
               const gmImg = isGMOwnTeam && commName
                 ? `https://ui-avatars.com/api/?name=${encodeURIComponent(commName)}&background=1e293b&color=FDB927&size=256&bold=true`
-                : getStaffImageUrl(gm.staffImageId) ?? getStaffImageUrl(deterministicStaffImageId(gm.name)) ?? null;
+                : getStaffImageUrl(generatedStaffImageId(gm)) ?? null;
               const gmAttrs = (!isGMOwnTeam || !commName) ? (gm.attributes ?? {}) : null;
               return (
                 <div className="rounded-xl bg-slate-950/70 border border-slate-800 p-4 mb-3">
@@ -738,7 +936,7 @@ export const StaffSection: React.FC<{
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-black text-white leading-tight truncate">{gmName}</div>
-                      {!isGMOwnTeam && gm.nationality && <div className="text-xs text-slate-400 mt-0.5">{getCountryFlag(gm.nationality)} {gm.nationality}</div>}
+                      {!isGMOwnTeam && gm.nationality && <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400"><CountryFlag country={gm.nationality} /> {normalizeNationality(gm.nationality)}</div>}
                       {isGMOwnTeam && <div className="text-xs text-amber-300 mt-0.5 font-black">You</div>}
                       {gmAttrs && (
                         <div className="mt-2 flex flex-wrap gap-1">
@@ -749,6 +947,21 @@ export const StaffSection: React.FC<{
                       )}
                     </div>
                   </div>
+                  {isGMOwnTeam && state.gmCareer?.employment && (
+                    <div className="mt-3 border-t border-slate-800 pt-3">
+                      <div className="flex items-center justify-between gap-3 text-[10px] font-black uppercase tracking-wider">
+                        <span className="text-slate-500">Current contract</span>
+                        <span className="text-emerald-300">{formatCurrencyWithCode(state.gmCareer.employment.annualSalary, state.gmCareer.employment.currency ?? currency, false)}/yr · {state.gmCareer.employment.yearsRemaining} yrs</span>
+                      </div>
+                      <div className="mt-2 flex items-center justify-between text-[9px] font-black uppercase tracking-wider text-slate-500">
+                        <span>Owner approval</span><span className="text-slate-200">{Math.round(state.gmCareer.approval)}/100</span>
+                      </div>
+                      <div className="relative mt-1.5 h-3 overflow-hidden rounded bg-slate-900">
+                        <div className={`h-full transition-[width] duration-700 ${state.gmCareer.approval >= 70 ? 'bg-emerald-500' : state.gmCareer.approval >= 45 ? 'bg-amber-400' : 'bg-rose-500'}`} style={{ width: `${Math.max(0, Math.min(100, state.gmCareer.approval))}%` }} />
+                        <div className="pointer-events-none absolute inset-0 grid grid-cols-10">{Array.from({ length: 10 }, (_, index) => <span key={index} className="border-r border-slate-950/50 last:border-0" />)}</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })()}
@@ -762,9 +975,7 @@ export const StaffSection: React.FC<{
                   <div className="font-black text-white">Ownership group</div>
                 </div>
               );
-              const realOwnerPhoto = op.playerPortraitUrl
-                ?? (OWNER_IMAGES as Record<string, string>)[op.name ?? '']
-                ?? null;
+              const realOwnerPhoto = resolveOwnerPrimaryPortrait(op, state.leagueType === 'fictional');
               const hasFace = isRealFaceConfig(op.face);
               const ownerImgFinal = realOwnerPhoto ?? (hasFace ? null : teamLogoUrl);
               const WEALTH_LABEL: Record<string, string> = { Billionaire: 'Billionaire', NationalMagnate: 'National Magnate', LocalWealthy: 'Local Wealthy' };
@@ -799,7 +1010,7 @@ export const StaffSection: React.FC<{
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="font-black text-white leading-tight truncate">{op.name}</div>
-                      {op.nationality && <div className="text-xs text-slate-400 mt-0.5">{getCountryFlag(op.nationality)} {op.nationality}</div>}
+                      {op.nationality && <div className="mt-0.5 flex items-center gap-1.5 text-xs text-slate-400"><CountryFlag country={op.nationality} /> {normalizeNationality(op.nationality)}</div>}
                       <div className="mt-2 flex flex-wrap gap-1">
                         {op.wealthTier && <span className="rounded border border-violet-400/40 bg-violet-400/10 px-2 py-0.5 text-[10px] font-black text-violet-300">{WEALTH_LABEL[op.wealthTier] ?? op.wealthTier}</span>}
                         {op.patience && <span className={`rounded border px-2 py-0.5 text-[10px] font-black ${PATIENCE_BADGE[op.patience] ?? 'border-slate-700 text-slate-300'}`}>{op.patience}</span>}
@@ -813,33 +1024,140 @@ export const StaffSection: React.FC<{
           </div>
         </aside>
       </div>
-      {signingOpen && (
-        <StaffSigningModal
-          selectedRole={selectedRole}
-          pool={resignPool ?? (candidatePool.get(selectedRole) ?? [])}
-          roleFocus={rolesWithLiveSalaries.find((r) => r.role === selectedRole)?.focus ?? ''}
-          currency={currency}
-          market={staffMarket}
-          mode={signingMode}
-          // NBA tids (0-99) → American-only emergency pool. Spaniards/Frenchmen as
-          // "limited options" candidates for a Mavs GM was the bug.
-          emergencyCountries={(() => {
-            const tid = team.id ?? team.tid;
-            if (tid >= 0 && tid < 100) return ['American'];
-            if (tid >= 1000 && tid < 1100) return ['Spain', 'France', 'Italy', 'Serbia', 'Greece', 'Turkey'];
-            if (tid >= 2000 && tid < 2100) return ['Philippines'];
-            return undefined;
-          })()}
-          onClose={() => { setSigningOpen(false); setResignPool(null); setSigningMode('hire'); }}
-          renderPortrait={renderPortrait}
-          onSign={(payload) => {
-            onHireStaff(payload);
-            setSigningOpen(false);
-            setResignPool(null);
-            setSigningMode('hire');
-          }}
-        />
-      )}
+      <AnimatePresence mode="wait">
+        {signingOpen ? (
+          <StaffSigningModal
+            key="staff-candidates"
+            selectedRole={selectedRole}
+            pool={candidateRole === selectedRole ? candidatePool.get(selectedRole) ?? [] : []}
+            loading={candidateRole !== selectedRole}
+            currency={currency}
+            onClose={() => {
+              setSigningOpen(false);
+            }}
+            renderPortrait={renderPortrait}
+            onSelectCandidate={(candidate) => {
+              setSigningOpen(false);
+              setCandidateAction({ role: selectedRole, candidate });
+            }}
+          />
+        ) : offerCandidate ? (
+          <StaffOfferModal
+            key="staff-offer"
+            candidate={offerCandidate.candidate}
+            selectedRole={selectedRole}
+            mode={offerCandidate.mode}
+            currency={currency}
+            currentYear={currentYear}
+            tycoon={team.tycoon}
+            renderPortrait={renderPortrait}
+            onCancel={() => {
+              if (offerCandidate.mode === 'hire') setSigningOpen(true);
+              setOfferCandidate(null);
+            }}
+            onSubmit={(decision) => {
+              setOfferCandidate(null);
+              if (!decision.accepted) {
+                onRecordStaffRejection({
+                  candidateId: decision.candidate.id,
+                  candidateName: decision.candidate.name,
+                  role: decision.role,
+                  mode: decision.mode,
+                  season: currentYear,
+                  date: String(state.date ?? `${currentYear}-06-30`),
+                  salary: decision.salary,
+                  years: decision.years,
+                  bonus: decision.bonus,
+                });
+              }
+              setStaffDecision(decision);
+            }}
+          />
+        ) : staffDecision ? (
+          <StaffDecisionModal
+            key="staff-decision"
+            decision={staffDecision}
+            currency={currency}
+            renderPortrait={renderPortrait}
+            clubName={teamName}
+            clubCountry={team.country ?? team.nation}
+            clubCity={team.city ?? team.region}
+            competitionLabel={team.league ?? state.euroPrimaryCompetitionId}
+            onAcknowledge={() => {
+              setStaffDecision(null);
+            }}
+            onFinalize={() => {
+              const completed = onHireStaff({
+                ...staffDecision.candidate,
+                role: staffDecision.role,
+                salary: staffDecision.salary,
+                years: staffDecision.years,
+                bonus: staffDecision.bonus,
+                sponsorSigningPerk: staffDecision.sponsorSigningPerk,
+              });
+              if (!completed) return;
+              setStaffDecision(null);
+            }}
+          />
+        ) : null}
+      </AnimatePresence>
+
+      {candidateAction && (() => {
+        const { role, candidate } = candidateAction;
+        const occupied = rolesWithLiveSalaries.find(item => item.role === role)?.person;
+        const candidateCareer = getStaffCareerSnapshot(candidate, currentYear);
+        const candidatePersonnel: Personnel = {
+          id: candidate.id,
+          name: candidate.name,
+          type: 'coach',
+          jobTitle: role,
+          team: candidate.lastTeam && candidate.lastTeam !== 'N/A' ? candidate.lastTeam : undefined,
+          playerPortraitUrl: candidate.playerPortraitUrl
+            ?? resolveCoachPortrait(candidate.name)
+            ?? getStaffImageUrl(candidate.staffImageId),
+          teamLogoUrl: candidate.teamLogoUrl,
+          bornYear: candidateCareer.bornYear,
+          careerStartYear: candidateCareer.careerStartYear,
+          careerHistory: candidate.career_history ?? candidate.coaching_career,
+          nationality: candidate.nationality,
+          honors: candidate.awardsSummary,
+          careerRows: candidate.playingCareerRows?.map(row => ({
+            years: row.years,
+            organization: row.team,
+            role: row.position && row.position !== '—' ? `Player · ${row.position}` : 'Player',
+          })),
+          attributes: attrsForCoach(candidate.name, seedForStaff(candidate), {
+            role,
+            attributeProfile: candidate.attributeProfile,
+            attributeOverrides: candidate.attributeOverrides,
+          }),
+        };
+        return (
+          <PersonnelActionsModal
+            person={candidatePersonnel}
+            isOpen={true}
+            onClose={() => {
+              setCandidateAction(null);
+              setSigningOpen(true);
+            }}
+            filterActions={occupied ? ['view_bio', 'view_ratings'] : ['view_bio', 'view_ratings', 'sign_staff']}
+            footerMessage={occupied
+              ? `${occupied.name} currently holds the ${displayStaffRole(role)} position. Fire the current staff member before signing a replacement.`
+              : undefined}
+            onActionSelect={(action) => {
+              if (action === 'view_bio') {
+                setBioPerson(candidatePersonnel);
+                setCandidateAction(null);
+              } else if (action === 'view_ratings') {
+                setRatingsPerson(candidatePersonnel);
+                setCandidateAction(null);
+              } else if (action === 'sign_staff' && !occupied) {
+                openStaffOffer(candidate, role, 'hire');
+              }
+            }}
+          />
+        );
+      })()}
 
       {/* Staff Action Modal — reuses PersonnelActionsModal infrastructure */}
       {(() => {
@@ -852,25 +1170,50 @@ export const StaffSection: React.FC<{
         // card. Member-based math missed Head Coaches living only in
         // state.staff.coaches (no tycoon.staffMembers entry).
         const isExpiring = years <= 0;
+        const canExtend = years <= 1;
         const staffPersonnel: Personnel = {
           id: person?.id ?? `staff-${role}`,
           name: person?.name ?? '',
           type: 'coach',
           jobTitle: role,
           team: teamName,
-          playerPortraitUrl: resolveStaffPortrait({
-            name: person?.name,
-            savedPortrait: person?.playerPortraitUrl,
-            staffImageId: person?.staffImageId,
+          teamLogoUrl,
+          playerPortraitUrl: isStrictStaffPortraitSource(person)
+            ? sanitizeStaffPhotoUrl(person?.playerPortraitUrl)
+            : resolveCoachPortrait(person?.name, person?.playerPortraitUrl) ?? getStaffImageUrl(generatedStaffImageId(person)),
+          bornYear: (member ?? person)?.bornYear,
+          careerStartYear: (member ?? person)?.careerStartYear,
+          hiredYear: (member ?? person)?.hiredYear,
+          yearsWithTeam: getStaffCareerSnapshot(member ?? person, currentYear).yearsWithTeam,
+          careerHistory: (member ?? person)?.career_history ?? (member ?? person)?.coaching_career,
+          basketballReferenceUrl: (member ?? person)?.basketballReferenceUrl,
+          bioText: (member ?? person)?.bioText,
+          nationality: (member ?? person)?.nationality,
+          honors: Array.from(new Set([
+            ...(Array.isArray((member ?? person)?.awardsSummary) ? (member ?? person).awardsSummary : []),
+            ...coachAwardsSummary(member ?? person),
+          ])),
+          careerRows: Array.isArray((member ?? person)?.playingCareerRows)
+            ? (member ?? person).playingCareerRows.map((row: any) => ({
+                years: String(row.years ?? ''),
+                organization: String(row.team ?? row.organization ?? ''),
+                role: row.role ?? (row.position && row.position !== '—' ? `Player · ${row.position}` : 'Player'),
+              }))
+            : undefined,
+          attributes: attrsForCoach(person?.name, seedForStaff(member ?? person), {
+            role,
+            attributeProfile: (member ?? person)?.attributeProfile,
+            attributeOverrides: (member ?? person)?.attributeOverrides,
           }),
         };
         const filterActions: PersonnelActionType[] = [
-          ...(isExpiring ? ['resign_staff' as PersonnelActionType] : []),
+          ...(canExtend ? ['resign_staff' as PersonnelActionType] : []),
+          'view_bio',
           'view_ratings',
+          ...(canHostTeamActivity ? ['dinner' as PersonnelActionType, 'movie' as PersonnelActionType] : []),
           'view_candidates',
           ...(isAC && hcVacant ? ['promote_to_hc' as PersonnelActionType] : []),
           ...(!isExpiring ? ['fire' as PersonnelActionType] : []),
-          // 'contact', // Direct Message — wire later
         ];
         return (
           <PersonnelActionsModal
@@ -880,7 +1223,19 @@ export const StaffSection: React.FC<{
             filterActions={filterActions}
             onActionSelect={(action) => {
               if (action === 'fire') {
-                setFireConfirm({ role, name: person?.name ?? role });
+                setFireConfirm({ role, name: person?.name ?? role, person });
+                setActionPerson(null);
+              }
+              else if (action === 'dinner' || action === 'movie') {
+                teamActivity.open({
+                  id: staffPersonnel.id,
+                  name: staffPersonnel.name,
+                  title: staffPersonnel.jobTitle ?? 'Staff',
+                  organization: staffPersonnel.team ?? getTeamFullName(team),
+                  type: 'coach',
+                  playerPortraitUrl: staffPersonnel.playerPortraitUrl,
+                  teamLogoUrl: staffPersonnel.teamLogoUrl,
+                }, action, teamId);
                 setActionPerson(null);
               }
               else if (action === 'promote_to_hc') { onPromoteStaff(person, role, 'Head Coach'); setActionPerson(null); }
@@ -901,47 +1256,47 @@ export const StaffSection: React.FC<{
                     market: staffMarket,
                     yearsExperience: Math.max(1, career.yearsExperience),
                     yearsWithTeam: career.yearsWithTeam + 1,
+                    economyScale: staffEconomyIndex,
                   },
                 );
+                const sourcePerson = member ?? person;
+                const resignId = member?.id ?? `resign-${role}`;
+                const resignAskProfile = getStaffAskProfile(sourcePerson, resignId);
+                const resignSalary = Math.max(5_000, Math.round(baseSalary * resignAskProfile.salaryAskMultiplier / 5_000) * 5_000);
                 const resignCandidate = {
-                  id: member?.id ?? `resign-${role}`,
+                  ...sourcePerson,
+                  id: resignId,
                   role,
                   name: person?.name ?? '',
                   nationality: person?.nationality ?? '',
                   flag: getCountryFlag(person?.nationality),
-                  salary: baseSalary,
+                  salary: resignSalary,
+                  askYears: resignAskProfile.salaryAskYears,
+                  askBonus: Math.round(resignSalary * resignAskProfile.salaryAskBonusRate / 5_000) * 5_000,
                   rating,
                   years: 2,
                   face: person?.face,
-                  staffImageId: person?.staffImageId,
-                  playerPortraitUrl: resolveStaffPortrait({
-                    name: person?.name,
-                    savedPortrait: person?.playerPortraitUrl,
-                    staffImageId: person?.staffImageId,
-                  }),
+                  staffImageId: isStrictStaffPortraitSource(person) ? undefined : generatedStaffImageId(person),
+                  playerPortraitUrl: isStrictStaffPortraitSource(person)
+                    ? sanitizeStaffPhotoUrl(person?.playerPortraitUrl)
+                    : resolveCoachPortrait(person?.name, person?.playerPortraitUrl) ?? getStaffImageUrl(generatedStaffImageId(person)),
                   attributes: buildAttributes(baseRole, seedForStaff(member ?? person), person?.name, {
                     attributeProfile: (member ?? person)?.attributeProfile,
                   }),
                 };
-                const replacementPool = candidatePool.get(role) ?? [];
-                const mergedPool = [resignCandidate, ...replacementPool.filter(candidate =>
-                  candidate.name !== resignCandidate.name && candidate.id !== resignCandidate.id
-                )];
-                setResignPool(mergedPool);
-                setSelectedRole(role);
-                setSigningMode('extension');
                 setActionPerson(null);
-                setSigningOpen(true);
+                openStaffOffer(resignCandidate, role, 'extension');
               }
               else if (action === 'view_ratings') {
-                setRatingsTab('attributes');
-                setRatingsPerson({ role, person, years, salary });
+                setRatingsPerson(staffPersonnel);
+                setActionPerson(null);
+              }
+              else if (action === 'view_bio') {
+                setBioPerson(staffPersonnel);
                 setActionPerson(null);
               }
               else if (action === 'view_candidates') {
                 setSelectedRole(role);
-                setResignPool(null);
-                setSigningMode('hire');
                 setActionPerson(null);
                 setSigningOpen(true);
               }
@@ -951,274 +1306,36 @@ export const StaffSection: React.FC<{
         );
       })()}
 
-      {/* Staff Ratings detail modal — shows ALL 15 StaffAttributes grouped by
-          category. Single source of truth via buildStaffAttrs + STAFF_ATTRIBUTE_GROUPS. */}
       <AnimatePresence>
-        {ratingsPerson && (() => {
-          const { role, person, years, salary } = ratingsPerson;
-          const seed = seedForStaff(person);
-          // Curated gist entry first (Kerr 99 OFF, Rivers 58 TACT, …), local
-          // seed fallback for fictional/Euro/unknown names. Always re-derive
-          // the overall from these attrs so the header number matches the bars.
-          const attrs = attrsForCoach(person?.name, seed, {
-            role,
-            attributeProfile: person?.attributeProfile,
-            attributeOverrides: person?.attributeOverrides,
-          });
-          const rating = resolveStaffRating(role, person);
-          const initials = person?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2) ?? '?';
-          const face = getStaffFace(person);
-          const baseRole = role.replace(/ \d+$/, '');
-          const careerMeta = getNBA2KCoach(person?.name ?? '');
-          const rawCoaching = Array.from(new Set([
-            ...parseCareerLinesForYear(careerMeta?.career_history ?? careerMeta?.coaching_career),
-            ...parseCareerLinesForYear(person?.career_history ?? person?.coaching_career),
-          ]));
-          const rawPlaying = parseCareerLinesForYear(careerMeta?.playing_career);
-          const coachingHistory: string[] = [];
-          const playingFromCoaching: string[] = [];
-          let inPlayerSection = false;
-          for (const raw of rawCoaching) {
-            const line = raw.trim();
-            if (!line) continue;
-            const startsAsPlayer = /^\s*as player[:\s]/i.test(line);
-            if (startsAsPlayer) inPlayerSection = true;
-            const cleaned = line.replace(/^\s*as player[:\s]*/i, '').trim();
-            const isCoachRow = /\(([^)]+)\)\s*$/.test(cleaned) || /coach/i.test(cleaned);
-            if (isCoachRow) {
-              coachingHistory.push(cleaned);
-              inPlayerSection = false;
-            } else if (inPlayerSection) {
-              playingFromCoaching.push(cleaned);
-            }
-          }
-          const normalizeName = (value: string | undefined) => String(value ?? '').toLowerCase().replace(/[^a-z0-9]/g, '');
-          const matchedPlayer = (state.players ?? []).find((p: any) => normalizeName(p?.name) === normalizeName(person?.name));
-          const playingCareerRows = [...rawPlaying, ...playingFromCoaching]
-            .map(splitPlayingRow)
-            .filter(row => row.team && row.team !== '—');
-          const playerAwards: Array<{ type?: string; season?: number }> = matchedPlayer?.awards ?? [];
-          const countAwards = (...types: string[]) => playerAwards.filter(a => types.includes(String(a.type ?? ''))).length;
-          const countAwardsContains = (...tokens: string[]) =>
-            playerAwards.filter(a => tokens.some(token => String(a.type ?? '').includes(token))).length;
-          const awardsSummary = [
-            { label: 'NBA Champion', value: countAwards('Won Championship', 'Champion', 'NBA Champion') },
-            { label: 'MVP', value: countAwards('Most Valuable Player', 'MVP') },
-            { label: 'Finals MVP', value: countAwards('Finals MVP') },
-            { label: 'All-Star', value: countAwards('All-Star') },
-            { label: 'All-NBA', value: countAwardsContains('All-NBA', 'All-League') },
-            { label: 'DPOY', value: countAwards('Defensive Player of the Year', 'DPOY') },
-          ].filter(item => item.value > 0);
-          const retirementSeason = (() => {
-            const explicit = Number((matchedPlayer as any)?.retiredYear);
-            if (Number.isFinite(explicit) && explicit > 0) return explicit;
-            const seasons = (matchedPlayer?.stats ?? []).map((s: any) => Number(s?.season)).filter((s: number) => Number.isFinite(s) && s > 0);
-            if (seasons.length === 0) return null;
-            return Math.max(...seasons);
-          })();
-
-          // ── Profile derivation ─────────────────────────────────────────
-          // Tycoon staffMembers don't persist bornYear/careerStart, so we
-          // derive deterministically from the same seed that drives attrs.
-          // Real fields (person.born.year, person.bornYear, yearsWithTeam,
-          // hiredYear) win when present.
-          const career = getStaffCareerSnapshot(person, currentYear);
-          const bornYear = career.bornYear ?? (currentYear - (32 + (seed % 30)));
-          const age = Math.max(24, career.age ?? (currentYear - bornYear));
-          const tenure = Math.max(0, career.yearsWithTeam);
-          const experience = Math.max(tenure, career.yearsExperience);
-          const expTier = experience >= 20 ? 'Veteran'
-            : experience >= 12 ? 'Established'
-            : experience >= 6 ? 'Experienced'
-            : 'Rising';
-          const expTone = experience >= 20 ? 'border-violet-400/40 bg-violet-400/10 text-violet-300'
-            : experience >= 12 ? 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
-            : experience >= 6 ? 'border-amber-400/40 bg-amber-400/10 text-amber-300'
-            : 'border-sky-400/40 bg-sky-400/10 text-sky-300';
-          const hiredYearDisplay = career.hiredYear ?? (tenure > 0 ? currentYear - tenure : currentYear);
-          const contractEndYear = currentYear + years;
-          const status = years <= 0 ? 'Renewal Due' : 'Locked In';
-          const statusTone = years <= 0 ? 'border-rose-400/40 bg-rose-400/10 text-rose-300'
-            : 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300';
-          return (
+        {bioPerson && (
+          <motion.div className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setBioPerson(null)} />
             <motion.div
-              className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              className="relative z-10 flex h-[94vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-blue-400/30 bg-slate-900 shadow-2xl"
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
             >
-              <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setRatingsPerson(null)} />
-              <motion.div
-                className="relative z-10 w-full md:min-w-[860px] max-w-5xl max-h-[88vh] overflow-y-auto scrollbar-hide bg-slate-900 rounded-2xl border border-slate-700 shadow-2xl"
-                initial={{ opacity: 0, y: 24, scale: 0.97 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 16, scale: 0.98 }}
-                transition={{ type: 'spring', stiffness: 320, damping: 30 }}
-              >
-                <header className="flex items-start justify-between gap-4 p-6 border-b border-slate-800">
-                  <div className="flex items-start gap-4">
-                    {renderPortrait(face, initials, 'w-20 h-24', person?.staffImageId, person?.name, person?.playerPortraitUrl)}
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-black uppercase tracking-widest text-amber-300">{baseRole}</div>
-                      <h2 className="text-2xl font-black text-white leading-tight mt-1">{person?.name}</h2>
-                      {person?.nationality && (
-                        <div className="text-sm text-slate-400 mt-1">{getCountryFlag(person.nationality)} {normalizeNationality(person.nationality)}</div>
-                      )}
-                      <div className="mt-3 flex flex-wrap gap-2">
-                        <div className="inline-flex items-center gap-2 rounded-lg border border-violet-400/40 bg-violet-400/10 px-3 py-1">
-                          <Star size={14} className="text-violet-300" />
-                          <span className="text-sm font-black text-violet-200">Overall {rating}</span>
-                        </div>
-                        <div className={`inline-flex items-center rounded-lg border px-3 py-1 ${expTone}`}>
-                          <span className="text-xs font-black uppercase tracking-widest">{expTier}</span>
-                        </div>
-                        <div className={`inline-flex items-center rounded-lg border px-3 py-1 ${statusTone}`}>
-                          <span className="text-xs font-black uppercase tracking-widest">{status}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                  <button onClick={() => setRatingsPerson(null)} className="text-slate-400 hover:text-white p-1">
-                    <X size={20} />
-                  </button>
-                </header>
-                <div className="p-6 space-y-5">
-                  <section>
-                    <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">Profile</div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                      {[
-                        { label: 'Age', value: `${age}`, sub: `Born ${bornYear}` },
-                        { label: 'Experience', value: `${experience} yrs`, sub: expTier },
-                        { label: 'Tenure', value: `${tenure} yr${tenure === 1 ? '' : 's'}`, sub: `Since ${hiredYearDisplay}` },
-                        { label: 'Contract Left', value: `${years} yr${years === 1 ? '' : 's'}`, sub: `Through ${contractEndYear}` },
-                        { label: 'Annual Salary', value: formatCurrencyWithCode(salary, currency, false), sub: 'Per year' },
-                        // Fall back to the nba2k coach record's nationality — it
-                        // carries country data even when the saved staff entry
-                        // doesn't (CoachingView reads the same field).
-                        { label: 'Nationality', value: person?.nationality ?? getNBA2KCoach(person?.name ?? '')?.nationality ?? 'Unknown', sub: getCountryFlag(person?.nationality ?? getNBA2KCoach(person?.name ?? '')?.nationality) },
-                      ].map((stat) => (
-                        <div key={stat.label} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3">
-                          <div className="text-[10px] font-black uppercase tracking-widest text-slate-500">{stat.label}</div>
-                          <div className="text-base font-black text-white mt-1 truncate">{stat.value}</div>
-                          {stat.sub && <div className="text-[10px] text-slate-500 mt-0.5 truncate">{stat.sub}</div>}
-                        </div>
-                      ))}
-                    </div>
-                  </section>
-                  <div className="mb-2 flex items-center gap-2">
-                    <button
-                      onClick={() => setRatingsTab('attributes')}
-                      className={`rounded-lg border px-3 py-1.5 text-[11px] font-black uppercase tracking-widest ${ratingsTab === 'attributes' ? 'border-amber-400/60 bg-amber-400/15 text-amber-300' : 'border-slate-700 bg-slate-900 text-slate-400 hover:text-white'}`}
-                    >
-                      Attributes
-                    </button>
-                    <button
-                      onClick={() => setRatingsTab('career')}
-                      className={`rounded-lg border px-3 py-1.5 text-[11px] font-black uppercase tracking-widest ${ratingsTab === 'career' ? 'border-amber-400/60 bg-amber-400/15 text-amber-300' : 'border-slate-700 bg-slate-900 text-slate-400 hover:text-white'}`}
-                    >
-                      Career
-                    </button>
-                  </div>
-                  {ratingsTab === 'attributes' ? STAFF_ATTRIBUTE_GROUPS.map((group) => (
-                    <section key={group.label}>
-                      <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-3">{group.label}</div>
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        {group.keys.map(([key, label]) => {
-                          const value = attrs[key];
-                          const tone = value >= 85 ? 'bg-emerald-400 text-emerald-300'
-                            : value >= 75 ? 'bg-violet-400 text-violet-300'
-                            : value >= 65 ? 'bg-amber-400 text-amber-300'
-                            : 'bg-slate-500 text-slate-400';
-                          const [barBg, textColor] = tone.split(' ');
-                          return (
-                            <div key={key}>
-                              <div className="flex justify-between text-xs mb-1">
-                                <span className="text-slate-400" title={getStaffAttributeTooltip(key)}>{label}</span>
-                                <span className={`font-black ${textColor}`}>{value}</span>
-                              </div>
-                              <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
-                                <div className={`h-full ${barBg}`} style={{ width: `${value}%` }} />
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  )) : (
-                    <div className="grid gap-4 md:grid-cols-3">
-                      <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Coaching History</div>
-                        {coachingHistory.length > 0 ? (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-[86px_minmax(0,1fr)_96px] gap-2 border-b border-slate-800 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              <span>Years</span><span>Team</span><span>Role</span>
-                            </div>
-                            {coachingHistory.map((row, index) => {
-                              const parsed = splitCoachingRow(row);
-                              const displayTeam = parsed.team && parsed.team !== '—' ? parsed.team : (person?.team ?? '—');
-                              const logo = resolveHistoryLogo(displayTeam);
-                              return (
-                                <div key={`${row}-${index}`} className="grid grid-cols-[86px_minmax(0,1fr)_96px] gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1.5 text-xs">
-                                  <div className="text-slate-400">{parsed.years}</div>
-                                  <div className="flex items-center gap-2 min-w-0 text-slate-200">
-                                    {logo ? <img src={logo} alt="" className="h-4 w-4 object-contain" /> : null}
-                                    <span className="truncate">{displayTeam}</span>
-                                  </div>
-                                  <div className="text-slate-300 truncate">{parsed.role}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-slate-500">No coaching-history rows available.</div>
-                        )}
-                      </section>
-                      <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Playing Career</div>
-                        {playingCareerRows.length > 0 ? (
-                          <div className="space-y-2">
-                            <div className="grid grid-cols-[86px_minmax(0,1fr)_70px] gap-2 border-b border-slate-800 pb-2 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                              <span>Years</span><span>Team</span><span>Pos</span>
-                            </div>
-                            {playingCareerRows.map((parsed, index) => {
-                              const logo = resolveHistoryLogo(parsed.team);
-                              return (
-                                <div key={`${parsed.years}-${parsed.team}-${index}`} className="grid grid-cols-[86px_minmax(0,1fr)_70px] gap-2 rounded-lg border border-slate-800 bg-slate-900/60 px-2 py-1.5 text-xs">
-                                  <div className="text-slate-400">{parsed.years}</div>
-                                  <div className="flex items-center gap-2 min-w-0 text-slate-200">
-                                    {logo ? <img src={logo} alt="" className="h-4 w-4 object-contain" /> : null}
-                                    <span className="truncate">{parsed.team}</span>
-                                  </div>
-                                  <div className="text-slate-300 truncate">{parsed.position}</div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-xs text-slate-500">No playing-career rows available.</div>
-                        )}
-                      </section>
-                      <section className="rounded-xl border border-slate-800 bg-slate-950/70 p-4">
-                        <div className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-2">Awards & Retirement</div>
-                        {awardsSummary.length > 0 ? (
-                          <ul className="space-y-1.5 text-xs text-slate-300">
-                            {awardsSummary.map(item => <li key={item.label}>• {item.label}: {item.value}</li>)}
-                          </ul>
-                        ) : (
-                          <div className="text-xs text-slate-500">No awards summary available.</div>
-                        )}
-                        <div className="mt-3 border-t border-slate-800 pt-2 text-xs">
-                          <div className="text-slate-500">Retirement</div>
-                          <div className="text-slate-300">{retirementSeason ? `Retired in ${retirementSeason}` : 'No retirement-season record'}</div>
-                        </div>
-                      </section>
-                    </div>
-                  )}
-                </div>
-              </motion.div>
+              <PersonnelBioView person={bioPerson} onBack={() => setBioPerson(null)} />
             </motion.div>
-          );
-        })()}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {ratingsPerson && (
+          <motion.div className="fixed inset-0 z-[70] flex items-center justify-center p-2 sm:p-4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+            <div className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setRatingsPerson(null)} />
+            <motion.div
+              className="relative z-10 flex h-[94vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-2xl border border-blue-400/30 bg-slate-900 shadow-2xl"
+              initial={{ opacity: 0, y: 24, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 16, scale: 0.98 }}
+            >
+              <PersonnelRatingsView person={ratingsPerson} onBack={() => setRatingsPerson(null)} />
+            </motion.div>
+          </motion.div>
+        )}
       </AnimatePresence>
 
       <AnimatePresence>
@@ -1240,7 +1357,7 @@ export const StaffSection: React.FC<{
               <div className="p-6 border-b border-slate-800">
                 <div className="text-[10px] font-black uppercase tracking-widest text-rose-300">Confirm Staff Move</div>
                 <div className="mt-2 text-lg font-black text-white leading-tight">Fire {fireConfirm.name}?</div>
-                <div className="mt-2 text-sm text-slate-400">This will remove them from the {fireConfirm.role} role.</div>
+                <div className="mt-2 text-sm text-slate-400">This will remove them from the {displayStaffRole(fireConfirm.role)} role.</div>
               </div>
               <div className="p-5 flex items-center justify-end gap-3">
                 <button
@@ -1251,7 +1368,7 @@ export const StaffSection: React.FC<{
                 </button>
                 <button
                   onClick={() => {
-                    onFireStaff(fireConfirm.role);
+                    onFireStaff(fireConfirm.role, fireConfirm.person);
                     setFireConfirm(null);
                   }}
                   className="h-10 px-4 rounded-lg border border-rose-500/40 bg-rose-500/15 text-rose-200 text-xs font-black uppercase tracking-widest hover:bg-rose-500/25"
@@ -1263,6 +1380,7 @@ export const StaffSection: React.FC<{
           </motion.div>
         )}
       </AnimatePresence>
+      {teamActivity.portals}
     </div>
   );
 };

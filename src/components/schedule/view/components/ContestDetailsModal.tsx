@@ -1,29 +1,51 @@
 import React from 'react';
-import { X, Star, Trophy } from 'lucide-react';
+import { Crosshair, Star, Trophy, X } from 'lucide-react';
 import { motion } from 'motion/react';
-import { NBAPlayer, NBATeam } from '../../../../types';
-import { getPlayerHeadshot, getTeamLogo, extractNbaId, extractTeamId } from '../../../../utils/helpers';
+import { NBAPlayer } from '../../../../types';
 import { calcDunkOdds, calcThreePointOdds } from '../../../../utils/allStarOdds';
 import { DUNK_MOVES } from '../../../../services/allStar/dunkMoves';
+import { getPlayerImage } from '../../../../utils/playerImage';
+import { SkillsChallengeView } from '../../../allstar/SkillsChallengeView';
+import { ShootingStarsView } from '../../../allstar/ShootingStarsView';
+import { getResolvedTeamLogoUrl } from '../../../../utils/teamAssets';
+import { PlayerNameWithHover } from '../../../shared/PlayerNameWithHover';
 
 interface ContestDetailsModalProps {
-  type: 'dunk' | 'three';
+  type: 'dunk' | 'three' | 'skills' | 'shooting-stars';
   onClose: () => void;
   state: any;
 }
 
 export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, onClose, state }) => {
   const isDunk = type === 'dunk';
+  const isSkills = type === 'skills';
+  const isShootingStars = type === 'shooting-stars';
   const allStar = state.allStar;
-  const result = isDunk ? allStar?.dunkContest : allStar?.threePointContest;
-  const contestants = isDunk ? allStar?.dunkContestContestants : allStar?.threePointContestants;
+  const result = isDunk
+    ? allStar?.dunkContest
+    : isSkills ? allStar?.skillsChallenge : isShootingStars ? allStar?.shootingStars : allStar?.threePointContest;
+  const contestants = isDunk
+    ? allStar?.dunkContestContestants
+    : isSkills ? allStar?.skillsChallengeContestants : isShootingStars ? allStar?.shootingStarsContestants : allStar?.threePointContestants;
+  const teams = state.leagueStats?.uiMode === 'pba_isolated'
+    ? (state.nonNBATeams ?? [])
+        .filter((team: any) => team.league === 'PBA')
+        .map((team: any) => ({ ...team, id: team.tid ?? team.id }))
+    : state.teams;
+  const ownTid = state.userTeamId ?? state.leagueStats?.userTeamId;
   
   const isComplete = !!result;
 
-  // Resolve contestants to full player objects for accurate odds calculation
   const fullContestants = (contestants || []).map((c: any) => 
     state.players.find((pl: NBAPlayer) => pl.internalId === (c.internalId || c.playerId)) || c
   );
+  const winnerPlayer = result
+    ? state.players.find((player: NBAPlayer) =>
+        player.internalId === result.winnerId || player.name === result.winnerName)
+    : undefined;
+  const portrait = (player: any, name: string) =>
+    getPlayerImage(player as NBAPlayer)
+    ?? `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=1e293b&color=fff`;
 
   return (
     <motion.div 
@@ -41,12 +63,12 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
         {/* Header */}
         <div className="p-4 sm:p-6 border-b border-white/5 flex items-start justify-between gap-3 bg-gradient-to-r from-slate-900 to-black">
           <div className="flex items-center gap-4 min-w-0">
-            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center text-2xl ${isDunk ? 'bg-orange-500/20 text-orange-400' : 'bg-indigo-500/20 text-indigo-400'}`}>
-              {isDunk ? '🏀' : '🎯'}
+            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${isShootingStars ? 'bg-cyan-500/20 text-cyan-300' : isDunk || isSkills ? 'bg-orange-500/20 text-orange-400' : 'bg-blue-500/20 text-blue-300'}`}>
+              {isShootingStars ? <Star size={22} /> : isDunk ? <Trophy size={22} /> : <Crosshair size={22} />}
             </div>
             <div>
               <h3 className="text-xl font-black text-white uppercase tracking-tight">
-                {isDunk ? 'Slam Dunk Contest' : '3-Point Contest'}
+                {isDunk ? 'Slam Dunk Contest' : isSkills ? 'Skills Challenge' : isShootingStars ? 'Shooting Stars' : '3-Point Contest'}
               </h3>
               <p className="text-slate-500 text-xs font-bold uppercase tracking-widest">
                 {isComplete ? 'Final Results' : 'Contest Preview'}
@@ -63,16 +85,32 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar">
-          {isComplete ? (
+          {isShootingStars ? (
+            <ShootingStarsView
+              allStar={allStar}
+              players={state.players}
+              teams={teams}
+              ownTid={ownTid}
+            />
+          ) : isSkills ? (
+            <SkillsChallengeView
+              allStar={allStar}
+              players={state.players}
+              teams={teams}
+              ownTid={ownTid}
+            />
+          ) : isComplete ? (
             isDunk ? (
               // DUNK RESULTS — detailed like DunkContestView
               <div className="space-y-6">
                 {/* Champion hero */}
                 <div className="bg-gradient-to-br from-orange-600/20 to-amber-600/20 border border-orange-500/20 rounded-3xl p-6 flex items-center gap-6">
-                  <div className="w-20 h-20 rounded-full bg-orange-500/20 flex items-center justify-center text-4xl border border-orange-500/30">🏆</div>
+                  <div className="w-20 h-20 rounded-full bg-orange-500/20 flex items-center justify-center border border-orange-500/30"><Trophy size={34} className="text-orange-300" /></div>
                   <div>
                     <div className="text-[10px] font-black text-orange-400 uppercase tracking-[0.2em] mb-1">Champion</div>
-                    <div className="text-3xl font-black text-white uppercase tracking-tight">{result.winnerName}</div>
+                    <div className="text-3xl font-black text-white uppercase tracking-tight">
+                      {winnerPlayer ? <PlayerNameWithHover player={winnerPlayer}>{result.winnerName}</PlayerNameWithHover> : result.winnerName}
+                    </div>
                     {result.mvpDunk && (
                       <div className="mt-2 inline-flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/20 rounded-full px-3 py-1">
                         <span className="text-[9px] font-black tracking-widest text-yellow-600 uppercase">Dunk of the Night</span>
@@ -107,8 +145,7 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
                           const r1Name = r1.playerName || r1.playerId;
                           const player = state.players.find((p: NBAPlayer) => p.internalId === r1.playerId)
                             || state.players.find((p: NBAPlayer) => p.name === r1Name);
-                          const team = player ? state.teams.find((t: NBATeam) => t.id === player.tid) : null;
-                          const nbaId = player?.nbaId || extractNbaId(player?.imgURL || '', r1Name);
+                          const team = player ? teams.find((t: any) => Number(t.id ?? t.tid) === Number(player.tid)) : null;
                           const finalsRow = (result.round2 ?? []).find((r: any) =>
                             (r.playerName && r.playerName === r1Name) ||
                             (r.playerId && r.playerId === r1Name) ||
@@ -127,7 +164,7 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
                                 <div className="flex items-center gap-3">
                                   <div className="w-8 h-8 rounded-full bg-slate-800 overflow-hidden shrink-0">
                                     <img
-                                      src={getPlayerHeadshot(r1.playerId, nbaId)}
+                                      src={portrait(player ?? r1, r1Name)}
                                       className="w-full h-full object-cover"
                                       alt={r1Name}
                                       referrerPolicy="no-referrer"
@@ -135,7 +172,9 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
                                     />
                                   </div>
                                   <div>
-                                    <p className={`text-sm font-bold ${isWinner ? 'text-orange-400' : 'text-white'}`}>{r1Name}</p>
+                                    <p className={`text-sm font-bold ${isWinner ? 'text-orange-400' : 'text-white'}`}>
+                                      {player ? <PlayerNameWithHover player={player}>{r1Name}</PlayerNameWithHover> : r1Name}
+                                    </p>
                                     <p className="text-[10px] text-slate-600">{team?.abbrev ?? ''}</p>
                                   </div>
                                 </div>
@@ -179,11 +218,13 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
             ) : (
               // 3PT RESULTS
               <div className="space-y-6">
-                <div className="bg-gradient-to-br from-indigo-600/20 to-violet-600/20 border border-indigo-500/20 rounded-3xl p-6 flex items-center gap-6">
-                  <div className="w-20 h-20 rounded-full bg-indigo-500/20 flex items-center justify-center text-4xl border border-indigo-500/30">🏆</div>
+                <div className="bg-gradient-to-br from-blue-600/20 to-red-600/15 border border-blue-500/20 rounded-3xl p-6 flex items-center gap-6">
+                  <div className="w-20 h-20 rounded-full bg-blue-500/20 flex items-center justify-center border border-blue-500/30"><Trophy size={34} className="text-blue-200" /></div>
                   <div>
-                    <div className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] mb-1">Champion</div>
-                    <div className="text-3xl font-black text-white uppercase tracking-tight">{result.winnerName}</div>
+                    <div className="text-[10px] font-black text-blue-300 uppercase tracking-[0.2em] mb-1">Champion</div>
+                    <div className="text-3xl font-black text-white uppercase tracking-tight">
+                      {winnerPlayer ? <PlayerNameWithHover player={winnerPlayer}>{result.winnerName}</PlayerNameWithHover> : result.winnerName}
+                    </div>
                   </div>
                 </div>
 
@@ -212,7 +253,7 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
                         })
                         .map((c: any, idx: number) => {
                           const player = state.players.find((p: NBAPlayer) => p.internalId === c.playerId);
-                          const team = player ? state.teams.find((t: NBATeam) => t.id === player.tid) : null;
+                          const team = player ? teams.find((t: any) => Number(t.id ?? t.tid) === Number(player.tid)) : null;
                           const stat = player?.stats?.find((s: any) => s.season === state.leagueStats.year && !s.playoffs);
                           const tpPct = stat && stat.tpa > 0 ? (stat.tp / stat.tpa).toFixed(3) : '—';
                           const inFinals = c.finalScore !== null && c.finalScore !== undefined;
@@ -225,7 +266,7 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
                                 <div className="flex items-center gap-2">
                                   <div className="w-7 h-7 rounded-full bg-slate-800 shrink-0 flex items-center justify-center overflow-hidden relative">
                                     <img
-                                      src={getPlayerHeadshot(c.playerId, player?.nbaId || extractNbaId(player?.imgURL || "", c.playerName))}
+                                      src={portrait(player ?? c, c.playerName)}
                                       className="w-full h-full object-cover absolute inset-0"
                                       onError={(e) => { 
                                         (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(c.playerName)}&background=0D9488&color=fff`;
@@ -235,11 +276,11 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
                                     />
                                   </div>
                                   <span className={`font-bold text-sm ${c.isWinner ? 'text-amber-400' : 'text-white'}`}>
-                                    {c.playerName}
+                                    {player ? <PlayerNameWithHover player={player}>{c.playerName}</PlayerNameWithHover> : c.playerName}
                                   </span>
                                 </div>
                               </td>
-                              <td className="py-3 px-3 text-slate-400 text-xs">{team?.name ?? '—'}</td>
+                              <td className="py-3 px-3 text-slate-400 text-xs">{team?.abbrev ?? '—'}</td>
                               <td className="py-3 px-3 text-right font-mono text-slate-300 text-xs">{tpPct}</td>
                               <td className="py-3 px-3 text-right font-mono text-white font-bold border-l border-slate-900">
                                 {c.round1Score}
@@ -279,23 +320,22 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
                     };
                     return getScore(b) - getScore(a);
                 }).map((p: NBAPlayer) => {
-                  const nbaId = (p as any).nbaId || extractNbaId(p.imgURL || "", p.name);
-                  const team = state.teams.find((t: NBATeam) => t.id === p.tid);
-                  const teamId = (p as any).teamNbaId || (team ? extractTeamId(team.logoUrl, team.abbrev) : null) || 1610612737;
+                  const team = teams.find((t: any) => Number(t.id ?? t.tid) === Number(p.tid));
+                  const teamLogo = team ? getResolvedTeamLogoUrl(team, state.leagueStats?.year) : undefined;
                   const teamColor = team?.colors?.[0] || (isDunk ? '#f97316' : '#6366f1');
                   
                   const dunkOdds = calcDunkOdds(fullContestants, p);
                   const threeOdds = calcThreePointOdds(fullContestants, p);
 
                   return (
-                    <div key={p.internalId} className={`bg-slate-900 border ${isDunk ? 'border-orange-500/20' : 'border-indigo-500/20'} rounded-2xl p-4 text-center flex flex-col items-center transition-all hover:scale-[1.02]`}>
+                    <div key={p.internalId} className={`bg-slate-900 border ${isDunk ? 'border-orange-500/20' : 'border-blue-500/20'} rounded-2xl p-4 text-center flex flex-col items-center transition-all hover:scale-[1.02]`}>
                       <div className="relative mb-3">
                         <div 
                           className="w-20 h-20 rounded-full overflow-hidden bg-slate-800 border-2"
                           style={{ borderColor: `${teamColor}40` }}
                         >
                           <img
-                            src={getPlayerHeadshot(p.internalId, nbaId)}
+                            src={portrait(p, p.name)}
                             className="w-full h-full object-cover"
                             onError={(e) => { 
                               (e.target as HTMLImageElement).src = `https://ui-avatars.com/api/?name=${encodeURIComponent(p.name)}&background=0D9488&color=fff`;
@@ -304,28 +344,28 @@ export const ContestDetailsModal: React.FC<ContestDetailsModalProps> = ({ type, 
                             alt={p.name}
                           />
                         </div>
-                        <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-1 border border-slate-800">
+                        {teamLogo && <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-1 border border-slate-800">
                           <img 
-                            src={getTeamLogo(teamId)}
+                            src={teamLogo}
                             className="w-5 h-5 object-contain"
                             alt="team"
                             referrerPolicy="no-referrer"
                           />
-                        </div>
+                        </div>}
                       </div>
                       
                       <div className="flex flex-col items-center mb-2">
                         <div className="text-[9px] font-bold tracking-widest text-slate-500 uppercase mb-0.5">TO WIN</div>
-                        <div className={`text-3xl font-black font-mono tracking-tight ${isDunk ? 'text-orange-400' : 'text-indigo-400'}`}>
+                        <div className={`text-3xl font-black font-mono tracking-tight ${isDunk ? 'text-orange-400' : 'text-blue-300'}`}>
                           {isDunk ? dunkOdds : threeOdds}
                         </div>
                       </div>
 
                       <div className="text-sm font-bold text-white truncate w-full">
-                        {p.name}
+                        <PlayerNameWithHover player={p}>{p.name}</PlayerNameWithHover>
                       </div>
                       <div className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                        {team?.abbrev || 'NBA'}
+                        {team?.abbrev ?? ''}
                       </div>
                     </div>
                   );

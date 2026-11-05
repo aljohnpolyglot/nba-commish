@@ -1,11 +1,22 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { ArrowRightLeft, Calendar, Info, UserCheck, UserX, AlertTriangle, Users, Sunset, Trophy, CheckCircle, Plane } from 'lucide-react';
+import { ArrowRightLeft, Calendar, Info, UserCheck, UserX, AlertTriangle, Users, Sunset, Trophy, CheckCircle, Plane, Flag } from 'lucide-react';
 import { motion } from 'motion/react';
 import type { NBAPlayer } from '../../../types';
-import { isPbaIsolatedMode } from '../../../utils/uiMode';
+import { isEuroIsolatedMode, isPbaIsolatedMode, isWnbaIsolatedMode } from '../../../utils/uiMode';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { getTeamFullName } from '../../../utils/teamNames';
+import { getPlayerImage } from '../../../utils/playerImage';
+import { STATIC_NBA_TEAMS, staticNbaTeamLogo } from '../../../data/staticNbaTeams';
+import { normalizeDate } from '../../../utils/helpers';
+import { formatGameDateShort } from '../../../utils/dateUtils';
+import { getLeagueCalendarDates } from '../../../services/leagueCalendar';
+import { getLeagueLabels } from '../../../utils/leagueLabels';
+import { getBioByName, getNativeDraftProfileForIdentity } from '../../../data/realPlayerDataFetcher';
+import { getHistoricalNbaCompletedSeasonCutoff } from '../../../services/playerDevelopment/hofHistoryWindow';
+import { buildExpansionDraftHistoryEntry } from '../../../services/expansion/expansionDraftHistory';
+import { sortTransactionHistoryNewestFirst, stripTransactionNarrative } from './TransactionsShared';
+import type { TradeEntry } from './TradeDetailTypes';
 
 // ─── Types & helpers ──────────────────────────────────────────────────────────
 
@@ -14,11 +25,13 @@ const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactN
   Trade:          { color: 'text-blue-400',    bg: 'bg-blue-500/10',    icon: <ArrowRightLeft size={18}/>, label: 'Trade' },
   Transfer:       { color: 'text-cyan-400',    bg: 'bg-cyan-500/10',    icon: <Plane size={18}/>,          label: 'Transfer' },
   Signing:        { color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: <UserCheck size={18}/>,      label: 'Signing' },
+  'Contract Option': { color: 'text-sky-400', bg: 'bg-sky-500/10', icon: <CheckCircle size={18}/>,        label: 'Contract Option' },
   Waive:          { color: 'text-amber-400',   bg: 'bg-amber-500/10',   icon: <UserX size={18}/>,          label: 'Waiver' },
   Suspension:     { color: 'text-rose-400',    bg: 'bg-rose-500/10',    icon: <AlertTriangle size={18}/>,  label: 'Suspension' },
   Personnel:      { color: 'text-purple-400',  bg: 'bg-purple-500/10',  icon: <Users size={18}/>,          label: 'Personnel' },
   Retirement:     { color: 'text-amber-300',   bg: 'bg-amber-500/10',   icon: <Sunset size={18}/>,         label: 'Retirement' },
   'Jersey Retirement': { color: 'text-yellow-300', bg: 'bg-yellow-500/10', icon: <Trophy size={18}/>,      label: 'Jersey Retirement' },
+  Citizenship:     { color: 'text-cyan-300', bg: 'bg-cyan-500/10', icon: <Flag size={18}/>,                label: 'Citizenship' },
   'NG Guaranteed':{ color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: <CheckCircle size={18}/>,    label: 'Guaranteed' },
   'League Event': { color: 'text-slate-400',   bg: 'bg-slate-800',      icon: <Info size={18}/>,           label: 'League Event' },
 };
@@ -26,6 +39,7 @@ const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React.ReactN
 function detectType(text: string, type?: string): string {
   const t = text.toLowerCase();
   if (type === 'Personnel') return 'Personnel';
+  if (type === 'Citizenship' || t.includes('obtained') && t.includes('citizenship')) return 'Citizenship';
   if (type === 'Draft'       || t.includes('overall pick of the') || t.includes('went undrafted in the')) return 'Draft';
   if (type === 'NG Guaranteed' || (t.includes('guaranteed by') && t.includes('january 10'))) return 'NG Guaranteed';
   if (type === 'Death' || t.includes('cause of death') || t.includes(' passed away ') || t.includes(' died at age ')) return 'Retirement';
@@ -33,6 +47,7 @@ function detectType(text: string, type?: string): string {
   if (type === 'Retirement'  || t.includes('has retired') || t.includes('announced his retirement')) return 'Retirement';
   if (type === 'Transfer'    || t.includes('transferred from') || t.includes(' transferred to ')) return 'Transfer';
   if (type === 'Trade'       || t.includes('trade'))   return 'Trade';
+  if (type === 'Contract Option' || t.includes('player option') || t.includes('team option')) return 'Contract Option';
   if (type === 'Signing'     || t.includes('signed') || t.includes('re-signed') || t.includes('signs with')) return 'Signing';
   if (type === 'Waive'       || t.includes('waived'))  return 'Waive';
   if (type === 'Suspension'  || t.includes('suspended')) return 'Suspension';
@@ -40,10 +55,28 @@ function detectType(text: string, type?: string): string {
   return 'League Event';
 }
 
+export function isPrivatePlayerActivity(type?: string): boolean {
+  return ['dinner', 'movie night'].includes(String(type ?? '').trim().toLowerCase());
+}
+
 interface PlayerBioTransactionsTabProps {
   player: NBAPlayer;
-  onTradeClick?: (entry: { text: string; date: string }) => void;
+  onTradeClick?: (entry: TradeEntry) => void;
 }
+
+export function hasOriginalDraftHistoryEntry(
+  entries: Array<{ kind?: string; text?: string }>,
+  draftYear: number,
+): boolean {
+  return entries.some(entry => (
+    entry.kind === 'Draft'
+    && !/fantasy draft/i.test(String(entry.text ?? ''))
+    && String(entry.text ?? '').includes(String(draftYear))
+  ));
+}
+
+export const getPlayerBioDraftOverallPick = (round: number, pick: number, teamsPerRound: number): number =>
+  (round - 1) * teamsPerRound + pick;
 
 export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> = ({ player, onTradeClick }) => {
   const { state } = useGame();
@@ -52,7 +85,10 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
   // Pre-build player portrait lookup
   const playerPortraitMap = useMemo(() => {
     const m = new Map<string, string>();
-    state.players.forEach(p => { if (p.imgURL) m.set(p.name.toLowerCase(), p.imgURL); });
+    state.players.forEach(p => {
+      const img = getPlayerImage(p);
+      if (img) m.set(p.name.toLowerCase(), img);
+    });
     return m;
   }, [state.players]);
 
@@ -76,18 +112,15 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
         .map((team: any) => resolveAnyTeam(Number(team.tid ?? team.id), state.teams, nonNBATeams))
         .filter(Boolean),
     ];
-    const entries = [...(state.history || [])]
-      .sort((a, b) => {
-        const da = typeof a === 'string' ? state.date : (a as any).date || state.date;
-        const db = typeof b === 'string' ? state.date : (b as any).date || state.date;
-        return new Date(db).getTime() - new Date(da).getTime();
-      })
+    const entries = sortTransactionHistoryNewestFirst([...(state.history || [])], state.date)
+      .filter(raw => typeof raw === 'string' || normalizeDate((raw as any).date || state.date) <= normalizeDate(state.date))
       .map(raw => {
         const entry = typeof raw === 'string'
           ? { text: raw, date: state.date, type: undefined, playerIds: undefined as string[] | undefined }
-          : raw as { text: string; date: string; type?: string; playerIds?: string[] };
+          : raw as TradeEntry & { type?: string };
         return entry;
       })
+      .filter(entry => !isPrivatePlayerActivity(entry.type))
       .filter(entry => {
         if (entry.playerIds && entry.playerIds.length > 0) {
           return entry.playerIds.includes(pid);
@@ -95,7 +128,7 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
         return (entry.text || '').toLowerCase().includes(name);
       })
       .map(entry => {
-        const text = entry.text || '';
+        const text = stripTransactionNarrative(entry.text || '');
         const kind = detectType(text, entry.type);
 
         // Find the primary team mentioned
@@ -109,7 +142,7 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
         }
 
         // For trades: pick the best portrait among mentioned players
-        let portraitSrc = player.imgURL ?? null;
+        let portraitSrc = getPlayerImage(player) ?? null;
         if (kind === 'Trade') {
           // Try to find another player mentioned in the trade text to show alongside
           for (const [nm, url] of playerPortraitMap) {
@@ -123,17 +156,92 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
         return { ...entry, kind, team, portraitSrc };
       });
 
-    const hasDraftEntry = entries.some(entry => entry.kind === 'Draft');
-    const draft = (player as any).draft;
-    const isDrafted = draft && Number(draft.round) > 0 && Number(draft.pick) > 0 && Number(draft.year) > 0;
-    if (!hasDraftEntry && isDrafted) {
+    for (const transaction of player.transactions ?? []) {
+      if (transaction.type !== 'expansion-draft' || !transaction.pickNum) continue;
+      const alreadyRecorded = entries.some(entry =>
+        entry.kind === 'Draft'
+        && /expansion draft/i.test(entry.text ?? '')
+        && String(entry.text ?? '').includes(String(transaction.season)),
+      );
+      if (alreadyRecorded) continue;
+      const historyEntry = buildExpansionDraftHistoryEntry({
+        state,
+        player,
+        tid: transaction.tid,
+        pick: transaction.pickNum,
+        season: transaction.season,
+        date: transaction.date ?? String(transaction.season),
+      });
+      entries.push({
+        ...historyEntry,
+        kind: 'Draft',
+        team: resolveAnyTeam(transaction.tid, state.teams, nonNBATeams),
+        portraitSrc: getPlayerImage(player) ?? null,
+      } as any);
+    }
+
+    for (const record of player.naturalizations ?? []) {
+      if (normalizeDate(record.date) > normalizeDate(state.date)) continue;
+      const alreadyRecorded = entries.some(entry =>
+        entry.kind === 'Citizenship' && normalizeDate(entry.date) === normalizeDate(record.date),
+      );
+      if (alreadyRecorded) continue;
+      entries.push({
+        text: `${player.name} obtained ${record.country === 'Philippines' ? 'Filipino' : record.country} citizenship and became eligible to represent ${record.country} in international tournaments.`,
+        date: record.date,
+        type: 'Citizenship',
+        playerIds: [player.internalId],
+        kind: 'Citizenship',
+        team: null,
+        portraitSrc: getPlayerImage(player) ?? null,
+      } as any);
+    }
+
+    const savedDraft = (player as any).draft;
+    const nativeDraft = getNativeDraftProfileForIdentity(player);
+    const draft = savedDraft && Number(savedDraft.round) > 0 && Number(savedDraft.pick) > 0
+      ? savedDraft
+      : nativeDraft
+        ? { ...savedDraft, year: nativeDraft.year, round: nativeDraft.round, pick: nativeDraft.pick }
+        : savedDraft;
+    const completedSeasonCutoff = getHistoricalNbaCompletedSeasonCutoff({
+      currentYear: state.leagueStats.year,
+      leagueType: state.leagueType,
+      moddedLeagueBase: state.moddedLeagueBase,
+      nbaStartYear: state.nbaStartYear,
+    }) ?? state.leagueStats.year;
+    const isDrafted = draft
+      && Number(draft.round) > 0
+      && Number(draft.pick) > 0
+      && Number(draft.year) > 0
+      && Number(draft.year) <= completedSeasonCutoff;
+    const hasOriginalDraftEntry = isDrafted
+      ? hasOriginalDraftHistoryEntry(entries, Number(draft.year))
+      : false;
+    if (!hasOriginalDraftEntry && isDrafted) {
       const draftedTid = Number(draft.tid);
       const pbaDraftSourceTeam = nonNBATeams.find(
         (team: any) => team.league === 'PBA' && Number(team.tid ?? team.id) === draftedTid,
       );
+      const draftAbbrev = String((player as any).draftAbbrev ?? nativeDraft?.abbrev ?? getBioByName(player.name)?.draftAbbrev ?? '').trim().toUpperCase();
+      const archivedNbaTeam = draftAbbrev
+        ? [...state.teams, ...((state as any).teamArchive ?? [])].find((team: any) =>
+            String(team?.abbrev ?? '').toUpperCase() === draftAbbrev
+            || (team?.identitySeasons ?? []).some((identity: any) => String(identity?.abbrev ?? '').toUpperCase() === draftAbbrev),
+          )
+        : null;
+      const staticNbaTeam = draftAbbrev ? STATIC_NBA_TEAMS.find(team => team.abbrev === draftAbbrev) : null;
       const draftTeam = pbaDraftSourceTeam
         ? resolveAnyTeam(Number(pbaDraftSourceTeam.tid ?? pbaDraftSourceTeam.id), [], [pbaDraftSourceTeam])
-        : resolveAnyTeam(draftedTid, state.teams, nonNBATeams);
+        : archivedNbaTeam
+          ?? (draftedTid >= 0 ? resolveAnyTeam(draftedTid, state.teams, nonNBATeams) : null)
+          ?? (staticNbaTeam ? {
+            id: staticNbaTeam.tid,
+            name: staticNbaTeam.fullName,
+            region: staticNbaTeam.region,
+            abbrev: staticNbaTeam.abbrev,
+            logoUrl: staticNbaTeamLogo(staticNbaTeam),
+          } : null);
       const isPbaDraft = !!pbaDraftSourceTeam || (
         pbaMode &&
         player.status === 'PBA' &&
@@ -141,22 +249,32 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
         !player.importConference &&
         !(player as any).pbaImportContract
       );
-      const teamsPerRound = isPbaDraft ? (pbaTeamIds.size || 12) : 30;
-      const draftLabel = isPbaDraft ? 'PBA Draft' : 'NBA Draft';
-      const fallbackDate = isPbaDraft ? `Oct 5, ${draft.year}` : `Jun 25, ${draft.year}`;
+      const teamsPerRound = isPbaDraft
+        ? (pbaTeamIds.size || 12)
+        : isWnbaIsolatedMode(state) || state.leagueType === 'fictional'
+          ? Math.max(1, state.teams.length)
+          : 30;
+      const leagueLabels = getLeagueLabels(state.leagueType, state.leagueStats.uiMode, state.leagueStats.leagueName);
+      const draftLabel = isPbaDraft ? 'PBA Draft' : nativeDraft && isEuroIsolatedMode(state) ? 'NBA Draft' : leagueLabels.draft;
+      const recordedDraftDate = String(draft.date ?? (player as any).draftDate ?? '').trim();
+      const activeLeagueDraftDate = isPbaDraft
+        ? undefined
+        : getLeagueCalendarDates(Number(draft.year), state.leagueStats).draftDate;
+      const fallbackDate = recordedDraftDate
+        || (activeLeagueDraftDate ? formatGameDateShort(activeLeagueDraftDate) : String(draft.year));
       const ordinal = (n: number) => {
         const s = ['th', 'st', 'nd', 'rd'];
         const v = n % 100;
         return `${n}${s[(v - 20) % 10] || s[v] || s[0]}`;
       };
       entries.push({
-        text: `The ${getTeamFullName(draftTeam) || 'team'} select ${player.name} as the ${ordinal((Number(draft.round) - 1) * teamsPerRound + Number(draft.pick))} overall pick of the ${draft.year} ${draftLabel}.`,
+        text: `The ${getTeamFullName(draftTeam) || 'team'} selected ${player.name} as the ${ordinal(getPlayerBioDraftOverallPick(Number(draft.round), Number(draft.pick), teamsPerRound))} overall pick of the ${draft.year} ${draftLabel}.`,
         date: fallbackDate,
         type: 'Draft',
         playerIds: [player.internalId],
         kind: 'Draft',
         team: draftTeam,
-        portraitSrc: player.imgURL ?? null,
+        portraitSrc: getPlayerImage(player) ?? null,
       } as any);
     }
 
@@ -188,7 +306,7 @@ export const PlayerBioTransactionsTab: React.FC<PlayerBioTransactionsTabProps> =
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: Math.min(index * 0.03, 0.4), duration: 0.25 }}
             className={`relative bg-slate-900/40 border border-slate-800 hover:border-slate-700 rounded-xl overflow-hidden transition-all hover:bg-slate-900/60 ${entry.kind === 'Trade' && onTradeClick ? 'cursor-pointer' : ''}`}
-            onClick={entry.kind === 'Trade' && onTradeClick ? () => onTradeClick({ text: entry.text, date: entry.date }) : undefined}
+            onClick={entry.kind === 'Trade' && onTradeClick ? () => onTradeClick(entry) : undefined}
           >
             {/* Team color ribbon */}
             {teamColor && (

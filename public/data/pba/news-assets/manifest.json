@@ -1,0 +1,104 @@
+{
+  "version": 1,
+  "scope": "pba_isolated league news only",
+  "source": "Internet Archive captures of public PBA web properties supplied by the project owner on 2026-08-10",
+  "rights": "No reuse license was supplied with these captures. Source attribution is recorded here; all underlying marks and artwork remain with their respective rights holders.",
+  "assets": [
+    {
+      "file": "early-item-framework.jpg",
+      "sourceUrl": "https://web.archive.org/web/20111108014933im_/http://www.pba.ph/images/item-frmwork.jpg",
+      "archiveTimestamp": "2011-11-08T01:49:33Z",
+      "originalUrl": "http://www.pba.ph/images/item-frmwork.jpg",
+      "eras": ["earlyInternet"],
+      "role": "sidebar merchandise promo",
+      "observedContent": "Chunkee Giants jersey product image",
+      "width": 119,
+      "height": 118,
+      "sha256": "CCEACD7C2E88CDBB87B1E4279DF3B9F8B7629F963D26F5145721CA0D4AFABD3F"
+    },
+    {
+      "file": "early-web2-37th-jersey.gif",
+      "sourceUrl": "https://web.archive.org/web/20111108021309im_/http://www.pba.ph/images/37th-w_jersey.gif",
+      "archiveTimestamp": "2011-11-08T02:13:09Z",
+      "originalUrl": "http://www.pba.ph/images/37th-w_jersey.gif",
+      "eras": ["earlyInternet", "web2"],
+      "role": "wide sponsor promotion",
+      "observedContent": "PBA 25 Greatest Players retro jersey launch",
+      "width": 625,
+      "height": 212,
+      "sha256": "F511B7DC14B6E6DC9AA6B9DE7F092268B6EE47E3635242ACB4546E86632386F6"
+    },
+    {
+      "file": "early-web2-pba-logo.jpg",
+      "sourceUrl": "https://web.archive.org/web/20140218004327im_/http://1-ps.googleusercontent.com/h/pba.inquirer.net/wp-content/themes/pba/images/xpba_logo2.jpg,qmod=12112012.pagespeed.ic.mET7zB23dD.jpg",
+      "archiveTimestamp": "2014-02-18T00:43:27Z",
+      "originalUrl": "http://1-ps.googleusercontent.com/h/pba.inquirer.net/wp-content/themes/pba/images/xpba_logo2.jpg,qmod=12112012.pagespeed.ic.mET7zB23dD.jpg",
+      "eras": ["earlyInternet", "web2", "modern"],
+      "role": "league wordmark",
+      "observedContent": "Philippine Basketball Association wordmark",
+      "width": 249,
+      "height": 88,
+      "sha256": "066F23F0F9B831C85B00A38A0C2F2C1FDF0990CBEE57759F5BE738E3DC4E2B78"
+    },
+    {
+      "file": "early-web2-standings.jpg",
+      "sourceUrl": "https://web.archive.org/web/20111108023416im_/http://www.pba.ph/images/mini-banner-pba-standings.jpg",
+      "archiveTimestamp": "2011-11-08T02:34:16Z",
+      "originalUrl": "http://www.pba.ph/images/mini-banner-pba-standings.jpg",
+      "eras": ["earlyInternet", "web2"],
+      "role": "ticket promotion",
+      "observedContent": "PBA ticket price-list callout; archived filename says standings",
+      "width": 225,
+      "height": 113,
+      "sha256": "4CEDD80C53A611C27B226E26029C763DB4284BAB1C0045887DE01EE23ACB5A4A"
+    },
+    {
+      "file": "early-web2-top-5-plays.jpg",
+      "sourceUrl": "https://web.archive.org/web/20120721200912im_/http://www.pba.ph/images/videos/1319990682-Top%205%20Plays_VIDEOThumbnail.jpg",
+      "archiveTimestamp": "2012-07-21T20:09:12Z",
+      "originalUrl": "http://www.pba.ph/images/videos/1319990682-Top%205%20Plays_VIDEOThumbnail.jpg",
+      "eras": ["earlyInternet", "web2"],
+      "role": "video promotion",
+      "observedContent": "Top 5 Plays of the Week thumbnail",
+      "width": 280,
+      "height": 187,
+      "sha256": "A7D2461A19E1D054917499841B691CD9C4C49363D38E2217A49BEDCA2045C61B"
+    },
+    {
+      "file": "modern-betting-ad.png",
+      "sourceUrl": "https://web.archive.org/web/20231120144848im_/https://dashboard.pba.ph/assets/web_ads/MOBILE_805_x_140_px_(approved).png",
+      "archiveTimestamp": "2023-11-20T14:48:48Z",
+      "originalUrl": "https://dashboard.pba.ph/assets/web_ads/MOBILE_805_x_140_px_(approved).png",
+      "eras": ["modern"],
+      "role": "sponsor banner",
+      "observedContent": "Arena Plus sports entertainment promotion",
+      "width": 805,
+      "height": 140,
+      "sha256": "87F451C1421CDE92917374D15AB4FF94F7B59E5EFB4DF00ECA6162A6295AF8B6"
+    },
+    {
+      "file": "web2-logo-glow.png",
+      "sourceUrl": "https://web.archive.org/web/20111012031916im_/http://www.pba.ph/images/logo-glow.png",
+      "archiveTimestamp": "2011-10-12T03:19:16Z",
+      "originalUrl": "http://www.pba.ph/images/logo-glow.png",
+      "eras": ["web2"],
+      "role": "header player montage",
+      "observedContent": "PBA player montage with league mark and transparent background",
+      "width": 922,
+      "height": 395,
+      "sha256": "A3C1903832E3BBE99D0E710D8A5D553C027DD34EB9508AE6D24238F18E4E3A8D"
+    },
+    {
+      "file": "web2-mobile-responsive-ad.jpg",
+      "sourceUrl": "https://web.archive.org/web/20190202124406im_/https://dashboard.pba.ph/assets/web_ads/2mobile-responsive-ad-final.jpg",
+      "archiveTimestamp": "2019-02-02T12:44:06Z",
+      "originalUrl": "https://dashboard.pba.ph/assets/web_ads/2mobile-responsive-ad-final.jpg",
+      "eras": ["web2"],
+      "role": "sponsor banner",
+      "observedContent": "Gillette PBA official razor promotion",
+      "width": 972,
+      "height": 171,
+      "sha256": "F7646E355C9D98EBD7178A6F9EB5F5DBB1446962AC3F25786F22AC47ADAC2349"
+    }
+  ]
+}

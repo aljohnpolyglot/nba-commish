@@ -67,8 +67,9 @@ function inferStaffLeagueContext(player: NBAPlayer): { leagueId: string; market:
   if (candidateTid >= 5000 && candidateTid < 5100) return { leagueId: 'endesa', market: 'euro' };
   if (candidateTid >= 2000 && candidateTid < 2100) return { leagueId: 'pba', market: 'euro' };
   if (candidateTid >= 4000 && candidateTid < 4100) return { leagueId: 'bleague', market: 'euro' };
-  if (candidateTid >= 7000 && candidateTid < 7100) return { leagueId: 'chinacba', market: 'euro' };
-  if (candidateTid >= 8000 && candidateTid < 8100) return { leagueId: 'nblaus', market: 'euro' };
+  if (candidateTid >= 16000 && candidateTid < 17000) return { leagueId: 'gleague', market: 'euro' };
+  if (candidateTid >= 17000 && candidateTid < 18000) return { leagueId: 'chinacba', market: 'euro' };
+  if (candidateTid >= 18000 && candidateTid < 19000) return { leagueId: 'nblaus', market: 'euro' };
   return { leagueId: 'endesa', market: 'euro' };
 }
 

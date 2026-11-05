@@ -2,10 +2,14 @@ import React from 'react';
 import { systemDescriptions } from '../lib/systemDescriptions';
 import { PlayerPortrait } from '../../../../../shared/PlayerPortrait';
 import { CoachingCourtSvg } from './CoachingCourtSvg';
+import { useGame } from '../../../../../../store/GameContext';
+import { getScoutedDisplayOverall } from '../../../../../../utils/scoutingFuzz';
+import { AUTO_COACH_SYSTEM_VALUE } from '../../../../../../store/coachSystemStore';
 
 interface CoachingSystemTabProps {
   team: any;
   selectedSystem: string;
+  autoSystemEnabled: boolean;
   canEdit: boolean;
   isMobile: boolean;
   starters: any[];
@@ -61,18 +65,22 @@ function toTitleCase(value: string) {
   return value ? value.toLowerCase().split(' ').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') : '';
 }
 
-export function CoachingSystemTab({ team, selectedSystem, canEdit, isMobile, starters, onSystemChange }: CoachingSystemTabProps) {
+export function CoachingSystemTab({ team, selectedSystem, autoSystemEnabled, canEdit, isMobile, starters, onSystemChange }: CoachingSystemTabProps) {
+  const { state } = useGame();
+  const currentYear = state.leagueStats?.year ?? 2026;
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex justify-between items-center mb-4">
         <div className="flex items-center gap-3">
           <select
             className={`bg-[#1a1a1a] border border-gray-700 text-white font-bold text-lg md:text-xl py-1 px-2 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 scrollbar-hide ${!canEdit ? 'opacity-70 cursor-not-allowed' : ''}`}
-            value={selectedSystem}
+            value={autoSystemEnabled ? AUTO_COACH_SYSTEM_VALUE : selectedSystem}
             onChange={onSystemChange}
             disabled={!canEdit}
             title={!canEdit ? 'GM mode — read only for other teams' : undefined}
           >
+            <option value={AUTO_COACH_SYSTEM_VALUE}>Auto ({toTitleCase(selectedSystem)})</option>
             {[...team.sortedProfs].sort((a, b) => a[0].localeCompare(b[0])).map(([name]) => (
               <option key={name} value={name}>{toTitleCase(name)}</option>
             ))}
@@ -88,22 +96,26 @@ export function CoachingSystemTab({ team, selectedSystem, canEdit, isMobile, sta
           <div className="relative border-2 border-gray-600 rounded-sm bg-[#1a1a1a] p-4 flex flex-col justify-center items-center min-h-[350px] md:min-h-[400px] overflow-hidden">
             <div className="absolute inset-0 flex items-center justify-center opacity-50"><CoachingCourtSvg /></div>
             <div className="absolute inset-0">
-              {starters.map((starter, index) => (
-                <div key={index} className="absolute flex flex-col items-center z-10" style={getCourtPosition(index, isMobile)}>
-                  <PlayerPortrait
-                    imgUrl={starter.imgURL}
-                    face={(starter as any).face}
-                    playerName={starter.name}
-                    teamLogoUrl={team.imgURL}
-                    overallRating={starter.overallRating}
-                    ratings={starter.ratings}
-                    size={isMobile ? 44 : 56}
-                  />
-                  <div className="text-[10px] md:text-xs font-bold bg-black bg-opacity-70 px-1.5 md:px-2 py-0.5 rounded whitespace-nowrap mt-1">
-                    {formatName(starter.name || `${(starter as any).firstName} ${(starter as any).lastName}`)} | {starter.pos || getPosLabel(index)}
+              {starters.map((starter, index) => {
+                const displayOvr = getScoutedDisplayOverall(state, starter, currentYear);
+                return (
+                  <div key={index} className="absolute flex flex-col items-center z-10" style={getCourtPosition(index, isMobile)}>
+                    <PlayerPortrait
+                      imgUrl={starter.imgURL}
+                      face={(starter as any).face}
+                      playerName={starter.name}
+                      teamLogoUrl={team.imgURL}
+                      overallRating={starter.overallRating}
+                      ratings={starter.ratings}
+                      ovrLabel={String(displayOvr)}
+                      size={isMobile ? 44 : 56}
+                    />
+                    <div className="text-[10px] md:text-xs font-bold bg-black bg-opacity-70 px-1.5 md:px-2 py-0.5 rounded whitespace-nowrap mt-1">
+                      {formatName(starter.name || `${(starter as any).firstName} ${(starter as any).lastName}`)} | {starter.pos || getPosLabel(index)}
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
           <div className="text-center w-full p-4 border border-gray-700 rounded-sm bg-[#1a1a1a] z-10">

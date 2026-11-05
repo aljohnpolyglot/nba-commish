@@ -8,6 +8,7 @@ export interface ExhibitionRulesPack {
   quarterLength: number;
   numQuarters: number;
   overtimeDuration: number;
+  overtimeTargetPoints: number;
 }
 
 export function resolveExhibitionRules(
@@ -21,6 +22,7 @@ export function resolveExhibitionRules(
       quarterLength: 12,
       numQuarters: 4,
       overtimeDuration: 5,
+      overtimeTargetPoints: 7,
     };
   }
 
@@ -32,6 +34,7 @@ export function resolveExhibitionRules(
       quarterLength: leagueStats.allStarQuarterLength,
       numQuarters: leagueStats.allStarNumQuarters,
       overtimeDuration: leagueStats.allStarOvertimeDuration,
+      overtimeTargetPoints: leagueStats.allStarOvertimeTargetPoints,
     },
     risingStars: {
       mirror: leagueStats.risingStarsMirrorLeagueRules,
@@ -40,6 +43,7 @@ export function resolveExhibitionRules(
       quarterLength: leagueStats.risingStarsQuarterLength,
       numQuarters: leagueStats.risingStarsNumQuarters,
       overtimeDuration: leagueStats.risingStarsOvertimeDuration,
+      overtimeTargetPoints: 7,
     },
     celebrity: {
       mirror: leagueStats.celebrityGameMirrorLeagueRules ?? true,
@@ -48,6 +52,7 @@ export function resolveExhibitionRules(
       quarterLength: leagueStats.celebrityGameQuarterLength,
       numQuarters: leagueStats.celebrityGameNumQuarters,
       overtimeDuration: leagueStats.celebrityGameOvertimeDuration,
+      overtimeTargetPoints: 7,
     },
   }[event];
 
@@ -58,15 +63,27 @@ export function resolveExhibitionRules(
       quarterLength: leagueStats.quarterLength ?? 12,
       numQuarters: leagueStats.numQuarters ?? 4,
       overtimeDuration: leagueStats.overtimeDuration ?? 5,
+      overtimeTargetPoints: leagueStats.overtimeTargetPoints ?? 7,
     };
   }
 
   return {
     gameFormat: (config.gameFormat ?? 'timed') as 'timed' | 'target_score' | 'elam_ending',
     targetScore: config.targetScore ?? 100,
-    quarterLength: config.quarterLength ?? 3,
+    quarterLength: config.quarterLength ?? leagueStats.quarterLength ?? 12,
     numQuarters: config.numQuarters ?? 4,
     overtimeDuration: config.overtimeDuration ?? 5,
+    overtimeTargetPoints: config.overtimeTargetPoints ?? 7,
+  };
+}
+
+export function buildExhibitionLeagueStats(
+  leagueStats: Partial<LeagueStats> | any = {},
+  event: ExhibitionEvent,
+): Partial<LeagueStats> {
+  return {
+    ...leagueStats,
+    ...resolveExhibitionRules(leagueStats, event),
   };
 }
 

@@ -4,6 +4,10 @@ import { ChevronRight, X } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import type { NBAPlayer } from '../../../types';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { EURO_BASKETBALL_SOURCE_ARCHIVES, EUROLEAGUE_2026_SOURCE } from '../../../data/euroBasketballSources';
+import { getCanonicalEuroStatCompetitionId } from '../../../services/euro/statsArchive';
+import { computeAge } from '../../../utils/helpers';
+import { getRetirementClassYear } from '../aufgabenShared';
 
 type TeamLogo = {
   tid: number;
@@ -25,17 +29,29 @@ interface Props {
   onClose: () => void;
 }
 
-function isEuroTid(tid: number): boolean {
-  return (tid >= 1000 && tid < 1100) || (tid >= 5000 && tid < 5100);
-}
+const EURO_COMPETITION_IDS = new Set([
+  EUROLEAGUE_2026_SOURCE.competitionId,
+  ...EURO_BASKETBALL_SOURCE_ARCHIVES.map(source => source.competitionId),
+  'endesa',
+  'eurocup',
+]);
 
-function getPlayerAge(player: NBAPlayer, year: number): number {
-  return player.born?.year ? year - player.born.year : player.age ?? 0;
-}
+const EURO_LEAGUE_STATUSES = new Set([
+  EUROLEAGUE_2026_SOURCE.leagueStatus,
+  ...EURO_BASKETBALL_SOURCE_ARCHIVES.map(source => source.leagueStatus),
+  'Endesa',
+  'EuroCup',
+]);
 
-function getEuroStats(player: NBAPlayer): any[] {
+function getEuroStats(player: NBAPlayer, teamsByTid: Map<number, any>): any[] {
   return ((player.stats ?? []) as any[])
-    .filter(stat => !stat.playoffs && (stat.gp ?? 0) > 0 && isEuroTid(Number(stat.tid)));
+    .filter(stat => {
+      if (stat.playoffs || (stat.gp ?? 0) <= 0) return false;
+      const competitionId = getCanonicalEuroStatCompetitionId(stat);
+      if (EURO_COMPETITION_IDS.has(competitionId)) return true;
+      const team = teamsByTid.get(Number(stat.tid));
+      return EURO_LEAGUE_STATUSES.has(String(team?.league ?? ''));
+    });
 }
 
 function getPlayerYearsPro(player: NBAPlayer, stats: any[], classYear: number): number {
@@ -51,9 +67,7 @@ function getPlayerYearsPro(player: NBAPlayer, stats: any[], classYear: number): 
 export default function EuroRetiredPlayersReviewModal({ isOpen, onClose }: Props) {
   const { state, dispatchAction } = useGame();
   const [selectedId, setSelectedId] = useState<string | null>(null);
-  const classYear = state.date
-    ? new Date(state.date).getUTCFullYear()
-    : state.leagueStats?.year ?? new Date().getFullYear();
+  const classYear = getRetirementClassYear(state);
 
   const teamsByTid = useMemo(() => {
     const map = new Map<number, any>();
@@ -68,7 +82,8 @@ export default function EuroRetiredPlayersReviewModal({ isOpen, onClose }: Props
     return (state.players ?? [])
       .filter((player: any) => player.status === 'Retired' && player.retiredYear === classYear)
       .map((player): RetireeRow | null => {
-        const stats = getEuroStats(player);
+        const retirementYear = Number(player.retiredYear ?? classYear);
+        const stats = getEuroStats(player, teamsByTid);
         if (stats.length === 0) return null;
         const byTeam = new Map<number, { tid: number; seasons: Set<number>; gp: number; lastSeason: number }>();
         for (const stat of stats) {
@@ -98,8 +113,8 @@ export default function EuroRetiredPlayersReviewModal({ isOpen, onClose }: Props
         } : null;
         return {
           player,
-          age: getPlayerAge(player, classYear),
-          yearsPro: getPlayerYearsPro(player, stats, classYear),
+          age: computeAge(player, retirementYear),
+          yearsPro: getPlayerYearsPro(player, stats, retirementYear),
           pos: (player as any).pos ?? '',
           teams,
           lastTeam,

@@ -1,6 +1,7 @@
 import type { LucideIcon } from 'lucide-react';
 import type { NBAPlayer } from '../types';
 import { isDraftProspectLike } from '../utils/prospectUtils';
+import { isOnRoster } from '../utils/teamLookup';
 
 export type StaffType = 'gm' | 'owner' | 'coach' | 'referee' | 'league_office';
 
@@ -53,10 +54,9 @@ export function isPlayerEligible(
   if (eligibility.staffOnly) return false;
 
   if (eligibility.requireExpiringContract) {
-    const activeStatuses = context?.euroIsolated || context?.pbaIsolated
-      ? ['Active', 'Euroleague', 'Endesa', 'PBA', 'B-League', 'G-League', 'China CBA', 'NBL Australia']
-      : ['Active'];
-    const onTeam = activeStatuses.includes(player.status as never) && (player.tid ?? -1) >= 0;
+    const onTeam = (context?.euroIsolated || context?.pbaIsolated
+      ? isOnRoster(player)
+      : player.status === 'Active') && (player.tid ?? -1) >= 0;
     if (!onTeam) return false;
     if (context?.userTeamId != null && player.tid !== context.userTeamId) return false;
     if ((player as { twoWay?: boolean }).twoWay) return false;
@@ -99,10 +99,10 @@ export function isPlayerEligible(
   }
 
   if (eligibility.requireActiveNBA) {
-    const activeStatuses = context?.euroIsolated || context?.pbaIsolated
-      ? ['Active', 'Euroleague', 'Endesa', 'PBA', 'B-League', 'G-League', 'China CBA', 'NBL Australia']
-      : ['Active'];
-    if (!activeStatuses.includes(player.status as never) || (player.tid ?? -1) < 0) return false;
+    const activeInMode = context?.euroIsolated || context?.pbaIsolated
+      ? isOnRoster(player)
+      : player.status === 'Active';
+    if (!activeInMode || (player.tid ?? -1) < 0) return false;
     if (eligibility.restrictUserTeamInGM && context?.userTeamId != null && player.tid !== context.userTeamId) return false;
     return true;
   }

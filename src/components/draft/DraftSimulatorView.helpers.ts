@@ -1,18 +1,8 @@
 import type { LeagueStats, NBAPlayer } from '../../types';
 import { buildPbaDraftOrderTeams, getPbaDraftPool, tunePbaDraftProspects } from '../../services/pba/draftRules';
-import { calcOvr2K, calcPot2K } from '../../services/trade/tradeValueEngine';
-
-const EXTERNAL_STATUSES = new Set([
-  'Retired',
-  'WNBA',
-  'Euroleague',
-  'PBA',
-  'B-League',
-  'G-League',
-  'Endesa',
-  'China CBA',
-  'NBL Australia',
-]);
+import { calcOvr2K } from '../../services/trade/tradeValueEngine';
+import { getProspectDisplayPotential } from '../../utils/playerRatings';
+import { buildCanonicalDraftProspectPool, dedupeDraftProspectPool } from '../../services/draft/draftProspectPool';
 
 export type DraftSimulatorProspect = NBAPlayer & {
   displayOvr: number;
@@ -25,7 +15,7 @@ export type DraftSimulatorProspect = NBAPlayer & {
 
 export { buildPbaDraftOrderTeams };
 
-const toDraftProspect = (player: NBAPlayer, currentYear: number): DraftSimulatorProspect => {
+const toDraftProspect = (player: NBAPlayer, currentYear: number, pbaMode: boolean): DraftSimulatorProspect => {
   const lastRatings = player.ratings?.[player.ratings.length - 1] ?? {};
   const gp = (player.stats ?? []).reduce((sum: number, row: any) => sum + (row.gp ?? 0), 0);
   const pts = (player.stats ?? []).reduce((sum: number, row: any) => sum + (row.pts ?? 0), 0);
@@ -38,7 +28,7 @@ const toDraftProspect = (player: NBAPlayer, currentYear: number): DraftSimulator
   return {
     ...player,
     displayOvr: calcOvr2K(player),
-    displayPot: calcPot2K(player, currentYear),
+    displayPot: getProspectDisplayPotential(player, currentYear, undefined, { pbaMode }),
     ppg: gp > 0 ? (pts / gp).toFixed(1) : '—',
     rpg: gp > 0 ? (trb / gp).toFixed(1) : '—',
     apg: gp > 0 ? (ast / gp).toFixed(1) : '—',
@@ -46,24 +36,31 @@ const toDraftProspect = (player: NBAPlayer, currentYear: number): DraftSimulator
   };
 };
 
+export const buildFantasyDraftProspects = (
+  players: NBAPlayer[],
+  leagueYear: number,
+): DraftSimulatorProspect[] => players
+  .filter(player => player.fictionalFantasyDraftEligible === true)
+  .map(player => toDraftProspect(player, leagueYear, false))
+  .sort((a, b) => b.displayOvr - a.displayOvr || b.displayPot - a.displayPot);
+
 export const buildDraftProspects = (
   players: NBAPlayer[],
   leagueYear: number,
   pbaMode: boolean,
-  leagueStats?: Pick<LeagueStats, 'draftEligibilityRule' | 'minAgeRequirement'> | null,
+  leagueStats?: Pick<LeagueStats, 'draftEligibilityRule' | 'minAgeRequirement' | 'uiMode'> | null,
 ): DraftSimulatorProspect[] => {
+  const draftScope = leagueStats?.uiMode === 'wnba_isolated'
+    ? 'wnba'
+    : leagueStats?.uiMode === 'fictional'
+      ? 'fictional'
+      : 'nba';
   const tunedPlayers = pbaMode ? tunePbaDraftProspects(players, leagueYear, leagueStats) : players;
   const basePool = pbaMode
-    ? getPbaDraftPool(tunedPlayers, leagueYear, leagueStats)
-    : players.filter(player => {
-        const isProspect = player.tid === -2 || player.status === 'Prospect' || player.status === 'Draft Prospect';
-        if (!isProspect) return false;
-        if (EXTERNAL_STATUSES.has(player.status ?? '')) return false;
-        const draftYear = (player as any).draft?.year;
-        return draftYear == null || Number(draftYear) === leagueYear;
-      });
+    ? dedupeDraftProspectPool(getPbaDraftPool(tunedPlayers, leagueYear, leagueStats), leagueYear)
+    : buildCanonicalDraftProspectPool(players, leagueYear, draftScope);
 
   return basePool
-    .map(player => toDraftProspect(player as NBAPlayer, leagueYear))
+    .map(player => toDraftProspect(player as NBAPlayer, leagueYear, pbaMode))
     .sort((a, b) => b.displayOvr - a.displayOvr || b.displayPot - a.displayPot);
 };

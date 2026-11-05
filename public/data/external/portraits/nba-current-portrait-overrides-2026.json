@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "currentPortraitYear": 2026,
+  "source": "Official NBA player headshots",
+  "portraits": [
+    {
+      "name": "Narcisse Ngoy",
+      "year": 2026,
+      "url": "https://cdn.nba.com/headshots/nba/latest/1040x760/1643712.png",
+      "playerUrl": "https://www.nba.com/player/1643712/narcisse-ngoy",
+      "currentSupplemental": true
+    }
+  ]
+}

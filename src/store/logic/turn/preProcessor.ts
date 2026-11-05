@@ -4,8 +4,14 @@ import { buildFullDraftSlotMap } from '../../../services/draft/draftClassStrengt
 import { generateTPEsFromTrade } from '../../../utils/tradeExceptionUtils';
 import { applyTradeToPlayer } from '../../../utils/playerBirdRights';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { validateCBATradeRules, type CBATradeValidationResult } from '../../../utils/cbaTradeRules';
+import { consumeBiannualException, recordTeamCapSpaceUse } from '../../../utils/salaryUtils';
+import { isEurostashPlayer, transferEurostashRights } from '../../../services/freeAgency/eurostashRights';
 
-export const preProcessAction = async (state: GameState, action: UserAction): Promise<{ stateForSim: GameState, executiveTradeTransaction?: any }> => {
+export const preProcessAction = async (
+    state: GameState,
+    action: UserAction,
+): Promise<{ stateForSim: GameState; executiveTradeTransaction?: any; actionBlockReason?: string }> => {
     let stateForSim = state;
     let executiveTradeTransaction = null;
     const currentSeason = state.leagueStats?.year ?? new Date().getFullYear();
@@ -50,7 +56,46 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
                 .filter(t => !state.teams.some(nba => nba.id === t.id))),
         ];
         const _ptLotterySlots = buildFullDraftSlotMap((state as any).draftLotteryResult, knownTeams);
-        const tradeResult = executeExecutiveTrade(action.payload, state.players, knownTeams, state.draftPicks, _ptCurrentYear, _ptLotterySlots, state.leagueType);
+        const isForced = !!action.payload?.commissionerForced;
+        const nbaCapTrade = state.leagueStats.uiMode !== 'pba_isolated'
+            && state.leagueStats.uiMode !== 'euro_isolated'
+            && state.teams.some(team => team.id === action.payload.teamAId)
+            && state.teams.some(team => team.id === action.payload.teamBId);
+        let cbaValidation: CBATradeValidationResult | undefined;
+        if (!isForced && nbaCapTrade) {
+            cbaValidation = validateCBATradeRules({
+                teamAId: action.payload.teamAId,
+                teamBId: action.payload.teamBId,
+                teamAPlayers: state.players.filter(player => action.payload.teamAPlayers.includes(player.internalId)),
+                teamBPlayers: state.players.filter(player => action.payload.teamBPlayers.includes(player.internalId)),
+                teamAPicks: state.draftPicks.filter(pick => (action.payload.teamAPicks ?? []).includes(pick.dpid)),
+                teamBPicks: state.draftPicks.filter(pick => (action.payload.teamBPicks ?? []).includes(pick.dpid)),
+                teamACashUSD: action.payload.teamACashUSD ?? 0,
+                teamBCashUSD: action.payload.teamBCashUSD ?? 0,
+                teams: state.teams,
+                players: state.players,
+                leagueStats: state.leagueStats,
+                currentDate: state.date,
+                currentYear: _ptCurrentYear,
+            });
+            if (!cbaValidation.ok) {
+                return {
+                    stateForSim: state,
+                    actionBlockReason: cbaValidation.reason ?? 'Trade violates current cap rules.',
+                };
+            }
+        }
+        const tradeResult = executeExecutiveTrade(
+            action.payload,
+            state.players,
+            knownTeams,
+            state.draftPicks,
+            _ptCurrentYear,
+            _ptLotterySlots,
+            state.leagueType,
+            state.date,
+            state.leagueStats?.uiMode,
+        );
         executiveTradeTransaction = tradeResult.transaction;
 
         let p = [...state.players];
@@ -63,7 +108,9 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
                 const destTid = parseInt(destTidStr);
                 teamAssets.playersSent.forEach(ps => {
                     p = p.map(player => player.internalId === ps.internalId
-                        ? applyTradeToPlayer(player, destTid, currentSeason, 0)
+                        ? isEurostashPlayer(player)
+                            ? transferEurostashRights(player, destTid)
+                            : applyTradeToPlayer(player, destTid, currentSeason, 0)
                         : player);
                 });
                 teamAssets.picksSent.forEach(pick => {
@@ -74,7 +121,6 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
         // Generate TPEs for over-cap teams that sent more salary than they received.
         // Skip when commissioner force-overrides cap rules — those are extra-legal anyway.
         const tpeEnabled = state.leagueStats?.tradeExceptionsEnabled !== false;
-        const isForced = !!action.payload?.commissionerForced;
         let teams = (tpeEnabled && !isForced)
             ? generateTPEsFromTrade(tradeResult.transaction, state.teams, state.players, state.leagueStats, state.date)
             : state.teams;
@@ -91,9 +137,41 @@ export const preProcessAction = async (state: GameState, action: UserAction): Pr
                 return { ...t, cashUsedInTrades: (t.cashUsedInTrades ?? 0) + sent };
             });
         }
-        stateForSim = { ...state, players: p, draftPicks: d, teams };
+        let leagueStats = state.leagueStats;
+        if (cbaValidation?.teamABaeUsedUSD) {
+            leagueStats = consumeBiannualException(leagueStats, {
+                teamId: action.payload.teamAId,
+                amountUSD: cbaValidation.teamABaeUsedUSD,
+                season: currentSeason,
+                currentDate: state.date,
+            });
+        }
+        if (cbaValidation?.teamBBaeUsedUSD) {
+            leagueStats = consumeBiannualException(leagueStats, {
+                teamId: action.payload.teamBId,
+                amountUSD: cbaValidation.teamBBaeUsedUSD,
+                season: currentSeason,
+                currentDate: state.date,
+            });
+        }
+        if (cbaValidation?.teamACapRoomUsedUSD) {
+            leagueStats = recordTeamCapSpaceUse(leagueStats, action.payload.teamAId, currentSeason);
+        }
+        if (cbaValidation?.teamBCapRoomUsedUSD) {
+            leagueStats = recordTeamCapSpaceUse(leagueStats, action.payload.teamBId, currentSeason);
+        }
+        stateForSim = { ...state, players: p, draftPicks: d, teams, leagueStats };
     } else if (action.type === 'FORCE_TRADE') {
-        const tradeResult = await executeForcedTrade(action.payload, state.players, state.teams, state.draftPicks, state.leagueType);
+        const tradeResult = await executeForcedTrade(
+            action.payload,
+            state.players,
+            state.teams,
+            state.draftPicks,
+            state.leagueType,
+            state.date,
+            state.leagueStats?.year,
+            state.leagueStats?.uiMode,
+        );
         if (tradeResult.transaction) {
             let p = [...state.players];
             let d = [...state.draftPicks];

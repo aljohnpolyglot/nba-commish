@@ -1,5 +1,6 @@
 import type { GameState } from '../../types';
 import { copyTextToClipboard, type CheatResult } from './shared';
+import { didHomeTeamWin } from '../gameOutcome';
 
 export async function runTeamCheck(state: GameState): Promise<CheatResult> {
   const boxes = (state.boxScores ?? []).filter((g: any) => {
@@ -34,7 +35,7 @@ export async function runTeamCheck(state: GameState): Promise<CheatResult> {
     const home = ensure((g as any).homeTeamId);
     const away = ensure((g as any).awayTeamId);
     home.gp++; away.gp++;
-    const homeWins = (g as any).homeScore > (g as any).awayScore;
+    const homeWins = didHomeTeamWin(g as any);
     if (homeWins) { home.w++; away.l++; } else { home.l++; away.w++; }
     home.pts += (g as any).homeScore; home.opp += (g as any).awayScore;
     away.pts += (g as any).awayScore; away.opp += (g as any).homeScore;

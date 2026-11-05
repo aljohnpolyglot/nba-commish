@@ -12,15 +12,15 @@ import React, { useEffect, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { ArrowLeftRight, RefreshCw, Clock, CheckCircle, XCircle, Hourglass } from 'lucide-react';
 import { motion } from 'motion/react';
-import type { TradeProposal, NBATeam, NBAPlayer, DraftPick } from '../../../types';
+import type { TradeProposal, NBATeam, NBAPlayer, DraftPick, GameState } from '../../../types';
 import { OfferCard, type FoundOffer, type TradeItem } from './TradeFinderView';
 import { buildClassStrengthMap, buildFullDraftSlotMap, formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { getMaxTradableSeason } from '../../../services/draft/DraftPickGenerator';
 import { teamPowerRanks } from '../../../services/trade/tradeFinderEngine';
 import { TradeMachineModal } from '../../modals/TradeMachineModal';
 import {
-  calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
-  computeLeaguePerAvg,
+  calcPlayerTV, calcPickTV,
+  buildLeagueRelativeTradePercentiles, computeLeaguePerAvg,
   type TeamMode, type TVContext,
 } from '../../../services/trade/tradeValueEngine';
 import {
@@ -31,9 +31,11 @@ import {
 import { getGameDateParts } from '../../../utils/dateUtils';
 import { tradeRoleToTeamMode } from '../../../utils/teamStrategy';
 import { AwardService } from '../../../services/logic/AwardService';
+import { buildCredibleResignExpiringIds } from '../../../services/trade/expiringResignSignal';
 import { getPbaTradeTeams } from '../../../services/pba/tradeWindow';
 import { isOnRoster } from '../../../utils/teamLookup';
 import { isPbaIsolatedMode } from '../../../utils/uiMode';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../utils/scoutingFuzz';
 
 // ── Status tab pill ──────────────────────────────────────────────────────────
 
@@ -61,6 +63,7 @@ function buildOfferFromProposal(
   classStrengthByYear: Map<number, number>,
   lotterySlotByTid: Map<number, number>,
   powerRanks: Map<number, number>,
+  state: GameState,
 ): FoundOffer {
   const items: TradeItem[] = [];
 
@@ -73,8 +76,8 @@ function buildOfferFromProposal(
       label: p.name,
       val: calcPlayerTV(p, theirMode, currentYear, tvContext),
       player: p,
-      ovr: calcOvr2K(p),
-      pot: calcPot2K(p, currentYear),
+      ovr: getScoutedDisplayOverall(state, p, currentYear),
+      pot: getScoutedDisplayPotential(state, p, currentYear, currentYear),
     });
   }
 
@@ -114,6 +117,7 @@ function buildMyItemsFromProposal(
   draftPicks: DraftPick[],
   currentYear: number,
   lotterySlotByTid: Map<number, number>,
+  state: GameState,
 ): TradeItem[] {
   const items: TradeItem[] = [];
   for (const pid of proposal.playersRequested) {
@@ -125,8 +129,8 @@ function buildMyItemsFromProposal(
       label: p.name,
       val: 0,
       player: p,
-      ovr: calcOvr2K(p),
-      pot: calcPot2K(p, currentYear),
+      ovr: getScoutedDisplayOverall(state, p, currentYear),
+      pot: getScoutedDisplayPotential(state, p, currentYear, currentYear),
     });
   }
   for (const dpid of proposal.picksRequested) {
@@ -219,8 +223,18 @@ export const TradeProposalsView: React.FC = () => {
       leaguePerAvg: isRegularSeason ? computeLeaguePerAvg(players, currentYear) : 15,
       isRegularSeason,
       mvpRank,
+      leaguePlayerPercentile: pbaMode
+        ? buildLeagueRelativeTradePercentiles(players, currentYear)
+        : undefined,
+      credibleResignExpiringIds: buildCredibleResignExpiringIds({
+        players,
+        teams,
+        currentYear,
+        date: state.date,
+        leagueStats: state.leagueStats as any,
+      }),
     };
-  }, [players, currentYear, state.date, mvpRank]);
+  }, [pbaMode, players, teams, currentYear, state.date, state.leagueStats, mvpRank]);
 
   // Dynamic pick valuation inputs.
   const classStrengthByYear = useMemo(
@@ -258,9 +272,9 @@ export const TradeProposalsView: React.FC = () => {
   const teamOutlooks = useMemo(() => {
     const map = new Map<number, TradeOutlook>();
     teams.forEach(t => {
-      const manual = resolveManualOutlook(t, state.gameMode, userTid);
+      const manual = resolveManualOutlook(t, state.gameMode, userTid, state.leagueStats?.playIn !== false);
       if (manual) { map.set(t.id, manual); return; }
-      const payroll = getTeamPayrollUSD(players, t.id, t, currentYear);
+      const payroll = getTeamPayrollUSD(players, t.id, t, currentYear, state.leagueStats as any);
       const standings = confStandings.get(t.id);
       const expiring = players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYear).length;
       const rec = effectiveRecord(t, currentYear);
@@ -381,8 +395,9 @@ export const TradeProposalsView: React.FC = () => {
                 proposal, players, draftPicks, teams, currentYear,
                 theirOutlook, theirMode, tvContext,
                 classStrengthByYear, lotterySlotByTid, powerRanks,
+                state,
               );
-              const myItems = buildMyItemsFromProposal(proposal, players, draftPicks, currentYear, lotterySlotByTid);
+              const myItems = buildMyItemsFromProposal(proposal, players, draftPicks, currentYear, lotterySlotByTid, state);
               const team = teams.find(t => t.id === proposal.proposingTeamId);
               const isPending = proposal.status === 'pending';
 

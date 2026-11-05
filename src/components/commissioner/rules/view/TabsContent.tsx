@@ -6,15 +6,23 @@ import { AllStarTab } from './AllStarTab';
 import { NBACupTab } from './NBACupTab';
 import { GameRulesSettings } from './GameRulesSettings';
 import { LeagueHonorsSection } from '../LeagueHonorsSection';
-import { AwardModal } from '../../AwardModal';
+import { AwardsCatalogSection } from '../AwardsCatalogSection';
 import { EconomyTab } from './EconomyTab';
+import {
+    getBalancedFirstRoundByes,
+    getMinimumPlayoffField,
+    getPlayoffBracketCapacity,
+    MAX_PLAYOFF_ROUNDS,
+    MIN_PLAYOFF_ROUNDS,
+} from '../../../../utils/playoffFormat';
 
 interface TabsContentProps {
     activeTab: string;
     rulesState: any;
+    startup?: boolean;
 }
 
-export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState }) => {
+export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState, startup = false }) => {
     const updatePlayoffFormat = (index: number, value: string) => {
         const newFormat = [...rulesState.playoffFormat];
         if (value === '') {
@@ -23,6 +31,40 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
             newFormat[index] = parseInt(value, 10);
         }
         rulesState.setPlayoffFormat(newFormat);
+    };
+
+    const addPlayoffRound = () => {
+        if (rulesState.playoffFormat.length >= MAX_PLAYOFF_ROUNDS) return;
+        const previousLength = rulesState.playoffFormat.length;
+        const previousValue = Number(rulesState.playoffFormat[previousLength - 1]) || 1;
+        const newFormat = [...rulesState.playoffFormat, previousValue];
+        const teamCount = getPlayoffBracketCapacity(newFormat.length);
+        rulesState.setPlayoffFormat(newFormat);
+        rulesState.setNumPlayoffTeams(teamCount);
+        rulesState.setNumPlayoffByes(0);
+    };
+
+    const removePlayoffRound = () => {
+        if (rulesState.playoffFormat.length <= MIN_PLAYOFF_ROUNDS) return;
+        const newFormat = rulesState.playoffFormat.slice(0, -1);
+        const capacity = getPlayoffBracketCapacity(newFormat.length);
+        const minimum = getMinimumPlayoffField(newFormat.length, rulesState.playoffsByConf);
+        const requested = Math.min(capacity, Math.max(minimum, Number(rulesState.numPlayoffTeams) || minimum));
+        const teamCount = rulesState.playoffsByConf && requested % 2 !== 0 ? requested - 1 : requested;
+        rulesState.setPlayoffFormat(newFormat);
+        rulesState.setNumPlayoffTeams(teamCount);
+        rulesState.setNumPlayoffByes(getBalancedFirstRoundByes(teamCount, newFormat.length));
+    };
+
+    const setPlayoffsByConference = (value: boolean) => {
+        rulesState.setPlayoffsByConf(value);
+        if (!value) rulesState.setPlayIn(false);
+        const minimum = getMinimumPlayoffField(rulesState.playoffFormat.length, value);
+        const capacity = getPlayoffBracketCapacity(rulesState.playoffFormat.length);
+        const requested = Math.min(capacity, Math.max(minimum, Number(rulesState.numPlayoffTeams) || minimum));
+        const teamCount = value && requested % 2 !== 0 ? requested - 1 : requested;
+        rulesState.setNumPlayoffTeams(teamCount);
+        rulesState.setNumPlayoffByes(getBalancedFirstRoundByes(teamCount, rulesState.playoffFormat.length));
     };
 
     return (
@@ -36,25 +78,46 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
             >
                 {activeTab === 'Format' && (
                     <FormatTab
+                        playoffsEnabled={rulesState.playoffsEnabled}
+                        setPlayoffsEnabled={rulesState.setPlayoffsEnabled}
                         playIn={rulesState.playIn}
                         setPlayIn={rulesState.setPlayIn}
                         playoffFormat={rulesState.playoffFormat}
                         updatePlayoffFormat={updatePlayoffFormat}
+                        addPlayoffRound={addPlayoffRound}
+                        removePlayoffRound={removePlayoffRound}
+                        numPlayoffTeams={rulesState.numPlayoffTeams}
+                        setNumPlayoffTeams={rulesState.setNumPlayoffTeams}
+                        numPlayoffByes={rulesState.numPlayoffByes}
+                        setNumPlayoffByes={rulesState.setNumPlayoffByes}
+                        playoffsByConf={rulesState.playoffsByConf}
+                        setPlayoffsByConf={setPlayoffsByConference}
                         minGamesRequirement={rulesState.minGamesRequirement}
                         setMinGamesRequirement={rulesState.setMinGamesRequirement}
                         customScheduleEnabled={rulesState.customScheduleEnabled}
                         setCustomScheduleEnabled={rulesState.setCustomScheduleEnabled}
+                        leagueCalendar={rulesState.leagueCalendar}
+                        setLeagueCalendar={rulesState.setLeagueCalendar}
                         gamesPerSeason={rulesState.gamesPerSeason}
                         setGamesPerSeason={rulesState.setGamesPerSeason}
                         divisionGames={rulesState.divisionGames}
                         setDivisionGames={rulesState.setDivisionGames}
                         conferenceGames={rulesState.conferenceGames}
                         setConferenceGames={rulesState.setConferenceGames}
+                        preseasonGamesPerTeam={rulesState.preseasonGamesPerTeam}
+                        setPreseasonGamesPerTeam={rulesState.setPreseasonGamesPerTeam}
+                        jerseyPatchProgramEnabled={rulesState.jerseyPatchProgramEnabled}
+                        setJerseyPatchProgramEnabled={rulesState.setJerseyPatchProgramEnabled}
+                        uiMode={rulesState.uiMode}
+                        seasonYear={rulesState.seasonYear}
+                        inSeasonTournament={rulesState.inSeasonTournament}
+                        allStarGameEnabled={rulesState.allStarGameEnabled}
+                        summerLeagueEnabled={rulesState.summerLeagueEnabled}
                     />
                 )}
 
                 {activeTab === 'NBA Cup' && (
-                    <NBACupTab rules={rulesState.rules} setRule={rulesState.setRule} />
+                    <NBACupTab rules={rulesState.rules} setRule={rulesState.setRule} startup={startup} />
                 )}
 
                 {activeTab === 'Draft' && (
@@ -69,12 +132,14 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
 
                 {activeTab === 'Honors' && (
                     <div className="space-y-6">
+                        {!rulesState.isPbaMode && (
+                            <AwardsCatalogSection
+                                leagueStats={startup ? rulesState.rules : undefined}
+                                uiMode={startup ? 'fictional' : undefined}
+                                onAwardSettingsChange={startup ? settings => rulesState.setRule('awardSettings', settings) : undefined}
+                            />
+                        )}
                         <LeagueHonorsSection 
-                            localAwards={rulesState.localAwards}
-                            expandedAward={rulesState.expandedAward}
-                            setExpandedAward={rulesState.setExpandedAward}
-                            handleRemoveAward={rulesState.handleRemoveAward}
-                            setAwardModalOpen={rulesState.setAwardModalOpen}
                             allNbaTeams={rulesState.allNbaTeams}
                             setAllNbaTeams={rulesState.setAllNbaTeams}
                             allNbaPlayersPerTeam={rulesState.allNbaPlayersPerTeam}
@@ -89,14 +154,8 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                             setAllRookiePlayersPerTeam={rulesState.setAllRookiePlayersPerTeam}
                             positionlessAwards={rulesState.positionlessAwards}
                             setPositionlessAwards={rulesState.setPositionlessAwards}
+                            fictional={startup}
                         />
-                        {rulesState.awardModalOpen && (
-                            <AwardModal 
-                                onClose={() => rulesState.setAwardModalOpen(false)}
-                                onAdd={rulesState.handleAddAward}
-                                isGenerating={rulesState.isGeneratingAward}
-                            />
-                        )}
                     </div>
                 )}
 
@@ -111,7 +170,9 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                 )}
 
                 {activeTab === 'Economy' && (
-                    <EconomyTab 
+                    <EconomyTab
+                        startupSeasonYear={startup ? rulesState.rules.year : undefined}
+                        uiMode={rulesState.uiMode}
                         draftType={rulesState.draftType}
                         currency={rulesState.currency}
                         setCurrency={rulesState.setCurrency}
@@ -161,6 +222,18 @@ export const TabsContent: React.FC<TabsContentProps> = ({ activeTab, rulesState 
                         setPostSigningMoratoriumEnabled={rulesState.setPostSigningMoratoriumEnabled}
                         twoWayContractsEnabled={rulesState.twoWayContractsEnabled}
                         setTwoWayContractsEnabled={rulesState.setTwoWayContractsEnabled}
+                        developmentalContractsEnabled={rulesState.developmentalContractsEnabled}
+                        setDevelopmentalContractsEnabled={rulesState.setDevelopmentalContractsEnabled}
+                        maxDevelopmentalPlayersPerTeam={rulesState.maxDevelopmentalPlayersPerTeam}
+                        setMaxDevelopmentalPlayersPerTeam={rulesState.setMaxDevelopmentalPlayersPerTeam}
+                        developmentalMaxServiceYears={rulesState.developmentalMaxServiceYears}
+                        setDevelopmentalMaxServiceYears={rulesState.setDevelopmentalMaxServiceYears}
+                        developmentalMaxGames={rulesState.developmentalMaxGames}
+                        setDevelopmentalMaxGames={rulesState.setDevelopmentalMaxGames}
+                        developmentalWeeklyStipendUSD={rulesState.developmentalWeeklyStipendUSD}
+                        setDevelopmentalWeeklyStipendUSD={rulesState.setDevelopmentalWeeklyStipendUSD}
+                        developmentalActiveGameBonusUSD={rulesState.developmentalActiveGameBonusUSD}
+                        setDevelopmentalActiveGameBonusUSD={rulesState.setDevelopmentalActiveGameBonusUSD}
                         nonGuaranteedContractsEnabled={rulesState.nonGuaranteedContractsEnabled ?? true}
                         setNonGuaranteedContractsEnabled={rulesState.setNonGuaranteedContractsEnabled}
                         minPlayersPerTeam={rulesState.minPlayersPerTeam}

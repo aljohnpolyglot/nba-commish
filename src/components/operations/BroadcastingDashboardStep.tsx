@@ -19,6 +19,7 @@ type BroadcastingDashboardStepProps = {
   phaseName: (phase: { id: string; name: string }) => string;
   handleNext: () => void;
   readOnly: boolean;
+  historicalDefault: boolean;
 };
 
 export const BroadcastingDashboardStep: React.FC<BroadcastingDashboardStepProps> = ({
@@ -30,6 +31,7 @@ export const BroadcastingDashboardStep: React.FC<BroadcastingDashboardStepProps>
   phaseName,
   handleNext,
   readOnly,
+  historicalDefault,
 }) => (
   <motion.div
     key="dashboard"
@@ -40,11 +42,20 @@ export const BroadcastingDashboardStep: React.FC<BroadcastingDashboardStepProps>
   >
     <div>
       <h2 className="text-3xl font-black text-white tracking-tighter uppercase italic">Financial Dashboard</h2>
-      <p className="text-zinc-500 text-sm mt-1">Real-time projection of your media rights deal.</p>
+      <p className="text-zinc-500 text-sm mt-1">
+        {historicalDefault ? 'Locked national agreement for this broadcast era.' : 'Current projection of the active media rights deal.'}
+      </p>
     </div>
 
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard icon={DollarSign} label="Total Expected Rev" value={`$${metrics.totalRev.toFixed(2)}B`} subValue={`Target: $${TOTAL_REV_TARGET}B`} color="emerald" trend={((metrics.totalRev / TOTAL_REV_TARGET) - 1) * 100} />
+      <StatCard
+        icon={DollarSign}
+        label="Total Expected Rev"
+        value={`$${metrics.totalRev.toFixed(2)}B`}
+        subValue={historicalDefault ? 'Nominal value for this era' : `Target: $${TOTAL_REV_TARGET}B`}
+        color="emerald"
+        trend={historicalDefault ? null : ((metrics.totalRev / TOTAL_REV_TARGET) - 1) * 100}
+      />
       <StatCard icon={Users} label="Est. Viewership" value={`${metrics.viewership.toFixed(1)}M`} subValue="Avg. per marquee game" color="blue" trend={null} />
       <StatCard icon={ThumbsUp} label="Fan Approval" value={metrics.approvalGrade} subValue={metrics.approval > 0.8 ? 'Beloved deal' : 'Fan backlash risk'} color="amber" trend={null} />
       <StatCard icon={Zap} label="Market Reach" value={`${Math.round(metrics.avgReach * 100)}%`} subValue="Global penetration" color="indigo" trend={null} />
@@ -55,7 +66,7 @@ export const BroadcastingDashboardStep: React.FC<BroadcastingDashboardStepProps>
         <h3 className="text-xl font-black text-white uppercase italic mb-6">Expected Revenue Mix</h3>
         <div className="space-y-6">
           {[
-            { label: 'Base Revenue (Sponsorship/Merch/Tickets)', val: 6.9, color: 'bg-zinc-500' },
+            { label: 'Base Revenue (Sponsorship/Merch/Tickets)', val: Math.max(0, metrics.totalRev - metrics.mediaRev - metrics.lpRev), color: 'bg-zinc-500' },
             { label: 'National TV Rights', val: metrics.mediaRev, color: 'bg-emerald-500' },
             { label: 'League Pass D2C', val: metrics.lpRev, color: 'bg-indigo-500' },
           ].map(({ label, val, color }) => (
@@ -75,7 +86,9 @@ export const BroadcastingDashboardStep: React.FC<BroadcastingDashboardStepProps>
           <div>
             <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Salary Cap Projection</div>
             <div className="text-3xl font-black text-white">${dispSalaryCap.toFixed(1)}M</div>
-            <div className="text-[10px] text-emerald-400 font-bold uppercase">Dynamic (Rev-based)</div>
+            <div className="text-[10px] text-emerald-400 font-bold uppercase">
+              {historicalDefault ? 'Historical nominal cap' : 'Dynamic (Rev-based)'}
+            </div>
           </div>
           <div>
             <div className="text-[10px] font-bold text-zinc-500 uppercase tracking-widest mb-1">Player Share (51%)</div>

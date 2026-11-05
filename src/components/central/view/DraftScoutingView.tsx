@@ -4,7 +4,6 @@ import type { NBAPlayer } from '../../../types';
 import { ChevronLeft, ChevronRight, Search, Target } from 'lucide-react';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { DraftScoutingModal } from '../../draft/DraftScoutingModal';
-import { PlayerBioView } from './PlayerBioView';
 import { buildMockDraft } from '../../../services/draftAdvisor';
 import { buildFullDraftSlotMap } from '../../../services/draft/draftClassStrength';
 import { getCapThresholds } from '../../../utils/salaryUtils';
@@ -14,63 +13,93 @@ import { isPbaIsolatedMode } from '../../../utils/uiMode';
 import { buildPbaDraftOrderTeams } from '../../draft/DraftSimulatorView.helpers';
 import { isOnRoster } from '../../../utils/teamLookup';
 import { getPbaComparisonPool } from '../../../services/pba/draftRules';
+import { getCurrentDraftClassYear } from '../../../services/draft/DraftPickGenerator';
 import {
   ensureDraftScouting,
   getCachedDraftScouting,
   type GistProspect,
 } from '../../../services/draftScoutingGist';
+import { ensureFullRosterPlayerDataLoaded, ensurePortraitLookupsLoaded } from '../../../data/realPlayerDataFetcher';
 import {
-  getClassPercentiles,
-  getClassAverages,
   computeSkillScores,
   batchComparisonsDeduped,
   SKILL_AXES,
-  type ClassPercentileMaps,
   type SkillAxis,
 } from '../../../services/scoutingReport';
 import {
   buildMockProspects,
+  getDraftScoutingYearRange,
   matchesPosFilter,
   MockProspect,
   PosFilter,
   POS_FILTERS,
 } from './draftScoutingViewShared';
+import { fuzzDraftRatingValue } from '../../../utils/scoutingFuzz';
+import { isExternalLeaguePlayer } from '../../../utils/playerLeagueScope';
+import { PlayerActionsModal } from '../../shared/PlayerActionsModal';
+import { isPrimaryNbaComparisonCandidate } from '../../draft/DraftScoutingModalShared';
+import { loadNbaEraPortraitCatalog } from '../../../services/nbaEraPortraitCatalog';
+import { getProspectCollege, getProspectPreDraftClub } from '../../../utils/prospectUtils';
 export { prefetchDraftScouting } from '../../../services/draftScoutingGist';
 
-export const DraftScoutingView: React.FC = () => {
-  const { state } = useGame();
-  const pbaMode = isPbaIsolatedMode(state);
+interface DraftScoutingViewProps {
+  initialYear?: number;
+}
 
-  const baseYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const defaultDraftYear = state.draftComplete ? baseYear + 1 : baseYear;
-  const [selectedYear, setSelectedYear] = useState(defaultDraftYear);
+export const DraftScoutingView: React.FC<DraftScoutingViewProps> = ({ initialYear }) => {
+  const { state, dispatchAction, setCurrentView, navigateToPlayer } = useGame();
+  const pbaMode = isPbaIsolatedMode(state);
+  const isFictional = state.leagueType === 'fictional';
+  const draftScope = state.leagueStats?.uiMode === 'wnba_isolated'
+    ? 'wnba' as const
+    : isFictional ? 'fictional' as const : 'nba' as const;
+  const scopedPlayers = useMemo(
+    () => isFictional ? state.players.filter(player => !isExternalLeaguePlayer(player)) : state.players,
+    [isFictional, state.players],
+  );
+
+  const defaultDraftYear = getCurrentDraftClassYear(state);
+  const [selectedYear, setSelectedYear] = useState(() => Number.isSafeInteger(initialYear) ? Number(initialYear) : defaultDraftYear);
+  const previousDefaultDraftYear = React.useRef(defaultDraftYear);
   const [posFilter, setPosFilter] = useState<PosFilter>('All');
   const [searchTerm, setSearchTerm] = useState('');
   const [scoutingPlayer, setScoutingPlayer] = useState<MockProspect | null>(null);
-  const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
+  const [actionsPlayer, setActionsPlayer] = useState<MockProspect | null>(null);
   const [skillFilter, setSkillFilter] = useState<SkillAxis | null>(null);
-  const [gistData, setGistData] = useState<GistProspect[] | null>(getCachedDraftScouting(selectedYear) ?? null);
-  const { minYear, maxYear } = useMemo(() => {
-    const floor = state.draftComplete ? baseYear + 1 : baseYear;
-    let lo = floor, hi = floor, seen = false;
-    for (const p of state.players) {
-      if (p.tid !== -2) continue;
-      const dy = (p as any).draft?.year;
-      if (typeof dy !== 'number' || dy < floor) continue;
-      if (!seen) { lo = hi = dy; seen = true; }
-      else { if (dy < lo) lo = dy; if (dy > hi) hi = dy; }
-    }
-    if (!seen) return { minYear: floor, maxYear: floor + 4 };
-    return { minYear: lo, maxYear: Math.max(hi, floor + 4) };
-  }, [state.players, baseYear, state.draftComplete]);
+  const [gistData, setGistData] = useState<GistProspect[] | null>(() => isFictional ? null : getCachedDraftScouting(selectedYear) ?? null);
+  const [sourcePortraitVersion, setSourcePortraitVersion] = useState(0);
+  const { minYear, maxYear } = useMemo(
+    () => getDraftScoutingYearRange(scopedPlayers, defaultDraftYear, pbaMode ? 'pba' : draftScope, state.leagueStats, initialYear),
+    [scopedPlayers, defaultDraftYear, draftScope, initialYear, pbaMode, state.leagueStats],
+  );
+
+  useEffect(() => {
+    const previousDefault = previousDefaultDraftYear.current;
+    setSelectedYear(year => (
+      year === previousDefault || year < minYear || year > maxYear
+        ? defaultDraftYear
+        : year
+    ));
+    previousDefaultDraftYear.current = defaultDraftYear;
+  }, [defaultDraftYear, maxYear, minYear]);
 
   const draftYear = selectedYear;
   const currentLeagueYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const prospectOrigin = (player: MockProspect): string | undefined => (
+    getProspectCollege(player)
+    || getProspectPreDraftClub(player, {
+      currentSeason: draftYear,
+      completedThrough: Math.min(draftYear, currentLeagueYear),
+      teams: [...state.teams, ...(state.nonNBATeams ?? [])],
+    })?.name
+    || String(player.gistMatch?.college ?? '').trim()
+    || undefined
+  );
   const currentDateNorm = normalizeDate(state.date ?? '');
   const currentCombineDate = toISODateString(getDraftCombineStartDate(currentLeagueYear, state.leagueStats as any));
   const showCombineTab = draftYear < currentLeagueYear || (draftYear === currentLeagueYear && currentDateNorm >= currentCombineDate);
   useEffect(() => {
-    if (pbaMode) {
+    if (pbaMode || isFictional) {
       setGistData(null);
       return;
     }
@@ -86,39 +115,40 @@ export const DraftScoutingView: React.FC = () => {
       setGistData(data);
     });
     return () => { cancelled = true; };
-  }, [draftYear, pbaMode]);
+  }, [draftYear, isFictional, pbaMode]);
+  useEffect(() => {
+    if (pbaMode || isFictional) return;
+    let cancelled = false;
+    Promise.all([ensureFullRosterPlayerDataLoaded(), ensurePortraitLookupsLoaded(), loadNbaEraPortraitCatalog()])
+      .then(() => {
+        if (!cancelled) setSourcePortraitVersion(version => version + 1);
+      })
+      .catch(() => {});
+    return () => { cancelled = true; };
+  }, [isFictional, pbaMode]);
   const prospects = useMemo<MockProspect[]>(() => {
-    return buildMockProspects(state.players, currentLeagueYear, draftYear, gistData, pbaMode, state.leagueStats);
-  }, [state.players, draftYear, currentLeagueYear, gistData, pbaMode, state.leagueStats]);
+    return buildMockProspects(scopedPlayers, currentLeagueYear, draftYear, gistData, pbaMode, state.leagueStats, !isFictional, draftScope);
+  }, [scopedPlayers, draftYear, currentLeagueYear, gistData, isFictional, pbaMode, state.leagueStats, sourcePortraitVersion, draftScope]);
 
   // Active NBA players — the comparison pool for findTopComparisons in the modal.
   const activePlayers = useMemo(() =>
-    (pbaMode
-      ? getPbaComparisonPool(state.players)
-      : state.players.filter(p =>
-          p.tid >= 0 &&
+      (pbaMode
+      ? getPbaComparisonPool(scopedPlayers)
+      : scopedPlayers.filter(p =>
+          isPrimaryNbaComparisonCandidate(p) &&
           isOnRoster(p) &&
           p.status !== 'Draft Prospect' &&
           p.status !== 'Prospect' &&
           ((p as any).draft?.year ?? 0) < currentLeagueYear,
         )),
-  [state.players, currentLeagueYear, pbaMode]);
-  const classAverages = useMemo(() => getClassAverages(prospects), [prospects]);
-  const percentilesByPos = useMemo(() => {
-    const m = new Map<string, ClassPercentileMaps>();
-    m.set('Guard', getClassPercentiles(prospects, 'Guard'));
-    m.set('Forward', getClassPercentiles(prospects, 'Forward'));
-    m.set('Center', getClassPercentiles(prospects, 'Center'));
-    m.set('Class', getClassPercentiles(prospects, 'Class'));
-    return m;
-  }, [prospects]);
+  [scopedPlayers, currentLeagueYear, pbaMode]);
   const batchComps = useMemo(
-    () => batchComparisonsDeduped(prospects, activePlayers),
-    [prospects, activePlayers],
+    () => batchComparisonsDeduped(prospects, activePlayers, 3, 3, pbaMode ? 'pba' : 'nba'),
+    [prospects, activePlayers, pbaMode],
   );
   const draftOrder = useMemo(() => {
     if (pbaMode) {
-      return buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], currentLeagueYear);
+      return buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], currentLeagueYear, 0, state.draftPicks);
     }
     if (draftYear !== currentLeagueYear) {
       return [...state.teams]
@@ -165,7 +195,7 @@ export const DraftScoutingView: React.FC = () => {
     return [...r1, ...r2];
   }, [pbaMode, state.teams, state.nonNBATeams, state.boxScores, state.draftLotteryResult, (state as any).draftPicks, draftYear, currentLeagueYear]);
   const prospectsHash = useMemo(
-    () => prospects.map(p => `${p.internalId}:${p.displayOvr}:${p.displayPot}`).join('|'),
+    () => prospects.map(p => `${p.internalId}:${p.displayOvr}:${p.displayPot}:${p.imgURL ?? ''}`).join('|'),
     [prospects],
   );
   const teamsHash = useMemo(
@@ -186,16 +216,16 @@ export const DraftScoutingView: React.FC = () => {
       prospects,
       draftOrder,
       allTeams: pbaMode
-        ? buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], currentLeagueYear)
+        ? buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], currentLeagueYear, 0, state.draftPicks)
         : state.teams,
-      allPlayers: state.players,
+      allPlayers: scopedPlayers,
       leagueStats: state.leagueStats,
       thresholds,
       gameMode: state.gameMode,
       userTeamId: state.userTeamId ?? null,
       currentYear: currentLeagueYear,
     });
-  }, [draftYear, prospectsHash, teamsHash, draftOrderHash]);
+  }, [draftOrderHash, draftYear, prospectsHash, scopedPlayers, teamsHash]);
   const skillTopSet = useMemo(() => {
     if (!skillFilter) return null;
     const scored = prospects.map(p => ({
@@ -231,9 +261,20 @@ export const DraftScoutingView: React.FC = () => {
     prospects.filter(p => !draftedIds.has(p.internalId)),
     [prospects, draftedIds],
   );
-  if (viewingBioPlayer) {
-    return <PlayerBioView player={viewingBioPlayer} onBack={() => setViewingBioPlayer(null)} />;
-  }
+  const handleProspectAction = (action: string) => {
+    const player = actionsPlayer;
+    if (!player) return;
+    setActionsPlayer(null);
+    if (action === 'view_bio') navigateToPlayer(player);
+    else if (action === 'view_scouting') setScoutingPlayer(player);
+    else if (action === 'contact_agent') {
+      dispatchAction({
+        type: 'UPDATE_STATE',
+        payload: { pendingFreeAgentAgentContact: { playerId: player.internalId } },
+      } as any);
+      setCurrentView('Messages' as any);
+    }
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full bg-slate-950 text-slate-200 overflow-hidden">
@@ -245,7 +286,7 @@ export const DraftScoutingView: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-black text-white uppercase tracking-tight">Mock Draft</h1>
-              <p className="text-sm text-slate-400">Projected pick by pick — click any slot for a full scouting report</p>
+              <p className="text-sm text-slate-400">Projected pick by pick — select a prospect to view bio, scouting, or contact their agent</p>
             </div>
           </div>
           <div className="flex items-center gap-1 bg-slate-800/80 border border-slate-700 rounded-xl px-3 py-2">
@@ -322,18 +363,12 @@ export const DraftScoutingView: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto p-4 md:p-6 custom-scrollbar">
         {!hasRawProspects ? (
-          <div className="text-center p-12 text-slate-400 space-y-2">
-            <p className="text-base font-bold text-white">
-              {pbaMode
-                ? `No PBA draft prospects are available for the ${draftYear} class yet.`
-                : `The ${draftYear} draft class hasn't been generated yet.`}
-            </p>
-            <p className="text-sm">
-              {pbaMode
-                ? 'Eligible local prospects will appear here once they enter the draft pool.'
-                : `Rookie classes are seeded at the start of each season — check back after the league rolls over into ${draftYear}.`}
-            </p>
-          </div>
+          pbaMode ? (
+            <div className="text-center p-12 text-slate-400 space-y-2">
+              <p className="text-base font-bold text-white">No PBA draft prospects are available for the {draftYear} class yet.</p>
+              <p className="text-sm">Eligible local prospects will appear here once they enter the draft pool.</p>
+            </div>
+          ) : null
         ) : mockDraft.length === 0 && undraftedProspects.length === 0 ? (
           <div className="text-center p-12 text-slate-400">
             <p className="text-sm">Draft order isn't available for the {draftYear} class yet.</p>
@@ -349,10 +384,15 @@ export const DraftScoutingView: React.FC = () => {
                     const team = slot.team;
                     const matched = matchesHighlight(p);
                     const dim = isFilterActive && !matched;
+                    const displayOvr = p ? fuzzDraftRatingValue(p.displayOvr ?? 0, state, p as NBAPlayer, 'ovr') : null;
+                    const displayPot = p ? Math.max(fuzzDraftRatingValue(p.displayPot ?? 0, state, p as NBAPlayer, 'pot'), displayOvr ?? 0) : null;
                     return (
                       <button
                         key={slot.pick}
-                        onClick={() => p && setScoutingPlayer(p)}
+                        data-testid={p ? 'draft-prospect-card' : undefined}
+                        data-player-id={p?.internalId}
+                        data-draft-year={draftYear}
+                        onClick={() => p && setActionsPlayer(p)}
                         disabled={!p}
                         className={`group bg-[#1A1A1A] border border-[#333] rounded-sm flex h-20 overflow-hidden transition-all text-left ${
                           p ? 'cursor-pointer hover:border-indigo-600' : 'cursor-default'
@@ -369,6 +409,9 @@ export const DraftScoutingView: React.FC = () => {
                               imgUrl={p.imgURL || p.gistMatch?.headshot}
                               face={(p as any).face}
                               playerName={p.name}
+                              playerIdentity={p}
+                              portraitSeason={draftYear}
+                              isDraftProspect
                               size={56}
                             />
                           ) : (
@@ -386,13 +429,13 @@ export const DraftScoutingView: React.FC = () => {
                                 <span className="text-white/20">·</span>
                                 <span>{p.derivedAge}y</span>
                                 <span className="text-white/20">·</span>
-                                <span className="text-indigo-300">OVR {p.displayOvr}</span>
+                                <span className="text-indigo-300">OVR {displayOvr}</span>
                                 <span className="text-white/20">·</span>
-                                <span className="text-emerald-400/70">POT {p.displayPot}</span>
-                                {((p as any).college || p.gistMatch?.college) && (
+                                <span className="text-emerald-400/70">POT {displayPot}</span>
+                                {prospectOrigin(p) && (
                                   <>
                                     <span className="text-white/20">·</span>
-                                    <span className="truncate">{(p as any).college || p.gistMatch?.college}</span>
+                                    <span className="truncate">{prospectOrigin(p)}</span>
                                   </>
                                 )}
                               </div>
@@ -429,10 +472,15 @@ export const DraftScoutingView: React.FC = () => {
                   {undraftedProspects.map(p => {
                     const matched = matchesHighlight(p);
                     const dim = isFilterActive && !matched;
+                    const displayOvr = fuzzDraftRatingValue(p.displayOvr ?? 0, state, p as NBAPlayer, 'ovr');
+                    const displayPot = Math.max(fuzzDraftRatingValue(p.displayPot ?? 0, state, p as NBAPlayer, 'pot'), displayOvr);
                     return (
                       <button
                         key={p.internalId}
-                        onClick={() => setScoutingPlayer(p)}
+                        data-testid="draft-prospect-card"
+                        data-player-id={p.internalId}
+                        data-draft-year={draftYear}
+                        onClick={() => setActionsPlayer(p)}
                         className={`group bg-[#1A1A1A] border border-[#333] rounded-sm flex h-20 overflow-hidden transition-all text-left cursor-pointer hover:border-slate-500 ${
                           dim ? 'opacity-25' : 'opacity-100'
                         } ${matched && isFilterActive ? 'border-amber-500/70 shadow-[0_0_14px_rgba(245,158,11,0.25)]' : ''}`}
@@ -448,6 +496,9 @@ export const DraftScoutingView: React.FC = () => {
                             imgUrl={p.imgURL || p.gistMatch?.headshot}
                             face={(p as any).face}
                             playerName={p.name}
+                            playerIdentity={p}
+                            portraitSeason={draftYear}
+                            isDraftProspect
                             size={56}
                           />
                         </div>
@@ -460,13 +511,13 @@ export const DraftScoutingView: React.FC = () => {
                             <span className="text-white/20">·</span>
                             <span>{p.derivedAge}y</span>
                             <span className="text-white/20">·</span>
-                            <span className="text-indigo-300">OVR {p.displayOvr}</span>
+                            <span className="text-indigo-300">OVR {displayOvr}</span>
                             <span className="text-white/20">·</span>
-                            <span className="text-emerald-400/70">POT {p.displayPot}</span>
-                            {((p as any).college || p.gistMatch?.college) && (
+                            <span className="text-emerald-400/70">POT {displayPot}</span>
+                            {prospectOrigin(p) && (
                               <>
                                 <span className="text-white/20">·</span>
-                                <span className="truncate">{(p as any).college || p.gistMatch?.college}</span>
+                                <span className="truncate">{prospectOrigin(p)}</span>
                               </>
                             )}
                           </div>
@@ -487,13 +538,19 @@ export const DraftScoutingView: React.FC = () => {
       </div>
 
       {/* Shared scouting modal */}
+      {actionsPlayer && (
+        <PlayerActionsModal
+          player={actionsPlayer}
+          context="draft-scouting"
+          onClose={() => setActionsPlayer(null)}
+          onActionSelect={handleProspectAction}
+        />
+      )}
       <DraftScoutingModal
         player={scoutingPlayer}
         onClose={() => setScoutingPlayer(null)}
         classProspects={prospects}
         activePlayers={activePlayers}
-        percentilesByPos={percentilesByPos}
-        classAverages={classAverages}
         draftYear={draftYear}
         gistData={scoutingPlayer?.gistMatch ?? null}
         ranks={scoutingPlayer ? {
@@ -506,7 +563,7 @@ export const DraftScoutingView: React.FC = () => {
           const slot = mockDraft.find(s => s.prospect?.internalId === scoutingPlayer.internalId);
           return (slot?.team as any)?.logoUrl;
         })()}
-        onViewPlayerBio={(p) => setViewingBioPlayer(p)}
+        onViewPlayerBio={navigateToPlayer}
         preComputedComps={scoutingPlayer ? batchComps.get(scoutingPlayer.internalId) : undefined}
         showCombineTab={showCombineTab}
       />

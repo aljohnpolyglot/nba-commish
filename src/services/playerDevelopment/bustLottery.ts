@@ -19,17 +19,23 @@
  */
 
 import { NBAPlayer } from '../../types';
-import { calculatePlayerOverallForYear } from '../../utils/playerRatings';
+import { calculatePlayerOverallForYear, resolvePotentialBbgm } from '../../utils/playerRatings';
 import { calculateLeagueOverall } from '../logic/leagueOvr';
+import { EXTERNAL_MENS_LEAGUE_STATUSES } from '../../constants';
+import { simDebug } from '../../utils/simDebug';
 
-const EXTERNAL_LEAGUE_STATUSES = new Set([
-  'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa',
-]);
+const EXTERNAL_LEAGUE_STATUSES = new Set(EXTERNAL_MENS_LEAGUE_STATUSES);
 
 function isNBAActive(p: NBAPlayer): boolean {
   const s = p.status ?? 'Active';
   return s !== 'Free Agent' && !EXTERNAL_LEAGUE_STATUSES.has(s) && s !== 'WNBA'
       && s !== 'Draft Prospect' && s !== 'Prospect' && s !== 'Retired';
+}
+function isHistoricalRealPlayer(p: NBAPlayer): boolean {
+  return typeof (p as any).srID === 'string' || typeof (p as any).slug === 'string';
+}
+function getPlayerAge(p: NBAPlayer, currentYear: number): number {
+  return (p as any).born?.year ? currentYear - (p as any).born.year : (typeof (p as any).age === 'number' && (p as any).age > 0 ? (p as any).age : 25);
 }
 
 // ─── Seeded RNG ────────────────────────────────────────────────────────────────
@@ -153,9 +159,12 @@ export function markBustLottery(
       nbaPicks: 21, extPicks: 9,
       // Wider POT–OVR gap = more bust candidate (Brandon Jennings / MarShon Brooks)
       weight: p => {
-        const lastRating = (p as any).ratings?.[(p as any).ratings.length - 1];
-        const pot: number = lastRating?.pot ?? 70;
-        const ovr = p.overallRating ?? 60;
+        const ratings = ((p as any).ratings ?? []) as any[];
+        const rating = ratings.find(r => Number(r?.season ?? 0) === currentYear) ?? ratings[ratings.length - 1];
+        const age = getPlayerAge(p, currentYear);
+        const ovr = Number(rating?.ovr ?? p.overallRating ?? 60);
+        const storedPot = Number(rating?.pot ?? (p as any).potential ?? 70);
+        const pot = resolvePotentialBbgm(ovr, age, isHistoricalRealPlayer(p) ? undefined : storedPot);
         return Math.pow(Math.max(0, pot - ovr) + 1, 1.5);
       },
     },
@@ -183,7 +192,7 @@ export function markBustLottery(
   for (const tier of tiers) {
     const forTier = eligible.filter(p => {
       // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
-      const age = (p as any).born?.year ? (currentYear - (p as any).born.year) : (typeof (p as any).age === 'number' && (p as any).age > 0 ? (p as any).age : 25);
+      const age = getPlayerAge(p, currentYear);
       return age >= tier.minAge && age <= tier.maxAge;
     });
     if (forTier.length === 0) continue;
@@ -211,7 +220,7 @@ export function markBustLottery(
       const player = pool[idx];
       const pid    = player.internalId ?? player.name;
       // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
-      const age    = (player as any).born?.year ? (currentYear - (player as any).born.year) : (typeof (player as any).age === 'number' && (player as any).age > 0 ? (player as any).age : 25);
+      const age    = getPlayerAge(player, currentYear);
       const pSeed  = `bust-${saveSeed}-${currentYear}-${pid}`;
 
       // Bust start date: random anywhere in season window
@@ -258,10 +267,10 @@ export function markBustLottery(
       playerMap.set(pid, { ...player, pendingBustEvent: pending } as any);
       markedCount++;
 
-      console.log(
+      simDebug('development', () => (
         `[BustLottery MARK] ${player.name} (age ${age}) | ${tier.type} | GRADUAL ${bustDate}→${graduationDate}` +
         ` | ${drops.map(d => `${d.attr}${d.delta}`).join(', ')}`
-      );
+      ), { playerId: pid, event: 'bust-mark' });
     }
   }
 
@@ -348,9 +357,9 @@ export function resolveBustLottery(
         ovrBefore: pending.ovrBefore,
         ovrAfter,
       });
-      console.log(
+      simDebug('development', () => (
         `[BustLottery DONE] ${player.name} (${pending.type}) | OVR ${pending.ovrBefore} → ${ovrAfter}`
-      );
+      ), { playerId: player.internalId, event: 'bust-complete' });
     }
 
     changed = true;

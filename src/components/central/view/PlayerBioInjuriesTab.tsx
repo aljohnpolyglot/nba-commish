@@ -1,8 +1,14 @@
 import React, { useMemo } from 'react';
 import { Shield, ShieldAlert, Activity, AlertCircle } from 'lucide-react';
-import { getPlayerInjuryProfile } from '../../../data/playerInjuryData';
 import type { NBAPlayer } from '../../../types';
-import { computeDurability, durabilityColor, durabilityLabel } from '../../../utils/durabilityUtils';
+import {
+  computeDurability,
+  durabilityColor,
+  durabilityLabel,
+  getPlayerInjuryProfileForPlayer,
+  getRealDurability,
+} from '../../../utils/durabilityUtils';
+import { formatInjuryRecoveryWindow } from '../../../services/injuryService';
 
 // Re-export for any existing callers still importing from this file.
 export { computeDurability };
@@ -36,20 +42,8 @@ interface PlayerBioInjuriesTabProps {
 }
 
 export const PlayerBioInjuriesTab: React.FC<PlayerBioInjuriesTabProps> = ({ player }) => {
-  const profile = useMemo(() => getPlayerInjuryProfile(player.name), [player.name]);
-
-  const careerGP = useMemo(() => {
-    if (!player.stats) return 0;
-    return player.stats
-      .filter((s: any) => !s.playoffs && (s.tid ?? -1) >= 0)
-      .reduce((sum: number, s: any) => sum + (s.gp ?? 0), 0);
-  }, [player.stats]);
-
-  const durability = useMemo(() => {
-    if (player.durability != null) return player.durability;
-    if (profile) return computeDurability(profile.careerCount, careerGP);
-    return 75; // default when no data
-  }, [player.durability, profile, careerGP]);
+  const profile = useMemo(() => getPlayerInjuryProfileForPlayer(player), [player]);
+  const durability = useMemo(() => getRealDurability(player) ?? 75, [player]);
 
   const dColor = durabilityColor(durability);
 
@@ -78,7 +72,7 @@ export const PlayerBioInjuriesTab: React.FC<PlayerBioInjuriesTabProps> = ({ play
             <p className="text-[10px] uppercase font-black tracking-widest text-rose-400 mb-0.5">Current Injury</p>
             <p className="text-sm font-bold text-white">{player.injury.type}</p>
             <p className="text-xs text-rose-300 mt-0.5">
-              Est. {player.injury.gamesRemaining} game{player.injury.gamesRemaining !== 1 ? 's' : ''} remaining
+              Estimated recovery: {formatInjuryRecoveryWindow(player.injury.gamesRemaining)}
             </p>
           </div>
         </div>
@@ -117,7 +111,7 @@ export const PlayerBioInjuriesTab: React.FC<PlayerBioInjuriesTabProps> = ({ play
             </span>
           )}
           {!profile && (
-            <span className="text-[10px] text-slate-500 italic">Default — no historical data</span>
+            <span className="text-[10px] text-slate-500 italic">No recorded injury history</span>
           )}
         </div>
       </div>
@@ -151,9 +145,7 @@ export const PlayerBioInjuriesTab: React.FC<PlayerBioInjuriesTabProps> = ({ play
             ))}
           </div>
 
-          <p className="text-[10px] text-slate-600 mt-3">
-            Career injury totals from historical NBA records. Sourced from public injury databases.
-          </p>
+          <p className="text-[10px] text-slate-600 mt-3">Career injury totals by body area.</p>
         </div>
       )}
 
@@ -161,8 +153,8 @@ export const PlayerBioInjuriesTab: React.FC<PlayerBioInjuriesTabProps> = ({ play
       {!profile && !hasCurrentInjury && (
         <div className="text-center py-8 text-slate-600">
           <Shield size={32} className="mx-auto mb-3 opacity-40" />
-          <p className="text-sm">No historical injury data found for {player.name}.</p>
-          <p className="text-xs mt-1">Durability defaults to 70 (above average).</p>
+          <p className="text-sm">No recorded injury history for {player.name}.</p>
+          <p className="text-xs mt-1">Durability uses the player rating baseline.</p>
         </div>
       )}
     </div>

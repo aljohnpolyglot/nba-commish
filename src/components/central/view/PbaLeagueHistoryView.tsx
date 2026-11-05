@@ -1,8 +1,11 @@
 import React, { useMemo } from 'react';
 import { Trophy } from 'lucide-react';
 import { AwardCell } from './leagueHistoryShared';
-import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { resolveTeamByHistoricalName } from '../../../utils/teamLookup';
 import { getTeamFullName } from '../../../utils/teamNames';
+import { getCompletedPbaConferenceChronology, getHistoricalPbaConferenceSeason, getPbaHistoryDisplayConferenceLabels } from '../../../services/pba/conferenceHistory';
+import { getHistoricalTeamSnapshot } from '../../../utils/teamAssets';
+import { getCoachPhoto } from '../../../data/photos/coaches';
 
 type Props = {
   currentSeason: number;
@@ -11,12 +14,16 @@ type Props = {
   players: any[];
   teams: any[];
   nonNBATeams: any[];
+  coachPhotosReady: boolean;
   onSelectSeason: (season: number) => void;
   onSelectTeam: (tid: number) => void;
   onSelectPlayer: (award: any) => void;
 };
 
-type ConferenceKey = 'philippine' | 'commissioners' | 'governors';
+type ConferenceKey = string;
+
+export const getPbaBestImportEmptyLabel = (conferenceKey: ConferenceKey): string | undefined =>
+  conferenceKey === 'philippine' ? '—' : undefined;
 
 type TeamEntry = {
   name: string;
@@ -26,20 +33,21 @@ type TeamEntry = {
 
 type HistoryRow = {
   season: number;
+  seasonLabel: string;
   isCurrent: boolean;
-  philChampion?: TeamEntry;
-  philBpc?: any;
-  commChampion?: TeamEntry;
-  commBpc?: any;
-  commBestImport?: any;
-  govChampion?: TeamEntry;
-  govBpc?: any;
-  govBestImport?: any;
-  finalsMvp?: any;
+  conferences: Array<{
+    key: ConferenceKey;
+    label: string;
+    champion?: TeamEntry;
+    bpc?: any;
+    bestImport?: any;
+    finalsMvp?: any;
+  }>;
   mvp?: any;
   dpoy?: any;
   coy?: any;
   scoringChampion?: any;
+  smoy?: any;
   mip?: any;
   roy?: any;
   mqm?: any;
@@ -51,9 +59,10 @@ const OVERALL_AWARD_ALIASES = {
   dpoy: ['DPOY', 'Defensive Player of the Year'],
   coy: ['COY', 'Coach of the Year'],
   scoringChampion: ['Scoring Champion'],
+  smoy: ['Sixth Man of the Year', 'SMOY'],
   mip: ['MIP', 'Most Improved Player'],
   roy: ['ROY', 'Rookie of the Year'],
-  mqm: ['Mr. Quality Minutes', 'Sixth Man of the Year', 'SMOY'],
+  mqm: ['Mr. Quality Minutes'],
 } as const;
 
 const OVERALL_AWARD_TYPES: ReadonlySet<string> = new Set(
@@ -81,8 +90,6 @@ const isNonWinnerNote = (value: unknown) => {
   );
 };
 
-const formatSeasonLabel = (season: number) => `${season - 1}-${season}`;
-
 const normalizeConference = (award: any): ConferenceKey | null => {
   const competitionId = String(award?.competitionId ?? '').toLowerCase();
   if (competitionId === 'pba-philippine-cup') return 'philippine';
@@ -103,8 +110,26 @@ const normalizeConference = (award: any): ConferenceKey | null => {
   ) {
     return 'philippine';
   }
-  return null;
+  const raw = normalizeText(award?.conference);
+  if (!raw) return null;
+  const generic = raw
+    .replace(/\b(?:19|20)\d{2}\b/g, ' ')
+    .replace(/\bpba\b/g, ' ')
+    .replace(/\b(?:cup|conference|championship)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return generic || null;
 };
+
+const conferenceLabel = (value: string): string => value
+  .replace(/\[a\]/gi, '')
+  .replace(/^\s*(?:19|20)\d{2}(?:-\d{2})?\s+PBA\s+/i, '')
+  .trim();
+
+const conferenceKeyForLabel = (label: string): string => normalizeConference({ conference: label }) ?? normalizeText(label);
+
+const conferenceLabelsForSeason = (season: number, currentSeason: number): string[] =>
+  getPbaHistoryDisplayConferenceLabels(season, currentSeason);
 
 const findPlayerForAward = (players: any[], award: any) => {
   const rawPid = String(award?.pid ?? award?.playerId ?? '');
@@ -117,26 +142,24 @@ const findPlayerForAward = (players: any[], award: any) => {
   return players.find((player: any) => normalizeText(player?.name) === target) ?? null;
 };
 
-const findTeamByName = (allTeams: any[], rawName?: string) => {
-  if (!rawName) return null;
-  const target = normalizeText(rawName);
-  return allTeams.find((team: any) => normalizeText(getTeamFullName(team) || team?.name) === target) ?? null;
-};
+const findTeamByName = (allTeams: any[], rawName: unknown, season?: number) =>
+  resolveTeamByHistoricalName(allTeams, rawName, season) ?? null;
 
-const buildAwardCellData = (award: any, players: any[], allTeams: any[]) => {
+const buildAwardCellData = (award: any, players: any[], allTeams: any[], season: number, coach = false) => {
   if (!award?.name) return null;
   const player = findPlayerForAward(players, award);
   const team = award?.tid != null
     ? allTeams.find((candidate: any) => Number(candidate.id ?? candidate.tid) === Number(award.tid))
-    : findTeamByName(allTeams, award?.team);
+    : findTeamByName(allTeams, award?.team, season);
+  const snapshot = team ? getHistoricalTeamSnapshot(team, season) : null;
 
   return {
     name: award.name,
-    team: team?.abbrev ?? award?.team ?? '',
+    team: snapshot?.abbrev ?? award?.team ?? '',
     id: player?.internalId ?? award.name,
-    imgURL: player?.imgURL,
+    imgURL: coach ? getCoachPhoto(award.name) : player?.imgURL,
     face: player?.face,
-    teamLogoUrl: team?.logoUrl,
+    teamLogoUrl: snapshot?.logoUrl,
     player,
   };
 };
@@ -193,14 +216,16 @@ const findBpcAward = (awards: any[], players: any[]) =>
 
 const buildTeamEntry = (
   team: any,
+  season: number,
   fallbackName?: string,
 ): TeamEntry | undefined => {
-  const name = getTeamFullName(team) || fallbackName;
+  const snapshot = team ? getHistoricalTeamSnapshot(team, season) : null;
+  const name = getTeamFullName(snapshot) || fallbackName;
   if (!name) return undefined;
   return {
     name,
     tid: team ? Number(team.id ?? team.tid) : undefined,
-    logoUrl: team?.logoUrl,
+    logoUrl: snapshot?.logoUrl,
   };
 };
 
@@ -233,6 +258,25 @@ const TeamCell: React.FC<{
   );
 };
 
+const ConferenceHistoryCell: React.FC<{
+  conferences: HistoryRow['conferences'];
+  isCurrent: boolean;
+  onSelectTeam: (tid: number) => void;
+  onSelectPlayer: (award: any) => void;
+}> = ({ conferences, isCurrent, onSelectTeam, onSelectPlayer }) => (
+  <div className="grid min-w-[250px] gap-2 sm:min-w-[640px]">
+    {conferences.map(conference => (
+      <div key={conference.key} className="grid grid-cols-1 items-start gap-3 rounded-lg border border-slate-800 bg-slate-950/35 p-3 sm:grid-cols-[150px_170px_145px_145px_145px] sm:items-center sm:p-2">
+        <div className="text-[11px] font-black uppercase tracking-wide text-amber-300">{conference.label}</div>
+        <div><div className="mb-1 text-[9px] font-bold uppercase text-slate-600 sm:hidden">Champion</div><TeamCell team={conference.champion} isCurrent={isCurrent} onSelectTeam={onSelectTeam} /></div>
+        <div><div className="mb-1 text-[9px] font-bold uppercase text-slate-600 sm:hidden">Best Player</div><AwardCell award={conference.bpc} isCurrent={isCurrent} onClick={conference.bpc ? () => onSelectPlayer(conference.bpc) : undefined} /></div>
+        <div><div className="mb-1 text-[9px] font-bold uppercase text-slate-600 sm:hidden">Best Import</div><AwardCell award={conference.bestImport} isCurrent={isCurrent} emptyLabel={getPbaBestImportEmptyLabel(conference.key)} onClick={conference.bestImport ? () => onSelectPlayer(conference.bestImport) : undefined} /></div>
+        <div><div className="mb-1 text-[9px] font-bold uppercase text-slate-600 sm:hidden">Finals MVP</div><AwardCell award={conference.finalsMvp} isCurrent={isCurrent} onClick={conference.finalsMvp ? () => onSelectPlayer(conference.finalsMvp) : undefined} /></div>
+      </div>
+    ))}
+  </div>
+);
+
 export const PbaLeagueHistoryView: React.FC<Props> = ({
   currentSeason,
   historicalAwards,
@@ -240,6 +284,7 @@ export const PbaLeagueHistoryView: React.FC<Props> = ({
   players,
   teams,
   nonNBATeams,
+  coachPhotosReady,
   onSelectSeason,
   onSelectTeam,
   onSelectPlayer,
@@ -259,6 +304,9 @@ export const PbaLeagueHistoryView: React.FC<Props> = ({
     for (const champ of conferenceChampions) {
       if (champ?.season != null) seasons.add(Number(champ.season));
     }
+    for (const historicalSeason of getCompletedPbaConferenceChronology(currentSeason - 1)) {
+      seasons.add(historicalSeason.calendarYear);
+    }
 
     return [...seasons]
       .filter(season => Number.isFinite(season))
@@ -267,68 +315,69 @@ export const PbaLeagueHistoryView: React.FC<Props> = ({
         const seasonAwards = pbaAwards.filter((award: any) => Number(award?.season) === season);
         const overallAwards = seasonAwards.filter((award: any) => isPbaOverallAward(award, players, allTeams));
         const conferenceAwards = seasonAwards.filter((award: any) => normalizeConference(award) !== null);
-
-        const philChampLive = conferenceChampions.find((entry: any) =>
-          Number(entry?.season) === season && entry?.conference === 'philippine',
-        );
-        const philAwards = conferenceAwards.filter((award: any) => normalizeConference(award) === 'philippine');
-        const commAwards = conferenceAwards.filter((award: any) => normalizeConference(award) === 'commissioners');
-        const govAwards = conferenceAwards.filter((award: any) => normalizeConference(award) === 'governors');
-
-        const championAward = findAwardByAliases(philAwards, ['Champion']);
-        const philChampionTeam = philChampLive
-          ? resolveAnyTeam(Number(philChampLive.teamId), teams, nonNBATeams)
-          : championAward?.tid != null
-            ? resolveAnyTeam(Number(championAward.tid), teams, nonNBATeams)
-            : findTeamByName(allTeams, championAward?.team ?? championAward?.name);
-
-        const commChampAward = findAwardByAliases(commAwards, ['Champion']);
-        const govChampAward = findAwardByAliases(govAwards, ['Champion']);
-        const commChampionTeam = commChampAward?.tid != null
-          ? resolveAnyTeam(Number(commChampAward.tid), teams, nonNBATeams)
-          : findTeamByName(allTeams, commChampAward?.team ?? commChampAward?.name);
-        const govChampionTeam = govChampAward?.tid != null
-          ? resolveAnyTeam(Number(govChampAward.tid), teams, nonNBATeams)
-          : findTeamByName(allTeams, govChampAward?.team ?? govChampAward?.name);
-
-        const philBpcSource = philChampLive?.bestPlayerName
-          ? { name: philChampLive.bestPlayerName, pid: philChampLive.bestPlayerId, type: 'Best Player of the Conference' }
-          : findBpcAward(philAwards, players);
-        const safePhilBpcSource = isImportAward(philBpcSource, players) ? null : philBpcSource;
+        const labels = conferenceLabelsForSeason(season, currentSeason);
+        const labelByKey = new Map(labels.map(label => [conferenceKeyForLabel(label), label]));
+        for (const award of conferenceAwards) {
+          const key = normalizeConference(award);
+          if (key && !labelByKey.has(key)) labelByKey.set(key, conferenceLabel(String(award.conference ?? key)));
+        }
+        for (const live of conferenceChampions.filter((entry: any) => Number(entry?.season) === season)) {
+          const key = normalizeConference({ conference: live.conference });
+          if (key && !labelByKey.has(key)) {
+            const label = key === 'philippine' ? 'Philippine Cup' : key === 'commissioners' ? "Commissioner's Cup" : key === 'governors' ? "Governors' Cup" : live.conference;
+            labelByKey.set(key, label);
+          }
+        }
+        const conferences = [...labelByKey].map(([key, label]) => {
+          const awards = conferenceAwards.filter((award: any) => normalizeConference(award) === key);
+          const live = conferenceChampions.find((entry: any) =>
+            Number(entry?.season) === season && normalizeConference({ conference: entry?.conference }) === key,
+          );
+          const championAward = findAwardByAliases(awards, ['Champion']);
+          const rawTid = live?.teamId ?? championAward?.tid;
+          const championTeam = rawTid != null
+            ? allTeams.find((team: any) => Number(team.id ?? team.tid) === Number(rawTid))
+            : findTeamByName(allTeams, championAward?.team ?? championAward?.name, season);
+          const bpcSource = live?.bestPlayerName
+            ? { name: live.bestPlayerName, pid: live.bestPlayerId, type: 'Best Player of the Conference' }
+            : findBpcAward(awards, players);
+          const safeBpcSource = key === 'philippine' && isImportAward(bpcSource, players) ? null : bpcSource;
+          const importSource = live?.bestImportName
+            ? { name: live.bestImportName, pid: live.bestImportId, type: 'Best Import of the Conference' }
+            : findAwardByAliases(awards, ['Best Import of the Conference']);
+          const finalsMvpSource = live?.finalsMvpName
+            ? { name: live.finalsMvpName, pid: live.finalsMvpId, type: 'Finals MVP' }
+            : findAwardByAliases(awards, OVERALL_AWARD_ALIASES.finalsMvp);
+          return {
+            key,
+            label,
+            champion: buildTeamEntry(championTeam, season, live?.teamName || championAward?.team || championAward?.name),
+            bpc: buildAwardCellData(safeBpcSource, players, allTeams, season),
+            bestImport: buildAwardCellData(importSource, players, allTeams, season),
+            finalsMvp: buildAwardCellData(finalsMvpSource, players, allTeams, season),
+          };
+        });
 
         const row: HistoryRow = {
           season,
+          seasonLabel: season < currentSeason
+            ? getHistoricalPbaConferenceSeason(season)?.seasonLabel ?? String(season)
+            : String(season),
           isCurrent: season === currentSeason,
-          philChampion: buildTeamEntry(philChampionTeam, philChampLive?.teamName || championAward?.team || championAward?.name),
-          commChampion: buildTeamEntry(commChampionTeam, commChampAward?.team || commChampAward?.name),
-          govChampion: buildTeamEntry(govChampionTeam, govChampAward?.team || govChampAward?.name),
-          finalsMvp: buildAwardCellData(
-            philChampLive?.finalsMvpName
-              ? { name: philChampLive.finalsMvpName, pid: philChampLive.finalsMvpId, type: 'Finals MVP' }
-              : findAwardByAliases(philAwards, OVERALL_AWARD_ALIASES.finalsMvp),
-            players,
-            allTeams,
-          ),
-          mvp: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.mvp), players, allTeams),
-          dpoy: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.dpoy), players, allTeams),
-          coy: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.coy), players, allTeams),
-          scoringChampion: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.scoringChampion), players, allTeams),
-          mip: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.mip), players, allTeams),
-          roy: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.roy), players, allTeams),
-          mqm: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.mqm), players, allTeams),
-          philBpc: buildAwardCellData(safePhilBpcSource, players, allTeams),
-          commBpc: buildAwardCellData(findBpcAward(commAwards, players), players, allTeams),
-          commBestImport: buildAwardCellData(findAwardByAliases(commAwards, ['Best Import of the Conference']), players, allTeams),
-          govBpc: buildAwardCellData(findBpcAward(govAwards, players), players, allTeams),
-          govBestImport: buildAwardCellData(findAwardByAliases(govAwards, ['Best Import of the Conference']), players, allTeams),
+          conferences,
+          mvp: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.mvp), players, allTeams, season),
+          dpoy: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.dpoy), players, allTeams, season),
+          coy: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.coy), players, allTeams, season, true),
+          scoringChampion: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.scoringChampion), players, allTeams, season),
+          smoy: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.smoy), players, allTeams, season),
+          mip: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.mip), players, allTeams, season),
+          roy: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.roy), players, allTeams, season),
+          mqm: buildAwardCellData(findAwardByAliases(overallAwards, OVERALL_AWARD_ALIASES.mqm), players, allTeams, season),
         };
 
         return row;
       });
-  }, [currentSeason, historicalAwards, leagueStats, players, teams, nonNBATeams]);
-  const showSeasonAwards = rows.some(row =>
-    row.mvp || row.dpoy || row.coy || row.scoringChampion || row.mip || row.roy || row.mqm,
-  );
+  }, [coachPhotosReady, currentSeason, historicalAwards, leagueStats, players, teams, nonNBATeams]);
 
   return (
     <div className="h-full overflow-hidden p-4 md:p-8 flex flex-col">
@@ -346,26 +395,15 @@ export const PbaLeagueHistoryView: React.FC<Props> = ({
               <thead className="bg-slate-900/85 sticky top-0 z-10 backdrop-blur-sm shadow-sm">
                 <tr>
                   <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">Season</th>
-                  <th className="p-3 font-bold text-amber-300 border-b border-slate-800 whitespace-nowrap">Phil. Champion</th>
-                  <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">Phil. BPC</th>
-                  <th className="p-3 font-bold text-amber-300 border-b border-slate-800 whitespace-nowrap">Comm. Champion</th>
-                  <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">Comm. BPC</th>
-                  <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">Comm. Import</th>
-                  <th className="p-3 font-bold text-amber-300 border-b border-slate-800 whitespace-nowrap">Gov. Champion</th>
-                  <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">Gov. BPC</th>
-                  <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">Gov. Import</th>
-                  <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">Finals MVP</th>
-                  {showSeasonAwards ? (
-                    <>
-                      <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">MVP</th>
-                      <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">DPOY</th>
-                      <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">COY</th>
-                      <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">Scoring Champ</th>
-                      <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">MIP</th>
-                      <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">ROY</th>
-                      <th className="p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap">MQM</th>
-                    </>
-                  ) : null}
+                  <th className="p-3 font-bold text-amber-300 border-b border-slate-800 whitespace-nowrap">Conferences · Champion · BPC · Best Import · Finals MVP</th>
+                  <th className="hidden p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap md:table-cell">MVP</th>
+                  <th className="hidden p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap md:table-cell">DPOY</th>
+                  <th className="hidden p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap md:table-cell">COY</th>
+                  <th className="hidden p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap md:table-cell">Scoring Champ</th>
+                  <th className="hidden p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap md:table-cell">SMOY</th>
+                  <th className="hidden p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap md:table-cell">MIP</th>
+                  <th className="hidden p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap md:table-cell">ROY</th>
+                  <th className="hidden p-3 font-bold text-slate-300 border-b border-slate-800 whitespace-nowrap md:table-cell">MQM</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50">
@@ -376,7 +414,7 @@ export const PbaLeagueHistoryView: React.FC<Props> = ({
                   >
                     <td className="p-3 align-top cursor-pointer" onClick={() => onSelectSeason(row.season)}>
                       <div className="flex items-center gap-2 hover:text-sky-300 transition-colors">
-                        <span className="font-black text-white text-sm">{formatSeasonLabel(row.season)}</span>
+                        <span className="font-black text-white text-sm">{row.seasonLabel}</span>
                         {row.isCurrent ? (
                           <span className="text-[9px] font-bold bg-blue-500/20 text-blue-400 border border-blue-500/30 px-1.5 py-0.5 rounded-full">
                             NOW
@@ -384,58 +422,33 @@ export const PbaLeagueHistoryView: React.FC<Props> = ({
                         ) : null}
                       </div>
                     </td>
-                    <td className="p-3 align-top whitespace-nowrap">
-                      <TeamCell team={row.philChampion} isCurrent={row.isCurrent} onSelectTeam={onSelectTeam} />
+                    <td className="p-3 align-top">
+                      <ConferenceHistoryCell conferences={row.conferences} isCurrent={row.isCurrent} onSelectTeam={onSelectTeam} onSelectPlayer={onSelectPlayer} />
                     </td>
-                    <td className="p-3 align-top whitespace-nowrap">
-                      <AwardCell award={row.philBpc} isCurrent={row.isCurrent} onClick={row.philBpc ? () => onSelectPlayer(row.philBpc) : undefined} />
+                    <td className="hidden p-3 align-top whitespace-nowrap md:table-cell">
+                      <AwardCell award={row.mvp} isCurrent={row.isCurrent} onClick={row.mvp ? () => onSelectPlayer(row.mvp) : undefined} />
                     </td>
-                    <td className="p-3 align-top whitespace-nowrap">
-                      <TeamCell team={row.commChampion} isCurrent={row.isCurrent} onSelectTeam={onSelectTeam} />
+                    <td className="hidden p-3 align-top whitespace-nowrap md:table-cell">
+                      <AwardCell award={row.dpoy} isCurrent={row.isCurrent} onClick={row.dpoy ? () => onSelectPlayer(row.dpoy) : undefined} />
                     </td>
-                    <td className="p-3 align-top whitespace-nowrap">
-                      <AwardCell award={row.commBpc} isCurrent={row.isCurrent} onClick={row.commBpc ? () => onSelectPlayer(row.commBpc) : undefined} />
+                    <td className="hidden p-3 align-top whitespace-nowrap md:table-cell">
+                      <AwardCell award={row.coy} isCurrent={row.isCurrent} onClick={row.coy ? () => onSelectPlayer(row.coy) : undefined} />
                     </td>
-                    <td className="p-3 align-top whitespace-nowrap">
-                      <AwardCell award={row.commBestImport} isCurrent={row.isCurrent} onClick={row.commBestImport ? () => onSelectPlayer(row.commBestImport) : undefined} />
+                    <td className="hidden p-3 align-top whitespace-nowrap md:table-cell">
+                      <AwardCell award={row.scoringChampion} isCurrent={row.isCurrent} onClick={row.scoringChampion ? () => onSelectPlayer(row.scoringChampion) : undefined} />
                     </td>
-                    <td className="p-3 align-top whitespace-nowrap">
-                      <TeamCell team={row.govChampion} isCurrent={row.isCurrent} onSelectTeam={onSelectTeam} />
+                    <td className="hidden p-3 align-top whitespace-nowrap md:table-cell">
+                      <AwardCell award={row.smoy} isCurrent={row.isCurrent} onClick={row.smoy ? () => onSelectPlayer(row.smoy) : undefined} />
                     </td>
-                    <td className="p-3 align-top whitespace-nowrap">
-                      <AwardCell award={row.govBpc} isCurrent={row.isCurrent} onClick={row.govBpc ? () => onSelectPlayer(row.govBpc) : undefined} />
+                    <td className="hidden p-3 align-top whitespace-nowrap md:table-cell">
+                      <AwardCell award={row.mip} isCurrent={row.isCurrent} onClick={row.mip ? () => onSelectPlayer(row.mip) : undefined} />
                     </td>
-                    <td className="p-3 align-top whitespace-nowrap">
-                      <AwardCell award={row.govBestImport} isCurrent={row.isCurrent} onClick={row.govBestImport ? () => onSelectPlayer(row.govBestImport) : undefined} />
+                    <td className="hidden p-3 align-top whitespace-nowrap md:table-cell">
+                      <AwardCell award={row.roy} isCurrent={row.isCurrent} onClick={row.roy ? () => onSelectPlayer(row.roy) : undefined} />
                     </td>
-                    <td className="p-3 align-top whitespace-nowrap">
-                      <AwardCell award={row.finalsMvp} isCurrent={row.isCurrent} onClick={row.finalsMvp ? () => onSelectPlayer(row.finalsMvp) : undefined} />
+                    <td className="hidden p-3 align-top whitespace-nowrap md:table-cell">
+                      <AwardCell award={row.mqm} isCurrent={row.isCurrent} onClick={row.mqm ? () => onSelectPlayer(row.mqm) : undefined} />
                     </td>
-                    {showSeasonAwards ? (
-                      <>
-                        <td className="p-3 align-top whitespace-nowrap">
-                          <AwardCell award={row.mvp} isCurrent={row.isCurrent} onClick={row.mvp ? () => onSelectPlayer(row.mvp) : undefined} />
-                        </td>
-                        <td className="p-3 align-top whitespace-nowrap">
-                          <AwardCell award={row.dpoy} isCurrent={row.isCurrent} onClick={row.dpoy ? () => onSelectPlayer(row.dpoy) : undefined} />
-                        </td>
-                        <td className="p-3 align-top whitespace-nowrap">
-                          <AwardCell award={row.coy} isCurrent={row.isCurrent} onClick={row.coy ? () => onSelectPlayer(row.coy) : undefined} />
-                        </td>
-                        <td className="p-3 align-top whitespace-nowrap">
-                          <AwardCell award={row.scoringChampion} isCurrent={row.isCurrent} onClick={row.scoringChampion ? () => onSelectPlayer(row.scoringChampion) : undefined} />
-                        </td>
-                        <td className="p-3 align-top whitespace-nowrap">
-                          <AwardCell award={row.mip} isCurrent={row.isCurrent} onClick={row.mip ? () => onSelectPlayer(row.mip) : undefined} />
-                        </td>
-                        <td className="p-3 align-top whitespace-nowrap">
-                          <AwardCell award={row.roy} isCurrent={row.isCurrent} onClick={row.roy ? () => onSelectPlayer(row.roy) : undefined} />
-                        </td>
-                        <td className="p-3 align-top whitespace-nowrap">
-                          <AwardCell award={row.mqm} isCurrent={row.isCurrent} onClick={row.mqm ? () => onSelectPlayer(row.mqm) : undefined} />
-                        </td>
-                      </>
-                    ) : null}
                   </tr>
                 ))}
               </tbody>

@@ -21,6 +21,7 @@ import {
   calcUSG,
   calcVORP,
   estimatePossessions,
+  estimatePlayerPossessions,
   fivePlusCategories,
   pct,
   safe,
@@ -39,11 +40,17 @@ export type {
   TeamAdvancedStats,
 } from './advancedstatsTypes';
 
+export interface DefensiveRatingProfile {
+  diq: number;
+  hgt: number;
+}
+
 export function generateAdvancedStats(
   teamStats: PlayerGameStats[],
   oppStats: PlayerGameStats[],
   pmArray: number[] = [],
   lgORTG: number = LG_ORTG,
+  defensiveRatings?: ReadonlyMap<string, DefensiveRatingProfile>,
 ): AdvancedPlayerStats[] {
   const sum = (arr: PlayerGameStats[], k: keyof PlayerGameStats) =>
     arr.reduce((a, s) => a + ((s[k] as number) || 0), 0);
@@ -87,6 +94,21 @@ export function generateAdvancedStats(
   const oppPoss = estimatePossessions(O.fga, O.fta, O.orb, O.tov);
   const teamDRTG = calcORTG(O.pts, oppPoss);
   const pace = safe(((teamPoss + oppPoss) / 2) * (MINUTES_PER_GAME / (T.min / COURT_PLAYERS)));
+  const defensiveSkill = (playerId: string): number | undefined => {
+    const profile = defensiveRatings?.get(playerId);
+    return profile ? profile.diq * 0.72 + profile.hgt * 0.28 : undefined;
+  };
+  const defensiveBaseline = (() => {
+    let weightedSkill = 0;
+    let weightedMinutes = 0;
+    for (const stat of teamStats) {
+      const skill = defensiveSkill(stat.playerId);
+      if (skill === undefined || stat.min <= 0) continue;
+      weightedSkill += skill * stat.min;
+      weightedMinutes += stat.min;
+    }
+    return weightedMinutes > 0 ? weightedSkill / weightedMinutes : undefined;
+  })();
 
   return teamStats.map((s, i): AdvancedPlayerStats => {
     const {
@@ -135,12 +157,18 @@ export function generateAdvancedStats(
 
     const usgPct = calcUSG(fga, fta, tov, min, T.min, T.fga, T.fta, T.tov);
     const floorPct = calcFloorPct(pts, ast, min);
-    const playerPoss = estimatePossessions(fga, fta, orb || 0, tov);
+    const playerPoss = estimatePlayerPossessions(fga, fta, tov);
     const scoringPossessions = safe(pts > 0 ? playerPoss * floorPct : 0);
 
     const ortg = calcORTG(pts, playerPoss);
-    const minFraction = T.min > 0 ? min / (T.min / COURT_PLAYERS) : 0;
-    const drtg = safe(teamDRTG);
+    // Defensive Win Shares allocates team defense by a player's share of all
+    // team minutes, not by his share of one five-man lineup slot.
+    const defensiveMinuteShare = T.min > 0 ? min / T.min : 0;
+    const playerDefensiveSkill = defensiveSkill(s.playerId);
+    const individualDefenseAdjustment = playerDefensiveSkill !== undefined && defensiveBaseline !== undefined
+      ? Math.max(-5.5, Math.min(5.5, (playerDefensiveSkill - defensiveBaseline) * 0.12))
+      : 0;
+    const drtg = safe(teamDRTG - individualDefenseAdjustment);
     const netRtg = safe(ortg - drtg);
 
     const p36 = (k: number) => min > 0 ? safe((k / min) * 36) : 0;
@@ -163,7 +191,7 @@ export function generateAdvancedStats(
 
     const per = calcPER(s, teamPoss);
     const ows = calcOWS(ortg, playerPoss, lgORTG);
-    const dws = calcDWS(drtg, lgORTG, minFraction, teamPoss);
+    const dws = calcDWS(drtg, lgORTG, defensiveMinuteShare, teamPoss);
     const ws = safe(ows + dws);
     const wsPer48 = min > 0 ? safe((ws * MINUTES_PER_GAME) / min) : 0;
 

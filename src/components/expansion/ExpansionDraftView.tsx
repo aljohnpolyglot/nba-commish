@@ -14,11 +14,17 @@ import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Play, Pause, FastForward, Clock, CheckCircle, Map as MapIcon } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { convertTo2KRating } from '../../utils/helpers';
 import type { NBAPlayer, NBATeam } from '../../types';
 import { FullDraftTable } from '../draft/simulator/FullDraftTable';
 import { getOrdinalSuffix } from '../draft/simulator/helpers';
 import { getTeamFullName } from '../../utils/teamNames';
+import { getDisplayPotential } from '../../utils/playerRatings';
+import { getHistoricalTeamSnapshot } from '../../utils/teamAssets';
+import { getPlayerImage } from '../../utils/playerImage';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { getDisplayOverall } from '../../store/playerRatingStore';
+import { formatExternalSalary } from '../../constants';
+import { getExpansionLeague, isPrimaryExpansionRosterPlayer } from '../../services/expansion/expansionLeagueScope';
 
 interface Props {
   onClose: () => void;
@@ -27,7 +33,12 @@ interface Props {
 type DraftBoardTeam = Pick<NBATeam, 'id' | 'name' | 'abbrev' | 'region' | 'logoUrl'> & {
   tid?: number;
 };
-type DraftableExpansionPlayer = NBAPlayer & { _k2: number; _aiScore: number };
+type DraftableExpansionPlayer = NBAPlayer & {
+  _ovr: number;
+  _aiScore: number;
+  displayOvr?: number;
+  displayPot?: number;
+};
 type SimSpeed = 'fastest' | 'normal' | 'slow';
 
 const SIM_SPEED_MS: Record<SimSpeed, number> = {
@@ -52,19 +63,48 @@ function findTeamId(team: { id?: number; tid?: number }): number {
   return team.id ?? team.tid ?? -1;
 }
 
-function getOriginalTeamId(player: NBAPlayer): number {
-  const previousNonExpansionTransaction = player.transactions?.find(transaction => transaction.type !== 'expansion-draft');
+function getOriginalTeamId(player: NBAPlayer, isPbaExpansion: boolean): number {
+  const expansionTransaction = player.transactions?.find(transaction => transaction.type === 'expansion-draft');
+  const expansionOriginalTid = Number((expansionTransaction as any)?.originalTid);
+  if (Number.isFinite(expansionOriginalTid)) return expansionOriginalTid;
+
+  const previousNonExpansionTransaction = [...(player.transactions ?? [])]
+    .reverse()
+    .find(transaction =>
+      transaction.type !== 'expansion-draft'
+      && (isPbaExpansion
+        ? transaction.tid >= 2000 && transaction.tid < 3000
+        : transaction.tid >= 0 && transaction.tid < 100)
+    );
   return previousNonExpansionTransaction?.tid ?? player.tid;
+}
+
+function buildDraftableExpansionPlayer(player: NBAPlayer, currentYear: number): DraftableExpansionPlayer {
+  const ovr = getDisplayOverall(player);
+  const pot = getDisplayPotential(player, currentYear);
+  const yearsLeft = Math.max(0, (player.contract?.exp ?? currentYear) - currentYear);
+  const expiringPenalty = yearsLeft === 0 ? -20 : 0;
+  const lengthBonus = Math.min(15, Math.max(0, (yearsLeft - 1) * 5));
+  return {
+    ...player,
+    displayOvr: ovr,
+    displayPot: pot,
+    _ovr: ovr,
+    _aiScore: ovr + expiringPenalty + lengthBonus,
+  };
 }
 
 export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
   const { state, dispatchAction: dispatch } = useGame();
 
+  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const expansionTids = state.expansionTeamIds ?? [];
   const picksPerTeam = state.expansionProtectionSettings?.picksPerExpansionTeam ?? 14;
   const maxPerTeam = state.expansionProtectionSettings?.maxDraftedPerTeam ?? 2;
   const userTid = state.userTeamId ?? -999;
   const isGM = state.gameMode === 'gm';
+  const isPbaExpansion = state.expansionSchedule?.league === 'pba';
+  const expansionLeague = getExpansionLeague(state.expansionSchedule);
 
   // Pick-Order (statisch, einmal berechnen)
   const pickOrder = useMemo(() => buildRoundRobinOrder(expansionTids, picksPerTeam), [expansionTids, picksPerTeam]);
@@ -72,52 +112,83 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
 
   // Resolve Team-Object pro Slot (für FullDraftTable)
   const draftOrderTeams = useMemo<DraftBoardTeam[]>(() => {
-    const teams = (state.teams ?? []) as DraftBoardTeam[];
+    const teams = isPbaExpansion
+      ? state.nonNBATeams
+          .filter(team => team.league === 'PBA')
+          .map(team => ({
+            id: team.tid,
+            tid: team.tid,
+            name: team.name,
+            abbrev: team.abbrev ?? 'PBA',
+            region: team.region,
+            logoUrl: team.imgURL,
+          }))
+      : (state.teams ?? []) as DraftBoardTeam[];
     return pickOrder.map(tid => {
       const team = teams.find(entry => findTeamId(entry) === tid);
-      return team ?? { id: tid, name: `Team ${tid}`, abbrev: '?', logoUrl: undefined };
+      if (!team) return { id: tid, name: `Team ${tid}`, abbrev: '?', logoUrl: undefined };
+      return isPbaExpansion ? team : getHistoricalTeamSnapshot(team, currentYear);
     });
-  }, [pickOrder, state.teams]);
-
-  const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  }, [currentYear, isPbaExpansion, pickOrder, state.nonNBATeams, state.teams]);
 
   const pool = useMemo<DraftableExpansionPlayer[]>(() => {
     const eligibleIds = new Set(state.expansionEligiblePlayers ?? []);
     // Defense-in-Depth gegen Save-Drift: tid<100 + Status-Filter doppelt prüfen,
     // falls expansionEligiblePlayers von einem alten Save mit WNBA/Euroleague-
     // Leaks befüllt wurde (vor dem Reducer-Fix).
-    const EXTERNAL_STATUSES = new Set([
-      'Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League',
-      'Endesa', 'China CBA', 'NBL Australia', 'Free Agent', 'Draft Prospect', 'Prospect',
-    ]);
+    const pbaTeamIds = new Set(
+      state.nonNBATeams.filter(team => team.league === 'PBA').map(team => team.tid),
+    );
+    const primaryTeamIds = new Set(state.teams.map(team => team.id));
     return (state.players ?? [])
       .filter(player => {
         if (!eligibleIds.has(player.internalId)) return false;
-        if (typeof player.tid !== 'number' || player.tid < 0 || player.tid >= 100) return false;
-        if (EXTERNAL_STATUSES.has(player.status as string)) return false;
-        return true;
+        if (isPbaExpansion) {
+          return pbaTeamIds.has(player.tid) && player.status === 'PBA';
+        }
+        return isPrimaryExpansionRosterPlayer(player, primaryTeamIds, expansionLeague);
       })
-      .map(player => {
-        const k2 = convertTo2KRating(player.overallRating ?? 60, 50);
-        // AI-Pick-Score: K2 + Vertrags-Multi-Year-Bonus.
-        // Echte Expansion-Teams meiden 1-Jahr-Mietverträge — Penalty -20 bei
-        // exp <= currentYear, +5 für jedes weitere Vertragsjahr (capped bei +15).
-        // Star-Vet (K2 90, expiring) → 70, weniger als Long-Deal-Starter (K2 78,
-        // 3yrs) → 78+15=93. Mittelmäßiger Long-Deal schlägt Star-Mietvertrag.
-        const yearsLeft = Math.max(0, (player.contract?.exp ?? currentYear) - currentYear);
-        const expiringPenalty = yearsLeft === 0 ? -20 : 0;
-        const lengthBonus = Math.min(15, Math.max(0, (yearsLeft - 1) * 5));
-        return { ...player, _k2: k2, _aiScore: k2 + expiringPenalty + lengthBonus };
-      })
-      .sort((a, b) => b._k2 - a._k2); // UI: K2 desc; AI nutzt _aiScore separat
-  }, [state.players, state.expansionEligiblePlayers, currentYear]);
+      .map(player => buildDraftableExpansionPlayer(player, currentYear))
+      .sort((a, b) => b._ovr - a._ovr); // UI: OVR desc; AI uses _aiScore separately.
+  }, [currentYear, expansionLeague, isPbaExpansion, state.expansionEligiblePlayers, state.nonNBATeams, state.players, state.teams]);
+
+  const savedPicked = useMemo<Record<number, DraftableExpansionPlayer>>(() => {
+    const activePicks = ((state as any).activeExpansionDraftPicks ?? {}) as Record<number, NBAPlayer>;
+    const activeEntries = Object.entries(activePicks)
+      .map(([pick, player]) => [Number(pick), player] as const)
+      .filter(([pick, player]) => Number.isFinite(pick) && !!player);
+    if (activeEntries.length > 0) {
+      return Object.fromEntries(
+        activeEntries.map(([pick, player]) => [pick, buildDraftableExpansionPlayer(player, currentYear)]),
+      ) as Record<number, DraftableExpansionPlayer>;
+    }
+
+    const reconstructed: Record<number, DraftableExpansionPlayer> = {};
+    for (const player of (state.players ?? []) as NBAPlayer[]) {
+      const tx = player.transactions?.find(transaction =>
+        transaction.type === 'expansion-draft' &&
+        transaction.season === currentYear &&
+        Number.isFinite(Number(transaction.pickNum))
+      );
+      if (!tx?.pickNum) continue;
+      reconstructed[Number(tx.pickNum)] = buildDraftableExpansionPlayer(player, currentYear);
+    }
+    return reconstructed;
+  }, [(state as any).activeExpansionDraftPicks, state.players, currentYear]);
+
+  const savedProgressSlots = useMemo(
+    () => Object.keys(savedPicked).map(Number).filter(Number.isFinite),
+    [savedPicked],
+  );
 
   // Lokaler State
-  const [picked, setPicked] = useState<Record<number, NBAPlayer>>({});
-  const [currentPick, setCurrentPick] = useState(1);
+  const [picked, setPicked] = useState<Record<number, DraftableExpansionPlayer>>(() => savedPicked);
+  const [currentPick, setCurrentPick] = useState(() =>
+    savedProgressSlots.length > 0 ? Math.min(totalPicks + 1, Math.max(...savedProgressSlots) + 1) : 1,
+  );
   const [isSimulating, setIsSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState<SimSpeed>('normal');
-  const [hasStarted, setHasStarted] = useState(false);
+  const [hasStarted, setHasStarted] = useState(() => savedProgressSlots.length > 0);
 
   const draftedIds = useMemo(() => new Set(Object.values(picked).map((p) => p.internalId)), [picked]);
   const isComplete = currentPick > totalPicks;
@@ -126,11 +197,11 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
   const drainedByOriginalTid = useMemo(() => {
     const counts: Record<number, number> = {};
     Object.values(picked).forEach(player => {
-      const originalTid = getOriginalTeamId(player);
+      const originalTid = getOriginalTeamId(player, isPbaExpansion);
       counts[originalTid] = (counts[originalTid] ?? 0) + 1;
     });
     return counts;
-  }, [picked]);
+  }, [isPbaExpansion, picked]);
 
   const teamOnClock = draftOrderTeams[currentPick - 1];
   const isUserOnClock = isGM && teamOnClock && teamOnClock.id === userTid;
@@ -146,7 +217,7 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
     setPicked(prev => ({ ...prev, [currentPick]: player }));
     dispatch({
       type: 'EXPANSION_DRAFT_PICK',
-      payload: { tid: tidOnClock, playerId: player.internalId },
+      payload: { tid: tidOnClock, playerId: player.internalId, pick: currentPick },
     } as never);
     setCurrentPick(prev => prev + 1);
   }, [currentPick, pickOrder, dispatch]);
@@ -159,7 +230,7 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
       return;
     }
     const timer = setTimeout(() => {
-      // AI-Pick: höchster _aiScore (K2 + length bonus - expiring penalty)
+      // AI pick: highest _aiScore (OVR + length bonus - expiring penalty).
       let best: DraftableExpansionPlayer | null = null;
       for (const p of pool) {
         if (draftedIds.has(p.internalId)) continue;
@@ -205,7 +276,7 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
       const tidOnClock = pickOrder[cur - 1];
       dispatch({
         type: 'EXPANSION_DRAFT_PICK',
-        payload: { tid: tidOnClock, playerId: candidate.internalId },
+        payload: { tid: tidOnClock, playerId: candidate.internalId, pick: cur },
       } as never);
       cur++;
     }
@@ -221,13 +292,14 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
     <AnimatePresence>
       <motion.div
         initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black flex flex-col"
+        className="fixed inset-0 z-[220] bg-black flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-3 border-b border-zinc-800 bg-zinc-950">
-          <div className="flex items-center gap-3">
+        <div className="flex flex-col gap-3 border-b border-zinc-800 bg-zinc-950 px-4 py-3 sm:px-6">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-3 min-w-0">
             <MapIcon className="w-5 h-5 text-indigo-400" />
-            <div>
+              <div className="min-w-0">
               <h2 className="text-lg font-bold">
                 {isComplete ? 'Draft Complete · Review' : 'Expansion Draft'}
               </h2>
@@ -237,8 +309,14 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
                   : `${expansionTids.length} expansion teams · ${totalPicks} picks · pick ${Math.min(currentPick, totalPicks)} of ${totalPicks}`}
               </p>
             </div>
+            </div>
+            {!isComplete && (
+              <button onClick={onClose} className="p-1.5 text-zinc-400 hover:text-white" title="Close">
+                <X className="w-5 h-5" />
+              </button>
+            )}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {!isComplete ? (
               <>
                 <button
@@ -277,18 +355,14 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
                 </button>
               </>
             )}
-            {!isComplete && (
-              <button onClick={onClose} className="p-1.5 text-zinc-400 hover:text-white" title="Close">
-                <X className="w-5 h-5" />
-              </button>
-            )}
           </div>
         </div>
 
         {/* Body */}
-        <div className="flex-1 overflow-hidden grid grid-cols-1 lg:grid-cols-[1fr_400px]">
+        <div className="flex-1 min-h-0 overflow-y-auto xl:overflow-hidden">
+          <div className="grid min-h-full grid-cols-1 xl:grid-cols-[minmax(0,1fr)_400px]">
           {/* Left: Draft Board */}
-          <div className="overflow-y-auto p-4">
+          <div className="order-2 xl:order-1 min-h-0 overflow-y-visible xl:overflow-y-auto p-3 sm:p-4">
             {!isComplete && teamOnClock && (
               <OnTheClockCard
                 team={teamOnClock}
@@ -309,29 +383,49 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
           </div>
 
           {/* Right: Available Players */}
-          <div className="border-l border-zinc-800 flex flex-col overflow-hidden">
+          <div className="order-1 xl:order-2 border-b xl:border-b-0 xl:border-l border-zinc-800 flex flex-col overflow-hidden min-h-[320px] xl:min-h-0 bg-black/20">
             <div className="px-4 py-3 border-b border-zinc-800">
               <h3 className="text-sm font-semibold">Available · {availableForUser.length}</h3>
               <p className="text-xs text-zinc-500">
-                Sorted by K2 OVR. Max {maxPerTeam} per existing team.
+                Sorted by OVR. Max {maxPerTeam} per existing team.
               </p>
             </div>
-            <div className="flex-1 overflow-y-auto">
-              {availableForUser.map((player, i) => (
-                <PoolRow
-                  key={player.internalId}
-                  player={player}
-                  rank={i + 1}
-                  currentYear={state.leagueStats?.year ?? new Date().getFullYear()}
-                  canPick={!isComplete && (!isGM || isUserOnClock)}
-                  onPick={() => pickPlayer(player)}
-                />
-              ))}
+            <div className="px-3 py-2 border-b border-zinc-900 grid grid-cols-[1.5rem_2.5rem_minmax(0,1fr)_2.5rem_2.5rem_auto] gap-2 text-[9px] font-black uppercase tracking-widest text-zinc-600">
+              <span>#</span>
+              <span />
+              <span>Player</span>
+              <span className="text-right">OVR</span>
+              <span className="text-right">POT</span>
+              <span className="w-10" />
+            </div>
+            <div className="flex-1 overflow-y-auto max-h-[55vh] xl:max-h-none overscroll-contain">
+              {availableForUser.map((player, i) => {
+                const originalTid = getOriginalTeamId(player, isPbaExpansion);
+                const teamLogoUrl = isPbaExpansion
+                  ? state.nonNBATeams.find(team => team.league === 'PBA' && team.tid === originalTid)?.imgURL
+                  : (() => {
+                      const originalTeam = (state.teams ?? []).find(team => findTeamId(team) === originalTid);
+                      return originalTeam ? getHistoricalTeamSnapshot(originalTeam, currentYear).logoUrl : undefined;
+                    })();
+                return (
+                  <PoolRow
+                    key={player.internalId}
+                    player={player}
+                    rank={i + 1}
+                    currentYear={currentYear}
+                    teamLogoUrl={teamLogoUrl}
+                    isPba={isPbaExpansion}
+                    canPick={!isComplete && (!isGM || isUserOnClock)}
+                    onPick={() => pickPlayer(player)}
+                  />
+                );
+              })}
               {availableForUser.length === 0 && (
                 <p className="text-center text-zinc-500 text-sm py-8">No eligible players left.</p>
               )}
             </div>
           </div>
+        </div>
         </div>
       </motion.div>
     </AnimatePresence>
@@ -341,7 +435,7 @@ export const ExpansionDraftView: React.FC<Props> = ({ onClose }) => {
 // ─── Sub-Komponenten ───────────────────────────────────────────────────────
 
 const OnTheClockCard: React.FC<{ team: DraftBoardTeam; pick: number; isUser: boolean }> = ({ team, pick, isUser }) => (
-  <div className={`bg-zinc-900 border rounded-md p-4 mb-4 flex items-center gap-4 ${
+  <div className={`bg-zinc-900 border rounded-md p-3 sm:p-4 mb-4 flex items-center gap-3 sm:gap-4 ${
     isUser ? 'border-amber-500/70 shadow-[0_0_14px_rgba(245,158,11,0.35)]' : 'border-zinc-700'
   }`}>
     <Clock className="w-5 h-5 text-zinc-400" />
@@ -374,25 +468,38 @@ const PoolRow: React.FC<{
   player: DraftableExpansionPlayer;
   rank: number;
   currentYear: number;
+  teamLogoUrl?: string;
+  isPba: boolean;
   canPick: boolean;
   onPick: () => void;
-}> = ({ player, rank, currentYear, canPick, onPick }) => {
+}> = ({ player, rank, currentYear, teamLogoUrl, isPba, canPick, onPick }) => {
   const salaryM = ((player.contract?.amount ?? 0) * 1000) / 1_000_000;
   const age = player.born?.year ? currentYear - player.born.year : (player.age ?? null);
   const meta: string[] = [];
   if (player.pos) meta.push(player.pos);
   if (age != null) meta.push(`${age}y`);
-  if (salaryM > 0) meta.push(`$${salaryM.toFixed(1)}M`);
+  if (salaryM > 0) meta.push(isPba
+    ? formatExternalSalary((player.contract?.amount ?? 0) * 1_000, 'PBA')
+    : `$${salaryM.toFixed(1)}M`);
   return (
-    <div className="flex items-center gap-2 px-3 py-2 border-b border-zinc-800/50 hover:bg-zinc-900">
-      <span className="w-6 text-xs font-mono text-zinc-500">{rank}</span>
+    <div className="grid grid-cols-[1.5rem_2.5rem_minmax(0,1fr)_2.5rem_2.5rem_auto] items-center gap-2 px-3 py-2 border-b border-zinc-800/50 hover:bg-zinc-900">
+      <span className="text-xs font-mono text-zinc-500">{rank}</span>
+      <PlayerPortrait
+        imgUrl={getPlayerImage(player)}
+        fallbackImgUrl={player.imgURL}
+        face={(player as any).face}
+        playerName={player.name}
+        teamLogoUrl={teamLogoUrl}
+        size={36}
+      />
       <div className="flex-1 min-w-0">
         <div className="text-sm font-medium truncate">{player.name}</div>
         <div className="text-[10px] text-zinc-500">
           {meta.join(' · ') || '—'}
         </div>
       </div>
-      <span className="font-mono text-sm">{player._k2}</span>
+      <span className="font-mono text-sm text-right text-sky-300">{player._ovr}</span>
+      <span className="font-mono text-sm text-right text-emerald-300">{player.displayPot ?? '—'}</span>
       {canPick && (
         <button
           onClick={onPick}

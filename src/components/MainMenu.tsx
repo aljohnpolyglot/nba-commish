@@ -1,36 +1,29 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { SaveManager, SaveMetadata } from '../services/SaveManager';
-import { Play, Upload, Download, Trash2, FolderOpen, Plus, Settings2, Trophy, Zap, Target, Sparkles, CircleDot, Medal } from 'lucide-react';
-import { useGame } from '../store/GameContext';
+import { Play, Upload, Download, Trash2, FolderOpen, Plus, Settings2, Trophy, Zap, Target, Sparkles, CircleDot, Medal, FileJson, HardDrive, Music2, Copy } from 'lucide-react';
 import { SettingsModal } from './modals/SettingsModal';
+import { LazySimLoadingScreen } from './setup/LazySimLoadingScreen';
+import type { GameLoadProgress, GameState, LazySimProgress } from '../types';
+import { formatGameDateShort } from '../utils/dateUtils';
 
 interface MainMenuProps {
   onStartNew: () => void;
-  onLoadSave: (state: any) => void;
-  onPlayMiniGame?: (game: 'throne' | 'dunk' | '3point' | 'shooting-stars' | 'skills' | 'horse' | 'olympics') => void;
+  onLoadSave: (save: SaveMetadata | GameState) => Promise<void>;
+  onPlayMiniGame?: (game: 'throne' | 'dunk' | '3point' | 'shooting-stars' | 'skills' | 'horse' | 'olympics' | 'dance') => void;
 }
 
 const formatSaveGameDate = (value: string): string => {
-  const isoMatch = String(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  if (isoMatch) {
-    const [, year, month, day] = isoMatch;
-    return new Date(Date.UTC(Number(year), Number(month) - 1, Number(day))).toLocaleDateString('en-US', {
-      timeZone: 'UTC',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
+  try {
+    return formatGameDateShort(value);
+  } catch {
+    return value;
   }
-  const parsed = new Date(value);
-  if (!Number.isNaN(parsed.getTime())) {
-    return parsed.toLocaleDateString('en-US', {
-      timeZone: 'UTC',
-      month: 'short',
-      day: 'numeric',
-      year: 'numeric',
-    });
-  }
-  return value;
+};
+
+const formatFileSize = (bytes?: number): string => {
+  if (!bytes || bytes < 1) return 'Stored locally';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 };
 
 export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPlayMiniGame }) => {
@@ -38,6 +31,9 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [importProgress, setImportProgress] = useState<LazySimProgress>();
+  const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { loadMetadata(); }, []);
 
@@ -52,17 +48,13 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
     }
   };
 
-  const handleLoad = async (id: string) => {
+  const handleLoad = async (save: SaveMetadata) => {
+    setError(null);
     setIsLoading(true);
     try {
-      const state = await SaveManager.loadGame(id);
-      if (state) {
-        onLoadSave(state);
-      } else {
-        setError('Save file corrupted or missing.');
-      }
+      await onLoadSave(save);
     } catch (err) {
-      setError('Failed to load save.');
+      setError(err instanceof Error ? err.message : 'Failed to load save.');
     } finally {
       setIsLoading(false);
     }
@@ -76,23 +68,64 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
   };
 
   const handleExport = async (id: string) => {
-    await SaveManager.exportSave(id);
+    setError(null);
+    try {
+      await SaveManager.exportSave(id);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export save.');
+    }
+  };
+
+  const showImportProgress = (progress: GameLoadProgress) => {
+    setImportProgress({
+      kind: 'save-load',
+      currentDate: '',
+      targetDate: '',
+      daysComplete: progress.stepsComplete,
+      daysTotal: progress.stepsTotal,
+      currentPhase: progress.currentPhase,
+      percentComplete: progress.percentComplete,
+    });
+  };
+
+  const importFile = async (file?: File) => {
+    if (!file) return;
+    setError(null);
+    setIsLoading(true);
+    try {
+      const importedLeague = await SaveManager.importSave(file, showImportProgress);
+      await onLoadSave(importedLeague.state);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to import save.');
+      await loadMetadata();
+    } finally {
+      setImportProgress(undefined);
+      setIsLoading(false);
+    }
   };
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (file) {
-      setIsLoading(true);
-      try {
-        await SaveManager.importSave(file);
-        await loadMetadata();
-      } catch (err: any) {
-        setError(err?.message ?? 'Failed to import save.');
-      } finally {
-        setIsLoading(false);
-      }
+    e.target.value = '';
+    await importFile(file);
+  };
+
+  const handleClone = async (save: SaveMetadata) => {
+    setError(null);
+    setIsLoading(true);
+    try {
+      await SaveManager.cloneSave(save.id, `${save.name} Copy`);
+      await loadMetadata();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to copy save.');
+    } finally {
+      setIsLoading(false);
     }
   };
+
+  if (importProgress) {
+    return <LazySimLoadingScreen progress={importProgress} />;
+  }
 
   return (
     <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4 text-slate-200">
@@ -146,18 +179,57 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
               </div>
             </button>
 
-            <label className="w-full flex items-center justify-between p-6 bg-slate-900 border border-slate-800 hover:border-slate-700 hover:bg-slate-800 rounded-2xl transition-all cursor-pointer group">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-slate-800 group-hover:bg-slate-700 rounded-full flex items-center justify-center transition-colors">
-                  <Upload size={24} className="text-slate-400 group-hover:text-white" />
+            <div
+              onDragEnter={(event) => {
+                event.preventDefault();
+                setIsDraggingFile(true);
+              }}
+              onDragOver={(event) => event.preventDefault()}
+              onDragLeave={(event) => {
+                event.preventDefault();
+                if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+                  setIsDraggingFile(false);
+                }
+              }}
+              onDrop={(event) => {
+                event.preventDefault();
+                setIsDraggingFile(false);
+                void importFile(event.dataTransfer.files?.[0]);
+              }}
+              className={`w-full rounded-2xl border p-5 transition-all ${
+                isDraggingFile
+                  ? 'border-indigo-400 bg-indigo-500/10'
+                  : 'border-slate-800 bg-slate-900 hover:border-slate-700'
+              }`}
+            >
+              <div className="flex items-start gap-4">
+                <div className="mt-0.5 flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-slate-800">
+                  <FileJson size={24} className={isDraggingFile ? 'text-indigo-300' : 'text-slate-300'} />
                 </div>
-                <div className="text-left">
-                  <h3 className="text-xl font-bold text-white">Import Save</h3>
-                  <p className="text-slate-400 text-sm">Load a save file from your device</p>
+                <div className="min-w-0 flex-1 text-left">
+                  <h3 className="text-lg font-bold text-white">Import League</h3>
+                  <div className="mt-3">
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        type="button"
+                        onClick={() => importInputRef.current?.click()}
+                        className="inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-xl bg-indigo-500 px-4 py-2 text-sm font-bold text-white transition-colors hover:bg-indigo-400"
+                      >
+                        <Upload size={16} />
+                        Import
+                      </button>
+                    </div>
+                  </div>
                 </div>
               </div>
-              <input type="file" accept=".json,.gz" className="hidden" onChange={handleImport} />
-            </label>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept=".json,.gz,.json.gz,application/json,application/gzip"
+                className="hidden"
+                onChange={handleImport}
+              />
+            </div>
 
             <div className="pt-4 border-t border-slate-800">
               <h3 className="text-lg font-bold text-white mb-3">Mini Games</h3>
@@ -251,6 +323,19 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
                   </div>
                 </div>
               </button>
+
+              <button
+                onClick={() => onPlayMiniGame?.('dance')}
+                className="group mt-2 flex w-full items-center justify-between rounded-xl border border-slate-800 bg-slate-900/50 p-4 transition-all hover:border-pink-500/50 hover:bg-slate-800"
+              >
+                <div className="flex items-center gap-3">
+                  <Music2 size={20} className="text-pink-500 group-hover:text-pink-400" />
+                  <div className="text-left">
+                    <h4 className="text-sm font-bold text-white">Dance Contest</h4>
+                    <p className="text-xs text-slate-400">Choose two teams and own the floor</p>
+                  </div>
+                </div>
+              </button>
             </div>
 
           </div>
@@ -259,7 +344,7 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
           <div>
             <h2 className="text-2xl font-bold text-white mb-6 flex items-center gap-2">
               <FolderOpen size={24} />
-              Load Game
+              Saved Leagues
             </h2>
             
             <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
@@ -271,27 +356,56 @@ export const MainMenu: React.FC<MainMenuProps> = ({ onStartNew, onLoadSave, onPl
                 </div>
               ) : (
                 saves.map(save => (
-                  <div key={save.id} className="bg-slate-900 border border-slate-800 rounded-2xl p-4 hover:border-slate-700 transition-colors group">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h3 className="font-bold text-white text-lg">{save.name}</h3>
-                        <p className="text-sm text-slate-400">Commish: {save.commissionerName}</p>
+                  <div key={save.id} className="group rounded-2xl border border-slate-800 bg-slate-900 p-4 transition-colors hover:border-indigo-500/40">
+                    <div className="flex items-start gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-300">
+                        {save.gameMode === 'gm' && save.userTeamLogoUrl ? (
+                          <img
+                            src={save.userTeamLogoUrl}
+                            alt=""
+                            className="h-8 w-8 object-contain"
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <HardDrive size={19} />
+                        )}
                       </div>
-                      <div className="text-right">
-                        <span className="text-xs font-mono text-slate-500 bg-slate-950 px-2 py-1 rounded-md">
-                          Day {save.day}
-                        </span>
-                        <p className="text-xs text-slate-500 mt-1">{formatSaveGameDate(save.gameDate)}</p>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <h3 className="truncate text-lg font-bold text-white">{save.name}</h3>
+                            <p className="truncate text-sm text-slate-400">
+                              {save.leagueName || save.commissionerName}
+                            </p>
+                          </div>
+                          <span className="w-fit shrink-0 rounded-lg bg-slate-950 px-2 py-1 text-[11px] font-bold uppercase tracking-wide text-slate-500">
+                            {save.leagueType || 'League'}
+                          </span>
+                        </div>
+                        <div className="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-500 sm:grid-cols-3">
+                          <span>{formatSaveGameDate(save.gameDate)}</span>
+                          <span>Day {save.day}</span>
+                          <span className="col-span-2 sm:col-span-1 sm:text-right">{formatFileSize(save.sizeBytes)}</span>
+                        </div>
                       </div>
                     </div>
                     
                     <div className="flex items-center gap-2 mt-4 pt-4 border-t border-slate-800/50">
                       <button
-                        onClick={() => handleLoad(save.id)}
-                        className="flex-1 bg-white hover:bg-slate-200 text-slate-950 font-semibold py-2 px-4 rounded-xl flex items-center justify-center gap-2 transition-colors"
+                        onClick={() => handleLoad(save)}
+                        disabled={isLoading}
+                        className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-indigo-500 px-4 py-2 font-semibold text-white transition-colors hover:bg-indigo-400 disabled:cursor-wait disabled:opacity-50"
                       >
                         <Play size={16} />
-                        Load
+                        Continue
+                      </button>
+                      <button
+                        onClick={() => handleClone(save)}
+                        className="p-2 text-slate-400 hover:text-white hover:bg-slate-800 rounded-xl transition-colors"
+                        title="Copy Save"
+                      >
+                        <Copy size={18} />
                       </button>
                       <button
                         onClick={() => handleExport(save.id)}

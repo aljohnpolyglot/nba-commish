@@ -1,6 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { normalizeDate } from '../../../utils/helpers';
+import { didHomeTeamWin } from '../../../utils/gameOutcome';
 import { calcTeamRatings, expectedTeamScore } from '../../../services/simulation/teamratinghelper';
 import {
   combinedOdds,
@@ -23,6 +23,12 @@ import {
   SportsbookPropsTab,
   SportsbookTabBar,
 } from './SportsbookViewSections';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { isOnRoster } from '../../../utils/teamLookup';
+import {
+  getSportsbookSlate,
+  resolveSportsbookGameTeams,
+} from './sportsbook/sportsbookGameSelection';
 
 export const SportsbookView = () => {
   const { state, placeBet } = useGame();
@@ -46,15 +52,21 @@ export const SportsbookView = () => {
     return next;
   });
 
-  const todaysGames = useMemo(() => {
-    const normalizedCurrent = normalizeDate(state.date);
-    return state.schedule.filter((game: any) => normalizeDate(game.date) === normalizedCurrent && !game.played);
+  const sportsbookSlate = useMemo(() => {
+    return getSportsbookSlate(state.schedule, state.date);
   }, [state.schedule, state.date]);
+  const todaysGames = sportsbookSlate.games;
+  const slateDateLabel = useMemo(() => {
+    if (sportsbookSlate.isToday) return 'Today';
+    const date = new Date(`${sportsbookSlate.date}T00:00:00`);
+    if (Number.isNaN(date.getTime())) return sportsbookSlate.date;
+    return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+  }, [sportsbookSlate.date, sportsbookSlate.isToday]);
 
   const gameCards = useMemo(() => todaysGames.map((game: any) => {
-    const home = state.teams.find((team: any) => team.id === game.homeTid);
-    const away = state.teams.find((team: any) => team.id === game.awayTid);
-    if (!home || !away) return null;
+    const matchup = resolveSportsbookGameTeams(game, state);
+    if (!matchup) return null;
+    const { home, away } = matchup;
 
     const homeRatings = calcTeamRatings(home.id, state.players);
     const awayRatings = calcTeamRatings(away.id, state.players);
@@ -66,8 +78,8 @@ export const SportsbookView = () => {
 
     return {
       game,
-      home,
-      away,
+      home: { ...home, logoUrl: getResolvedTeamLogoUrl(home, state.leagueStats?.year) },
+      away: { ...away, logoUrl: getResolvedTeamLogoUrl(away, state.leagueStats?.year) },
       homeML: Number((1 / (trueHomeProb * 1.04)).toFixed(3)),
       awayML: Number((1 / ((1 - trueHomeProb) * 1.04)).toFixed(3)),
       homeSpread: -rawSpread,
@@ -80,7 +92,7 @@ export const SportsbookView = () => {
       homeTeamTotal: round05(total * 0.53),
       ttOdds: Number((1 / 0.5238).toFixed(3)),
     };
-  }).filter(Boolean), [todaysGames, state.teams, state.players]);
+  }).filter(Boolean), [todaysGames, state.teams, state.nonNBATeams, state.players, state.leagueStats?.year]);
 
   const teamRecords = useMemo(() => {
     const records: Record<number, { w: number; l: number }> = {};
@@ -88,7 +100,7 @@ export const SportsbookView = () => {
     (state.boxScores as any[])
       .filter(game => !game.isAllStar && !game.isRisingStars && !game.isCelebrityGame && !nonRegularGids.has(game.gameId))
       .forEach(game => {
-        const homeWon = game.homeScore > game.awayScore;
+        const homeWon = didHomeTeamWin(game);
         if (!records[game.homeTeamId]) records[game.homeTeamId] = { w: 0, l: 0 };
         if (!records[game.awayTeamId]) records[game.awayTeamId] = { w: 0, l: 0 };
         homeWon ? records[game.homeTeamId].w++ : records[game.homeTeamId].l++;
@@ -106,7 +118,7 @@ export const SportsbookView = () => {
       todayTids.add(card.away.id);
     });
 
-    const todayPlayers = (state.players ?? []).filter((player: any) => todayTids.has(player.tid) && player.status === 'Active' && !player.injury?.gamesRemaining);
+    const todayPlayers = (state.players ?? []).filter((player: any) => todayTids.has(player.tid) && isOnRoster(player) && !player.injury?.gamesRemaining);
     const teamPlayerMap: Record<number, any[]> = {};
     todayPlayers.forEach((player: any) => {
       if (!teamPlayerMap[player.tid]) teamPlayerMap[player.tid] = [];
@@ -230,15 +242,22 @@ export const SportsbookView = () => {
   }, [state.bets]);
 
   return (
-    <div className="h-full flex flex-col overflow-hidden bg-[#161a20]">
+    <div className="h-full flex flex-col overflow-hidden bg-[radial-gradient(circle_at_70%_15%,rgba(16,185,129,0.06),transparent_30%),linear-gradient(145deg,#07111e,#0a1422_58%,#07101b)]">
       <SportsbookHeader bankroll={state.stats.personalWealth} profit={betStats.profit} />
-      <SportsbookTabBar activeTab={activeTab} pendingCount={betStats.pending} onChange={setActiveTab} />
+      <SportsbookTabBar
+        activeTab={activeTab}
+        linesLabel={sportsbookSlate.isToday ? "Today's" : 'Upcoming'}
+        pendingCount={betStats.pending}
+        onChange={setActiveTab}
+      />
 
       <div className="flex-1 overflow-hidden flex relative">
         <div className="flex-1 overflow-y-auto p-3 sm:p-5 space-y-3 sm:space-y-4 custom-scrollbar">
           {activeTab === 'lines' && (
             <SportsbookLinesTab
               gameCards={gameCards as any[]}
+              slateDateLabel={slateDateLabel}
+              isToday={sportsbookSlate.isToday}
               teamRecords={teamRecords}
               expandedGames={expandedGames}
               isInSlip={isInSlip}
@@ -262,6 +281,7 @@ export const SportsbookView = () => {
               myBetsPage={myBetsPage}
               onPageChange={setMyBetsPage}
               onSelectBoxScore={setSelectedBoxScore}
+              onExplore={() => setActiveTab('lines')}
             />
           )}
         </div>

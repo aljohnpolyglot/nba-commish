@@ -1,0 +1,210 @@
+{
+  "sourceFile": "C:/Users/user-MSI/Downloads/pba--philippine-cup-2026-realgm-source.json",
+  "targetFile": "C:/Users/user-MSI/Downloads/nba-commish/public/data/external/pba/pba-2027-final-jerseys-cleaned-bbgm.json",
+  "backupFile": "C:/Users/user-MSI/Downloads/nba-commish/public/data/external/pba/pba-2027-final-jerseys-cleaned-bbgm.before-philippine-cup-stat-repair.json",
+  "seasonTargets": 8,
+  "sourceSeasonRows": 0,
+  "sourcePlayersMappedById": 481,
+  "missingPlayerInFinal": 24,
+  "missingTeamInFinal": 0,
+  "missingPlayerStatsAdded": 0,
+  "missingPlayerRatingRowsAdded": 0,
+  "missingStatsBySeason": {
+    "2018": 0,
+    "2019": 0,
+    "2020": 0,
+    "2021": 0,
+    "2022": 0,
+    "2023": 0,
+    "2024": 0,
+    "2025": 0
+  },
+  "mergedMultiRowSourcePlayersBySeason": {
+    "2023": 2,
+    "2025": 5
+  },
+  "unresolvedSourceRows": [
+    {
+      "season": 2018,
+      "playerId": "148004",
+      "playerName": "Bernabe Teodoro",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2018,
+      "playerId": "135991",
+      "playerName": "John Karlo Casino",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2018,
+      "playerId": "148651",
+      "playerName": "Cyrus Tabi",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2019,
+      "playerId": "151078",
+      "playerName": "Matthew Salem",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2019,
+      "playerId": "2720",
+      "playerName": "Maurice Shaw",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2019,
+      "playerId": "172325",
+      "playerName": "Daniel Guzman",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2020,
+      "playerId": "182950",
+      "playerName": "Rey Acuno",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2022,
+      "playerId": "199684",
+      "playerName": "Encho Serrano",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2022,
+      "playerId": "199691",
+      "playerName": "Mark Dyke",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2022,
+      "playerId": "117061",
+      "playerName": "Billy Ray Robles",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2022,
+      "playerId": "199873",
+      "playerName": "Terrence Tumalip",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2022,
+      "playerId": "199689",
+      "playerName": "John Apacible",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2022,
+      "playerId": "199872",
+      "playerName": "John Grospe",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2023,
+      "playerId": "224218",
+      "playerName": "Patrick Maagdenberg",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2023,
+      "playerId": "224217",
+      "playerName": "Inand Fornilos",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2023,
+      "playerId": "232097",
+      "playerName": "Edgar Charcos",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2023,
+      "playerId": "189611",
+      "playerName": "Simon Camacho",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2023,
+      "playerId": "172369",
+      "playerName": "Kamron Fleming",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2023,
+      "playerId": "224221",
+      "playerName": "Donald Gumaru",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2025,
+      "playerId": "254616",
+      "playerName": "Pablo Hernandez",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2025,
+      "playerId": "165015",
+      "playerName": "Brandon Ramirez",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2025,
+      "playerId": "89493",
+      "playerName": "John Clemente",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2025,
+      "playerId": "255048",
+      "playerName": "Gab Gomez",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    },
+    {
+      "season": 2025,
+      "playerId": "259358",
+      "playerName": "John Abis",
+      "reason": "ambiguousOrMissingFinalMatch",
+      "matches": 0
+    }
+  ],
+  "sampleAdded": [],
+  "totalPlayers": 800,
+  "totalSeasons": [
+    2018,
+    2019,
+    2020,
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "totalFinalStatsRows": 3441,
+  "totalFinalRatingRows": 6497
+}

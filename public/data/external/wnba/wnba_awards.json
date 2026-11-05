@@ -1,0 +1,7362 @@
+[
+  {
+    "season": 1997,
+    "mvp": {
+      "name": "Cynthia Cooper",
+      "brPid": "coopecy01w",
+      "team": "HOU",
+      "gp": 28,
+      "min": 35.1,
+      "pts": 22.2,
+      "trb": 4.0,
+      "ast": 4.7,
+      "stl": 2.1,
+      "blk": 0.2,
+      "fgPct": 0.47,
+      "tpPct": 0.414,
+      "ftPct": 0.864,
+      "ws": 9.4,
+      "wsPer48": 0.462
+    },
+    "dpoy": {
+      "name": "Teresa Weatherspoon",
+      "brPid": "weathte01w",
+      "team": "NYL",
+      "gp": 28,
+      "min": 33.0,
+      "pts": 7.0,
+      "trb": 4.1,
+      "ast": 6.2,
+      "stl": 3.0,
+      "blk": 0.1,
+      "fgPct": 0.467,
+      "tpPct": 0.086,
+      "ftPct": 0.65,
+      "ws": 3.5,
+      "wsPer48": 0.179
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Ruthie Bolton",
+            "brPid": "boltoru01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Cynthia Cooper",
+            "brPid": "coopecy01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Eva Nemcova",
+            "brPid": "nemcoev01w",
+            "team": "CLE"
+          },
+          {
+            "name": "Tina Thompson",
+            "brPid": "thompti01w",
+            "team": "HOU"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Jennifer Gillom",
+            "brPid": "gilloje01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Rebecca Lobo",
+            "brPid": "lobore01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Wendy Palmer",
+            "brPid": "palmewe01w",
+            "team": "UTA"
+          },
+          {
+            "name": "Andrea Stinson",
+            "brPid": "stinsan01w",
+            "team": "CHA"
+          },
+          {
+            "name": "Teresa Weatherspoon",
+            "brPid": "weathte01w",
+            "team": "NYL"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Van Chancellor",
+      "brPid": "chancva99w",
+      "team": "HOU",
+      "gp": 28
+    },
+    "finalsMvp": {
+      "name": "Cynthia Cooper",
+      "brPid": "coopecy01w",
+      "team": "HOU",
+      "gp": 1,
+      "min": 40.0,
+      "pts": 25.0,
+      "trb": 4.0,
+      "ast": 4.0,
+      "stl": 2.0,
+      "blk": 1.0,
+      "fgPct": 0.538,
+      "tpPct": 0.0,
+      "ftPct": 0.733
+    },
+    "champion": {
+      "name": "Houston Comets",
+      "coach": "Van Chancellor"
+    },
+    "runnerUp": {
+      "name": "New York Liberty",
+      "coach": "Nancy Darsch"
+    },
+    "finalsResult": "1-0",
+    "finalsTv": "NBC"
+  },
+  {
+    "season": 1998,
+    "mvp": {
+      "name": "Cynthia Cooper",
+      "brPid": "coopecy01w",
+      "team": "HOU",
+      "gp": 30,
+      "min": 35.0,
+      "pts": 22.7,
+      "trb": 3.7,
+      "ast": 4.4,
+      "stl": 1.6,
+      "blk": 0.4,
+      "fgPct": 0.446,
+      "tpPct": 0.4,
+      "ftPct": 0.854,
+      "ws": 10.0,
+      "wsPer48": 0.458
+    },
+    "roy": {
+      "name": "Tracy Reid",
+      "brPid": "reidtr01w",
+      "team": "CHA",
+      "gp": 30,
+      "min": 32.2,
+      "pts": 13.8,
+      "trb": 5.2,
+      "ast": 1.5,
+      "stl": 1.3,
+      "blk": 0.4,
+      "fgPct": 0.487,
+      "tpPct": 0.0,
+      "ftPct": 0.613,
+      "ws": 3.6,
+      "wsPer48": 0.179
+    },
+    "dpoy": {
+      "name": "Teresa Weatherspoon",
+      "brPid": "weathte01w",
+      "team": "NYL",
+      "gp": 30,
+      "min": 33.4,
+      "pts": 6.8,
+      "trb": 4.0,
+      "ast": 6.4,
+      "stl": 3.3,
+      "blk": 0.0,
+      "fgPct": 0.388,
+      "tpPct": 0.327,
+      "ftPct": 0.609,
+      "ws": 3.0,
+      "wsPer48": 0.142
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Cynthia Cooper",
+            "brPid": "coopecy01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Jennifer Gillom",
+            "brPid": "gilloje01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Suzie McConnell Serio",
+            "brPid": "mcconsu01w",
+            "team": "CLE"
+          },
+          {
+            "name": "Sheryl Swoopes",
+            "brPid": "swoopsh01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Tina Thompson",
+            "brPid": "thompti01w",
+            "team": "HOU"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Cindy Brown",
+            "brPid": "brownci01w",
+            "team": "DET"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Eva Nemcova",
+            "brPid": "nemcoev01w",
+            "team": "CLE"
+          },
+          {
+            "name": "Andrea Stinson",
+            "brPid": "stinsan01w",
+            "team": "CHA"
+          },
+          {
+            "name": "Teresa Weatherspoon",
+            "brPid": "weathte01w",
+            "team": "NYL"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Van Chancellor",
+      "brPid": "chancva99w",
+      "team": "HOU",
+      "gp": 30
+    },
+    "finalsMvp": {
+      "name": "Cynthia Cooper",
+      "brPid": "coopecy01w",
+      "team": "HOU",
+      "gp": 3,
+      "min": 41.0,
+      "pts": 26.3,
+      "trb": 2.7,
+      "ast": 4.3,
+      "stl": 1.7,
+      "blk": 1.0,
+      "fgPct": 0.435,
+      "tpPct": 0.286,
+      "ftPct": 0.778
+    },
+    "champion": {
+      "name": "Houston Comets",
+      "coach": "Van Chancellor"
+    },
+    "runnerUp": {
+      "name": "Phoenix Mercury",
+      "coach": "Cheryl Miller"
+    },
+    "finalsResult": "2-1",
+    "finalsTv": "Game 1 and 3: ESPN; Game 2: NBC"
+  },
+  {
+    "season": 1999,
+    "mvp": {
+      "name": "Yolanda Griffith",
+      "brPid": "griffyo01w",
+      "team": "SAC",
+      "gp": 29,
+      "min": 33.8,
+      "pts": 18.8,
+      "trb": 11.3,
+      "ast": 1.6,
+      "stl": 2.5,
+      "blk": 1.9,
+      "fgPct": 0.541,
+      "tpPct": 0.0,
+      "ftPct": 0.617,
+      "ws": 8.1,
+      "wsPer48": 0.397
+    },
+    "roy": {
+      "name": "Chamique Holdsclaw",
+      "brPid": "holdsch01w",
+      "team": "WAS",
+      "gp": 31,
+      "min": 34.2,
+      "pts": 16.9,
+      "trb": 7.9,
+      "ast": 2.4,
+      "stl": 1.2,
+      "blk": 0.9,
+      "fgPct": 0.437,
+      "tpPct": 0.172,
+      "ftPct": 0.773,
+      "ws": 3.1,
+      "wsPer48": 0.141
+    },
+    "dpoy": {
+      "name": "Yolanda Griffith",
+      "brPid": "griffyo01w",
+      "team": "SAC",
+      "gp": 29,
+      "min": 33.8,
+      "pts": 18.8,
+      "trb": 11.3,
+      "ast": 1.6,
+      "stl": 2.5,
+      "blk": 1.9,
+      "fgPct": 0.541,
+      "tpPct": 0.0,
+      "ftPct": 0.617,
+      "ws": 8.1,
+      "wsPer48": 0.397
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Cynthia Cooper",
+            "brPid": "coopecy01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Yolanda Griffith",
+            "brPid": "griffyo01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Ticha Penicheiro",
+            "brPid": "penicti01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Sheryl Swoopes",
+            "brPid": "swoopsh01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Natalie Williams",
+            "brPid": "willina01w",
+            "team": "UTA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Chamique Holdsclaw",
+            "brPid": "holdsch01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Shannon Johnson",
+            "brPid": "johnssh01w",
+            "team": "ORL"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Tina Thompson",
+            "brPid": "thompti01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Teresa Weatherspoon",
+            "brPid": "weathte01w",
+            "team": "NYL"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Van Chancellor",
+      "brPid": "chancva99w",
+      "team": "HOU",
+      "gp": 32
+    },
+    "finalsMvp": {
+      "name": "Cynthia Cooper",
+      "brPid": "coopecy01w",
+      "team": "HOU",
+      "gp": 3,
+      "min": 36.3,
+      "pts": 21.7,
+      "trb": 4.3,
+      "ast": 4.3,
+      "stl": 2.7,
+      "blk": 0.0,
+      "fgPct": 0.368,
+      "tpPct": 0.308,
+      "ftPct": 0.892
+    },
+    "allStarMvp": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 32,
+      "min": 29.1,
+      "pts": 15.6,
+      "trb": 7.8,
+      "ast": 1.8,
+      "stl": 1.1,
+      "blk": 1.5,
+      "fgPct": 0.467,
+      "tpPct": 0.423,
+      "ftPct": 0.731,
+      "ws": 4.4,
+      "wsPer48": 0.227
+    },
+    "champion": {
+      "name": "Houston Comets",
+      "coach": "Van Chancellor"
+    },
+    "runnerUp": {
+      "name": "New York Liberty",
+      "coach": "Richie Adubato"
+    },
+    "finalsResult": "2-0",
+    "finalsTv": "Game 1: Lifetime; Game 2 and 3: NBC"
+  },
+  {
+    "season": 2000,
+    "mvp": {
+      "name": "Sheryl Swoopes",
+      "brPid": "swoopsh01w",
+      "team": "HOU",
+      "gp": 31,
+      "min": 35.2,
+      "pts": 20.7,
+      "trb": 6.3,
+      "ast": 3.8,
+      "stl": 2.8,
+      "blk": 1.1,
+      "fgPct": 0.506,
+      "tpPct": 0.374,
+      "ftPct": 0.821,
+      "ws": 9.8,
+      "wsPer48": 0.433
+    },
+    "roy": {
+      "name": "Betty Lennox",
+      "brPid": "lennobe01w",
+      "team": "MIN",
+      "gp": 32,
+      "min": 30.8,
+      "pts": 16.9,
+      "trb": 5.6,
+      "ast": 2.6,
+      "stl": 1.7,
+      "blk": 0.3,
+      "fgPct": 0.427,
+      "tpPct": 0.396,
+      "ftPct": 0.8,
+      "ws": 3.7,
+      "wsPer48": 0.182
+    },
+    "dpoy": {
+      "name": "Sheryl Swoopes",
+      "brPid": "swoopsh01w",
+      "team": "HOU",
+      "gp": 31,
+      "min": 35.2,
+      "pts": 20.7,
+      "trb": 6.3,
+      "ast": 3.8,
+      "stl": 2.8,
+      "blk": 1.1,
+      "fgPct": 0.506,
+      "tpPct": 0.374,
+      "ftPct": 0.821,
+      "ws": 9.8,
+      "wsPer48": 0.433
+    },
+    "mip": {
+      "name": "Tari Phillips",
+      "brPid": "phillta01w",
+      "team": "NYL",
+      "gp": 31,
+      "min": 31.5,
+      "pts": 13.8,
+      "trb": 8.0,
+      "ast": 0.9,
+      "stl": 1.9,
+      "blk": 0.7,
+      "fgPct": 0.467,
+      "tpPct": 0.25,
+      "ftPct": 0.654,
+      "ws": 3.8,
+      "wsPer48": 0.186
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Cynthia Cooper",
+            "brPid": "coopecy01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Ticha Penicheiro",
+            "brPid": "penicti01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Sheryl Swoopes",
+            "brPid": "swoopsh01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Natalie Williams",
+            "brPid": "willina01w",
+            "team": "UTA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Yolanda Griffith",
+            "brPid": "griffyo01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Shannon Johnson",
+            "brPid": "johnssh01w",
+            "team": "ORL"
+          },
+          {
+            "name": "Betty Lennox",
+            "brPid": "lennobe01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Katie Smith",
+            "brPid": "smithka01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Tina Thompson",
+            "brPid": "thompti01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Teresa Weatherspoon",
+            "brPid": "weathte01w",
+            "team": "NYL"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Michael Cooper",
+      "brPid": "coopemi01w",
+      "team": "LAS",
+      "gp": 32
+    },
+    "finalsMvp": {
+      "name": "Cynthia Cooper",
+      "brPid": "coopecy01w",
+      "team": "HOU",
+      "gp": 2,
+      "min": 41.0,
+      "pts": 22.5,
+      "trb": 3.5,
+      "ast": 6.0,
+      "stl": 1.5,
+      "blk": 0.5,
+      "fgPct": 0.341,
+      "tpPct": 0.3,
+      "ftPct": 0.923
+    },
+    "allStarMvp": {
+      "name": "Tina Thompson",
+      "brPid": "thompti01w",
+      "team": "HOU",
+      "gp": 32,
+      "min": 34.0,
+      "pts": 16.9,
+      "trb": 7.7,
+      "ast": 1.5,
+      "stl": 1.5,
+      "blk": 0.8,
+      "fgPct": 0.469,
+      "tpPct": 0.417,
+      "ftPct": 0.837,
+      "ws": 7.2,
+      "wsPer48": 0.316
+    },
+    "champion": {
+      "name": "Houston Comets",
+      "coach": "Van Chancellor"
+    },
+    "runnerUp": {
+      "name": "New York Liberty",
+      "coach": "Richie Adubato"
+    },
+    "finalsResult": "2-0",
+    "finalsTv": "Game 1: Lifetime; Game 2: NBC"
+  },
+  {
+    "season": 2001,
+    "mvp": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 31,
+      "min": 33.3,
+      "pts": 19.5,
+      "trb": 9.6,
+      "ast": 2.4,
+      "stl": 1.1,
+      "blk": 2.3,
+      "fgPct": 0.473,
+      "tpPct": 0.367,
+      "ftPct": 0.736,
+      "ws": 7.0,
+      "wsPer48": 0.327
+    },
+    "roy": {
+      "name": "Jackie Stiles",
+      "brPid": "stileja01w",
+      "team": "POR",
+      "gp": 32,
+      "min": 32.0,
+      "pts": 14.9,
+      "trb": 2.4,
+      "ast": 1.7,
+      "stl": 0.8,
+      "blk": 0.1,
+      "fgPct": 0.405,
+      "tpPct": 0.431,
+      "ftPct": 0.779,
+      "ws": 2.8,
+      "wsPer48": 0.133
+    },
+    "dpoy": {
+      "name": "Debbie Black",
+      "brPid": "blackde01w",
+      "team": "MIA",
+      "gp": 32,
+      "min": 29.6,
+      "pts": 5.6,
+      "trb": 3.9,
+      "ast": 3.8,
+      "stl": 2.6,
+      "blk": 0.1,
+      "fgPct": 0.374,
+      "tpPct": 0.15,
+      "ftPct": 0.771,
+      "ws": 3.4,
+      "wsPer48": 0.172
+    },
+    "mip": {
+      "name": "Janeth Arcain",
+      "brPid": "arcaija01w",
+      "team": "HOU",
+      "gp": 32,
+      "min": 36.1,
+      "pts": 18.5,
+      "trb": 4.3,
+      "ast": 2.9,
+      "stl": 1.9,
+      "blk": 0.1,
+      "fgPct": 0.426,
+      "tpPct": 0.333,
+      "ftPct": 0.9,
+      "ws": 6.2,
+      "wsPer48": 0.259
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Janeth Arcain",
+            "brPid": "arcaija01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Merlakia Jones",
+            "brPid": "jonesme01w",
+            "team": "CLE"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Katie Smith",
+            "brPid": "smithka01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Natalie Williams",
+            "brPid": "willina01w",
+            "team": "UTA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Tamecka Dixon",
+            "brPid": "dixonta01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Yolanda Griffith",
+            "brPid": "griffyo01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Chamique Holdsclaw",
+            "brPid": "holdsch01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Ticha Penicheiro",
+            "brPid": "penicti01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Tina Thompson",
+            "brPid": "thompti01w",
+            "team": "HOU"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Dan Hughes",
+      "brPid": "hugheda99w",
+      "team": "CLE",
+      "gp": 32
+    },
+    "finalsMvp": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 2,
+      "min": 38.4,
+      "pts": 24.0,
+      "trb": 10.5,
+      "ast": 5.0,
+      "stl": 1.0,
+      "blk": 4.5,
+      "fgPct": 0.457,
+      "tpPct": 0.333,
+      "ftPct": 0.789
+    },
+    "allStarMvp": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 31,
+      "min": 33.3,
+      "pts": 19.5,
+      "trb": 9.6,
+      "ast": 2.4,
+      "stl": 1.1,
+      "blk": 2.3,
+      "fgPct": 0.473,
+      "tpPct": 0.367,
+      "ftPct": 0.736,
+      "ws": 7.0,
+      "wsPer48": 0.327
+    },
+    "champion": {
+      "name": "Los Angeles Sparks",
+      "coach": "Michael Cooper"
+    },
+    "runnerUp": {
+      "name": "Charlotte Sting",
+      "coach": "Anne Donovan"
+    },
+    "finalsResult": "2-0",
+    "finalsTv": "Game 1: ESPN; Game 2: NBC"
+  },
+  {
+    "season": 2002,
+    "mvp": {
+      "name": "Sheryl Swoopes",
+      "brPid": "swoopsh01w",
+      "team": "HOU",
+      "gp": 32,
+      "min": 36.1,
+      "pts": 18.5,
+      "trb": 4.9,
+      "ast": 3.3,
+      "stl": 2.8,
+      "blk": 0.7,
+      "fgPct": 0.434,
+      "tpPct": 0.288,
+      "ftPct": 0.825,
+      "ws": 7.1,
+      "wsPer48": 0.296
+    },
+    "roy": {
+      "name": "Tamika Catchings",
+      "brPid": "catchta01w",
+      "team": "IND",
+      "gp": 32,
+      "min": 36.5,
+      "pts": 18.6,
+      "trb": 8.6,
+      "ast": 3.7,
+      "stl": 2.9,
+      "blk": 1.3,
+      "fgPct": 0.42,
+      "tpPct": 0.396,
+      "ftPct": 0.815,
+      "ws": 9.2,
+      "wsPer48": 0.378
+    },
+    "dpoy": {
+      "name": "Sheryl Swoopes",
+      "brPid": "swoopsh01w",
+      "team": "HOU",
+      "gp": 32,
+      "min": 36.1,
+      "pts": 18.5,
+      "trb": 4.9,
+      "ast": 3.3,
+      "stl": 2.8,
+      "blk": 0.7,
+      "fgPct": 0.434,
+      "tpPct": 0.288,
+      "ftPct": 0.825,
+      "ws": 7.1,
+      "wsPer48": 0.296
+    },
+    "mip": {
+      "name": "Coco Miller",
+      "brPid": "milleco01w",
+      "team": "WAS",
+      "gp": 32,
+      "min": 28.3,
+      "pts": 9.3,
+      "trb": 3.6,
+      "ast": 2.6,
+      "stl": 1.0,
+      "blk": 0.1,
+      "fgPct": 0.433,
+      "tpPct": 0.375,
+      "ftPct": 0.821,
+      "ws": 2.7,
+      "wsPer48": 0.142
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Sue Bird",
+            "brPid": "birdsu01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Mwadi Mabika",
+            "brPid": "mabikmw01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Sheryl Swoopes",
+            "brPid": "swoopsh01w",
+            "team": "HOU"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Chamique Holdsclaw",
+            "brPid": "holdsch01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Shannon Johnson",
+            "brPid": "johnssh01w",
+            "team": "ORL"
+          },
+          {
+            "name": "Tari Phillips",
+            "brPid": "phillta01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Katie Smith",
+            "brPid": "smithka01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Tina Thompson",
+            "brPid": "thompti01w",
+            "team": "HOU"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Marianne Stanley",
+      "brPid": "stanlma99w",
+      "team": "WAS",
+      "gp": 32
+    },
+    "finalsMvp": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 2,
+      "min": 40.0,
+      "pts": 16.0,
+      "trb": 8.0,
+      "ast": 1.5,
+      "stl": 0.5,
+      "blk": 2.0,
+      "fgPct": 0.5,
+      "tpPct": 0.5,
+      "ftPct": 0.7
+    },
+    "allStarMvp": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 31,
+      "min": 34.2,
+      "pts": 16.9,
+      "trb": 10.4,
+      "ast": 2.7,
+      "stl": 1.5,
+      "blk": 2.9,
+      "fgPct": 0.466,
+      "tpPct": 0.324,
+      "ftPct": 0.727,
+      "ws": 5.9,
+      "wsPer48": 0.269
+    },
+    "champion": {
+      "name": "Los Angeles Sparks",
+      "coach": "Michael Cooper"
+    },
+    "runnerUp": {
+      "name": "New York Liberty",
+      "coach": "Richie Adubato"
+    },
+    "finalsResult": "2-0",
+    "finalsTv": "Game 1: ESPN2; Game 2: NBC"
+  },
+  {
+    "season": 2003,
+    "mvp": {
+      "name": "Lauren Jackson",
+      "brPid": "jacksla01w",
+      "team": "SEA",
+      "gp": 33,
+      "min": 33.6,
+      "pts": 21.2,
+      "trb": 9.3,
+      "ast": 1.9,
+      "stl": 1.2,
+      "blk": 1.9,
+      "fgPct": 0.483,
+      "tpPct": 0.317,
+      "ftPct": 0.825,
+      "ws": 9.2,
+      "wsPer48": 0.4
+    },
+    "roy": {
+      "name": "Cheryl Ford",
+      "brPid": "fordch01w",
+      "team": "DET",
+      "gp": 32,
+      "min": 29.9,
+      "pts": 10.8,
+      "trb": 10.4,
+      "ast": 0.8,
+      "stl": 1.0,
+      "blk": 1.0,
+      "fgPct": 0.474,
+      "ftPct": 0.682,
+      "ws": 4.0,
+      "wsPer48": 0.199
+    },
+    "dpoy": {
+      "name": "Sheryl Swoopes",
+      "brPid": "swoopsh01w",
+      "team": "HOU",
+      "gp": 31,
+      "min": 35.0,
+      "pts": 15.6,
+      "trb": 4.6,
+      "ast": 3.9,
+      "stl": 2.5,
+      "blk": 0.8,
+      "fgPct": 0.403,
+      "tpPct": 0.304,
+      "ftPct": 0.887,
+      "ws": 5.3,
+      "wsPer48": 0.234
+    },
+    "mip": {
+      "name": "Michelle Snow",
+      "brPid": "snowmi01w",
+      "team": "HOU",
+      "gp": 34,
+      "min": 30.1,
+      "pts": 9.2,
+      "trb": 7.7,
+      "ast": 1.2,
+      "stl": 1.0,
+      "blk": 1.8,
+      "fgPct": 0.498,
+      "tpPct": 0.0,
+      "ftPct": 0.729,
+      "ws": 4.3,
+      "wsPer48": 0.203
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Sue Bird",
+            "brPid": "birdsu01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Katie Smith",
+            "brPid": "smithka01w",
+            "team": "MIN"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Swin Cash",
+            "brPid": "cashsw01w",
+            "team": "DET"
+          },
+          {
+            "name": "Cheryl Ford",
+            "brPid": "fordch01w",
+            "team": "DET"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          },
+          {
+            "name": "Sheryl Swoopes",
+            "brPid": "swoopsh01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Nikki Teasley",
+            "brPid": "teaslni01w",
+            "team": "LAS"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Bill Laimbeer",
+      "brPid": "laimbbi99w",
+      "team": "DET",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Ruth Riley",
+      "brPid": "rileyru01w",
+      "team": "DET",
+      "gp": 3,
+      "min": 32.1,
+      "pts": 14.7,
+      "trb": 5.0,
+      "ast": 3.0,
+      "stl": 0.0,
+      "blk": 3.3,
+      "fgPct": 0.419,
+      "ftPct": 0.8
+    },
+    "allStarMvp": {
+      "name": "Nikki Teasley",
+      "brPid": "teaslni01w",
+      "team": "LAS",
+      "gp": 34,
+      "min": 35.0,
+      "pts": 11.5,
+      "trb": 5.1,
+      "ast": 6.3,
+      "stl": 1.1,
+      "blk": 0.4,
+      "fgPct": 0.389,
+      "tpPct": 0.424,
+      "ftPct": 0.875,
+      "ws": 4.4,
+      "wsPer48": 0.179
+    },
+    "champion": {
+      "name": "Detroit Shock",
+      "coach": "Bill Laimbeer"
+    },
+    "runnerUp": {
+      "name": "Los Angeles Sparks",
+      "coach": "Michael Cooper"
+    },
+    "finalsResult": "2-1",
+    "finalsTv": "ESPN2"
+  },
+  {
+    "season": 2004,
+    "mvp": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 34,
+      "min": 33.8,
+      "pts": 17.6,
+      "trb": 9.9,
+      "ast": 2.6,
+      "stl": 1.5,
+      "blk": 2.9,
+      "fgPct": 0.494,
+      "tpPct": 0.273,
+      "ftPct": 0.712,
+      "ws": 6.8,
+      "wsPer48": 0.283
+    },
+    "roy": {
+      "name": "Diana Taurasi",
+      "brPid": "tauradi01w",
+      "team": "PHO",
+      "gp": 34,
+      "min": 33.2,
+      "pts": 17.0,
+      "trb": 4.4,
+      "ast": 3.9,
+      "stl": 1.3,
+      "blk": 0.7,
+      "fgPct": 0.416,
+      "tpPct": 0.33,
+      "ftPct": 0.76,
+      "ws": 4.7,
+      "wsPer48": 0.2
+    },
+    "dpoy": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 34,
+      "min": 33.8,
+      "pts": 17.6,
+      "trb": 9.9,
+      "ast": 2.6,
+      "stl": 1.5,
+      "blk": 2.9,
+      "fgPct": 0.494,
+      "tpPct": 0.273,
+      "ftPct": 0.712,
+      "ws": 6.8,
+      "wsPer48": 0.283
+    },
+    "mip": [
+      {
+        "name": "Kelly Miller",
+        "brPid": "milleke01w",
+        "team": "IND",
+        "gp": 34,
+        "min": 32.2,
+        "pts": 10.2,
+        "trb": 3.2,
+        "ast": 3.1,
+        "stl": 1.1,
+        "blk": 0.1,
+        "fgPct": 0.387,
+        "tpPct": 0.411,
+        "ftPct": 0.877,
+        "ws": 2.1,
+        "wsPer48": 0.092
+      },
+      {
+        "name": "Wendy Palmer",
+        "brPid": "palmewe01w",
+        "team": "CON",
+        "gp": 33,
+        "min": 23.8,
+        "pts": 9.0,
+        "trb": 5.5,
+        "ast": 0.9,
+        "stl": 0.7,
+        "blk": 0.2,
+        "fgPct": 0.427,
+        "tpPct": 0.317,
+        "ftPct": 0.8,
+        "ws": 2.7,
+        "wsPer48": 0.164
+      }
+    ],
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Sue Bird",
+            "brPid": "birdsu01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Tina Thompson",
+            "brPid": "thompti01w",
+            "team": "HOU"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Swin Cash",
+            "brPid": "cashsw01w",
+            "team": "DET"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Yolanda Griffith",
+            "brPid": "griffyo01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Nykesha Sales",
+            "brPid": "salesny01w",
+            "team": "CON"
+          },
+          {
+            "name": "Nikki Teasley",
+            "brPid": "teaslni01w",
+            "team": "LAS"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Suzie McConnell Serio",
+      "brPid": "mcconsu01w",
+      "team": "MIN",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Betty Lennox",
+      "brPid": "lennobe01w",
+      "team": "SEA",
+      "gp": 3,
+      "min": 34.1,
+      "pts": 22.3,
+      "trb": 4.3,
+      "ast": 2.0,
+      "stl": 1.3,
+      "blk": 0.0,
+      "fgPct": 0.5,
+      "tpPct": 0.6,
+      "ftPct": 0.875
+    },
+    "champion": {
+      "name": "Seattle Storm",
+      "coach": "Anne Donovan"
+    },
+    "runnerUp": {
+      "name": "Connecticut Sun",
+      "coach": "Mike Thibault"
+    },
+    "finalsResult": "2-1",
+    "finalsTv": "ESPN2"
+  },
+  {
+    "season": 2005,
+    "mvp": {
+      "name": "Sheryl Swoopes",
+      "brPid": "swoopsh01w",
+      "team": "HOU",
+      "gp": 33,
+      "min": 37.1,
+      "pts": 18.6,
+      "trb": 3.6,
+      "ast": 4.3,
+      "stl": 2.0,
+      "blk": 0.8,
+      "fgPct": 0.447,
+      "tpPct": 0.36,
+      "ftPct": 0.85,
+      "ws": 7.1,
+      "wsPer48": 0.279
+    },
+    "roy": {
+      "name": "Temeka Johnson",
+      "brPid": "johnste01w",
+      "team": "WAS",
+      "gp": 34,
+      "min": 28.6,
+      "pts": 9.3,
+      "trb": 3.1,
+      "ast": 5.2,
+      "stl": 1.3,
+      "blk": 0.0,
+      "fgPct": 0.458,
+      "tpPct": 0.302,
+      "ftPct": 0.788,
+      "ws": 2.5,
+      "wsPer48": 0.124
+    },
+    "dpoy": {
+      "name": "Tamika Catchings",
+      "brPid": "catchta01w",
+      "team": "IND",
+      "gp": 34,
+      "min": 34.5,
+      "pts": 14.7,
+      "trb": 7.8,
+      "ast": 4.2,
+      "stl": 2.6,
+      "blk": 0.5,
+      "fgPct": 0.383,
+      "tpPct": 0.285,
+      "ftPct": 0.788,
+      "ws": 7.1,
+      "wsPer48": 0.289
+    },
+    "mip": {
+      "name": "Nicole Powell",
+      "brPid": "powelni01w",
+      "team": "SAC",
+      "gp": 34,
+      "min": 29.1,
+      "pts": 10.7,
+      "trb": 3.6,
+      "ast": 1.8,
+      "stl": 1.1,
+      "blk": 0.5,
+      "fgPct": 0.379,
+      "tpPct": 0.415,
+      "ftPct": 0.806,
+      "ws": 5.2,
+      "wsPer48": 0.25
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Sue Bird",
+            "brPid": "birdsu01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Yolanda Griffith",
+            "brPid": "griffyo01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          },
+          {
+            "name": "Sheryl Swoopes",
+            "brPid": "swoopsh01w",
+            "team": "HOU"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Becky Hammon",
+            "brPid": "hammobe01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Taj McWilliams-Franklin",
+            "brPid": "mcwilta01w",
+            "team": "CON"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Kara Braxton",
+        "brPid": "braxtka01w",
+        "team": "DET"
+      },
+      {
+        "name": "Temeka Johnson",
+        "brPid": "johnste01w",
+        "team": "WAS"
+      },
+      {
+        "name": "Katie Mattera",
+        "brPid": "matteka01w",
+        "team": "SAS"
+      },
+      {
+        "name": "Chelsea Newton",
+        "brPid": "newtoch01w",
+        "team": "SAC"
+      },
+      {
+        "name": "Tan White",
+        "brPid": "whiteta01w",
+        "team": "IND"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tully Bevilaqua",
+            "brPid": "beviltu01w",
+            "team": "IND"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Katie Douglas",
+            "brPid": "douglka01w",
+            "team": "CON"
+          },
+          {
+            "name": "Yolanda Griffith",
+            "brPid": "griffyo01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Sheryl Swoopes",
+            "brPid": "swoopsh01w",
+            "team": "HOU"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Taj McWilliams-Franklin",
+            "brPid": "mcwilta01w",
+            "team": "CON"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "John Whisenant",
+      "brPid": "whisejo99w",
+      "team": "SAC",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Yolanda Griffith",
+      "brPid": "griffyo01w",
+      "team": "SAC",
+      "gp": 4,
+      "min": 30.8,
+      "pts": 18.5,
+      "trb": 9.8,
+      "ast": 1.3,
+      "stl": 1.3,
+      "blk": 0.5,
+      "fgPct": 0.491,
+      "ftPct": 0.667
+    },
+    "allStarMvp": {
+      "name": "Sheryl Swoopes",
+      "brPid": "swoopsh01w",
+      "team": "HOU",
+      "gp": 33,
+      "min": 37.1,
+      "pts": 18.6,
+      "trb": 3.6,
+      "ast": 4.3,
+      "stl": 2.0,
+      "blk": 0.8,
+      "fgPct": 0.447,
+      "tpPct": 0.36,
+      "ftPct": 0.85,
+      "ws": 7.1,
+      "wsPer48": 0.279
+    },
+    "champion": {
+      "name": "Sacramento Monarchs",
+      "coach": "John Whisenant"
+    },
+    "runnerUp": {
+      "name": "Connecticut Sun",
+      "coach": "Mike Thibault"
+    },
+    "finalsResult": "3-1",
+    "finalsTv": "Games 1, 2 and 4: ESPN2; Game 3: ABC"
+  },
+  {
+    "season": 2006,
+    "mvp": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 34,
+      "min": 30.8,
+      "pts": 20.0,
+      "trb": 9.5,
+      "ast": 3.2,
+      "stl": 1.5,
+      "blk": 1.7,
+      "fgPct": 0.511,
+      "tpPct": 0.4,
+      "ftPct": 0.65,
+      "ws": 6.4,
+      "wsPer48": 0.291
+    },
+    "roy": {
+      "name": "Seimone Augustus",
+      "brPid": "augusse01w",
+      "team": "MIN",
+      "gp": 34,
+      "min": 33.1,
+      "pts": 21.9,
+      "trb": 3.8,
+      "ast": 1.5,
+      "stl": 0.6,
+      "blk": 0.5,
+      "fgPct": 0.456,
+      "tpPct": 0.353,
+      "ftPct": 0.897,
+      "ws": 3.9,
+      "wsPer48": 0.166
+    },
+    "dpoy": {
+      "name": "Tamika Catchings",
+      "brPid": "catchta01w",
+      "team": "IND",
+      "gp": 32,
+      "min": 33.5,
+      "pts": 16.3,
+      "trb": 7.5,
+      "ast": 3.7,
+      "stl": 2.9,
+      "blk": 1.1,
+      "fgPct": 0.407,
+      "tpPct": 0.299,
+      "ftPct": 0.809,
+      "ws": 7.7,
+      "wsPer48": 0.345
+    },
+    "mip": {
+      "name": "Erin Perperoglou",
+      "brPid": "perpeer01w",
+      "team": "SAC",
+      "gp": 34,
+      "min": 19.6,
+      "pts": 9.7,
+      "trb": 3.9,
+      "ast": 1.0,
+      "stl": 1.0,
+      "blk": 0.4,
+      "fgPct": 0.537,
+      "tpPct": 0.0,
+      "ftPct": 0.75,
+      "ws": 4.2,
+      "wsPer48": 0.3
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Katie Douglas",
+            "brPid": "douglka01w",
+            "team": "CON"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Seimone Augustus",
+            "brPid": "augusse01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Cheryl Ford",
+            "brPid": "fordch01w",
+            "team": "DET"
+          },
+          {
+            "name": "Taj McWilliams-Franklin",
+            "brPid": "mcwilta01w",
+            "team": "CON"
+          },
+          {
+            "name": "Sheryl Swoopes",
+            "brPid": "swoopsh01w",
+            "team": "HOU"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Seimone Augustus",
+        "brPid": "augusse01w",
+        "team": "MIN"
+      },
+      {
+        "name": "Monique Currie",
+        "brPid": "currimo01w",
+        "team": "CHA"
+      },
+      {
+        "name": "Candice Dupree",
+        "brPid": "dupreca01w",
+        "team": "CHI"
+      },
+      {
+        "name": "Cappie Pondexter",
+        "brPid": "pondeca01w",
+        "team": "PHO"
+      },
+      {
+        "name": "Sophia Young-Malcolm",
+        "brPid": "youngso01w",
+        "team": "SAS"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tully Bevilaqua",
+            "brPid": "beviltu01w",
+            "team": "IND"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Katie Douglas",
+            "brPid": "douglka01w",
+            "team": "CON"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Sheryl Swoopes",
+            "brPid": "swoopsh01w",
+            "team": "HOU"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Margo Dydek",
+            "brPid": "dydekma01w",
+            "team": "CON"
+          },
+          {
+            "name": "Cheryl Ford",
+            "brPid": "fordch01w",
+            "team": "DET"
+          },
+          {
+            "name": "Yolanda Griffith",
+            "brPid": "griffyo01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Mike Thibault",
+      "brPid": "thibami99w",
+      "team": "CON",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Deanna Nolan",
+      "brPid": "nolande01w",
+      "team": "DET",
+      "gp": 5,
+      "min": 33.8,
+      "pts": 17.8,
+      "trb": 4.2,
+      "ast": 2.8,
+      "stl": 1.6,
+      "blk": 0.4,
+      "fgPct": 0.446,
+      "tpPct": 0.4,
+      "ftPct": 0.846
+    },
+    "allStarMvp": {
+      "name": "Katie Douglas",
+      "brPid": "douglka01w",
+      "team": "CON",
+      "gp": 32,
+      "min": 31.3,
+      "pts": 16.4,
+      "trb": 3.8,
+      "ast": 2.5,
+      "stl": 1.9,
+      "blk": 0.1,
+      "fgPct": 0.443,
+      "tpPct": 0.422,
+      "ftPct": 0.839,
+      "ws": 5.6,
+      "wsPer48": 0.268
+    },
+    "champion": {
+      "name": "Detroit Shock",
+      "coach": "Bill Laimbeer"
+    },
+    "runnerUp": {
+      "name": "Sacramento Monarchs",
+      "coach": "John Whisenant"
+    },
+    "finalsResult": "3-2",
+    "finalsTv": "ESPN2"
+  },
+  {
+    "season": 2007,
+    "mvp": {
+      "name": "Lauren Jackson",
+      "brPid": "jacksla01w",
+      "team": "SEA",
+      "gp": 31,
+      "min": 32.9,
+      "pts": 23.8,
+      "trb": 9.7,
+      "ast": 1.3,
+      "stl": 1.0,
+      "blk": 2.0,
+      "fgPct": 0.519,
+      "tpPct": 0.402,
+      "ftPct": 0.883,
+      "ws": 9.5,
+      "wsPer48": 0.448
+    },
+    "roy": {
+      "name": "Armintie Herrington",
+      "brPid": "pricear01w",
+      "team": "CHI",
+      "gp": 34,
+      "min": 26.3,
+      "pts": 7.9,
+      "trb": 6.0,
+      "ast": 2.9,
+      "stl": 1.2,
+      "blk": 0.2,
+      "fgPct": 0.409,
+      "tpPct": 0.333,
+      "ftPct": 0.517,
+      "ws": 1.9,
+      "wsPer48": 0.104
+    },
+    "dpoy": {
+      "name": "Lauren Jackson",
+      "brPid": "jacksla01w",
+      "team": "SEA",
+      "gp": 31,
+      "min": 32.9,
+      "pts": 23.8,
+      "trb": 9.7,
+      "ast": 1.3,
+      "stl": 1.0,
+      "blk": 2.0,
+      "fgPct": 0.519,
+      "tpPct": 0.402,
+      "ftPct": 0.883,
+      "ws": 9.5,
+      "wsPer48": 0.448
+    },
+    "smoy": {
+      "name": "Plenette Pierson",
+      "brPid": "pierspl01w",
+      "team": "DET",
+      "gp": 34,
+      "min": 25.2,
+      "pts": 11.6,
+      "trb": 5.8,
+      "ast": 1.7,
+      "stl": 0.8,
+      "blk": 0.9,
+      "fgPct": 0.478,
+      "tpPct": 0.0,
+      "ftPct": 0.754,
+      "ws": 3.6,
+      "wsPer48": 0.202
+    },
+    "mip": {
+      "name": "Janel McCarville",
+      "brPid": "mccarja01w",
+      "team": "NYL",
+      "gp": 32,
+      "min": 21.2,
+      "pts": 10.4,
+      "trb": 4.8,
+      "ast": 1.1,
+      "stl": 1.2,
+      "blk": 0.6,
+      "fgPct": 0.546,
+      "tpPct": 0.0,
+      "ftPct": 0.833,
+      "ws": 2.5,
+      "wsPer48": 0.177
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Becky Hammon",
+            "brPid": "hammobe01w",
+            "team": "SAS"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Penny Taylor",
+            "brPid": "taylope01w",
+            "team": "PHO"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Seimone Augustus",
+            "brPid": "augusse01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Katie Douglas",
+            "brPid": "douglka01w",
+            "team": "CON"
+          },
+          {
+            "name": "Tina Thompson",
+            "brPid": "thompti01w",
+            "team": "HOU"
+          },
+          {
+            "name": "Sophia Young-Malcolm",
+            "brPid": "youngso01w",
+            "team": "SAS"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Marta Fernandez",
+        "brPid": "fernama01w",
+        "team": "LAS"
+      },
+      {
+        "name": "Lindsey Harding",
+        "brPid": "hardili01w",
+        "team": "MIN"
+      },
+      {
+        "name": "Armintie Herrington",
+        "brPid": "pricear01w",
+        "team": "CHI"
+      },
+      {
+        "name": "Camille Smith",
+        "brPid": "littlca01w",
+        "team": "SAS"
+      },
+      {
+        "name": "Sidney Spencer",
+        "brPid": "spencsi01w",
+        "team": "LAS"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Katie Douglas",
+            "brPid": "douglka01w",
+            "team": "CON"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Tully Bevilaqua",
+            "brPid": "beviltu01w",
+            "team": "IND"
+          },
+          {
+            "name": "Rebekkah Brunson",
+            "brPid": "brunsre01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Margo Dydek",
+            "brPid": "dydekma01w",
+            "team": "CON"
+          },
+          {
+            "name": "Loree Moore",
+            "brPid": "moorelo01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Chelsea Newton",
+            "brPid": "newtoch01w",
+            "team": "SAC"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Dan Hughes",
+      "brPid": "hugheda99w",
+      "team": "SAS",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Cappie Pondexter",
+      "brPid": "pondeca01w",
+      "team": "PHO",
+      "gp": 5,
+      "min": 33.6,
+      "pts": 22.0,
+      "trb": 3.2,
+      "ast": 5.6,
+      "stl": 1.2,
+      "blk": 0.0,
+      "fgPct": 0.426,
+      "tpPct": 0.227,
+      "ftPct": 0.833
+    },
+    "allStarMvp": {
+      "name": "Cheryl Ford",
+      "brPid": "fordch01w",
+      "team": "DET",
+      "gp": 15,
+      "min": 30.7,
+      "pts": 13.0,
+      "trb": 11.2,
+      "ast": 1.5,
+      "stl": 1.9,
+      "blk": 0.7,
+      "fgPct": 0.497,
+      "ftPct": 0.639,
+      "ws": 2.3,
+      "wsPer48": 0.241
+    },
+    "champion": {
+      "name": "Phoenix Mercury",
+      "coach": "Paul Westhead"
+    },
+    "runnerUp": {
+      "name": "Detroit Shock",
+      "coach": "Bill Laimbeer"
+    },
+    "finalsResult": "3-2",
+    "finalsTv": "ESPN2"
+  },
+  {
+    "season": 2008,
+    "mvp": {
+      "name": "Candace Parker",
+      "brPid": "parkeca01w",
+      "team": "LAS",
+      "gp": 33,
+      "min": 33.6,
+      "pts": 18.5,
+      "trb": 9.5,
+      "ast": 3.4,
+      "stl": 1.3,
+      "blk": 2.3,
+      "fgPct": 0.523,
+      "tpPct": 0.423,
+      "ftPct": 0.733,
+      "ws": 7.7,
+      "wsPer48": 0.333
+    },
+    "roy": {
+      "name": "Candace Parker",
+      "brPid": "parkeca01w",
+      "team": "LAS",
+      "gp": 33,
+      "min": 33.6,
+      "pts": 18.5,
+      "trb": 9.5,
+      "ast": 3.4,
+      "stl": 1.3,
+      "blk": 2.3,
+      "fgPct": 0.523,
+      "tpPct": 0.423,
+      "ftPct": 0.733,
+      "ws": 7.7,
+      "wsPer48": 0.333
+    },
+    "dpoy": {
+      "name": "Lisa Leslie",
+      "brPid": "leslili01w",
+      "team": "LAS",
+      "gp": 33,
+      "min": 32.1,
+      "pts": 15.1,
+      "trb": 8.9,
+      "ast": 2.4,
+      "stl": 1.5,
+      "blk": 2.9,
+      "fgPct": 0.463,
+      "tpPct": 0.235,
+      "ftPct": 0.661,
+      "ws": 4.2,
+      "wsPer48": 0.188
+    },
+    "smoy": {
+      "name": "Candice Wiggins",
+      "brPid": "wiggica01w",
+      "team": "MIN",
+      "gp": 30,
+      "min": 27.5,
+      "pts": 15.7,
+      "trb": 3.2,
+      "ast": 3.0,
+      "stl": 1.8,
+      "blk": 0.2,
+      "fgPct": 0.403,
+      "tpPct": 0.306,
+      "ftPct": 0.817,
+      "ws": 4.5,
+      "wsPer48": 0.26
+    },
+    "mip": {
+      "name": "Ebony Hoffman",
+      "brPid": "hoffmeb01w",
+      "team": "IND",
+      "gp": 33,
+      "min": 30.7,
+      "pts": 10.4,
+      "trb": 7.8,
+      "ast": 1.8,
+      "stl": 1.4,
+      "blk": 0.8,
+      "fgPct": 0.465,
+      "tpPct": 0.456,
+      "ftPct": 0.829,
+      "ws": 3.6,
+      "wsPer48": 0.173
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Lindsay Whalen",
+            "brPid": "whaleli01w",
+            "team": "CON"
+          },
+          {
+            "name": "Sophia Young-Malcolm",
+            "brPid": "youngso01w",
+            "team": "SAS"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Sue Bird",
+            "brPid": "birdsu01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Becky Hammon",
+            "brPid": "hammobe01w",
+            "team": "SAS"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Asjha Jones",
+            "brPid": "jonesas01w",
+            "team": "CON"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Matee Ajavon",
+        "brPid": "ajavoma01w",
+        "team": "HOU"
+      },
+      {
+        "name": "Nicky Anosike",
+        "brPid": "anosini01w",
+        "team": "MIN"
+      },
+      {
+        "name": "Sylvia Fowles",
+        "brPid": "fowlesy01w",
+        "team": "CHI"
+      },
+      {
+        "name": "Amber Holt",
+        "brPid": "holtam01w",
+        "team": "CON"
+      },
+      {
+        "name": "Candace Parker",
+        "brPid": "parkeca01w",
+        "team": "LAS"
+      },
+      {
+        "name": "Candice Wiggins",
+        "brPid": "wiggica01w",
+        "team": "MIN"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tully Bevilaqua",
+            "brPid": "beviltu01w",
+            "team": "IND"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Ticha Penicheiro",
+            "brPid": "penicti01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Sophia Young-Malcolm",
+            "brPid": "youngso01w",
+            "team": "SAS"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Rebekkah Brunson",
+            "brPid": "brunsre01w",
+            "team": "SAC"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          },
+          {
+            "name": "Katie Smith",
+            "brPid": "smithka01w",
+            "team": "DET"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Mike Thibault",
+      "brPid": "thibami99w",
+      "team": "CON",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Katie Smith",
+      "brPid": "smithka01w",
+      "team": "DET",
+      "gp": 3,
+      "min": 36.7,
+      "pts": 21.7,
+      "trb": 6.7,
+      "ast": 3.3,
+      "stl": 0.0,
+      "blk": 0.3,
+      "fgPct": 0.523,
+      "tpPct": 0.571,
+      "ftPct": 0.786
+    },
+    "champion": {
+      "name": "Detroit Shock",
+      "coach": "Bill Laimbeer"
+    },
+    "runnerUp": {
+      "name": "San Antonio Silver Stars",
+      "coach": "Dan Hughes"
+    },
+    "finalsResult": "3-0",
+    "finalsTv": "ESPN2"
+  },
+  {
+    "season": 2009,
+    "mvp": {
+      "name": "Diana Taurasi",
+      "brPid": "tauradi01w",
+      "team": "PHO",
+      "gp": 31,
+      "min": 31.5,
+      "pts": 20.4,
+      "trb": 5.7,
+      "ast": 3.5,
+      "stl": 1.2,
+      "blk": 1.4,
+      "fgPct": 0.461,
+      "tpPct": 0.407,
+      "ftPct": 0.894,
+      "ws": 5.4,
+      "wsPer48": 0.267
+    },
+    "roy": {
+      "name": "Angel McCoughtry",
+      "brPid": "mccouan01w",
+      "team": "ATL",
+      "gp": 34,
+      "min": 21.6,
+      "pts": 12.8,
+      "trb": 3.1,
+      "ast": 2.1,
+      "stl": 2.2,
+      "blk": 0.4,
+      "fgPct": 0.476,
+      "tpPct": 0.294,
+      "ftPct": 0.741,
+      "ws": 3.7,
+      "wsPer48": 0.242
+    },
+    "dpoy": {
+      "name": "Tamika Catchings",
+      "brPid": "catchta01w",
+      "team": "IND",
+      "gp": 34,
+      "min": 31.9,
+      "pts": 15.1,
+      "trb": 7.2,
+      "ast": 3.1,
+      "stl": 2.9,
+      "blk": 0.5,
+      "fgPct": 0.386,
+      "tpPct": 0.328,
+      "ftPct": 0.873,
+      "ws": 6.1,
+      "wsPer48": 0.27
+    },
+    "smoy": {
+      "name": "DeWanna Bonner",
+      "brPid": "bonnede01w",
+      "team": "PHO",
+      "gp": 34,
+      "min": 21.3,
+      "pts": 11.2,
+      "trb": 5.8,
+      "ast": 0.4,
+      "stl": 0.7,
+      "blk": 0.7,
+      "fgPct": 0.457,
+      "tpPct": 0.154,
+      "ftPct": 0.812,
+      "ws": 3.2,
+      "wsPer48": 0.214
+    },
+    "mip": {
+      "name": "Crystal Langhorne",
+      "brPid": "langhcr01w",
+      "team": "WAS",
+      "gp": 34,
+      "min": 29.8,
+      "pts": 12.0,
+      "trb": 7.9,
+      "ast": 0.9,
+      "stl": 1.0,
+      "blk": 0.4,
+      "fgPct": 0.574,
+      "tpPct": 0.0,
+      "ftPct": 0.689,
+      "ws": 4.2,
+      "wsPer48": 0.199
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Becky Hammon",
+            "brPid": "hammobe01w",
+            "team": "SAS"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Cappie Pondexter",
+            "brPid": "pondeca01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Katie Douglas",
+            "brPid": "douglka01w",
+            "team": "IND"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Sophia Young-Malcolm",
+            "brPid": "youngso01w",
+            "team": "SAS"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "DeWanna Bonner",
+        "brPid": "bonnede01w",
+        "team": "PHO"
+      },
+      {
+        "name": "Marissa Coleman",
+        "brPid": "colemma01w",
+        "team": "WAS"
+      },
+      {
+        "name": "Angel McCoughtry",
+        "brPid": "mccouan01w",
+        "team": "ATL"
+      },
+      {
+        "name": "Renee Montgomery",
+        "brPid": "montgre01w",
+        "team": "MIN"
+      },
+      {
+        "name": "Shavonte Zellous",
+        "brPid": "zellosh01w",
+        "team": "DET"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Nicky Anosike",
+            "brPid": "anosini01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Tully Bevilaqua",
+            "brPid": "beviltu01w",
+            "team": "IND"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Tanisha Wright",
+            "brPid": "wrighta01w",
+            "team": "SEA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Lisa Leslie",
+            "brPid": "leslili01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Sancho Lyttle",
+            "brPid": "lyttlsa01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Deanna Nolan",
+            "brPid": "nolande01w",
+            "team": "DET"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Marynell Meadors",
+      "brPid": "meadoma99w",
+      "team": "ATL",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Diana Taurasi",
+      "brPid": "tauradi01w",
+      "team": "PHO",
+      "gp": 5,
+      "min": 34.4,
+      "pts": 20.4,
+      "trb": 6.8,
+      "ast": 2.8,
+      "stl": 0.6,
+      "blk": 1.6,
+      "fgPct": 0.372,
+      "tpPct": 0.293,
+      "ftPct": 0.839
+    },
+    "allStarMvp": {
+      "name": "Swin Cash",
+      "brPid": "cashsw01w",
+      "team": "SEA",
+      "gp": 32,
+      "min": 34.2,
+      "pts": 12.2,
+      "trb": 6.7,
+      "ast": 2.6,
+      "stl": 0.9,
+      "blk": 0.5,
+      "fgPct": 0.392,
+      "tpPct": 0.323,
+      "ftPct": 0.797,
+      "ws": 2.0,
+      "wsPer48": 0.09
+    },
+    "champion": {
+      "name": "Phoenix Mercury",
+      "coach": "Corey Gaines"
+    },
+    "runnerUp": {
+      "name": "Indiana Fever",
+      "coach": "Lin Dunn"
+    },
+    "finalsResult": "3-2",
+    "finalsTv": "ESPN2"
+  },
+  {
+    "season": 2010,
+    "mvp": {
+      "name": "Lauren Jackson",
+      "brPid": "jacksla01w",
+      "team": "SEA",
+      "gp": 32,
+      "min": 31.0,
+      "pts": 20.5,
+      "trb": 8.3,
+      "ast": 1.2,
+      "stl": 0.9,
+      "blk": 1.2,
+      "fgPct": 0.462,
+      "tpPct": 0.346,
+      "ftPct": 0.91,
+      "ws": 8.3,
+      "wsPer48": 0.4
+    },
+    "roy": {
+      "name": "Tina Charles",
+      "brPid": "charlti01w",
+      "team": "CON",
+      "gp": 34,
+      "min": 31.0,
+      "pts": 15.5,
+      "trb": 11.7,
+      "ast": 1.5,
+      "stl": 0.7,
+      "blk": 1.7,
+      "fgPct": 0.487,
+      "tpPct": 0.0,
+      "ftPct": 0.763,
+      "ws": 5.2,
+      "wsPer48": 0.236
+    },
+    "dpoy": {
+      "name": "Tamika Catchings",
+      "brPid": "catchta01w",
+      "team": "IND",
+      "gp": 34,
+      "min": 31.4,
+      "pts": 18.2,
+      "trb": 7.1,
+      "ast": 4.0,
+      "stl": 2.3,
+      "blk": 0.9,
+      "fgPct": 0.484,
+      "tpPct": 0.448,
+      "ftPct": 0.849,
+      "ws": 7.9,
+      "wsPer48": 0.355
+    },
+    "smoy": {
+      "name": "DeWanna Bonner",
+      "brPid": "bonnede01w",
+      "team": "PHO",
+      "gp": 32,
+      "min": 25.4,
+      "pts": 12.0,
+      "trb": 6.1,
+      "ast": 1.3,
+      "stl": 0.7,
+      "blk": 1.2,
+      "fgPct": 0.465,
+      "tpPct": 0.358,
+      "ftPct": 0.84,
+      "ws": 2.8,
+      "wsPer48": 0.167
+    },
+    "mip": {
+      "name": "Leilani Mitchell",
+      "brPid": "mitchle01w",
+      "team": "NYL",
+      "gp": 34,
+      "min": 28.8,
+      "pts": 9.3,
+      "trb": 2.6,
+      "ast": 3.8,
+      "stl": 1.6,
+      "blk": 0.2,
+      "fgPct": 0.441,
+      "tpPct": 0.486,
+      "ftPct": 0.814,
+      "ws": 4.2,
+      "wsPer48": 0.205
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Cappie Pondexter",
+            "brPid": "pondeca01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Sue Bird",
+            "brPid": "birdsu01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "CON"
+          },
+          {
+            "name": "Katie Douglas",
+            "brPid": "douglka01w",
+            "team": "IND"
+          },
+          {
+            "name": "Crystal Langhorne",
+            "brPid": "langhcr01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Tina Charles",
+        "brPid": "charlti01w",
+        "team": "CON"
+      },
+      {
+        "name": "Kalana Greene",
+        "brPid": "greenka01w",
+        "team": "NYL"
+      },
+      {
+        "name": "Kelsey Griffin",
+        "brPid": "griffke01w",
+        "team": "CON"
+      },
+      {
+        "name": "Epiphanny Prince",
+        "brPid": "princep01w",
+        "team": "CHI"
+      },
+      {
+        "name": "Monica Wright",
+        "brPid": "wrighmo01w",
+        "team": "MIN"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Cappie Pondexter",
+            "brPid": "pondeca01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Tanisha Wright",
+            "brPid": "wrighta01w",
+            "team": "SEA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Tully Bevilaqua",
+            "brPid": "beviltu01w",
+            "team": "IND"
+          },
+          {
+            "name": "Rebekkah Brunson",
+            "brPid": "brunsre01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Katie Douglas",
+            "brPid": "douglka01w",
+            "team": "IND"
+          },
+          {
+            "name": "Lindsey Harding",
+            "brPid": "hardili01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Lauren Jackson",
+            "brPid": "jacksla01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Sancho Lyttle",
+            "brPid": "lyttlsa01w",
+            "team": "ATL"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Brian Agler",
+      "brPid": "aglerbr99w",
+      "team": "SEA",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Lauren Jackson",
+      "brPid": "jacksla01w",
+      "team": "SEA",
+      "gp": 3,
+      "min": 36.0,
+      "pts": 22.3,
+      "trb": 8.0,
+      "ast": 1.0,
+      "stl": 2.0,
+      "blk": 1.3,
+      "fgPct": 0.487,
+      "tpPct": 0.333,
+      "ftPct": 0.774
+    },
+    "champion": {
+      "name": "Seattle Storm",
+      "coach": "Brian Agler"
+    },
+    "runnerUp": {
+      "name": "Atlanta Dream",
+      "coach": "Marynell Meadors"
+    },
+    "finalsResult": "3-0",
+    "finalsTv": "Game 1: ABC; Games 2 and 3: ESPN2"
+  },
+  {
+    "season": 2011,
+    "mvp": {
+      "name": "Tamika Catchings",
+      "brPid": "catchta01w",
+      "team": "IND",
+      "gp": 33,
+      "min": 31.5,
+      "pts": 15.5,
+      "trb": 7.1,
+      "ast": 3.5,
+      "stl": 2.0,
+      "blk": 0.9,
+      "fgPct": 0.438,
+      "tpPct": 0.348,
+      "ftPct": 0.883,
+      "ws": 6.5,
+      "wsPer48": 0.298
+    },
+    "roy": {
+      "name": "Maya Moore",
+      "brPid": "moorema01w",
+      "team": "MIN",
+      "gp": 34,
+      "min": 28.0,
+      "pts": 13.2,
+      "trb": 4.6,
+      "ast": 2.6,
+      "stl": 1.4,
+      "blk": 0.5,
+      "fgPct": 0.439,
+      "tpPct": 0.369,
+      "ftPct": 0.788,
+      "ws": 5.3,
+      "wsPer48": 0.268
+    },
+    "dpoy": {
+      "name": "Sylvia Fowles",
+      "brPid": "fowlesy01w",
+      "team": "CHI",
+      "gp": 34,
+      "min": 34.6,
+      "pts": 20.0,
+      "trb": 10.2,
+      "ast": 0.6,
+      "stl": 1.2,
+      "blk": 2.0,
+      "fgPct": 0.591,
+      "ftPct": 0.766,
+      "ws": 7.4,
+      "wsPer48": 0.303
+    },
+    "smoy": {
+      "name": "DeWanna Bonner",
+      "brPid": "bonnede01w",
+      "team": "PHO",
+      "gp": 34,
+      "min": 25.2,
+      "pts": 10.7,
+      "trb": 7.0,
+      "ast": 0.8,
+      "stl": 1.0,
+      "blk": 1.1,
+      "fgPct": 0.43,
+      "tpPct": 0.343,
+      "ftPct": 0.909,
+      "ws": 3.8,
+      "wsPer48": 0.213
+    },
+    "mip": {
+      "name": "Kia Vaughn",
+      "brPid": "vaughki01w",
+      "team": "NYL",
+      "gp": 34,
+      "min": 28.1,
+      "pts": 10.1,
+      "trb": 6.7,
+      "ast": 1.1,
+      "stl": 1.2,
+      "blk": 0.7,
+      "fgPct": 0.497,
+      "ftPct": 0.786,
+      "ws": 3.3,
+      "wsPer48": 0.165
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "CON"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Lindsay Whalen",
+            "brPid": "whaleli01w",
+            "team": "MIN"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Seimone Augustus",
+            "brPid": "augusse01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Sue Bird",
+            "brPid": "birdsu01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Cappie Pondexter",
+            "brPid": "pondeca01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Penny Taylor",
+            "brPid": "taylope01w",
+            "team": "PHO"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Danielle Adams",
+        "brPid": "adamsda01w",
+        "team": "SAS"
+      },
+      {
+        "name": "Liz Cambage",
+        "brPid": "cambael01w",
+        "team": "TUL"
+      },
+      {
+        "name": "Maya Moore",
+        "brPid": "moorema01w",
+        "team": "MIN"
+      },
+      {
+        "name": "Danielle Robinson",
+        "brPid": "robinda01w",
+        "team": "SAS"
+      },
+      {
+        "name": "Courtney Vandersloot",
+        "brPid": "vandeco01w",
+        "team": "CHI"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Rebekkah Brunson",
+            "brPid": "brunsre01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Tanisha Wright",
+            "brPid": "wrighta01w",
+            "team": "SEA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Swin Cash",
+            "brPid": "cashsw01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "CON"
+          },
+          {
+            "name": "Katie Douglas",
+            "brPid": "douglka01w",
+            "team": "IND"
+          },
+          {
+            "name": "Armintie Herrington",
+            "brPid": "pricear01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Sancho Lyttle",
+            "brPid": "lyttlsa01w",
+            "team": "ATL"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Cheryl Reeve",
+      "brPid": "reevech99w",
+      "team": "MIN",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Seimone Augustus",
+      "brPid": "augusse01w",
+      "team": "MIN",
+      "gp": 3,
+      "min": 34.3,
+      "pts": 24.7,
+      "trb": 5.7,
+      "ast": 4.7,
+      "stl": 0.3,
+      "blk": 0.7,
+      "fgPct": 0.587,
+      "tpPct": 0.75,
+      "ftPct": 0.85
+    },
+    "allStarMvp": {
+      "name": "Swin Cash",
+      "brPid": "cashsw01w",
+      "team": "SEA",
+      "gp": 34,
+      "min": 33.2,
+      "pts": 13.3,
+      "trb": 6.9,
+      "ast": 2.4,
+      "stl": 0.9,
+      "blk": 0.6,
+      "fgPct": 0.396,
+      "tpPct": 0.285,
+      "ftPct": 0.846,
+      "ws": 3.3,
+      "wsPer48": 0.141
+    },
+    "champion": {
+      "name": "Minnesota Lynx",
+      "coach": "Cheryl Reeve"
+    },
+    "runnerUp": {
+      "name": "Atlanta Dream",
+      "coach": "Marynell Meadors"
+    },
+    "finalsResult": "3-0",
+    "finalsTv": "Game 1: ESPN; Games 2 and 3: ESPN2"
+  },
+  {
+    "season": 2012,
+    "mvp": {
+      "name": "Tina Charles",
+      "brPid": "charlti01w",
+      "team": "CON",
+      "gp": 33,
+      "min": 33.2,
+      "pts": 18.0,
+      "trb": 10.5,
+      "ast": 1.7,
+      "stl": 0.5,
+      "blk": 1.4,
+      "fgPct": 0.499,
+      "tpPct": 0.2,
+      "ftPct": 0.802,
+      "ws": 5.5,
+      "wsPer48": 0.24
+    },
+    "roy": {
+      "name": "Nneka Ogwumike",
+      "brPid": "ogwumnn01w",
+      "team": "LAS",
+      "gp": 33,
+      "min": 27.9,
+      "pts": 14.0,
+      "trb": 7.5,
+      "ast": 1.2,
+      "stl": 1.4,
+      "blk": 0.9,
+      "fgPct": 0.535,
+      "tpPct": 0.143,
+      "ftPct": 0.734,
+      "ws": 5.9,
+      "wsPer48": 0.31
+    },
+    "dpoy": {
+      "name": "Tamika Catchings",
+      "brPid": "catchta01w",
+      "team": "IND",
+      "gp": 34,
+      "min": 30.5,
+      "pts": 17.4,
+      "trb": 7.6,
+      "ast": 3.1,
+      "stl": 2.1,
+      "blk": 0.9,
+      "fgPct": 0.432,
+      "tpPct": 0.379,
+      "ftPct": 0.864,
+      "ws": 7.8,
+      "wsPer48": 0.361
+    },
+    "smoy": {
+      "name": "Renee Montgomery",
+      "brPid": "montgre01w",
+      "team": "CON",
+      "gp": 34,
+      "min": 24.0,
+      "pts": 11.6,
+      "trb": 1.9,
+      "ast": 2.6,
+      "stl": 1.0,
+      "blk": 0.1,
+      "fgPct": 0.348,
+      "tpPct": 0.364,
+      "ftPct": 0.848,
+      "ws": 1.8,
+      "wsPer48": 0.108
+    },
+    "mip": {
+      "name": "Kristi Toliver",
+      "brPid": "tolivkr01w",
+      "team": "LAS",
+      "gp": 34,
+      "min": 31.5,
+      "pts": 17.5,
+      "trb": 3.2,
+      "ast": 4.9,
+      "stl": 1.3,
+      "blk": 0.1,
+      "fgPct": 0.491,
+      "tpPct": 0.424,
+      "ftPct": 0.901,
+      "ws": 5.6,
+      "wsPer48": 0.25
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Seimone Augustus",
+            "brPid": "augusse01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "CON"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Cappie Pondexter",
+            "brPid": "pondeca01w",
+            "team": "NYL"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Maya Moore",
+            "brPid": "moorema01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Kristi Toliver",
+            "brPid": "tolivkr01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Lindsay Whalen",
+            "brPid": "whaleli01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Sophia Young-Malcolm",
+            "brPid": "youngso01w",
+            "team": "SAS"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Tiffany Hayes",
+        "brPid": "hayesti01w",
+        "team": "ATL"
+      },
+      {
+        "name": "Glory Johnson",
+        "brPid": "johnsgl01w",
+        "team": "TUL"
+      },
+      {
+        "name": "Nneka Ogwumike",
+        "brPid": "ogwumnn01w",
+        "team": "LAS"
+      },
+      {
+        "name": "Samantha Prahalis",
+        "brPid": "prahasa01w",
+        "team": "PHO"
+      },
+      {
+        "name": "Riquna Williams",
+        "brPid": "williri02w",
+        "team": "TUL"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Briann January",
+            "brPid": "januabr01w",
+            "team": "IND"
+          },
+          {
+            "name": "Sancho Lyttle",
+            "brPid": "lyttlsa01w",
+            "team": "ATL"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "CON"
+          },
+          {
+            "name": "Armintie Herrington",
+            "brPid": "pricear01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Danielle Robinson",
+            "brPid": "robinda01w",
+            "team": "SAS"
+          },
+          {
+            "name": "Sophia Young-Malcolm",
+            "brPid": "youngso01w",
+            "team": "SAS"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Carol Ross",
+      "brPid": "rossca99w",
+      "team": "LAS",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Tamika Catchings",
+      "brPid": "catchta01w",
+      "team": "IND",
+      "gp": 4,
+      "min": 33.8,
+      "pts": 22.3,
+      "trb": 6.0,
+      "ast": 3.5,
+      "stl": 2.0,
+      "blk": 2.3,
+      "fgPct": 0.429,
+      "tpPct": 0.333,
+      "ftPct": 0.964
+    },
+    "champion": {
+      "name": "Indiana Fever",
+      "coach": "Lin Dunn"
+    },
+    "runnerUp": {
+      "name": "Minnesota Lynx",
+      "coach": "Cheryl Reeve"
+    },
+    "finalsResult": "3-1",
+    "finalsTv": "Games 1, 3 and 4: ESPN2; Game 2: ESPN"
+  },
+  {
+    "season": 2013,
+    "mvp": {
+      "name": "Candace Parker",
+      "brPid": "parkeca01w",
+      "team": "LAS",
+      "gp": 31,
+      "min": 28.7,
+      "pts": 17.9,
+      "trb": 8.7,
+      "ast": 3.8,
+      "stl": 1.3,
+      "blk": 1.8,
+      "fgPct": 0.493,
+      "tpPct": 0.257,
+      "ftPct": 0.762,
+      "ws": 6.5,
+      "wsPer48": 0.353
+    },
+    "roy": {
+      "name": "Elena Delle Donne",
+      "brPid": "delleel01w",
+      "team": "CHI",
+      "gp": 30,
+      "min": 31.4,
+      "pts": 18.1,
+      "trb": 5.6,
+      "ast": 1.8,
+      "stl": 0.7,
+      "blk": 1.8,
+      "fgPct": 0.426,
+      "tpPct": 0.438,
+      "ftPct": 0.929,
+      "ws": 6.5,
+      "wsPer48": 0.334
+    },
+    "dpoy": {
+      "name": "Sylvia Fowles",
+      "brPid": "fowlesy01w",
+      "team": "CHI",
+      "gp": 32,
+      "min": 31.3,
+      "pts": 16.3,
+      "trb": 11.5,
+      "ast": 0.4,
+      "stl": 0.9,
+      "blk": 2.4,
+      "fgPct": 0.586,
+      "ftPct": 0.685,
+      "ws": 7.2,
+      "wsPer48": 0.346
+    },
+    "smoy": {
+      "name": "Riquna Williams",
+      "brPid": "williri02w",
+      "team": "TUL",
+      "gp": 27,
+      "min": 22.7,
+      "pts": 15.6,
+      "trb": 2.4,
+      "ast": 1.8,
+      "stl": 1.0,
+      "blk": 0.3,
+      "fgPct": 0.397,
+      "tpPct": 0.381,
+      "ftPct": 0.9,
+      "ws": 2.8,
+      "wsPer48": 0.218
+    },
+    "mip": {
+      "name": "Shavonte Zellous",
+      "brPid": "zellosh01w",
+      "team": "IND",
+      "gp": 29,
+      "min": 31.3,
+      "pts": 14.7,
+      "trb": 3.4,
+      "ast": 1.7,
+      "stl": 0.9,
+      "blk": 0.7,
+      "fgPct": 0.415,
+      "tpPct": 0.348,
+      "ftPct": 0.78,
+      "ws": 3.2,
+      "wsPer48": 0.168
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Maya Moore",
+            "brPid": "moorema01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Lindsay Whalen",
+            "brPid": "whaleli01w",
+            "team": "MIN"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Seimone Augustus",
+            "brPid": "augusse01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "CON"
+          },
+          {
+            "name": "Elena Delle Donne",
+            "brPid": "delleel01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Alex Bentley",
+        "brPid": "bentlal01w",
+        "team": "ATL"
+      },
+      {
+        "name": "Kelsey Bone",
+        "brPid": "boneke01w",
+        "team": "NYL"
+      },
+      {
+        "name": "Elena Delle Donne",
+        "brPid": "delleel01w",
+        "team": "CHI"
+      },
+      {
+        "name": "Skylar Diggins",
+        "brPid": "diggisk01w",
+        "team": "TUL"
+      },
+      {
+        "name": "Brittney Griner",
+        "brPid": "grinebr01w",
+        "team": "PHO"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Armintie Herrington",
+            "brPid": "pricear01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Tanisha Wright",
+            "brPid": "wrighta01w",
+            "team": "SEA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Rebekkah Brunson",
+            "brPid": "brunsre01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Erika de Souza",
+            "brPid": "desouer01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Briann January",
+            "brPid": "januabr01w",
+            "team": "IND"
+          },
+          {
+            "name": "Glory Johnson",
+            "brPid": "johnsgl01w",
+            "team": "TUL"
+          },
+          {
+            "name": "Jia Perkins",
+            "brPid": "perkiji01w",
+            "team": "SAS"
+          },
+          {
+            "name": "Danielle Robinson",
+            "brPid": "robinda01w",
+            "team": "SAS"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Mike Thibault",
+      "brPid": "thibami99w",
+      "team": "WAS",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Maya Moore",
+      "brPid": "moorema01w",
+      "team": "MIN",
+      "gp": 3,
+      "min": 30.3,
+      "pts": 20.0,
+      "trb": 6.0,
+      "ast": 2.3,
+      "stl": 0.7,
+      "blk": 0.3,
+      "fgPct": 0.543,
+      "tpPct": 0.5,
+      "ftPct": 0.85
+    },
+    "allStarMvp": {
+      "name": "Candace Parker",
+      "brPid": "parkeca01w",
+      "team": "LAS",
+      "gp": 31,
+      "min": 28.7,
+      "pts": 17.9,
+      "trb": 8.7,
+      "ast": 3.8,
+      "stl": 1.3,
+      "blk": 1.8,
+      "fgPct": 0.493,
+      "tpPct": 0.257,
+      "ftPct": 0.762,
+      "ws": 6.5,
+      "wsPer48": 0.353
+    },
+    "champion": {
+      "name": "Minnesota Lynx",
+      "coach": "Cheryl Reeve"
+    },
+    "runnerUp": {
+      "name": "Atlanta Dream",
+      "coach": "Fred Williams"
+    },
+    "finalsResult": "3-0",
+    "finalsTv": "Game 1: ESPN; Games 2 and 3: ESPN2"
+  },
+  {
+    "season": 2014,
+    "mvp": {
+      "name": "Maya Moore",
+      "brPid": "moorema01w",
+      "team": "MIN",
+      "gp": 34,
+      "min": 34.7,
+      "pts": 23.9,
+      "trb": 8.1,
+      "ast": 3.4,
+      "stl": 1.9,
+      "blk": 0.8,
+      "fgPct": 0.481,
+      "tpPct": 0.335,
+      "ftPct": 0.884,
+      "ws": 8.3,
+      "wsPer48": 0.339
+    },
+    "roy": {
+      "name": "Chiney Ogwumike",
+      "brPid": "ogwumch01w",
+      "team": "CON",
+      "gp": 31,
+      "min": 29.7,
+      "pts": 15.5,
+      "trb": 8.5,
+      "ast": 0.6,
+      "stl": 1.2,
+      "blk": 1.2,
+      "fgPct": 0.537,
+      "ftPct": 0.693,
+      "ws": 4.9,
+      "wsPer48": 0.255
+    },
+    "dpoy": {
+      "name": "Brittney Griner",
+      "brPid": "grinebr01w",
+      "team": "PHO",
+      "gp": 34,
+      "min": 30.7,
+      "pts": 15.6,
+      "trb": 8.0,
+      "ast": 1.6,
+      "stl": 0.6,
+      "blk": 3.8,
+      "fgPct": 0.578,
+      "ftPct": 0.802,
+      "ws": 6.8,
+      "wsPer48": 0.311
+    },
+    "smoy": {
+      "name": "Allie Quigley",
+      "brPid": "quiglal01w",
+      "team": "CHI",
+      "gp": 34,
+      "min": 24.8,
+      "pts": 11.2,
+      "trb": 2.2,
+      "ast": 1.9,
+      "stl": 0.7,
+      "blk": 0.2,
+      "fgPct": 0.444,
+      "tpPct": 0.387,
+      "ftPct": 0.879,
+      "ws": 1.5,
+      "wsPer48": 0.083
+    },
+    "mip": {
+      "name": "Skylar Diggins",
+      "brPid": "diggisk01w",
+      "team": "TUL",
+      "gp": 34,
+      "min": 35.1,
+      "pts": 20.1,
+      "trb": 2.5,
+      "ast": 5.0,
+      "stl": 1.5,
+      "blk": 0.6,
+      "fgPct": 0.424,
+      "tpPct": 0.284,
+      "ftPct": 0.842,
+      "ws": 4.2,
+      "wsPer48": 0.168
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Skylar Diggins",
+            "brPid": "diggisk01w",
+            "team": "TUL"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Maya Moore",
+            "brPid": "moorema01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Seimone Augustus",
+            "brPid": "augusse01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Danielle Robinson",
+            "brPid": "robinda01w",
+            "team": "SAS"
+          },
+          {
+            "name": "Lindsay Whalen",
+            "brPid": "whaleli01w",
+            "team": "MIN"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Bria Hartley",
+        "brPid": "hartlbr01w",
+        "team": "WAS"
+      },
+      {
+        "name": "Kayla McBride",
+        "brPid": "mcbrika01w",
+        "team": "SAS"
+      },
+      {
+        "name": "Chiney Ogwumike",
+        "brPid": "ogwumch01w",
+        "team": "CON"
+      },
+      {
+        "name": "Odyssey Sims",
+        "brPid": "simsod01w",
+        "team": "TUL"
+      },
+      {
+        "name": "Alyssa Thomas",
+        "brPid": "thomaal01w",
+        "team": "CON"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Briann January",
+            "brPid": "januabr01w",
+            "team": "IND"
+          },
+          {
+            "name": "Sancho Lyttle",
+            "brPid": "lyttlsa01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Tanisha Wright",
+            "brPid": "wrighta01w",
+            "team": "SEA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Maya Moore",
+            "brPid": "moorema01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Danielle Robinson",
+            "brPid": "robinda01w",
+            "team": "SAS"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Sandy Brondello",
+      "brPid": "brondsa01w",
+      "team": "PHO",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Diana Taurasi",
+      "brPid": "tauradi01w",
+      "team": "PHO",
+      "gp": 3,
+      "min": 30.3,
+      "pts": 20.3,
+      "trb": 3.3,
+      "ast": 6.3,
+      "stl": 1.3,
+      "blk": 0.7,
+      "fgPct": 0.533,
+      "tpPct": 0.476,
+      "ftPct": 1.0
+    },
+    "allStarMvp": {
+      "name": "Shoni Schimmel",
+      "brPid": "schimsh01w",
+      "team": "ATL",
+      "gp": 34,
+      "min": 21.3,
+      "pts": 8.3,
+      "trb": 2.2,
+      "ast": 3.6,
+      "stl": 0.8,
+      "blk": 0.1,
+      "fgPct": 0.374,
+      "tpPct": 0.342,
+      "ftPct": 0.84,
+      "ws": 0.8,
+      "wsPer48": 0.056
+    },
+    "champion": {
+      "name": "Phoenix Mercury",
+      "coach": "Sandy Brondello"
+    },
+    "runnerUp": {
+      "name": "Chicago Sky",
+      "coach": "Pokey Chatman"
+    },
+    "finalsResult": "3-0",
+    "finalsTv": "Game 1: ABC; Game 2: ESPN; Game 3: ESPN2"
+  },
+  {
+    "season": 2015,
+    "mvp": {
+      "name": "Elena Delle Donne",
+      "brPid": "delleel01w",
+      "team": "CHI",
+      "gp": 31,
+      "min": 33.3,
+      "pts": 23.4,
+      "trb": 8.4,
+      "ast": 1.4,
+      "stl": 1.1,
+      "blk": 2.0,
+      "fgPct": 0.46,
+      "tpPct": 0.313,
+      "ftPct": 0.95,
+      "ws": 8.9,
+      "wsPer48": 0.415
+    },
+    "roy": {
+      "name": "Jewell Loyd",
+      "brPid": "loydje01w",
+      "team": "SEA",
+      "gp": 34,
+      "min": 25.9,
+      "pts": 10.7,
+      "trb": 3.5,
+      "ast": 1.9,
+      "stl": 0.6,
+      "blk": 0.2,
+      "fgPct": 0.411,
+      "tpPct": 0.208,
+      "ftPct": 0.904,
+      "ws": 1.1,
+      "wsPer48": 0.061
+    },
+    "dpoy": {
+      "name": "Brittney Griner",
+      "brPid": "grinebr01w",
+      "team": "PHO",
+      "gp": 26,
+      "min": 30.7,
+      "pts": 15.1,
+      "trb": 8.1,
+      "ast": 1.3,
+      "stl": 0.3,
+      "blk": 4.0,
+      "fgPct": 0.565,
+      "ftPct": 0.773,
+      "ws": 4.8,
+      "wsPer48": 0.291
+    },
+    "smoy": {
+      "name": "Allie Quigley",
+      "brPid": "quiglal01w",
+      "team": "CHI",
+      "gp": 32,
+      "min": 22.5,
+      "pts": 11.1,
+      "trb": 1.8,
+      "ast": 1.7,
+      "stl": 0.4,
+      "blk": 0.5,
+      "fgPct": 0.431,
+      "tpPct": 0.34,
+      "ftPct": 0.826,
+      "ws": 1.5,
+      "wsPer48": 0.098
+    },
+    "mip": {
+      "name": "Kelsey Bone",
+      "brPid": "boneke01w",
+      "team": "CON",
+      "gp": 34,
+      "min": 28.3,
+      "pts": 15.0,
+      "trb": 6.1,
+      "ast": 1.9,
+      "stl": 0.8,
+      "blk": 0.6,
+      "fgPct": 0.508,
+      "tpPct": 0.0,
+      "ftPct": 0.622,
+      "ws": 2.7,
+      "wsPer48": 0.133
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "DeWanna Bonner",
+            "brPid": "bonnede01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Elena Delle Donne",
+            "brPid": "delleel01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Maya Moore",
+            "brPid": "moorema01w",
+            "team": "MIN"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Epiphanny Prince",
+            "brPid": "princep01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Courtney Vandersloot",
+            "brPid": "vandeco01w",
+            "team": "CHI"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Natalie Achonwa",
+        "brPid": "achonna01w",
+        "team": "IND"
+      },
+      {
+        "name": "Brittany Boyd",
+        "brPid": "boydbr01w",
+        "team": "NYL"
+      },
+      {
+        "name": "Ana Dabovic",
+        "brPid": "dabovan01w",
+        "team": "LAS"
+      },
+      {
+        "name": "Jewell Loyd",
+        "brPid": "loydje01w",
+        "team": "SEA"
+      },
+      {
+        "name": "Kiah Stokes",
+        "brPid": "stokeki01w",
+        "team": "NYL"
+      },
+      {
+        "name": "Ramu Tokashiki",
+        "brPid": "tokasra01w",
+        "team": "SEA"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Briann January",
+            "brPid": "januabr01w",
+            "team": "IND"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "DeWanna Bonner",
+            "brPid": "bonnede01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Sancho Lyttle",
+            "brPid": "lyttlsa01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Kiah Stokes",
+            "brPid": "stokeki01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Tanisha Wright",
+            "brPid": "wrighta01w",
+            "team": "NYL"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Bill Laimbeer",
+      "brPid": "laimbbi99w",
+      "team": "NYL",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Sylvia Fowles",
+      "brPid": "fowlesy01w",
+      "team": "MIN",
+      "gp": 5,
+      "min": 31.2,
+      "pts": 15.6,
+      "trb": 9.4,
+      "ast": 1.2,
+      "stl": 0.8,
+      "blk": 1.0,
+      "fgPct": 0.696,
+      "ftPct": 0.778
+    },
+    "allStarMvp": {
+      "name": "Maya Moore",
+      "brPid": "moorema01w",
+      "team": "MIN",
+      "gp": 33,
+      "min": 33.4,
+      "pts": 20.6,
+      "trb": 6.7,
+      "ast": 3.5,
+      "stl": 1.7,
+      "blk": 0.8,
+      "fgPct": 0.42,
+      "tpPct": 0.359,
+      "ftPct": 0.855,
+      "ws": 6.5,
+      "wsPer48": 0.282
+    },
+    "champion": {
+      "name": "Minnesota Lynx",
+      "coach": "Cheryl Reeve"
+    },
+    "runnerUp": {
+      "name": "Indiana Fever",
+      "coach": "Stephanie White"
+    },
+    "finalsResult": "3-2",
+    "finalsTv": "Game 1: ABC; Games 2, 3 and 5: ESPN2; Game 4: ESPN"
+  },
+  {
+    "season": 2016,
+    "mvp": {
+      "name": "Nneka Ogwumike",
+      "brPid": "ogwumnn01w",
+      "team": "LAS",
+      "gp": 33,
+      "min": 31.6,
+      "pts": 19.7,
+      "trb": 9.1,
+      "ast": 3.1,
+      "stl": 1.3,
+      "blk": 1.2,
+      "fgPct": 0.665,
+      "tpPct": 0.615,
+      "ftPct": 0.869,
+      "ws": 9.6,
+      "wsPer48": 0.444
+    },
+    "roy": {
+      "name": "Breanna Stewart",
+      "brPid": "stewabr01w",
+      "team": "SEA",
+      "gp": 34,
+      "min": 34.7,
+      "pts": 18.3,
+      "trb": 9.3,
+      "ast": 3.4,
+      "stl": 1.2,
+      "blk": 1.9,
+      "fgPct": 0.457,
+      "tpPct": 0.338,
+      "ftPct": 0.833,
+      "ws": 5.7,
+      "wsPer48": 0.232
+    },
+    "dpoy": {
+      "name": "Sylvia Fowles",
+      "brPid": "fowlesy01w",
+      "team": "MIN",
+      "gp": 34,
+      "min": 28.5,
+      "pts": 13.9,
+      "trb": 8.5,
+      "ast": 1.2,
+      "stl": 1.3,
+      "blk": 1.8,
+      "fgPct": 0.595,
+      "ftPct": 0.717,
+      "ws": 6.3,
+      "wsPer48": 0.311
+    },
+    "smoy": {
+      "name": "Jantel Lavender",
+      "brPid": "lavenja01w",
+      "team": "LAS",
+      "gp": 34,
+      "min": 19.4,
+      "pts": 9.6,
+      "trb": 3.6,
+      "ast": 1.3,
+      "stl": 0.3,
+      "blk": 0.5,
+      "fgPct": 0.538,
+      "tpPct": 0.0,
+      "ftPct": 0.683,
+      "ws": 2.1,
+      "wsPer48": 0.151
+    },
+    "mip": {
+      "name": "Elizabeth Williams",
+      "brPid": "williel01w",
+      "team": "ATL",
+      "gp": 34,
+      "min": 34.7,
+      "pts": 11.9,
+      "trb": 8.1,
+      "ast": 1.2,
+      "stl": 0.8,
+      "blk": 2.3,
+      "fgPct": 0.442,
+      "tpPct": 0.0,
+      "ftPct": 0.692,
+      "ws": 3.4,
+      "wsPer48": 0.137
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Sue Bird",
+            "brPid": "birdsu01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Elena Delle Donne",
+            "brPid": "delleel01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Maya Moore",
+            "brPid": "moorema01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Jewell Loyd",
+            "brPid": "loydje01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Moriah Jefferson",
+        "brPid": "jeffemo01w",
+        "team": "SAS"
+      },
+      {
+        "name": "Imani McGee-Stafford",
+        "brPid": "boyetim01w",
+        "team": "CHI"
+      },
+      {
+        "name": "Tiffany Mitchell",
+        "brPid": "mitchti01w",
+        "team": "IND"
+      },
+      {
+        "name": "Aerial Powers",
+        "brPid": "powerae01w",
+        "team": "DAL"
+      },
+      {
+        "name": "Breanna Stewart",
+        "brPid": "stewabr01w",
+        "team": "SEA"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Briann January",
+            "brPid": "januabr01w",
+            "team": "IND"
+          },
+          {
+            "name": "Angel McCoughtry",
+            "brPid": "mccouan01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Tamika Catchings",
+            "brPid": "catchta01w",
+            "team": "IND"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Jasmine Thomas",
+            "brPid": "thomaja01w",
+            "team": "CON"
+          },
+          {
+            "name": "Tanisha Wright",
+            "brPid": "wrighta01w",
+            "team": "NYL"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Cheryl Reeve",
+      "brPid": "reevech99w",
+      "team": "MIN",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Candace Parker",
+      "brPid": "parkeca01w",
+      "team": "LAS",
+      "gp": 5,
+      "min": 33.5,
+      "pts": 17.2,
+      "trb": 7.4,
+      "ast": 2.2,
+      "stl": 2.2,
+      "blk": 2.0,
+      "fgPct": 0.443,
+      "tpPct": 0.188,
+      "ftPct": 0.684
+    },
+    "champion": {
+      "name": "Los Angeles Sparks",
+      "coach": "Brian Agler"
+    },
+    "runnerUp": {
+      "name": "Minnesota Lynx",
+      "coach": "Cheryl Reeve"
+    },
+    "finalsResult": "3-2",
+    "finalsTv": "Game 1: ABC; Games 2, 4 and 5: ESPN; Game 3: ESPN2"
+  },
+  {
+    "season": 2017,
+    "mvp": {
+      "name": "Sylvia Fowles",
+      "brPid": "fowlesy01w",
+      "team": "MIN",
+      "gp": 34,
+      "min": 30.8,
+      "pts": 18.9,
+      "trb": 10.4,
+      "ast": 1.5,
+      "stl": 1.3,
+      "blk": 2.0,
+      "fgPct": 0.655,
+      "ftPct": 0.768,
+      "ws": 9.2,
+      "wsPer48": 0.42
+    },
+    "roy": {
+      "name": "Allisha Gray",
+      "brPid": "grayal01w",
+      "team": "DAL",
+      "gp": 34,
+      "min": 27.2,
+      "pts": 13.0,
+      "trb": 3.9,
+      "ast": 1.3,
+      "stl": 1.5,
+      "blk": 0.6,
+      "fgPct": 0.381,
+      "tpPct": 0.299,
+      "ftPct": 0.803,
+      "ws": 2.0,
+      "wsPer48": 0.103
+    },
+    "dpoy": {
+      "name": "Alana Beard",
+      "brPid": "beardal01w",
+      "team": "LAS",
+      "gp": 34,
+      "min": 30.8,
+      "pts": 6.9,
+      "trb": 3.3,
+      "ast": 2.2,
+      "stl": 2.1,
+      "blk": 0.5,
+      "fgPct": 0.497,
+      "tpPct": 0.316,
+      "ftPct": 0.804,
+      "ws": 3.3,
+      "wsPer48": 0.152
+    },
+    "smoy": {
+      "name": "Sugar Rodgers",
+      "brPid": "rodgesu01w",
+      "team": "NYL",
+      "gp": 33,
+      "min": 25.6,
+      "pts": 10.5,
+      "trb": 3.8,
+      "ast": 2.3,
+      "stl": 0.9,
+      "blk": 0.5,
+      "fgPct": 0.339,
+      "tpPct": 0.342,
+      "ftPct": 0.815,
+      "ws": 1.7,
+      "wsPer48": 0.097
+    },
+    "mip": {
+      "name": "Jonquel Jones",
+      "brPid": "jonesjo01w",
+      "team": "CON",
+      "gp": 34,
+      "min": 28.5,
+      "pts": 15.4,
+      "trb": 11.9,
+      "ast": 1.5,
+      "stl": 0.9,
+      "blk": 1.5,
+      "fgPct": 0.534,
+      "tpPct": 0.446,
+      "ftPct": 0.818,
+      "ws": 7.2,
+      "wsPer48": 0.356
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Skylar Diggins",
+            "brPid": "diggisk01w",
+            "team": "DAL"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Maya Moore",
+            "brPid": "moorema01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Chelsea Gray",
+            "brPid": "graych01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Jonquel Jones",
+            "brPid": "jonesjo01w",
+            "team": "CON"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Kaela Davis",
+        "brPid": "daviska01w",
+        "team": "DAL"
+      },
+      {
+        "name": "Allisha Gray",
+        "brPid": "grayal01w",
+        "team": "DAL"
+      },
+      {
+        "name": "Kelsey Plum",
+        "brPid": "plumke01w",
+        "team": "SAS"
+      },
+      {
+        "name": "Brittney Sykes",
+        "brPid": "sykesbr01w",
+        "team": "ATL"
+      },
+      {
+        "name": "Shatori Walker-Kimbrough",
+        "brPid": "walkesh01w",
+        "team": "WAS"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Jasmine Thomas",
+            "brPid": "thomaja01w",
+            "team": "CON"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Rebekkah Brunson",
+            "brPid": "brunsre01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Briann January",
+            "brPid": "januabr01w",
+            "team": "IND"
+          },
+          {
+            "name": "Maya Moore",
+            "brPid": "moorema01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "CON"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Curt Miller",
+      "brPid": "millecu01w",
+      "team": "CON",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Sylvia Fowles",
+      "brPid": "fowlesy01w",
+      "team": "MIN",
+      "gp": 5,
+      "min": 36.3,
+      "pts": 17.8,
+      "trb": 15.0,
+      "ast": 1.2,
+      "stl": 1.8,
+      "blk": 2.4,
+      "fgPct": 0.613,
+      "ftPct": 0.619
+    },
+    "allStarMvp": {
+      "name": "Maya Moore",
+      "brPid": "moorema01w",
+      "team": "MIN",
+      "gp": 34,
+      "min": 31.3,
+      "pts": 17.3,
+      "trb": 5.0,
+      "ast": 3.5,
+      "stl": 1.9,
+      "blk": 0.4,
+      "fgPct": 0.442,
+      "tpPct": 0.411,
+      "ftPct": 0.858,
+      "ws": 6.9,
+      "wsPer48": 0.309
+    },
+    "champion": {
+      "name": "Minnesota Lynx",
+      "coach": "Cheryl Reeve"
+    },
+    "runnerUp": {
+      "name": "Los Angeles Sparks",
+      "coach": "Brian Agler"
+    },
+    "finalsResult": "3-2",
+    "finalsTv": "Game 1: ABC; Games 2 and 3: ESPN2; Games 4 and 5: ESPN"
+  },
+  {
+    "season": 2018,
+    "mvp": {
+      "name": "Breanna Stewart",
+      "brPid": "stewabr01w",
+      "team": "SEA",
+      "gp": 34,
+      "min": 31.6,
+      "pts": 21.8,
+      "trb": 8.4,
+      "ast": 2.5,
+      "stl": 1.4,
+      "blk": 1.4,
+      "fgPct": 0.529,
+      "tpPct": 0.415,
+      "ftPct": 0.82,
+      "ws": 7.7,
+      "wsPer48": 0.346
+    },
+    "roy": {
+      "name": "A'ja Wilson",
+      "brPid": "wilsoa01w",
+      "team": "LVA",
+      "gp": 33,
+      "min": 30.6,
+      "pts": 20.7,
+      "trb": 8.0,
+      "ast": 2.2,
+      "stl": 0.8,
+      "blk": 1.7,
+      "fgPct": 0.462,
+      "ftPct": 0.774,
+      "ws": 4.4,
+      "wsPer48": 0.21
+    },
+    "dpoy": {
+      "name": "Alana Beard",
+      "brPid": "beardal01w",
+      "team": "LAS",
+      "gp": 30,
+      "min": 25.5,
+      "pts": 4.0,
+      "trb": 3.3,
+      "ast": 1.7,
+      "stl": 1.5,
+      "blk": 0.2,
+      "fgPct": 0.392,
+      "tpPct": 0.4,
+      "ftPct": 0.81,
+      "ws": 1.5,
+      "wsPer48": 0.094
+    },
+    "smoy": {
+      "name": "Jonquel Jones",
+      "brPid": "jonesjo01w",
+      "team": "CON",
+      "gp": 34,
+      "min": 20.5,
+      "pts": 11.8,
+      "trb": 5.5,
+      "ast": 1.7,
+      "stl": 0.4,
+      "blk": 1.2,
+      "fgPct": 0.55,
+      "tpPct": 0.467,
+      "ftPct": 0.671,
+      "ws": 4.2,
+      "wsPer48": 0.291
+    },
+    "mip": {
+      "name": "Natasha Howard",
+      "brPid": "howarna01w",
+      "team": "SEA",
+      "gp": 34,
+      "min": 25.6,
+      "pts": 13.2,
+      "trb": 6.4,
+      "ast": 1.0,
+      "stl": 1.3,
+      "blk": 2.0,
+      "fgPct": 0.547,
+      "tpPct": 0.327,
+      "ftPct": 0.798,
+      "ws": 4.6,
+      "wsPer48": 0.252
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Liz Cambage",
+            "brPid": "cambael01w",
+            "team": "DAL"
+          },
+          {
+            "name": "Elena Delle Donne",
+            "brPid": "delleel01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Tiffany Hayes",
+            "brPid": "hayesti01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Skylar Diggins",
+            "brPid": "diggisk01w",
+            "team": "DAL"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Maya Moore",
+            "brPid": "moorema01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Courtney Vandersloot",
+            "brPid": "vandeco01w",
+            "team": "CHI"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Ariel Atkins",
+        "brPid": "atkinar01w",
+        "team": "WAS"
+      },
+      {
+        "name": "Diamond DeShields",
+        "brPid": "deshidi01w",
+        "team": "CHI"
+      },
+      {
+        "name": "Kelsey Mitchell",
+        "brPid": "mitchke01w",
+        "team": "IND"
+      },
+      {
+        "name": "Azura Stevens",
+        "brPid": "steveaz01w",
+        "team": "DAL"
+      },
+      {
+        "name": "A'ja Wilson",
+        "brPid": "wilsoa01w",
+        "team": "LVA"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Alana Beard",
+            "brPid": "beardal01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Jessica Breland",
+            "brPid": "brelaje01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Natasha Howard",
+            "brPid": "howarna01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Jasmine Thomas",
+            "brPid": "thomaja01w",
+            "team": "CON"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Ariel Atkins",
+            "brPid": "atkinar01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Rebekkah Brunson",
+            "brPid": "brunsre01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Tiffany Hayes",
+            "brPid": "hayesti01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Nicki Collen",
+      "brPid": "colleni99w",
+      "team": "ATL",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Breanna Stewart",
+      "brPid": "stewabr01w",
+      "team": "SEA",
+      "gp": 3,
+      "min": 36.5,
+      "pts": 25.7,
+      "trb": 6.0,
+      "ast": 3.7,
+      "stl": 1.7,
+      "blk": 0.0,
+      "fgPct": 0.51,
+      "tpPct": 0.545,
+      "ftPct": 0.778
+    },
+    "allStarMvp": {
+      "name": "Maya Moore",
+      "brPid": "moorema01w",
+      "team": "MIN",
+      "gp": 34,
+      "min": 31.8,
+      "pts": 18.0,
+      "trb": 5.1,
+      "ast": 2.6,
+      "stl": 1.7,
+      "blk": 0.4,
+      "fgPct": 0.423,
+      "tpPct": 0.365,
+      "ftPct": 0.833,
+      "ws": 4.1,
+      "wsPer48": 0.18
+    },
+    "champion": {
+      "name": "Seattle Storm",
+      "coach": "Dan Hughes"
+    },
+    "runnerUp": {
+      "name": "Washington Mystics",
+      "coach": "Mike Thibault"
+    },
+    "finalsResult": "3-0",
+    "finalsTv": "Game 1: ESPNews; Game 2: ABC; Game 3: ESPN2"
+  },
+  {
+    "season": 2019,
+    "mvp": {
+      "name": "Elena Delle Donne",
+      "brPid": "delleel01w",
+      "team": "WAS",
+      "gp": 31,
+      "min": 29.1,
+      "pts": 19.5,
+      "trb": 8.2,
+      "ast": 2.2,
+      "stl": 0.6,
+      "blk": 1.3,
+      "fgPct": 0.515,
+      "tpPct": 0.43,
+      "ftPct": 0.974,
+      "ws": 7.7,
+      "wsPer48": 0.411
+    },
+    "roy": {
+      "name": "Napheesa Collier",
+      "brPid": "collina01w",
+      "team": "MIN",
+      "gp": 34,
+      "min": 33.3,
+      "pts": 13.1,
+      "trb": 6.6,
+      "ast": 2.6,
+      "stl": 1.9,
+      "blk": 0.9,
+      "fgPct": 0.49,
+      "tpPct": 0.361,
+      "ftPct": 0.792,
+      "ws": 5.2,
+      "wsPer48": 0.222
+    },
+    "dpoy": {
+      "name": "Natasha Howard",
+      "brPid": "howarna01w",
+      "team": "SEA",
+      "gp": 34,
+      "min": 31.4,
+      "pts": 18.1,
+      "trb": 8.2,
+      "ast": 2.1,
+      "stl": 2.2,
+      "blk": 1.7,
+      "fgPct": 0.439,
+      "tpPct": 0.308,
+      "ftPct": 0.81,
+      "ws": 4.6,
+      "wsPer48": 0.207
+    },
+    "smoy": {
+      "name": "Dearica Hamby",
+      "brPid": "hambyde01w",
+      "team": "LVA",
+      "gp": 34,
+      "min": 24.8,
+      "pts": 11.0,
+      "trb": 7.6,
+      "ast": 1.9,
+      "stl": 1.0,
+      "blk": 0.4,
+      "fgPct": 0.488,
+      "tpPct": 0.321,
+      "ftPct": 0.718,
+      "ws": 3.6,
+      "wsPer48": 0.203
+    },
+    "mip": {
+      "name": "Leilani Mitchell",
+      "brPid": "mitchle01w",
+      "team": "PHO",
+      "gp": 32,
+      "min": 30.3,
+      "pts": 12.8,
+      "trb": 3.0,
+      "ast": 4.0,
+      "stl": 0.9,
+      "blk": 0.3,
+      "fgPct": 0.441,
+      "tpPct": 0.43,
+      "ftPct": 0.829,
+      "ws": 3.5,
+      "wsPer48": 0.171
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Elena Delle Donne",
+            "brPid": "delleel01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Chelsea Gray",
+            "brPid": "graych01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Natasha Howard",
+            "brPid": "howarna01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Courtney Vandersloot",
+            "brPid": "vandeco01w",
+            "team": "CHI"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Liz Cambage",
+            "brPid": "cambael01w",
+            "team": "LVA"
+          },
+          {
+            "name": "Diamond DeShields",
+            "brPid": "deshidi01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Jonquel Jones",
+            "brPid": "jonesjo01w",
+            "team": "CON"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Odyssey Sims",
+            "brPid": "simsod01w",
+            "team": "MIN"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Napheesa Collier",
+        "brPid": "collina01w",
+        "team": "MIN"
+      },
+      {
+        "name": "Teaira McCowan",
+        "brPid": "mccowte01w",
+        "team": "IND"
+      },
+      {
+        "name": "Arike Ogunbowale",
+        "brPid": "ogunbar01w",
+        "team": "DAL"
+      },
+      {
+        "name": "Brianna Turner",
+        "brPid": "turnebr01w",
+        "team": "PHO"
+      },
+      {
+        "name": "Jackie Young",
+        "brPid": "youngja01w",
+        "team": "LVA"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Jordin Canada",
+            "brPid": "canadjo01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Natasha Howard",
+            "brPid": "howarna01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Jonquel Jones",
+            "brPid": "jonesjo01w",
+            "team": "CON"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Jasmine Thomas",
+            "brPid": "thomaja01w",
+            "team": "CON"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Ariel Atkins",
+            "brPid": "atkinar01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Alysha Clark",
+            "brPid": "clarkal01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Natasha Cloud",
+            "brPid": "cloudna01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "CON"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "James Wade",
+      "brPid": "wadeja99w",
+      "team": "CHI",
+      "gp": 34
+    },
+    "finalsMvp": {
+      "name": "Emma Meesseman",
+      "brPid": "meessem01w",
+      "team": "WAS",
+      "gp": 5,
+      "min": 26.8,
+      "pts": 17.8,
+      "trb": 4.6,
+      "ast": 1.8,
+      "stl": 1.0,
+      "blk": 1.0,
+      "fgPct": 0.571,
+      "tpPct": 0.5,
+      "ftPct": 0.769
+    },
+    "allStarMvp": {
+      "name": "Erica Wheeler",
+      "brPid": "wheeler01w",
+      "team": "IND",
+      "gp": 34,
+      "min": 25.0,
+      "pts": 10.1,
+      "trb": 3.0,
+      "ast": 5.0,
+      "stl": 1.2,
+      "blk": 0.1,
+      "fgPct": 0.426,
+      "tpPct": 0.384,
+      "ftPct": 0.872,
+      "ws": 1.4,
+      "wsPer48": 0.078
+    },
+    "champion": {
+      "name": "Washington Mystics",
+      "coach": "Mike Thibault"
+    },
+    "runnerUp": {
+      "name": "Connecticut Sun",
+      "coach": "Curt Miller"
+    },
+    "finalsResult": "3-2",
+    "finalsTv": "Games 1 and 2: ESPN; Game 3: ABC; Games 4 and 5: ESPN2"
+  },
+  {
+    "season": 2020,
+    "mvp": {
+      "name": "A'ja Wilson",
+      "brPid": "wilsoa01w",
+      "team": "LVA",
+      "gp": 22,
+      "min": 31.7,
+      "pts": 20.5,
+      "trb": 8.5,
+      "ast": 2.0,
+      "stl": 1.2,
+      "blk": 2.0,
+      "fgPct": 0.48,
+      "ftPct": 0.781,
+      "ws": 4.0,
+      "wsPer48": 0.276
+    },
+    "roy": {
+      "name": "Crystal Dangerfield",
+      "brPid": "dangecr01w",
+      "team": "MIN",
+      "gp": 21,
+      "min": 30.0,
+      "pts": 16.2,
+      "trb": 2.0,
+      "ast": 3.6,
+      "stl": 0.9,
+      "blk": 0.0,
+      "fgPct": 0.471,
+      "tpPct": 0.333,
+      "ftPct": 0.922,
+      "ws": 1.9,
+      "wsPer48": 0.145
+    },
+    "dpoy": {
+      "name": "Candace Parker",
+      "brPid": "parkeca01w",
+      "team": "LAS",
+      "gp": 22,
+      "min": 30.2,
+      "pts": 14.7,
+      "trb": 9.7,
+      "ast": 4.6,
+      "stl": 1.2,
+      "blk": 1.2,
+      "fgPct": 0.51,
+      "tpPct": 0.396,
+      "ftPct": 0.731,
+      "ws": 3.2,
+      "wsPer48": 0.235
+    },
+    "smoy": {
+      "name": "Dearica Hamby",
+      "brPid": "hambyde01w",
+      "team": "LVA",
+      "gp": 22,
+      "min": 28.3,
+      "pts": 13.0,
+      "trb": 7.1,
+      "ast": 2.7,
+      "stl": 1.7,
+      "blk": 0.2,
+      "fgPct": 0.539,
+      "tpPct": 0.474,
+      "ftPct": 0.716,
+      "ws": 3.0,
+      "wsPer48": 0.232
+    },
+    "mip": {
+      "name": "Betnijah Laney-Hamilton",
+      "brPid": "laneybe01w",
+      "team": "ATL",
+      "gp": 22,
+      "min": 33.5,
+      "pts": 17.2,
+      "trb": 4.9,
+      "ast": 4.0,
+      "stl": 1.6,
+      "blk": 0.1,
+      "fgPct": 0.481,
+      "tpPct": 0.405,
+      "ftPct": 0.827,
+      "ws": 1.8,
+      "wsPer48": 0.118
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Arike Ogunbowale",
+            "brPid": "ogunbar01w",
+            "team": "DAL"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Courtney Vandersloot",
+            "brPid": "vandeco01w",
+            "team": "CHI"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "DeWanna Bonner",
+            "brPid": "bonnede01w",
+            "team": "CON"
+          },
+          {
+            "name": "Napheesa Collier",
+            "brPid": "collina01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Skylar Diggins",
+            "brPid": "diggisk01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Myisha Hines-Allen",
+            "brPid": "hinesmy01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Diana Taurasi",
+            "brPid": "tauradi01w",
+            "team": "PHO"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Julie Allemand",
+        "brPid": "allemju01w",
+        "team": "IND"
+      },
+      {
+        "name": "Chennedy Carter",
+        "brPid": "cartech01w",
+        "team": "ATL"
+      },
+      {
+        "name": "Crystal Dangerfield",
+        "brPid": "dangecr01w",
+        "team": "MIN"
+      },
+      {
+        "name": "Jazmine Jones",
+        "brPid": "jonesja02w",
+        "team": "NYL"
+      },
+      {
+        "name": "Satou Sabally",
+        "brPid": "sabalsa01w",
+        "team": "DAL"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Alysha Clark",
+            "brPid": "clarkal01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Betnijah Laney-Hamilton",
+            "brPid": "laneybe01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "CON"
+          },
+          {
+            "name": "Brianna Turner",
+            "brPid": "turnebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Elizabeth Williams",
+            "brPid": "williel01w",
+            "team": "ATL"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Ariel Atkins",
+            "brPid": "atkinar01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Napheesa Collier",
+            "brPid": "collina01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Brittney Sykes",
+            "brPid": "sykesbr01w",
+            "team": "LAS"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Cheryl Reeve",
+      "brPid": "reevech99w",
+      "team": "MIN",
+      "gp": 22
+    },
+    "finalsMvp": {
+      "name": "Breanna Stewart",
+      "brPid": "stewabr01w",
+      "team": "SEA",
+      "gp": 3,
+      "min": 32.3,
+      "pts": 28.3,
+      "trb": 7.7,
+      "ast": 2.3,
+      "stl": 1.0,
+      "blk": 1.7,
+      "fgPct": 0.627,
+      "tpPct": 0.65,
+      "ftPct": 0.8
+    },
+    "champion": {
+      "name": "Seattle Storm",
+      "coach": "Gary Kloppenburg"
+    },
+    "runnerUp": {
+      "name": "Las Vegas Aces",
+      "coach": "Bill Laimbeer"
+    },
+    "finalsResult": "3-0",
+    "finalsTv": "Game 1: ESPN2; Game 2: ABC; Game 3: ESPN"
+  },
+  {
+    "season": 2021,
+    "mvp": {
+      "name": "Jonquel Jones",
+      "brPid": "jonesjo01w",
+      "team": "CON",
+      "gp": 27,
+      "min": 31.7,
+      "pts": 19.4,
+      "trb": 11.2,
+      "ast": 2.8,
+      "stl": 1.3,
+      "blk": 1.3,
+      "fgPct": 0.515,
+      "tpPct": 0.362,
+      "ftPct": 0.802,
+      "ws": 6.6,
+      "wsPer48": 0.369
+    },
+    "roy": {
+      "name": "Michaela Onyenwere",
+      "brPid": "onyenmi01w",
+      "team": "NYL",
+      "gp": 32,
+      "min": 22.2,
+      "pts": 8.6,
+      "trb": 2.9,
+      "ast": 0.6,
+      "stl": 0.4,
+      "blk": 0.3,
+      "fgPct": 0.401,
+      "tpPct": 0.327,
+      "ftPct": 0.836,
+      "ws": 0.6,
+      "wsPer48": 0.043
+    },
+    "dpoy": {
+      "name": "Sylvia Fowles",
+      "brPid": "fowlesy01w",
+      "team": "MIN",
+      "gp": 31,
+      "min": 30.1,
+      "pts": 16.0,
+      "trb": 10.1,
+      "ast": 1.4,
+      "stl": 1.8,
+      "blk": 1.8,
+      "fgPct": 0.64,
+      "ftPct": 0.755,
+      "ws": 6.0,
+      "wsPer48": 0.309
+    },
+    "smoy": {
+      "name": "Kelsey Plum",
+      "brPid": "plumke01w",
+      "team": "LVA",
+      "gp": 26,
+      "min": 25.6,
+      "pts": 14.8,
+      "trb": 2.5,
+      "ast": 3.6,
+      "stl": 1.0,
+      "blk": 0.0,
+      "fgPct": 0.437,
+      "tpPct": 0.386,
+      "ftPct": 0.944,
+      "ws": 3.2,
+      "wsPer48": 0.231
+    },
+    "mip": {
+      "name": "Brionna Jones",
+      "brPid": "jonesbr01w",
+      "team": "CON",
+      "gp": 32,
+      "min": 30.6,
+      "pts": 14.7,
+      "trb": 7.3,
+      "ast": 1.8,
+      "stl": 1.4,
+      "blk": 0.5,
+      "fgPct": 0.571,
+      "tpPct": 0.0,
+      "ftPct": 0.796,
+      "ws": 6.1,
+      "wsPer48": 0.3
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Skylar Diggins",
+            "brPid": "diggisk01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Jonquel Jones",
+            "brPid": "jonesjo01w",
+            "team": "CON"
+          },
+          {
+            "name": "Jewell Loyd",
+            "brPid": "loydje01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "SEA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Tina Charles",
+            "brPid": "charlti01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Arike Ogunbowale",
+            "brPid": "ogunbar01w",
+            "team": "DAL"
+          },
+          {
+            "name": "Courtney Vandersloot",
+            "brPid": "vandeco01w",
+            "team": "CHI"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Charli Collier",
+        "brPid": "collich01w",
+        "team": "DAL"
+      },
+      {
+        "name": "Dana Evans",
+        "brPid": "evansda02w",
+        "team": "TOT"
+      },
+      {
+        "name": "Aari McDonald",
+        "brPid": "mcdonaa01w",
+        "team": "ATL"
+      },
+      {
+        "name": "Michaela Onyenwere",
+        "brPid": "onyenmi01w",
+        "team": "NYL"
+      },
+      {
+        "name": "DiDi Richards",
+        "brPid": "richadi01w",
+        "team": "NYL"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Briann January",
+            "brPid": "januabr01w",
+            "team": "CON"
+          },
+          {
+            "name": "Jonquel Jones",
+            "brPid": "jonesjo01w",
+            "team": "CON"
+          },
+          {
+            "name": "Brittney Sykes",
+            "brPid": "sykesbr01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Brianna Turner",
+            "brPid": "turnebr01w",
+            "team": "PHO"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Ariel Atkins",
+            "brPid": "atkinar01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Brittney Griner",
+            "brPid": "grinebr01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Brionna Jones",
+            "brPid": "jonesbr01w",
+            "team": "CON"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Jasmine Thomas",
+            "brPid": "thomaja01w",
+            "team": "CON"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Curt Miller",
+      "brPid": "millecu01w",
+      "team": "CON",
+      "gp": 32
+    },
+    "finalsMvp": {
+      "name": "Kahleah Copper",
+      "brPid": "coppeka01w",
+      "team": "CHI",
+      "gp": 4,
+      "min": 32.6,
+      "pts": 17.0,
+      "trb": 5.5,
+      "ast": 1.3,
+      "stl": 1.3,
+      "blk": 0.0,
+      "fgPct": 0.5,
+      "tpPct": 0.364,
+      "ftPct": 0.875
+    },
+    "commissionersCupMvp": {
+      "name": "Breanna Stewart",
+      "brPid": "stewabr01w",
+      "team": "SEA",
+      "fgPct": 0.75,
+      "tpPct": 0.75,
+      "ftPct": 0.667
+    },
+    "allStarMvp": {
+      "name": "Arike Ogunbowale",
+      "brPid": "ogunbar01w",
+      "team": "DAL",
+      "gp": 32,
+      "min": 31.3,
+      "pts": 18.7,
+      "trb": 3.2,
+      "ast": 3.3,
+      "stl": 1.1,
+      "blk": 0.0,
+      "fgPct": 0.383,
+      "tpPct": 0.376,
+      "ftPct": 0.864,
+      "ws": 2.8,
+      "wsPer48": 0.133
+    },
+    "champion": {
+      "name": "Chicago Sky",
+      "coach": "James Wade"
+    },
+    "runnerUp": {
+      "name": "Phoenix Mercury",
+      "coach": "Sandy Brondello"
+    },
+    "finalsResult": "3-1",
+    "finalsTv": "Game 1: ABC; Games 2 and 4: ESPN; Game 3: ESPN2"
+  },
+  {
+    "season": 2022,
+    "mvp": {
+      "name": "A'ja Wilson",
+      "brPid": "wilsoa01w",
+      "team": "LVA",
+      "gp": 36,
+      "min": 30.0,
+      "pts": 19.5,
+      "trb": 9.4,
+      "ast": 2.1,
+      "stl": 1.4,
+      "blk": 1.9,
+      "fgPct": 0.501,
+      "tpPct": 0.373,
+      "ftPct": 0.813,
+      "ws": 6.5,
+      "wsPer48": 0.289
+    },
+    "roy": {
+      "name": "Rhyne Howard",
+      "brPid": "howarrh01w",
+      "team": "ATL",
+      "gp": 34,
+      "min": 31.4,
+      "pts": 16.2,
+      "trb": 4.5,
+      "ast": 2.8,
+      "stl": 1.6,
+      "blk": 0.8,
+      "fgPct": 0.361,
+      "tpPct": 0.343,
+      "ftPct": 0.792,
+      "ws": 2.9,
+      "wsPer48": 0.132
+    },
+    "dpoy": {
+      "name": "A'ja Wilson",
+      "brPid": "wilsoa01w",
+      "team": "LVA",
+      "gp": 36,
+      "min": 30.0,
+      "pts": 19.5,
+      "trb": 9.4,
+      "ast": 2.1,
+      "stl": 1.4,
+      "blk": 1.9,
+      "fgPct": 0.501,
+      "tpPct": 0.373,
+      "ftPct": 0.813,
+      "ws": 6.5,
+      "wsPer48": 0.289
+    },
+    "smoy": {
+      "name": "Brionna Jones",
+      "brPid": "jonesbr01w",
+      "team": "CON",
+      "gp": 36,
+      "min": 25.1,
+      "pts": 13.8,
+      "trb": 5.1,
+      "ast": 1.2,
+      "stl": 1.2,
+      "blk": 0.4,
+      "fgPct": 0.569,
+      "tpPct": 0.0,
+      "ftPct": 0.844,
+      "ws": 6.0,
+      "wsPer48": 0.316
+    },
+    "mip": {
+      "name": "Jackie Young",
+      "brPid": "youngja01w",
+      "team": "LVA",
+      "gp": 34,
+      "min": 33.2,
+      "pts": 15.9,
+      "trb": 4.4,
+      "ast": 3.9,
+      "stl": 1.4,
+      "blk": 0.2,
+      "fgPct": 0.476,
+      "tpPct": 0.431,
+      "ftPct": 0.859,
+      "ws": 5.4,
+      "wsPer48": 0.228
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Skylar Diggins",
+            "brPid": "diggisk01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Candace Parker",
+            "brPid": "parkeca01w",
+            "team": "CHI"
+          },
+          {
+            "name": "Kelsey Plum",
+            "brPid": "plumke01w",
+            "team": "LVA"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "SEA"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Sabrina Ionescu",
+            "brPid": "ionessa01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Jonquel Jones",
+            "brPid": "jonesjo01w",
+            "team": "CON"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "CON"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Shakira Austin",
+        "brPid": "austish01w",
+        "team": "WAS"
+      },
+      {
+        "name": "Queen Egbo",
+        "brPid": "egboqu01w",
+        "team": "IND"
+      },
+      {
+        "name": "Rebekah Gardner",
+        "brPid": "gardnre01w",
+        "team": "CHI"
+      },
+      {
+        "name": "Rhyne Howard",
+        "brPid": "howarrh01w",
+        "team": "ATL"
+      },
+      {
+        "name": "NaLyssa Smith",
+        "brPid": "smithna01w",
+        "team": "IND"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Ariel Atkins",
+            "brPid": "atkinar01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Natasha Cloud",
+            "brPid": "cloudna01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Sylvia Fowles",
+            "brPid": "fowlesy01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "SEA"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Jonquel Jones",
+            "brPid": "jonesjo01w",
+            "team": "CON"
+          },
+          {
+            "name": "Ezi Magbegor",
+            "brPid": "magbeez01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Brittney Sykes",
+            "brPid": "sykesbr01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "CON"
+          },
+          {
+            "name": "Gabby Williams",
+            "brPid": "williga01w",
+            "team": "SEA"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Becky Hammon",
+      "brPid": "hammobe01w",
+      "team": "LVA",
+      "gp": 36
+    },
+    "finalsMvp": {
+      "name": "Chelsea Gray",
+      "brPid": "graych01w",
+      "team": "LVA",
+      "gp": 4,
+      "min": 34.2,
+      "pts": 18.3,
+      "trb": 3.0,
+      "ast": 6.0,
+      "stl": 1.3,
+      "blk": 0.3,
+      "fgPct": 0.585,
+      "tpPct": 0.45,
+      "ftPct": 0.667
+    },
+    "commissionersCupMvp": {
+      "name": "Chelsea Gray",
+      "brPid": "graych01w",
+      "team": "LVA",
+      "fgPct": 0.533,
+      "tpPct": 0.5,
+      "ftPct": 0.5
+    },
+    "allStarMvp": {
+      "name": "Kelsey Plum",
+      "brPid": "plumke01w",
+      "team": "LVA",
+      "gp": 36,
+      "min": 32.8,
+      "pts": 20.2,
+      "trb": 2.7,
+      "ast": 5.1,
+      "stl": 1.0,
+      "blk": 0.1,
+      "fgPct": 0.46,
+      "tpPct": 0.42,
+      "ftPct": 0.839,
+      "ws": 4.8,
+      "wsPer48": 0.194
+    },
+    "champion": {
+      "name": "Las Vegas Aces",
+      "coach": "Becky Hammon"
+    },
+    "runnerUp": {
+      "name": "Connecticut Sun",
+      "coach": "Curt Miller"
+    },
+    "finalsResult": "3-1",
+    "finalsTv": "Game 1: ABC; Games 2-4: ESPN"
+  },
+  {
+    "season": 2023,
+    "mvp": {
+      "name": "Breanna Stewart",
+      "brPid": "stewabr01w",
+      "team": "NYL",
+      "gp": 40,
+      "min": 34.1,
+      "pts": 23.0,
+      "trb": 9.3,
+      "ast": 3.8,
+      "stl": 1.5,
+      "blk": 1.6,
+      "fgPct": 0.465,
+      "tpPct": 0.355,
+      "ftPct": 0.851,
+      "ws": 10.3,
+      "wsPer48": 0.362
+    },
+    "roy": {
+      "name": "Aliyah Boston",
+      "brPid": "bostoal01w",
+      "team": "IND",
+      "gp": 40,
+      "min": 31.2,
+      "pts": 14.5,
+      "trb": 8.4,
+      "ast": 2.2,
+      "stl": 1.3,
+      "blk": 1.3,
+      "fgPct": 0.578,
+      "tpPct": 0.4,
+      "ftPct": 0.745,
+      "ws": 6.0,
+      "wsPer48": 0.23
+    },
+    "dpoy": {
+      "name": "A'ja Wilson",
+      "brPid": "wilsoa01w",
+      "team": "LVA",
+      "gp": 40,
+      "min": 30.7,
+      "pts": 22.8,
+      "trb": 9.5,
+      "ast": 1.6,
+      "stl": 1.4,
+      "blk": 2.2,
+      "fgPct": 0.557,
+      "tpPct": 0.31,
+      "ftPct": 0.812,
+      "ws": 10.4,
+      "wsPer48": 0.406
+    },
+    "smoy": {
+      "name": "Alysha Clark",
+      "brPid": "clarkal01w",
+      "team": "LVA",
+      "gp": 39,
+      "min": 22.5,
+      "pts": 6.7,
+      "trb": 3.4,
+      "ast": 1.1,
+      "stl": 0.6,
+      "blk": 0.2,
+      "fgPct": 0.444,
+      "tpPct": 0.386,
+      "ftPct": 0.818,
+      "ws": 2.6,
+      "wsPer48": 0.142
+    },
+    "mip": {
+      "name": "Satou Sabally",
+      "brPid": "sabalsa01w",
+      "team": "DAL",
+      "gp": 38,
+      "min": 33.1,
+      "pts": 18.6,
+      "trb": 8.1,
+      "ast": 4.4,
+      "stl": 1.8,
+      "blk": 0.4,
+      "fgPct": 0.435,
+      "tpPct": 0.361,
+      "ftPct": 0.874,
+      "ws": 5.9,
+      "wsPer48": 0.224
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Napheesa Collier",
+            "brPid": "collina01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Satou Sabally",
+            "brPid": "sabalsa01w",
+            "team": "DAL"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "CON"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Chelsea Gray",
+            "brPid": "graych01w",
+            "team": "LVA"
+          },
+          {
+            "name": "Sabrina Ionescu",
+            "brPid": "ionessa01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Jewell Loyd",
+            "brPid": "loydje01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Jackie Young",
+            "brPid": "youngja01w",
+            "team": "LVA"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Aliyah Boston",
+        "brPid": "bostoal01w",
+        "team": "IND"
+      },
+      {
+        "name": "Jordan Horston",
+        "brPid": "horstjo02w",
+        "team": "SEA"
+      },
+      {
+        "name": "Dorka JuhÃ¡sz",
+        "brPid": "juhasdo01w",
+        "team": "MIN"
+      },
+      {
+        "name": "Li Meng",
+        "brPid": "mengli01w",
+        "team": "WAS"
+      },
+      {
+        "name": "Diamond Miller",
+        "brPid": "milledi03w",
+        "team": "MIN"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Jordin Canada",
+            "brPid": "canadjo01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Brittney Sykes",
+            "brPid": "sykesbr01w",
+            "team": "WAS"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "CON"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Napheesa Collier",
+            "brPid": "collina01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Betnijah Laney-Hamilton",
+            "brPid": "laneybe01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Ezi Magbegor",
+            "brPid": "magbeez01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "LAS"
+          },
+          {
+            "name": "Elizabeth Williams",
+            "brPid": "williel01w",
+            "team": "CHI"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Stephanie White",
+      "brPid": "mccarst01w",
+      "team": "CON",
+      "gp": 40
+    },
+    "finalsMvp": {
+      "name": "A'ja Wilson",
+      "brPid": "wilsoa01w",
+      "team": "LVA",
+      "gp": 4,
+      "min": 34.9,
+      "pts": 21.3,
+      "trb": 12.5,
+      "ast": 1.5,
+      "stl": 1.3,
+      "blk": 1.3,
+      "fgPct": 0.5,
+      "tpPct": 0.5,
+      "ftPct": 0.833
+    },
+    "commissionersCupMvp": {
+      "name": "Jonquel Jones",
+      "brPid": "jonesjo01w",
+      "team": "NYL",
+      "fgPct": 0.5,
+      "tpPct": 0.25,
+      "ftPct": 0.714
+    },
+    "allStarMvp": {
+      "name": "Jewell Loyd",
+      "brPid": "loydje01w",
+      "team": "SEA",
+      "gp": 38,
+      "min": 35.4,
+      "pts": 24.7,
+      "trb": 4.7,
+      "ast": 3.4,
+      "stl": 1.0,
+      "blk": 0.4,
+      "fgPct": 0.37,
+      "tpPct": 0.356,
+      "ftPct": 0.888,
+      "ws": 3.5,
+      "wsPer48": 0.123
+    },
+    "champion": {
+      "name": "Las Vegas Aces",
+      "coach": "Becky Hammon"
+    },
+    "runnerUp": {
+      "name": "New York Liberty",
+      "coach": "Sandy Brondello"
+    },
+    "finalsResult": "3-1",
+    "finalsTv": "Games 1 and 3: ABC; Games 2 and 4: ESPN"
+  },
+  {
+    "season": 2024,
+    "mvp": {
+      "name": "A'ja Wilson",
+      "brPid": "wilsoa01w",
+      "team": "LVA",
+      "gp": 38,
+      "min": 34.4,
+      "pts": 26.9,
+      "trb": 11.9,
+      "ast": 2.3,
+      "stl": 1.8,
+      "blk": 2.6,
+      "fgPct": 0.518,
+      "tpPct": 0.317,
+      "ftPct": 0.844,
+      "ws": 10.9,
+      "wsPer48": 0.399
+    },
+    "roy": {
+      "name": "Caitlin Clark",
+      "brPid": "clarkca02w",
+      "team": "IND",
+      "gp": 40,
+      "min": 35.4,
+      "pts": 19.2,
+      "trb": 5.7,
+      "ast": 8.4,
+      "stl": 1.3,
+      "blk": 0.7,
+      "fgPct": 0.417,
+      "tpPct": 0.344,
+      "ftPct": 0.906,
+      "ws": 3.0,
+      "wsPer48": 0.103
+    },
+    "dpoy": {
+      "name": "Napheesa Collier",
+      "brPid": "collina01w",
+      "team": "MIN",
+      "gp": 34,
+      "min": 34.7,
+      "pts": 20.4,
+      "trb": 9.7,
+      "ast": 3.4,
+      "stl": 1.9,
+      "blk": 1.4,
+      "fgPct": 0.492,
+      "tpPct": 0.31,
+      "ftPct": 0.804,
+      "ws": 7.4,
+      "wsPer48": 0.3
+    },
+    "smoy": {
+      "name": "Tiffany Hayes",
+      "brPid": "hayesti01w",
+      "team": "LVA",
+      "gp": 33,
+      "min": 21.5,
+      "pts": 9.5,
+      "trb": 2.8,
+      "ast": 2.1,
+      "stl": 0.8,
+      "blk": 0.3,
+      "fgPct": 0.5,
+      "tpPct": 0.402,
+      "ftPct": 0.714,
+      "ws": 3.2,
+      "wsPer48": 0.219
+    },
+    "mip": {
+      "name": "DiJonai Carrington",
+      "brPid": "carridi01w",
+      "team": "CON",
+      "gp": 39,
+      "min": 29.6,
+      "pts": 12.7,
+      "trb": 5.0,
+      "ast": 1.6,
+      "stl": 1.6,
+      "blk": 0.4,
+      "fgPct": 0.403,
+      "tpPct": 0.25,
+      "ftPct": 0.79,
+      "ws": 3.2,
+      "wsPer48": 0.134
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Caitlin Clark",
+            "brPid": "clarkca02w",
+            "team": "IND"
+          },
+          {
+            "name": "Napheesa Collier",
+            "brPid": "collina01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "CON"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Kahleah Copper",
+            "brPid": "coppeka01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Sabrina Ionescu",
+            "brPid": "ionessa01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Jonquel Jones",
+            "brPid": "jonesjo01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Arike Ogunbowale",
+            "brPid": "ogunbar01w",
+            "team": "DAL"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "SEA"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Kamilla Cardoso",
+        "brPid": "cardoka01w",
+        "team": "CHI"
+      },
+      {
+        "name": "Caitlin Clark",
+        "brPid": "clarkca02w",
+        "team": "IND"
+      },
+      {
+        "name": "Leonie Fiebich",
+        "brPid": "fiebile01w",
+        "team": "NYL"
+      },
+      {
+        "name": "Rickea Jackson",
+        "brPid": "jacksri02w",
+        "team": "LAS"
+      },
+      {
+        "name": "Angel Reese",
+        "brPid": "reesean01w",
+        "team": "CHI"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "DiJonai Carrington",
+            "brPid": "carridi01w",
+            "team": "CON"
+          },
+          {
+            "name": "Napheesa Collier",
+            "brPid": "collina01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Ezi Magbegor",
+            "brPid": "magbeez01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "NYL"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Natasha Cloud",
+            "brPid": "cloudna01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Jonquel Jones",
+            "brPid": "jonesjo01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Alanna Smith",
+            "brPid": "smithal01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "CON"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Cheryl Reeve",
+      "brPid": "reevech99w",
+      "team": "MIN",
+      "gp": 40
+    },
+    "finalsMvp": {
+      "name": "Jonquel Jones",
+      "brPid": "jonesjo01w",
+      "team": "NYL",
+      "gp": 5,
+      "min": 36.5,
+      "pts": 17.8,
+      "trb": 7.6,
+      "ast": 2.2,
+      "stl": 1.2,
+      "blk": 0.8,
+      "fgPct": 0.561,
+      "tpPct": 0.429,
+      "ftPct": 1.0
+    },
+    "commissionersCupMvp": {
+      "name": "Napheesa Collier",
+      "brPid": "collina01w",
+      "team": "MIN",
+      "fgPct": 0.462,
+      "tpPct": 1.0,
+      "ftPct": 1.0
+    },
+    "allStarMvp": {
+      "name": "Arike Ogunbowale",
+      "brPid": "ogunbar01w",
+      "team": "DAL",
+      "gp": 38,
+      "min": 38.6,
+      "pts": 22.2,
+      "trb": 4.6,
+      "ast": 5.1,
+      "stl": 2.1,
+      "blk": 0.3,
+      "fgPct": 0.383,
+      "tpPct": 0.346,
+      "ftPct": 0.921,
+      "ws": 3.3,
+      "wsPer48": 0.107
+    },
+    "champion": {
+      "name": "New York Liberty",
+      "coach": "Sandy Brondello"
+    },
+    "runnerUp": {
+      "name": "Minnesota Lynx",
+      "coach": "Cheryl Reeve"
+    },
+    "finalsResult": "3-2",
+    "finalsTv": "Games 1 and 3-5: ESPN; Game 2: ABC"
+  },
+  {
+    "season": 2025,
+    "mvp": {
+      "name": "A'ja Wilson",
+      "brPid": "wilsoa01w",
+      "team": "LVA",
+      "gp": 40,
+      "min": 31.2,
+      "pts": 23.4,
+      "trb": 10.2,
+      "ast": 3.1,
+      "stl": 1.6,
+      "blk": 2.3,
+      "fgPct": 0.505,
+      "tpPct": 0.424,
+      "ftPct": 0.855,
+      "ws": 9.5,
+      "wsPer48": 0.365
+    },
+    "roy": {
+      "name": "Paige Bueckers",
+      "brPid": "bueckpa01w",
+      "team": "DAL",
+      "gp": 36,
+      "min": 33.3,
+      "pts": 19.2,
+      "trb": 3.9,
+      "ast": 5.4,
+      "stl": 1.6,
+      "blk": 0.5,
+      "fgPct": 0.477,
+      "tpPct": 0.331,
+      "ftPct": 0.888,
+      "ws": 4.4,
+      "wsPer48": 0.177
+    },
+    "dpoy": [
+      {
+        "name": "Alanna Smith",
+        "brPid": "smithal01w",
+        "team": "MIN",
+        "gp": 42,
+        "min": 26.5,
+        "pts": 9.6,
+        "trb": 5.1,
+        "ast": 2.9,
+        "stl": 1.3,
+        "blk": 1.9,
+        "fgPct": 0.485,
+        "tpPct": 0.329,
+        "ftPct": 0.477,
+        "ws": 4.8,
+        "wsPer48": 0.207
+      },
+      {
+        "name": "A'ja Wilson",
+        "brPid": "wilsoa01w",
+        "team": "LVA",
+        "gp": 40,
+        "min": 31.2,
+        "pts": 23.4,
+        "trb": 10.2,
+        "ast": 3.1,
+        "stl": 1.6,
+        "blk": 2.3,
+        "fgPct": 0.505,
+        "tpPct": 0.424,
+        "ftPct": 0.855,
+        "ws": 9.5,
+        "wsPer48": 0.365
+      }
+    ],
+    "smoy": {
+      "name": "Naz Hillmon",
+      "brPid": "hillmna01w",
+      "team": "ATL",
+      "gp": 44,
+      "min": 25.5,
+      "pts": 8.6,
+      "trb": 6.2,
+      "ast": 2.4,
+      "stl": 0.5,
+      "blk": 0.4,
+      "fgPct": 0.463,
+      "tpPct": 0.321,
+      "ftPct": 0.831,
+      "ws": 4.8,
+      "wsPer48": 0.204
+    },
+    "mip": {
+      "name": "Veronica Burton",
+      "brPid": "burtove01w",
+      "team": "GSV",
+      "gp": 44,
+      "min": 29.4,
+      "pts": 11.9,
+      "trb": 4.4,
+      "ast": 6.0,
+      "stl": 1.1,
+      "blk": 0.6,
+      "fgPct": 0.387,
+      "tpPct": 0.345,
+      "ftPct": 0.878,
+      "ws": 6.4,
+      "wsPer48": 0.238
+    },
+    "allLeague": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Napheesa Collier",
+            "brPid": "collina01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Allisha Gray",
+            "brPid": "grayal01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Kelsey Mitchell",
+            "brPid": "mitchke01w",
+            "team": "IND"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "PHO"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Aliyah Boston",
+            "brPid": "bostoal01w",
+            "team": "IND"
+          },
+          {
+            "name": "Paige Bueckers",
+            "brPid": "bueckpa01w",
+            "team": "DAL"
+          },
+          {
+            "name": "Sabrina Ionescu",
+            "brPid": "ionessa01w",
+            "team": "NYL"
+          },
+          {
+            "name": "Nneka Ogwumike",
+            "brPid": "ogwumnn01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Jackie Young",
+            "brPid": "youngja01w",
+            "team": "LVA"
+          }
+        ]
+      }
+    ],
+    "allRookie": [
+      {
+        "name": "Paige Bueckers",
+        "brPid": "bueckpa01w",
+        "team": "DAL"
+      },
+      {
+        "name": "Sonia Citron",
+        "brPid": "citroso01w",
+        "team": "WAS"
+      },
+      {
+        "name": "Kiki Iriafen",
+        "brPid": "iriafki01w",
+        "team": "WAS"
+      },
+      {
+        "name": "Dominique Malonga",
+        "brPid": "malondo01w",
+        "team": "SEA"
+      },
+      {
+        "name": "Janelle SalaÃ¼n",
+        "brPid": "salauja01w",
+        "team": "GSV"
+      }
+    ],
+    "allDefensive": [
+      {
+        "title": "First Team",
+        "players": [
+          {
+            "name": "Napheesa Collier",
+            "brPid": "collina01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Alanna Smith",
+            "brPid": "smithal01w",
+            "team": "MIN"
+          },
+          {
+            "name": "Alyssa Thomas",
+            "brPid": "thomaal01w",
+            "team": "PHO"
+          },
+          {
+            "name": "Gabby Williams",
+            "brPid": "williga01w",
+            "team": "SEA"
+          },
+          {
+            "name": "A'ja Wilson",
+            "brPid": "wilsoa01w",
+            "team": "LVA"
+          }
+        ]
+      },
+      {
+        "title": "Second Team",
+        "players": [
+          {
+            "name": "Aliyah Boston",
+            "brPid": "bostoal01w",
+            "team": "IND"
+          },
+          {
+            "name": "Veronica Burton",
+            "brPid": "burtove01w",
+            "team": "GSV"
+          },
+          {
+            "name": "Rhyne Howard",
+            "brPid": "howarrh01w",
+            "team": "ATL"
+          },
+          {
+            "name": "Ezi Magbegor",
+            "brPid": "magbeez01w",
+            "team": "SEA"
+          },
+          {
+            "name": "Breanna Stewart",
+            "brPid": "stewabr01w",
+            "team": "NYL"
+          }
+        ]
+      }
+    ],
+    "coy": {
+      "name": "Natalie Nakase",
+      "brPid": "nakasna01w",
+      "team": "GSV",
+      "gp": 44
+    },
+    "finalsMvp": {
+      "name": "A'ja Wilson",
+      "brPid": "wilsoa01w",
+      "team": "LVA",
+      "gp": 4,
+      "min": 36.1,
+      "pts": 28.5,
+      "trb": 11.8,
+      "ast": 4.0,
+      "stl": 1.0,
+      "blk": 2.0,
+      "fgPct": 0.475,
+      "tpPct": 0.2,
+      "ftPct": 0.841
+    },
+    "commissionersCupMvp": {
+      "name": "Natasha Howard",
+      "brPid": "howarna01w",
+      "team": "IND",
+      "fgPct": 0.4,
+      "ftPct": 1.0
+    },
+    "allStarMvp": {
+      "name": "Napheesa Collier",
+      "brPid": "collina01w",
+      "team": "MIN",
+      "gp": 33,
+      "min": 32.3,
+      "pts": 22.9,
+      "trb": 7.3,
+      "ast": 3.2,
+      "stl": 1.6,
+      "blk": 1.5,
+      "fgPct": 0.531,
+      "tpPct": 0.403,
+      "ftPct": 0.906,
+      "ws": 8.3,
+      "wsPer48": 0.373
+    },
+    "champion": {
+      "name": "Las Vegas Aces",
+      "coach": "Becky Hammon"
+    },
+    "runnerUp": {
+      "name": "Phoenix Mercury",
+      "coach": "Nate Tibbetts"
+    },
+    "finalsResult": "4-0",
+    "finalsTv": "Games 1, 3 and 4: ESPN; Game 2: ABC"
+  },
+  {
+    "season": 2026,
+    "commissionersCupMvp": {
+      "name": "Breanna Stewart",
+      "brPid": "stewabr01w",
+      "team": "NYL",
+      "fgPct": 0.563,
+      "tpPct": 0.0,
+      "ftPct": 0.778
+    },
+    "allStarMvp": {
+      "name": "Jonquel Jones",
+      "brPid": "jonesjo01w",
+      "team": "NYL",
+      "gp": 27,
+      "min": 29.5,
+      "pts": 14.6,
+      "trb": 9.1,
+      "ast": 2.6,
+      "stl": 0.7,
+      "blk": 1.1,
+      "fgPct": 0.496,
+      "tpPct": 0.407,
+      "ftPct": 0.796,
+      "ws": 3.6,
+      "wsPer48": 0.216
+    }
+  }
+]

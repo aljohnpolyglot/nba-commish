@@ -88,10 +88,19 @@ export const SL_COLS: PlayerStatsColumn[] = [
 
 export const PER_PAGE_OPTIONS = [10, 25, 50, 100];
 
-export function getActivePlayerStatsColumns(statType: StatType, fourPointEnabled: boolean): PlayerStatsColumn[] {
-  if (statType === 'advanced') return ADV_COLS;
-  if (statType === 'shotLocations') return SL_COLS;
-  return fourPointEnabled ? BASIC_COLS : BASIC_COLS.filter(col => col.key !== 'fp' && col.key !== 'fpa' && col.key !== 'fpPct');
+const THREE_POINT_KEYS = new Set(['tp', 'tpa', 'tpPct', 'threePAr', 'slTpm', 'slTpa', 'slTpPct']);
+const FOUR_POINT_KEYS = new Set(['fp', 'fpa', 'fpPct']);
+
+export function getActivePlayerStatsColumns(
+  statType: StatType,
+  fourPointEnabled: boolean,
+  threePointEnabled = true,
+): PlayerStatsColumn[] {
+  const cols = statType === 'advanced' ? ADV_COLS : statType === 'shotLocations' ? SL_COLS : BASIC_COLS;
+  return cols.filter(col =>
+    (threePointEnabled || !THREE_POINT_KEYS.has(col.key)) &&
+    (fourPointEnabled || !FOUR_POINT_KEYS.has(col.key)),
+  );
 }
 
 export function getPlayerStatsTypeLabel(statType: StatType): string {
@@ -103,6 +112,7 @@ export function getPlayerStatsTypeLabel(statType: StatType): string {
 }
 
 export function getPlayerStatsPhaseLabel(phase: Phase, cupShort: string): string {
+  if (phase === 'preseason') return 'Preseason';
   if (phase === 'regular') return 'Regular Season';
   if (phase === 'playoffs') return 'Playoffs';
   if (phase === 'cup') return cupShort;

@@ -127,6 +127,12 @@ function hasUsableRetiredNumber(record: RetiredJerseyRecord): boolean {
   return record.number !== undefined && record.number !== null && String(record.number).trim() !== '';
 }
 
+function isExistingRetirementForPlayer(record: RetiredJerseyRecord, player: NBAPlayer): boolean {
+  if (!retiredRecordMatchesPlayer(record, player) || !hasUsableRetiredNumber(record)) return false;
+  const ceremonyYear = Number(record.seasonRetired);
+  return !Number.isFinite(ceremonyYear) || !player.retiredYear || ceremonyYear >= player.retiredYear;
+}
+
 function tierDelay(playerId: string, teamId: number, retiredYear: number, tier: JerseyRetirementTier): number {
   const roll = seededRandom(`jersey_delay_${playerId}_${teamId}_${retiredYear}_${tier}`);
   if (tier === 'automatic') return roll < 0.55 ? 1 : 2;
@@ -199,7 +205,7 @@ function buildLegacyCase(player: NBAPlayer, team: NBATeam, year: number): TeamLe
   const allStars = countAward(player, 'All-Star', seasons);
   const mvps = countAward(player, 'Most Valuable Player', seasons);
   const finalsMVPs = countAward(player, 'Finals MVP', seasons);
-  const championships = countAward(player, 'Champion', seasons) + countAward(player, 'Won Championship', seasons);
+  const championships = countAward(player, 'Champion', seasons) + countAward(player, 'Won Championship', seasons) + countAward(player, 'NBA Champion', seasons);
   const allNBA = countAwardIncludes(player, 'All-NBA', seasons) + countAwardIncludes(player, 'All-League', seasons);
   const careerTeamIds = new Set(
     (player.stats ?? [])
@@ -257,9 +263,7 @@ function buildLegacyCase(player: NBAPlayer, team: NBATeam, year: number): TeamLe
 function seasonYearFromDate(dateStr: string): number | null {
   const d = new Date(dateStr);
   if (Number.isNaN(d.getTime())) return null;
-  const month = d.getMonth() + 1;
-  const calYear = d.getFullYear();
-  return month >= 7 || (month === 6 && d.getDate() >= 28) ? calYear + 1 : calYear;
+  return d.getUTCFullYear();
 }
 
 export function deriveLeagueStartYearFromHistory(
@@ -302,7 +306,7 @@ export function runJerseyRetirementChecks(
     for (const tid of tids) {
       const team = teamById.get(tid)!;
       const existing = ((team as any).retiredJerseyNumbers ?? []) as RetiredJerseyRecord[];
-      if (existing.some(j => retiredRecordMatchesPlayer(j, p) && hasUsableRetiredNumber(j))) continue;
+      if (existing.some(j => isExistingRetirementForPlayer(j, p))) continue;
 
       const candidate = buildLegacyCase(p, team, year);
       if (!candidate || year < candidate.scheduledYear) continue;
@@ -387,7 +391,7 @@ export function getReservedJerseyNumbersByTeam(
     for (const tid of tids) {
       const team = teamById.get(tid)!;
       const existing = ((team as any).retiredJerseyNumbers ?? []) as RetiredJerseyRecord[];
-      if (existing.some(j => retiredRecordMatchesPlayer(j, p) && hasUsableRetiredNumber(j))) continue;
+      if (existing.some(j => isExistingRetirementForPlayer(j, p))) continue;
       const candidate = buildLegacyCase(p, team, year);
       if (!candidate) continue;
       if (!out.has(tid)) out.set(tid, new Set());
@@ -396,6 +400,35 @@ export function getReservedJerseyNumbersByTeam(
   }
 
   return out;
+}
+
+export function mergeRetiredJerseyRecordsByNumber(
+  savedRecords: readonly RetiredJerseyRecord[],
+  sourceRecords: readonly RetiredJerseyRecord[],
+): RetiredJerseyRecord[] {
+  const sourceByNumber = new Map<string, RetiredJerseyRecord>();
+  for (const record of sourceRecords) {
+    const number = String(record?.number ?? '').trim();
+    if (number && !sourceByNumber.has(number)) sourceByNumber.set(number, record);
+  }
+
+  const merged = new Map<string, RetiredJerseyRecord>();
+  for (const saved of savedRecords) {
+    const number = String(saved?.number ?? '').trim();
+    if (!number || merged.has(number)) continue;
+    const source = sourceByNumber.get(number);
+    merged.set(number, source ? {
+      ...source,
+      ...saved,
+      text: String(saved?.text ?? '').trim() || source.text,
+      pid: saved?.pid ?? source.pid,
+      playerId: saved?.playerId ?? source.playerId,
+    } : saved);
+  }
+  for (const [number, source] of sourceByNumber) {
+    if (!merged.has(number)) merged.set(number, source);
+  }
+  return [...merged.values()];
 }
 
 export function explainJerseyRetirementCandidates(
@@ -435,7 +468,7 @@ export function explainJerseyRetirementCandidates(
       }
 
       const existing = ((team as any).retiredJerseyNumbers ?? []) as RetiredJerseyRecord[];
-      const existingMatch = existing.find(j => retiredRecordMatchesPlayer(j, p) && hasUsableRetiredNumber(j));
+      const existingMatch = existing.find(j => isExistingRetirementForPlayer(j, p));
       if (existingMatch) {
         rows.push({
           ...base,

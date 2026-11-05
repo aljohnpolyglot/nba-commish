@@ -3,13 +3,15 @@ import { DUNK_INTRO_FIRST_TIMER, DUNK_INTRO_HIGH_RATED, DUNK_INTRO_PAST_WINNER }
 import { DUNK_MOVES } from './dunkMoves';
 import { getBadgeProb } from '../simulation/live/playback/badgeService';
 import { DRIVING_DUNK } from '../../data/dunkData';
+import { calculateK2 } from '../simulation/convert2kAttributes';
 import { APPROACH_CEILING_MOD, APPROACH_PROB_MOD, DELIVERY_CEILING_MOD, DELIVERY_PROB_MOD, LEGENDARY_COMBOS, LEGENDARY_STACKS, OBSTACLE_CEILING_MOD, OBSTACLE_PROB_MOD, TIERS } from './allStarDunkContestConfig';
 import { DunkComposition, DunkPlayer } from './allStarDunkContestTypes';
+import type { NBAPlayer } from '../../types';
 
 const pick = <T>(a: T[]): T => a[~~(Math.random() * a.length)];
 const clamp = (num: number, min: number, max: number) => Math.min(Math.max(num, min), max);
 
-export function calcBadgeBonus(name: string): number {
+export function calcBadgeBonus(name: string, savedBadges: string[] = []): number {
   let bonus = 0;
   const BADGE_WEIGHTS = [
     { badge: 'Posterizer', HOF: 8, Gold: 6, Silver: 4, Bronze: 2 },
@@ -18,7 +20,14 @@ export function calcBadgeBonus(name: string): number {
     { badge: 'Acrobat', HOF: 3, Gold: 2, Silver: 1, Bronze: 0 },
   ];
   for (const bw of BADGE_WEIGHTS) {
-    const raw = getBadgeProb(name, bw.badge, 1.0);
+    const saved = savedBadges.find(value => value === bw.badge || value.startsWith(`${bw.badge} `));
+    const savedLevel = saved?.slice(bw.badge.length).trim();
+    const savedProb = savedLevel === 'HOF' ? 1.5
+      : savedLevel === 'Gold' ? 1.2
+      : savedLevel === 'Silver' ? 1
+      : savedLevel === 'Bronze' ? 0.6
+      : 0;
+    const raw = Math.max(savedProb, getBadgeProb(name, bw.badge, 1.0));
     if (raw >= 1.5) bonus += bw.HOF;
     else if (raw >= 1.2) bonus += bw.Gold;
     else if (raw >= 1.0) bonus += bw.Silver;
@@ -36,11 +45,39 @@ export function getDrivingDunk(name: string): number | undefined {
   return undefined;
 }
 
+const DUNK_WINNER_BADGES = ['Posterizer', 'Aerial Wizard'] as const;
+
+function playerDrivingDunk(player: DunkPlayer | NBAPlayer): number {
+  const saved = Number(player.drivingDunk);
+  if (Number.isFinite(saved)) return saved;
+  const latest = player.ratings?.[player.ratings.length - 1] as any;
+  return latest ? calculateK2(latest, {
+    pos: player.pos,
+    heightIn: player.hgt,
+    weightLbs: player.weight,
+    age: player.age,
+  }).IS.sub[2] : 50;
+}
+
+export function applyRealDunkContestWinnerBoost(players: NBAPlayer[]): NBAPlayer[] {
+  return players.map(player => {
+    if (!(player.awards ?? []).some(award => award.type === 'Slam Dunk Contest Winner')) return player;
+    const base = playerDrivingDunk(player);
+    const badges = [...(player.badges ?? [])];
+    for (const name of DUNK_WINNER_BADGES) {
+      const index = badges.findIndex(badge => badge === name || badge.startsWith(`${name} `));
+      if (index < 0) badges.push(`${name} Gold`);
+      else if (!/ (?:Gold|HOF)$/.test(badges[index])) badges[index] = `${name} Gold`;
+    }
+    return { ...player, drivingDunk: clamp(base + 10, 0, 99), badges };
+  });
+}
+
 export function calcComposite(player: DunkPlayer): number {
   const latest = player.ratings[player.ratings.length - 1] || { dnk: 50, jmp: 50, spd: 50 };
-  const drivingDunk = getDrivingDunk(player.name);
-  const base = drivingDunk !== undefined ? drivingDunk * 0.65 + latest.dnk * 0.25 + latest.jmp * 0.1 : latest.dnk * 0.55 + latest.jmp * 0.35 + latest.spd * 0.1;
-  return clamp(base + calcBadgeBonus(player.name), 0, 99);
+  const drivingDunk = playerDrivingDunk(player);
+  const base = drivingDunk * 0.65 + latest.dnk * 0.25 + latest.jmp * 0.1;
+  return clamp(base + calcBadgeBonus(player.name, player.badges), 0, 99);
 }
 
 export function calcProb(composite: number, tier: typeof TIERS[0], propProbMod: number = 0): number {

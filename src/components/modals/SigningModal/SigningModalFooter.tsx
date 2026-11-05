@@ -1,6 +1,8 @@
 import type { ReactElement } from 'react';
 import type { NBAPlayer } from '../../../types';
 import { contractToUSD } from '../../../utils/salaryUtils';
+import { getTwoWayRosterLimit } from '../../../utils/rosterLimits';
+import { isTwoWayContract } from '../../../utils/contractTypes';
 import type { ContractType, MleType } from './SigningModalShared';
 
 interface SigningModalFooterProps {
@@ -10,7 +12,13 @@ interface SigningModalFooterProps {
   pbaIsolated: boolean;
   hasOwnTeamBirdRights: boolean;
   isResign: boolean;
+  leagueStats: any;
   leagueYear: number;
+  bae: {
+    available: number;
+    blocked: boolean;
+    reason: string;
+  };
   limitsMinSalaryUSD: number;
   mle: {
     available: number;
@@ -19,6 +27,7 @@ interface SigningModalFooterProps {
   };
   money: (value: number) => string;
   onClose: () => void;
+  onBaeSubmit: () => void;
   onMleSubmit: () => void;
   onPrimarySubmit: () => void;
   onShowCapWarning: () => void;
@@ -32,16 +41,19 @@ interface SigningModalFooterProps {
 
 export default function SigningModalFooter({
   autoAccept,
+  bae,
   contractType,
   euroIsolated,
   pbaIsolated,
   hasOwnTeamBirdRights,
   isResign,
+  leagueStats,
   leagueYear,
   limitsMinSalaryUSD,
   mle,
   money,
   onClose,
+  onBaeSubmit,
   onMleSubmit,
   onPrimarySubmit,
   onShowCapWarning,
@@ -53,10 +65,11 @@ export default function SigningModalFooter({
   thresholdsSalaryCap,
 }: SigningModalFooterProps): ReactElement {
   const newDealStartYear = leagueYear + (isResign ? 1 : 0);
+  const twoWayContractsActive = !euroIsolated && !pbaIsolated && getTwoWayRosterLimit(leagueStats) > 0;
   const committedAtStartYear = players
     .filter(p =>
       p.tid === teamId &&
-      !(p as any).twoWay &&
+      (!twoWayContractsActive || !isTwoWayContract(p, leagueStats)) &&
       (p.contract?.exp ?? newDealStartYear) >= newDealStartYear &&
       !(isResign && p.internalId === playerInternalId),
     )
@@ -68,7 +81,7 @@ export default function SigningModalFooter({
 
   return (
     <div className="sticky bottom-0 z-40 px-3 sm:px-8 xl:px-10 py-3 sm:py-6 bg-black/80 backdrop-blur-xl border-t border-white/10 flex flex-col sm:flex-row sm:items-center gap-3 sm:justify-end shrink-0 shadow-[0_-18px_40px_rgba(0,0,0,0.45)]">
-      <div className="flex w-full sm:w-auto gap-2 sm:gap-3 flex-nowrap justify-end">
+      <div className="flex w-full sm:w-auto gap-2 sm:gap-3 flex-wrap justify-end">
         <button
           onClick={onClose}
           className="flex-1 sm:flex-none px-3 sm:px-8 py-2.5 sm:py-3 bg-white/5 border border-white/10 rounded-sm text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-white/60 hover:text-white hover:bg-white/10 transition-all"
@@ -86,6 +99,21 @@ export default function SigningModalFooter({
               className={`flex-1 sm:flex-none px-3 sm:px-6 py-2.5 sm:py-3 rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest transition-all ${mleCanCover ? 'bg-blue-600 text-white hover:scale-[1.02]' : 'bg-blue-900/30 text-blue-300/30 cursor-not-allowed'}`}
             >
               Sign w/ {mleLabel}
+            </button>
+          );
+        })()}
+        {!nonNbaIsolated && contractType === 'GUARANTEED' && (() => {
+          const baeCanCover = !bae.blocked && salary > 0 && salary <= bae.available;
+          return (
+            <button
+              disabled={!baeCanCover}
+              onClick={onBaeSubmit}
+              title={baeCanCover
+                ? `Uses the BAE — ${money(bae.available)} remaining. Maximum two seasons; unavailable next league year; team becomes hard-capped at the 1st apron.`
+                : bae.reason || `Salary exceeds the BAE (${money(bae.available)} available)`}
+              className={`flex-1 sm:flex-none px-3 sm:px-6 py-2.5 sm:py-3 rounded-sm text-[9px] sm:text-[10px] font-black italic uppercase tracking-widest transition-all ${baeCanCover ? 'bg-indigo-600 text-white hover:scale-[1.02]' : 'bg-indigo-900/30 text-indigo-300/30 cursor-not-allowed'}`}
+            >
+              Sign w/ BAE
             </button>
           );
         })()}

@@ -6,8 +6,17 @@ import { getOpeningNightDate } from '../../../utils/dateUtils';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { isFourPointEnabled } from '../../../utils/ruleFlags';
 import { classifyBoxScoreGame } from '../../../utils/gameClassification';
-import { useLeagueLabels } from '../../../utils/leagueLabels';
+import { getLeagueDisplayTag, useLeagueLabels } from '../../../utils/leagueLabels';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { findBoxScoreForScheduledGame } from '../../../utils/boxScoreLookup';
+import { collectInternationalTournamentBoxScores } from '../../../services/fiba/tournamentBoxScores';
+import { getInternationalCompetitionLabel, isInternationalCompetitionId } from '../../../services/fiba/competitionIdentity';
+import { didHomeTeamWin } from '../../../utils/gameOutcome';
+import {
+  summerLeagueSimulatorRoster,
+  summerLeagueSimulatorTeam,
+} from '../../../services/summerLeague/tournament';
+import { formatPlayerBioSeasonLabel, getPlayerBioDefaultLeagueContext } from './playerBioCrossLeagueHistory';
 
 interface PlayerBioGameLogTabProps {
   player: NBAPlayer;
@@ -20,6 +29,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
 }) => {
   const { state } = useGame();
   const labels = useLeagueLabels();
+  const defaultLeagueContext = getPlayerBioDefaultLeagueContext(state.leagueStats?.uiMode);
   const fourPointEnabled = isFourPointEnabled(state.leagueStats);
   const [gameLogSort, setGameLogSort] = useState<{ field: string; dir: 'asc' | 'desc' }>({ field: 'date', dir: 'desc' });
   const [gameLogSeason, setGameLogSeason] = useState<number | null>(null);
@@ -28,6 +38,29 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
     () => new Map((state.activeCompetitions ?? []).map(spec => [spec.id, spec])),
     [state.activeCompetitions],
   );
+  const summerLeagueTournaments = useMemo(
+    () => [
+      ...(state.summerLeagueHistory ?? []),
+      ...(state.summerLeagueTournament ? [state.summerLeagueTournament] : []),
+    ],
+    [state.summerLeagueHistory, state.summerLeagueTournament],
+  );
+  const allPlayerBoxScores = useMemo(() => {
+    const boxScores = [
+      ...state.boxScores,
+      ...collectInternationalTournamentBoxScores(
+        state.internationalTournament,
+        state.internationalTournamentHistory,
+      ),
+      ...summerLeagueTournaments.flatMap(tournament => tournament.boxScores ?? []),
+    ];
+    return [...new Map(boxScores.map(result => [result.gameId, result])).values()];
+  }, [
+    state.boxScores,
+    state.internationalTournament,
+    state.internationalTournamentHistory,
+    summerLeagueTournaments,
+  ]);
 
   // Resolve abbrev/name/logo for any tid including non-NBA leagues
   // (Euroleague/Endesa/WNBA/CBA/NBL/etc.). The `state.teams` array only holds
@@ -39,9 +72,15 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
   };
 
   const inferLeagueContext = (game: Partial<Game>, teamId: number, oppId: number): { tag: string; title: string } => {
+    if ((game as any).isAllStar) return { tag: 'ASG', title: 'All-Star Game' };
+    if ((game as any).isRisingStars) return { tag: 'RISING', title: 'Rising Stars' };
+    if ((game as any).isCelebrityGame) return { tag: 'CELEB', title: 'Celebrity Game' };
     const competitionId = String(game.competitionId ?? '').toLowerCase();
     const competitionPhase = String(game.competitionPhase ?? '').toLowerCase();
     const spec = competitionId ? competitionSpecMap.get(competitionId) : undefined;
+    const international = getInternationalCompetitionLabel(competitionId);
+    if (international) return international;
+    if (competitionId === 'nba-summer-league') return { tag: 'SUMMER', title: 'NBA Summer League' };
     if (competitionId === 'euroleague') return { tag: 'EUROPE', title: competitionPhase ? `EuroLeague - ${competitionPhase}` : 'EuroLeague' };
     if (competitionId === 'endesa') return { tag: 'ESP-1', title: competitionPhase ? `Liga Endesa - ${competitionPhase}` : 'Liga Endesa' };
     if (competitionId === 'copa-del-rey') return { tag: 'ESP-CUP', title: 'Copa del Rey' };
@@ -61,13 +100,49 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
       if (tid >= 1000 && tid < 2000) return { tag: 'EUROPE', title: 'EuroLeague / Europe' };
       if (tid >= 2000 && tid < 3000) return { tag: 'PBA', title: 'Philippine Basketball Association' };
       if (tid >= 3000 && tid < 4000) return { tag: 'WNBA', title: 'WNBA' };
+      if (tid >= 16000 && tid < 17000) return { tag: 'G-LG', title: 'G League' };
+      if (tid >= 17000 && tid < 18000) return { tag: 'CBA', title: 'China CBA' };
+      if (tid >= 18000 && tid < 19000) return { tag: 'NBL', title: 'NBL Australia' };
       if (tid >= 6000 && tid < 7000) return { tag: 'G-LG', title: 'G League' };
       if (tid >= 7000 && tid < 8000) return { tag: 'CBA', title: 'China CBA' };
       if (tid >= 8000 && tid < 9000) return { tag: 'NBL', title: 'NBL Australia' };
       return null;
     };
 
-    return inferFromTid(teamId) ?? inferFromTid(oppId) ?? { tag: 'NBA', title: 'NBA' };
+    return inferFromTid(teamId) ?? inferFromTid(oppId) ?? defaultLeagueContext ?? { tag: 'NBA', title: 'NBA' };
+  };
+
+  const abbrevFromEventName = (name: unknown, fallback: string) => {
+    const parts = String(name ?? '').trim().split(/\s+/).filter(Boolean);
+    if (!parts.length) return fallback;
+    if (/^eastern$/i.test(parts[0])) return 'EAST';
+    if (/^western$/i.test(parts[0])) return 'WEST';
+    return (parts.length > 1 ? parts.map(part => part[0]).join('') : parts[0]).slice(0, 6).toUpperCase() || fallback;
+  };
+
+  const eventFallbackAbbrev = (tid: number, fallback: string) => {
+    if (tid === -1) return 'EAST';
+    if (tid === -2) return 'WEST';
+    if (tid === -3) return 'USA';
+    if (tid === -4) return 'WORLD';
+    if (tid === -13) return 'RSA';
+    if (tid === -14) return 'RSB';
+    if (tid === -15) return 'RSC';
+    if (tid === -16) return 'GLG';
+    return fallback;
+  };
+
+  const eventTeamAbbrev = (game: any, homeSide: boolean, fallback: string) => {
+    const abbrev = homeSide ? game.homeTeamAbbrev : game.awayTeamAbbrev;
+    if (abbrev && abbrev !== 'ALL') return abbrev;
+    const name = homeSide ? game.homeTeamName : game.awayTeamName;
+    return name ? abbrevFromEventName(name, fallback) : eventFallbackAbbrev(homeSide ? game.homeTeamId : game.awayTeamId, fallback);
+  };
+
+  const formatGameLogDate = (value: unknown) => {
+    const date = new Date(String(value ?? ''));
+    if (Number.isNaN(date.getTime())) return String(value ?? '').slice(0, 10);
+    return date.toLocaleDateString('en-US', { timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   // Compute opening night per-game-season (not just current season) to avoid
@@ -75,17 +150,17 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
   const openingNightCache = useMemo(() => {
     const cache = new Map<number, number>();
     return (seasonYear: number) => {
-      if (!cache.has(seasonYear)) cache.set(seasonYear, getOpeningNightDate(seasonYear).getTime());
+      if (!cache.has(seasonYear)) cache.set(seasonYear, getOpeningNightDate(seasonYear, state.leagueStats, state.schedule).getTime());
       return cache.get(seasonYear)!;
     };
-  }, []);
+  }, [state.leagueStats, state.schedule]);
 
   const gameLog = useMemo(() => {
     const logs: any[] = [];
 
     const firstGameForTeam = new Map<number, number>();
     const lastGameForTeam = new Map<number, number>();
-    state.boxScores.forEach(game => {
+    allPlayerBoxScores.forEach(game => {
       const isHome = game.homeStats.some((p: any) => p.playerId === player.internalId);
       const isAway = game.awayStats.some((p: any) => p.playerId === player.internalId);
       if (isHome || isAway) {
@@ -98,7 +173,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
       }
     });
 
-    state.boxScores.forEach(game => {
+    allPlayerBoxScores.forEach(game => {
       const isHome = game.homeStats.some((p: any) => p.playerId === player.internalId);
       const isAway = game.awayStats.some((p: any) => p.playerId === player.internalId);
 
@@ -114,7 +189,17 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
           const opp    = resolveTeamLite(oppId);
           const meta = classifyBoxScoreGame(game as any, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, state.leagueStats);
           const league = inferLeagueContext(game as any, teamId, oppId);
-          const isWin = isHome ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
+          const isInternational = isInternationalCompetitionId(game.competitionId)
+            || game.competitionId === 'nba-summer-league';
+          const isEventGame = isInternational || meta.isAllStar || (game as any).isRisingStars || (game as any).isCelebrityGame || teamId < 0 || oppId < 0;
+          const explicitDnp = game.playerDNPs?.[player.internalId];
+          const hasEventLine = (stats.min ?? 0) > 0 || (stats.pts ?? 0) > 0 || (stats.fga ?? 0) > 0 || (stats.fta ?? 0) > 0 || Boolean(explicitDnp);
+          const selectedForAllStarGame = !meta.isAllStar
+            || (state.allStar?.roster ?? []).some((entry: any) => entry.playerId === player.internalId);
+          if (meta.isAllStar && !selectedForAllStarGame && !(stats.min ?? 0) && !(stats.pts ?? 0)) return;
+          if (isEventGame && !hasEventLine) return;
+          const homeWon = didHomeTeamWin(game);
+          const isWin = isHome ? homeWon : !homeWon;
           const resultStr = `${isWin ? 'W' : 'L'}, ${isHome ? game.homeScore : game.awayScore}-${isHome ? game.awayScore : game.homeScore}`;
 
           const fgm = stats.fgm || 0; const fga = stats.fga || 0;
@@ -130,12 +215,12 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
           const ftp  = fta  > 0 ? (ftm  / fta ).toFixed(3).replace(/^0+/, '') : '.000';
 
           logs.push({
-            date: game.date, isPreseason: meta.isPreseason, isPlayoff: meta.isPlayoff, isPlayIn: meta.isPlayIn, isAllStar: meta.isAllStar, isNBACup: meta.isNBACup, cupRound: meta.cupRound, isCupFinal: meta.isCupFinal, isDNP: false,
+            date: game.date, isInternational, isPreseason: isInternational ? false : meta.isPreseason, isPlayoff: meta.isPlayoff, isPlayIn: meta.isPlayIn, isAllStar: meta.isAllStar, isNBACup: meta.isNBACup, cupRound: meta.cupRound, isCupFinal: meta.isCupFinal, isDNP: false,
             gameId: game.gameId, teamId, oppTeamId: oppId,
-            leagueTag: league.tag, leagueTitle: league.title,
-            teamAbbrev: meta.isAllStar ? 'ASG' : (team?.abbrev || 'UNK'),
+            leagueTag: getLeagueDisplayTag(game.competitionId, league.tag), leagueTitle: league.title,
+            teamAbbrev: isEventGame ? eventTeamAbbrev(game as any, isHome, team?.abbrev || 'EXH') : (team?.abbrev || 'UNK'),
             isAway: !isHome,
-            oppAbbrev: meta.isAllStar ? 'ASG' : (opp?.abbrev || 'UNK'),
+            oppAbbrev: isEventGame ? eventTeamAbbrev(game as any, !isHome, opp?.abbrev || 'EXH') : (opp?.abbrev || 'UNK'),
             result: game.isOT
               ? `${resultStr}${game.otCount && game.otCount > 1 ? ` ${game.otCount}OT` : ' OT'}`
               : resultStr,
@@ -170,18 +255,30 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
         const opp   = resolveTeamLite(oppId);
         const meta = classifyBoxScoreGame(game as any, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, state.leagueStats);
         const league = inferLeagueContext(game as any, player.tid, oppId);
-        const isWin = isHomeTeam ? game.homeScore > game.awayScore : game.awayScore > game.homeScore;
+        const isEventGame = isInternationalCompetitionId(game.competitionId)
+          || game.competitionId === 'nba-summer-league'
+          || meta.isAllStar
+          || (game as any).isRisingStars
+          || (game as any).isCelebrityGame
+          || game.homeTeamId < 0
+          || game.awayTeamId < 0;
+        if (
+          meta.isAllStar
+          && !(state.allStar?.roster ?? []).some((entry: any) => entry.playerId === player.internalId)
+        ) return;
+        const homeWon = didHomeTeamWin(game);
+        const isWin = isHomeTeam ? homeWon : !homeWon;
         const score = isHomeTeam ? `${game.homeScore}-${game.awayScore}` : `${game.awayScore}-${game.homeScore}`;
         logs.push({
-          date: game.date, isPreseason: meta.isPreseason, isPlayoff: meta.isPlayoff, isPlayIn: meta.isPlayIn, isNBACup: meta.isNBACup, cupRound: meta.cupRound, isCupFinal: meta.isCupFinal, isDNP: true, gameId: game.gameId,
+          date: game.date, isPreseason: meta.isPreseason, isPlayoff: meta.isPlayoff, isPlayIn: meta.isPlayIn, isAllStar: meta.isAllStar, isNBACup: meta.isNBACup, cupRound: meta.cupRound, isCupFinal: meta.isCupFinal, isDNP: true, gameId: game.gameId,
           teamId: player.tid, oppTeamId: oppId,
-          leagueTag: league.tag, leagueTitle: league.title,
+          leagueTag: getLeagueDisplayTag(game.competitionId, league.tag), leagueTitle: league.title,
           dnpReason: game.playerDNPs?.[player.internalId] ??
             ((player.injury?.gamesRemaining ?? 0) > 0
               ? `DNP — Injury (${player.injury!.type})`
               : "DNP — Coach's Decision"),
-          teamAbbrev: team?.abbrev || 'UNK', isAway: !isHomeTeam,
-          oppAbbrev: opp?.abbrev || 'UNK',
+          teamAbbrev: isEventGame ? eventTeamAbbrev(game as any, isHomeTeam, team?.abbrev || 'EXH') : (team?.abbrev || 'UNK'), isAway: !isHomeTeam,
+          oppAbbrev: isEventGame ? eventTeamAbbrev(game as any, !isHomeTeam, opp?.abbrev || 'EXH') : (opp?.abbrev || 'UNK'),
           result: game.isOT
             ? `${isWin ? 'W' : 'L'}, ${score}${game.otCount && game.otCount > 1 ? ` ${game.otCount}OT` : ' OT'}`
             : `${isWin ? 'W' : 'L'}, ${score}`,
@@ -198,21 +295,21 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
     // DNPs in the regular season count toward the team-game number so injuries don't reset numbering.
     const seasonRSTotals = new Map<number, number>();
     reversed.forEach(l => {
-      if (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isCupFinal) return;
+      if (l.isInternational || l.isPreseason || l.isPlayoff || l.isPlayIn || l.isCupFinal) return;
       const d = new Date(l.date); const yr = d.getFullYear();
-      const sy = d.getMonth() < 9 ? yr : yr + 1;
+      const sy = defaultLeagueContext?.calendarYearSeason ? yr : d.getMonth() < 9 ? yr : yr + 1;
       seasonRSTotals.set(sy, (seasonRSTotals.get(sy) ?? 0) + 1);
     });
     const seasonRSCounters = new Map(seasonRSTotals);
     return reversed.map(l => {
-      if (l.isPreseason || l.isPlayoff || l.isPlayIn || l.isCupFinal) return { ...l, rank: null };
+      if (l.isInternational || l.isPreseason || l.isPlayoff || l.isPlayIn || l.isCupFinal) return { ...l, rank: null };
       const d = new Date(l.date); const yr = d.getFullYear();
-      const sy = d.getMonth() < 9 ? yr : yr + 1;
+      const sy = defaultLeagueContext?.calendarYearSeason ? yr : d.getMonth() < 9 ? yr : yr + 1;
       const rank = seasonRSCounters.get(sy)!;
       seasonRSCounters.set(sy, rank - 1);
       return { ...l, rank };
     });
-  }, [state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, player.internalId, player.tid, player.injury, state.teams, state.nonNBATeams, openingNightCache, competitionSpecMap]);
+  }, [allPlayerBoxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, player.internalId, player.tid, player.injury, state.teams, state.nonNBATeams, openingNightCache, competitionSpecMap, defaultLeagueContext]);
 
   const gameLogSeasons = useMemo(() => {
     const years = new Set<number>();
@@ -220,17 +317,17 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
       const d = new Date(l.date);
       if (!isNaN(d.getTime())) {
         const yr = d.getFullYear();
-        years.add(d.getMonth() < 9 ? yr : yr + 1);
+        years.add(defaultLeagueContext?.calendarYearSeason ? yr : d.getMonth() < 9 ? yr : yr + 1);
       }
     });
     return Array.from(years).sort((a, b) => b - a);
-  }, [gameLog]);
+  }, [defaultLeagueContext?.calendarYearSeason, gameLog]);
 
   const effectiveGameLogSeason = gameLogSeason ?? gameLogSeasons[0] ?? state.leagueStats.year;
   const showLeagueColumn = useMemo(() => {
     if (state.leagueStats?.uiMode && state.leagueStats.uiMode !== 'nba') return true;
     const tags = new Set(gameLog.map(log => log.leagueTag).filter(Boolean));
-    return tags.size > 1;
+    return tags.size > 1 || [...tags].some(tag => tag === 'FIBA' || tag === 'FIBA WC' || tag === 'OLY');
   }, [state.leagueStats?.uiMode, gameLog]);
   const tableColSpan = showLeagueColumn
     ? (fourPointEnabled ? 36 : 33)
@@ -241,7 +338,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
       const d = new Date(l.date);
       if (isNaN(d.getTime())) return true;
       const yr = d.getFullYear();
-      const seasonYear = d.getMonth() < 9 ? yr : yr + 1;
+      const seasonYear = defaultLeagueContext?.calendarYearSeason ? yr : d.getMonth() < 9 ? yr : yr + 1;
       return seasonYear === effectiveGameLogSeason;
     });
     return [...filtered].sort((a, b) => {
@@ -254,7 +351,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
       };
       return (getVal(a) - getVal(b)) * dir;
     });
-  }, [gameLog, effectiveGameLogSeason, gameLogSort]);
+  }, [defaultLeagueContext?.calendarYearSeason, gameLog, effectiveGameLogSeason, gameLogSort]);
 
   const sortHdr = (field: string, label: string) => (
     <th
@@ -283,14 +380,39 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
     return null;
   };
 
+  const openGameLogResult = (gameId: number | undefined) => {
+    if (!gameId) return;
+    const scheduledGame = state.schedule.find(game => game.gid === gameId);
+    if (scheduledGame) {
+      if (onGameClick) onGameClick(scheduledGame);
+      else setLocalBoxScoreGame(scheduledGame);
+      return;
+    }
+    const result = allPlayerBoxScores.find(game => game.gameId === gameId);
+    if (!result) return;
+    setLocalBoxScoreGame({
+      gid: result.gameId,
+      homeTid: result.homeTeamId,
+      awayTid: result.awayTeamId,
+      homeScore: result.homeScore,
+      awayScore: result.awayScore,
+      played: true,
+      date: result.date,
+      isExhibition: true,
+      excludeFromRecord: result.excludeFromRecord,
+      competitionId: result.competitionId,
+      competitionPhase: result.competitionPhase,
+    });
+  };
+
   return (
     <div className="p-4 md:p-8 bg-[#080808] flex flex-col" style={{ minHeight: 0 }}>
       <div className="flex items-center justify-between mb-4 gap-3 flex-wrap">
         <h3 className="text-lg font-bold text-white uppercase tracking-wider">
-          {effectiveGameLogSeason - 1}-{String(effectiveGameLogSeason).slice(2)} Game Log
-          {sortedGameLog.filter(g => !g.isPreseason && !g.isDNP && !g.isPlayoff && !g.isPlayIn && !g.isCupFinal).length > 0 && (
+          {formatPlayerBioSeasonLabel(effectiveGameLogSeason, defaultLeagueContext)} Game Log
+          {sortedGameLog.filter(g => !g.isInternational && !g.isPreseason && !g.isDNP && !g.isPlayoff && !g.isPlayIn && !g.isCupFinal).length > 0 && (
             <span className="ml-3 text-xs font-normal text-slate-400 normal-case tracking-normal">
-              {sortedGameLog.filter(g => !g.isPreseason && !g.isDNP && !g.isPlayoff && !g.isPlayIn && !g.isCupFinal).length} regular season games
+              {sortedGameLog.filter(g => !g.isInternational && !g.isPreseason && !g.isDNP && !g.isPlayoff && !g.isPlayIn && !g.isCupFinal).length} regular season games
             </span>
           )}
         </h3>
@@ -304,7 +426,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
               <ChevronLeft size={14} />
             </button>
             <span className="text-xs font-black text-white px-2 min-w-[56px] text-center">
-              {effectiveGameLogSeason - 1}-{String(effectiveGameLogSeason).slice(2)}
+              {formatPlayerBioSeasonLabel(effectiveGameLogSeason, defaultLeagueContext)}
             </span>
             <button
               onClick={() => { const idx = gameLogSeasons.indexOf(effectiveGameLogSeason); if (idx > 0) setGameLogSeason(gameLogSeasons[idx - 1]); }}
@@ -355,8 +477,16 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
             {sortedGameLog.map((log, i) => {
               const showPreseasonDivider = gameLogSort.field === 'date' && log.isPreseason && (i === 0 || !sortedGameLog[i - 1]?.isPreseason);
               const showPlayoffDivider = gameLogSort.field === 'date' && (log.isPlayoff || log.isPlayIn) && (i === 0 || (!sortedGameLog[i - 1]?.isPlayoff && !sortedGameLog[i - 1]?.isPlayIn));
+              const showInternationalDivider = gameLogSort.field === 'date' && log.isInternational && (i === 0 || !sortedGameLog[i - 1]?.isInternational);
               return (
                 <React.Fragment key={i}>
+                  {showInternationalDivider && (
+                    <tr>
+                      <td colSpan={tableColSpan} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
+                        <span className="text-[10px] font-black uppercase tracking-[0.2em] text-emerald-400">International</span>
+                      </td>
+                    </tr>
+                  )}
                   {showPlayoffDivider && (
                     <tr>
                       <td colSpan={tableColSpan} className="px-3 py-2 bg-slate-900/80 border-y border-slate-700">
@@ -379,7 +509,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                           : log.rank != null ? <span className="text-slate-500">{log.rank}</span>
                           : <span className="text-[10px] font-bold text-slate-500">DNP</span>}
                       </td>
-                      <td className="px-3 py-2">{log.date}</td>
+                      <td className="px-3 py-2">{formatGameLogDate(log.date)}</td>
                       {showLeagueColumn && (
                         <td className="px-3 py-2">
                           <span className="text-[10px] font-black uppercase tracking-[0.18em] text-slate-500" title={log.leagueTitle}>{log.leagueTag}</span>
@@ -388,13 +518,17 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                       <td className={`px-3 py-2${onTeamClick && log.teamId ? ' cursor-pointer hover:text-indigo-400' : ''}`} onClick={() => onTeamClick && log.teamId && onTeamClick(log.teamId)}>{log.teamAbbrev}</td>
                       <td className="px-3 py-2">{log.isAway ? '@' : ''}</td>
                       <td className={`px-3 py-2${onTeamClick && log.oppTeamId ? ' cursor-pointer hover:text-indigo-400' : ''}`} onClick={() => onTeamClick && log.oppTeamId && onTeamClick(log.oppTeamId)}>{log.oppAbbrev}</td>
-                      <td className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}`}>{log.result}</td>
+                      <td
+                        className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}${log.gameId ? ' cursor-pointer hover:underline opacity-100' : ''}`}
+                        onClick={() => openGameLogResult(log.gameId)}
+                      >{log.result}</td>
                       <td colSpan={fourPointEnabled ? 29 : 26} className="px-3 py-2 text-slate-500 italic">{log.dnpReason}</td>
                     </tr>
                   ) : (
                     <tr className={`hover:bg-slate-800/50 transition-colors whitespace-nowrap text-xs ${log.isPreseason ? 'opacity-70' : ''} ${log.isPlayoff || log.isPlayIn ? 'bg-indigo-500/5' : ''}`}>
                       <td className="px-3 py-2">
-                        {log.isAllStar ? <span title="All-Star Game">⭐</span>
+                        {log.isInternational ? <span className="text-[10px] font-bold text-emerald-400">INT</span>
+                          : log.isAllStar ? <span title="All-Star Game">⭐</span>
                           : log.isPlayoff ? <span className="text-[10px] font-bold text-indigo-400">PLF</span>
                           : log.isPlayIn ? <span className="text-[10px] font-bold text-sky-400">PI</span>
                           : log.isCupFinal ? <span className="text-[10px] font-bold text-amber-400" title={`${labels.cupShort} Final - does not count toward regular-season record`}>CUP F</span>
@@ -402,7 +536,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                           : log.rank !== null ? log.rank
                           : <span className="text-[10px] font-bold text-amber-500/70">PRE</span>}
                       </td>
-                      <td className="px-3 py-2">{log.date}</td>
+                      <td className="px-3 py-2">{formatGameLogDate(log.date)}</td>
                       {showLeagueColumn && (
                         <td className="px-3 py-2">
                           <span className="inline-flex items-center rounded-full border border-slate-700/80 bg-slate-900 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.18em] text-slate-300" title={log.leagueTitle}>
@@ -415,7 +549,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                       <td className={`px-3 py-2${onTeamClick && log.oppTeamId ? ' cursor-pointer hover:text-indigo-400' : ''}`} onClick={() => onTeamClick && log.oppTeamId && onTeamClick(log.oppTeamId)}>{log.oppAbbrev}</td>
                       <td
                         className={`px-3 py-2 ${log.isWin ? 'text-emerald-400' : 'text-red-400'}${log.gameId ? ' cursor-pointer hover:underline' : ''}`}
-                        onClick={() => { if (log.gameId) { const sg = state.schedule.find((g: any) => g.gid === log.gameId); if (sg) { if (onGameClick) onGameClick(sg); else setLocalBoxScoreGame(sg); } } }}
+                        onClick={() => openGameLogResult(log.gameId)}
                       >{log.result}</td>
                       <td className="px-3 py-2">{log.gs ? '*' : ''}</td>
                       <td className="px-3 py-2 text-right">{log.mp}</td>
@@ -450,7 +584,7 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
                       <td className="px-3 py-2 text-right font-bold text-white">{log.pts}</td>
                       <td
                         className={`px-3 py-2 text-right${log.gameId ? ' cursor-pointer hover:underline' : ''}`}
-                        onClick={() => { if (log.gameId) { const sg = state.schedule.find((g: any) => g.gid === log.gameId); if (sg) { if (onGameClick) onGameClick(sg); else setLocalBoxScoreGame(sg); } } }}
+                        onClick={() => openGameLogResult(log.gameId)}
                       >{log.gmsc}</td>
                       <td className={`px-3 py-2 text-right ${log.plusMinus != null && log.plusMinus > 0 ? 'text-emerald-400' : log.plusMinus != null && log.plusMinus < 0 ? 'text-red-400' : ''}`}>
                         {log.plusMinus != null ? (log.plusMinus > 0 ? `+${log.plusMinus}` : log.plusMinus) : '—'}
@@ -470,7 +604,31 @@ export const PlayerBioGameLogTab: React.FC<PlayerBioGameLogTabProps> = ({
       </div>
 
       {localBoxScoreGame && (() => {
-        const bsResult = state.boxScores.find((b: any) => b.gameId === localBoxScoreGame.gid);
+        const bsResult = findBoxScoreForScheduledGame(allPlayerBoxScores, localBoxScoreGame);
+        const summerTournament = localBoxScoreGame.competitionId === 'nba-summer-league'
+          ? summerLeagueTournaments.find(tournament =>
+              tournament.boxScores.some(result => result.gameId === localBoxScoreGame.gid),
+            )
+          : undefined;
+        const summerHome = summerTournament?.teams.find(team => 900_000 + team.seed === localBoxScoreGame.homeTid);
+        const summerAway = summerTournament?.teams.find(team => 900_000 + team.seed === localBoxScoreGame.awayTid);
+        if (summerTournament && summerHome && summerAway) {
+          return (
+            <BoxScoreModal
+              game={localBoxScoreGame}
+              result={bsResult}
+              homeTeam={summerLeagueSimulatorTeam(summerHome)}
+              awayTeam={summerLeagueSimulatorTeam(summerAway)}
+              players={[
+                ...summerLeagueSimulatorRoster(summerHome, state.players, summerTournament.year),
+                ...summerLeagueSimulatorRoster(summerAway, state.players, summerTournament.year),
+              ]}
+              hideFourPoint
+              onClose={() => setLocalBoxScoreGame(null)}
+              onPlayerClick={() => setLocalBoxScoreGame(null)}
+            />
+          );
+        }
         const homeTeam = resolveTeam(localBoxScoreGame.homeTid);
         const awayTeam = resolveTeam(localBoxScoreGame.awayTid);
         if (!homeTeam || !awayTeam) return null;

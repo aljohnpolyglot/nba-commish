@@ -4,11 +4,20 @@ import {
   fetchCompetitionHistory,
   cleanChampionName,
   cleanPlayerName,
-  CompetitionSeason,
-  CompetitionGistId,
+  competitionSeasonEndYear,
+  hasCompetitionHistorySource,
+  type CompetitionSeason,
+  type CompetitionGistId,
+  type CompetitionHistoryAward,
 } from '../../data/euroleagueHistoryFetcher';
 import { ensurePhotosLoaded, getPhotoByName, getPhotoBySlug } from '../../data/realPlayerDataFetcher';
+import {
+  normalizeSavedCompetitionHistory,
+  type SavedCompetitionHistoryRow,
+} from '../../data/euroSavedCompetitionHistory';
 import { useGame } from '../../store/GameContext';
+import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getTeamFullName } from '../../utils/teamNames';
 
 const STAR_AWARDS_BASE: Array<{ key: keyof CompetitionSeason; label: string }> = [
   { key: 'Season_MVP',           label: 'Season MVP' },
@@ -19,6 +28,12 @@ const STAR_AWARDS_BASE: Array<{ key: keyof CompetitionSeason; label: string }> =
   { key: 'Playin_MVP',           label: 'Play-In MVP' },
   { key: 'Alphonso_Ford_Trophy', label: 'Alphonso Ford Top Scorer' },
   { key: 'Best_Defender',        label: 'Best Defender' },
+  { key: 'Best_Sixth_Man',       label: 'Sixth Man of the Year' },
+  { key: 'Most_Improved_Player', label: 'Most Improved Player' },
+  { key: 'Most_Spectacular_Player', label: 'Most Spectacular Player' },
+  { key: 'Most_Popular_Player',  label: 'Most Popular Player' },
+  { key: 'Best_Offensive_Player', label: 'Best Offensive Player' },
+  { key: 'Most_Effective_Player', label: 'Most Effective International Player' },
   { key: 'Best_Coach',           label: 'Best Coach' },
   { key: 'Coach_of_the_Year',    label: 'Coach of the Year' },
   { key: 'Best_Young_Player',    label: 'Best Young Player' },
@@ -35,9 +50,30 @@ const STAT_LEADERS_BASE: Array<{ key: keyof CompetitionSeason; label: string }> 
   { key: 'Index_Rating', label: 'PIR Leader' },
 ];
 
-const ACCENTS: Record<CompetitionGistId, { color: string; brand: string }> = {
+const ACCENTS: Partial<Record<string, { color: string; brand: string }>> = {
   euroleague: { color: '#fb923c', brand: 'Turkish Airlines Euroleague' },
+  eurocup: { color: '#f97316', brand: 'BKT EuroCup' },
   endesa:     { color: '#dc2626', brand: 'Liga ACB · Endesa' },
+  'french-jeep-elite': { color: '#2563eb', brand: 'Betclic Élite · LNB' },
+  'greek-heba-a1': { color: '#0ea5e9', brand: 'Greek Basket League' },
+  'german-bbl': { color: '#f59e0b', brand: 'Basketball Bundesliga' },
+  'lithuanian-lkl': { color: '#059669', brand: 'Lietuvos Krepšinio Lyga' },
+  'israeli-bsl': { color: '#3b82f6', brand: 'Israeli Basketball Premier League' },
+  'italian-serie-a': { color: '#16a34a', brand: 'Lega Basket Serie A' },
+  'turkish-bsl': { color: '#dc2626', brand: 'Basketbol Süper Ligi' },
+  'vtb-united-league': { color: '#7c3aed', brand: 'VTB United League' },
+  'adriatic-league': { color: '#e11d48', brand: 'ABA League' },
+  'copa-del-rey': { color: '#dc2626', brand: 'Copa del Rey' },
+  supercopa: { color: '#f59e0b', brand: 'Supercopa Endesa' },
+  'france-leaders-cup': { color: '#2563eb', brand: 'Leaders Cup' },
+  'coppa-italia': { color: '#16a34a', brand: 'Coppa Italia' },
+  'supercoppa-italiana': { color: '#16a34a', brand: 'Supercoppa Italiana' },
+  'greek-super-cup': { color: '#0ea5e9', brand: 'Greek Super Cup' },
+  'turkish-cup': { color: '#dc2626', brand: 'Türkiye Kupası' },
+  'presidential-cup': { color: '#dc2626', brand: "President's Cup" },
+  'king-mindaugas-cup': { color: '#059669', brand: 'King Mindaugas Cup' },
+  'vtb-supercup': { color: '#7c3aed', brand: 'VTB SuperCup' },
+  'aba-supercup': { color: '#e11d48', brand: 'ABA League Supercup' },
 };
 
 const avatarFallback = (name: string): string =>
@@ -46,16 +82,18 @@ const avatarFallback = (name: string): string =>
 const PlayerChip: React.FC<{
   name: string;
   label?: string;
+  subtitle?: string;
+  role?: 'player' | 'coach' | 'executive';
   size?: 'sm' | 'md';
-  resolvePhoto: (name: string) => string;
-}> = ({ name, label, size = 'sm', resolvePhoto }) => {
+  resolvePhoto: (name: string, role?: 'player' | 'coach' | 'executive') => string;
+}> = ({ name, label, subtitle, role, size = 'sm', resolvePhoto }) => {
   const clean = cleanPlayerName(name);
   if (!clean) return null;
   const dim = size === 'md' ? 'w-12 h-12' : 'w-9 h-9';
   return (
     <div className="flex items-center gap-2.5">
       <img
-        src={resolvePhoto(clean)}
+        src={resolvePhoto(clean, role)}
         alt={clean}
         onError={(e) => { (e.currentTarget as HTMLImageElement).src = avatarFallback(clean); }}
         className={`${dim} rounded-full object-cover bg-zinc-800 shrink-0 border border-zinc-700`}
@@ -64,29 +102,46 @@ const PlayerChip: React.FC<{
       <div className="min-w-0">
         {label && <div className="text-[9px] font-black uppercase tracking-widest text-slate-500">{label}</div>}
         <div className={`font-bold text-white truncate ${size === 'md' ? 'text-sm' : 'text-xs'}`}>{clean}</div>
+        {subtitle && <div className="text-[10px] font-bold text-slate-500 truncate">{subtitle}</div>}
       </div>
     </div>
   );
 };
 
-interface Props { specId: CompetitionGistId; }
+interface Props {
+  specId: string;
+  initialSeason?: number;
+}
 
-export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
+export const CompetitionHistoryView: React.FC<Props> = ({ specId, initialSeason }) => {
   const { state } = useGame();
   const [seasons, setSeasons] = useState<CompetitionSeason[] | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number>(0);
+  const branchSeason = Number(state.euroStartSeason ?? state.leagueStats?.year ?? 0);
+  const completedSeasonCutoff = branchSeason - 1;
+  const activeSpec = state.activeCompetitions?.find(competition => competition.id === specId);
+  const accent = ACCENTS[specId] ?? {
+    color: activeSpec?.accentColor ?? '#f59e0b',
+    brand: activeSpec?.displayName ?? specId,
+  };
 
-  // Preload portrait map once
+  const savedSeasons = useMemo(() => normalizeSavedCompetitionHistory(
+    specId,
+    branchSeason,
+    (((state.competitionHistory ?? {})[specId] ?? []) as SavedCompetitionHistoryRow[]),
+    state.historicalAwards ?? [],
+    tid => {
+      if (tid == null) return undefined;
+      const team = resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []);
+      return team ? getTeamFullName(team) : undefined;
+    },
+  ), [branchSeason, specId, state.competitionHistory, state.historicalAwards, state.nonNBATeams, state.teams]);
+
   useEffect(() => {
     ensurePhotosLoaded().catch(() => {});
   }, []);
 
-  // Build a name → photo URL resolver that prefers in-save player imgURL
-  // (Kendrick Nunn etc. live in state.players with their real face on file)
-  // before falling back to the photo gist or the generic avatar.
-  // Diacritics are stripped on both sides — "Bogdanović" (gist) matches
-  // "Bogdanovic" (save) and vice versa.
   const normalizeName = (s: string) =>
     s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
 
@@ -95,27 +150,35 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
     for (const p of state.players ?? []) {
       if (p?.name) playersByName.set(normalizeName(p.name), p);
     }
-    return (name: string): string => {
+    const staffByName = new Map<string, any>();
+    const staffMembers = [
+      ...(state.staff?.coaches ?? []),
+      ...(state.staff?.gms ?? []),
+      ...(state.staffFreeAgents ?? []),
+      ...(state.teams ?? []).flatMap((team: any) => team?.tycoon?.staffMembers ?? []),
+      ...(state.nonNBATeams ?? []).flatMap((team: any) => team?.tycoon?.staffMembers ?? []),
+    ];
+    for (const member of staffMembers) {
+      if (member?.name) staffByName.set(normalizeName(member.name), member);
+    }
+    return (name: string, role?: 'player' | 'coach' | 'executive'): string => {
       const key = normalizeName(name);
+      const staff = staffByName.get(key);
+      if (role !== 'player' && staff?.playerPortraitUrl) return staff.playerPortraitUrl;
       const p = playersByName.get(key);
       if (p?.imgURL) return p.imgURL;
       if (p?.srID) {
         const fromPhotos = getPhotoBySlug(p.srID);
         if (fromPhotos) return fromPhotos;
       }
-      const fromZenGM = getPhotoByName(name) ?? getPhotoByName(key);
-      if (fromZenGM) return fromZenGM;
+      const fromArchive = getPhotoByName(name) ?? getPhotoByName(key);
+      if (fromArchive) return fromArchive;
+      if (staff?.playerPortraitUrl) return staff.playerPortraitUrl;
       return avatarFallback(name);
     };
-  }, [state.players]);
+  }, [state.nonNBATeams, state.players, state.staff?.coaches, state.staff?.gms, state.staffFreeAgents, state.teams]);
 
-  // Build a club-name → logo resolver. The history gist lists clubs by display
-  // name ("Real Madrid", "Maccabi Tel Aviv", "Regal FC Barcelona", "Barça")
-  // which doesn't always match the in-save name verbatim, so we match by
-  // distinctive WORD tokens (>=4 chars) — "FC" alone is ignored or it would
-  // match every other "FC X" club (e.g. FC Barcelona ↔ FC Bayern Munich).
   const resolveLogo = useMemo(() => {
-    // Common nickname aliases — shortname -> canonical token to look for
     const ALIASES: Array<[RegExp, string]> = [
       [/\bbarça\b/i,        'barcelona'],
       [/\bbarca\b/i,        'barcelona'],
@@ -150,9 +213,6 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
       }
       const queryTokens = tokenize(normalized);
       if (queryTokens.length === 0) return null;
-      // Best match = club with most overlapping tokens (>=1).
-      // Pass 1: exact-token match. Pass 2: substring-fuzzy (token >= 5 chars
-      // either contains-or-is-contained-by) — handles Fenerbahçe ↔ Fenerbahçe Beko etc.
       let best: { logo: string; score: number } | null = null;
       for (const c of clubs) {
         let score = 0;
@@ -174,23 +234,30 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
     setSeasons(null);
     setSelectedIdx(0);
     setError(null);
-    fetchCompetitionHistory(specId)
-      .then(data => { if (!cancelled) setSeasons(data); })
+    const applySeasons = (rows: CompetitionSeason[]) => {
+      setSeasons(rows);
+      const targetIndex = initialSeason == null
+        ? -1
+        : rows.findIndex(row => competitionSeasonEndYear(row) === initialSeason);
+      setSelectedIdx(targetIndex >= 0 ? targetIndex : 0);
+    };
+    if (!hasCompetitionHistorySource(specId)) {
+      applySeasons(savedSeasons);
+      return () => { cancelled = true; };
+    }
+    fetchCompetitionHistory(specId as CompetitionGistId)
+      .then(data => {
+        if (cancelled) return;
+        const archived = data.filter(entry => {
+          const endYear = competitionSeasonEndYear(entry);
+          return endYear !== undefined && endYear <= completedSeasonCutoff;
+        });
+        applySeasons([...savedSeasons, ...archived]);
+      })
       .catch(e => { if (!cancelled) setError(String(e?.message ?? e)); });
     return () => { cancelled = true; };
-  }, [specId]);
+  }, [completedSeasonCutoff, initialSeason, savedSeasons, specId]);
 
-  const titlesByClub = useMemo(() => {
-    if (!seasons) return [];
-    const m = new Map<string, number>();
-    seasons.forEach(s => {
-      const champ = cleanChampionName(s.Champions ?? s.Season_champions);
-      if (champ) m.set(champ, (m.get(champ) ?? 0) + 1);
-    });
-    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
-  }, [seasons]);
-
-  const accent = ACCENTS[specId];
   const selected = seasons?.[selectedIdx] ?? null;
 
   if (error) {
@@ -203,11 +270,11 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
       </div>
     );
   }
+  if (seasons.length === 0) return <div className="p-8 text-sm text-slate-500">No completed seasons are available for {accent.brand}.</div>;
 
   return (
     <div className="h-full overflow-y-auto custom-scrollbar">
       <div className="p-4 md:p-6 space-y-6">
-        {/* Hero */}
         <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5"
           style={{ boxShadow: `inset 0 1px 0 ${accent.color}55` }}>
           <div className="text-[10px] font-black uppercase tracking-[0.35em]" style={{ color: accent.color }}>
@@ -221,26 +288,7 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
           </p>
         </div>
 
-        {/* Most-titled clubs */}
-        {titlesByClub.length > 0 && (
-          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden">
-            <div className="px-4 py-3 border-b border-slate-800 text-xs font-black uppercase tracking-widest text-slate-400">
-              Most-Titled Clubs
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-px bg-slate-800/40">
-              {titlesByClub.map(([club, n]) => (
-                <div key={club} className="bg-slate-950/80 p-4 flex items-baseline justify-between">
-                  <span className="text-sm text-slate-300 truncate">{club}</span>
-                  <span className="text-amber-300 font-black text-xl ml-3">{n}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Side-by-side layout: champions list left, sticky detail right */}
         <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_420px] gap-6">
-          {/* Champions list */}
           <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-800 text-xs font-black uppercase tracking-widest text-slate-400">
               Champions by Season
@@ -282,10 +330,8 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
             </div>
           </div>
 
-          {/* Detail panel — sticky on xl+ */}
           {selected && (
             <div className="xl:sticky xl:top-4 xl:self-start space-y-4">
-              {/* Champion hero card */}
               <div
                 className="rounded-2xl border-2 overflow-hidden bg-slate-950"
                 style={{ borderColor: `${accent.color}55` }}
@@ -342,11 +388,20 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
                 </div>
               </div>
 
-              {/* Awards with portraits */}
               {(() => {
-                const awards = STAR_AWARDS_BASE
-                  .map(a => ({ ...a, value: cleanPlayerName(selected[a.key] as string | undefined) }))
-                  .filter(a => a.value);
+                const awards: CompetitionHistoryAward[] = selected.Awards?.length
+                  ? selected.Awards
+                  : STAR_AWARDS_BASE
+                      .map(a => {
+                        const raw = selected[a.key] as string | undefined;
+                        return {
+                          type: a.label,
+                          name: cleanPlayerName(raw),
+                          team: String(raw ?? '').match(/\(([^)]+)\)\s*$/)?.[1],
+                          role: /coach/i.test(a.label) ? 'coach' as const : 'player' as const,
+                        };
+                      })
+                      .filter(a => !!a.name);
                 if (awards.length === 0) return null;
                 return (
                   <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden">
@@ -354,9 +409,16 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
                       Award Winners
                     </div>
                     <div className="p-3 grid grid-cols-1 gap-2">
-                      {awards.map(a => (
-                        <div key={a.key as string} className="bg-slate-900/40 rounded-lg p-2.5">
-                          <PlayerChip name={a.value} label={a.label} size="md" resolvePhoto={resolvePhoto} />
+                      {awards.map((award, index) => (
+                        <div key={`${award.type}-${award.name}-${index}`} className="bg-slate-900/40 rounded-lg p-2.5">
+                          <PlayerChip
+                            name={award.name}
+                            label={award.type}
+                            subtitle={[award.team, award.statLine].filter(Boolean).join(' · ')}
+                            role={award.role}
+                            size="md"
+                            resolvePhoto={resolvePhoto}
+                          />
                         </div>
                       ))}
                     </div>
@@ -364,7 +426,28 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
                 );
               })()}
 
-              {/* Stat leaders with portraits */}
+              {(selected.All_League_Teams ?? []).some(team => team.players.length > 0) && (
+                <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden">
+                  <div className="px-4 py-2.5 border-b border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400">
+                    All-League Teams
+                  </div>
+                  <div className="p-3 space-y-4">
+                    {(selected.All_League_Teams ?? []).map(team => team.players.length > 0 ? (
+                      <div key={team.name}>
+                        <div className="mb-2 text-[9px] font-black uppercase tracking-widest text-slate-600">{team.name}</div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          {team.players.map(player => (
+                            <div key={`${team.name}-${player.name}`} className="rounded-lg bg-slate-900/40 p-2.5">
+                              <PlayerChip name={player.name} subtitle={player.team} resolvePhoto={resolvePhoto} />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null)}
+                  </div>
+                </div>
+              )}
+
               {(() => {
                 const leaders = STAT_LEADERS_BASE
                   .map(s => ({ ...s, value: (selected[s.key] as string | undefined)?.trim() ?? '' }))
@@ -386,13 +469,13 @@ export const CompetitionHistoryView: React.FC<Props> = ({ specId }) => {
                 );
               })()}
 
-              {/* Notable */}
-              {(selected.Highest_scoring || selected.Biggest_home_win || selected.Biggest_away_win || selected.Winning_streak || selected.Losing_streak || selected.Relegated) && (
+              {(selected.Note || selected.Highest_scoring || selected.Biggest_home_win || selected.Biggest_away_win || selected.Winning_streak || selected.Losing_streak || selected.Relegated) && (
                 <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden">
                   <div className="px-4 py-2.5 border-b border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-400">
                     Notable
                   </div>
                   <div className="p-4 space-y-1.5 text-[11px] text-slate-300">
+                    {selected.Note             && <div>{selected.Note}</div>}
                     {selected.Highest_scoring  && <div>🏀 {selected.Highest_scoring}</div>}
                     {selected.Biggest_home_win && <div>🏠 Biggest home win: {selected.Biggest_home_win}</div>}
                     {selected.Biggest_away_win && <div>✈️ Biggest away win: {selected.Biggest_away_win}</div>}

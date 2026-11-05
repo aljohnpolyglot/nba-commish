@@ -22,6 +22,7 @@ import {
   saveDefenderDetail,
 } from '../../../../../../store/defenderDetailStore';
 import { isOnRoster, resolveAnyTeam } from '../../../../../../utils/teamLookup';
+import { getTeamFullName } from '../../../../../../utils/teamNames';
 import {
   RivalAction,
   RivalPlan,
@@ -46,6 +47,7 @@ import {
   isCustomizedDefenderDetail,
   summarizeDefenderDetail,
 } from './defenseTabShared';
+import { getPlayersOnCourt } from '../../../../../../services/simulation/courtSize';
 
 interface DefenseTabProps {
   teamId: number;
@@ -176,8 +178,16 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
 
   const starters = useMemo(() => {
     if (!team) return [];
-    return StarterService.getProjectedStarters(team, state.players, state.leagueStats?.year).slice(0, 5);
-  }, [state.leagueStats?.year, state.players, team]);
+    const playersOnCourt = getPlayersOnCourt(state.leagueStats);
+    return StarterService.getProjectedStarters(
+      team,
+      state.players,
+      state.leagueStats?.year,
+      undefined,
+      true,
+      playersOnCourt,
+    );
+  }, [state.leagueStats, state.players, team]);
 
   useEffect(() => {
     setDetailMap(getTeamDefenderDetails(teamId));
@@ -224,11 +234,9 @@ export function DefenseTab({ teamId }: DefenseTabProps) {
       .sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a));
 
   const opponentName = (oppTid: number) => {
-    const opponent = state.teams.find(teamEntry => teamEntry.id === oppTid);
+    const opponent = resolveAnyTeam(oppTid, state.teams, state.nonNBATeams ?? []);
     if (!opponent) return `Team #${oppTid}`;
-    return opponent.region && !opponent.name.includes(opponent.region)
-      ? `${opponent.region} ${opponent.name}`
-      : opponent.name;
+    return getTeamFullName(opponent);
   };
 
   const updateRivalPlan = (oppTid: number, patch: Partial<RivalPlan>) => {

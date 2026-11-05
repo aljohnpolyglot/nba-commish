@@ -70,17 +70,20 @@ function phaseFromIso(iso: string): Phase {
   return 'regular';
 }
 
-function gameDaysFor(schedule: Game[], teamId: number): Set<string> {
-  const set = new Set<string>();
+export function buildAICoachGameDays(schedule: Game[]): Map<number, Set<string>> {
+  const byTeam = new Map<number, Set<string>>();
   for (const g of schedule) {
-    if (g.homeTid !== teamId && g.awayTid !== teamId) continue;
-    // Skip non-counting events. Cup TBD slots are also skipped — no real opponent yet.
     if (g.isPreseason || g.isExhibition || g.isAllStar || g.isRisingStars
         || g.isCelebrityGame || g.isDunkContest || g.isThreePointContest
         || g.isThroneEvent || g.isCupTBD) continue;
-    set.add(g.date.slice(0, 10));
+    const date = g.date.slice(0, 10);
+    for (const teamId of [g.homeTid, g.awayTid]) {
+      const dates = byTeam.get(teamId);
+      if (dates) dates.add(date);
+      else byTeam.set(teamId, new Set([date]));
+    }
   }
-  return set;
+  return byTeam;
 }
 
 function shiftIso(iso: string, days: number): string {
@@ -107,9 +110,10 @@ export function getAICoachPlanForDay(
   team: NBATeam,
   iso: string,
   schedule: Game[],
-  currentYear: number
+  currentYear: number,
+  preparedGameDays?: Map<number, Set<string>>,
 ): AICoachPlan | null {
-  const gameDays = gameDaysFor(schedule, team.id);
+  const gameDays = preparedGameDays?.get(team.id) ?? buildAICoachGameDays(schedule).get(team.id) ?? new Set<string>();
   // Game days never get a training plan — sim manages the day.
   if (gameDays.has(iso)) return null;
 

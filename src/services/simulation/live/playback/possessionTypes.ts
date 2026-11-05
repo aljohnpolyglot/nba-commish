@@ -12,11 +12,33 @@ export type PossessionOutcome =
   | 'MISS_4_DRB'
   | 'MISS_4_ORB'
   | 'TOV'
+  | 'PENALTY_GOAL'
   | 'FOUL_TRIP';
 
 export interface FTShot {
   isMake: boolean;
   shooter: PlayerPool;
+}
+
+export interface PossessionChallenge {
+  team: TeamId;
+  trigger:
+    | 'Challenge of Called Foul'
+    | 'Challenge OOB'
+    | 'Challenge Goaltending/Basket Interference';
+  initialCall: string;
+  finalRuling: 'Stands' | 'Overturned';
+  rulingDescription: string;
+  successful: boolean;
+  reimbursed: boolean;
+  remaining: number;
+}
+
+export interface PossessionTimeout {
+  team: TeamId;
+  remaining: number;
+  clutchRemaining: number;
+  isClutch: boolean;
 }
 
 export interface Possession {
@@ -32,6 +54,7 @@ export interface Possession {
   passPlayer?: PlayerPool; // flavor only, no stats
   is3?: boolean;
   is4?: boolean;
+  isDunk?: boolean;
 
   blocker?: PlayerPool;
 
@@ -44,6 +67,11 @@ export interface Possession {
   fouler?: PlayerPool;
   victim?: PlayerPool;
   fts?: FTShot[];
+  shotValue?: 1 | 2 | 3 | 4;
+  freeThrowsAwarded?: number;
+  shotLocation?: 'paint' | 'midrange' | 'three' | 'four';
+  ballState?: 'live' | 'out_of_bounds' | 'dead_ball' | 'free_throws';
+  nextPossession?: TeamId;
 
   isFoulOut?: boolean;
   foulerFoulCount?: number;
@@ -53,6 +81,25 @@ export interface Possession {
   isIntentional?: boolean;
   isTechnical?: boolean;
   foulType?: string;
+  turnoverCall?:
+    | 'shot_clock'
+    | 'inbound'
+    | 'traveling'
+    | 'double_dribble'
+    | 'backcourt'
+    | 'offensive_three_seconds'
+    | 'back_to_basket'
+    | 'out_of_bounds'
+    | 'kicked_ball';
+  callTimerSeconds?: number;
+  restartLocation?: 'corner';
+  basketInterference?: boolean;
+  shotClockResetSeconds?: number;
+  isHeave?: boolean;
+  heaveProtected?: boolean;
+  heaveDistanceFeet?: number;
+  challenge?: PossessionChallenge;
+  timeout?: PossessionTimeout;
 
   clock?: string;
   gs?: number;
@@ -82,6 +129,13 @@ export interface PlayerPool {
   blk: number;
   tov: number;
   pf: number;
+  dunks?: number;
   ftPct?: number;
+  fgAtRim?: number;
+  fgaAtRim?: number;
+  fgLowPost?: number;
+  fgaLowPost?: number;
+  fgMidRange?: number;
+  fgaMidRange?: number;
   fouledOut?: boolean;
 }

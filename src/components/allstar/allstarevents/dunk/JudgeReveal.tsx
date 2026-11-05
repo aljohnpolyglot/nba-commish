@@ -87,7 +87,11 @@ export function DunkContestJudgeReveal({ data, judges, onClose }: JudgeRevealPro
                         className="absolute inset-0 opacity-20"
                         style={{ backgroundColor: judge.accentColor }}
                       />
-                      <span className="text-lg font-bold text-white relative z-10">{judge.avatarInitials}</span>
+                      {judge.imgURL ? (
+                        <img src={judge.imgURL} alt="" className="absolute inset-0 z-10 h-full w-full object-cover" />
+                      ) : (
+                        <span className="text-lg font-bold text-white relative z-10">{judge.avatarInitials}</span>
+                      )}
                     </div>
                     <div className="text-center">
                       <p className="text-[9px] font-bold text-zinc-500 uppercase tracking-wider mb-2 truncate w-20">

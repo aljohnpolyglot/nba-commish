@@ -6,7 +6,9 @@ import { LineChart, Line, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveCo
 import type { NBAPlayer } from '../../types';
 import { calculatePlayerOverallForYear, getDisplayPotential } from '../../utils/playerRatings';
 import { convertTo2KRating } from '../../utils/helpers';
-import { calculateK2 } from '../../services/simulation/convert2kAttributes';
+import { resolvePlayerRatingBundle } from '../../store/playerRatingStore';
+import { getScoutedK2Data } from '../../utils/scoutingFuzz';
+import { useGame } from '../../store/GameContext';
 
 interface Props {
   player: Player | null; // Pass null to hide or pass it via wrapper
@@ -84,6 +86,7 @@ type TargetTuple = "Rookie Year" | "3 Years Ago" | "1 Year Ago";
 const TARGETS: TargetTuple[] = ["Rookie Year", "3 Years Ago", "1 Year Ago"];
 
 export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, currentDate, trainingCalendar, onClose }: Props) {
+  const { state } = useGame();
   const [comparisonTarget, setComparisonTarget] = useState<TargetTuple>("1 Year Ago");
 
   // Real K2 + OVR/POT history derived from `nbaPlayer.ratings[]`. Falls back to
@@ -116,12 +119,8 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
       const r = pickSnapshot(targetYear);
       if (!r) return null;
       const season = (r as any).season ?? targetYear;
-      const k2 = calculateK2(r as any, {
-        pos: nbaPlayer.pos ?? 'F',
-        heightIn: nbaPlayer.hgt ?? 78,
-        weightLbs: nbaPlayer.weight ?? 220,
-        age: season - (nbaPlayer.born?.year ?? season - 25),
-      });
+      const bundle = resolvePlayerRatingBundle(nbaPlayer, season, season);
+      const k2 = getScoutedK2Data(state, nbaPlayer, bundle.displayK2);
       return {
         'Inside Scoring':  Object.fromEntries(['Layup', 'Standing Dunk', 'Driving Dunk', 'Post Hook', 'Post Fade', 'Post Control', 'Draw Foul', 'Hands'].map((n, i) => [n, k2.IS.sub[i] ?? 50])) as any,
         'Outside Scoring': Object.fromEntries(['Close Shot', 'Mid-Range', 'Three-Point', 'Free Throw', 'Shot IQ', 'Off Consistency'].map((n, i) => [n, k2.OS.sub[i] ?? 50])) as any,
@@ -182,7 +181,7 @@ export function PlayerProgressionModal({ player, nbaPlayer, currentYear, team, c
     trainingHist.push(...teamPrograms);
 
     return { history, k2Map, trainingHist };
-  }, [nbaPlayer, currentYear, team, currentDate, trainingCalendar]);
+  }, [nbaPlayer, currentYear, team, currentDate, trainingCalendar, state]);
 
   if (!player) return null;
 

@@ -7,6 +7,16 @@ interface FoulsLimitsSectionProps {
     setFoulOutLimit: (val: number) => void;
     teamFoulPenalty: number;
     setTeamFoulPenalty: (val: number) => void;
+    teamFoulPenaltyMode: 'free_throws' | 'award_goal';
+    setTeamFoulPenaltyMode: (val: 'free_throws' | 'award_goal') => void;
+    teamFoulPenaltyPoints: number;
+    setTeamFoulPenaltyPoints: (val: number) => void;
+    temporaryDisqualificationFoulLimit: number;
+    setTemporaryDisqualificationFoulLimit: (val: number) => void;
+    temporaryDisqualificationUntilNextScore: boolean;
+    setTemporaryDisqualificationUntilNextScore: (val: boolean) => void;
+    temporaryDisqualificationAllowsSubstitute: boolean;
+    setTemporaryDisqualificationAllowsSubstitute: (val: boolean) => void;
     flagrantFoulPenaltyEnabled: boolean;
     setFlagrantFoulPenaltyEnabled: (val: boolean) => void;
     clearPathFoulEnabled: boolean;
@@ -36,6 +46,11 @@ interface FoulsLimitsSectionProps {
 export const FoulsLimitsSection: React.FC<FoulsLimitsSectionProps> = ({
     foulOutLimit, setFoulOutLimit,
     teamFoulPenalty, setTeamFoulPenalty,
+    teamFoulPenaltyMode, setTeamFoulPenaltyMode,
+    teamFoulPenaltyPoints, setTeamFoulPenaltyPoints,
+    temporaryDisqualificationFoulLimit, setTemporaryDisqualificationFoulLimit,
+    temporaryDisqualificationUntilNextScore, setTemporaryDisqualificationUntilNextScore,
+    temporaryDisqualificationAllowsSubstitute, setTemporaryDisqualificationAllowsSubstitute,
     flagrantFoulPenaltyEnabled, setFlagrantFoulPenaltyEnabled,
     clearPathFoulEnabled, setClearPathFoulEnabled,
     illegalScreenEnabled, setIllegalScreenEnabled,
@@ -60,6 +75,21 @@ export const FoulsLimitsSection: React.FC<FoulsLimitsSectionProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                 <RuleInput id="foulOutLimit" value={foulOutLimit} onChange={setFoulOutLimit} />
                 <RuleInput id="teamFoulPenalty" value={teamFoulPenalty} onChange={setTeamFoulPenalty} />
+                <label className="flex items-center justify-between gap-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Team Foul Penalty</span>
+                    <select
+                        aria-label="Team Foul Penalty"
+                        value={teamFoulPenaltyMode}
+                        onChange={event => setTeamFoulPenaltyMode(event.target.value as 'free_throws' | 'award_goal')}
+                        className="rounded-lg border border-slate-700 bg-slate-950 px-2 py-1 text-[10px] font-bold text-white focus:border-indigo-500 focus:outline-none"
+                    >
+                        <option value="free_throws">Free throws</option>
+                        <option value="award_goal">Award points</option>
+                    </select>
+                </label>
+                {teamFoulPenaltyMode === 'award_goal' && (
+                    <RuleInput id="teamFoulPenaltyPoints" value={teamFoulPenaltyPoints} onChange={setTeamFoulPenaltyPoints} />
+                )}
                 <RuleToggle id="flagrantFoulPenaltyEnabled" value={flagrantFoulPenaltyEnabled} onChange={setFlagrantFoulPenaltyEnabled} />
                 <RuleToggle id="clearPathFoulEnabled" value={clearPathFoulEnabled} onChange={setClearPathFoulEnabled} />
                 <RuleToggle id="illegalScreenEnabled" value={illegalScreenEnabled} onChange={setIllegalScreenEnabled} />
@@ -73,6 +103,13 @@ export const FoulsLimitsSection: React.FC<FoulsLimitsSectionProps> = ({
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ejections & Discipline</span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
+                    <RuleToggle id="temporaryDisqualificationUntilNextScore" value={temporaryDisqualificationUntilNextScore} onChange={setTemporaryDisqualificationUntilNextScore} />
+                    {temporaryDisqualificationUntilNextScore && (
+                        <>
+                            <RuleInput id="temporaryDisqualificationFoulLimit" value={temporaryDisqualificationFoulLimit} onChange={setTemporaryDisqualificationFoulLimit} />
+                            <RuleToggle id="temporaryDisqualificationAllowsSubstitute" value={temporaryDisqualificationAllowsSubstitute} onChange={setTemporaryDisqualificationAllowsSubstitute} />
+                        </>
+                    )}
                     <RuleInput id="techEjectionLimit" value={techEjectionLimit} onChange={setTechEjectionLimit} />
                     <RuleInput id="flagrant1EjectionLimit" value={flagrant1EjectionLimit} onChange={setFlagrant1EjectionLimit} />
                     <RuleInput id="flagrant2EjectionLimit" value={flagrant2EjectionLimit} onChange={setFlagrant2EjectionLimit} />

@@ -8,6 +8,9 @@ interface RigConfirmModalProps {
   refName: string;
   refNumber: string;
   refPhoto?: string;
+  amountMillion: number;
+  personalWealthMillion: number;
+  isProcessing?: boolean;
   onClose: () => void;
   onWatchLive: () => void;
   onJustSimulate: () => void;
@@ -19,6 +22,9 @@ export const RigConfirmModal: React.FC<RigConfirmModalProps> = ({
   refName,
   refNumber,
   refPhoto,
+  amountMillion,
+  personalWealthMillion,
+  isProcessing = false,
   onClose,
   onWatchLive,
   onJustSimulate,
@@ -67,20 +73,24 @@ export const RigConfirmModal: React.FC<RigConfirmModalProps> = ({
               {/* Summary */}
               <div className="text-center space-y-1">
                 <p className="text-white font-black text-lg leading-tight">
-                  Rigging active for
+                  Make an offer for
                 </p>
                 <p className="text-amber-400 font-black text-xl uppercase tracking-tight">
                   {favoredTeamName}
                 </p>
-                <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest mt-2">
-              
+                <p className="text-slate-400 text-sm font-bold mt-3">
+                  ${Math.round(amountMillion * 1_000_000).toLocaleString()} from personal cash
                 </p>
+                {amountMillion > personalWealthMillion && (
+                  <p className="text-rose-400 text-xs font-bold mt-2">Insufficient personal cash</p>
+                )}
               </div>
 
               {/* Choices */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <button
                   onClick={onJustSimulate}
+                  disabled={isProcessing || amountMillion > personalWealthMillion}
                   className="flex flex-col items-center gap-2 p-5 rounded-2xl bg-slate-800 hover:bg-slate-700 border border-white/5 hover:border-white/10 transition-all group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-slate-700 group-hover:bg-slate-600 flex items-center justify-center transition-colors">
@@ -94,12 +104,15 @@ export const RigConfirmModal: React.FC<RigConfirmModalProps> = ({
 
                 <button
                   onClick={onWatchLive}
+                  disabled={isProcessing || amountMillion > personalWealthMillion}
                   className="flex flex-col items-center gap-2 p-5 rounded-2xl bg-indigo-600 hover:bg-indigo-500 border border-indigo-500 transition-all group shadow-xl shadow-indigo-500/20"
                 >
                   <div className="w-10 h-10 rounded-xl bg-indigo-500 group-hover:bg-indigo-400 flex items-center justify-center transition-colors">
                     <Play size={20} className="text-white" />
                   </div>
-                  <p className="text-xs font-black text-white uppercase tracking-widest">Watch Live</p>
+                  <p className="text-xs font-black text-white uppercase tracking-widest">
+                    {isProcessing ? 'Processing' : 'Watch Live'}
+                  </p>
                   <p className="text-[9px] text-indigo-200 font-bold text-center leading-tight">
                     Experience it in real time
                   </p>

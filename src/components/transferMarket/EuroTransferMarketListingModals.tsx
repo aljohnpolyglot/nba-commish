@@ -11,13 +11,20 @@ import { PlayerSelectorGrid, type PlayerSelectorItem } from '../shared/PlayerSel
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { useHoldable } from '../../hooks/useHoldable';
 import { getTeamFullName } from '../../utils/teamNames';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
 import { isOnRoster } from '../../utils/teamLookup';
 import { ClubChip, fmtEUR, OvrPotPair } from './EuroTransferMarketShared';
+import { getSeasonEconomyIndex } from '../../services/tycoon/clubFinance';
+import { getClubContinentalPrestige } from '../../services/euro/continentalPrestige';
+import type { SponsorSigningPerkGrant } from '../../types/tycoon';
+import { getAvailableSigningSponsorPerks } from '../../services/tycoon/sponsorPerkEngine';
+import { SponsorSigningPerkPicker } from '../tycoon/SponsorSigningPerkPicker';
 
 export const ListPlayerModal: React.FC<{ onClose: () => void; preselectedPlayerId?: string | null }> = ({ onClose, preselectedPlayerId = null }) => {
   const { state } = useGame() as any;
   const { userTid, listings, actions } = useTransferMarketContext();
   const currentYear: number = state.leagueStats?.year ?? new Date().getFullYear();
+  const economyIndex = getSeasonEconomyIndex(state, currentYear);
 
   const alreadyListed = useMemo(
     () => new Set(listings.map(l => l.player.id)),
@@ -36,9 +43,9 @@ export const ListPlayerModal: React.FC<{ onClose: () => void; preselectedPlayerI
   const preferredPlayerId = eligible.some((p: any) => p.internalId === preselectedPlayerId)
     ? preselectedPlayerId
     : null;
-  const [selPid, setSelPid] = useState<string | null>(preferredPlayerId ?? eligible[0]?.internalId ?? null);
+  const [selPid, setSelPid] = useState<string | null>(preferredPlayerId);
   const selPlayer = eligible.find((p: any) => p.internalId === selPid);
-  const suggested = selPlayer ? estimatePlayerValueEUR(selPlayer, currentYear) : 1_000_000;
+  const suggested = selPlayer ? estimatePlayerValueEUR(selPlayer, currentYear, economyIndex) : Math.round(1_000_000 * economyIndex);
   const [asking, setAsking] = useState<number>(suggested);
   const [days] = useState<number>(7);
 
@@ -47,7 +54,7 @@ export const ListPlayerModal: React.FC<{ onClose: () => void; preselectedPlayerI
     setSelPid(prev => {
       if (preferredPlayerId && prev !== preferredPlayerId) return preferredPlayerId;
       if (prev && eligible.some((p: any) => p.internalId === prev)) return prev;
-      return eligible[0]?.internalId ?? null;
+      return null;
     });
   }, [preferredPlayerId, eligible, eligibleIdsKey]);
 
@@ -66,12 +73,8 @@ export const ListPlayerModal: React.FC<{ onClose: () => void; preselectedPlayerI
 
   const ASK_STEP = 50_000;
   const askMin = 50_000;
-  const askMax = Math.max(ASK_STEP * 4, suggested * 4);
-  const askPct = Math.min(100, Math.max(0, ((asking - askMin) / Math.max(1, askMax - askMin)) * 100));
-  const sugPct = Math.min(100, Math.max(0, ((suggested - askMin) / Math.max(1, askMax - askMin)) * 100));
-
   const decAskProps = useHoldable(() => setAsking(v => Math.max(askMin, v - ASK_STEP)), asking <= askMin);
-  const incAskProps = useHoldable(() => setAsking(v => Math.min(askMax, v + ASK_STEP)), asking >= askMax);
+  const incAskProps = useHoldable(() => setAsking(v => Math.min(Number.MAX_SAFE_INTEGER, v + ASK_STEP)), false);
 
   if (eligible.length === 0) {
     return (
@@ -97,16 +100,28 @@ export const ListPlayerModal: React.FC<{ onClose: () => void; preselectedPlayerI
           <PlayerSelectorGrid
             items={selectorItems}
             teams={React.useMemo(() => {
-              const nba = state.teams ?? [];
+              const withResolvedLogo = (team: any) => {
+                const savedLogo = team.logoUrl ?? team.imgURL ?? team.imgURLSmall;
+                return {
+                  ...team,
+                  id: team.id ?? team.tid,
+                  logoUrl: state.leagueStats?.uiMode === 'fictional'
+                    ? savedLogo
+                    : getResolvedTeamLogoUrl(team, currentYear) || savedLogo,
+                };
+              };
+              const nba = (state.teams ?? []).map(withResolvedLogo);
               const euro = (state.nonNBATeams ?? []).map((t: any) => ({
-                id: t.tid, name: t.name, abbrev: t.abbrev ?? '', region: t.region,
-                logoUrl: t.imgURL, colors: t.colors, conference: '', wins: 0, losses: 0, strength: 0,
+                ...withResolvedLogo(t),
+                name: t.name, abbrev: t.abbrev ?? '', region: t.region,
+                colors: t.colors, conference: '', wins: 0, losses: 0, strength: 0,
               }));
               return [...nba, ...euro];
-            }, [state.nonNBATeams, state.teams])}
+            }, [currentYear, state.leagueStats?.uiMode, state.nonNBATeams, state.teams])}
             selectedIds={selectedSet}
-            onToggle={(pid) => setSelPid(prev => (prev === pid ? null : pid))}
+            onToggle={setSelPid}
             maxSelections={1}
+            replaceSelectionAtLimit
             accentColor="amber"
             defaultVisible={30}
             searchPlaceholder="Search your roster..."
@@ -119,7 +134,6 @@ export const ListPlayerModal: React.FC<{ onClose: () => void; preselectedPlayerI
               <span>Asking Price</span>
               <div className="flex flex-wrap gap-3 text-[10px]">
                 <span className="text-amber-300">SUGG {fmtEUR(suggested)}</span>
-                <span className="text-white/50">MAX {fmtEUR(askMax)}</span>
               </div>
             </label>
             <div className="flex items-center justify-between h-16 bg-white/[0.04] border border-white/10 rounded-sm px-4 hover:border-amber-500/40 transition-all">
@@ -136,34 +150,16 @@ export const ListPlayerModal: React.FC<{ onClose: () => void; preselectedPlayerI
               </div>
               <button
                 {...incAskProps}
-                disabled={asking >= askMax}
                 className="text-white/30 hover:text-white transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed touch-none select-none"
               >
                 <ChevronRight size={18} />
               </button>
-            </div>
-            <div className="mt-3 relative">
-              <input
-                type="range"
-                min={askMin}
-                max={askMax}
-                step={ASK_STEP}
-                value={asking}
-                onChange={(e) => setAsking(parseInt(e.target.value, 10))}
-                className="w-full accent-amber-500"
-              />
-              <div
-                className="pointer-events-none absolute top-1 h-3 w-px bg-amber-400/80"
-                style={{ left: `${sugPct}%` }}
-                title={`Engine suggestion: ${fmtEUR(suggested)}`}
-              />
             </div>
             <div className="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center text-[9px] font-bold uppercase text-white/30 tracking-widest mt-1">
               <span>Min {fmtEUR(askMin)}</span>
               <button onClick={() => setAsking(suggested)} className="text-amber-300 hover:text-amber-200 normal-case tracking-normal font-bold">
                 use suggestion ({fmtEUR(suggested)})
               </button>
-              <span>{Math.round(askPct)}%</span>
             </div>
           </div>
 
@@ -196,24 +192,36 @@ export const BidOnListingModal: React.FC<{
   listing: BrowseListing | null;
   windowOpen: boolean;
   onClose: () => void;
-  onSubmit: (amountEUR: number) => void;
+  onSubmit: (amountEUR: number, signingBonusEUR: number, sponsorSigningPerk?: SponsorSigningPerkGrant) => void;
 }> = ({ listing, windowOpen, onClose, onSubmit }) => {
   const { state } = useGame() as any;
-  const { budget } = useTransferMarketContext();
+  const { budget, userTid } = useTransferMarketContext();
   const currentYear: number = state.leagueStats?.year ?? new Date().getFullYear();
+  const economyIndex = getSeasonEconomyIndex(state, currentYear);
 
   const minBid = listing ? Math.round(listing.askingEUR * 0.5 / 50_000) * 50_000 : 100_000;
-  const maxBid = listing ? Math.round(listing.askingEUR * 2.0 / 50_000) * 50_000 : 5_000_000;
   const step = 50_000;
   const [bidInput, setBidInput] = useState<number>(listing?.askingEUR ?? 1_000_000);
+  const [signingBonusEUR, setSigningBonusEUR] = useState(0);
+  const [selectedSponsorPerkKey, setSelectedSponsorPerkKey] = useState<string | null>(null);
 
   React.useEffect(() => {
-    if (listing) setBidInput(Math.max(listing.highestBidEUR || 0, listing.askingEUR));
+    if (!listing) return;
+    setBidInput(Math.max(listing.highestBidEUR || 0, listing.askingEUR));
+    setSigningBonusEUR(0);
+    setSelectedSponsorPerkKey(null);
   }, [listing?.askingEUR, listing?.highestBidEUR, listing?.id]);
+
+  const decBidProps = useHoldable(() => setBidInput(value => Math.max(minBid, value - step)), bidInput <= minBid);
+  const incBidProps = useHoldable(() => setBidInput(value => Math.min(Number.MAX_SAFE_INTEGER, value + step)), false);
+  const decBonusProps = useHoldable(() => setSigningBonusEUR(value => Math.max(0, value - step)), signingBonusEUR <= 0);
+  const incBonusProps = useHoldable(() => setSigningBonusEUR(value => Math.min(Number.MAX_SAFE_INTEGER, value + step)), false);
 
   if (!listing) return <AnimatePresence>{null}</AnimatePresence>;
 
   const rawPlayer = (state.players ?? []).find((p: any) => p.internalId === listing.player.id);
+  const userTeam = [...(state.teams ?? []), ...(state.nonNBATeams ?? [])]
+    .find((team: any) => Number(team.id ?? team.tid) === userTid);
   const allBids = (state.transferBids ?? []) as Array<any>;
   const otherOffers = allBids
     .filter(b => b.listingId === listing.id && (b.status === 'active' || b.status === 'highest' || b.status === 'outbid'))
@@ -221,20 +229,37 @@ export const BidOnListingModal: React.FC<{
     .sort((a, b) => b.amountEUR - a.amountEUR)
     .slice(0, 5);
 
-  const marketValueEUR = rawPlayer ? estimatePlayerValueEUR(rawPlayer, currentYear) : listing.askingEUR;
+  const marketValueEUR = rawPlayer ? estimatePlayerValueEUR(rawPlayer, currentYear, economyIndex) : listing.askingEUR;
   const clubInterest = computeClubInterest(bidInput, listing.askingEUR);
   const clubTone = clubInterest >= 70 ? 'emerald' : clubInterest >= 40 ? 'amber' : 'rose';
-  const playerInterest = computePlayerInterest(listing.player.id);
+  const destinationPrestige = getClubContinentalPrestige(state, Number(state.userTeamId), currentYear);
+  const basePlayerInterest = computePlayerInterest(
+    listing.player.id,
+    destinationPrestige,
+  );
+  const annualSalaryEUR = listing.player.annualWageEUR;
+  const sponsorPerkChoices = getAvailableSigningSponsorPerks(
+    userTeam?.tycoon,
+    currentYear,
+    'player',
+    annualSalaryEUR,
+  );
+  const selectedSponsorPerk = sponsorPerkChoices.find(choice => choice.key === selectedSponsorPerkKey) ?? null;
+  const playerInterest = computePlayerInterest(
+    listing.player.id,
+    destinationPrestige,
+    signingBonusEUR + (selectedSponsorPerk?.equivalentAnnualValueEUR ?? 0),
+  );
   const playerInterestText = playerInterestLabel(playerInterest);
   const clubInterestText = clubInterestLabel(clubInterest);
-  const playerWillVeto = playerInterest < 50 && bidInput < listing.askingEUR * 1.2;
 
-  const annualSalaryEUR = listing.player.annualWageEUR;
   const yearsLeft = listing.player.contractYearsLeft;
   const contractType = rawPlayer?.nonGuaranteed ? 'Non-Guaranteed' : 'Guaranteed';
   const expYear = rawPlayer?.contract?.exp ?? (currentYear + yearsLeft);
-  const projectedCash = budget.cashEUR - bidInput;
-  const blockedByCash = budget.cashEUR < bidInput;
+  const cashAfterFeeEUR = budget.cashEUR - bidInput;
+  const totalImmediateCostEUR = bidInput + signingBonusEUR;
+  const projectedCash = budget.cashEUR - totalImmediateCostEUR;
+  const blockedByCash = budget.cashEUR < totalImmediateCostEUR;
 
   return (
     <AnimatePresence>
@@ -296,41 +321,65 @@ export const BidOnListingModal: React.FC<{
                       <div className={`font-black ${projectedCash >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>{fmtEUR(projectedCash)}</div>
                     </div>
                   </div>
-                  <input
-                    type="range"
-                    min={minBid}
-                    max={maxBid}
-                    step={step}
-                    value={bidInput}
-                    onChange={(e) => setBidInput(parseInt(e.target.value, 10))}
-                    className="w-full mt-3 accent-rose-500"
-                  />
-                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                    <span>{fmtEUR(minBid)}</span>
-                    <span>{fmtEUR(maxBid)}</span>
+                  <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-700 bg-slate-950/70 p-2">
+                    <button {...decBidProps} disabled={bidInput <= minBid} className="touch-none select-none rounded-lg p-2 text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Lower transfer fee"><ChevronLeft size={18} /></button>
+                    <span className="text-sm font-black tabular-nums text-white">{fmtEUR(bidInput)}</span>
+                    <button {...incBidProps} className="touch-none select-none rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Raise transfer fee"><ChevronRight size={18} /></button>
                   </div>
+                  <div className="flex justify-between text-[10px] text-slate-500 mt-1">
+                    <span>Minimum {fmtEUR(minBid)}</span>
+                    <span>No artificial maximum</span>
+                  </div>
+
+                  <div className="mt-4 rounded-xl border border-violet-500/25 bg-violet-500/5 p-3">
+                    <div className="text-[9px] font-black uppercase tracking-widest text-violet-300">Signing Bonus</div>
+                    <p className="mt-1 text-[10px] leading-snug text-slate-400">
+                      Paid directly to the player if the transfer is completed.
+                    </p>
+                    <div className="mt-3 flex items-center justify-between rounded-xl border border-slate-700 bg-slate-950/70 p-2">
+                      <button {...decBonusProps} disabled={signingBonusEUR <= 0} className="touch-none select-none rounded-lg p-2 text-slate-300 hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Lower signing bonus"><ChevronLeft size={18} /></button>
+                      <span className="text-sm font-black tabular-nums text-white">{fmtEUR(signingBonusEUR)}</span>
+                      <button {...incBonusProps} className="touch-none select-none rounded-lg p-2 text-slate-300 hover:bg-slate-800" aria-label="Raise signing bonus"><ChevronRight size={18} /></button>
+                    </div>
+                    <div className="mt-1 flex justify-between text-[10px] text-slate-500">
+                      <span>Minimum {fmtEUR(0)}</span>
+                      <span>{fmtEUR(step)} increments</span>
+                    </div>
+                  </div>
+
+                  <SponsorSigningPerkPicker
+                    tycoon={userTeam?.tycoon}
+                    currentYear={currentYear}
+                    appliesTo="player"
+                    annualSalaryEUR={annualSalaryEUR}
+                    selectedKey={selectedSponsorPerkKey}
+                    onSelect={choice => setSelectedSponsorPerkKey(choice?.key ?? null)}
+                  />
+
+                  <div className="mt-3 space-y-2 rounded-xl border border-slate-800 bg-slate-950/70 p-3 text-[10px]">
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-400">Player interest</span>
+                      <span className="font-black tabular-nums text-violet-300">{basePlayerInterest}% → {playerInterest}%</span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-400">Cash after transfer</span>
+                      <span className={`font-black tabular-nums ${projectedCash >= 0 ? 'text-emerald-300' : 'text-rose-300'}`}>
+                        {fmtEUR(cashAfterFeeEUR)} → {fmtEUR(projectedCash)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="text-slate-400">Total immediate cost</span>
+                      <span className="font-black tabular-nums text-white">{fmtEUR(totalImmediateCostEUR)}</span>
+                    </div>
+                  </div>
+
                   {blockedByCash && (
                     <div className="mt-3 rounded-lg border border-rose-500/40 bg-rose-950/40 px-3 py-2 text-[10px] font-bold leading-snug text-rose-300">
-                      No cash for this transfer. Lower the fee or create cash before bidding.
+                      No cash for this transfer. Lower the fee or signing bonus before bidding.
                     </div>
                   )}
                 </div>
 
-                <div>
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Payment Structure</div>
-                  <div className="w-full bg-slate-900 border border-slate-700 rounded-lg px-3 py-2.5 text-sm font-bold text-white flex items-center justify-between cursor-not-allowed opacity-90">
-                    <span>Upfront</span>
-                    <span className="text-[9px] text-slate-500 uppercase tracking-wider">Default</span>
-                  </div>
-                </div>
-
-                <div>
-                  <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 mb-1.5">Add-ons</div>
-                  <div className="w-full bg-slate-900 border border-slate-700 border-dashed rounded-lg px-3 py-2.5 text-xs text-slate-500 flex items-center justify-between">
-                    <span>No add-ons</span>
-                    <span className="text-slate-600">+</span>
-                  </div>
-                </div>
               </div>
 
               <div className="space-y-4 sm:space-y-5">
@@ -362,13 +411,6 @@ export const BidOnListingModal: React.FC<{
                     <p className="text-[10px] text-slate-400 mt-1">{playerInterestText}</p>
                   </div>
 
-                  {playerWillVeto && (
-                    <div className="bg-rose-950/40 border border-rose-500/40 rounded-lg px-3 py-2">
-                      <p className="text-[10px] font-bold text-rose-300 leading-snug">
-                        Even if {listing.club.name} accepts, the player will turn it down at this fee. Push 1.2× asking or higher to overcome the reluctance.
-                      </p>
-                    </div>
-                  )}
                 </div>
 
                 <div className="bg-slate-900/60 rounded-2xl border border-slate-800/60 p-4 sm:p-5 space-y-3">
@@ -384,7 +426,10 @@ export const BidOnListingModal: React.FC<{
                           ?? (state.teams ?? []).find((t: any) => (t.tid ?? t.id) === b.bidderTid);
                         const name = bidderTeam ? getTeamFullName(bidderTeam) : '—';
                         const abbrev = bidderTeam?.abbrev ?? name.slice(0, 3).toUpperCase();
-                        const logoUrl = bidderTeam?.imgURL ?? bidderTeam?.logoUrl;
+                        const savedLogo = bidderTeam?.logoUrl ?? bidderTeam?.imgURL ?? bidderTeam?.imgURLSmall;
+                        const logoUrl = state.leagueStats?.uiMode === 'fictional'
+                          ? savedLogo
+                          : bidderTeam ? getResolvedTeamLogoUrl(bidderTeam, currentYear) || savedLogo : undefined;
                         return (
                           <div key={b.id} className="flex items-center justify-between gap-3 py-1.5 border-b border-slate-800/60 last:border-b-0">
                             <div className="flex items-center gap-2 min-w-0">
@@ -441,7 +486,17 @@ export const BidOnListingModal: React.FC<{
                 You can make changes to your offer before submitting. Lowballs under 80% of asking are rejected on sight.
               </p>
               <button
-                onClick={() => onSubmit(bidInput)}
+                onClick={() => onSubmit(
+                  bidInput,
+                  signingBonusEUR,
+                  selectedSponsorPerk ? {
+                    sponsor: selectedSponsorPerk.sponsor,
+                    perkId: selectedSponsorPerk.perk.id,
+                    label: selectedSponsorPerk.perk.label,
+                    season: currentYear,
+                    equivalentAnnualValueEUR: selectedSponsorPerk.equivalentAnnualValueEUR,
+                  } : undefined,
+                )}
                 disabled={!windowOpen || blockedByCash}
                 title={!windowOpen ? 'Transfer window closed' : blockedByCash ? 'No cash for this transfer' : 'Submit offer'}
                 className="w-full lg:w-auto px-8 py-3 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-black uppercase tracking-widest text-xs disabled:opacity-40 disabled:cursor-not-allowed"

@@ -31,7 +31,7 @@ export function resolveSponsorLogoUrl(meta: BrandMeta | undefined): string | nul
   if (!meta) return null;
   if (meta.logoOverride) return meta.logoOverride;
   if (meta.domain) {
-    const token = import.meta.env.VITE_LOGODEV_TOKEN as string | undefined;
+    const token = (import.meta as ImportMeta & { env?: Record<string, string> }).env?.VITE_LOGODEV_TOKEN;
     const tokenParam = token ? `&token=${token}` : '';
     return `https://img.logo.dev/${meta.domain}?size=128&format=png${tokenParam}`;
   }

@@ -58,7 +58,7 @@ export const TradeTrendCharts: React.FC<{ teamSlots: { team: NBATeam | null; pla
   }), [slots, years]);
 
   const teamColors = new Map<string, string>();
-  slots.forEach((slot, index) => teamColors.set(slot.team.abbrev, slot.team.colors?.[0] ?? CHART_COLORS[index % CHART_COLORS.length]));
+  slots.forEach((slot, index) => teamColors.set(slot.team.abbrev, CHART_COLORS[index % CHART_COLORS.length]));
 
   const renderChart = (title: string, data: typeof winPctData, yFormatter: (value: number) => string, baseline?: number) => (
     <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-4">

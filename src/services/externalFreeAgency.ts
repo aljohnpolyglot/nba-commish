@@ -1,11 +1,11 @@
 /**
  * externalFreeAgency.ts
  *
- * Annual free-agency pass for foreign-league players. Runs at season rollover
- * (Jun 30) AFTER the rollover map has auto-resigned sub-K2-70 players in place
+ * Annual free-agency pass for foreign-league players. Runs at season transition
+ * after the transition map has auto-resigned sub-K2-70 players in place
  * and BEFORE retirement/repopulation.
  *
- * Inputs: pool of players whose contracts JUST expired this rollover (collected
+ * Inputs: pool of players whose contracts just expired in this transition (collected
  * by seasonRollover.ts via a side-effect Set).
  *
  * Per-player decision (constants from src/constants.ts):
@@ -24,15 +24,16 @@
 import type { GameState, NBAPlayer } from '../types';
 import {
   EXTERNAL_SALARY_SCALE,
+  EXTERNAL_LEAGUE_STATUSES,
   EXTERNAL_RESIGN_PROBABILITY,
   HOME_COUNTRY_BIAS,
 } from '../constants';
 import { resolveClubAffinity, resolveNationalityLeague } from './externalLeagueSustainer';
+import { getTeamFullName } from '../utils/teamNames';
 
 const TEAM_SWITCH_CUTOFF = EXTERNAL_RESIGN_PROBABILITY + 0.07; // 0.97
-const EXTERNAL_LEAGUES = new Set([
-  'Euroleague', 'Endesa', 'China CBA', 'NBL Australia', 'PBA', 'B-League', 'G-League', 'WNBA',
-]);
+const EXTERNAL_LEAGUES = new Set(EXTERNAL_LEAGUE_STATUSES);
+const MAX_EXTERNAL_ROSTER = 15;
 
 function seededRandom(seed: string): number {
   let h = 0;
@@ -53,7 +54,7 @@ function pickWeighted<T>(items: Array<{ item: T; weight: number }>, rng: number)
   return items[items.length - 1]?.item ?? null;
 }
 
-function computeSalaryUSD(league: string, ovr: number, salaryCap: number): number {
+export function computeExternalSalaryUSD(league: string, ovr: number, salaryCap: number): number {
   const scale = EXTERNAL_SALARY_SCALE[league] ?? { minPct: 0.001, maxPct: 0.005 };
   // Map OVR 30→min, 60→max with linear interpolation (matches spawnExternalPlayer's band).
   const ovrNorm = Math.max(0, Math.min(1, (ovr - 30) / 30));
@@ -84,6 +85,15 @@ export function runExternalFreeAgency(
   if (expiredPlayerIds.size === 0) {
     return { players: state.players, historyEntries };
   }
+  const projectedRosterCounts = new Map<number, number>();
+  for (const player of state.players) {
+    if (player.tid < 0 || player.status === 'Retired') continue;
+    projectedRosterCounts.set(player.tid, (projectedRosterCounts.get(player.tid) ?? 0) + 1);
+  }
+  const recordMove = (fromTid: number, toTid: number) => {
+    projectedRosterCounts.set(fromTid, Math.max(0, (projectedRosterCounts.get(fromTid) ?? 0) - 1));
+    projectedRosterCounts.set(toTid, (projectedRosterCounts.get(toTid) ?? 0) + 1);
+  };
 
   const updatedPlayers = state.players.map(p => {
     if (!expiredPlayerIds.has(p.internalId)) return p;
@@ -104,24 +114,29 @@ export function runExternalFreeAgency(
 
     // 7% — switch teams within the same league
     if (roll < TEAM_SWITCH_CUTOFF) {
-      const sameLeagueTeams = nonNBATeams.filter(t => t.league === status && t.tid !== currentTid);
+      const sameLeagueTeams = nonNBATeams.filter(t =>
+        t.league === status
+        && t.tid !== currentTid
+        && (projectedRosterCounts.get(t.tid) ?? 0) < MAX_EXTERNAL_ROSTER,
+      );
       if (sameLeagueTeams.length === 0) return p;
 
       const weights = sameLeagueTeams.map(team => {
         const affinity = resolveClubAffinity(team.tid, country);
         const homeBoost = affinity >= 3.0 ? HOME_COUNTRY_BIAS / (1 - HOME_COUNTRY_BIAS) : 1.0;
-        const roster = state.players.filter(pp => pp.tid === team.tid && (pp as any).status !== 'Retired').length;
+        const roster = projectedRosterCounts.get(team.tid) ?? 0;
         const slotPenalty = roster >= 13 ? 0.3 : 1.0; // discourage stuffing already-full rosters
         return { item: team, weight: affinity * homeBoost * slotPenalty };
       });
       const newTeam = pickWeighted(weights, seededRandom(seed + '_team'));
       if (!newTeam) return p;
+      recordMove(currentTid, newTeam.tid);
 
-      const newSalaryUSD = computeSalaryUSD(status, ovr, salaryCap);
+      const newSalaryUSD = computeExternalSalaryUSD(status, ovr, salaryCap);
       const newExp = currentYear + 1 + Math.floor(seededRandom(seed + '_yrs') * 2); // 1-2 yrs
       historyEntries.push({
-        text: `${p.name} signed with ${newTeam.region ?? ''} ${newTeam.name ?? newTeam.abbrev ?? 'club'} (${status}).`.replace(/\s+/g, ' ').trim(),
-        date: state.date ?? `Jun 30, ${currentYear}`,
+        text: `${p.name} signed with ${getTeamFullName(newTeam) || newTeam.abbrev || 'club'} (${status}).`,
+        date: state.date,
         type: 'Signing',
         playerIds: [p.internalId],
       });
@@ -142,23 +157,27 @@ export function runExternalFreeAgency(
     if (targetLeague === 'PBA' && !isPhilippinesCountry(country)) {
       return p;
     }
-    const targetTeams = nonNBATeams.filter(t => t.league === targetLeague);
+    const targetTeams = nonNBATeams.filter(t =>
+      t.league === targetLeague
+      && (projectedRosterCounts.get(t.tid) ?? 0) < MAX_EXTERNAL_ROSTER,
+    );
     if (targetTeams.length === 0) return p;
 
     const weights = targetTeams.map(team => {
       const affinity = resolveClubAffinity(team.tid, country);
-      const roster = state.players.filter(pp => pp.tid === team.tid && (pp as any).status !== 'Retired').length;
+      const roster = projectedRosterCounts.get(team.tid) ?? 0;
       const slotPenalty = roster >= 13 ? 0.3 : 1.0;
       return { item: team, weight: affinity * slotPenalty };
     });
     const newTeam = pickWeighted(weights, seededRandom(seed + '_xleague_team'));
     if (!newTeam) return p;
+    recordMove(currentTid, newTeam.tid);
 
-    const newSalaryUSD = computeSalaryUSD(targetLeague, ovr, salaryCap);
+    const newSalaryUSD = computeExternalSalaryUSD(targetLeague, ovr, salaryCap);
     const newExp = currentYear + 1 + Math.floor(seededRandom(seed + '_xleague_yrs') * 2);
     historyEntries.push({
-      text: `${p.name} left the ${status} to sign with ${newTeam.region ?? ''} ${newTeam.name ?? newTeam.abbrev ?? 'club'} (${targetLeague}).`.replace(/\s+/g, ' ').trim(),
-      date: state.date ?? `Jun 30, ${currentYear}`,
+      text: `${p.name} left the ${status} to sign with ${getTeamFullName(newTeam) || newTeam.abbrev || 'club'} (${targetLeague}).`,
+      date: state.date,
       type: 'Signing',
       playerIds: [p.internalId],
     });

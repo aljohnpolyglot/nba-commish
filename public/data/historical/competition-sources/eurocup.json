@@ -1,0 +1,1845 @@
+{
+  "eurocup_finals_results": [
+    {
+      "season": "2002–03",
+      "winner": "Valencia",
+      "score": "168–154 (78–90 / 78–76)",
+      "runner_up": "Krka",
+      "semifinalists": [
+        "Adecco Estudiantes",
+        "Joventut"
+      ]
+    },
+    {
+      "season": "2003–04",
+      "winner": "Hapoel Jerusalem",
+      "score": "83–72",
+      "runner_up": "Real Madrid",
+      "semifinalists": [
+        "Adecco Estudiantes",
+        "Reflex"
+      ]
+    },
+    {
+      "season": "2004–05",
+      "winner": "Rytas Vilnius",
+      "score": "78–74",
+      "runner_up": "Makedonikos",
+      "semifinalists": [
+        "Hemofarm",
+        "Valencia"
+      ]
+    },
+    {
+      "season": "2005–06",
+      "winner": "Dynamo Moscow",
+      "score": "73–60",
+      "runner_up": "Aris",
+      "semifinalists": [
+        "Hemofarm",
+        "Hapoel Jerusalem"
+      ]
+    },
+    {
+      "season": "2006–07",
+      "winner": "Real Madrid",
+      "score": "87–75",
+      "runner_up": "Rytas Vilnius",
+      "semifinalists": [
+        "FMP",
+        "UNICS"
+      ]
+    },
+    {
+      "season": "2007–08",
+      "winner": "Joventut",
+      "score": "79–54",
+      "runner_up": "Girona",
+      "third_place": "Dynamo",
+      "third_place_score": "84–67",
+      "fourth_place": "Galatasaray"
+    },
+    {
+      "season": "2008–09",
+      "winner": "Rytas Vilnius",
+      "score": "80–74",
+      "runner_up": "Khimki",
+      "semifinalists": [
+        "Hemofarm",
+        "Bilbao"
+      ]
+    },
+    {
+      "season": "2009–10",
+      "winner": "Valencia",
+      "score": "67–44",
+      "runner_up": "Alba",
+      "third_place": "Bilbao",
+      "third_place_score": "76–67",
+      "fourth_place": "Panellinios"
+    },
+    {
+      "season": "2010–11",
+      "winner": "UNICS",
+      "score": "92–77",
+      "runner_up": "Cajasol",
+      "third_place": "Cedevita",
+      "third_place_score": "59–57",
+      "fourth_place": "Benetton"
+    },
+    {
+      "season": "2011–12",
+      "winner": "Khimki",
+      "score": "77–68",
+      "runner_up": "Valencia",
+      "third_place": "Rytas Vilnius",
+      "third_place_score": "71–62",
+      "fourth_place": "Saint Petersburg"
+    },
+    {
+      "season": "2012–13",
+      "winner": "Lokomotiv Kuban",
+      "score": "75–64",
+      "runner_up": "Bilbao",
+      "semifinalists": [
+        "Budivelnyk",
+        "Valencia"
+      ]
+    },
+    {
+      "season": "2013–14",
+      "winner": "Valencia",
+      "score": "165–140 (80–67 / 73–85)",
+      "runner_up": "UNICS",
+      "semifinalists": [
+        "Crvena zvezda",
+        "Nizhny Novgorod"
+      ]
+    },
+    {
+      "season": "2014–15",
+      "winner": "Khimki",
+      "score": "174–130 (66–91 / 83–64)",
+      "runner_up": "Gran Canaria",
+      "semifinalists": [
+        "Banvit",
+        "UNICS"
+      ]
+    },
+    {
+      "season": "2015–16",
+      "winner": "Galatasaray",
+      "score": "140–133 (66–62 / 78–67)",
+      "runner_up": "Strasbourg",
+      "semifinalists": [
+        "Trento",
+        "Gran Canaria"
+      ]
+    },
+    {
+      "season": "2016–17",
+      "winner": "Unicaja",
+      "score": "2–1 (68–62 / 79–71 / 58–63)",
+      "runner_up": "Valencia",
+      "semifinalists": [
+        "Hapoel Jerusalem",
+        "Lokomotiv Kuban"
+      ]
+    },
+    {
+      "season": "2017–18",
+      "winner": "Darüşşafaka",
+      "score": "2–0 (78–81 / 67–59)",
+      "runner_up": "Lokomotiv Kuban",
+      "semifinalists": [
+        "Bayern Munich",
+        "Reggio Emilia"
+      ]
+    },
+    {
+      "season": "2018–19",
+      "winner": "Valencia",
+      "score": "2–1 (89–75 / 95–92 / 89–63)",
+      "runner_up": "Alba",
+      "semifinalists": [
+        "Andorra",
+        "UNICS"
+      ]
+    },
+    {
+      "season": "2019–20",
+      "winner": null,
+      "score": null,
+      "runner_up": null,
+      "semifinalists": [],
+      "note": "Cancelled due to the COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "winner": "Monaco",
+      "score": "2–0 (89–87 / 83–86)",
+      "runner_up": "UNICS",
+      "semifinalists": [
+        "Gran Canaria",
+        "Virtus"
+      ]
+    },
+    {
+      "season": "2021–22",
+      "winner": "Virtus Bologna",
+      "score": "80–67",
+      "runner_up": "Bursaspor",
+      "semifinalists": [
+        "Andorra",
+        "Valencia"
+      ]
+    },
+    {
+      "season": "2022–23",
+      "winner": "Gran Canaria",
+      "score": "71–67",
+      "runner_up": "Türk Telekom",
+      "semifinalists": [
+        "Joventut",
+        "Prometey"
+      ]
+    },
+    {
+      "season": "2023–24",
+      "winner": "Paris",
+      "score": "2–0 (77–64 / 81–89)",
+      "runner_up": "Bourg",
+      "semifinalists": [
+        "Beşiktaş",
+        "London Lions"
+      ]
+    },
+    {
+      "season": "2024–25",
+      "winner": "Hapoel Tel Aviv",
+      "score": "2–0 (74–65 / 94–103)",
+      "runner_up": "Dreamland Gran Canaria",
+      "semifinalists": [
+        "Bahçeşehir Koleji",
+        "Valencia Basket"
+      ]
+    },
+    {
+      "season": "2025–26",
+      "winner": "Bourg",
+      "score": "2–0 (60–72 / 73–71)",
+      "runner_up": "Beşiktaş",
+      "semifinalists": [
+        "Bahçeşehir Koleji",
+        "Türk Telekom"
+      ]
+    }
+  ],
+  "eurocup_mvp": [
+    {
+      "season": "2008–09",
+      "player": "Chuck Eidson",
+      "nationality": "United States",
+      "team": "Lietuvos Rytas"
+    },
+    {
+      "season": "2009–10",
+      "player": "Marko Banić",
+      "nationality": "Croatia",
+      "team": "Bilbao"
+    },
+    {
+      "season": "2010–11",
+      "player": "Dontaye Draper",
+      "nationality": "Croatia",
+      "team": "Cedevita Zagreb"
+    },
+    {
+      "season": "2011–12",
+      "player": "Patrick Beverley",
+      "nationality": "United States",
+      "team": "Spartak St. Petersburg"
+    },
+    {
+      "season": "2012–13",
+      "player": "Nick Calathes",
+      "nationality": "Greece",
+      "team": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2013–14",
+      "player": "Drew Goudelock",
+      "nationality": "United States",
+      "team": "UNICS Kazan"
+    },
+    {
+      "season": "2014–15",
+      "player": "Tyrese Rice",
+      "nationality": "Montenegro",
+      "team": "Khimki"
+    },
+    {
+      "season": "2015–16",
+      "player": "Errick McCollum",
+      "nationality": "United States",
+      "team": "Galatasaray"
+    },
+    {
+      "season": "2016–17",
+      "player": "Alexey Shved",
+      "nationality": "Russia",
+      "team": "Khimki"
+    },
+    {
+      "season": "2017–18",
+      "player": "Scottie Wilbekin",
+      "nationality": "Turkey",
+      "team": "Darüşşafaka"
+    },
+    {
+      "season": "2018–19",
+      "player": "Luke Sikma",
+      "nationality": "United States",
+      "team": "Alba Berlin"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "nationality": null,
+      "team": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Jamar Smith",
+      "nationality": "United States",
+      "team": "UNICS Kazan"
+    },
+    {
+      "season": "2021–22",
+      "player": "Mouhammadou Jaiteh",
+      "nationality": "France",
+      "team": "Virtus Segafredo Bologna"
+    },
+    {
+      "season": "2022–23",
+      "player": "Jerian Grant",
+      "nationality": "United States",
+      "team": "Türk Telekom"
+    },
+    {
+      "season": "2023–24",
+      "player": "T. J. Shorts",
+      "nationality": "North Macedonia",
+      "team": "Paris Basketball"
+    },
+    {
+      "season": "2024–25",
+      "player": "Jared Harper",
+      "nationality": "United States",
+      "team": "Hapoel Jerusalem"
+    },
+    {
+      "season": "2025–26",
+      "player": "Jared Harper",
+      "nationality": "United States",
+      "team": "Hapoel Jerusalem"
+    }
+  ],
+  "eurocup_finals_mvp": [
+    {
+      "season": "2002–03",
+      "player": "Dejan Tomašević",
+      "nationality": "Serbia and Montenegro",
+      "team": "Valencia"
+    },
+    {
+      "season": "2003–04",
+      "player": "Kelly McCarty",
+      "nationality": "Russia",
+      "team": "Hapoel Jerusalem"
+    },
+    {
+      "season": "2004–05",
+      "player": "Robertas Javtokas",
+      "nationality": "Lithuania",
+      "team": "Lietuvos Rytas"
+    },
+    {
+      "season": "2005–06",
+      "player": "Ruben Douglas",
+      "nationality": "Panama",
+      "team": "Dynamo Moscow"
+    },
+    {
+      "season": "2006–07",
+      "player": "Charles Smith",
+      "nationality": "United States",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2007–08",
+      "player": "Rudy Fernández",
+      "nationality": "Spain",
+      "team": "Joventut Badalona"
+    },
+    {
+      "season": "2008–09",
+      "player": "Marijonas Petravičius",
+      "nationality": "Lithuania",
+      "team": "Lietuvos Rytas"
+    },
+    {
+      "season": "2009–10",
+      "player": "Matt Nielsen",
+      "nationality": "Australia",
+      "team": "Valencia"
+    },
+    {
+      "season": "2010–11",
+      "player": "Marko Popović",
+      "nationality": "Croatia",
+      "team": "UNICS Kazan"
+    },
+    {
+      "season": "2011–12",
+      "player": "Zoran Planinić",
+      "nationality": "Croatia",
+      "team": "Khimki"
+    },
+    {
+      "season": "2012–13",
+      "player": "Richard Hendrix",
+      "nationality": "North Macedonia",
+      "team": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2013–14",
+      "player": "Justin Doellman",
+      "nationality": "Kosovo",
+      "team": "Valencia"
+    },
+    {
+      "season": "2014–15",
+      "player": "Tyrese Rice",
+      "nationality": "Montenegro",
+      "team": "Khimki"
+    },
+    {
+      "season": "2015–16",
+      "player": "Stéphane Lasme",
+      "nationality": "Gabon",
+      "team": "Galatasaray Odeabank"
+    },
+    {
+      "season": "2016–17",
+      "player": "Alberto Díaz",
+      "nationality": "Spain",
+      "team": "Unicaja"
+    },
+    {
+      "season": "2017–18",
+      "player": "Scottie Wilbekin",
+      "nationality": "Turkey",
+      "team": "Darüşşafaka"
+    },
+    {
+      "season": "2018–19",
+      "player": "Will Thomas",
+      "nationality": "Georgia",
+      "team": "Valencia"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "nationality": null,
+      "team": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Rob Gray",
+      "nationality": "United States",
+      "team": "Monaco"
+    },
+    {
+      "season": "2021–22",
+      "player": "Miloš Teodosić",
+      "nationality": "Serbia",
+      "team": "Virtus Segafredo Bologna"
+    },
+    {
+      "season": "2022–23",
+      "player": "John Shurna",
+      "nationality": "United States",
+      "team": "Gran Canaria"
+    },
+    {
+      "season": "2023–24",
+      "player": "T. J. Shorts",
+      "nationality": "North Macedonia",
+      "team": "Paris Basketball"
+    },
+    {
+      "season": "2024–25",
+      "player": "Johnathan Motley",
+      "nationality": "United States",
+      "team": "Hapoel Tel Aviv"
+    },
+    {
+      "season": "2025–26",
+      "player": "Adam Mokoka",
+      "nationality": "France",
+      "team": "Cosea JL Bourg"
+    }
+  ],
+  "all_eurocup_teams": [
+    {
+      "season": "2008–09",
+      "first_team": [
+        {
+          "player": "Chuck Eidson",
+          "club": "Lietuvos Rytas",
+          "nationality": "United States"
+        },
+        {
+          "player": "Kelly McCarty",
+          "club": "Khimki",
+          "nationality": "Russia"
+        },
+        {
+          "player": "Boštjan Nachbar",
+          "club": "Dynamo Moscow",
+          "nationality": "Slovenia"
+        },
+        {
+          "player": "Marko Banić",
+          "club": "Bilbao",
+          "nationality": "Croatia"
+        },
+        {
+          "player": "Todor Gečevski",
+          "club": "Zadar",
+          "nationality": "North Macedonia"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Khalid El-Amin",
+          "club": "Türk Telekom",
+          "nationality": "United States"
+        },
+        {
+          "player": "Gary Neal",
+          "club": "Treviso",
+          "nationality": "United States"
+        },
+        {
+          "player": "Travis Hansen",
+          "club": "Dynamo Moscow",
+          "nationality": "Russia"
+        },
+        {
+          "player": "Matt Nielsen",
+          "club": "Valencia",
+          "nationality": "Australia"
+        },
+        {
+          "player": "Sandro Nicević",
+          "club": "Treviso",
+          "nationality": "Croatia"
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "first_team": [
+        {
+          "player": "Nando De Colo",
+          "club": "Valencia",
+          "nationality": "France"
+        },
+        {
+          "player": "Immanuel McElroy",
+          "club": "Alba Berlin",
+          "nationality": "United States"
+        },
+        {
+          "player": "Devin Smith",
+          "club": "Panellinios",
+          "nationality": "United States"
+        },
+        {
+          "player": "Marko Banić",
+          "club": "Bilbao",
+          "nationality": "Croatia"
+        },
+        {
+          "player": "Matt Nielsen",
+          "club": "Valencia",
+          "nationality": "Australia"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Arthur Lee",
+          "club": "ČEZ Nymburk",
+          "nationality": "United States"
+        },
+        {
+          "player": "Kostas Charalampidis",
+          "club": "Panellinios",
+          "nationality": "Greece"
+        },
+        {
+          "player": "Dijon Thompson",
+          "club": "Hapoel Jerusalem",
+          "nationality": "United States"
+        },
+        {
+          "player": "James Augustine",
+          "club": "Gran Canaria",
+          "nationality": "United States"
+        },
+        {
+          "player": "Blagota Sekulić",
+          "club": "Alba Berlin",
+          "nationality": "Montenegro"
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "first_team": [
+        {
+          "player": "Dontaye Draper",
+          "club": "Cedevita Zagreb",
+          "nationality": "Croatia"
+        },
+        {
+          "player": "Terrell Lyday",
+          "club": "UNICS Kazan",
+          "nationality": "United States"
+        },
+        {
+          "player": "Devin Smith",
+          "club": "Treviso",
+          "nationality": "United States"
+        },
+        {
+          "player": "Tariq Kirksay",
+          "club": "Sevilla",
+          "nationality": "France"
+        },
+        {
+          "player": "Maciej Lampe",
+          "club": "UNICS Kazan",
+          "nationality": "Poland"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Bracey Wright",
+          "club": "Cedevita Zagreb",
+          "nationality": "United States"
+        },
+        {
+          "player": "Dwayne Anderson",
+          "club": "Göttingen",
+          "nationality": "United States"
+        },
+        {
+          "player": "Kelly McCarty",
+          "club": "UNICS Kazan",
+          "nationality": "Russia"
+        },
+        {
+          "player": "Nik Caner-Medley",
+          "club": "Spain Estudiantes",
+          "nationality": "Azerbaijan"
+        },
+        {
+          "player": "Paul Davis",
+          "club": "Sevilla",
+          "nationality": "United States"
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "first_team": [
+        {
+          "player": "Patrick Beverley",
+          "club": "Spartak St. Petersburg",
+          "nationality": "United States"
+        },
+        {
+          "player": "Renaldas Seibutis",
+          "club": "Lietuvos Rytas",
+          "nationality": "Lithuania"
+        },
+        {
+          "player": "Zoran Planinić",
+          "club": "Khimki",
+          "nationality": "Croatia"
+        },
+        {
+          "player": "Nik Caner-Medley",
+          "club": "Valencia",
+          "nationality": "Azerbaijan"
+        },
+        {
+          "player": "Jonas Valančiūnas",
+          "club": "Lietuvos Rytas",
+          "nationality": "Lithuania"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Yotam Halperin",
+          "club": "Spartak St. Petersburg",
+          "nationality": "Israel"
+        },
+        {
+          "player": "Ramel Curry",
+          "club": "Donetsk",
+          "nationality": "United States"
+        },
+        {
+          "player": "Pavel Pumprla",
+          "club": "ČEZ Nymburk",
+          "nationality": "Czech Republic"
+        },
+        {
+          "player": "Jeremiah Massey",
+          "club": "Lokomotiv Kuban",
+          "nationality": "North Macedonia"
+        },
+        {
+          "player": "Bojan Dubljević",
+          "club": "Budućnost",
+          "nationality": "Montenegro"
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "first_team": [
+        {
+          "player": "Malcolm Delaney",
+          "club": "Budivelnyk",
+          "nationality": "United States"
+        },
+        {
+          "player": "Nick Calathes",
+          "club": "Lokomotiv Kuban",
+          "nationality": "Greece"
+        },
+        {
+          "player": "Kostas Vasileiadis",
+          "club": "Bilbao",
+          "nationality": "Greece"
+        },
+        {
+          "player": "Justin Doellman",
+          "club": "Valencia",
+          "nationality": "Kosovo"
+        },
+        {
+          "player": "John Bryant",
+          "club": "Ratiopharm Ulm",
+          "nationality": "United States"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Walter Hodge",
+          "club": "Zielona Góra",
+          "nationality": "United States Virgin Islands"
+        },
+        {
+          "player": "Chuck Eidson",
+          "club": "UNICS Kazan",
+          "nationality": "United States"
+        },
+        {
+          "player": "Derrick Brown",
+          "club": "Lokomotiv Kuban",
+          "nationality": "United States"
+        },
+        {
+          "player": "Lamont Hamilton",
+          "club": "Bilbao",
+          "nationality": "United States"
+        },
+        {
+          "player": "Loukas Mavrokefalidis",
+          "club": "Spartak St. Petersburg",
+          "nationality": "Greece"
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "first_team": [
+        {
+          "player": "DeMarcus Nelson",
+          "club": "Crvena Zvezda",
+          "nationality": "Serbia"
+        },
+        {
+          "player": "Drew Goudelock",
+          "club": "UNICS Kazan",
+          "nationality": "United States"
+        },
+        {
+          "player": "Dijon Thompson",
+          "club": "Nizhny Novgorod",
+          "nationality": "United States"
+        },
+        {
+          "player": "Justin Doellman",
+          "club": "Valencia",
+          "nationality": "Kosovo"
+        },
+        {
+          "player": "Vladimir Golubović",
+          "club": "TED Ankara Kolejliler",
+          "nationality": "Montenegro"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Yotam Halperin",
+          "club": "Hapoel Jerusalem",
+          "nationality": "Israel"
+        },
+        {
+          "player": "Reggie Redding",
+          "club": "Alba Berlin",
+          "nationality": "United States"
+        },
+        {
+          "player": "Caleb Green",
+          "club": "Dinamo Sassari",
+          "nationality": "United States"
+        },
+        {
+          "player": "Darjuš Lavrinovič",
+          "club": "Budivelnyk",
+          "nationality": "Lithuania"
+        },
+        {
+          "player": "Bojan Dubljević",
+          "club": "Valencia",
+          "nationality": "Montenegro"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "first_team": [
+        {
+          "player": "Tyrese Rice",
+          "club": "Khimki",
+          "nationality": "Montenegro"
+        },
+        {
+          "player": "Petteri Koponen",
+          "club": "Khimki",
+          "nationality": "Finland"
+        },
+        {
+          "player": "Sammy Mejía",
+          "club": "Banvit",
+          "nationality": "Dominican Republic"
+        },
+        {
+          "player": "Derrick Brown",
+          "club": "Lokomotiv Kuban",
+          "nationality": "United States"
+        },
+        {
+          "player": "Walter Tavares",
+          "club": "Gran Canaria",
+          "nationality": "Cape Verde"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Bobby Dixon",
+          "club": "Karşıyaka",
+          "nationality": "Turkey"
+        },
+        {
+          "player": "Keith Langford",
+          "club": "UNICS Kazan",
+          "nationality": "United States"
+        },
+        {
+          "player": "Kyle Kuric",
+          "club": "Gran Canaria",
+          "nationality": "Slovakia"
+        },
+        {
+          "player": "Anthony Randolph",
+          "club": "Lokomotiv Kuban",
+          "nationality": "Slovenia"
+        },
+        {
+          "player": "Sharrod Ford",
+          "club": "Paris-Levallois",
+          "nationality": "United States"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "first_team": [
+        {
+          "player": "Errick McCollum",
+          "club": "Galatasaray",
+          "nationality": "United States"
+        },
+        {
+          "player": "Mardy Collins",
+          "club": "Strasbourg IG",
+          "nationality": "United States"
+        },
+        {
+          "player": "Vladimir Micov",
+          "club": "Galatasaray",
+          "nationality": "Serbia"
+        },
+        {
+          "player": "Davide Pascolo",
+          "club": "Aquila Trento",
+          "nationality": "Italy"
+        },
+        {
+          "player": "Alen Omić",
+          "club": "Gran Canaria",
+          "nationality": "Slovenia"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Kevin Pangos",
+          "club": "Gran Canaria",
+          "nationality": "Canada"
+        },
+        {
+          "player": "Victor Rudd",
+          "club": "Nizhny Novgorod",
+          "nationality": "United States"
+        },
+        {
+          "player": "Mateusz Ponitka",
+          "club": "Zielona Góra",
+          "nationality": "Poland"
+        },
+        {
+          "player": "Julian Wright",
+          "club": "Aquila Trento",
+          "nationality": "United States"
+        },
+        {
+          "player": "Stéphane Lasme",
+          "club": "Galatasaray",
+          "nationality": "Gabon"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "first_team": [
+        {
+          "player": "Curtis Jerrells",
+          "club": "Hapoel Jerusalem",
+          "nationality": "United States"
+        },
+        {
+          "player": "Mardy Collins",
+          "club": "Lokomotiv Kuban",
+          "nationality": "United States"
+        },
+        {
+          "player": "Alexey Shved",
+          "club": "Khimki",
+          "nationality": "Russia"
+        },
+        {
+          "player": "Bojan Dubljević",
+          "club": "Valencia",
+          "nationality": "Montenegro"
+        },
+        {
+          "player": "Dejan Musli",
+          "club": "Unicaja Málaga",
+          "nationality": "Serbia"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Kyle Fogg",
+          "club": "Unicaja Málaga",
+          "nationality": "United States"
+        },
+        {
+          "player": "Kyle Kuric",
+          "club": "Gran Canaria",
+          "nationality": "Slovakia"
+        },
+        {
+          "player": "Fernando San Emeterio",
+          "club": "Valencia",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Maxi Kleber",
+          "club": "Bayern Munich",
+          "nationality": "Germany"
+        },
+        {
+          "player": "Amar'e Stoudemire",
+          "club": "Hapoel Jerusalem",
+          "nationality": "United States"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "first_team": [
+        {
+          "player": "Quino Colom",
+          "club": "UNICS Kazan",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Scottie Wilbekin",
+          "club": "Darüşşafaka",
+          "nationality": "Turkey"
+        },
+        {
+          "player": "Amedeo Della Valle",
+          "club": "Reggiana",
+          "nationality": "Italy"
+        },
+        {
+          "player": "Ryan Broekhoff",
+          "club": "Lokomotiv Kuban",
+          "nationality": "Australia"
+        },
+        {
+          "player": "Devin Booker",
+          "club": "Bayern Munich",
+          "nationality": "United States"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Nikola Ivanović",
+          "club": "Budućnost",
+          "nationality": "Montenegro"
+        },
+        {
+          "player": "Kyle Kuric",
+          "club": "Zenit Saint Petersburg",
+          "nationality": "Slovakia"
+        },
+        {
+          "player": "Dmitry Kulagin",
+          "club": "Lokomotiv Kuban",
+          "nationality": "Russia"
+        },
+        {
+          "player": "JaJuan Johnson",
+          "club": "Darüşşafaka",
+          "nationality": "United States"
+        },
+        {
+          "player": "Ondřej Balvín",
+          "club": "Gran Canaria",
+          "nationality": "Czech Republic"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "first_team": [
+        {
+          "player": "Andrew Albicy",
+          "club": "MoraBanc Andorra",
+          "nationality": "France"
+        },
+        {
+          "player": "Errick McCollum",
+          "club": "UNICS Kazan",
+          "nationality": "United States"
+        },
+        {
+          "player": "Rokas Giedraitis",
+          "club": "Alba Berlin",
+          "nationality": "Lithuania"
+        },
+        {
+          "player": "Luke Sikma",
+          "club": "Alba Berlin",
+          "nationality": "United States"
+        },
+        {
+          "player": "Bojan Dubljević",
+          "club": "Valencia",
+          "nationality": "Montenegro"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Pierria Henry",
+          "club": "UNICS Kazan",
+          "nationality": "United States"
+        },
+        {
+          "player": "Sam Van Rossom",
+          "club": "Valencia",
+          "nationality": "Belgium"
+        },
+        {
+          "player": "Dylan Ennis",
+          "club": "MoraBanc Andorra",
+          "nationality": "Canada"
+        },
+        {
+          "player": "Mathias Lessort",
+          "club": "Unicaja Málaga",
+          "nationality": "France"
+        },
+        {
+          "player": "Miro Bilan",
+          "club": "ASVEL Villeurbanne",
+          "nationality": "Croatia"
+        }
+      ]
+    },
+    {
+      "season": "2020–21",
+      "first_team": [
+        {
+          "player": "Miloš Teodosić",
+          "club": "Virtus Segafredo Bologna",
+          "nationality": "Serbia"
+        },
+        {
+          "player": "Jamar Smith",
+          "club": "UNICS Kazan",
+          "nationality": "United States"
+        },
+        {
+          "player": "Isaïa Cordinier",
+          "club": "Nanterre 92",
+          "nationality": "France"
+        },
+        {
+          "player": "Mathias Lessort",
+          "club": "Monaco",
+          "nationality": "France"
+        },
+        {
+          "player": "Willie Reed",
+          "club": "Budućnost VOLI",
+          "nationality": "United States"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Mantas Kalnietis",
+          "club": "Lokomotiv Kuban",
+          "nationality": "Lithuania"
+        },
+        {
+          "player": "Jaka Blažič",
+          "club": "Cedevita Olimpija",
+          "nationality": "Slovenia"
+        },
+        {
+          "player": "Anthony Brown",
+          "club": "Metropolitans 92",
+          "nationality": "United States"
+        },
+        {
+          "player": "John Brown",
+          "club": "UNICS Kazan",
+          "nationality": "United States"
+        },
+        {
+          "player": "Vince Hunter",
+          "club": "Virtus Segafredo Bologna",
+          "nationality": "United States"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "first_team": [
+        {
+          "player": "Miloš Teodosić",
+          "club": "Virtus Segafredo Bologna",
+          "nationality": "Serbia"
+        },
+        {
+          "player": "Will Cummings",
+          "club": "Metropolitans 92",
+          "nationality": "United States"
+        },
+        {
+          "player": "Derek Needham",
+          "club": "Frutti Extra Bursaspor",
+          "nationality": "United States"
+        },
+        {
+          "player": "Jaron Blossomgame",
+          "club": "ratiopharm Ulm",
+          "nationality": "United States"
+        },
+        {
+          "player": "Mam Jaiteh",
+          "club": "Virtus Segafredo Bologna",
+          "nationality": "France"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Kevin Punter",
+          "club": "Partizan NIS Belgrade",
+          "nationality": "United States"
+        },
+        {
+          "player": "Jaka Blažič",
+          "club": "Cedevita Olimpija",
+          "nationality": "Slovenia"
+        },
+        {
+          "player": "Semaj Christon",
+          "club": "ratiopharm Ulm",
+          "nationality": "United States"
+        },
+        {
+          "player": "Caleb Homesley",
+          "club": "Hamburg Towers",
+          "nationality": "United States"
+        },
+        {
+          "player": "Bojan Dubljević",
+          "club": "Valencia Basket",
+          "nationality": "Montenegro"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "first_team": [
+        {
+          "player": "Jerian Grant",
+          "club": "Türk Telekom",
+          "nationality": "United States"
+        },
+        {
+          "player": "D. J. Stephens",
+          "club": "Prometey",
+          "nationality": "United States"
+        },
+        {
+          "player": "Axel Bouteille",
+          "club": "Türk Telekom",
+          "nationality": "France"
+        },
+        {
+          "player": "John Shurna",
+          "club": "Gran Canaria",
+          "nationality": "United States"
+        },
+        {
+          "player": "Ante Tomić",
+          "club": "Joventut",
+          "nationality": "Croatia"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "J'Covan Brown",
+          "club": "Hapoel Tel Aviv",
+          "nationality": "United States"
+        },
+        {
+          "player": "Onuralp Bitim",
+          "club": "Frutti Extra Bursaspor",
+          "nationality": "Turkey"
+        },
+        {
+          "player": "Sam Dekker",
+          "club": "London Lions",
+          "nationality": "United States"
+        },
+        {
+          "player": "Bruno Caboclo",
+          "club": "ratiopharm Ulm",
+          "nationality": "Brazil"
+        },
+        {
+          "player": "Tyrique Jones",
+          "club": "Türk Telekom",
+          "nationality": "United States"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "first_team": [
+        {
+          "player": "T. J. Shorts",
+          "club": "Paris Basketball",
+          "nationality": "North Macedonia"
+        },
+        {
+          "player": "Matt Morgan",
+          "club": "London Lions",
+          "nationality": "United States"
+        },
+        {
+          "player": "Isiaha Mike",
+          "club": "JL Bourg",
+          "nationality": "Canada"
+        },
+        {
+          "player": "Trevion Williams",
+          "club": "Ratiopharm Ulm",
+          "nationality": "United States"
+        },
+        {
+          "player": "Gabriel Olaseni",
+          "club": "London Lions",
+          "nationality": "United Kingdom"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Andrés Feliz",
+          "club": "Joventut",
+          "nationality": "Dominican Republic"
+        },
+        {
+          "player": "Patrick Richard",
+          "club": "U-BT Cluj-Napoca",
+          "nationality": "United States"
+        },
+        {
+          "player": "Nadir Hifi",
+          "club": "Paris Basketball",
+          "nationality": "France"
+        },
+        {
+          "player": "Deividas Sirvydis",
+          "club": "Lietkabelis",
+          "nationality": "Lithuania"
+        },
+        {
+          "player": "Emanuel Cățe",
+          "club": "U-BT Cluj-Napoca",
+          "nationality": "Romania"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "first_team": [
+        {
+          "player": "Jared Harper",
+          "club": "Hapoel Jerusalem",
+          "nationality": "United States"
+        },
+        {
+          "player": "Jean Montero",
+          "club": "Valencia",
+          "nationality": "Dominican Republic"
+        },
+        {
+          "player": "Jaleen Smith",
+          "club": "Bahçeşehir Koleji",
+          "nationality": "Croatia"
+        },
+        {
+          "player": "Johnathan Motley",
+          "club": "Hapoel Tel Aviv",
+          "nationality": "United States"
+        },
+        {
+          "player": "Mfiondu Kabengele",
+          "club": "Reyer Venezia",
+          "nationality": "Canada"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Zavier Simpson",
+          "club": "U-BT Cluj-Napoca",
+          "nationality": "United States"
+        },
+        {
+          "player": "Anthony Brown",
+          "club": "Türk Telekom",
+          "nationality": "United States"
+        },
+        {
+          "player": "Xabier López-Arostegui",
+          "club": "Valencia",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Semi Ojeleye",
+          "club": "Valencia",
+          "nationality": "United States"
+        },
+        {
+          "player": "Devin Robinson",
+          "club": "Cedevita Olimpija",
+          "nationality": "United States"
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "first_team": [
+        {
+          "player": "Jared Harper",
+          "club": "Hapoel Jerusalem",
+          "nationality": "United States"
+        },
+        {
+          "player": "DeVante' Jones",
+          "club": "Dolomiti Energia Trento",
+          "nationality": "United States"
+        },
+        {
+          "player": "Malachi Flynn",
+          "club": "Bahçeşehir Koleji",
+          "nationality": "Turkey"
+        },
+        {
+          "player": "Kyle Allman",
+          "club": "Türk Telekom",
+          "nationality": "Montenegro"
+        },
+        {
+          "player": "Ante Žižić",
+          "club": "Beşiktaş Gain",
+          "nationality": "Croatia"
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Darius McGhee",
+          "club": "Cosea JL Bourg",
+          "nationality": "United States"
+        },
+        {
+          "player": "Fatts Russell",
+          "club": "U-BT Cluj-Napoca",
+          "nationality": "Romania"
+        },
+        {
+          "player": "Anthony Brown",
+          "club": "Beşiktaş Gain",
+          "nationality": "United States"
+        },
+        {
+          "player": "Both Gach",
+          "club": "Cosea JL Bourg",
+          "nationality": "South Sudan"
+        },
+        {
+          "player": "Mitch Creek",
+          "club": "U-BT Cluj-Napoca",
+          "nationality": "Australia"
+        }
+      ]
+    }
+  ],
+  "eurocup_top_scorers": [
+    {
+      "season": "2002–03",
+      "player": "Jamie Arnold",
+      "position": "PF",
+      "nationality": "United States / Israel",
+      "team": "Krka Novo Mesto",
+      "ppg": 20.3
+    },
+    {
+      "season": "2003–04",
+      "player": "Rasheed Brokenborough",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Kapfenberg Bulls",
+      "ppg": 26.6
+    },
+    {
+      "season": "2004–05",
+      "player": "Todor Stoykov",
+      "position": "SG/SF",
+      "nationality": "Bulgaria",
+      "team": "Academic Sofia",
+      "ppg": 23.9
+    },
+    {
+      "season": "2005–06",
+      "player": "Horace Jenkins",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Hapoel Jerusalem",
+      "ppg": 20.4
+    },
+    {
+      "season": "2006–07",
+      "player": "Milan Gurović",
+      "position": "SF",
+      "nationality": "Serbia / Greece",
+      "team": "Red Star Belgrade",
+      "ppg": 25.9
+    },
+    {
+      "season": "2007–08",
+      "player": "De'Teri Mayes",
+      "position": "SG",
+      "nationality": "United States / Austria",
+      "team": "Swans Gmunden",
+      "ppg": 21.1
+    },
+    {
+      "season": "2008–09",
+      "player": "Khalid El-Amin",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Azovmash Mariupol",
+      "ppg": 17.9
+    },
+    {
+      "season": "2009–10",
+      "player": "Darius Washington",
+      "position": "PG/SG",
+      "nationality": "United States / North Macedonia",
+      "team": "Galatasaray Istanbul",
+      "ppg": 21.6
+    },
+    {
+      "season": "2010–11",
+      "player": "Jaycee Carroll",
+      "position": "SG",
+      "nationality": "United States / Azerbaijan",
+      "team": "Gran Canaria Las Palmas",
+      "ppg": 19
+    },
+    {
+      "season": "2011–12",
+      "player": "Ramel Curry",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Donetsk",
+      "ppg": 16.4
+    },
+    {
+      "season": "2012–13",
+      "player": "Walter Hodge",
+      "position": "PG",
+      "nationality": "United States Virgin Islands / Puerto Rico",
+      "team": "Zielona Góra",
+      "ppg": 21.2
+    },
+    {
+      "season": "2013–14",
+      "player": "Errick McCollum",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Panionios",
+      "ppg": 20.2
+    },
+    {
+      "season": "2014–15",
+      "player": "Randy Culpepper",
+      "position": "PG/SG",
+      "nationality": "United States",
+      "team": "Red October Volgograd",
+      "ppg": 19.2
+    },
+    {
+      "season": "2015–16",
+      "player": "Keith Langford",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "UNICS Kazan",
+      "ppg": 19.7
+    },
+    {
+      "season": "2016–17",
+      "player": "Alexey Shved",
+      "position": "SG",
+      "nationality": "Russia",
+      "team": "Khimki Moscow",
+      "ppg": 22.1
+    },
+    {
+      "season": "2017–18",
+      "player": "Scottie Wilbekin",
+      "position": "SG",
+      "nationality": "United States / Bosnia and Herzegovina",
+      "team": "Darüşşafaka",
+      "ppg": 19.7
+    },
+    {
+      "season": "2018–19",
+      "player": "Peyton Siva",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Alba Berlin",
+      "ppg": 15.2
+    },
+    {
+      "season": "2019–20",
+      "player": "Miloš Teodosić",
+      "position": "PG/SG",
+      "nationality": "Serbia",
+      "team": "Segafredo Virtus Bologna",
+      "ppg": 17.8
+    },
+    {
+      "season": "2020–21",
+      "player": "Jaka Blažič",
+      "position": "SG/SF",
+      "nationality": "Slovenia",
+      "team": "Cedevita Olimpija",
+      "ppg": 19.1
+    },
+    {
+      "season": "2021–22",
+      "player": "Errick McCollum",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Lokomotiv Kuban",
+      "ppg": 22.3
+    },
+    {
+      "season": "2022–23",
+      "player": "Yogi Ferrell",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Cedevita Olimpija",
+      "ppg": 18.4
+    },
+    {
+      "season": "2023–24",
+      "player": "Deividas Sirvydis",
+      "position": "SG/SF",
+      "nationality": "Lithuania",
+      "team": "Lietkabelis",
+      "ppg": 18.9
+    },
+    {
+      "season": "2024–25",
+      "player": "Jared Harper",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Hapoel Jerusalem",
+      "ppg": 22.8
+    },
+    {
+      "season": "2025–26",
+      "player": "Daron Russell",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "U-BT Cluj-Napoca",
+      "ppg": 19.8
+    }
+  ],
+  "eurocup_rising_star": [
+    {
+      "season": "2008–09",
+      "player": "Milan Mačvan",
+      "team": "Hemofarm"
+    },
+    {
+      "season": "2009–10",
+      "player": "Víctor Claver",
+      "team": "Valencia"
+    },
+    {
+      "season": "2010–11",
+      "player": "Donatas Motiejūnas",
+      "team": "Treviso"
+    },
+    {
+      "season": "2011–12",
+      "player": "Jonas Valančiūnas",
+      "team": "Lietuvos Rytas"
+    },
+    {
+      "season": "2012–13",
+      "player": "Bojan Dubljević",
+      "team": "Valencia"
+    },
+    {
+      "season": "2013–14",
+      "player": "Bojan Dubljević",
+      "team": "Valencia"
+    },
+    {
+      "season": "2014–15",
+      "player": "Kristaps Porziņģis",
+      "team": "Sevilla"
+    },
+    {
+      "season": "2015–16",
+      "player": "Mateusz Ponitka",
+      "team": "Zielona Góra"
+    },
+    {
+      "season": "2016–17",
+      "player": "Rolands Šmits",
+      "team": "Montakit Fuenlabrada"
+    },
+    {
+      "season": "2017–18",
+      "player": "Džanan Musa",
+      "team": "Cedevita"
+    },
+    {
+      "season": "2018–19",
+      "player": "Martynas Echodas",
+      "team": "Rytas"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Aleksander Balcerowski",
+      "team": "Herbalife Gran Canaria"
+    },
+    {
+      "season": "2021–22",
+      "player": "Khalifa Diop",
+      "team": "Herbalife Gran Canaria"
+    },
+    {
+      "season": "2022–23",
+      "player": "Aleksander Balcerowski",
+      "team": "Herbalife Gran Canaria"
+    },
+    {
+      "season": "2023–24",
+      "player": "Zaccharie Risacher",
+      "team": "JL Bourg"
+    },
+    {
+      "season": "2024–25",
+      "player": "Jean Montero",
+      "team": "Valencia Basket"
+    },
+    {
+      "season": "2025–26",
+      "player": "Tobias Jensen",
+      "team": "ratiopharm Ulm"
+    }
+  ],
+  "eurocup_coach_of_the_year": [
+    {
+      "season": "2008–09",
+      "coach": "Oktay Mahmuti",
+      "team": "Treviso"
+    },
+    {
+      "season": "2009–10",
+      "coach": "Ilias Zouros",
+      "team": "Panellinios"
+    },
+    {
+      "season": "2010–11",
+      "coach": "Aleksandar Petrović",
+      "team": "Cedevita Zagreb"
+    },
+    {
+      "season": "2011–12",
+      "coach": "Jure Zdovc",
+      "team": "Spartak St. Petersburg"
+    },
+    {
+      "season": "2012–13",
+      "coach": "Fotios Katsikaris",
+      "team": "Bilbao"
+    },
+    {
+      "season": "2013–14",
+      "coach": "Andrea Trinchieri",
+      "team": "UNICS Kazan"
+    },
+    {
+      "season": "2014–15",
+      "coach": "Aíto García Reneses",
+      "team": "Gran Canaria"
+    },
+    {
+      "season": "2015–16",
+      "coach": "Maurizio Buscaglia",
+      "team": "Aquila Trento"
+    },
+    {
+      "season": "2016–17",
+      "coach": "Pedro Martínez",
+      "team": "Valencia"
+    },
+    {
+      "season": "2017–18",
+      "coach": "Saša Obradović",
+      "team": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2018–19",
+      "coach": "Aíto García Reneses",
+      "team": "Alba Berlin"
+    },
+    {
+      "season": "2019–20",
+      "coach": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "coach": "Zvezdan Mitrović",
+      "team": "Monaco"
+    },
+    {
+      "season": "2021–22",
+      "coach": "Dušan Alimpijević",
+      "team": "Frutti Extra Bursaspor"
+    },
+    {
+      "season": "2022–23",
+      "coach": "Erdem Can",
+      "team": "Türk Telekom"
+    },
+    {
+      "season": "2023–24",
+      "coach": "Tuomas Iisalo",
+      "team": "Paris"
+    },
+    {
+      "season": "2024–25",
+      "coach": "Pedro Martínez",
+      "team": "Valencia"
+    },
+    {
+      "season": "2025–26",
+      "coach": "Dušan Alimpijević",
+      "team": "Beşiktaş Gain"
+    }
+  ]
+}

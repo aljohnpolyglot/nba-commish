@@ -1,0 +1,2802 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "gleague-league-file.1902304077247067",
+  "competitionKey": "gleague",
+  "competitionName": "NBA G League",
+  "leagueKey": "gleague",
+  "generatedAt": "2026-07-24T08:48:20.673Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "gleague-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/gleague/stats/2026/Averages/Qualified/points/All/desc/1/FullSeason",
+        "sourcePath": "public/data/external/gleague/gleague-2026-bbgm.json",
+        "sourceHash": "f27bbcd13962473e75edbd73e9e584edc1bfd6e5269917cc7f89d5484ee35d59",
+        "fetchedAt": "2026-07-24T08:48:20.673Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2002,
+      "seasonLabel": "2002",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Fred House",
+                "canonicalKey": "person:fred-house"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Fred House",
+                "canonicalKey": "person:fred-house"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2003,
+      "seasonLabel": "2003",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devin Brown",
+                "canonicalKey": "person:devin-brown"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mikki Moore",
+                "canonicalKey": "person:mikki-moore"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devin Brown",
+                "canonicalKey": "person:devin-brown"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mikki Moore",
+                "canonicalKey": "person:mikki-moore"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devin Brown",
+                "canonicalKey": "person:devin-brown"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2004,
+      "seasonLabel": "2004",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tierre Brown",
+                "canonicalKey": "person:tierre-brown"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2005,
+      "seasonLabel": "2005",
+      "status": "complete"
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Bynum",
+                "canonicalKey": "person:will-bynum"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Bynum",
+                "canonicalKey": "person:will-bynum"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Randy Livingston",
+                "canonicalKey": "person:randy-livingston"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Renaldo Major",
+                "canonicalKey": "person:renaldo-major"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Renaldo Major",
+                "canonicalKey": "person:renaldo-major"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Idaho Stampede",
+          "canonicalKey": "gleague:idaho-stampede"
+        },
+        "won": 36,
+        "lost": 14
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jeremy Richardson",
+                "canonicalKey": "person:jeremy-richardson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fort Wayne Mad Ants",
+                "canonicalKey": "gleague:fort-wayne-mad-ants"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Saer Sene",
+                "canonicalKey": "person:saer-sene"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Idaho Stampede",
+                "canonicalKey": "gleague:idaho-stampede"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Blake Ahearn",
+                "canonicalKey": "person:blake-ahearn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dakota Wizards",
+                "canonicalKey": "gleague:dakota-wizards"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Saer Sene",
+                "canonicalKey": "person:saer-sene"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Idaho Stampede",
+                "canonicalKey": "gleague:idaho-stampede"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Blake Ahearn",
+                "canonicalKey": "person:blake-ahearn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dakota Wizards",
+                "canonicalKey": "gleague:dakota-wizards"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Colorado 14ers",
+          "canonicalKey": "gleague:colorado-14ers"
+        },
+        "won": 34,
+        "lost": 16
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Courtney Sims",
+                "canonicalKey": "person:courtney-sims"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Iowa Wolves",
+                "canonicalKey": "gleague:iowa-wolves"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brent Petway",
+                "canonicalKey": "person:brent-petway"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Idaho Stampede",
+                "canonicalKey": "gleague:idaho-stampede"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Othyus Jeffers",
+                "canonicalKey": "person:othyus-jeffers"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Iowa Wolves",
+                "canonicalKey": "gleague:iowa-wolves"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brent Petway",
+                "canonicalKey": "person:brent-petway"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Idaho Stampede",
+                "canonicalKey": "gleague:idaho-stampede"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Othyus Jeffers",
+                "canonicalKey": "person:othyus-jeffers"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Iowa Wolves",
+                "canonicalKey": "gleague:iowa-wolves"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Iowa Wolves",
+          "canonicalKey": "gleague:iowa-wolves"
+        },
+        "won": 37,
+        "lost": 13
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike Harris",
+                "canonicalKey": "person:mike-harris"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Rio Grande Valley Vipers",
+                "canonicalKey": "gleague:rio-grande-valley-vipers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Greg Stiemsma",
+                "canonicalKey": "person:greg-stiemsma"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sioux Falls Skyforce",
+                "canonicalKey": "gleague:sioux-falls-skyforce"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alonzo Gee",
+                "canonicalKey": "person:alonzo-gee"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Austin Spurs",
+                "canonicalKey": "gleague:austin-spurs"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mildon Ambres",
+                "canonicalKey": "person:mildon-ambres"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Idaho Stampede",
+                "canonicalKey": "gleague:idaho-stampede"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Greg Stiemsma",
+                "canonicalKey": "person:greg-stiemsma"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sioux Falls Skyforce",
+                "canonicalKey": "gleague:sioux-falls-skyforce"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alonzo Gee",
+                "canonicalKey": "person:alonzo-gee"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Austin Spurs",
+                "canonicalKey": "gleague:austin-spurs"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Iowa Wolves",
+          "canonicalKey": "gleague:iowa-wolves"
+        },
+        "won": 37,
+        "lost": 13
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Courtney Sims",
+                "canonicalKey": "person:courtney-sims"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Iowa Wolves",
+                "canonicalKey": "gleague:iowa-wolves"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Johnson",
+                "canonicalKey": "person:chris-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dakota Wizards",
+                "canonicalKey": "gleague:dakota-wizards"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeShawn Sims",
+                "canonicalKey": "person:deshawn-sims"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dar Tucker",
+                "canonicalKey": "person:dar-tucker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Mexico Thunderbirds",
+                "canonicalKey": "gleague:new-mexico-thunderbirds"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Johnson",
+                "canonicalKey": "person:chris-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dakota Wizards",
+                "canonicalKey": "gleague:dakota-wizards"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeShawn Sims",
+                "canonicalKey": "person:deshawn-sims"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "South Bay Lakers",
+          "canonicalKey": "gleague:south-bay-lakers"
+        },
+        "won": 38,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gerald Green",
+                "canonicalKey": "person:gerald-green"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South Bay Lakers",
+                "canonicalKey": "gleague:south-bay-lakers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Stefhon Hannah",
+                "canonicalKey": "person:stefhon-hannah"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dakota Wizards",
+                "canonicalKey": "gleague:dakota-wizards"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edwin Ubiles",
+                "canonicalKey": "person:edwin-ubiles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dakota Wizards",
+                "canonicalKey": "gleague:dakota-wizards"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kenny Hayes",
+                "canonicalKey": "person:kenny-hayes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Stefhon Hannah",
+                "canonicalKey": "person:stefhon-hannah"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dakota Wizards",
+                "canonicalKey": "gleague:dakota-wizards"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edwin Ubiles",
+                "canonicalKey": "person:edwin-ubiles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dakota Wizards",
+                "canonicalKey": "gleague:dakota-wizards"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Bakersfield Jam",
+          "canonicalKey": "gleague:bakersfield-jam"
+        },
+        "won": 36,
+        "lost": 14
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Travis Leslie",
+                "canonicalKey": "person:travis-leslie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Santa Cruz Warriors",
+                "canonicalKey": "gleague:santa-cruz-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Stefhon Hannah",
+                "canonicalKey": "person:stefhon-hannah"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Santa Cruz Warriors",
+                "canonicalKey": "gleague:santa-cruz-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tony Mitchell",
+                "canonicalKey": "person:tony-mitchell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fort Wayne Mad Ants",
+                "canonicalKey": "gleague:fort-wayne-mad-ants"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cameron Jones",
+                "canonicalKey": "person:cameron-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Santa Cruz Warriors",
+                "canonicalKey": "gleague:santa-cruz-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Stefhon Hannah",
+                "canonicalKey": "person:stefhon-hannah"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Santa Cruz Warriors",
+                "canonicalKey": "gleague:santa-cruz-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tony Mitchell",
+                "canonicalKey": "person:tony-mitchell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fort Wayne Mad Ants",
+                "canonicalKey": "gleague:fort-wayne-mad-ants"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fort Wayne Mad Ants",
+          "canonicalKey": "gleague:fort-wayne-mad-ants"
+        },
+        "won": 34,
+        "lost": 16
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ron Howard",
+                "canonicalKey": "person:ron-howard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fort Wayne Mad Ants",
+                "canonicalKey": "gleague:fort-wayne-mad-ants"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeAndre Liggins",
+                "canonicalKey": "person:deandre-liggins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sioux Falls Skyforce",
+                "canonicalKey": "gleague:sioux-falls-skyforce"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Robert Covington",
+                "canonicalKey": "person:robert-covington"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Rio Grande Valley Vipers",
+                "canonicalKey": "gleague:rio-grande-valley-vipers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Frank Gaines",
+                "canonicalKey": "person:frank-gaines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeAndre Liggins",
+                "canonicalKey": "person:deandre-liggins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sioux Falls Skyforce",
+                "canonicalKey": "gleague:sioux-falls-skyforce"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Robert Covington",
+                "canonicalKey": "person:robert-covington"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Rio Grande Valley Vipers",
+                "canonicalKey": "gleague:rio-grande-valley-vipers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Santa Cruz Warriors",
+          "canonicalKey": "gleague:santa-cruz-warriors"
+        },
+        "won": 35,
+        "lost": 15
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andre Emmett",
+                "canonicalKey": "person:andre-emmett"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fort Wayne Mad Ants",
+                "canonicalKey": "gleague:fort-wayne-mad-ants"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aaron Craft",
+                "canonicalKey": "person:aaron-craft"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Santa Cruz Warriors",
+                "canonicalKey": "gleague:santa-cruz-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tim Frazier",
+                "canonicalKey": "person:tim-frazier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Joe Jackson",
+                "canonicalKey": "person:joe-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bakersfield Jam",
+                "canonicalKey": "gleague:bakersfield-jam"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aaron Craft",
+                "canonicalKey": "person:aaron-craft"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Santa Cruz Warriors",
+                "canonicalKey": "gleague:santa-cruz-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tim Frazier",
+                "canonicalKey": "person:tim-frazier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Sioux Falls Skyforce",
+          "canonicalKey": "gleague:sioux-falls-skyforce"
+        },
+        "won": 40,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jimmer Fredette",
+                "canonicalKey": "person:jimmer-fredette"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Westchester Knicks",
+                "canonicalKey": "gleague:westchester-knicks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeAndre Liggins",
+                "canonicalKey": "person:deandre-liggins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sioux Falls Skyforce",
+                "canonicalKey": "gleague:sioux-falls-skyforce"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Quinn Cook",
+                "canonicalKey": "person:quinn-cook"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Charge",
+                "canonicalKey": "gleague:cleveland-charge"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Axel Toupane",
+                "canonicalKey": "person:axel-toupane"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Raptors 905",
+                "canonicalKey": "gleague:raptors-905"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeAndre Liggins",
+                "canonicalKey": "person:deandre-liggins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sioux Falls Skyforce",
+                "canonicalKey": "gleague:sioux-falls-skyforce"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Quinn Cook",
+                "canonicalKey": "person:quinn-cook"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Charge",
+                "canonicalKey": "gleague:cleveland-charge"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Raptors 905",
+          "canonicalKey": "gleague:raptors-905"
+        },
+        "won": 39,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vander Blue",
+                "canonicalKey": "person:vander-blue"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South Bay Lakers",
+                "canonicalKey": "gleague:south-bay-lakers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Raptors 905",
+                "canonicalKey": "gleague:raptors-905"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Abdel Nader",
+                "canonicalKey": "person:abdel-nader"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devondrick Walker",
+                "canonicalKey": "person:devondrick-walker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Delaware 87ers",
+                "canonicalKey": "gleague:delaware-87ers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Raptors 905",
+                "canonicalKey": "gleague:raptors-905"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Abdel Nader",
+                "canonicalKey": "person:abdel-nader"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Austin Spurs",
+          "canonicalKey": "gleague:austin-spurs"
+        },
+        "won": 32,
+        "lost": 18
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lorenzo Brown",
+                "canonicalKey": "person:lorenzo-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Raptors 905",
+                "canonicalKey": "gleague:raptors-905"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Landry Nnoko",
+                "canonicalKey": "person:landry-nnoko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Grand Rapids Drive",
+                "canonicalKey": "gleague:grand-rapids-drive"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonio Blakeney",
+                "canonicalKey": "person:antonio-blakeney"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Windy City Bulls",
+                "canonicalKey": "gleague:windy-city-bulls"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeQuan Jones",
+                "canonicalKey": "person:dequan-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fort Wayne Mad Ants",
+                "canonicalKey": "gleague:fort-wayne-mad-ants"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Landry Nnoko",
+                "canonicalKey": "person:landry-nnoko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Grand Rapids Drive",
+                "canonicalKey": "gleague:grand-rapids-drive"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonio Blakeney",
+                "canonicalKey": "person:antonio-blakeney"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Windy City Bulls",
+                "canonicalKey": "gleague:windy-city-bulls"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Long Island Nets",
+          "canonicalKey": "gleague:long-island-nets"
+        },
+        "won": 34,
+        "lost": 16
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Boucher",
+                "canonicalKey": "person:chris-boucher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Raptors 905",
+                "canonicalKey": "gleague:raptors-905"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Boucher",
+                "canonicalKey": "person:chris-boucher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Raptors 905",
+                "canonicalKey": "gleague:raptors-905"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Angel Delgado",
+                "canonicalKey": "person:angel-delgado"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Agua Caliente Clippers",
+                "canonicalKey": "gleague:agua-caliente-clippers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Michael Frazier",
+                "canonicalKey": "person:michael-frazier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Rio Grande Valley Vipers",
+                "canonicalKey": "gleague:rio-grande-valley-vipers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Boucher",
+                "canonicalKey": "person:chris-boucher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Raptors 905",
+                "canonicalKey": "gleague:raptors-905"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Angel Delgado",
+                "canonicalKey": "person:angel-delgado"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Agua Caliente Clippers",
+                "canonicalKey": "gleague:agua-caliente-clippers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Wisconsin Herd",
+          "canonicalKey": "gleague:wisconsin-herd"
+        },
+        "won": 33,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Frank Mason",
+                "canonicalKey": "person:frank-mason"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Wisconsin Herd",
+                "canonicalKey": "gleague:wisconsin-herd"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Khalifa Koumadje",
+                "canonicalKey": "person:khalifa-koumadje"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Delaware Blue Coats",
+                "canonicalKey": "gleague:delaware-blue-coats"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tremont Waters",
+                "canonicalKey": "person:tremont-waters"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gabe Vincent",
+                "canonicalKey": "person:gabe-vincent"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sioux Falls Skyforce",
+                "canonicalKey": "gleague:sioux-falls-skyforce"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Khalifa Koumadje",
+                "canonicalKey": "person:khalifa-koumadje"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Delaware Blue Coats",
+                "canonicalKey": "gleague:delaware-blue-coats"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tremont Waters",
+                "canonicalKey": "person:tremont-waters"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maine Red Claws",
+                "canonicalKey": "gleague:maine-red-claws"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Raptors 905",
+          "canonicalKey": "gleague:raptors-905"
+        },
+        "won": 12,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paul Reed, Jr.",
+                "canonicalKey": "person:paul-reed-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Delaware Blue Coats",
+                "canonicalKey": "gleague:delaware-blue-coats"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gary Payton II",
+                "canonicalKey": "person:gary-payton-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Raptors 905",
+                "canonicalKey": "gleague:raptors-905"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paul Reed, Jr.",
+                "canonicalKey": "person:paul-reed-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Delaware Blue Coats",
+                "canonicalKey": "gleague:delaware-blue-coats"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Lamb",
+                "canonicalKey": "person:anthony-lamb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Rio Grande Valley Vipers",
+                "canonicalKey": "gleague:rio-grande-valley-vipers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gary Payton II",
+                "canonicalKey": "person:gary-payton-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Raptors 905",
+                "canonicalKey": "gleague:raptors-905"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paul Reed, Jr.",
+                "canonicalKey": "person:paul-reed-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Delaware Blue Coats",
+                "canonicalKey": "gleague:delaware-blue-coats"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Raptors 905",
+          "canonicalKey": "gleague:raptors-905"
+        },
+        "won": 24,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jarron Cumberland",
+                "canonicalKey": "person:jarron-cumberland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Delaware Blue Coats",
+                "canonicalKey": "gleague:delaware-blue-coats"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shaquille Harrison",
+                "canonicalKey": "person:shaquille-harrison"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Delaware Blue Coats",
+                "canonicalKey": "gleague:delaware-blue-coats"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mac McClung",
+                "canonicalKey": "person:mac-mcclung"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South Bay Lakers",
+                "canonicalKey": "gleague:south-bay-lakers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Craig Randall II",
+                "canonicalKey": "person:craig-randall-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Long Island Nets",
+                "canonicalKey": "gleague:long-island-nets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shaquille Harrison",
+                "canonicalKey": "person:shaquille-harrison"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Delaware Blue Coats",
+                "canonicalKey": "gleague:delaware-blue-coats"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mac McClung",
+                "canonicalKey": "person:mac-mcclung"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South Bay Lakers",
+                "canonicalKey": "gleague:south-bay-lakers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Stockton Kings",
+          "canonicalKey": "gleague:stockton-kings"
+        },
+        "won": 25,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luka Garza",
+                "canonicalKey": "person:luka-garza"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Iowa Wolves",
+                "canonicalKey": "gleague:iowa-wolves"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "James Huff",
+                "canonicalKey": "person:james-huff"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Capital City Go-Go",
+                "canonicalKey": "gleague:capital-city-go-go"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kenny Lofton, Jr.",
+                "canonicalKey": "person:kenny-lofton-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Hustle",
+                "canonicalKey": "gleague:memphis-hustle"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lester Quinones",
+                "canonicalKey": "person:lester-quinones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Santa Cruz Warriors",
+                "canonicalKey": "gleague:santa-cruz-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "James Huff",
+                "canonicalKey": "person:james-huff"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Capital City Go-Go",
+                "canonicalKey": "gleague:capital-city-go-go"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kenny Lofton, Jr.",
+                "canonicalKey": "person:kenny-lofton-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Hustle",
+                "canonicalKey": "gleague:memphis-hustle"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Stockton Kings",
+          "canonicalKey": "gleague:stockton-kings"
+        },
+        "won": 24,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mac McClung",
+                "canonicalKey": "person:mac-mcclung"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Osceola Magic",
+                "canonicalKey": "gleague:osceola-magic"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shaquille Harrison",
+                "canonicalKey": "person:shaquille-harrison"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South Bay Lakers",
+                "canonicalKey": "gleague:south-bay-lakers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Oscar Tshiebwe",
+                "canonicalKey": "person:oscar-tshiebwe"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Mad Ants",
+                "canonicalKey": "gleague:indiana-mad-ants"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alondes Williams",
+                "canonicalKey": "person:alondes-williams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sioux Falls Skyforce",
+                "canonicalKey": "gleague:sioux-falls-skyforce"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shaquille Harrison",
+                "canonicalKey": "person:shaquille-harrison"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South Bay Lakers",
+                "canonicalKey": "gleague:south-bay-lakers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Oscar Tshiebwe",
+                "canonicalKey": "person:oscar-tshiebwe"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Mad Ants",
+                "canonicalKey": "gleague:indiana-mad-ants"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Austin Spurs",
+          "canonicalKey": "gleague:austin-spurs"
+        },
+        "won": 22,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mason Jones",
+                "canonicalKey": "person:mason-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Stockton Kings",
+                "canonicalKey": "gleague:stockton-kings"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Braxton Key",
+                "canonicalKey": "person:braxton-key"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Santa Cruz Warriors",
+                "canonicalKey": "gleague:santa-cruz-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Trey Alexander",
+                "canonicalKey": "person:trey-alexander"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Grand Rapids Gold",
+                "canonicalKey": "gleague:grand-rapids-gold"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "E.J. Harkless",
+                "canonicalKey": "person:e-j-harkless"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Salt Lake City Stars",
+                "canonicalKey": "gleague:salt-lake-city-stars"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Braxton Key",
+                "canonicalKey": "person:braxton-key"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Santa Cruz Warriors",
+                "canonicalKey": "gleague:santa-cruz-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Trey Alexander",
+                "canonicalKey": "person:trey-alexander"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Grand Rapids Gold",
+                "canonicalKey": "gleague:grand-rapids-gold"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Osceola Magic",
+          "canonicalKey": "gleague:osceola-magic"
+        },
+        "won": 26,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "James Akinjo",
+                "canonicalKey": "person:james-akinjo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Grand Rapids Gold",
+                "canonicalKey": "gleague:grand-rapids-gold"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jamarion Sharp",
+                "canonicalKey": "person:jamarion-sharp"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Texas Legends",
+                "canonicalKey": "gleague:texas-legends"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sean Pedulla",
+                "canonicalKey": "person:sean-pedulla"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Diego Clippers",
+                "canonicalKey": "gleague:san-diego-clippers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "most-improved-player",
+          "awardName": "Most Improved Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tristan Enaruna",
+                "canonicalKey": "person:tristan-enaruna"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Charge",
+                "canonicalKey": "gleague:cleveland-charge"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jamarion Sharp",
+                "canonicalKey": "person:jamarion-sharp"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Texas Legends",
+                "canonicalKey": "gleague:texas-legends"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sean Pedulla",
+                "canonicalKey": "person:sean-pedulla"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Diego Clippers",
+                "canonicalKey": "gleague:san-diego-clippers"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

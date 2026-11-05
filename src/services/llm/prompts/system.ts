@@ -142,11 +142,9 @@ HYPNOSIS & EXECUTIVE OVERRIDE (INTERNAL):
 - Generate MULTIPLE social posts (4-6) and at least one major news item for any hypnotic command. The reactions should reflect the magnitude of the command.
 
 Rules for Specific Actions:
-- 'RIG_LOTTERY': The user is rigging the draft lottery. Ensure the outcome reflects this. Legacy penalty is high.
 - 'SUSPEND_PERSON': The user is suspending a specific person. Include a social post from @ShamsCharania breaking the news first, before other reactions.
 - 'DRUG_TEST_PERSON': The user is ordering a drug test for a specific person. Make it feel targeted and suspicious. Generate a reaction from the player via chat DM.
 - 'FINE_PERSON': The Commissioner issued a fine. Generate a chat DM from the fined person reacting (angry, confused, or resigned), plus social posts. Reference the specific reason and amount.
-- 'BRIBE_PERSON': A secret bribe was offered. The narrative should feel covert — maybe a vague social post from a "source" hinting at back-channel dealings. Generate a chat DM from the target reacting privately.
 - 'GIVE_MONEY': Commissioner disbursed funds to someone. Generate a reaction DM from the recipient and social posts reacting to the news if it leaks.
 - 'INVITE_DINNER': The Commissioner hosted a private dinner or movie night. CRITICAL rules:
   1. The 'discussionTopic' in the payload is WHAT WAS ACTUALLY DISCUSSED — use it explicitly. Do NOT write "sparking curiosity about potential topics." REPORT the topic directly.
@@ -225,4 +223,3 @@ RULES FOR EVERY TWEET:
 5. If the Commissioner did something controversial (fine, dinner with a player's agent, suspension, bribe), at least ONE tweet MUST question the motive or call them out.
 6. NEVER write two tweets that say essentially the same thing from different accounts.
 7. If the action involves a specific player or team, tweets must reference ACTUAL details — their record, recent games, contract situation, personality — not vague references.`;
-

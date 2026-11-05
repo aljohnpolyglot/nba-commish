@@ -2,34 +2,48 @@ import { useEffect, useMemo, useState } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
 import { matchCheat, triggerCheat } from '../../../utils/debugCheats';
-import { getCountryFromLoc, formatCurrencyWithCode, getLeagueCurrencyCode } from '../../../utils/helpers';
+import { formatCurrencyWithCode, getLeagueCurrencyCode } from '../../../utils/helpers';
 import { getCapThresholds, getMLEAvailability, getTeamCapProfileFromState, getTeamPayrollUSD } from '../../../utils/salaryUtils';
-import { formatGameDateShort, getCurrentOffseasonFAMoratoriumEnd, getGameDateParts, isInMoratorium } from '../../../utils/dateUtils';
+import { isMleEnabled } from '../../../utils/ruleFlags';
+import { formatGameDateShort, getCurrentOffseasonEffectiveFAStart, getCurrentOffseasonFAMoratoriumEnd, getGameDateParts, isInFreeAgencyWindow, isInMoratorium, isRegularSeasonSigningOpen } from '../../../utils/dateUtils';
 import { calcPot2K } from '../../../services/trade/tradeValueEngine';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import type { NBAPlayer } from '../../../types';
 import { isEuroIsolatedMode, isNonNbaIsolatedMode, isPbaActiveConferenceMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import {
   getEffectivePbaConference,
-  isImportEligible,
+  hasPbaImportExperience,
+  isPbaImportPoolCandidate,
   isPbaRosterLocal,
 } from '../../../services/pba/importManager';
 import { getDisplayAge, getDisplayOverall } from '../../../store/playerRatingStore';
 import { fuzzRatingValue } from '../../../utils/scoutingFuzz';
-import { getStandardRosterLimit, getTrainingCampRosterLimit, getTwoWayRosterLimit } from '../../../utils/rosterLimits';
+import { getSigningRosterLimit, getStandardRosterLimit, getTwoWayRosterLimit } from '../../../utils/rosterLimits';
+import { areNonGuaranteedContractsEnabled, areTwoWayContractsEnabled, isNonGuaranteedContract, isTwoWayContract } from '../../../utils/contractTypes';
+import { isExternalLeaguePlayer } from '../../../utils/playerLeagueScope';
+import { getEurostashRightsTid } from '../../../services/freeAgency/eurostashRights';
 import {
   MARKET_POOLS_EURO,
   MARKET_POOLS_FICTIONAL,
-  MARKET_POOLS_FULL,
   MARKET_POOLS_PBA,
+  MARKET_POOL_LEAGUE_STATUS,
   NON_NBA_STATUS_LABELS,
   ON_ROSTER_STATUSES,
+  getActiveMarketPools,
+  getEuroSigningMarketPool,
   type FreeAgentViewMode,
   type PersonSelectorType,
 } from './freeAgentsViewShared';
+import { getPlayerNationalityCountries } from '../../../utils/playerNationality';
+import { isEuroFreeAgentAvailable } from '../../../services/euro/historicalNbaMarket';
+import { getWnbaDevelopmentalContractLabel } from '../../../services/wnba/developmentalContracts';
+import { isFutureDraftClassPlayer, isUnavailableInternationalTournamentPlayer } from '../../../utils/prospectUtils';
+import { isLeagueTrainingCampWindow } from '../../../services/leagueCalendar';
+
+const EXTERNAL_BUYOUT_PAGE_SIZE = 25;
 
 export function useFreeAgentsViewModel() {
-  const { state, dispatchAction, healPlayer } = useGame();
+  const { state, dispatchAction, healPlayer, navigateToPlayer } = useGame();
   const currencyCode = getLeagueCurrencyCode(state.leagueStats);
   const rosterGate = useRosterComplianceGate();
   const quick = usePlayerQuickActions();
@@ -37,16 +51,36 @@ export function useFreeAgentsViewModel() {
   const isFictional = state.leagueType === 'fictional';
   const euroIsolated = isEuroIsolatedMode(state);
   const pbaIsolated = isPbaIsolatedMode(state);
+  const pbaCommissionerPlayerMarketOpen = pbaIsolated
+    && !isGM
+    && Object.values(state.commissionerTasks?.records ?? {}).some(record =>
+      record.taskId === 'commissioner_free_agency' && record.status === 'in_progress'
+    );
   const pbaImportSearchOpen = pbaIsolated && (
     state.offseasonChecklist?.pbaImportSearch === 'pending' ||
     state.offseasonChecklist?.pbaImportSearch === 'in-progress'
   );
   const nonNbaIsolated = isNonNbaIsolatedMode(state);
-  const marketPools = pbaIsolated ? MARKET_POOLS_PBA : euroIsolated ? MARKET_POOLS_EURO : isFictional ? MARKET_POOLS_FICTIONAL : MARKET_POOLS_FULL;
+  const nbaRightsTeamIds = useMemo(
+    () => new Set(state.teams.map(team => Number(team.id))),
+    [state.teams],
+  );
+  const marketPools = useMemo(
+    () => pbaIsolated
+      ? pbaCommissionerPlayerMarketOpen
+        ? MARKET_POOLS_PBA.map(pool => ({ ...pool, label: 'PBA Free Agents & Imports' }))
+        : MARKET_POOLS_PBA
+      : euroIsolated
+        ? MARKET_POOLS_EURO
+        : isFictional
+          ? MARKET_POOLS_FICTIONAL
+          : getActiveMarketPools(state),
+    [euroIsolated, isFictional, pbaCommissionerPlayerMarketOpen, pbaIsolated, state.nonNBATeams, state.players],
+  );
 
   const [viewMode, setViewMode] = useState<FreeAgentViewMode>('available');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedPool, setSelectedPool] = useState<string>(nonNbaIsolated ? 'all' : isGM ? 'nba' : 'all');
+  const [selectedPool, setSelectedPool] = useState<string>(nonNbaIsolated ? 'all' : 'nba');
   const [selectedPosition, setSelectedPosition] = useState('All');
   const [sortBy, setSortBy] = useState<'ovr' | 'pot' | 'age' | 'name'>('ovr');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
@@ -55,12 +89,10 @@ export function useFreeAgentsViewModel() {
   const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
   const [upcomingTeamFilter, setUpcomingTeamFilter] = useState<number | 'all'>(isGM && state.userTeamId != null ? state.userTeamId : 'all');
   const [selectedActionPlayer, setSelectedActionPlayer] = useState<NBAPlayer | null>(null);
-  const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
   const [viewingRatingsPlayer, setViewingRatingsPlayer] = useState<NBAPlayer | null>(null);
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
   const [personSelectorType, setPersonSelectorType] = useState<PersonSelectorType>('general');
   const [preSelectedContact, setPreSelectedContact] = useState<any>(null);
-  const [contactModalPerson, setContactModalPerson] = useState<any>(null);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [offseasonBlockOpen, setOffseasonBlockOpen] = useState(false);
@@ -73,11 +105,29 @@ export function useFreeAgentsViewModel() {
     setSelectedTeamId(null);
   }, [nonNbaIsolated]);
 
+  useEffect(() => {
+    if (isFictional) return;
+    setViewMode('available');
+  }, [isFictional]);
+
+  useEffect(() => {
+    if (marketPools.some(pool => pool.id === selectedPool)) return;
+    setSelectedPool('all');
+    setSelectedTeamId(null);
+  }, [marketPools, selectedPool]);
+
   const gameDateParts = state.date ? getGameDateParts(state.date) : null;
   const seasonYear = state.leagueStats?.year ?? gameDateParts?.year ?? new Date().getFullYear();
-  const simMonth = gameDateParts?.month ?? 0;
-  const isFreeAgencySeason = (simMonth >= 7 && simMonth <= 9) || simMonth >= 10 || simMonth <= 2;
+  const isOpenFreeAgent = (player: NBAPlayer): boolean =>
+    !isUnavailableInternationalTournamentPlayer(player) && (player.tid === -1 || player.status === 'Free Agent');
+  const isFreeAgencySeason = !!state.date && (
+    isInFreeAgencyWindow(state.date, seasonYear, state.leagueStats as any, state.schedule as any)
+    || isRegularSeasonSigningOpen(state.date, seasonYear, state.leagueStats as any)
+  );
   const isMoratoriumActive = state.date ? isInMoratorium(state.date, seasonYear, state.leagueStats as any, state.schedule as any) : false;
+  const freeAgencyStartLabel = state.date
+    ? formatGameDateShort(getCurrentOffseasonEffectiveFAStart(state.date, state.leagueStats as any, state.schedule as any))
+    : 'the saved opening date';
   const moratoriumEndLabel = state.date ? formatGameDateShort(getCurrentOffseasonFAMoratoriumEnd(state.date, state.leagueStats as any, state.schedule as any)) : 'the moratorium ends';
   const faHeadsUpKey = `fa-moratorium-headsup-${state.saveId ?? 'default'}-${gameDateParts?.year ?? seasonYear}`;
 
@@ -105,34 +155,91 @@ export function useFreeAgentsViewModel() {
   };
 
   const freeAgents = useMemo(
-    () =>
-      state.players.filter(player => {
+    () => {
+      const candidates = state.players.filter(player => {
+        if (isFictional && isExternalLeaguePlayer(player)) return false;
         if (player.status === 'Retired' || player.hof || player.tid === -100) return false;
         if (player.tid === -2 || player.status === 'Prospect' || player.status === 'Draft Prospect') return false;
+        if (isFutureDraftClassPlayer(player, gameDateParts?.year ?? seasonYear)) return false;
         if (pbaIsolated) {
-          const draftYear = Number((player as any).draft?.year ?? 0);
-          if (Number.isFinite(draftYear) && draftYear > seasonYear) return false;
-          if (player.tid !== -1 && player.status !== 'Free Agent') return false;
+          if (!isOpenFreeAgent(player)) return false;
+          if (pbaCommissionerPlayerMarketOpen) {
+            const conference = getEffectivePbaConference(state.leagueStats as any);
+            return (
+              isPbaRosterLocal(player, state.leagueStats as any)
+              || isPbaImportPoolCandidate(
+                player,
+                conference,
+                state.players,
+                state.leagueStats,
+              )
+            ) && getDisplayAge(player, seasonYear) >= 19;
+          }
           if (pbaImportSearchOpen) {
             const conference = getEffectivePbaConference(state.leagueStats as any);
-            return !isPbaRosterLocal(player, state.leagueStats as any) &&
-              isImportEligible(player, conference, state.leagueStats as any).eligible &&
-              getDisplayAge(player, seasonYear) >= 19;
+            return isPbaImportPoolCandidate(
+              player,
+              conference,
+              state.players,
+              state.leagueStats,
+            ) && getDisplayAge(player, seasonYear) >= 19;
           }
-          return isPbaRosterLocal(player, state.leagueStats as any) && getDisplayAge(player, seasonYear) >= 19;
+          const conference = getEffectivePbaConference(state.leagueStats as any);
+          const isReleasedImport = hasPbaImportExperience(player) && isPbaImportPoolCandidate(
+            player,
+            conference,
+            state.players,
+            state.leagueStats,
+          );
+          return (isPbaRosterLocal(player, state.leagueStats as any) || isReleasedImport)
+            && getDisplayAge(player, seasonYear) >= 19;
         }
-        if (nonNbaIsolated && (player.tid ?? -1) >= 0) return false;
+        if (euroIsolated) {
+          if (!isEuroFreeAgentAvailable(state, player)) return false;
+        } else if (nonNbaIsolated && (player.tid ?? -1) >= 0 && player.status !== 'Free Agent') return false;
+        if (!euroIsolated && !pbaIsolated && !nonNbaIsolated && isGM && state.userTeamId != null) {
+          const rightsTid = getEurostashRightsTid(player, nbaRightsTeamIds);
+          if (rightsTid != null && rightsTid !== state.userTeamId) return false;
+        }
         const isInternational = NON_NBA_STATUS_LABELS.includes((player.status || '') as any);
         const isNBAFreeAgent = player.tid === -1 || player.status === 'Free Agent';
         if (!isInternational && !isNBAFreeAgent) return false;
         return getDisplayAge(player, seasonYear) >= 19;
-      }),
-    [state.players, seasonYear, nonNbaIsolated, pbaIsolated, pbaImportSearchOpen, state.leagueStats],
-  );
+      });
+      if (nonNbaIsolated) return candidates;
 
+      const alwaysVisible: NBAPlayer[] = [];
+      const buyoutCandidatesByLeague = new Map<string, NBAPlayer[]>();
+      candidates.forEach(player => {
+        const status = player.status ?? '';
+        const isExternalBuyout = status !== 'G-League' &&
+          NON_NBA_STATUS_LABELS.includes(status as any) &&
+          player.tid >= 0;
+        if (!isExternalBuyout) {
+          alwaysVisible.push(player);
+          return;
+        }
+        const leagueCandidates = buyoutCandidatesByLeague.get(status) ?? [];
+        leagueCandidates.push(player);
+        buyoutCandidatesByLeague.set(status, leagueCandidates);
+      });
+      buyoutCandidatesByLeague.forEach(leagueCandidates => {
+        leagueCandidates
+          .sort((left, right) =>
+            getDisplayOverall(right, seasonYear) - getDisplayOverall(left, seasonYear) ||
+            left.name.localeCompare(right.name),
+          )
+          .slice(0, EXTERNAL_BUYOUT_PAGE_SIZE)
+          .forEach(player => alwaysVisible.push(player));
+      });
+      return alwaysVisible;
+    },
+    [state, seasonYear, nonNbaIsolated, euroIsolated, pbaIsolated, pbaCommissionerPlayerMarketOpen, pbaImportSearchOpen, state.leagueStats, isFictional, isGM, nbaRightsTeamIds],
+  );
   const upcomingFAs = useMemo(
     () =>
       state.players.filter(player => {
+        if (isFictional && isExternalLeaguePlayer(player)) return false;
         if (!ON_ROSTER_STATUSES.has(player.status ?? '')) return false;
         if ((player.tid ?? -1) < 0) return false;
         const exp = player.contract?.exp;
@@ -141,7 +248,7 @@ export function useFreeAgentsViewModel() {
         const finalOpt = ((player as any).contractYears as Array<{ option?: string }> | undefined)?.slice(-1)[0]?.option;
         return (finalOpt === 'player' || finalOpt === 'team') && exp <= seasonYear + 1;
       }),
-    [state.players, seasonYear],
+    [isFictional, state.players, seasonYear],
   );
 
   const sourcePool = viewMode === 'upcoming' ? upcomingFAs : freeAgents;
@@ -149,16 +256,21 @@ export function useFreeAgentsViewModel() {
   const userRosterSlots = useMemo(() => {
     if (!isGM || state.userTeamId == null) return null;
     const roster = state.players.filter(player => player.tid === state.userTeamId);
-    const twoWayCount = nonNbaIsolated ? 0 : roster.filter(player => (player as any).twoWay).length;
-    const ngCount = nonNbaIsolated ? 0 : roster.filter(player => !!(player as any).nonGuaranteed && !(player as any).twoWay).length;
+    const maxTwoWay = nonNbaIsolated ? 0 : getTwoWayRosterLimit(state.leagueStats);
+    const twoWayEnabled = !nonNbaIsolated && areTwoWayContractsEnabled(state.leagueStats);
+    const nonGuaranteedEnabled = !nonNbaIsolated && areNonGuaranteedContractsEnabled(state.leagueStats);
+    const isActiveTwoWay = (player: NBAPlayer) => twoWayEnabled && isTwoWayContract(player, state.leagueStats);
+    const twoWayCount = twoWayEnabled ? roster.filter(isActiveTwoWay).length : 0;
+    const ngCount = nonGuaranteedEnabled
+      ? roster.filter(player => isNonGuaranteedContract(player, state.leagueStats)).length
+      : 0;
     const standardCount = roster.length - twoWayCount;
-    const { month, day } = state.date ? getGameDateParts(state.date) : getGameDateParts(new Date());
-    const isTrainingCamp = (month >= 7 && month <= 9) || (month === 10 && day <= 21);
-    const maxStandard = isTrainingCamp ? getTrainingCampRosterLimit(state.leagueStats) : getStandardRosterLimit(state.leagueStats);
-    const maxTwoWay = getTwoWayRosterLimit(state.leagueStats);
+    const isTrainingCamp = state.offseasonChecklist?.freeAgency === 'in-progress'
+      || isLeagueTrainingCampWindow(state.date ?? new Date(), state.leagueStats);
+    const maxStandard = getSigningRosterLimit(state.leagueStats, isTrainingCamp);
     const userTeam = state.teams.find(team => team.id === state.userTeamId);
     const profile = getTeamCapProfileFromState(state, state.userTeamId, getCapThresholds(state.leagueStats as any));
-    const payroll = getTeamPayrollUSD(state.players, state.userTeamId, userTeam, state.leagueStats?.year);
+    const payroll = getTeamPayrollUSD(state.players, state.userTeamId, userTeam, state.leagueStats?.year, state.leagueStats as any);
     const mle = getMLEAvailability(state.userTeamId, payroll, 0, getCapThresholds(state.leagueStats as any), state.leagueStats as any);
     const reservedMleUSD = (state.faBidding?.markets ?? [])
       .filter((market: any) => !market?.resolved)
@@ -177,9 +289,13 @@ export function useFreeAgentsViewModel() {
       maxGuaranteed: getStandardRosterLimit(state.leagueStats),
       maxStandard,
       maxTwoWay,
+      secondaryContractLabel: getWnbaDevelopmentalContractLabel(state.leagueStats),
+      twoWayEnabled,
       isTrainingCamp,
       totalCount: roster.length,
+      twoWayLeft: Math.max(0, maxTwoWay - twoWayCount),
       capSpaceUSD: profile.capSpaceUSD as number,
+      mleEnabled: isMleEnabled(state.leagueStats),
       mleAvailable: mleAvailableNet,
       mleType: (mle?.type as string | null) ?? null,
     };
@@ -188,17 +304,16 @@ export function useFreeAgentsViewModel() {
   const allCountries = useMemo(() => {
     const set = new Set<string>();
     sourcePool.forEach(player => {
-      const country = getCountryFromLoc(player.born?.loc);
-      if (country) set.add(country);
+      getPlayerNationalityCountries(player as NBAPlayer & { nationality?: unknown }).forEach(country => set.add(country));
     });
     return Array.from(set).sort();
   }, [sourcePool]);
 
   const leagueTeams = useMemo(() => {
+    if (euroIsolated) return [];
     if (selectedPool === 'all' || selectedPool === 'nba') return [];
-    const leagueMap: Record<string, string> = { euroleague: 'Euroleague', pba: 'PBA', bleague: 'B-League', gleague: 'G-League', endesa: 'Endesa', chinacba: 'China CBA', nblaustralia: 'NBL Australia' };
-    return state.nonNBATeams.filter(team => team.league === leagueMap[selectedPool]);
-  }, [selectedPool, state.nonNBATeams]);
+    return state.nonNBATeams.filter(team => team.league === MARKET_POOL_LEAGUE_STATUS[selectedPool]);
+  }, [euroIsolated, selectedPool, state.nonNBATeams]);
 
   const filteredPlayers = useMemo(() => {
     const currentYear = state.leagueStats?.year ?? seasonYear;
@@ -218,11 +333,12 @@ export function useFreeAgentsViewModel() {
     const filtered = sourcePool.filter(player => {
       if (searchTerm && !player.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (selectedPool !== 'all') {
-        if (selectedPool === 'nba') {
+        if (euroIsolated) {
+          if (getEuroSigningMarketPool(player) !== selectedPool) return false;
+        } else if (selectedPool === 'nba') {
           if (viewMode === 'upcoming' ? player.status !== 'Active' : player.status !== 'Free Agent' && player.tid !== -1) return false;
-        } else if (player.status !== leagueTeams.find(() => true)?.league && !NON_NBA_STATUS_LABELS.includes((player.status || '') as any)) {
-          const leagueStatusMap: Record<string, string> = { euroleague: 'Euroleague', pba: 'PBA', bleague: 'B-League', gleague: 'G-League', endesa: 'Endesa', chinacba: 'China CBA', nblaustralia: 'NBL Australia' };
-          if (player.status !== leagueStatusMap[selectedPool]) return false;
+        } else {
+          if (player.status !== MARKET_POOL_LEAGUE_STATUS[selectedPool]) return false;
         }
       }
       if (selectedPosition !== 'All') {
@@ -231,7 +347,7 @@ export function useFreeAgentsViewModel() {
         if ((selectedPosition === 'SF' || selectedPosition === 'PF') && !pos.includes(selectedPosition) && !pos.includes('F')) return false;
         if (!['PG', 'SG', 'SF', 'PF'].includes(selectedPosition) && !pos.includes(selectedPosition)) return false;
       }
-      if (selectedCountry !== 'All' && getCountryFromLoc(player.born?.loc) !== selectedCountry) return false;
+      if (selectedCountry !== 'All' && !getPlayerNationalityCountries(player as NBAPlayer & { nationality?: unknown }).includes(selectedCountry)) return false;
       if (selectedTeamId !== null && player.tid !== selectedTeamId) return false;
       if (viewMode === 'upcoming' && upcomingTeamFilter !== 'all' && (selectedPool === 'all' || selectedPool === 'nba') && player.tid !== upcomingTeamFilter) return false;
       return true;
@@ -250,7 +366,7 @@ export function useFreeAgentsViewModel() {
       return sortOrder === 'asc' ? comparison : -comparison;
     });
     return filtered;
-  }, [sourcePool, searchTerm, selectedPool, viewMode, selectedPosition, selectedCountry, selectedTeamId, upcomingTeamFilter, sortBy, sortOrder, state, seasonYear, leagueTeams]);
+  }, [sourcePool, searchTerm, selectedPool, viewMode, selectedPosition, selectedCountry, selectedTeamId, upcomingTeamFilter, sortBy, sortOrder, state, seasonYear, leagueTeams, euroIsolated]);
 
   useEffect(() => {
     setPage(1);
@@ -275,12 +391,15 @@ export function useFreeAgentsViewModel() {
 
   const handleActionSelect = async (actionType: string) => {
     if (!selectedActionPlayer) return;
-    if (actionType === 'view_bio') return void (setViewingBioPlayer(selectedActionPlayer), setSelectedActionPlayer(null));
+    if (actionType === 'view_bio') {
+      navigateToPlayer(selectedActionPlayer);
+      setSelectedActionPlayer(null);
+      return;
+    }
     if (actionType === 'view_ratings') return void (setViewingRatingsPlayer(selectedActionPlayer), setSelectedActionPlayer(null));
     if (quick.handle(selectedActionPlayer, actionType)) return void setSelectedActionPlayer(null);
     const contact = getContactFromPlayer(selectedActionPlayer);
     setSelectedActionPlayer(null);
-    if (actionType === 'contact') return void setContactModalPerson(contact);
     setPreSelectedContact(contact);
     setPersonSelectorType(actionType as PersonSelectorType);
     setPersonSelectorOpen(true);
@@ -289,7 +408,7 @@ export function useFreeAgentsViewModel() {
   const handlePersonSelected = async (contacts: any[], reason?: string, amount?: number, location?: string, duration?: string) => {
     setPersonSelectorOpen(false);
     setPreSelectedContact(null);
-    const typeMap: Record<string, string> = { bribe: 'BRIBE_PERSON', dinner: 'INVITE_DINNER', movie: 'INVITE_DINNER', suspension: 'SUSPEND_PLAYER', waive: 'WAIVE_PLAYER', sabotage: 'SABOTAGE_PLAYER', drug_test: 'DRUG_TEST_PERSON', fine: 'FINE_PERSON', general: 'INVITE_DINNER' };
+    const typeMap: Record<string, string> = { dinner: 'INVITE_DINNER', movie: 'INVITE_DINNER', suspension: 'SUSPEND_PLAYER', waive: 'WAIVE_PLAYER', sabotage: 'SABOTAGE_PLAYER', drug_test: 'DRUG_TEST_PERSON', fine: 'FINE_PERSON', general: 'INVITE_DINNER' };
     const dispatchType = typeMap[personSelectorType];
     if (!dispatchType) return;
     let finalReason = reason || (personSelectorType === 'movie' ? 'Movie Night' : 'No reason provided.');
@@ -330,6 +449,7 @@ export function useFreeAgentsViewModel() {
     isGM,
     isFictional,
     euroIsolated,
+    pbaIsolated,
     nonNbaIsolated,
     marketPools,
     viewMode,
@@ -354,8 +474,6 @@ export function useFreeAgentsViewModel() {
     setUpcomingTeamFilter,
     selectedActionPlayer,
     setSelectedActionPlayer,
-    viewingBioPlayer,
-    setViewingBioPlayer,
     viewingRatingsPlayer,
     setViewingRatingsPlayer,
     personSelectorOpen,
@@ -363,8 +481,6 @@ export function useFreeAgentsViewModel() {
     personSelectorType,
     preSelectedContact,
     setPreSelectedContact,
-    contactModalPerson,
-    setContactModalPerson,
     page,
     setPage,
     itemsPerPage,
@@ -374,6 +490,7 @@ export function useFreeAgentsViewModel() {
     showFaHeadsUp,
     dismissFaHeadsUp,
     isFreeAgencySeason,
+    freeAgencyStartLabel,
     moratoriumEndLabel,
     freeAgents,
     upcomingFAs,

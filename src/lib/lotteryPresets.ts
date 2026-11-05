@@ -47,6 +47,18 @@ export const LOTTERY_PRESETS: Record<string, LotteryPreset> = {
     label: 'Coin Flip (1966-1984) - Top 2 Teams Battle for #1',
     group: 'NBA Standards',
   },
+  wnba2026: {
+    chances: [420,261,167,97,55],
+    numToPick: 2, total: 1000,
+    label: 'WNBA (2026+) - Two-Year Records, Top 2 Drawn',
+    group: 'WNBA Standards',
+  },
+  wnba2017: {
+    chances: [442,276,178,104],
+    numToPick: 2, total: 1000,
+    label: 'WNBA (2017-2025) - Two-Year Records, Top 2 Drawn',
+    group: 'WNBA Standards',
+  },
   // ── Other Leagues ──────────────────────────────────────────────────────────
   nhl2021: {
     chances: [185,135,115,95,85,75,65,60,50,35,30,25,20,15,5,5],
@@ -69,6 +81,15 @@ export const LOTTERY_PRESETS: Record<string, LotteryPreset> = {
 };
 
 export const DEFAULT_DRAFT_TYPE = 'nba2019';
+
+export function getDefaultDraftLotteryType(uiMode: string | undefined, draftSeason: number): string {
+  if (uiMode === 'wnba_isolated') return draftSeason >= 2026 ? 'wnba2026' : 'wnba2017';
+  return DEFAULT_DRAFT_TYPE;
+}
+
+export function isDraftLotteryEnabled(draftType?: string | null): boolean {
+  return draftType !== 'inverse_standings' && draftType !== 'no_draft';
+}
 
 /**
  * Exact probability that the team at `teamIndex` lands in the top `k` picks.

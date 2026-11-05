@@ -2,14 +2,18 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { Search, Filter, X, ChevronDown, User, Globe, GraduationCap, Trophy, ArrowUpDown, LayoutGrid, ListFilter } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import type { NBAPlayer, NBATeam, NonNBATeam } from '../../../types';
-import { getCountryFromLoc, getCountryCode } from '../../../utils/helpers';
 import { PlayerSearchCard } from './PlayerSearchCard';
 import { useGame } from '../../../store/GameContext';
 import { getScoutedDisplayOverall } from '../../../utils/scoutingFuzz';
-import { getDefaultEuroLeagueSearcherIds } from '../../../utils/euroLeagueDefaults';
+import { getCompetitionPlayerStatus, getDefaultEuroLeagueSearcherIds } from '../../../utils/euroLeagueDefaults';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { PLAYER_SEARCH_GENDERS, PLAYER_SEARCH_LEAGUES, PLAYER_SEARCH_POSITIONS } from './playerSearchConfig';
 import { usePlayerSearchReferenceData } from './usePlayerSearchReferenceData';
+import { isExternalLeaguePlayer, isPlayerInLeagueScope } from '../../../utils/playerLeagueScope';
+import { getPlayerNationalityCountries } from '../../../utils/playerNationality';
+import { CountryFlag } from '../../shared/CountryFlag';
+import { projectCanonicalPlayerBiography } from '../../../services/playerUniverse/realGmBiographyContinuity';
+import { isUnavailableInternationalTournamentPlayer } from '../../../utils/prospectUtils';
 
 interface UniversalPlayerSearcherProps {
   players: NBAPlayer[];
@@ -22,16 +26,35 @@ interface UniversalPlayerSearcherProps {
 export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = ({ players, teams, nonNBATeams = [], onActionClick, onTeamClick }) => {
   const { state } = useGame();
   const isPba = isPbaIsolatedMode(state);
+  const isFictional = state.leagueType === 'fictional';
+  const leagueOptions = isFictional
+    ? PLAYER_SEARCH_LEAGUES.filter(league => league.id === 'nba' || league.id === 'freeagents' || league.id === 'draft')
+    : isEuroIsolatedMode(state)
+      ? [...new Map([
+          ...PLAYER_SEARCH_LEAGUES
+            .filter(league => league.id !== 'draft')
+            .map(league => [league.id, league] as const),
+          ...(state.activeCompetitions ?? [])
+            .filter(competition => getCompetitionPlayerStatus(competition.id) !== null)
+            .map(competition => [competition.id, { id: competition.id, name: competition.displayName }] as const),
+        ]).values()]
+      : PLAYER_SEARCH_LEAGUES;
   const getInitialLeagues = () => {
     if (isPba) return ['pba'];
     const euroIds = getDefaultEuroLeagueSearcherIds(state as any);
     return isEuroIsolatedMode(state) && euroIds.length > 0 ? euroIds : ['nba'];
   };
+  const getInitialGenders = () => {
+    if (!isFictional) return ['Men'];
+    if (state.leagueStats.fictionalPlayerPool === 'womens') return ['Women'];
+    if (state.leagueStats.fictionalPlayerPool === 'mixed') return ['Men', 'Women'];
+    return ['Men'];
+  };
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedLeagues, setSelectedLeagues] = useState<string[]>(getInitialLeagues);
   const [ageRange, setAgeRange] = useState({ min: 18, max: 45 });
   const [selectedCountry, setSelectedCountry] = useState<string>('All');
-  const [selectedGender, setSelectedGender] = useState<string[]>(['Men']);
+  const [selectedGender, setSelectedGender] = useState<string[]>(getInitialGenders);
   const [selectedPosition, setSelectedPosition] = useState<string>('All');
   const [selectedCollege, setSelectedCollege] = useState<string>('All');
   const [sortBy, setSortBy] = useState<'name' | 'ovr'>('ovr');
@@ -42,21 +65,41 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
   const [itemsPerPage, setItemsPerPage] = useState(25);
 
   const [isCountryDropdownOpen, setIsCountryDropdownOpen] = useState(false);
+  const nbaTeamIds = useMemo(
+    () => new Set(teams.map(team => Number(team.id)).filter(tid => tid >= 0 && tid < 100)),
+    [teams],
+  );
+
+  useEffect(() => {
+    if (!isFictional) return;
+    setSelectedLeagues(previous => {
+      const scoped = previous.filter(league => league === 'nba' || league === 'freeagents' || league === 'draft');
+      return scoped.length > 0 ? scoped : ['nba'];
+    });
+    setSelectedGender(getInitialGenders());
+  }, [isFictional, state.leagueStats.fictionalPlayerPool]);
 
   const playersWithParsedData = useMemo(() => {
     const uniquePlayers = new Map<string, NBAPlayer>();
     players.forEach(p => {
       if (p.status === 'Retired' || p.hof) return;
+      if (isFictional && isExternalLeaguePlayer(p)) return;
       const id = p.internalId || `${p.name}-${p.born?.loc}-${p.born?.year}`;
-      if (!uniquePlayers.has(id)) {
+      const existing = uniquePlayers.get(id);
+      if (
+        !existing
+        || ((p as any).externalArchiveOnly === true && (existing.status === 'Retired' || existing.tid < 0))
+      ) {
         uniquePlayers.set(id, p);
       }
     });
 
     const simYear = state.leagueStats?.year ?? new Date().getFullYear();
 
-    return Array.from(uniquePlayers.values()).map(p => {
-      const country = getCountryFromLoc(p.born?.loc);
+    return Array.from(uniquePlayers.values()).map(rawPlayer => {
+      const p = projectCanonicalPlayerBiography(rawPlayer);
+      const extractedCountries = getPlayerNationalityCountries(p as NBAPlayer & { nationality?: unknown });
+      const country = extractedCountries.join(' / ') || 'Unknown';
       const calculatedAge = p.born?.year ? (simYear - p.born.year) : (p.age || 0);
       
       const displayOvr = getScoutedDisplayOverall(state, p);
@@ -64,11 +107,12 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
       return {
         ...p,
         extractedCountry: country,
+        extractedCountries,
         calculatedAge,
         displayOvr,
       };
     });
-  }, [players, state]);
+  }, [isFictional, players, state]);
 
   const { allColleges, allCountries } = usePlayerSearchReferenceData(playersWithParsedData);
 
@@ -81,8 +125,10 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
       if (selectedLeagues.length > 0) {
         let matchesLeague = false;
         if (selectedLeagues.includes('nba')) {
-          if ((p.tid >= 0 || p.tid === -1) &&
-              !['WNBA', 'PBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '') &&
+          const matchesNbaScope = isFictional
+            ? (p.tid >= 0 || p.tid === -1) && !isExternalLeaguePlayer(p)
+            : isPlayerInLeagueScope(p, 'nba', nbaTeamIds);
+          if (matchesNbaScope &&
               p.status !== 'Prospect' &&
               p.tid !== -2) {
             matchesLeague = true;
@@ -90,6 +136,10 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
         }
 
         if (selectedLeagues.includes('wnba') && p.status === 'WNBA') matchesLeague = true;
+        if (selectedLeagues.includes('freeagents')
+          && p.tid === -1
+          && p.status === 'Free Agent'
+          && !isUnavailableInternationalTournamentPlayer(p)) matchesLeague = true;
         if (selectedLeagues.includes('draft') && (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect')) matchesLeague = true;
         if (selectedLeagues.includes('pba') && p.status === 'PBA') matchesLeague = true;
         if (selectedLeagues.includes('euroleague') && p.status === 'Euroleague') matchesLeague = true;
@@ -98,12 +148,13 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
         if (selectedLeagues.includes('endesa') && p.status === 'Endesa') matchesLeague = true;
         if (selectedLeagues.includes('chinacba') && p.status === 'China CBA') matchesLeague = true;
         if (selectedLeagues.includes('nblaustralia') && p.status === 'NBL Australia') matchesLeague = true;
+        if (selectedLeagues.some(competitionId => getCompetitionPlayerStatus(competitionId) === p.status)) matchesLeague = true;
         
         if (!matchesLeague) return false;
       }
       if (p.calculatedAge < ageRange.min || p.calculatedAge > ageRange.max) return false;
-      if (selectedCountry !== 'All' && p.extractedCountry !== selectedCountry) return false;
-      const gender = p.status === 'WNBA' ? 'Women' : 'Men';
+      if (selectedCountry !== 'All' && !p.extractedCountries.includes(selectedCountry)) return false;
+      const gender = p.gender === 'female' || p.status === 'WNBA' ? 'Women' : 'Men';
       if (!selectedGender.includes(gender)) return false;
       if (selectedPosition !== 'All') {
         const pPos = p.pos || '';
@@ -133,7 +184,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
     });
 
     return filtered;
-  }, [playersWithParsedData, searchTerm, selectedLeagues, ageRange, selectedCountry, selectedGender, selectedPosition, selectedCollege, sortBy, sortOrder, hasTouched, injuryFilter]);
+  }, [playersWithParsedData, searchTerm, selectedLeagues, ageRange, selectedCountry, selectedGender, selectedPosition, selectedCollege, sortBy, sortOrder, hasTouched, injuryFilter, isFictional, nbaTeamIds]);
   useEffect(() => { setPage(1); }, [searchTerm, selectedLeagues, ageRange, selectedCountry, selectedGender, selectedPosition, selectedCollege, sortBy, sortOrder, injuryFilter, itemsPerPage]);
 
   const totalPages = Math.max(1, Math.ceil(filteredPlayers.length / itemsPerPage));
@@ -173,7 +224,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
       if (!isSelecting && prev.length === 1) return prev;
 
       const next = isSelecting ? [...prev, gender] : prev.filter(g => g !== gender);
-      if (gender === 'Women') {
+      if (!isFictional && gender === 'Women') {
         if (isSelecting) {
           setSelectedLeagues(l => l.includes('wnba') ? l : [...l, 'wnba']);
         } else {
@@ -204,7 +255,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
                 setSelectedLeagues(getInitialLeagues());
                 setAgeRange({ min: 18, max: 45 });
                 setSelectedCountry('All');
-                setSelectedGender(['Men']);
+                setSelectedGender(getInitialGenders());
                 setSelectedPosition('All');
                 setSelectedCollege('All');
                 setInjuryFilter('all');
@@ -223,13 +274,13 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
               <Trophy size={12} /> Leagues
             </label>
             <div className="flex flex-wrap gap-2">
-              {PLAYER_SEARCH_LEAGUES.map(league => (
+              {leagueOptions.map(league => (
                 <button
                   key={league.id}
                   onClick={() => toggleLeague(league.id)}
                   className={`px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-tight transition-all border ${selectedLeagues.includes(league.id) ? 'bg-indigo-500/20 text-indigo-400 border-indigo-500/50' : 'bg-slate-950 text-slate-500 border-slate-800 hover:border-slate-700'}`}
                 >
-                  {league.name}
+                  {isFictional && league.id === 'nba' ? 'Association' : league.name}
                 </button>
               ))}
             </div>
@@ -307,13 +358,7 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
                     <span>All Countries</span>
                   ) : (
                     <>
-                      {getCountryCode(selectedCountry) && (
-                        <img 
-                          src={`https://flagcdn.com/w20/${getCountryCode(selectedCountry)}.png`}
-                          alt=""
-                          className="w-4 h-2.5 object-cover rounded-[1px]"
-                        />
-                      )}
+                      <CountryFlag country={selectedCountry} className="inline-flex h-2.5 w-4" imageClassName="h-full w-full rounded-[1px] object-cover" />
                       <span className="truncate">{selectedCountry}</span>
                     </>
                   )}
@@ -442,13 +487,14 @@ export const UniversalPlayerSearcher: React.FC<UniversalPlayerSearcherProps> = (
               <p className="text-xs font-medium mt-2">Try adjusting your filters or search term</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4">
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
               {paginatedPlayers.map(player => (
                 <PlayerSearchCard
                   key={player.internalId}
                   player={player}
                   teams={teams}
                   nonNBATeams={nonNBATeams}
+                  season={state.leagueStats.year}
                   onClick={onActionClick}
                   onTeamClick={onTeamClick}
                 />

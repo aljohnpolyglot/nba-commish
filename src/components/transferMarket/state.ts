@@ -13,9 +13,13 @@ import React, { createContext, useContext, useMemo } from 'react';
 import { useGame } from '../../store/GameContext';
 import { isOnRoster, resolveAnyTeam } from '../../utils/teamLookup';
 import { getTeamFullName } from '../../utils/teamNames';
-import { isInTransferWindow } from '../../utils/transferWindow';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
+import { getTransferMarketSettings, isInTransferWindow } from '../../utils/transferWindow';
 import { convertTo2KRating, computeAge } from '../../utils/helpers';
 import { getFlagForLoc } from '../../utils/countryFlags';
+import { getTeamCountry } from '../../utils/teamCountry';
+import { findEuroCountryProfile } from '../../services/euroScouting/countryProfiles';
+import { getTransferMarketLeague } from '../../services/transfer/marketEligibility';
 import {
   estimatePlayerValueEUR,
   teamCashEUR,
@@ -36,6 +40,7 @@ import type {
   ReleaseClause,
 } from './mockData';
 import type { GameState, NBAPlayer, NBATeam, NonNBATeam, TransferBid, TransferListing } from '../../types';
+import type { SponsorSigningPerkGrant } from '../../types/tycoon';
 
 // ── Currency conversion ─────────────────────────────────────────────────────
 
@@ -70,7 +75,7 @@ function ratingFromPlayer(p: NBAPlayer): { ovr: number; pot: number } {
   return { ovr: Math.round(convertTo2KRating(ovrBBGM)), pot: Math.round(convertTo2KRating(potBBGM)) };
 }
 
-function toMockPlayer(p: NBAPlayer, currentYear: number): MockPlayer {
+export function toMockPlayer(p: NBAPlayer, currentYear: number): MockPlayer {
   const age = computeAge(p, currentYear);
   const { ovr, pot } = ratingFromPlayer(p);
   const contractExp = p.contract?.exp ?? currentYear + 1;
@@ -102,6 +107,8 @@ function teamLeagueLabel(team: any, state: GameState): string {
   // (WNBA, PBA, CBA, etc.) get the right label instead of falling back to
   // the active uiMode and rendering "Liga Endesa" for a Minnesota Lynx team.
   const tid = (team?.tid ?? team?.id ?? -1) as number;
+  const euroLeague = getTransferMarketLeague(tid, team);
+  if (euroLeague) return euroLeague.name;
   if (tid >= 1000 && tid < 2000) return 'Euroleague';
   if (tid >= 2000 && tid < 3000) return 'PBA';
   if (tid >= 3000 && tid < 4000) return 'WNBA';
@@ -111,19 +118,30 @@ function teamLeagueLabel(team: any, state: GameState): string {
   if (tid >= 7000 && tid < 8000) return 'CBA';
   if (tid >= 8000 && tid < 9000) return 'NBL';
   if (tid >= 0 && tid < 100) return 'NBA';
-  return state.leagueStats?.uiMode === 'euro_isolated' ? 'Liga Endesa' : 'NBA';
+  const activeCompetition = state.activeCompetitions?.find(competition => competition.id === state.euroPrimaryCompetitionId);
+  return state.leagueStats?.uiMode === 'euro_isolated'
+    ? activeCompetition?.displayName ?? 'European Basketball'
+    : 'NBA';
 }
 
-function toMockClub(team: any, state: GameState): MockClub {
+export function toMockClub(team: any, state: GameState): MockClub {
   const fullName = team ? getTeamFullName(team) : '—';
   const abbrev = team?.abbrev ?? team?.shortName ?? (fullName ? fullName.slice(0, 3).toUpperCase() : 'CLB');
+  const country = getTeamCountry(team, state) || String(team?.country ?? '');
+  const countryProfile = findEuroCountryProfile(country);
+  const savedLogo = team?.logoUrl ?? team?.imgURL ?? team?.imgURLSmall ?? undefined;
+  const logoUrl = state.leagueStats?.uiMode === 'fictional'
+    ? savedLogo
+    : getResolvedTeamLogoUrl(team, state.leagueStats?.year) || savedLogo;
   return {
     name: fullName,
     shortName: abbrev,
     league: teamLeagueLabel(team, state),
     flag: flagFor(team?.region),
+    country: countryProfile?.name ?? country,
+    countryIso2: countryProfile?.iso2,
     colorHex: teamColorHex(team),
-    logoUrl: team?.imgURL ?? team?.logoUrl ?? team?.imgURLSmall ?? undefined,
+    logoUrl,
   };
 }
 
@@ -148,7 +166,15 @@ export interface TransferMarketData {
   inboxBids: InboxBid[];
   browseListings: BrowseListing[];
   clauses: ReleaseClause[];
-  marketActivity: Array<{ date: string; from: string; to: string; player: string; amount: string }>;
+  marketActivity: Array<{
+    date: string;
+    from: string;
+    fromLogoUrl?: string;
+    to: string;
+    toLogoUrl?: string;
+    player: string;
+    amount: string;
+  }>;
   cashChannels: Array<{ id: string; label: string; subtitle: string; inEUR: number; outEUR: number }>;
   userTid: number;
   currentDate: string;
@@ -156,7 +182,7 @@ export interface TransferMarketData {
   actions: {
     listPlayer: (playerId: string, askingEUR: number, durationDays?: number) => void;
     cancelListing: (listingId: string) => void;
-    submitBid: (input: { listingId?: string; playerId: string; sellerTid: number; bidType: BidType; amountEUR: number; validDays?: number }) => void;
+    submitBid: (input: { listingId?: string; playerId: string; sellerTid: number; bidType: BidType; amountEUR: number; signingBonusEUR?: number; sponsorSigningPerk?: SponsorSigningPerkGrant; validDays?: number }) => void;
     acceptBid: (bidId: string) => void;
     rejectBid: (bidId: string) => void;
   };
@@ -216,7 +242,7 @@ export function useTransferMarketData(): TransferMarketData {
       try { return d.toISOString().slice(0, 10); } catch { return ''; }
     };
     const windowStatus = isInTransferWindow(state.date, state.leagueStats);
-    const tmSettings = state.leagueStats?.transferMarket ?? { summerStart: '07-01', summerEnd: '09-30', winterStart: '01-01', winterEnd: '01-31' };
+    const tmSettings = getTransferMarketSettings(state.leagueStats);
     const windowKind: 'summer' | 'winter' | 'closed' = windowStatus.window ?? 'closed';
     const windowLabel = windowKind === 'summer' ? 'Summer' : windowKind === 'winter' ? 'Winter' : 'Closed';
     const closeIso = safeIso(windowStatus.currentClose);
@@ -307,7 +333,7 @@ export function useTransferMarketData(): TransferMarketData {
       });
 
     const browseListings: BrowseListing[] = allListings
-      .filter(l => l.sellerTid !== userTid && l.status === 'active' && isRosteredListing(l))
+      .filter(l => !l.privateInquiry && l.sellerTid !== userTid && l.status === 'active' && isRosteredListing(l))
       .map(l => {
         const player = playerById.get(l.playerId);
         const club = findTeam(l.sellerTid);
@@ -342,32 +368,44 @@ export function useTransferMarketData(): TransferMarketData {
 
     // Cash channels — aggregate over transferActivity for current year
     const yearActivity = (state.transferActivity ?? []).filter((a: any) => a.date.startsWith(`${currentYear}`));
-    let feeIn = 0, feeOut = 0, clauseIn = 0, loanOut = 0;
+    let feeIn = 0, feeOut = 0, clauseIn = 0, loanIn = 0, loanOut = 0;
     for (const a of yearActivity) {
-      if (a.toTid === userTid) feeOut += a.feeEUR;
+      if (a.bidType !== 'loan' && a.toTid === userTid) feeOut += a.feeEUR;
       if (a.fromTid === userTid) {
         if (a.bidType === 'release-clause') clauseIn += a.feeEUR;
+        else if (a.bidType === 'loan') loanIn += a.feeEUR;
         else feeIn += a.feeEUR;
       }
       if (a.bidType === 'loan') loanOut += a.feeEUR;
     }
+    for (const agreement of state.loanAgreements ?? []) {
+      if (!agreement.startDate.startsWith(`${currentYear}`)) continue;
+      if (agreement.parentTid === userTid) loanIn += agreement.feeEUR;
+      if (agreement.borrowerTid === userTid) loanOut += agreement.feeEUR;
+    }
     const cashChannels = [
       { id: 'fee',    label: 'Transfer Fees',  subtitle: 'Direct sales',                    inEUR: feeIn,    outEUR: feeOut },
       { id: 'clause', label: 'Clause Buyouts', subtitle: 'Locked release-clause triggers',  inEUR: clauseIn, outEUR: 0 },
-      { id: 'loan',   label: 'Loan Income',    subtitle: 'Short-term placements',           inEUR: 0,        outEUR: loanOut },
+      { id: 'loan',   label: 'Loan Fees',      subtitle: 'Temporary player placements',     inEUR: loanIn,   outEUR: loanOut },
     ];
 
     // Market activity — last 5 transfers across the league
     const marketActivity = (state.transferActivity ?? [])
       .slice(-5)
       .reverse()
-      .map((a: any) => ({
-        date: formatShortDate(a.date),
-        from: getTeamFullName(findTeam(a.fromTid) ?? { region: '', name: '—' }),
-        to: getTeamFullName(findTeam(a.toTid) ?? { region: '', name: '—' }),
-        player: a.playerName,
-        amount: formatEURShort(a.feeEUR),
-      }));
+      .map((a: any) => {
+        const fromClub = toMockClub(findTeam(a.fromTid), state);
+        const toClub = toMockClub(findTeam(a.toTid), state);
+        return {
+          date: formatShortDate(a.date),
+          from: fromClub.name,
+          fromLogoUrl: fromClub.logoUrl,
+          to: toClub.name,
+          toLogoUrl: toClub.logoUrl,
+          player: a.playerName,
+          amount: formatEURShort(a.feeEUR),
+        };
+      });
 
     return {
       club: toMockClub(userTeam, state),

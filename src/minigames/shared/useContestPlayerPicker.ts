@@ -3,6 +3,8 @@ import type { NBAPlayer } from '../../types';
 import { getRosterData } from '../../services/rosterService';
 import { loadRatings } from '../../data/NBA2kRatings';
 import { ContestPickItem, ContestPickMetric, toContestPickItem } from './contestPlayerTypes';
+import { useGame } from '../../store/GameContext';
+import { resolveMinigameNbaPlayers } from './minigameRoster';
 
 type View = 'LOADING' | 'PICK' | 'RUN' | 'RESULTS';
 
@@ -13,6 +15,7 @@ type UseContestPlayerPickerArgs = {
 };
 
 export function useContestPlayerPicker({ maxPicks, scorePlayer, metrics }: UseContestPlayerPickerArgs) {
+  const { state } = useGame();
   const [view, setView] = useState<View>('LOADING');
   const [items, setItems] = useState<ContestPickItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -23,8 +26,8 @@ export function useContestPlayerPicker({ maxPicks, scorePlayer, metrics }: UseCo
       .then(([{ players, teams }]) => {
         if (cancelled) return;
         const teamMap: Record<number, string> = {};
-        teams.forEach((team: any) => { teamMap[team.id] = team.abbrev; });
-        const nextItems = (players as NBAPlayer[])
+        [...teams, ...state.teams].forEach((team: any) => { teamMap[team.id] = team.abbrev; });
+        const nextItems = resolveMinigameNbaPlayers(state.players, players as NBAPlayer[])
           .filter((player: any) => player.tid >= 0 && player.tid < 100 && !player.retiredYear)
           .map(player => toContestPickItem(player, teamMap[(player as any).tid] ?? 'NBA', scorePlayer(player), metrics?.(player) ?? []))
           .sort((a, b) => b.score - a.score);
@@ -36,7 +39,7 @@ export function useContestPlayerPicker({ maxPicks, scorePlayer, metrics }: UseCo
         if (!cancelled) setView('PICK');
       });
     return () => { cancelled = true; };
-  }, [metrics, scorePlayer]);
+  }, [metrics, scorePlayer, state.players, state.teams]);
 
   const toggle = (id: string) => {
     setSelectedIds(prev => {

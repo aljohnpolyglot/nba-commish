@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from 'react';
+import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { RightSidebar } from './RightSidebar';
 import { TweetInput } from '../social/TweetInput';
@@ -14,12 +14,14 @@ import { TrendItem } from '../social/SidebarComponents';
 import { cn } from '../../lib/utils';
 import { Settings2, ArrowLeft, Search, Menu, X, Loader2 } from 'lucide-react';
 import { LazyPhotoCard, type TwitterViewState, useGameLookup, useInfiniteFeedLimit, WhoToFollowFeedBlock } from './TwitterLayoutShared';
+import { queryMediaPage } from '../../services/media/mediaReadModel';
+import { getLeagueLifecycleMode } from '../../services/lifecycle/leagueSeasonLifecycle';
+import type { SocialPost } from '../../types';
 
 export const TwitterLayout = () => {
   const { state, followUser, unfollowUser, dispatchAction } = useGame();
   const { loading } = useTwitterData();
   useBackgroundFetcher();
-  const { trends, allTrends, suggestedUsersList } = useSidebarData();
   const [activeTab, setActiveTab] = useState<'for-you' | 'following'>('for-you');
   const [searchQuery, setSearchQuery] = useState('');
   const gameLookup = useGameLookup();
@@ -27,6 +29,82 @@ export const TwitterLayout = () => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const { displayLimit, lastTweetElementRef } = useInfiniteFeedLimit([activeTab, searchQuery, view.type]);
   const scrollPositionRef = useRef(0);
+  const [queriedSocial, setQueriedSocial] = useState<SocialPost[]>([]);
+  const [profileResult, setProfileResult] = useState<{ handle: string; posts: SocialPost[] }>({ handle: '', posts: [] });
+  const [profilePostsLoading, setProfilePostsLoading] = useState(false);
+  const [nextMediaCursor, setNextMediaCursor] = useState<string | null>(null);
+  const [mediaLoading, setMediaLoading] = useState(false);
+  const mediaLeagueScope = getLeagueLifecycleMode(state);
+  const mediaStateRevision = state.mediaEventRevision ?? state.saveRevision ?? 0;
+  const mediaStateRef = useRef(state);
+  mediaStateRef.current = state;
+  const loadMediaPage = React.useCallback((cursor?: string) => {
+    const controller = new AbortController();
+    setMediaLoading(true);
+    const queryState = mediaStateRef.current;
+    void queryMediaPage(queryState, {
+      saveId: state.saveId ?? 'unsaved',
+      stateRevision: mediaStateRevision,
+      asOfDate: state.date,
+      leagueScope: mediaLeagueScope,
+      feed: 'social',
+      cursor,
+      limit: 20,
+    }, controller.signal).then(page => {
+      if (controller.signal.aborted) return;
+      const posts = page.items.filter((item): item is SocialPost => 'handle' in item);
+      setQueriedSocial(previous => cursor
+        ? [...new Map([...previous, ...posts].map(post => [post.id, post])).values()]
+        : posts);
+      setNextMediaCursor(page.nextCursor);
+    }).catch(error => {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        console.error('[Social read model] query failed:', error);
+      }
+    }).finally(() => {
+      if (!controller.signal.aborted) setMediaLoading(false);
+    });
+    return () => controller.abort();
+  }, [mediaLeagueScope, mediaStateRevision, state.date, state.saveId]);
+  useEffect(() => loadMediaPage(), [loadMediaPage]);
+  const socialFeed = queriedSocial;
+  const profileHandle = view.type === 'profile' ? view.handle ?? '' : '';
+  useEffect(() => {
+    if (!profileHandle) return;
+    const controller = new AbortController();
+    setProfilePostsLoading(true);
+    const queryState = mediaStateRef.current;
+    void queryMediaPage(queryState, {
+      saveId: queryState.saveId ?? 'unsaved',
+      stateRevision: queryState.mediaEventRevision ?? queryState.saveRevision ?? 0,
+      asOfDate: queryState.date,
+      leagueScope: getLeagueLifecycleMode(queryState),
+      feed: 'social',
+      authorHandle: profileHandle,
+      limit: 100,
+    }, controller.signal).then(page => {
+      if (controller.signal.aborted) return;
+      setProfileResult({
+        handle: profileHandle,
+        posts: page.items.filter((item): item is SocialPost => 'handle' in item),
+      });
+    }).catch(error => {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        console.error('[Social profile read model] query failed:', error);
+      }
+    }).finally(() => {
+      if (!controller.signal.aborted) setProfilePostsLoading(false);
+    });
+    return () => controller.abort();
+  }, [mediaLeagueScope, mediaStateRevision, profileHandle, state.date, state.saveId]);
+  const profilePosts = profileResult.handle.toLowerCase() === profileHandle.toLowerCase()
+    ? profileResult.posts
+    : [];
+  const { trends, allTrends, suggestedUsersList } = useSidebarData(socialFeed);
+  useEffect(() => {
+    if (!nextMediaCursor || mediaLoading || displayLimit < socialFeed.length - 2) return;
+    return loadMediaPage(nextMediaCursor);
+  }, [displayLimit, loadMediaPage, mediaLoading, nextMediaCursor, socialFeed.length]);
 
   const handleProfileClick = (handle: string) => {
     scrollPositionRef.current = window.scrollY;
@@ -185,14 +263,14 @@ export const TwitterLayout = () => {
 
               {loading ? (
                 <div className="flex justify-center py-10">
-                  <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-[#1d9bf0]" />
+                  <Loader2 className="h-8 w-8 animate-spin text-[#1d9bf0]" aria-label="Loading social feed" />
                 </div>
               ) : (
                 <div className="flex flex-col pb-20 sm:pb-0">
                   {searchQuery && searchTab === 'people' ? (
                     // People Tab: Show users matching the query
                     <div className="flex flex-col">
-                      {Array.from(new Map(state.socialFeed
+                    {Array.from(new Map(socialFeed
                         .filter(post => 
                           post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
                           post.handle.toLowerCase().includes(searchQuery.toLowerCase())
@@ -241,7 +319,7 @@ export const TwitterLayout = () => {
                     </div>
                   ) : (
                     // Other Tabs: Show posts
-                    state.socialFeed
+                    socialFeed
                       .filter(post => {
                         if (post.replyToId) return false; // Don't show replies in main feed
                         
@@ -292,7 +370,7 @@ export const TwitterLayout = () => {
                       ))
                   )}
                   {/* Lazy load trigger */}
-                  {state.socialFeed.length > 0 && displayLimit < state.socialFeed.length && (
+                  {socialFeed.length > 0 && (displayLimit < socialFeed.length || nextMediaCursor) && (
                     <div ref={lastTweetElementRef} className="h-20 flex items-center justify-center">
                       <Loader2 className="animate-spin text-sky-500" size={24} />
                     </div>
@@ -354,7 +432,7 @@ export const TwitterLayout = () => {
                     </div>
                     {searchTab === 'people' ? (
                       <div className="flex flex-col">
-                        {Array.from(new Map(state.socialFeed
+                        {Array.from(new Map(socialFeed
                           .filter(post => 
                             post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             post.handle.toLowerCase().includes(searchQuery.toLowerCase())
@@ -402,7 +480,7 @@ export const TwitterLayout = () => {
                         ))}
                       </div>
                     ) : (
-                      state.socialFeed
+                      socialFeed
                         .filter(post => {
                           if (post.replyToId) return false; // Don't show replies in main feed
                           
@@ -448,6 +526,8 @@ export const TwitterLayout = () => {
           ) : view.type === 'profile' ? (
             <ProfileView 
               handle={view.handle!} 
+              posts={profilePosts}
+              postsLoading={profilePostsLoading || profileResult.handle.toLowerCase() !== profileHandle.toLowerCase()}
               onBack={handleHomeClick} 
               onPostClick={handlePostClick}
               onProfileClick={handleProfileClick}
@@ -455,6 +535,7 @@ export const TwitterLayout = () => {
           ) : view.type === 'thread' ? (
             <ThreadView 
               postId={view.postId!} 
+              posts={socialFeed}
               onBack={handleHomeClick} 
               onProfileClick={handleProfileClick}
               onPostClick={handlePostClick}

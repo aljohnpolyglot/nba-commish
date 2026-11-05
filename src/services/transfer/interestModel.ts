@@ -17,14 +17,37 @@ export function computeClubInterest(amountEUR: number, askingEUR: number): numbe
 }
 
 /**
- * 55–95. Deterministic hash from player.internalId — stable across rerenders,
- * sessions, and ticker invocations. Keeps the UI gauge and the ticker reject
- * decision pointing at the same number.
+ * Deterministic and destination-aware. Recent continental performance makes a
+ * club more attractive without guaranteeing that a reluctant player accepts.
  */
-export function computePlayerInterest(playerId: string): number {
+export function computeSigningBonusInterestBoost(signingBonusEUR = 0, annualSalaryEUR = 0): number {
+  const normalizedBonus = Math.max(0, signingBonusEUR);
+  const scale = annualSalaryEUR > 0 ? Math.max(50_000, annualSalaryEUR * 0.4) : 400_000;
+  return Math.round(20 * (1 - Math.exp(-normalizedBonus / scale)));
+}
+
+export function getSigningBonusStepEUR(annualSalaryEUR: number): number {
+  return Math.max(5_000, Math.round(Math.max(0, annualSalaryEUR) * 0.05 / 5_000) * 5_000);
+}
+
+export function recommendSigningBonusEUR(annualSalaryEUR: number, contractYears = 1): number {
+  const salary = Math.max(0, annualSalaryEUR);
+  if (salary <= 0) return 0;
+  const step = getSigningBonusStepEUR(salary);
+  const target = salary * (contractYears >= 3 ? 0.25 : contractYears === 2 ? 0.2 : 0.15);
+  return Math.max(step, Math.round(target / step) * step);
+}
+
+export function computePlayerInterest(
+  playerId: string,
+  destinationPrestige = 35,
+  signingBonusEUR = 0,
+): number {
   let h = 0;
   for (let i = 0; i < playerId.length; i++) h = ((h << 5) - h + playerId.charCodeAt(i)) | 0;
-  return 55 + (Math.abs(h) % 41);
+  const baseline = 45 + (Math.abs(h) % 36);
+  const bonusBoost = computeSigningBonusInterestBoost(signingBonusEUR);
+  return Math.max(25, Math.min(96, Math.round(baseline + (destinationPrestige - 35) * 0.25 + bonusBoost)));
 }
 
 export function playerInterestLabel(pct: number): string {
@@ -41,10 +64,8 @@ export function clubInterestLabel(pct: number): string {
 }
 
 /**
- * Combined verdict used by tickTransferMarket. A bid only auto-rejects if BOTH
- * the club and the player are below the floor — a strong overpay can drag a
- * reluctant player along, and an eager player can talk a club into a marginal
- * fee. Keeps the model interesting instead of a hard AND-gate.
+ * Combined verdict used by tickTransferMarket. The transfer fee determines
+ * club interest while the signing bonus can change player interest.
  */
 export interface OfferVerdict {
   clubInterest: number;
@@ -57,12 +78,17 @@ export interface OfferVerdict {
   rejectReason?: string;
 }
 
-export function evaluateOffer(amountEUR: number, askingEUR: number, playerId: string): OfferVerdict {
+export function evaluateOffer(
+  amountEUR: number,
+  askingEUR: number,
+  playerId: string,
+  destinationPrestige = 35,
+  signingBonusEUR = 0,
+): OfferVerdict {
   const clubInterest = computeClubInterest(amountEUR, askingEUR);
-  const playerInterest = computePlayerInterest(playerId);
+  const playerInterest = computePlayerInterest(playerId, destinationPrestige, signingBonusEUR);
   const clubLowball = amountEUR < askingEUR * 0.8;
-  // Player veto: <50% interest AND fee isn't an overpay (<1.2× asking)
-  const playerVeto = playerInterest < 50 && amountEUR < askingEUR * 1.2;
+  const playerVeto = playerInterest < 50;
   let rejectReason: string | undefined;
   if (clubLowball) rejectReason = 'Lowball — below 80% of asking.';
   else if (playerVeto) rejectReason = 'Player turned down the move.';

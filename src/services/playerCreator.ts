@@ -1,5 +1,15 @@
 import type { NBAPlayer } from '../types';
 import { ARCHETYPE_PROFILES, generateBasketballFace, potEstimator } from './genDraftPlayers';
+import { ARCHETYPE_PROFILES as TRAINING_ARCHETYPE_PROFILES } from '../TeamTraining/constants/trainingarchetypes';
+import { calculateK2, type K2Data } from './simulation/convert2kAttributes';
+import {
+  applyK2DetailOffsets,
+  hasK2DetailOffsets,
+  projectK2ToCoreRatings,
+  type K2DetailOffsets,
+} from './simulation/k2DetailRatings';
+import { applyDurabilityToK2 } from '../utils/durabilityUtils';
+import { getNewgenPortraitUrl, getRegenPortraitUrl, type RegenRace } from '../utils/newgenPortrait';
 
 export type CreatorAssignment = 'nba' | 'freeAgent' | 'draftProspect' | 'retired' | 'external';
 
@@ -11,11 +21,15 @@ export const CREATOR_RATING_KEYS = [
 
 export type CreatorRatingKey = typeof CREATOR_RATING_KEYS[number];
 export type CreatorRatings = Record<CreatorRatingKey, number>;
+export const CREATOR_REALISTIC_FACE_OPTIONS = 24;
 
 export interface PlayerCreatorForm {
   firstName: string;
   lastName: string;
   age: number;
+  birthYear: number;
+  birthMonth: number;
+  birthDay: number;
   country: string;
   college: string;
   pos: string;
@@ -29,12 +43,15 @@ export interface PlayerCreatorForm {
   handedness: 'Right' | 'Left';
   race?: string;
   gender?: 'male' | 'female';
+  appearanceMode: 'off' | 'upload' | 'url' | 'generate';
+  faceStyle: 'Realistic' | 'Cartoon';
+  realisticFaceIndex: number;
+  realisticFaceSeed: string;
   imgURL?: string;
   face?: any;
   ratings: CreatorRatings;
+  k2DetailOffsets: K2DetailOffsets;
   potential: number;
-  drivingDunk: number;
-  standingDunk: number;
   durability: number;
   composure: number;
   clutch: number;
@@ -176,6 +193,110 @@ export function getArchetypeMatches(ratings: Partial<CreatorRatings>, limit = 3)
     .slice(0, limit);
 }
 
+const CREATOR_TRAINING_ARCHETYPE_ALIASES: Record<string, string> = {
+  'Jumbo Playmaker': 'Point Forward',
+  Slasher: 'Explosive Slasher',
+  'Combo Scorer': 'Scoring Guard',
+  'Defensive Stopper': 'Defensive Pest',
+  'Non-Scoring Lockdown': 'Lockdown Specialist',
+  '3&D Forward': '3&D Wing',
+  'Post-Up Master': 'Post Specialist',
+  'Power Forward': 'Bully Ball Forward',
+  'Two-Way Forward': 'Two-Way Wing',
+  'Face-Up Four': 'Stretch Four',
+  'Below-Rim Banger': 'Glass Crasher',
+  'Stretch Forward': 'Elite Spacing Wing',
+  'Switchable Spacer': '3&D Wing',
+  'High-Energy Finisher': 'Athletic Rim-Runner',
+  'Undersized Big': 'Switchable Defender',
+};
+
+export function getCreatorPlayerComparison(archetype: string): string {
+  const trainingArchetype = CREATOR_TRAINING_ARCHETYPE_ALIASES[archetype] ?? archetype;
+  return TRAINING_ARCHETYPE_PROFILES[trainingArchetype]?.comparison
+    ?? TRAINING_ARCHETYPE_PROFILES['Balanced']?.comparison
+    ?? '';
+}
+
+function normalizeCreatorRace(race?: string): RegenRace {
+  const normalized = String(race ?? '').toLowerCase();
+  if (normalized === 'black' || normalized === 'asian' || normalized === 'brown' || normalized === 'white') {
+    return normalized;
+  }
+  return 'white';
+}
+
+export function resolveCreatorPortrait(form: PlayerCreatorForm): { imgURL?: string; face?: any } {
+  if (form.appearanceMode === 'generate') {
+    if (form.faceStyle === 'Cartoon') {
+      return {
+        face: form.face ?? generateBasketballFace({ race: form.race, gender: form.gender }),
+      };
+    }
+    const faceIndex = Math.max(0, Math.min(
+      CREATOR_REALISTIC_FACE_OPTIONS - 1,
+      Math.round(form.realisticFaceIndex || 0),
+    ));
+    const seed = `${form.realisticFaceSeed || 'creator'}_${faceIndex}`;
+    const gender = form.gender ?? 'male';
+    return {
+      imgURL: getRegenPortraitUrl(seed, normalizeCreatorRace(form.race), {
+        nationality: form.country,
+        bornLoc: form.country,
+        gender,
+      }) ?? getNewgenPortraitUrl(`${seed}_fallback`, gender),
+    };
+  }
+  const imgURL = form.imgURL?.trim();
+  return imgURL ? { imgURL } : { face: form.face };
+}
+
+export interface CreatorRatingProfile {
+  sourceRatings: CreatorRatings;
+  ratings: CreatorRatings;
+  baseK2: K2Data;
+  k2: K2Data;
+  detailOffsets: K2DetailOffsets;
+}
+
+export function resolveCreatorRatingProfile(form: PlayerCreatorForm): CreatorRatingProfile {
+  const sourceRatings = applyBuildAdjustments(
+    form.ratings,
+    form.heightIn,
+    form.wingspanIn,
+    form.weightLbs,
+  );
+  const physicals = {
+    pos: form.pos,
+    heightIn: form.heightIn,
+    weightLbs: form.weightLbs,
+    age: form.age,
+  };
+  const baseK2 = applyDurabilityToK2(calculateK2(sourceRatings, physicals), form.durability);
+  const desiredK2 = applyK2DetailOffsets(baseK2, form.k2DetailOffsets);
+  if (!hasK2DetailOffsets(form.k2DetailOffsets)) {
+    return {
+      sourceRatings,
+      ratings: sourceRatings,
+      baseK2,
+      k2: desiredK2,
+      detailOffsets: {},
+    };
+  }
+  const projection = projectK2ToCoreRatings({
+    ratings: sourceRatings,
+    desiredK2,
+    physicals,
+  });
+  return {
+    sourceRatings,
+    ratings: projection.ratings as CreatorRatings,
+    baseK2,
+    k2: desiredK2,
+    detailOffsets: projection.detailOffsets,
+  };
+}
+
 export function buildContractYears(amountM: number, startYear: number, expYear: number) {
   const years = Math.max(1, Math.min(6, expYear - startYear + 1));
   const salaryUSD = Math.max(0, Math.round(amountM * 1_000_000));
@@ -197,9 +318,17 @@ export function buildCreatedPlayer(form: PlayerCreatorForm, context: PlayerCreat
   const heightIn = Math.max(60, Math.min(91, Math.round(form.heightIn)));
   const weightLbs = Math.max(140, Math.min(340, Math.round(form.weightLbs)));
   const wingspanIn = Math.max(heightIn - 4, Math.min(heightIn + 12, Math.round(form.wingspanIn)));
-  const ratings = applyBuildAdjustments(form.ratings, heightIn, wingspanIn, weightLbs);
+  const birthYear = Math.max(1900, Math.min(season - 15, Math.round(form.birthYear || season - form.age)));
+  const age = Math.max(15, season - birthYear);
+  const ratingProfile = resolveCreatorRatingProfile({
+    ...form,
+    heightIn,
+    weightLbs,
+    wingspanIn,
+  });
+  const ratings = ratingProfile.ratings;
   const ovr = calculateCreatorOverall(ratings);
-  const pot = Math.max(ovr, clampRating(form.potential || potEstimator(ovr, form.age)));
+  const pot = Math.max(ovr, clampRating(form.potential || potEstimator(ovr, age)));
   const assignment = form.assignment;
   const externalTeam = context.nonNBATeams.find(t => t.tid === form.tid);
 
@@ -223,6 +352,7 @@ export function buildCreatedPlayer(form: PlayerCreatorForm, context: PlayerCreat
   const contractAmountK = Math.max(0, Math.round((form.contractAmountM || 0) * 1000));
   const contractExp = Math.max(season, Math.round(form.contractExp || season));
   const draftTid = form.draftTid === -2 ? -1 : form.draftTid;
+  const portrait = resolveCreatorPortrait(form);
   const player: any = {
     internalId: `created-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
     tid,
@@ -231,12 +361,17 @@ export function buildCreatedPlayer(form: PlayerCreatorForm, context: PlayerCreat
     lastName,
     jerseyNumber: form.jerseyNumber.trim(),
     pos: form.pos,
-    age: form.age,
-    born: { year: season - form.age, loc: form.country || 'USA' },
+    age,
+    born: {
+      year: birthYear,
+      loc: form.country || 'USA',
+      month: Math.max(1, Math.min(12, Math.round(form.birthMonth || 1))),
+      day: Math.max(1, Math.min(31, Math.round(form.birthDay || 1))),
+    },
     hgt: heightIn,
     weight: weightLbs,
     college: form.college.trim(),
-    imgURL: form.imgURL?.trim() || undefined,
+    imgURL: portrait.imgURL,
     draft: {
       year: Math.round(form.draftYear || season),
       round: Math.max(0, Math.min(2, Math.round(form.draftRound || 0))),
@@ -250,6 +385,7 @@ export function buildCreatedPlayer(form: PlayerCreatorForm, context: PlayerCreat
       ovr,
       pot,
       skills: [],
+      k2DetailOffsets: ratingProfile.detailOffsets,
     }],
     overallRating: ovr,
     potential: pot,
@@ -262,15 +398,15 @@ export function buildCreatedPlayer(form: PlayerCreatorForm, context: PlayerCreat
     contract: hasContract ? { amount: contractAmountK, exp: contractExp } : undefined,
     ...(hasContract ? { contractYears: buildContractYears(form.contractAmountM, season, contractExp) } : {}),
     ...(assignment === 'retired' ? { retiredYear: form.retiredYear ?? season } : {}),
-    face: form.imgURL?.trim() ? undefined : (form.face ?? generateBasketballFace({ race: form.race, gender: form.gender })),
+    face: portrait.face,
     race: form.race,
     nationality: form.country || 'USA',
     finalHgt: heightIn,
     finalWeight: weightLbs,
     wingspanIn,
     handedness: form.handedness,
-    drivingDunk: clampRating(form.drivingDunk),
-    standingDunk: clampRating(form.standingDunk),
+    drivingDunk: clampRating(ratingProfile.k2.IS.sub[2]),
+    standingDunk: clampRating(ratingProfile.k2.IS.sub[1]),
     durability: clampRating(form.durability),
     composure: clampRating(form.composure),
     clutch: clampRating(form.clutch),

@@ -3,6 +3,7 @@ import { advanceDay } from '../../../services/llm/llm';
 import { convertTo2KRating } from '../../../utils/helpers';
 
 export const handleEndorseHof = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
+    if (stateWithSim.gameMode === 'gm') return { isProcessing: false };
     const { contacts } = action.payload;
     if (!contacts || contacts.length === 0) return { isProcessing: false };
 

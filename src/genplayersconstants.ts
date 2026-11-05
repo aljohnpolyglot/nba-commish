@@ -265,6 +265,9 @@ export interface Player {
   finalWeight: number; // projected weight at 18
   college: string;
   nationality: string;
+  nationalityTimeline?: import('./types/player').HistoricalNationalityPeriod[];
+  nationalitySuccessorCountry?: string;
+  gender?: 'male' | 'female';
   race: string;
   face: any;
   draft: {

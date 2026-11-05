@@ -1,12 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { ArrowLeftRight } from 'lucide-react';
 import { MyFace, isRealFaceConfig } from './MyFace';
-import { convertTo2KRating } from '../../utils/helpers';
+import { convertTo2KRating, extractNbaId, hdPortrait } from '../../utils/helpers';
+import { ensurePortraitLookupsLoaded, getPhotoByName } from '../../data/realPlayerDataFetcher';
+import { useGame } from '../../store/GameContext';
+import { isLowQualityPlayerPortrait, isPba2021FallbackPortrait, isUsablePlayerPortraitUrl } from '../../utils/playerImage';
+import { getCachedExternalPortraitCandidatesForName } from '../../services/externalPortraitCatalog';
+import { getCachedNbaEraPortraitCandidates, loadNbaEraPortraitCatalog } from '../../services/nbaEraPortraitCatalog';
+import { isPbaIsolatedMode, isWnbaIsolatedMode } from '../../utils/uiMode';
+import type { NBAPlayer } from '../../types';
+import { isPortraitUrlUnavailable, markPortraitUrlUnavailable } from '../../utils/portraitAvailability';
 
 export interface PlayerPortraitProps {
   imgUrl?: string;
   fallbackImgUrl?: string;
   teamLogoUrl?: string;
+  fallbackTeamLogoUrl?: string;
   overallRating?: number;
   /** Player ratings array — used to apply tp elite bonus to the OVR badge */
   ratings?: any[];
@@ -18,6 +27,11 @@ export interface PlayerPortraitProps {
   ovrLabel?: string;
   /** Player name — used for initials fallback */
   playerName?: string;
+  playerIdentity?: Pick<NBAPlayer, 'internalId' | 'personId' | 'sourceIds' | 'srID' | 'slug' | 'nbaId' | 'name' | 'born' | 'draft' | 'gender' | 'status' | 'historicalEndesaSource' | 'historicalPbaSource' | 'historicalEuropeSource'>;
+  /** Disable every name-derived player image for staff and other non-player identities. */
+  disableNameFallback?: boolean;
+  portraitSeason?: number;
+  isDraftProspect?: boolean;
   /** facesjs face descriptor — rendered when imgUrl is absent. Only generated prospects carry this. */
   face?: any;
 }
@@ -36,27 +50,147 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
   imgUrl,
   fallbackImgUrl,
   teamLogoUrl,
+  fallbackTeamLogoUrl,
   overallRating,
   ratings,
   size = 48,
   isIncoming = false,
   ovrLabel,
   playerName,
+  playerIdentity,
+  disableNameFallback = false,
+  portraitSeason,
+  isDraftProspect = false,
   face,
 }) => {
+  const { state } = useGame();
   const px = `${size}px`;
   const badgeSize = Math.round(size * 0.5);  // team logo badge ~50% of portrait
+  const allowNameFallback = !disableNameFallback && state.leagueType !== 'fictional';
+  const preferCanonicalNbaPortrait = state.leagueType === 'modded' && state.moddedLeagueBase === 'nba';
+  const resolvedPortraitSeason = portraitSeason ?? state.leagueStats?.year;
+  const [nbaEraPortraitCandidates, setNbaEraPortraitCandidates] = useState<string[]>([]);
+  const externalPortraitCandidates = useMemo(() => {
+    if (!allowNameFallback || !playerName) return [];
+    const league = playerIdentity?.status === 'PBA'
+      ? 'PBA'
+      : isWnbaIsolatedMode(state)
+        ? 'WNBA'
+        : isPbaIsolatedMode(state)
+          ? 'PBA'
+          : null;
+    return league
+      ? getCachedExternalPortraitCandidatesForName(league, playerName, resolvedPortraitSeason)
+      : [];
+  }, [allowNameFallback, playerIdentity?.status, playerName, resolvedPortraitSeason, state]);
+  const [lookupImgUrl, setLookupImgUrl] = useState<string | null>(null);
 
-  // Fallback: BBGM/ProBallers portrait → initials avatar (no NBA CDN fallback — those are passport-style headshots)
-  const [imgSrc, setImgSrc] = useState<string | null>(imgUrl ?? fallbackImgUrl ?? null);
+  useEffect(() => {
+    let active = true;
+    setNbaEraPortraitCandidates([]);
+    if (!allowNameFallback || !preferCanonicalNbaPortrait || !playerName) return () => { active = false; };
+    loadNbaEraPortraitCatalog().then(() => {
+      if (active) {
+        setNbaEraPortraitCandidates(getCachedNbaEraPortraitCandidates(playerIdentity ?? playerName, {
+          season: resolvedPortraitSeason,
+          isProspect: isDraftProspect,
+        }));
+      }
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [allowNameFallback, isDraftProspect, playerIdentity, playerName, preferCanonicalNbaPortrait, resolvedPortraitSeason]);
+
+  const nameFallback = useMemo(() => {
+    if (!allowNameFallback) return null;
+    if (!playerName) return null;
+    const nbaId = extractNbaId('', playerName);
+    return nbaId ? hdPortrait(nbaId) : null;
+  }, [allowNameFallback, playerName]);
+
+  const imageCandidates = useMemo(() => {
+    const explicit = isUsablePlayerPortraitUrl(imgUrl) ? imgUrl : null;
+    const highQualityExternal = externalPortraitCandidates.filter(candidate => !isLowQualityPlayerPortrait(candidate));
+    const pbaHdCandidates = highQualityExternal.filter(candidate => !isPba2021FallbackPortrait(candidate));
+    const pba2021Fallbacks = externalPortraitCandidates.filter(isPba2021FallbackPortrait);
+    const pbaLowQualityCandidates = externalPortraitCandidates.filter(isLowQualityPlayerPortrait);
+    const preferPbaAvailability = playerIdentity?.status === 'PBA' || isPbaIsolatedMode(state);
+    const pbaCandidates = [
+      ...pbaHdCandidates,
+      explicit && !isLowQualityPlayerPortrait(explicit) ? explicit : null,
+      fallbackImgUrl && !isLowQualityPlayerPortrait(fallbackImgUrl) ? fallbackImgUrl : null,
+      ...pba2021Fallbacks,
+      ...pbaLowQualityCandidates,
+      explicit,
+      fallbackImgUrl,
+    ];
+    const candidates = preferPbaAvailability
+      ? pbaCandidates
+      : preferCanonicalNbaPortrait
+      ? [
+          ...(allowNameFallback ? nbaEraPortraitCandidates : []),
+          nameFallback,
+          lookupImgUrl && !isLowQualityPlayerPortrait(lookupImgUrl) ? lookupImgUrl : null,
+          ...highQualityExternal,
+          explicit && !isLowQualityPlayerPortrait(explicit) ? explicit : null,
+          fallbackImgUrl && !isLowQualityPlayerPortrait(fallbackImgUrl) ? fallbackImgUrl : null,
+          lookupImgUrl,
+          explicit,
+          fallbackImgUrl,
+          ...externalPortraitCandidates,
+        ]
+      : [
+          lookupImgUrl && !isLowQualityPlayerPortrait(lookupImgUrl) ? lookupImgUrl : null,
+          ...highQualityExternal,
+          explicit && !isLowQualityPlayerPortrait(explicit) ? explicit : null,
+          fallbackImgUrl && !isLowQualityPlayerPortrait(fallbackImgUrl) ? fallbackImgUrl : null,
+          nameFallback,
+          lookupImgUrl,
+          explicit,
+          fallbackImgUrl,
+          ...externalPortraitCandidates,
+        ];
+    return [...new Set(candidates.filter((candidate): candidate is string => isUsablePlayerPortraitUrl(candidate)))];
+  }, [allowNameFallback, externalPortraitCandidates, fallbackImgUrl, imgUrl, lookupImgUrl, nameFallback, nbaEraPortraitCandidates, playerIdentity?.status, preferCanonicalNbaPortrait, state]);
+
+  const [imgSrc, setImgSrc] = useState<string | null>(imageCandidates[0] ?? null);
+  const teamLogoCandidates = useMemo(
+    () => [...new Set([teamLogoUrl, fallbackTeamLogoUrl].filter((url): url is string => !!url))],
+    [fallbackTeamLogoUrl, teamLogoUrl],
+  );
+  const [teamLogoSrc, setTeamLogoSrc] = useState<string | null>(teamLogoCandidates[0] ?? null);
 
   // Reset when the imgUrl prop changes (e.g. navigating between players without unmount)
   useEffect(() => {
-    setImgSrc(imgUrl ?? fallbackImgUrl ?? null);
-  }, [imgUrl, fallbackImgUrl]);
+    setImgSrc(imageCandidates[0] ?? null);
+  }, [imageCandidates]);
+
+  useEffect(() => {
+    setTeamLogoSrc(teamLogoCandidates[0] ?? null);
+  }, [teamLogoCandidates]);
+
+  useEffect(() => {
+    let active = true;
+    setLookupImgUrl(null);
+    if (!playerName || !allowNameFallback) return () => { active = false; };
+    ensurePortraitLookupsLoaded().then(() => {
+      if (active) setLookupImgUrl(getPhotoByName(playerName));
+    }).catch(() => {});
+    return () => { active = false; };
+  }, [allowNameFallback, playerName]);
 
   const handleImgError = () => {
-    setImgSrc(current => current !== fallbackImgUrl && fallbackImgUrl ? fallbackImgUrl : null);
+    setImgSrc(current => {
+      if (current) markPortraitUrlUnavailable(current);
+      const currentIndex = current ? imageCandidates.indexOf(current) : -1;
+      return imageCandidates.slice(currentIndex + 1).find(candidate => !isPortraitUrlUnavailable(candidate)) ?? null;
+    });
+  };
+
+  const handleTeamLogoError = () => {
+    setTeamLogoSrc(current => {
+      const currentIndex = current ? teamLogoCandidates.indexOf(current) : -1;
+      return teamLogoCandidates[currentIndex + 1] ?? null;
+    });
   };
 
   const initials = playerName
@@ -93,12 +227,12 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
       )}
 
       {/* Team logo — top-left */}
-      {teamLogoUrl && (
+      {teamLogoSrc && (
         <div
           className="absolute -top-1 -left-1 bg-slate-900 rounded-full border border-slate-700 flex items-center justify-center p-0.5 shadow-xl z-10"
           style={{ width: `${badgeSize}px`, height: `${badgeSize}px` }}
         >
-          <img src={teamLogoUrl} alt="" className="w-full h-full object-contain" />
+          <img src={teamLogoSrc} alt="" className="w-full h-full object-contain" onError={handleTeamLogoError} />
         </div>
       )}
 
@@ -111,7 +245,10 @@ export const PlayerPortrait: React.FC<PlayerPortraitProps> = ({
 
       {/* OVR badge — bottom-right */}
       {overallRating !== undefined && (
-        <div className="absolute -bottom-1 -right-1 bg-slate-950 border-2 border-slate-800 rounded-lg px-1.5 py-0.5 shadow-lg z-10">
+        <div
+          aria-label={`Overall ${ovrLabel ?? convertTo2KRating(overallRating ?? 0, ratings?.[ratings.length - 1]?.hgt ?? 50, ratings?.[ratings.length - 1]?.tp)}`}
+          className="absolute -bottom-1 -right-1 bg-slate-950 border-2 border-slate-800 rounded-lg px-1.5 py-0.5 shadow-lg z-10"
+        >
           <span className="text-[9px] font-black text-white italic">
             {ovrLabel ?? convertTo2KRating(overallRating ?? 0, ratings?.[ratings.length - 1]?.hgt ?? 50, ratings?.[ratings.length - 1]?.tp)}
           </span>

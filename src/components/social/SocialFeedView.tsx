@@ -9,7 +9,8 @@ import { AnimatePresence } from 'motion/react';
 import { SocialThreadModal } from './SocialThreadModal';
 import { ImageModal } from './ImageModal';
 import { useInView } from '../../hooks/useInView';
-import { enrichPostWithPhoto, getResolvedUrl, type GamePhotoInfo } from '../../services/social/photoEnricher';
+import { buildGamePhotoInfo, enrichPostWithPhoto, getResolvedPhotoCredit, getResolvedUrl, isAllowedSocialPhoto, type GamePhotoInfo } from '../../services/social/photoEnricher';
+import { resolveAnyTeam } from '../../utils/teamLookup';
 
 interface SocialFeedViewProps {
     posts: SocialPost[];
@@ -22,29 +23,14 @@ function useGameLookup(): Map<number, GamePhotoInfo> {
     return useMemo(() => {
         const lookup = new Map<number, GamePhotoInfo>();
         for (const bs of (state.boxScores || []) as GameResult[]) {
-            if (!bs.gameId || bs.homeTeamId <= 0 || bs.awayTeamId <= 0) continue;
-            const home = state.teams.find(t => t.id === bs.homeTeamId);
-            const away = state.teams.find(t => t.id === bs.awayTeamId);
+            if (!bs.gameId || bs.homeTeamId < 0 || bs.awayTeamId < 0) continue;
+            const home = resolveAnyTeam(bs.homeTeamId, state.teams, state.nonNBATeams ?? []);
+            const away = resolveAnyTeam(bs.awayTeamId, state.teams, state.nonNBATeams ?? []);
             if (!home || !away) continue;
-
-            const topPlayers = [
-                ...(bs.homeStats || []),
-                ...(bs.awayStats || []),
-            ]
-                .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0))
-                .slice(0, 10)
-                .map(s => ({ name: s.name, gameScore: s.gameScore ?? 0 }));
-
-            lookup.set(bs.gameId, {
-                homeTeam: home,
-                awayTeam: away,
-                topPlayers,
-                date: bs.date || '',
-            });
+            lookup.set(bs.gameId, buildGamePhotoInfo(bs, home, away, state));
         }
         return lookup;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [state.boxScores, state.teams]);
+    }, [state.boxScores, state.leagueStats, state.leagueType, state.moddedLeagueBase, state.nbaStartYear, state.nonNBATeams, state.teams]);
 }
 
 // ─── Per-post lazy photo wrapper ──────────────────────────────────────────────
@@ -58,26 +44,28 @@ interface LazyPostProps {
 
 const LazyPhotoPost: React.FC<LazyPostProps> = ({ post, gameLookup, leagueType, onClick, onImageClick }) => {
     const { ref, inView } = useInView(0.05);
+    const attemptedLookupRef = React.useRef<Map<number, GamePhotoInfo> | null>(null);
     const [resolvedMediaUrl, setResolvedMediaUrl] = useState<string | undefined>(() => {
         // Initialize from cache so image shows instantly on re-mount (navigation back)
         const cached = getResolvedUrl(post.id);
         if (cached) return cached;
-        return post.mediaUrl ?? undefined;
+        return isAllowedSocialPhoto(post) ? undefined : post.mediaUrl ?? undefined;
     });
 
     React.useEffect(() => {
-        if (!inView) return;
-        if (resolvedMediaUrl) return; // already have one
+        if (!inView || attemptedLookupRef.current === gameLookup) return;
+        attemptedLookupRef.current = gameLookup;
 
         let cancelled = false;
         enrichPostWithPhoto(post, gameLookup, leagueType).then(url => {
-            if (!cancelled && url) setResolvedMediaUrl(url);
+            if (!cancelled && url && url !== resolvedMediaUrl) setResolvedMediaUrl(url);
         });
         return () => { cancelled = true; };
-    }, [inView, gameLookup]); // re-run if gameLookup updates (new boxScore data)
+    }, [gameLookup, inView, leagueType, post.id, resolvedMediaUrl]);
 
+    const photoCredit = getResolvedPhotoCredit(post.id);
     const enrichedPost: SocialPost = resolvedMediaUrl
-        ? { ...post, mediaUrl: resolvedMediaUrl }
+        ? { ...post, mediaUrl: resolvedMediaUrl, data: { ...post.data, photoCredit } }
         : post;
 
     return (
@@ -97,6 +85,7 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
     const { state: gameState, dispatchAction } = useGame();
 
     const gameLookup = useGameLookup();
+    const isEuroFeed = gameState.leagueStats?.uiMode === 'euro_isolated';
 
     const [selectedPost, setSelectedPost] = useState<SocialPost | null>(null);
     const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
@@ -219,9 +208,13 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
                         d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z"
                     />
                 </svg>
-                <h3 className="mt-2 text-lg font-medium text-white">The Digital Sphere is Quiet</h3>
+                <h3 className="mt-2 text-lg font-medium text-white">
+                    {isEuroFeed ? 'European Basketball Is Quiet' : 'The Digital Sphere is Quiet'}
+                </h3>
                 <p className="mt-1 text-sm text-slate-400">
-                    Make a decision to see how the world reacts.
+                    {isEuroFeed
+                        ? 'Simulate a game to bring club reactions, player performances, and Euro voices into the feed.'
+                        : 'Make a decision to see how the world reacts.'}
                 </p>
             </div>
         );
@@ -229,7 +222,9 @@ const SocialFeedView: React.FC<SocialFeedViewProps> = ({ posts }) => {
 
     return (
         <div className="space-y-4 p-4 md:p-6">
-            <h2 className="text-xl font-bold text-white mb-2">Social Feed</h2>
+            <h2 className="text-xl font-bold text-white mb-2">
+                {isEuroFeed ? 'Euro Hoops Feed' : 'Social Feed'}
+            </h2>
 
             {posts.map((post, index) => (
                 <LazyPhotoPost

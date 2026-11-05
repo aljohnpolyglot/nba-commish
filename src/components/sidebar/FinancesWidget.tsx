@@ -3,6 +3,7 @@ import { DollarSign, User } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { Tab } from '../../types';
 import { formatCurrencyWithCode } from '../../utils/helpers';
+import { getAvailableLeagueBudget } from '../../services/logic/leagueTreasury';
 
 interface FinancesWidgetProps {
   onViewChange?: (view: Tab) => void;
@@ -22,9 +23,9 @@ export const FinancesWidget: React.FC<FinancesWidgetProps> = ({ onViewChange }) 
           <div className="flex items-center justify-between bg-slate-800/40 p-3 rounded-xl border border-slate-800/50">
             <div className="flex items-center gap-2">
               <DollarSign size={14} className="text-emerald-500" />
-              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">League</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Budget</span>
             </div>
-            <span className="font-mono text-xs font-bold text-emerald-400">{formatCurrencyWithCode(state.stats.leagueFunds, currency)}</span>
+            <span className="font-mono text-xs font-bold text-emerald-400">{formatCurrencyWithCode(getAvailableLeagueBudget(state.stats), currency)}</span>
           </div>
         )}
 

@@ -1,28 +1,15 @@
 import type { CompetitionSpec } from '../../../services/competition/types';
+import { buildEuropeanLeagueCalendarProfile } from '../../../services/euro/competitionCatalog';
 
 export const SPAIN_COMPETITIONS: CompetitionSpec[] = [
   {
     id: 'endesa',
     displayName: 'Liga Endesa',
     shortName: 'ACB',
-    format: 'regular-league',
-    seasonStart: { month: 9, day: 28 },
-    seasonEnd: { month: 5, day: 30 },
+    ...buildEuropeanLeagueCalendarProfile('domestic'),
     teamSelector: 'allEndesa',
     teamCount: 18,
     gamesPerTeam: 34,
-    daysOfWeek: ['Fri', 'Sat', 'Sun'],
-    playoffFormat: {
-      qfBest: 3,
-      sfBest: 5,
-      finalBest: 5,
-      finalFormat: 'best-of',
-      rounds: [
-        { phase: 'qf', bestOf: 3, start: { month: 6, day: 1 }, end: { month: 6, day: 8 } },
-        { phase: 'sf', bestOf: 5, start: { month: 6, day: 10 }, end: { month: 6, day: 18 } },
-        { phase: 'final', bestOf: 5, start: { month: 6, day: 20 }, end: { month: 6, day: 28 } },
-      ],
-    },
     prizePool: { currency: 'EUR', winner: 500_000, runnerUp: 200_000, semi: 100_000, qf: 50_000 },
     accentColor: '#D62828',
     icon: 'shield',
@@ -31,22 +18,10 @@ export const SPAIN_COMPETITIONS: CompetitionSpec[] = [
     id: 'euroleague',
     displayName: 'Turkish Airlines EuroLeague',
     shortName: 'EL',
-    format: 'group-knockout',
-    seasonStart: { month: 10, day: 1 },
-    seasonEnd: { month: 4, day: 30 },
+    ...buildEuropeanLeagueCalendarProfile('euroleague'),
     teamSelector: 'allEuroleague',
     teamCount: 20,
     gamesPerTeam: 38,
-    daysOfWeek: ['Tue', 'Thu'],
-    playoffFormat: {
-      qfBest: 5,
-      finalFormat: 'final-four',
-      rounds: [
-        { phase: 'regular-season', start: { month: 9, day: 30 }, end: { month: 4, day: 17 } },
-        { phase: 'quarterfinals', bestOf: 5, start: { month: 4, day: 28 }, end: { month: 5, day: 13 } },
-        { phase: 'final-four', singleElimination: true, start: { month: 5, day: 22 }, end: { month: 5, day: 24 } },
-      ],
-    },
     prizePool: { currency: 'EUR', groupParticipation: 200_000, winner: 1_000_000, runnerUp: 500_000, semi: 250_000, qf: 100_000 },
     accentColor: '#F77F00',
     icon: 'trophy',
@@ -58,7 +33,7 @@ export const SPAIN_COMPETITIONS: CompetitionSpec[] = [
     format: 'knockout',
     seasonStart: { month: 2, day: 13 },
     seasonEnd: { month: 2, day: 16 },
-    teamSelector: 'top8EndesaMidseason',
+    teamSelector: 'league:Endesa',
     teamCount: 8,
     daysOfWeek: ['Thu', 'Fri', 'Sat', 'Sun'],
     playoffFormat: {
@@ -72,6 +47,8 @@ export const SPAIN_COMPETITIONS: CompetitionSpec[] = [
     prizePool: { currency: 'EUR', winner: 200_000, runnerUp: 100_000 },
     accentColor: '#C1121F',
     icon: 'cup',
+    domesticParentId: 'endesa',
+    qualificationRule: 'domestic-standings',
   },
   {
     id: 'supercopa',
@@ -80,7 +57,7 @@ export const SPAIN_COMPETITIONS: CompetitionSpec[] = [
     format: 'tournament',
     seasonStart: { month: 9, day: 22 },
     seasonEnd: { month: 9, day: 24 },
-    teamSelector: 'supercopaQualified',
+    teamSelector: 'league:Endesa',
     teamCount: 4,
     daysOfWeek: ['Fri', 'Sat', 'Sun'],
     playoffFormat: {
@@ -93,5 +70,11 @@ export const SPAIN_COMPETITIONS: CompetitionSpec[] = [
     prizePool: { currency: 'EUR', winner: 100_000, runnerUp: 50_000 },
     accentColor: '#E09F3E',
     icon: 'star',
+    domesticParentId: 'endesa',
+    qualificationRule: 'domestic-titleholders',
   },
 ];
+
+export const SPAIN_DOMESTIC_COMPETITIONS = SPAIN_COMPETITIONS.filter(
+  competition => competition.id !== 'euroleague',
+);

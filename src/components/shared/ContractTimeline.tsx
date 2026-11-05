@@ -1,9 +1,20 @@
 import React, { useMemo } from 'react';
 import { useGame } from '../../store/GameContext';
-import { convertTo2KRating, formatCurrencyWithCode, getLeagueCurrencyCode } from '../../utils/helpers';
+import { formatCurrencyWithCode, getLeagueCurrencyCode } from '../../utils/helpers';
 import { contractToUSD, formatSalaryM } from '../../utils/salaryUtils';
 import { isEuroIsolatedMode } from '../../utils/uiMode';
-import { isOnRoster } from '../../utils/teamLookup';
+import { getStandardRosterLimit, getTwoWayRosterLimit } from '../../utils/rosterLimits';
+import { areNonGuaranteedContractsEnabled, areTwoWayContractsEnabled, isNonGuaranteedContract, isTwoWayContract, normalizeContractOptionKind } from '../../utils/contractTypes';
+import { isMleEnabled } from '../../utils/ruleFlags';
+import { getTeamRosterContractCounts } from '../../utils/rosterCounts';
+import {
+  areWnbaDevelopmentalContractsEnabled,
+  getWnbaDevelopmentalCompensationUSD,
+  getWnbaDevelopmentalContractLabel,
+} from '../../services/wnba/developmentalContracts';
+import type { NBAPlayer } from '../../types';
+import { getScoutedDisplayOverall } from '../../utils/scoutingFuzz';
+import { PlayerNameWithHover } from './PlayerNameWithHover';
 
 /** Apply NBA-standard ~5% annual raise to locked contract years (baked in at signing). */
 function annualRaise(baseUSD: number, yearsFromNow: number): number {
@@ -15,29 +26,53 @@ interface ContractTimelineProps {
   teamId: number;
   /** Optional: override currentYear (defaults to leagueStats.year) */
   currentYear?: number;
+  players?: NBAPlayer[];
 }
 
-export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, currentYear: yearProp }) => {
+export function buildPlayerContractYearMap(player: NBAPlayer) {
+  const years = new Map<number, { guaranteed: number; option: string }>();
+  for (const salary of player.salaries ?? []) {
+    const season = Number(salary.season);
+    const guaranteed = contractToUSD(Number(salary.amount ?? 0));
+    if (season > 0 && guaranteed > 0) years.set(season, { guaranteed, option: salary.option ?? '' });
+  }
+  for (const row of player.contractYears ?? []) {
+    const season = Number(String(row.season ?? '').slice(0, 4)) + 1;
+    if (season > 0) years.set(season, { guaranteed: Number(row.guaranteed ?? 0), option: row.option ?? '' });
+  }
+  return years;
+}
+
+export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, currentYear: yearProp, players }) => {
   const { state } = useGame();
   const currentYear = yearProp ?? state.leagueStats.year;
   const euroTimeline = isEuroIsolatedMode(state) || teamId >= 100;
   const currencyCode = getLeagueCurrencyCode(state.leagueStats);
 
   const teamPlayers = useMemo(
-    () => state.players.filter(p => {
-      if (p.tid !== teamId) return false;
-      if (euroTimeline) return isOnRoster(p);
-      return !['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '');
-    }),
-    [state.players, teamId, euroTimeline]
+    () => players ?? getTeamRosterContractCounts(
+        state.players,
+        teamId,
+        state.leagueStats,
+        euroTimeline
+          ? state.nonNBATeams?.find(team => team.tid === teamId)?.league ?? 'Euroleague'
+          : 'NBA',
+      ).rosterPlayers,
+    [euroTimeline, players, state.leagueStats, state.nonNBATeams, state.players, teamId]
   );
 
-  const maxStandard = state.leagueStats.maxStandardPlayersPerTeam ?? 15;
-  const maxTwoWay = state.leagueStats.maxTwoWayPlayersPerTeam ?? 3;
-  const twoWayCount = euroTimeline ? 0 : teamPlayers.filter(p => !!(p as any).twoWay).length;
-  const ngCount = euroTimeline ? 0 : teamPlayers.filter(p => !!(p as any).nonGuaranteed).length;
+  const maxStandard = getStandardRosterLimit(state.leagueStats as any);
+  const maxTwoWay = euroTimeline ? 0 : getTwoWayRosterLimit(state.leagueStats as any);
+  const twoWayEnabled = !euroTimeline && areTwoWayContractsEnabled(state.leagueStats);
+  const developmentalActive = areWnbaDevelopmentalContractsEnabled(state.leagueStats);
+  const secondaryContractLabel = getWnbaDevelopmentalContractLabel(state.leagueStats);
+  const mleEnabled = !euroTimeline && isMleEnabled(state.leagueStats);
+  const playerOptionsEnabled = state.leagueStats?.playerOptionsEnabled !== false;
+  const nonGuaranteedEnabled = !euroTimeline && areNonGuaranteedContractsEnabled(state.leagueStats);
+  const twoWayCount = twoWayEnabled ? teamPlayers.filter(p => isTwoWayContract(p, state.leagueStats)).length : 0;
+  const ngCount = nonGuaranteedEnabled ? teamPlayers.filter(p => isNonGuaranteedContract(p, state.leagueStats)).length : 0;
   const standardCount = teamPlayers.length - twoWayCount;
-  const mleCount = euroTimeline ? 0 : teamPlayers.filter(p => !!(p as any).mleSignedVia).length;
+  const mleCount = mleEnabled ? teamPlayers.filter(p => !!(p as any).mleSignedVia).length : 0;
 
   const team = state.teams.find(t => t.id === teamId);
   const deadMoneyEntries = team?.deadMoney ?? [];
@@ -57,25 +92,23 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
         </thead>
         <tbody>
           {[...teamPlayers].sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)).map(player => {
-            const isTwoWayPlayer = !euroTimeline && !!(player as any).twoWay;
-            const isNGPlayer = !euroTimeline && !!(player as any).nonGuaranteed;
-            const baseUSD = isTwoWayPlayer ? 625_000 : contractToUSD(player.contract?.amount || 0);
+            const isTwoWayPlayer = twoWayEnabled && isTwoWayContract(player, state.leagueStats);
+            const isNGPlayer = nonGuaranteedEnabled && isNonGuaranteedContract(player, state.leagueStats);
+            const secondaryCompensationUSD = developmentalActive
+              ? getWnbaDevelopmentalCompensationUSD(player, state.leagueStats)
+              : 625_000;
+            const baseUSD = isTwoWayPlayer ? secondaryCompensationUSD : contractToUSD(player.contract?.amount || 0);
             const expYear = player.contract?.exp || currentYear;
-            const yearsLeft = expYear - currentYear + 1;
 
-            const contractYears: Array<{ season: string; guaranteed: number; option: string }> =
-              (player as any).contractYears ?? [];
-            const cyByYear = new Map<number, { guaranteed: number; option: string }>();
-            contractYears.forEach(cy => {
-              const y = parseInt(cy.season.split('-')[0], 10) + 1;
-              cyByYear.set(y, { guaranteed: cy.guaranteed, option: cy.option });
-            });
+            const cyByYear = buildPlayerContractYearMap(player);
 
             const lastNonZeroEntry = [...cyByYear.entries()]
               .filter(([, v]) => v.guaranteed > 0)
               .sort(([a], [b]) => b - a)[0];
             const lastNonZeroYear = lastNonZeroEntry?.[0] ?? currentYear;
             const lastNonZeroUSD  = lastNonZeroEntry?.[1]?.guaranteed ?? baseUSD;
+            const effectiveExpYear = cyByYear.size > 0 ? Math.max(...cyByYear.keys()) : expYear;
+            const yearsLeft = effectiveExpYear - currentYear + 1;
 
             // First leagueStats year where the deal pays. For a rookie drafted
             // during leagueStats.year=2026, contractYears starts at "2026-27"
@@ -86,7 +119,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
               : null;
 
             const yr = (n: number): number => {
-              if (isTwoWayPlayer) return 625_000;
+              if (isTwoWayPlayer) return secondaryCompensationUSD;
               const y = currentYear + n;
               const cy = cyByYear.get(y);
               if (cy) {
@@ -103,10 +136,13 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
               if (isNGPlayer && n === 0) return 'ng';
               const y = currentYear + n;
               const cy = cyByYear.get(y);
-              if (cy?.option === 'Player') return 'player';
-              if (cy?.option === 'Team')   return 'team';
+              const optionKind = normalizeContractOptionKind(cy?.option);
+              if (optionKind === 'twoWay') return 'twoway';
+              if (optionKind === 'nonGuaranteed') return 'ng';
+              if (playerOptionsEnabled && optionKind === 'player') return 'player';
+              if (optionKind === 'team') return 'team';
               if (y === expYear) {
-                if (player.contract?.hasPlayerOption) return 'player';
+                if (playerOptionsEnabled && player.contract?.hasPlayerOption) return 'player';
                 if ((player.contract as any)?.hasTeamOption) return 'team';
               }
               return null;
@@ -144,11 +180,11 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    <span className={`font-bold ${isTwoWayPlayer ? 'text-purple-300' : isNGPlayer ? 'text-amber-200' : 'text-slate-200'}`}>
+                    <PlayerNameWithHover player={player} className={`font-bold cursor-help ${isTwoWayPlayer ? 'text-purple-300' : isNGPlayer ? 'text-amber-200' : 'text-slate-200'}`}>
                       {player.name.split(' ')[0][0]}. {player.name.split(' ').slice(1).join(' ')}
-                    </span>
-                    {(() => { const k2 = convertTo2KRating(player.overallRating, player.ratings?.[player.ratings.length-1]?.hgt ?? 50, player.ratings?.[player.ratings.length-1]?.tp); return <span className={`text-xs ${k2 >= 85 ? 'text-emerald-400' : k2 >= 75 ? 'text-slate-300' : 'text-slate-500'}`}>{k2}</span>; })()}
-                    {isTwoWayPlayer && <span className="text-[8px] font-black text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-widest">2W</span>}
+                    </PlayerNameWithHover>
+                    {(() => { const k2 = getScoutedDisplayOverall(state, player, currentYear); return <span className={`text-xs ${k2 >= 85 ? 'text-emerald-400' : k2 >= 75 ? 'text-slate-300' : 'text-slate-500'}`}>{k2}</span>; })()}
+                    {isTwoWayPlayer && <span className="text-[8px] font-black text-purple-400 bg-purple-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-widest">{developmentalActive ? 'DEV' : '2W'}</span>}
                     {isNGPlayer && !isTwoWayPlayer && <span className="text-[8px] font-black text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded-full uppercase tracking-widest">NG</span>}
                   </div>
                 </td>
@@ -199,16 +235,16 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
         <div className="mt-6 flex items-center gap-6 text-xs text-slate-400 flex-wrap">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-[#facc15] rounded-sm" />
-            <span>Guaranteed <span className="text-slate-300 font-mono">{standardCount}/{maxStandard}</span></span>
+            <span>Standard <span className="text-slate-300 font-mono">{standardCount}/{maxStandard}</span></span>
           </div>
-          <div className="flex items-center gap-2">
+          {mleEnabled && <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-cyan-500/20 border border-cyan-500/30 rounded-sm" />
             <span className="text-cyan-300">MLE <span className="font-mono">{mleCount}</span></span>
-          </div>
-          <div className="flex items-center gap-2">
+          </div>}
+          {twoWayEnabled && <div className="flex items-center gap-2">
             <div className="w-3 h-3 bg-purple-500/20 border border-purple-500/30 rounded-sm" />
-            <span className="text-purple-300">Two-Way <span className="font-mono">{twoWayCount}/{maxTwoWay}</span></span>
-          </div>
+            <span className="text-purple-300">{secondaryContractLabel} <span className="font-mono">{twoWayCount}/{maxTwoWay}</span></span>
+          </div>}
           {ngCount > 0 && (
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-amber-500/15 border border-amber-500/40 border-dashed rounded-sm" />
@@ -221,7 +257,7 @@ export const ContractTimeline: React.FC<ContractTimelineProps> = ({ teamId, curr
               <span className="text-slate-400">Dead Money <span className="font-mono">{deadMoneyEntries.length}</span></span>
             </div>
           )}
-          <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>
+          {playerOptionsEnabled && <div className="flex items-center gap-2 border border-slate-500 border-dashed px-2 py-0.5 rounded"><span>Player option</span></div>}
           <div className="flex items-center gap-2 border border-[#38bdf8] border-dashed px-2 py-0.5 rounded text-[#38bdf8]"><span>Team option</span></div>
           <div className="flex items-center gap-2"><span className="text-slate-600 font-bold">FA</span><span>Free agent</span></div>
         </div>

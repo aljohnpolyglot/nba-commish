@@ -17,6 +17,8 @@ import { DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
 import { effectiveRecord, seasonLabelToYear, contractToUSD } from '../../utils/salaryUtils';
 import { tradeRoleToTeamMode } from '../../utils/teamStrategy';
 import { formatPickLabel } from '../draft/draftClassStrength';
+import { hasExplicitPbaImportProvenance } from '../pba/importManager';
+import { isEurostashPlayer } from '../freeAgency/eurostashRights';
 
 export const EXTERNAL = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
 
@@ -26,15 +28,11 @@ export function isTradeExcludedStatus(status: string | undefined, allowPbaRoster
 }
 
 export function isPbaConferenceImport(player: NBAPlayer): boolean {
-  const tid = Number(player.tid);
-  if (!Number.isFinite(tid) || tid < 2000 || tid >= 3000) return false;
-  const meta = (player as any).pbaImportContract;
-  return !!(player as any).isImport
-    || !!(player as any).importConference
-    || (meta?.league === 'PBA' && meta?.status !== 'released');
+  return hasExplicitPbaImportProvenance(player);
 }
 
 export function isTradeExcludedPlayer(player: NBAPlayer, allowPbaRoster = false): boolean {
+  if (isEurostashPlayer(player)) return false;
   if (allowPbaRoster && isPbaConferenceImport(player)) return true;
   return isTradeExcludedStatus(player.status, allowPbaRoster);
 }
@@ -70,6 +68,8 @@ export interface FindOffersInput {
   usedIds: Set<string>;
   /** All players in the game */
   players: NBAPlayer[];
+  /** Invocation-local roster index. Values preserve the source player order. */
+  playersByTeam?: Map<number, NBAPlayer[]>;
   /** All teams */
   teams: NBATeam[];
   /** All draft picks */

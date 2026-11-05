@@ -1,7 +1,10 @@
 import type { NBATeam, NBAPlayer } from '../../types';
+import type { TycoonState } from '../../types/tycoon';
 import type { StaffAttributes } from '../../TeamTraining/types';
 import { attrsForCoach, seedForStaff } from './displayAttributes';
-import { medicalQuality } from '../tycoon/medicalEngine';
+import { getMedicalDepartmentQuality } from '../tycoon/medicalEngine';
+import { getAcademyBudgetStrength } from '../tycoon/economyScale';
+import { getAnalyticsDepartmentRating } from '../tycoon/analyticsEngine';
 
 const COACH_NEUTRAL = 60;
 const DEV_NEUTRAL = 70;
@@ -26,20 +29,15 @@ const NEUTRAL_STAFF_ATTRS: StaffAttributes = {
   negotiating: 60,
 };
 
+type GameplayStaffMember = NonNullable<TycoonState['staffMembers']>[number] & {
+  reputation?: number;
+  attributeSeed?: number;
+  attributeProfile?: 'default' | 'nba';
+  attributeOverrides?: Partial<StaffAttributes>;
+};
+
 type TeamWithStaff = NBATeam & {
-  tycoon?: {
-    staffMembers?: Array<{
-      id?: string;
-      role?: string;
-      name?: string;
-      rating?: number;
-      reputation?: number;
-      attributeSeed?: number;
-      attributeProfile?: 'default' | 'nba';
-      attributeOverrides?: Partial<StaffAttributes>;
-    }>;
-    medicalBudget?: number;
-  };
+  tycoon?: Omit<TycoonState, 'staffMembers'> & { staffMembers?: GameplayStaffMember[] };
 };
 
 export interface TeamCoachingGameplayEffects {
@@ -83,11 +81,6 @@ function clamp(value: number, min: number, max: number): number {
 
 function getStaffMembers(team?: TeamWithStaff | null) {
   return Array.isArray(team?.tycoon?.staffMembers) ? team!.tycoon!.staffMembers! : [];
-}
-
-function isNBATeam(team?: TeamWithStaff | null): boolean {
-  const tid = Number(team?.id ?? (team as any)?.tid ?? -1);
-  return tid >= 0 && tid < 100;
 }
 
 function getStaffMember(team: TeamWithStaff | null | undefined, role: string) {
@@ -197,13 +190,14 @@ export function getTeamMedicalGameplayEffects(team?: TeamWithStaff | null): Team
   ]);
   const injuryScale = scaleAroundNeutral(sportsScienceAvg);
   const staffRecoveryScale = scaleAroundNeutral(physioAvg);
-  const facilityRecoveryScale = medicalQuality(team?.tycoon?.medicalBudget) * 2 - 1;
-  const recoveryScale = isNBATeam(team)
-    ? staffRecoveryScale
-    : facilityRecoveryScale * 0.7 + staffRecoveryScale * 0.3;
+  const tycoon = team?.tycoon;
+  const economyIndex = Math.max(0.05, Number(tycoon?.currentEconomyIndex ?? tycoon?.historicalEconomyScaleApplied ?? 1));
+  const departmentScale = tycoon ? getMedicalDepartmentQuality(tycoon, economyIndex) * 2 - 1 : 0;
+  const combinedInjuryScale = tycoon ? injuryScale * 0.65 + departmentScale * 0.35 : injuryScale;
+  const recoveryScale = tycoon ? departmentScale * 0.7 + staffRecoveryScale * 0.3 : staffRecoveryScale;
 
   return {
-    injuryRiskMultiplier: clamp(1 - injuryScale * 0.5, 0.5, 1.35),
+    injuryRiskMultiplier: clamp(1 - combinedInjuryScale * 0.5, 0.5, 1.35),
     recoveryMultiplier: clamp(1 + recoveryScale * 0.5, 0.5, 1.5),
   };
 }
@@ -216,13 +210,32 @@ export function getTeamDevelopmentMultiplier(team?: TeamWithStaff | null): numbe
   return clamp(1 + (scale >= 0 ? scale * 0.5 : scale * 0.3), 0.7, 1.5);
 }
 
+export function getTeamAcademyDevelopmentMultiplier(team?: TeamWithStaff | null): number {
+  const director = getRoleAttrs(team, 'Head of Academy');
+  const budgetStrength = getAcademyBudgetStrength((team?.tycoon as any)?.academyBudget, (team?.tycoon as any)?.tier, (team?.tycoon as any)?.currentEconomyIndex ?? 1);
+  const budgetMultiplier = 0.75 + budgetStrength * 0.6;
+  if (!director) return budgetMultiplier * 0.9;
+  const directorAverage = averageNumbers([
+    director.development,
+    director.adaptability,
+    director.judgingPlayerPotential,
+  ]);
+  const directorScale = scaleAroundNeutral(directorAverage, DEV_NEUTRAL);
+  const directorMultiplier = clamp(1 + (directorScale >= 0 ? directorScale * 0.25 : directorScale * 0.15), 0.85, 1.25);
+  return clamp(budgetMultiplier * directorMultiplier, 0.65, 1.65);
+}
+
 export function getTeamScoutingFuzzBand(team: TeamWithStaff | null | undefined, kind: 'draft' | 'current'): number {
   const role = kind === 'draft' ? 'Chief Scout' : 'Head of Analytics';
   const attrs = getRoleAttrs(team, role);
-  if (!attrs) return 4;
-  const average = averageNumbers([attrs.judgingPlayerAbility, attrs.judgingPlayerPotential]);
-  const scale = scaleAroundNeutral(average);
-  return clamp(Math.round(4 - scale * 4), 0, 8);
+  const staffBand = attrs
+    ? clamp(Math.round(4 - scaleAroundNeutral(averageNumbers([attrs.judgingPlayerAbility, attrs.judgingPlayerPotential])) * 4), 0, 8)
+    : 4;
+  if (!team?.tycoon) return staffBand;
+  const economyIndex = Math.max(0.05, Number(team.tycoon.currentEconomyIndex ?? team.tycoon.historicalEconomyScaleApplied ?? 1));
+  const departmentRating = getAnalyticsDepartmentRating(team.tycoon, economyIndex);
+  const departmentBand = clamp(Math.round(8 - departmentRating * 0.08), 0, 8);
+  return clamp(Math.round(staffBand * 0.65 + departmentBand * 0.35), 0, 8);
 }
 
 function cloneLatestRatings(player: NBAPlayer): { player: NBAPlayer; rating: any } | null {

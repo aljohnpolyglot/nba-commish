@@ -1,5 +1,7 @@
 import type { PlayerK2 } from '../types';
 import { convertTo2KRating } from '../../../../../../utils/helpers';
+import { applyEraShotDistributionBias, applyEraTempoBias } from '../../../../../../services/simulation/eraCoachingBias';
+import { getPlayersOnCourt } from '../../../../../../services/simulation/courtSize';
 
 export interface CoachSliders {
   tempo: number;
@@ -26,7 +28,8 @@ export interface CoachSliders {
   ptiPlayoffs: number;
 }
 
-export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[][]): CoachSliders {
+export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[][], leagueStats?: any): CoachSliders {
+  const playersOnCourt = getPlayersOnCourt(leagueStats, roster.length);
   const getDisplayOvr = (player: PlayerK2) => {
     if (typeof player.rating2K === 'number' && Number.isFinite(player.rating2K) && player.rating2K > 0) {
       return player.rating2K;
@@ -42,10 +45,10 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
       return ovrB - ovrA;
     });
 
-    const top8 = sorted.slice(0, 8);
-    const starters = sorted.slice(0, 5);
-    const bench = sorted.slice(5, 12);
-    const top10 = sorted.slice(0, 10);
+    const top8 = sorted.slice(0, Math.max(8, playersOnCourt + 3));
+    const starters = sorted.slice(0, playersOnCourt);
+    const bench = sorted.slice(playersOnCourt, playersOnCourt * 2);
+    const topUnits = sorted.slice(0, playersOnCourt * 2);
 
     const getAvg = (group: PlayerK2[], attr: keyof PlayerK2['ratings'][0]) => {
       if (!group.length) return 50;
@@ -101,8 +104,13 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
       return 14;
     };
 
-    const starterInOut = top10.slice(0, 5).reduce((acc, p) => acc + getPlayerInOutVal(p), 0) / 5;
-    const benchInOut = top10.slice(5, 10).reduce((acc, p) => acc + getPlayerInOutVal(p), 0) / 5;
+    const starterInOut = starters.length > 0
+      ? starters.reduce((acc, player) => acc + getPlayerInOutVal(player), 0) / starters.length
+      : 0;
+    const benchUnit = topUnits.slice(playersOnCourt);
+    const benchInOut = benchUnit.length > 0
+      ? benchUnit.reduce((acc, player) => acc + getPlayerInOutVal(player), 0) / benchUnit.length
+      : starterInOut;
     const prefInOut = (starterInOut * 0.7 + benchInOut * 0.3) * (100 / 14);
 
     const rawInside = (ins * 0.6) + (dnk * 0.4);
@@ -160,11 +168,11 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
     return Math.max(targetMin, Math.min(targetMax, Math.round(result)));
   };
 
-  const tempo = normalize(myRaw.tempo, 'tempo', 50, 100, 1);
+  const tempo = applyEraTempoBias(normalize(myRaw.tempo, 'tempo', 50, 100, 1), leagueStats);
   const defensivePressure = normalize(myRaw.defPress, 'defPress', 50, 100, 1);
   const crashOffensiveGlass = normalize(myRaw.crash, 'crash', 50, 100, 1);
-  const fastBreak = normalize(myRaw.fastBreak, 'fastBreak', 50, 100, 1);
-  const earlyOffense = normalize(myRaw.earlyOffense, 'earlyOffense', 50, 100, 1);
+  const fastBreak = applyEraTempoBias(normalize(myRaw.fastBreak, 'fastBreak', 50, 100, 1), leagueStats);
+  const earlyOffense = applyEraTempoBias(normalize(myRaw.earlyOffense, 'earlyOffense', 50, 100, 1), leagueStats);
   const runPlays = normalize(myRaw.runPlays, 'runPlays', 50, 100, 1);
   const zoneUsage = normalize(myRaw.zone, 'zone', 2, 3, 0);
   const doubleTeam = normalize(myRaw.doubleTeam, 'doubleTeam', 3, 5, 1);
@@ -207,6 +215,12 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
   const shotMediumNorm = normalize(myRaw.rawMedium, 'rawMedium', 15, 22, 6);
   const shot3ptNorm = normalize(myRaw.raw3pt, 'raw3pt', 41, 50, 34);
   const totalShots = shotInsideNorm + shotCloseNorm + shotMediumNorm + shot3ptNorm;
+  const shotMix = applyEraShotDistributionBias({
+    shotInside: Math.round((shotInsideNorm / totalShots) * 100),
+    shotClose: Math.round((shotCloseNorm / totalShots) * 100),
+    shotMedium: Math.round((shotMediumNorm / totalShots) * 100),
+    shot3pt: Math.round((shot3ptNorm / totalShots) * 100),
+  }, leagueStats);
 
   return {
     tempo,
@@ -219,10 +233,10 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
     doubleTeam,
     zoneUsage,
     benchDepth,
-    shotInside: Math.round((shotInsideNorm / totalShots) * 100),
-    shotClose: Math.round((shotCloseNorm / totalShots) * 100),
-    shotMedium: Math.round((shotMediumNorm / totalShots) * 100),
-    shot3pt: Math.round((shot3ptNorm / totalShots) * 100),
+    shotInside: shotMix.shotInside,
+    shotClose: shotMix.shotClose,
+    shotMedium: shotMix.shotMedium,
+    shot3pt: shotMix.shot3pt,
     attackBasket,
     postPlayers,
     prefSizeSpeed,

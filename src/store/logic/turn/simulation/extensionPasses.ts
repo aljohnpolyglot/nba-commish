@@ -3,19 +3,51 @@ import { runAIMidSeasonExtensions, runAISeasonEndExtensions } from '../../../../
 import { buildShamsTransactionPost } from '../../../../services/social/templates/charania';
 import { getInsiderHandle } from '../../../../data/social/handles';
 import { convertTo2KRating, calculateSocialEngagement } from '../../../../utils/helpers';
-import { addGameDays, formatGameDateShort, parseGameDate } from '../../../../utils/dateUtils';
+import {
+    addGameDays,
+    formatGameDateShort,
+    getCurrentOffseasonEffectiveFAStart,
+    getTradeDeadlineDate,
+    parseGameDate,
+    toISODateString,
+} from '../../../../utils/dateUtils';
 import { formatContractTotalUSD, seasonLabelToYear } from '../../../../utils/salaryUtils';
+import { isTwitterAvailable } from '../../../../utils/mediaTimeline';
+import { getLeagueCalendarDates, getLeagueSeasonForDate } from '../../../../services/leagueCalendar';
 
 const releaseDeclinedExtensionPlayer = (player: Player): Player => {
     return { ...player, midSeasonExtensionDeclined: true } as any;
 };
 
+export function buildAcceptedExtensionContract(
+    player: Player,
+    extension: { newExp: number; hasPlayerOption: boolean },
+): Player['contract'] {
+    return {
+        ...player.contract,
+        exp: extension.newExp,
+        hasPlayerOption: extension.hasPlayerOption || undefined,
+        hasTeamOption: undefined,
+        teamOptionExp: undefined,
+        restrictedFA: undefined,
+        isRestrictedFA: undefined,
+        rookie: undefined,
+        qualifyingOfferSubmitted: undefined,
+        qualifyingOfferSkipped: undefined,
+    } as Player['contract'];
+}
+
 export function applyMidSeasonExtensionsPass(
     stateWithSim: GameState,
     isPlayoffDay: boolean,
-    extMonth: number,
+    includeDerivedMedia = true,
 ): GameState {
-    const isExtensionWindow = extMonth >= 10 || extMonth <= 2;
+    const currentDate = parseGameDate(stateWithSim.date);
+    const currentIso = toISODateString(currentDate);
+    const seasonYear = getLeagueSeasonForDate(currentIso, stateWithSim.leagueStats) || stateWithSim.leagueStats.year;
+    const calendar = getLeagueCalendarDates(seasonYear, stateWithSim.leagueStats);
+    const tradeDeadline = getTradeDeadlineDate(seasonYear, stateWithSim.leagueStats);
+    const isExtensionWindow = currentDate >= calendar.regularSeasonStart && currentDate <= tradeDeadline;
     if (isPlayoffDay || !isExtensionWindow || stateWithSim.day % 14 !== 0) {
         return stateWithSim;
     }
@@ -48,7 +80,7 @@ export function applyMidSeasonExtensionsPass(
                 });
                 return {
                     ...p,
-                    contract: { ...p.contract, exp: ext.newExp },
+                    contract: buildAcceptedExtensionContract(p, ext),
                     contractYears: [...existingThroughCurrent, ...extContractYears],
                     twoWay: false,
                 };
@@ -77,8 +109,9 @@ export function applyMidSeasonExtensionsPass(
         });
 
     const shamsExtPosts: any[] = [];
-    const extInsider = getInsiderHandle(nextState.leagueType);
-    for (const e of extensions.filter(ex => !ex.declined)) {
+    const socialAvailable = isTwitterAvailable(nextState.date, nextState.leagueStats?.year);
+    const extInsider = getInsiderHandle(nextState.leagueType, nextState.date, nextState.leagueStats?.year, nextState.leagueStats?.uiMode);
+    for (const e of includeDerivedMedia ? extensions.filter(ex => !ex.declined) : []) {
         const player = nextState.players.find(p => p.internalId === e.playerId);
         if (!player) continue;
         const lr = (player as any).ratings?.[(player as any).ratings?.length - 1];
@@ -91,11 +124,13 @@ export function applyMidSeasonExtensionsPass(
             amount: (e.newSalaryUSD ?? e.newAmount * 1_000_000) / 1_000_000,
             years: e.newYears ?? 1,
             hasPlayerOption: e.hasPlayerOption,
+            mediaContext: nextState.leagueStats?.uiMode === 'pba_isolated' ? 'pba' : 'nba',
         });
         if (!content) continue;
         const engagement = calculateSocialEngagement(extInsider.atHandle, content, player.overallRating);
+        if (!socialAvailable) continue;
         shamsExtPosts.push({
-            id: `shams-ext-${e.playerId}-${Date.now()}-${Math.random()}`,
+            id: `insider-ext-${e.playerId}-${Date.now()}-${Math.random()}`,
             author: extInsider.name,
             handle: extInsider.atHandle,
             content,
@@ -121,10 +156,21 @@ export function applyMidSeasonExtensionsPass(
 export function applySeasonEndExtensionsPass(
     stateWithSim: GameState,
     isPlayoffDay: boolean,
-    extMonth: number,
 ): GameState {
-    const isSeasonEndExtWindow = extMonth === 5 || extMonth === 6;
-    if (isPlayoffDay || !isSeasonEndExtWindow || stateWithSim.day % 7 !== 0) {
+    if (isPlayoffDay) return stateWithSim;
+    const currentDate = parseGameDate(stateWithSim.date);
+    const currentIso = toISODateString(currentDate);
+    const seasonYear = getLeagueSeasonForDate(currentIso, stateWithSim.leagueStats) || stateWithSim.leagueStats.year;
+    const calendar = getLeagueCalendarDates(seasonYear, stateWithSim.leagueStats);
+    if (currentDate <= calendar.regularSeasonEnd || stateWithSim.day % 7 !== 0) {
+        return stateWithSim;
+    }
+    const nextFreeAgency = getCurrentOffseasonEffectiveFAStart(
+        currentDate,
+        stateWithSim.leagueStats,
+        stateWithSim.schedule,
+    );
+    if (currentDate >= nextFreeAgency) {
         return stateWithSim;
     }
 
@@ -156,8 +202,9 @@ export function applySeasonEndExtensionsPass(
                 });
                 return {
                     ...p,
-                    contract: { ...p.contract, exp: ext.newExp },
+                    contract: buildAcceptedExtensionContract(p, ext),
                     contractYears: [...existingThroughCurrent, ...extContractYears],
+                    twoWay: false,
                 };
             }
             if (declinedIds.has(p.internalId)) return releaseDeclinedExtensionPlayer(p);

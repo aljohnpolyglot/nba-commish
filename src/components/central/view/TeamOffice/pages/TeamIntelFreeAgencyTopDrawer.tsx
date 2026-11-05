@@ -1,24 +1,22 @@
 import React from 'react';
 import { cn } from '../../../../../lib/utils';
 import { computeContractOffer } from '../../../../../utils/salaryUtils';
-import { getDisplayPotential } from '../../../../../utils/playerRatings';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import type { NBAPlayer, NBATeam } from '../../../../../types';
 import type { FreeAgencyMarket, SortConfig, TierFilter, TopFreeAgentRow } from './TeamIntelFreeAgencyShared';
 import { fmt1, getLastSeasonPergame, getLastTeamTid, hasBirdRightsResolved, isPlayerRFA } from './TeamIntelFreeAgencyShared';
+import { countActiveOfferTeams } from '../../../../../services/freeAgency/freeAgencyDecisionTiming';
 
 export function TeamIntelFreeAgencyTopDrawer({
   tierFilter,
   sortConfig,
   birdRightsEnabled,
+  rfaEnabled,
   euroIsolated,
-  isOwnTeam,
-  shortlistIds,
   teamId,
   teams,
   allMarkets,
   leagueStats,
-  currentYear,
   visibleTopFAs,
   totalTopFAs,
   faPage,
@@ -28,7 +26,6 @@ export function TeamIntelFreeAgencyTopDrawer({
   onSetTierFilter,
   onHandleSort,
   onOpenPlayer,
-  onToggleShortlist,
   onSetFaPerPage,
   onPrevPage,
   onNextPage,
@@ -36,14 +33,12 @@ export function TeamIntelFreeAgencyTopDrawer({
   tierFilter: TierFilter;
   sortConfig: SortConfig;
   birdRightsEnabled: boolean;
+  rfaEnabled: boolean;
   euroIsolated: boolean;
-  isOwnTeam: boolean;
-  shortlistIds: Set<string>;
   teamId: number;
   teams: NBATeam[];
   allMarkets: FreeAgencyMarket[];
   leagueStats: unknown;
-  currentYear: number;
   visibleTopFAs: TopFreeAgentRow[];
   totalTopFAs: number;
   faPage: number;
@@ -53,11 +48,11 @@ export function TeamIntelFreeAgencyTopDrawer({
   onSetTierFilter: (filter: TierFilter) => void;
   onHandleSort: (col: string) => void;
   onOpenPlayer: (player: NBAPlayer) => void;
-  onToggleShortlist: (id: string) => void;
   onSetFaPerPage: (value: number) => void;
   onPrevPage: () => void;
   onNextPage: () => void;
 }) {
+  const currentYear = Number((leagueStats as { year?: number } | null)?.year ?? 0);
   return (
     <div className="rounded-lg border border-[#30363d] bg-black/40 overflow-hidden shrink-0">
       <div className="p-3 border-b border-[#30363d] flex items-center justify-between flex-wrap gap-2">
@@ -85,7 +80,7 @@ export function TeamIntelFreeAgencyTopDrawer({
               <th className="text-center px-1.5 py-2" title={euroIsolated ? 'Most recent club' : 'Most recent team'}>Team</th>
               <SortableHeader label="Pos" col="pos" sortConfig={sortConfig} align="center" onSort={onHandleSort} />
               <SortableHeader label="Age" col="age" sortConfig={sortConfig} align="center" onSort={onHandleSort} />
-              <SortableHeader label="K2" col="k2" sortConfig={sortConfig} align="right" onSort={onHandleSort} />
+              <SortableHeader label="OVR" col="k2" sortConfig={sortConfig} align="right" onSort={onHandleSort} />
               <SortableHeader label="POT" col="pot" sortConfig={sortConfig} align="right" title="2K-style potential rating" onSort={onHandleSort} />
               <SortableHeader label="MPG" col="mp" sortConfig={sortConfig} align="right" onSort={onHandleSort} />
               <SortableHeader label="PTS" col="pts" sortConfig={sortConfig} align="right" onSort={onHandleSort} />
@@ -94,24 +89,23 @@ export function TeamIntelFreeAgencyTopDrawer({
               <SortableHeader label="PER" col="per" sortConfig={sortConfig} align="right" onSort={onHandleSort} />
               <th className="text-center px-1.5 py-2" title="Restricted (prior team can match offer sheet) vs Unrestricted">Type</th>
               {birdRightsEnabled && <th className="text-center px-1.5 py-2" title="Bird Rights — prior team can sign over the cap">Bird</th>}
-              {!euroIsolated && <th className="text-center px-1.5 py-2" title="Number of active competing bids in the market">Offers</th>}
+              {!euroIsolated && <th className="text-center px-1.5 py-2" title="Teams with active offers">Offers</th>}
               <SortableHeader label="Asking" col="asking" sortConfig={sortConfig} align="right" onSort={onHandleSort} />
-              {isOwnTeam && <th className="text-center px-2 py-2 w-[60px]">★</th>}
             </tr>
           </thead>
           <tbody>
-            {visibleTopFAs.map(({ player, k2, age }) => {
+            {visibleTopFAs.map(({ player, k2, pot, age }) => {
               const offer = computeContractOffer(player, leagueStats as any);
-              const isShortlisted = shortlistIds.has(player.internalId);
-              const pot = getDisplayPotential(player, currentYear);
               const pg = getLastSeasonPergame(player);
-              const rfa = isPlayerRFA(player);
+              const rfa = rfaEnabled && isPlayerRFA(player);
               const askingTotalUSD = offer.salaryUSD * offer.years;
-              const lastTid = getLastTeamTid(player);
-              const lastTeam = lastTid >= 0 ? teams.find(team => team.id === lastTid) : null;
-              const hasBird = hasBirdRightsResolved(player) && lastTid === teamId;
+              const currentTid = Number(player.tid);
+              const currentTeam = currentTid >= 0 ? teams.find(team => Number((team as any).id ?? (team as any).tid) === currentTid) : null;
+              const lastTid = currentTeam ? currentTid : getLastTeamTid(player);
+              const lastTeam = currentTeam ?? (lastTid >= 0 ? teams.find(team => Number((team as any).id ?? (team as any).tid) === lastTid) : null);
+              const hasBird = birdRightsEnabled && hasBirdRightsResolved(player, teamId, currentYear);
               const playerMarket = allMarkets.find(market => market.playerId === player.internalId && !market.resolved);
-              const activeOfferCount = playerMarket?.bids.filter(bid => bid.status === 'active').length ?? 0;
+              const activeOfferCount = countActiveOfferTeams(playerMarket?.bids);
               const isYourPriorPlayer = lastTid === teamId && lastTid >= 0;
 
               return (
@@ -127,8 +121,8 @@ export function TeamIntelFreeAgencyTopDrawer({
                   <td className="text-center text-slate-400 font-bold tabular-nums text-[10px]">
                     {lastTeam ? (
                       <span className="inline-flex items-center gap-1 justify-center">
-                        {lastTeam.logoUrl && (
-                          <img src={lastTeam.logoUrl} alt={lastTeam.abbrev ?? lastTeam.name} referrerPolicy="no-referrer" className="w-4 h-4 object-contain shrink-0 opacity-90" />
+                        {((lastTeam as any).logoUrl || (lastTeam as any).imgURL) && (
+                          <img src={(lastTeam as any).logoUrl ?? (lastTeam as any).imgURL} alt={lastTeam.abbrev ?? lastTeam.name} referrerPolicy="no-referrer" className="w-4 h-4 object-contain shrink-0 opacity-90" />
                         )}
                         <span>{lastTeam.abbrev}</span>
                       </span>
@@ -184,20 +178,6 @@ export function TeamIntelFreeAgencyTopDrawer({
                     </td>
                   )}
                   <td className="text-right text-slate-300 tabular-nums whitespace-nowrap">{fmtMoney(askingTotalUSD)}/{offer.years}yr</td>
-                  {isOwnTeam && (
-                    <td className="text-center">
-                      <button
-                        onClick={event => {
-                          event.stopPropagation();
-                          onToggleShortlist(player.internalId);
-                        }}
-                        className={cn('px-1.5 py-0.5 rounded text-sm', isShortlisted ? 'text-amber-400' : 'text-slate-600 hover:text-slate-300')}
-                        title={isShortlisted ? 'Remove from shortlist' : 'Add to shortlist'}
-                      >
-                        {isShortlisted ? '★' : '☆'}
-                      </button>
-                    </td>
-                  )}
                 </tr>
               );
             })}

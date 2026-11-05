@@ -13,8 +13,11 @@ export const getCapThresholds = (leagueStats: {
   salaryCap: number;
   luxuryPayroll: number;
   luxuryTaxThresholdPercentage?: number;
+  luxuryTaxEnabled?: boolean;
   firstApronPercentage?: number;
   secondApronPercentage?: number;
+  firstApronAmount?: number;
+  secondApronAmount?: number;
   minimumPayrollPercentage?: number;
   apronsEnabled?: boolean;
   numberOfAprons?: number;
@@ -36,14 +39,26 @@ export const getCapThresholds = (leagueStats: {
     };
   }
   const cap = leagueStats.salaryCap;
-  const luxuryTax = leagueStats.luxuryTaxThresholdPercentage
-    ? cap * (leagueStats.luxuryTaxThresholdPercentage / 100)
-    : leagueStats.luxuryPayroll;
+  const luxuryTax = leagueStats.luxuryTaxEnabled === false
+    ? Number.POSITIVE_INFINITY
+    : leagueStats.luxuryTaxThresholdPercentage
+      ? cap * (leagueStats.luxuryTaxThresholdPercentage / 100)
+      : leagueStats.luxuryPayroll;
+  const apronsActive = leagueStats.apronsEnabled !== false;
+  const apronCount = apronsActive ? (leagueStats.numberOfAprons ?? 2) : 0;
   return {
     salaryCap: cap,
     luxuryTax,
-    firstApron: cap * ((leagueStats.firstApronPercentage ?? 126.7) / 100),
-    secondApron: cap * ((leagueStats.secondApronPercentage ?? 134.4) / 100),
+    firstApron: apronCount > 0
+      ? (leagueStats.firstApronAmount && leagueStats.firstApronAmount > 0
+          ? leagueStats.firstApronAmount
+          : cap * ((leagueStats.firstApronPercentage ?? 126.7) / 100))
+      : Number.POSITIVE_INFINITY,
+    secondApron: apronCount > 1
+      ? (leagueStats.secondApronAmount && leagueStats.secondApronAmount > 0
+          ? leagueStats.secondApronAmount
+          : cap * ((leagueStats.secondApronPercentage ?? 134.4) / 100))
+      : Number.POSITIVE_INFINITY,
     minPayroll: cap * ((leagueStats.minimumPayrollPercentage ?? 90) / 100),
   };
 };
@@ -136,7 +151,7 @@ export const getTeamCapProfileFromState = (
   return getTeamCapProfile(
     state.players, teamId,
     (team as any)?.wins ?? 0, (team as any)?.losses ?? 0,
-    t, team, state.leagueStats?.year,
+    t, team, state.leagueStats?.year, state.leagueStats as any,
   );
 };
 
@@ -148,8 +163,9 @@ export const getTeamCapProfile = (
   thresholds: CapThresholds,
   team?: NBATeam,
   seasonYear?: number,
+  leagueStats?: { twoWayContractsEnabled?: boolean | null; maxTwoWayPlayersPerTeam?: number | null; uiMode?: string | null } | null,
 ): TeamCapProfile => {
-  const payrollUSD = getTeamPayrollUSD(players, teamId, team, seasonYear);
+  const payrollUSD = getTeamPayrollUSD(players, teamId, team, seasonYear, leagueStats);
   const status = getCapStatus(payrollUSD, thresholds);
   const capSpaceUSD = thresholds.salaryCap - payrollUSD;
   const winPct = (wins + losses) > 0 ? wins / (wins + losses) : 0;
@@ -189,6 +205,13 @@ export function getMLEAvailability(
     biannualEnabled?: boolean;
     biannualAmount?: number;
     mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
+    capExceptionUsage?: Record<number, {
+      season: number;
+      baeUsedUSD?: number;
+      usedCapRoom?: boolean;
+      hardCapLevel?: 'first' | 'second';
+    }>;
+    year?: number;
     apronsEnabled?: boolean;
     numberOfAprons?: number;
     salaryCapEnabled?: boolean;
@@ -210,14 +233,29 @@ export function getMLEAvailability(
   const usage = leagueStats.mleUsage?.[teamId];
   const priorType = usage?.type ?? null;
   const priorUsed = usage?.usedUSD ?? 0;
+  const storedCapUsage = leagueStats.capExceptionUsage?.[teamId];
+  const capUsage = storedCapUsage && (
+    storedCapUsage.season == null ||
+    leagueStats.year == null ||
+    storedCapUsage.season === leagueStats.year
+  ) ? storedCapUsage : undefined;
+  const baeUsed = (capUsage?.baeUsedUSD ?? 0) > 0 || capUsage?.hardCapLevel === 'first';
   const apronsActive = leagueStats.apronsEnabled !== false;
   const apronCount = leagueStats.numberOfAprons ?? 2;
   const firstApron = apronsActive && apronCount > 0 ? thresholds.firstApron : Number.POSITIVE_INFINITY;
   const secondApron = apronsActive && apronCount > 1 ? thresholds.secondApron : Number.POSITIVE_INFINITY;
   const projectedPayroll = payrollUSD + signingUSD;
+  const usesApronMleSplit = apronsActive && apronCount > 0;
+
+  if (capUsage?.usedCapRoom) {
+    if (baeUsed || priorType === 'non_taxpayer' || priorType === 'taxpayer') return NONE;
+    const usedThisSeason = priorType === 'room' ? priorUsed : 0;
+    const available = Math.max(0, ROOM_LIMIT - usedThisSeason);
+    return { type: 'room', limit: ROOM_LIMIT, used: usedThisSeason, available, blocked: available === 0 };
+  }
 
   if (payrollUSD < cap) {
-    const blocked = priorType === 'non_taxpayer' || priorType === 'taxpayer';
+    const blocked = baeUsed || priorType === 'non_taxpayer' || priorType === 'taxpayer';
     if (blocked) return NONE;
     const usedThisSeason = priorType === 'room' ? priorUsed : 0;
     const available = Math.max(0, ROOM_LIMIT - usedThisSeason);
@@ -226,9 +264,27 @@ export function getMLEAvailability(
 
   if (payrollUSD >= secondApron) return NONE;
 
+  if (!usesApronMleSplit) {
+    const taxLine = thresholds.luxuryTax;
+    const taxpayerTeam = payrollUSD >= taxLine || projectedPayroll >= taxLine;
+    if (taxpayerTeam) {
+      const blocked = baeUsed || priorType === 'room' || priorType === 'non_taxpayer';
+      if (blocked) return NONE;
+      const usedThisSeason = priorType === 'taxpayer' ? priorUsed : 0;
+      const available = Math.max(0, TAX_LIMIT - usedThisSeason);
+      return { type: 'taxpayer', limit: TAX_LIMIT, used: usedThisSeason, available, blocked: available === 0 };
+    }
+
+    const blocked = priorType === 'room' || priorType === 'taxpayer';
+    if (blocked) return NONE;
+    const usedThisSeason = priorType === 'non_taxpayer' ? priorUsed : 0;
+    const available = Math.max(0, NT_LIMIT - usedThisSeason);
+    return { type: 'non_taxpayer', limit: NT_LIMIT, used: usedThisSeason, available, blocked: available === 0 };
+  }
+
   const crossesFirstApron = projectedPayroll >= firstApron || payrollUSD >= firstApron;
   if (crossesFirstApron) {
-    const blocked = priorType === 'room' || priorType === 'non_taxpayer';
+    const blocked = baeUsed || priorType === 'room' || priorType === 'non_taxpayer';
     if (blocked) return NONE;
     if (projectedPayroll >= secondApron) return NONE;
     const usedThisSeason = priorType === 'taxpayer' ? priorUsed : 0;

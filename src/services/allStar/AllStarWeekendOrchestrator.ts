@@ -1,6 +1,6 @@
 import { Game, GameResult, GameState, NBAPlayer } from '../../types';
 import { simulateGames } from '../simulationService';
-import { AllStarSelectionService } from './AllStarSelectionService';
+import { AllStarSelectionService, getAllStarPlayerEligibility, normalizeAllStarRoster } from './AllStarSelectionService';
 import {
   ALL_STAR_DATES,
   buildBracketLayout,
@@ -13,9 +13,9 @@ import {
   announceThrone,
   injectAllStarGames,
   simulateCelebrityGame,
+  simulateDanceContest,
   simulateDunkContest,
   simulateHorseTournament,
-  simulateOneOnOneTournament,
   simulateRisingStars,
   simulateShootingStars,
   simulateSkillsChallenge,
@@ -23,7 +23,11 @@ import {
   simulateThroneTournament,
 } from './allStarWeekendEvents';
 import { simulateWeekendCore } from './allStarWeekendSimulation';
+import { didHomeTeamWin, getWinningTeamId } from '../../utils/gameOutcome';
 import { resolveExhibitionRules } from './exhibitionRules';
+import { isPbaLocalAllStarEligible } from '../pba/allStar';
+import { withDeterministicRandom } from '../simulation/deterministicRandom';
+import { buildAllStarEventSeed } from './allStarDeterminism';
 
 export { getExhibitionQL, resolveExhibitionRules } from './exhibitionRules';
 export { ALL_STAR_DATES, buildBracketLayout, getAllStarSunday, getAllStarWeekendDates, getBreakWindowStrings } from './allStarWeekendDates';
@@ -32,6 +36,7 @@ export class AllStarWeekendOrchestrator {
   static getBreakWindowStrings = getBreakWindowStrings;
   static injectAllStarGames = injectAllStarGames;
   static simulateCelebrityGame = simulateCelebrityGame;
+  static simulateDanceContest = simulateDanceContest;
   static simulateDunkContest = simulateDunkContest;
   static simulateThreePointContest = simulateThreePointContest;
   static simulateShootingStars = simulateShootingStars;
@@ -39,7 +44,6 @@ export class AllStarWeekendOrchestrator {
   static simulateHorseTournament = simulateHorseTournament;
   static announceThrone = announceThrone;
   static simulateThroneTournament = simulateThroneTournament;
-  static simulateOneOnOneTournament = simulateOneOnOneTournament;
   static simulateRisingStars = simulateRisingStars;
 
   private static scaleToTarget(home: number, away: number, target: number): [number, number] {
@@ -60,7 +64,10 @@ export class AllStarWeekendOrchestrator {
     let playerPools: NBAPlayer[][];
 
     if (rsFormat === 'random_4team') {
-      const teams = AllStarSelectionService.getRandomRisingStarsRoster(state.players, season, 4);
+      const teams = withDeterministicRandom(
+        buildAllStarEventSeed(state, 'rising-stars-random-team-assignment'),
+        () => AllStarSelectionService.getRandomRisingStarsRoster(state.players, season, 4),
+      );
       teamDescriptors = [
         { tid: -13, name: 'Team Blue', abbrev: 'BLU', coachName: '', isGLeague: false },
         { tid: -14, name: 'Team Red', abbrev: 'RED', coachName: '', isGLeague: false },
@@ -123,6 +130,25 @@ export class AllStarWeekendOrchestrator {
 
     let updatedSchedule = [...state.schedule];
     const newBoxScores: any[] = [];
+    const hasBoxStats = (box: any): boolean => (box?.homeStats?.length ?? 0) > 0 || (box?.awayStats?.length ?? 0) > 0;
+    const hasUsableBoxScore = (gid: number): boolean =>
+      (state.boxScores ?? []).some((box: any) => Number(box.gameId) === gid && hasBoxStats(box));
+    const applyTeamGame = (homeTid: number, awayTid: number, homeScore: number, awayScore: number, winnerId: number | undefined, delta: 1 | -1) => {
+      const hi = bracketState.teams.findIndex((t: any) => t.tid === homeTid);
+      const ai = bracketState.teams.findIndex((t: any) => t.tid === awayTid);
+      if (hi < 0 || ai < 0) return;
+      bracketState.teams[hi].pf += homeScore * delta;
+      bracketState.teams[hi].pa += awayScore * delta;
+      bracketState.teams[ai].pf += awayScore * delta;
+      bracketState.teams[ai].pa += homeScore * delta;
+      if (didHomeTeamWin({ homeTid, awayTid, homeScore, awayScore, winnerId })) {
+        bracketState.teams[hi].wins += delta;
+        bracketState.teams[ai].losses += delta;
+      } else {
+        bracketState.teams[ai].wins += delta;
+        bracketState.teams[hi].losses += delta;
+      }
+    };
 
     const simOne = async (gid: number, homeTid: number, awayTid: number, targetScore: number) => {
       const game: Game = {
@@ -180,23 +206,11 @@ export class AllStarWeekendOrchestrator {
       if (homeDesc) { (result as any).homeTeamName = homeDesc.name; (result as any).homeTeamAbbrev = homeDesc.abbrev; }
       if (awayDesc) { (result as any).awayTeamName = awayDesc.name; (result as any).awayTeamAbbrev = awayDesc.abbrev; }
 
-      updatedSchedule = updatedSchedule.map((g) => (g.gid === gid ? { ...g, played: true, homeScore: scaledHome, awayScore: scaledAway } : g));
+      const previousEntry = bracketState.games.find((g: any) => g.gid === gid);
+      if (previousEntry?.played) applyTeamGame(previousEntry.homeTid, previousEntry.awayTid, previousEntry.homeScore, previousEntry.awayScore, previousEntry.winnerId, -1);
+      updatedSchedule = updatedSchedule.map((g) => (g.gid === gid ? { ...g, played: true, homeScore: scaledHome, awayScore: scaledAway, winnerId: result.winnerId, tiebreaker: result.tiebreaker } : g));
 
-      const hi = bracketState.teams.findIndex((t: any) => t.tid === homeTid);
-      const ai = bracketState.teams.findIndex((t: any) => t.tid === awayTid);
-      if (hi >= 0 && ai >= 0) {
-        bracketState.teams[hi].pf += scaledHome;
-        bracketState.teams[hi].pa += scaledAway;
-        bracketState.teams[ai].pf += scaledAway;
-        bracketState.teams[ai].pa += scaledHome;
-        if (scaledHome > scaledAway) {
-          bracketState.teams[hi].wins++;
-          bracketState.teams[ai].losses++;
-        } else {
-          bracketState.teams[ai].wins++;
-          bracketState.teams[hi].losses++;
-        }
-      }
+      applyTeamGame(homeTid, awayTid, scaledHome, scaledAway, result.winnerId, 1);
 
       const topScorer = [
         ...(result.homeStats || []).map((s: any) => ({ ...s, _tname: homeDesc?.name ?? 'home' })),
@@ -213,7 +227,9 @@ export class AllStarWeekendOrchestrator {
         played: true,
         homeScore: scaledHome,
         awayScore: scaledAway,
-        ...(topScorer ? { mvpName: topScorer.name, mvpTeam: topScorer._tname, mvpPts: topScorer.pts || 0 } : {}),
+        winnerId: result.winnerId,
+        tiebreaker: result.tiebreaker,
+        ...(topScorer ? { mvpId: topScorer.playerId, mvpName: topScorer.name, mvpTeam: topScorer._tname, mvpPts: topScorer.pts || 0 } : {}),
       };
       if (gIdx >= 0) bracketState.games[gIdx] = gameEntry;
       else bracketState.games.push(gameEntry);
@@ -222,14 +238,14 @@ export class AllStarWeekendOrchestrator {
       return result;
     };
 
-    for (const g of bracketState.games.filter((g: any) => g.round === 'sf' && !g.played)) {
+    for (const g of bracketState.games.filter((g: any) => g.round === 'sf' && (!g.played || !hasUsableBoxScore(g.gid)))) {
       await simOne(g.gid, g.homeTid, g.awayTid, 40);
     }
 
     const finalAlready = bracketState.games.find((g: any) => g.round === 'final');
     if (!finalAlready) {
       const sfs = bracketState.games.filter((g: any) => g.round === 'sf' && g.played);
-      const winners = sfs.map((g: any) => (g.homeScore > g.awayScore ? g.homeTid : g.awayTid));
+      const winners = sfs.map((g: any) => Number(getWinningTeamId(g)));
       if (winners.length >= 2) {
         const [homeTid, awayTid] = winners;
         const finalGame: Game = {
@@ -251,21 +267,26 @@ export class AllStarWeekendOrchestrator {
         bracketState.championshipGid = 91099;
         await simOne(91099, homeTid, awayTid, 25);
       }
-    } else if (!finalAlready.played) {
+    } else if (!finalAlready.played || !hasUsableBoxScore(finalAlready.gid)) {
       await simOne(finalAlready.gid, finalAlready.homeTid, finalAlready.awayTid, 25);
     }
 
     bracketState.complete = !!bracketState.games.find((g: any) => g.round === 'final' && g.played);
 
-    let risingStarsMvp: { name: string; team: string; pts: number } | undefined;
+    let risingStarsMvp: { playerId?: string; name: string; team: string; pts: number } | undefined;
     const finalEntry = bracketState.games.find((g: any) => g.round === 'final' && g.played);
     if (finalEntry?.mvpName) {
-      risingStarsMvp = { name: finalEntry.mvpName, team: finalEntry.mvpTeam ?? '', pts: finalEntry.mvpPts ?? 0 };
+      risingStarsMvp = { playerId: finalEntry.mvpId, name: finalEntry.mvpName, team: finalEntry.mvpTeam ?? '', pts: finalEntry.mvpPts ?? 0 };
     }
 
     return {
       schedule: updatedSchedule,
-      boxScores: [...(state.boxScores || []), ...newBoxScores],
+      boxScores: [
+        ...(state.boxScores || []).filter((box: any) =>
+          !newBoxScores.some((next: any) => Number(next.gameId) === Number(box.gameId)) || hasBoxStats(box),
+        ),
+        ...newBoxScores,
+      ],
       allStar: {
         ...allStar,
         risingStarsGameId: 91099,
@@ -277,7 +298,14 @@ export class AllStarWeekendOrchestrator {
 
   static async simulateAllStarBracket(state: GameState): Promise<Partial<GameState>> {
     const allStar = state.allStar!;
-    const layout = buildBracketLayout(state.leagueStats, allStar.roster ?? []);
+    const roster = normalizeAllStarRoster(
+      allStar.roster ?? [],
+      state.players,
+      state.leagueStats?.uiMode === 'pba_isolated'
+        ? player => isPbaLocalAllStarEligible(player, state)
+        : getAllStarPlayerEligibility(state.leagueStats, state.teams),
+    ).filter((entry: any) => !entry.isInjuredDNP);
+    const layout = buildBracketLayout(state.leagueStats, roster, state.players);
     const fakeTeams = layout.teams.map((t) => ({
       id: t.tid,
       name: t.name,
@@ -290,7 +318,7 @@ export class AllStarWeekendOrchestrator {
       logoUrl: t.logoUrl,
     }));
     const bucketByPlayerId = new Map<string, string>();
-    for (const r of allStar.roster) bucketByPlayerId.set(r.playerId, r.conference);
+    for (const r of roster) bucketByPlayerId.set(r.playerId, r.conference);
     const playersByBucket = new Map<string, any[]>();
     for (const t of layout.teams) playersByBucket.set(t.bucketKey, []);
     for (const p of state.players) {
@@ -320,6 +348,25 @@ export class AllStarWeekendOrchestrator {
     const newBoxScores: GameResult[] = [];
     const leagueStats = state.leagueStats;
     const allStarRules = resolveExhibitionRules(leagueStats, 'allStar');
+    const hasBoxStats = (box: any): boolean => (box?.homeStats?.length ?? 0) > 0 || (box?.awayStats?.length ?? 0) > 0;
+    const hasUsableBoxScore = (gid: number): boolean =>
+      (state.boxScores ?? []).some((box: any) => Number(box.gameId) === gid && hasBoxStats(box));
+    const applyTeamGame = (homeTid: number, awayTid: number, homeScore: number, awayScore: number, winnerId: number | undefined, delta: 1 | -1) => {
+      const homeIdx = bracketState.teams.findIndex((t: any) => t.tid === homeTid);
+      const awayIdx = bracketState.teams.findIndex((t: any) => t.tid === awayTid);
+      if (homeIdx < 0 || awayIdx < 0) return;
+      bracketState.teams[homeIdx].pf += homeScore * delta;
+      bracketState.teams[homeIdx].pa += awayScore * delta;
+      bracketState.teams[awayIdx].pf += awayScore * delta;
+      bracketState.teams[awayIdx].pa += homeScore * delta;
+      if (didHomeTeamWin({ homeTid, awayTid, homeScore, awayScore, winnerId })) {
+        bracketState.teams[homeIdx].wins += delta;
+        bracketState.teams[awayIdx].losses += delta;
+      } else {
+        bracketState.teams[awayIdx].wins += delta;
+        bracketState.teams[homeIdx].losses += delta;
+      }
+    };
 
     const simOne = async (gid: number, homeTid: number, awayTid: number) => {
       const game: Game = {
@@ -364,35 +411,23 @@ export class AllStarWeekendOrchestrator {
       if (homeBracketTeam) { (result as any).homeTeamName = homeBracketTeam.name; (result as any).homeTeamAbbrev = homeBracketTeam.abbrev; }
       if (awayBracketTeam) { (result as any).awayTeamName = awayBracketTeam.name; (result as any).awayTeamAbbrev = awayBracketTeam.abbrev; }
 
-      updatedSchedule = updatedSchedule.map((g) => (g.gid === gid ? { ...g, played: true, homeScore: result.homeScore, awayScore: result.awayScore } : g));
+      const previousEntry = bracketState.games.find((g: any) => g.gid === gid);
+      if (previousEntry?.played) applyTeamGame(previousEntry.homeTid, previousEntry.awayTid, previousEntry.homeScore, previousEntry.awayScore, previousEntry.winnerId, -1);
+      updatedSchedule = updatedSchedule.map((g) => (g.gid === gid ? { ...g, played: true, homeScore: result.homeScore, awayScore: result.awayScore, winnerId: result.winnerId, tiebreaker: result.tiebreaker } : g));
 
-      const homeIdx = bracketState.teams.findIndex((t: any) => t.tid === homeTid);
-      const awayIdx = bracketState.teams.findIndex((t: any) => t.tid === awayTid);
-      if (homeIdx >= 0 && awayIdx >= 0) {
-        bracketState.teams[homeIdx].pf += result.homeScore;
-        bracketState.teams[homeIdx].pa += result.awayScore;
-        bracketState.teams[awayIdx].pf += result.awayScore;
-        bracketState.teams[awayIdx].pa += result.homeScore;
-        if (result.homeScore > result.awayScore) {
-          bracketState.teams[homeIdx].wins += 1;
-          bracketState.teams[awayIdx].losses += 1;
-        } else {
-          bracketState.teams[awayIdx].wins += 1;
-          bracketState.teams[homeIdx].losses += 1;
-        }
-      }
+      applyTeamGame(homeTid, awayTid, result.homeScore, result.awayScore, result.winnerId, 1);
 
       const gameStats = [
         ...(result.homeStats || []).map((s: any) => ({ ...s, _team: tidToBucket.get(homeTid) ?? 'home' })),
         ...(result.awayStats || []).map((s: any) => ({ ...s, _team: tidToBucket.get(awayTid) ?? 'away' })),
       ];
       const topScorer = gameStats.sort((a: any, b: any) => (b.pts || 0) - (a.pts || 0))[0];
-      const mvpFields = topScorer ? { mvpName: topScorer.name, mvpTeam: topScorer._team, mvpPts: topScorer.pts || 0 } : {};
+      const mvpFields = topScorer ? { mvpId: topScorer.playerId, mvpName: topScorer.name, mvpTeam: topScorer._team, mvpPts: topScorer.pts || 0 } : {};
       const gIdx = bracketState.games.findIndex((g: any) => g.gid === gid);
       if (gIdx >= 0) {
-        bracketState.games[gIdx] = { ...bracketState.games[gIdx], played: true, homeScore: result.homeScore, awayScore: result.awayScore, ...mvpFields };
+        bracketState.games[gIdx] = { ...bracketState.games[gIdx], played: true, homeScore: result.homeScore, awayScore: result.awayScore, winnerId: result.winnerId, tiebreaker: result.tiebreaker, ...mvpFields };
       } else {
-        bracketState.games.push({ gid, homeTid, awayTid, round: 'final', played: true, homeScore: result.homeScore, awayScore: result.awayScore, ...mvpFields });
+        bracketState.games.push({ gid, homeTid, awayTid, round: 'final', played: true, homeScore: result.homeScore, awayScore: result.awayScore, winnerId: result.winnerId, tiebreaker: result.tiebreaker, ...mvpFields });
       }
 
       newBoxScores.push(result);
@@ -400,7 +435,7 @@ export class AllStarWeekendOrchestrator {
     };
 
     const isThreeTeamUsaWorld = layout.format === 'usa_vs_world' && layout.teamCount === 3;
-    const groupGames = bracketState.games.filter((g: any) => !g.played && g.round !== 'final');
+    const groupGames = bracketState.games.filter((g: any) => (!g.played || !hasUsableBoxScore(g.gid)) && g.round !== 'final');
     for (const g of groupGames) {
       await simOne(g.gid, g.homeTid, g.awayTid);
     }
@@ -410,8 +445,8 @@ export class AllStarWeekendOrchestrator {
       const game1 = bracketState.games.find((g: any) => g.gid === 90094 && g.played);
       const hasGame2 = bracketState.games.some((g: any) => g.gid === 90095);
       if (game1 && !hasGame2) {
-        const winnerTid = game1.homeScore > game1.awayScore ? game1.homeTid : game1.awayTid;
-        const loserTid = game1.homeScore > game1.awayScore ? game1.awayTid : game1.homeTid;
+        const winnerTid = Number(getWinningTeamId(game1));
+        const loserTid = winnerTid === game1.homeTid ? game1.awayTid : game1.homeTid;
         const buildGame = (gid: number, oppTid: number): Game => ({
           gid,
           homeTid: stripesTid,
@@ -447,17 +482,20 @@ export class AllStarWeekendOrchestrator {
       let awayTid: number | null = null;
 
       if (layout.format === 'usa_vs_world' && layout.teamCount === 3) {
-        const ranked = [...bracketState.teams].sort((a: any, b: any) => {
-          if (b.wins !== a.wins) return b.wins - a.wins;
-          const diff = (b.pf - b.pa) - (a.pf - a.pa);
-          if (diff !== 0) return diff;
-          return Math.random() - 0.5;
-        });
+        const ranked = withDeterministicRandom(
+          buildAllStarEventSeed(state, 'allstar-bracket-ranking-tiebreak'),
+          () => [...bracketState.teams].sort((a: any, b: any) => {
+            if (b.wins !== a.wins) return b.wins - a.wins;
+            const diff = (b.pf - b.pa) - (a.pf - a.pa);
+            if (diff !== 0) return diff;
+            return Math.random() - 0.5;
+          }),
+        );
         homeTid = ranked[0].tid;
         awayTid = ranked[1].tid;
       } else if (layout.teamCount === 4) {
         const sfs = bracketState.games.filter((g: any) => g.round === 'sf' && g.played);
-        const winners = sfs.map((g: any) => (g.homeScore > g.awayScore ? g.homeTid : g.awayTid));
+        const winners = sfs.map((g: any) => Number(getWinningTeamId(g)));
         homeTid = winners[0] ?? null;
         awayTid = winners[1] ?? null;
       }
@@ -486,14 +524,14 @@ export class AllStarWeekendOrchestrator {
         bracketState.games.push({ gid: finalGid, homeTid, awayTid, round: 'final', played: false, homeScore: 0, awayScore: 0 });
         await simOne(finalGid, homeTid, awayTid);
       }
-    } else if (!finalAlready.played) {
+    } else if (!finalAlready.played || !hasUsableBoxScore(finalAlready.gid)) {
       await simOne(finalAlready.gid, finalAlready.homeTid, finalAlready.awayTid);
     }
 
     const finalGame = bracketState.games.find((g: any) => g.round === 'final' && g.played);
     bracketState.complete = !!finalGame;
 
-    let gameMvp: { name: string; team: string } | undefined;
+    let gameMvp: { playerId?: string; name: string; team: string } | undefined;
     if (finalGame) {
       const finalResult = newBoxScores.find((b) => b.gameId === finalGame.gid);
       if (finalResult) {
@@ -502,13 +540,18 @@ export class AllStarWeekendOrchestrator {
           ...(finalResult.awayStats || []).map((s: any) => ({ ...s, team: tidToBucket.get(finalGame.awayTid) ?? 'away' })),
         ];
         const top = finalStats.sort((a: any, b: any) => (b.pts || 0) - (a.pts || 0))[0];
-        if (top) gameMvp = { name: top.name, team: top.team };
+        if (top) gameMvp = { playerId: top.playerId, name: top.name, team: top.team };
       }
     }
 
     return {
       schedule: updatedSchedule,
-      boxScores: [...(state.boxScores || []), ...newBoxScores],
+      boxScores: [
+        ...(state.boxScores || []).filter((box: any) =>
+          !newBoxScores.some((next: any) => Number(next.gameId) === Number(box.gameId)) || hasBoxStats(box),
+        ),
+        ...newBoxScores,
+      ],
       allStar: {
         ...allStar,
         allStarGameId: finalGame?.gid ?? (allStar as any).allStarGameId,

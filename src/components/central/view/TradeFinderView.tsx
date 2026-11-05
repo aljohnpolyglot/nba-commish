@@ -2,14 +2,15 @@ import React, { useState, useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, calcPickTV,
-  computeLeagueAvg, computeLeaguePerAvg, getPotColor, isSalaryLegal, isUntouchable,
+  buildLeagueRelativeTradePercentiles, computeLeagueAvg, computeLeaguePerAvg, getPotColor, isSalaryLegal, isUntouchable,
   type TeamMode, type TVContext,
 } from '../../../services/trade/tradeValueEngine';
 import { getTradeOutlook, effectiveRecord, getCapThresholds, getTeamPayrollUSD, getTeamCapProfileFromState, sumPlayerCurrentSalariesUSD, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../../utils/salaryUtils';
 import type { NBAPlayer, DraftPick, NBATeam } from '../../../types';
-import { generateCounterOffers, teamPowerRanks } from '../../../services/trade/tradeFinderEngine';
+import { generateCounterOffers, generateEmptyBasketDumpOffers, teamPowerRanks } from '../../../services/trade/tradeFinderEngine';
+import { buildCredibleResignExpiringIds } from '../../../services/trade/expiringResignSignal';
 import { SettingsManager } from '../../../services/SettingsManager';
-import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../../../services/draft/DraftPickGenerator';
+import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks, healMissingCurrentDraftPickRows, DEFAULT_TRADABLE_PICK_SEASONS } from '../../../services/draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildFullDraftSlotMap, comparePicks, formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { tradeRoleToTeamMode, resolveTeamStrategyProfile } from '../../../utils/teamStrategy';
 import { wouldStepienViolateForTid } from '../../../services/trade/stepienRule';
@@ -23,8 +24,11 @@ import { TradeFinderHeader } from './TradeFinderHeader';
 import { AssetSelectorPanel, TradeFinderResultsPanel } from './TradeFinderPanels';
 import { OfferCard } from './TradeFinderItemComponents';
 import { TradeFinderModalStack } from './TradeFinderModalStack';
-import { type FoundOffer, type ManageTradeState, type TradeItem } from './TradeFinderTypes';
+import { buildTradeFinderManageState, type FoundOffer, type ManageTradeState, type TradeItem } from './TradeFinderTypes';
 import { isPbaImportTradeLocked } from './TradeFinderGuards';
+import { pushOwnerTradeConcern } from '../../../services/messages/ownerTradeConcern';
+import { evaluateTradeMachineExecution } from '../../modals/tradeMachineExecution';
+import { getTradeAssetsForTeam, isTradeAssetOwnedBy } from '../../../services/freeAgency/eurostashRights';
 
 // ── Main component ────────────────────────────────────────────────────────────
 
@@ -87,8 +91,18 @@ export const TradeFinderView: React.FC = () => {
       leaguePerAvg: isRegularSeason ? computeLeaguePerAvg(players, currentYear) : 15,
       isRegularSeason,
       mvpRank,
+      leaguePlayerPercentile: pbaMode
+        ? buildLeagueRelativeTradePercentiles(players, currentYear)
+        : undefined,
+      credibleResignExpiringIds: buildCredibleResignExpiringIds({
+        players,
+        teams,
+        currentYear,
+        date: state.date,
+        leagueStats: state.leagueStats as any,
+      }),
     };
-  }, [players, currentYear, state.date, mvpRank]);
+  }, [pbaMode, players, teams, currentYear, state.date, state.leagueStats, mvpRank]);
 
   const capSpaces = useMemo(() => {
     if (state.leagueStats?.salaryCapEnabled === false) return new Map<number, number>();
@@ -122,9 +136,9 @@ export const TradeFinderView: React.FC = () => {
   const teamOutlooks = useMemo(() => {
     const map = new Map<number, TradeOutlook>();
     teams.forEach(t => {
-      const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId);
+      const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId, state.leagueStats?.playIn !== false);
       if (manual) { map.set(t.id, manual); return; }
-      const payroll = getTeamPayrollUSD(players, t.id, t, currentYear);
+      const payroll = getTeamPayrollUSD(players, t.id, t, currentYear, state.leagueStats as any);
       const standings = confStandings.get(t.id);
       const expiring = players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYear).length;
       const rec = effectiveRecord(t, currentYear);
@@ -170,12 +184,12 @@ export const TradeFinderView: React.FC = () => {
   [teams]);
 
   const teamRoster = useMemo(() =>
-    players.filter(p =>
-      p.tid === selectedTid &&
-      isOnRoster(p) &&
+    getTradeAssetsForTeam(players, selectedTid).filter(p =>
+      (isOnRoster(p) || p.tid !== selectedTid) &&
+      !isPbaImportTradeLocked(p, pbaMode) &&
       p.tid !== -2 && p.status !== 'Draft Prospect'
     ).sort((a, b) => b.overallRating - a.overallRating),
-  [players, selectedTid]);
+  [players, selectedTid, pbaMode]);
   const tradePartnerCount = Math.max(0, teams.length - 1);
 
   const filteredRoster = useMemo(() =>
@@ -183,7 +197,13 @@ export const TradeFinderView: React.FC = () => {
   [teamRoster, search]);
 
   const minTradableSeason = getMinTradableSeason(state);
-  const tradablePicks = useMemo(() => getTradablePicks(state), [draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, (state as any).draftComplete]);
+  React.useEffect(() => {
+    const healed = healMissingCurrentDraftPickRows(state);
+    if (healed.length !== (state.draftPicks ?? []).length) {
+      dispatchAction({ type: 'UPDATE_STATE', payload: { draftPicks: healed } } as any);
+    }
+  }, [dispatchAction, state, state.draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, (state as any).draftComplete]);
+  const tradablePicks = useMemo(() => getTradablePicks(state), [draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, state.draftComplete, state.activeDraftPicks, state.activeDraftPassedPicks, state.activeDraftOrder]);
   const teamPicksList = useMemo(() =>
     tradablePicks.filter(pk => pk.tid === selectedTid).sort((a, b) => comparePicks(a, b, currentYear, lotterySlotByTid)),
   [tradablePicks, selectedTid, currentYear, lotterySlotByTid]);
@@ -269,7 +289,7 @@ export const TradeFinderView: React.FC = () => {
   React.useEffect(() => {
     const pre = (state as any).tradeFinderPreselect as { tid: number; playerId: string } | undefined;
     if (!pre) return;
-    const player = players.find(p => p.internalId === pre.playerId && p.tid === pre.tid);
+    const player = players.find(p => p.internalId === pre.playerId && isTradeAssetOwnedBy(p, pre.tid));
     if (player && !isPbaImportTradeLocked(player, pbaMode)) {
       setSelectedTid(pre.tid);
       setBasket([{
@@ -288,23 +308,21 @@ export const TradeFinderView: React.FC = () => {
   }, [(state as any).tradeFinderPreselect]);
 
   const [rejectionOpen, setRejectionOpen] = useState(false);
-  const [ownerWarningOpen, setOwnerWarningOpen] = useState(false);
-  const [ownerWarningLifer, setOwnerWarningLifer] = useState<string | null>(null);
-  const [ownerWarningMode, setOwnerWarningMode] = useState<'reverse' | 'own'>('reverse');
 
-  const findOffers = (allowLifers = false) => {
-    if (basket.length === 0) return;
+  const findOffers = () => {
+    const isEmptyDiscovery = basket.length === 0;
+    const sourceTid = isEmptyDiscovery && isGM && state.userTeamId != null ? state.userTeamId : selectedTid;
 
-    if (!allowLifers) {
+    if (!isEmptyDiscovery && isGM && state.userTeamId != null) {
       const lifer = basket.find(item => {
         if (item.type !== 'player' || !item.player) return false;
-        return isFranchiseLifer(item.player);
+        return item.player.tid === state.userTeamId && isFranchiseLifer(item.player);
       });
-      if (lifer && (isReverseMode || isGM)) {
-        setOwnerWarningLifer(lifer.label);
-        setOwnerWarningMode(isReverseMode ? 'reverse' : 'own');
-        setOwnerWarningOpen(true);
-        return;
+      if (lifer?.player) {
+        const withConcern = pushOwnerTradeConcern(state, lifer.player.internalId, lifer.label);
+        if (withConcern !== state) {
+          void dispatchAction({ type: 'UPDATE_STATE', payload: { chats: withConcern.chats } } as any);
+        }
       }
     }
 
@@ -314,42 +332,64 @@ export const TradeFinderView: React.FC = () => {
     setTimeout(() => {
       const myVal = basket.reduce((s, i) => s + i.val, 0);
 
-      const engineOffers = generateCounterOffers({
-        fromTid: selectedTid,
-        offerValue: myVal,
-        usedIds: new Set(basket.map(i => i.id)),
-        players,
-        teams,
-        draftPicks: tradablePicks,
-        currentYear,
-        minTradableSeason,
-        powerRanks,
-        teamOutlooks: teamOutlooks as any,
-        tvContext,
-        capSpaces,
-        classStrengthByYear,
-        lotterySlotByTid,
-        targetTids: isReverseMode ? [state.userTeamId!] : undefined,
-        tradeDifficulty: isGM ? (SettingsManager.getSettings().tradeDifficulty ?? 50) : undefined,
-        bypassUntouchablesForTid: isReverseMode && myVal >= 140 ? state.userTeamId! : undefined,
-        allowLifers,
-        stepienEnabled: state.leagueStats?.stepienRuleEnabled !== false,
-        tradablePickWindow: state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS,
-        isPostDeadlinePreFA: !pbaMode && isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any),
-        recentlySignedLockMs: {
-          currentDate: state.date ?? '',
-          leagueStats: state.leagueStats as any,
-        },
-        allowPbaRoster: pbaMode,
-      });
+      const engineOffers = isEmptyDiscovery
+        ? generateEmptyBasketDumpOffers({
+            userTid: sourceTid,
+            players,
+            teams,
+            draftPicks: tradablePicks,
+            currentYear,
+            minTradableSeason,
+            powerRanks,
+            teamOutlooks: teamOutlooks as any,
+            tvContext,
+            capSpaces,
+            classStrengthByYear,
+            lotterySlotByTid,
+            stepienEnabled: state.leagueStats?.stepienRuleEnabled !== false,
+            tradablePickWindow: state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS,
+            isPostDeadlinePreFA: !pbaMode && isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any),
+            recentlySignedLockMs: {
+              currentDate: state.date ?? '',
+              leagueStats: state.leagueStats as any,
+            },
+            allowPbaRoster: pbaMode,
+          })
+        : generateCounterOffers({
+            fromTid: selectedTid,
+            offerValue: myVal,
+            usedIds: new Set(basket.map(i => i.id)),
+            players,
+            teams,
+            draftPicks: tradablePicks,
+            currentYear,
+            minTradableSeason,
+            powerRanks,
+            teamOutlooks: teamOutlooks as any,
+            tvContext,
+            capSpaces,
+            classStrengthByYear,
+            lotterySlotByTid,
+            targetTids: isReverseMode ? [state.userTeamId!] : undefined,
+            tradeDifficulty: isGM ? (SettingsManager.getSettings().tradeDifficulty ?? 50) : undefined,
+            bypassUntouchablesForTid: isReverseMode && myVal >= 140 ? state.userTeamId! : undefined,
+            stepienEnabled: state.leagueStats?.stepienRuleEnabled !== false,
+            tradablePickWindow: state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS,
+            isPostDeadlinePreFA: !pbaMode && isInPostDeadlinePreFAWindow(state.date, currentYear, state.leagueStats as any),
+            recentlySignedLockMs: {
+              currentDate: state.date ?? '',
+              leagueStats: state.leagueStats as any,
+            },
+            allowPbaRoster: pbaMode,
+          });
 
-      const offers: FoundOffer[] = engineOffers.map(o => {
+      const offers: FoundOffer[] = engineOffers.flatMap(o => {
         const offerPlayers = o.items.filter(i => i.type === 'player' && i.player).map(i => i.player!);
         const offerPicks = o.items.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!);
         const basketPlayers = basket.filter(i => i.type === 'player' && i.player).map(i => i.player!);
         const basketPicks = basket.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!);
         const cba = validateCBATradeRules({
-          teamAId: selectedTid,
+          teamAId: sourceTid,
           teamBId: o.tid,
           teamAPlayers: basketPlayers,
           teamBPlayers: offerPlayers,
@@ -361,7 +401,7 @@ export const TradeFinderView: React.FC = () => {
           currentDate: state.date ?? '',
           currentYear,
         });
-        return {
+        const foundOffer: FoundOffer = {
           tid: o.tid,
           items: o.items as TradeItem[],
           outlook: teamOutlooks.get(o.tid) ?? { role: 'neutral', label: 'Neutral', color: 'text-slate-400', bgColor: 'bg-slate-700/40', dot: '#94a3b8', reason: '' },
@@ -371,39 +411,63 @@ export const TradeFinderView: React.FC = () => {
           cbaReason: cba.reason,
           cbaOffendingSide: cba.offendingSide,
         };
+
+        if (!cba.ok) return [];
+        if (!isGM) return [foundOffer];
+
+        const machineState = buildTradeFinderManageState({
+          offer: foundOffer,
+          basket,
+          selectedTid,
+          isReverseMode,
+          isGM,
+          userTeamId: state.userTeamId,
+        });
+        const teamAPlayerIds = new Set(machineState.teamAPlayerIds);
+        const teamBPlayerIds = new Set(machineState.teamBPlayerIds);
+        const teamAPickDpids = new Set(machineState.teamAPickDpids);
+        const teamBPickDpids = new Set(machineState.teamBPickDpids);
+        const acceptance = evaluateTradeMachineExecution({
+          teamAId: machineState.teamAId,
+          teamBId: machineState.teamBId,
+          teamAPlayers: players.filter(player => teamAPlayerIds.has(player.internalId)),
+          teamBPlayers: players.filter(player => teamBPlayerIds.has(player.internalId)),
+          teamAPicks: tradablePicks.filter(pick => teamAPickDpids.has(pick.dpid)),
+          teamBPicks: tradablePicks.filter(pick => teamBPickDpids.has(pick.dpid)),
+          activeTeams: teams,
+          activePlayers: players,
+          currentYear,
+          powerRanksMap: powerRanks,
+          teamOutlooks,
+          tvContext,
+          classStrengthByYear,
+          lotterySlotByTid,
+          state,
+          teamACashUSD: 0,
+          teamBCashUSD: 0,
+        });
+
+        return acceptance.accepted ? [foundOffer] : [];
       });
 
       setFoundOffers(offers);
       setIsSearching(false);
 
-      if (isReverseMode && offers.length === 0) {
+      if (!isEmptyDiscovery && isReverseMode && offers.length === 0) {
         setRejectionOpen(true);
       }
     }, 80);
   };
 
   const handleManageTrade = (offer: FoundOffer) => {
-    if (isReverseMode) {
-      setManageTrade({
-        teamAId: offer.tid,       // user's team (engine's target in reverse)
-        teamBId: selectedTid,     // shopped team
-        teamAPlayerIds: offer.items.filter(i => i.type === 'player').map(i => i.id),
-        teamBPlayerIds: basket.filter(i => i.type === 'player').map(i => i.id),
-        teamAPickDpids: offer.items.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
-        teamBPickDpids: basket.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
-        preAccepted: offer.variant === 'absorb',
-      });
-      return;
-    }
-    setManageTrade({
-      teamAId: selectedTid,
-      teamBId: offer.tid,
-      teamAPlayerIds: basket.filter(i => i.type === 'player').map(i => i.id),
-      teamBPlayerIds: offer.items.filter(i => i.type === 'player').map(i => i.id),
-      teamAPickDpids: basket.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
-      teamBPickDpids: offer.items.filter(i => i.type === 'pick' && i.pick).map(i => i.pick!.dpid),
-      preAccepted: offer.variant === 'absorb',
-    });
+    setManageTrade(buildTradeFinderManageState({
+      offer,
+      basket,
+      selectedTid,
+      isReverseMode,
+      isGM,
+      userTeamId: state.userTeamId,
+    }));
   };
 
   const handleExecuteTrade = (payload: any) => {
@@ -451,9 +515,10 @@ export const TradeFinderView: React.FC = () => {
           teams={teams}
           powerRanks={powerRanks}
           lotterySlotByTid={lotterySlotByTid}
-          draftPicks={draftPicks}
+          draftPicks={tradablePicks}
           stateTradableDraftPickSeasons={state.leagueStats?.tradableDraftPickSeasons}
           basket={basket}
+          credibleResignExpiringIds={tvContext.credibleResignExpiringIds}
           wouldStepienViolateForTid={wouldStepienViolateForTid}
         />
 
@@ -474,6 +539,7 @@ export const TradeFinderView: React.FC = () => {
           currencyCode={state.leagueStats?.currency ?? 'USD'}
           nonNBATeams={state.nonNBATeams ?? []}
           handleManageTrade={handleManageTrade}
+          reversePerspective={isReverseMode}
         />
       </div>
 
@@ -481,19 +547,7 @@ export const TradeFinderView: React.FC = () => {
         manageTrade={manageTrade}
         onCloseManageTrade={() => setManageTrade(null)}
         onConfirmTrade={handleExecuteTrade}
-        ownerWarningOpen={ownerWarningOpen}
         selectedTeam={selectedTeam}
-        ownerWarningLifer={ownerWarningLifer}
-        ownerWarningMode={ownerWarningMode}
-        onCloseOwnerWarning={() => {
-          setOwnerWarningOpen(false);
-          setOwnerWarningLifer(null);
-        }}
-        onIgnoreOwnerWarning={() => {
-          setOwnerWarningOpen(false);
-          setOwnerWarningLifer(null);
-          findOffers(true);
-        }}
         rejectionOpen={rejectionOpen}
         basket={basket}
         onCloseRejection={() => setRejectionOpen(false)}

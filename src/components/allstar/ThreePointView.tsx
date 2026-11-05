@@ -1,14 +1,23 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Star, Trophy } from 'lucide-react';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { useGame } from '../../store/GameContext';
-import { getPlayerHeadshot, getTeamLogo, extractTeamId, extractNbaId } from '../../utils/helpers';
+import { getPlayerHeadshot, getTeamLogo, extractNbaId } from '../../utils/helpers';
 import { NBAPlayer } from '../../types';
 import { calcThreePointOdds } from '../../utils/allStarOdds';
 import { getPlayerImage } from '../../utils/playerImage';
+import { buildBoxScoreStatsByPlayer } from '../central/view/playerStatsBoxScoreMaps';
+import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
+import { getLeagueEventDisplayName } from '../../services/franchises/franchiseEventNaming';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
 
-function getShooterStats(player: NBAPlayer, currentSeason: number) {
-  const regularRows = (player.stats ?? []).filter(s => !s.playoffs);
+function getShooterStats(
+  player: NBAPlayer,
+  currentSeason: number,
+  currentRows?: any[],
+  showEmpty = false,
+) {
+  const regularRows = currentRows ?? (player.stats ?? []).filter(s => !s.playoffs);
   const currentSeasonRows = regularRows.filter(s => s.season === currentSeason && (s.gp ?? 0) > 0);
 
   const aggregated = currentSeasonRows.length > 0
@@ -20,8 +29,8 @@ function getShooterStats(player: NBAPlayer, currentSeason: number) {
       }), { gp: 0, pts: 0, tp: 0, tpa: 0 })
     : null;
 
-  const latest = regularRows.filter(s => (s.gp ?? 0) > 0).at(-1);
-  if (!aggregated && !latest) return null;
+  const latest = currentRows ? null : regularRows.filter(s => (s.gp ?? 0) > 0).at(-1);
+  if (!aggregated && !latest && !showEmpty) return null;
 
   const gp    = aggregated?.gp ?? latest?.gp ?? 0;
   const pts   = aggregated?.pts ?? latest?.pts ?? 0;
@@ -36,7 +45,7 @@ function getShooterStats(player: NBAPlayer, currentSeason: number) {
     ppg:    ppg.toFixed(1),
     tpmPg:  tpmPg.toFixed(1),
     tpaPg:  tpaPg.toFixed(1),
-    tpp:    tpp.toFixed(1) + '%',
+    tpp:    tpa > 0 ? tpp.toFixed(1) + '%' : '—',
     gp,
   };
 }
@@ -65,10 +74,24 @@ const getContestPortrait = (player: any, nbaId?: string | null, background = '1e
 
 export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players, teams: providedTeams, ownTid }) => {
   const { state } = useGame();
+  const eventName = getLeagueEventDisplayName(state, 'three_point', '3-Point Contest');
   const isPba = state.leagueStats?.uiMode === 'pba_isolated';
   const teams = providedTeams ?? state.teams;
   const currentYear = state.leagueStats.year;
   const allStarData = allStar ?? {};
+  const findTeam = (tid: number | undefined) => teams.find(team => Number(team.id ?? team.tid) === Number(tid));
+  const pbaConferenceIndex = state.leagueStats?.pbaConference === 'commissioners'
+    ? 1
+    : state.leagueStats?.pbaConference === 'governors'
+      ? 2
+      : 0;
+  const pbaCompetitionId = PBA_COMPETITIONS[pbaConferenceIndex].id;
+  const livePbaStats = useMemo(() => isPba
+    ? buildBoxScoreStatsByPlayer(state, {
+        competitionIds: new Set([pbaCompetitionId]),
+        phase: 'regular',
+      })
+    : null, [isPba, pbaCompetitionId, state.boxScores, state.leagueStats.year]);
 
   const isAnnounced = (allStarData.threePointContestants ?? []).length > 0;
   const isComplete  = !!allStarData.threePointContest;
@@ -79,9 +102,9 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
         <div className="w-16 h-16 rounded-full bg-slate-900 border border-slate-800 flex items-center justify-center mx-auto mb-4">
           <Star size={32} className="text-slate-700" />
         </div>
-        <h3 className="text-xl font-black text-white mb-2">3-Point Contest</h3>
+        <h3 className="text-xl font-black text-white mb-2">{eventName}</h3>
         <p className="text-slate-400 text-sm max-w-xs mx-auto">
-          The participants for the 3-Point Contest will be announced before All-Star Saturday.
+          The participants for the {eventName} will be announced before All-Star Saturday.
         </p>
       </div>
     );
@@ -94,7 +117,7 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
       <div>
         <div className="text-center mb-12">
           <h3 className="text-2xl font-black text-white uppercase tracking-tight mb-2">
-            3-Point Contest
+            {eventName}
           </h3>
           <p className="text-slate-400 text-sm">
             All-Star Saturday · {contestants.length} contestants
@@ -104,14 +127,18 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
           {contestants.map((c: any) => {
             const p = players.find(pl => pl.internalId === (c.internalId || c.playerId)) || c;
-            const team = teams.find(t => t.id === p.tid);
-            const teamId = p.teamNbaId || (team ? extractTeamId(team.logoUrl, team.abbrev) : null) || 1610612737;
+            const team = findTeam(p.tid);
             const teamColor = team?.colors?.[0] || '#6366f1';
-            const teamLogoSrc = isPba && team?.logoUrl ? team.logoUrl : getTeamLogo(teamId);
+            const teamLogoSrc = getResolvedTeamLogoUrl(team, currentYear) || (!isPba ? getTeamLogo(p.teamNbaId || 1610612737) : undefined);
             const nbaId = p.nbaId || extractNbaId(p.imgURL || "", p.name);
             const isOwn = ownTid !== null && ownTid !== undefined && p?.tid === ownTid;
 
-            const stats = getShooterStats(p, currentYear);
+            const stats = getShooterStats(
+              p,
+              currentYear,
+              isPba ? livePbaStats?.get(String(p.internalId)) ?? [] : undefined,
+              isPba,
+            );
             const contestOdds = calcThreePointOdds(contestants.map((c: any) => players.find(pl => pl.internalId === (c.internalId || c.playerId)) || c), p);
 
             return (
@@ -135,14 +162,14 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
                       }}
                     />
                   </div>
-                  <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-1 border border-slate-800">
+                  {teamLogoSrc && <div className="absolute -bottom-1 -right-1 bg-slate-900 rounded-full p-1 border border-slate-800">
                     <img 
                       src={teamLogoSrc}
                       className="w-5 h-5 object-contain"
-                      alt="team"
+                      alt=""
                       referrerPolicy="no-referrer"
                     />
-                  </div>
+                  </div>}
                 </div>
 
                 <div className="flex flex-col items-center my-1">
@@ -155,13 +182,8 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
                 <div className="text-sm font-bold text-white mb-0.5">
                   <PlayerNameWithHover player={p}>{p.name}</PlayerNameWithHover>
                 </div>
-                <div className="flex items-center justify-center gap-2 mb-2">
-                  <div className="px-1.5 py-0.5 rounded-full bg-slate-800 border border-slate-700">
-                    <span className="text-[8px] font-black text-slate-500 uppercase">{p.pos}</span>
-                  </div>
-                  <span className="text-[10px] text-slate-500 uppercase font-bold">
-                    {team?.abbrev || (isPba ? 'PBA' : 'NBA')}
-                  </span>
+                <div className="mb-2 text-[10px] font-bold uppercase tracking-widest text-slate-500">
+                  {p.pos}{team?.abbrev ? ` · ${team.abbrev}` : ''}
                 </div>
 
                 {stats && (
@@ -198,11 +220,10 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
   const { contestants = [], winnerName = '', winnerId = null } = allStarData.threePointContest ?? {};
   const winnerPlayer = players.find((p: any) => p.internalId === winnerId)
     || players.find((p: any) => p.name === winnerName);
-  const winnerTeam = winnerPlayer ? teams.find(t => t.id === winnerPlayer.tid) : null;
+  const winnerTeam = winnerPlayer ? findTeam(winnerPlayer.tid) : null;
   const winnerNbaId = winnerPlayer?.nbaId || extractNbaId(winnerPlayer?.imgURL || '', winnerName);
-  const winnerTeamLogoSrc = isPba && winnerTeam?.logoUrl
-    ? winnerTeam.logoUrl
-    : getTeamLogo(winnerPlayer?.teamNbaId || (winnerTeam ? extractTeamId(winnerTeam.logoUrl, winnerTeam.abbrev) : null) || 1610612737);
+  const winnerTeamLogoSrc = getResolvedTeamLogoUrl(winnerTeam, currentYear)
+    || (!isPba ? getTeamLogo(winnerPlayer?.teamNbaId || 1610612737) : undefined);
 
   return (
     <div>
@@ -231,7 +252,7 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
           {/* Info */}
           <div className="text-center sm:text-left">
             <div className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.25em] mb-1">
-              {currentYear} Three-Point Contest Champion
+              {currentYear} {eventName} Champion
             </div>
             <h2 className="text-4xl font-black italic tracking-tighter text-white mb-1">
               {winnerPlayer
@@ -240,7 +261,7 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
             </h2>
             {winnerTeam && (
               <div className="flex items-center gap-2 justify-center sm:justify-start">
-                <img src={winnerTeamLogoSrc} className="w-5 h-5 object-contain" referrerPolicy="no-referrer" alt="" />
+                {winnerTeamLogoSrc && <img src={winnerTeamLogoSrc} className="w-5 h-5 object-contain" referrerPolicy="no-referrer" alt="" />}
                 <span className="text-sm font-bold text-slate-400 uppercase tracking-widest">{winnerTeam.abbrev}</span>
               </div>
             )}
@@ -255,14 +276,14 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
           <span className="text-right">Finals</span>
         </div>
         <div className="divide-y divide-slate-800">
-          {contestants
+          {[...contestants]
             .sort((a: any, b: any) => (b.finalScore ?? -1) - (a.finalScore ?? -1))
             .map((c: any) => {
               const player = players.find(p => p.internalId === c.playerId);
-              const team = teams.find(t => t.id === player?.tid);
-              const teamId = c.teamNbaId || (team ? extractTeamId(team.logoUrl, team?.abbrev) : null) || 1610612737;
+              const team = findTeam(player?.tid);
               const teamColor = team?.colors?.[0] || '#6366f1';
-              const teamLogoSrc = isPba && team?.logoUrl ? team.logoUrl : getTeamLogo(teamId);
+              const teamLogoSrc = getResolvedTeamLogoUrl(team, currentYear)
+                || (!isPba ? getTeamLogo(c.teamNbaId || 1610612737) : undefined);
               const nbaId = c.nbaId || (player ? extractNbaId(player.imgURL || "", c.playerName) : null);
 
               return (
@@ -294,15 +315,17 @@ export const ThreePointView: React.FC<ThreePointViewProps> = ({ allStar, players
                         {player
                           ? <PlayerNameWithHover player={player} className="text-slate-200 font-bold">{c.playerName}</PlayerNameWithHover>
                           : <span className="text-slate-200 font-bold">{c.playerName}</span>}
-                        <img 
-                          src={teamLogoSrc}
-                          className="w-4 h-4 object-contain"
-                          alt="team"
-                          referrerPolicy="no-referrer"
-                        />
+                        {teamLogoSrc && (
+                          <img
+                            src={teamLogoSrc}
+                            className="w-4 h-4 object-contain"
+                            alt="team"
+                            referrerPolicy="no-referrer"
+                          />
+                        )}
                       </div>
                       <span className="text-[10px] text-slate-500 font-mono uppercase">
-                        {team?.abbrev || (isPba ? 'PBA' : 'NBA')}
+                        {team?.abbrev || (isPba ? '' : 'NBA')}
                       </span>
                     </div>
                   </div>

@@ -1,9 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ArrowRightLeft, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
-import { NBAPlayer } from '../../../types';
-import { PlayerBioView } from './PlayerBioView';
 import { TradeDetailView } from './TradeDetailView';
+import type { TradeSelection } from './TransactionsFeed';
 import { LeagueTransactionsFeed, TransactionsPagination } from './TransactionsFeed';
 import {
   buildDisplayItems,
@@ -13,51 +12,82 @@ import {
   EXTERNAL_LEAGUES,
   FilterSelect,
   findPlayerInText,
+  findStaffInText,
   findTeamInText,
+  getTransactionTeamIds,
+  getTransactionStaffCandidates,
   getSeasonYear,
   LeagueFilter,
   normalizePersonnelRoleText,
   SearchField,
+  sortTransactionHistoryNewestFirst,
+  teamMentionedInTransactionText,
 } from './TransactionsShared';
-import { getOwnTeamId } from '../../../utils/helpers';
+import { getOwnTeamId, normalizeDate } from '../../../utils/helpers';
 import { getDomesticPlayerStatus } from '../../../utils/euroLeagueDefaults';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { isExternalLeaguePlayer } from '../../../utils/playerLeagueScope';
+import { useLeagueLabels } from '../../../utils/leagueLabels';
+import { getGameDateParts } from '../../../utils/dateUtils';
+import { getLeagueCalendar } from '../../../services/leagueCalendar';
+
+const ACTIVE_LEAGUE_FILTER = 'active';
 
 export const TransactionsView: React.FC = () => {
-  const { state } = useGame();
+  const { state, navigateToPlayer } = useGame();
+  const maxVisibleYear = state.leagueStats?.year ?? new Date().getFullYear();
   const ownTid = getOwnTeamId(state);
+  const labels = useLeagueLabels();
+  const transactionMonths = useMemo(() => {
+    const startMonth = getLeagueCalendar(state.leagueStats).regularSeasonStart.month;
+    return Array.from({ length: 12 }, (_, index) => {
+      const month = ((startMonth - 1 + index) % 12) + 1;
+      return {
+        month,
+        label: new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' })
+          .format(new Date(Date.UTC(2000, month - 1, 1))),
+      };
+    });
+  }, [state.leagueStats]);
+  const isFictional = state.leagueType === 'fictional';
   const allTeams = useMemo(() => {
+    if (isFictional) return state.teams ?? [];
     const resolvedNonNBA = ((state as any).nonNBATeams ?? [])
       .map((team: any) => resolveAnyTeam(Number(team?.tid ?? team?.id), state.teams, (state as any).nonNBATeams ?? []))
       .filter((team: any) => team && !(state.teams ?? []).some(nbaTeam => nbaTeam.id === team.id));
     return [...(state.teams ?? []), ...resolvedNonNBA];
-  }, [state.teams, (state as any).nonNBATeams]);
+  }, [isFictional, state.teams, (state as any).nonNBATeams]);
   const ownTeam = ownTid !== null
     ? (allTeams.find((team: any) => Number(team?.id ?? team?.tid) === ownTid) as any) ?? null
     : null;
   const getDefaultFilterLeague = (): LeagueFilter => {
     if (isPbaIsolatedMode(state)) return 'PBA';
     const domestic = getDomesticPlayerStatus(state as any);
-    return isEuroIsolatedMode(state) && domestic && EXTERNAL_LEAGUES.includes(domestic as any) ? domestic as LeagueFilter : 'nba';
+    return isEuroIsolatedMode(state) && domestic && EXTERNAL_LEAGUES.includes(domestic as any) ? domestic as LeagueFilter : ACTIVE_LEAGUE_FILTER;
   };
   const defaultFilterLeague = getDefaultFilterLeague();
+  const availableLeagueFilters = useMemo(() => {
+    const statuses = new Set<string>(EXTERNAL_LEAGUES);
+    for (const team of state.nonNBATeams ?? []) if (team.league) statuses.add(team.league);
+    return [...statuses].sort((left, right) => left.localeCompare(right));
+  }, [state.nonNBATeams]);
 
   const [filterLeague, setFilterLeague] = useState<LeagueFilter>(defaultFilterLeague);
   const [filterType, setFilterType] = useState('');
   const [filterTeam, setFilterTeam] = useState('');
   const [filterMonth, setFilterMonth] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedYear, setSelectedYear] = useState<number>(() => state.leagueStats?.year ?? new Date().getFullYear());
-  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
-  const [selectedTrade, setSelectedTrade] = useState<{ text: string; date: string; legs?: { text: string; date: string }[] } | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(() => maxVisibleYear);
+  const [selectedTrade, setSelectedTrade] = useState<TradeSelection>(null);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
   const lastDefaultLeagueRef = useRef<LeagueFilter>(defaultFilterLeague);
 
   useEffect(() => {
-    setSelectedYear(state.leagueStats?.year ?? new Date().getFullYear());
-  }, [state.leagueStats?.year]);
+    setSelectedYear(maxVisibleYear);
+  }, [maxVisibleYear]);
 
   useEffect(() => {
     setFilterLeague(previous => previous === lastDefaultLeagueRef.current ? defaultFilterLeague : previous);
@@ -70,11 +100,17 @@ export const TransactionsView: React.FC = () => {
       const entry = typeof raw === 'string' ? { text: raw, date: state.date } : raw as any;
       const kind = detectType(entry.text || '', entry.type);
       if (kind === 'League Event') return;
-      const year = getSeasonYear(entry.date || '');
-      if (year > 2000) set.add(year);
+      const year = getSeasonYear(entry.date || '', state.leagueStats);
+      if (year > 0 && year <= maxVisibleYear) set.add(year);
     });
     return Array.from(set).sort((left, right) => right - left);
-  }, [state.date, state.history]);
+  }, [maxVisibleYear, state.date, state.history, state.leagueStats]);
+
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [availableYears, selectedYear]);
 
   const playerByName = useMemo(() => {
     const map = new Map<string, typeof state.players[0]>();
@@ -86,18 +122,76 @@ export const TransactionsView: React.FC = () => {
     state.players.forEach(player => map.set(player.internalId, player));
     return map;
   }, [state.players]);
+  const staffCandidates = useMemo(() => getTransactionStaffCandidates(state), [
+    state.nonNBATeams,
+    state.staff,
+    state.staffFreeAgents,
+    state.staffRetirementAnnouncements,
+    state.teams,
+  ]);
+
+  const leagueFromTid = (tid: number): LeagueFilter | undefined => {
+    if (tid >= 2000 && tid < 3000) return 'PBA';
+    if (tid >= 1000 && tid < 2000) return 'Euroleague';
+    return undefined;
+  };
+
+  const leagueFromTeam = (team: any): LeagueFilter | undefined => {
+    if (!team) return undefined;
+    const teamId = Number(team.id ?? team.tid);
+    if (state.teams.some(activeTeam => activeTeam.id === teamId)) return ACTIVE_LEAGUE_FILTER;
+    const explicit = String(team.league ?? '').trim();
+    if (EXTERNAL_LEAGUES.includes(explicit as any)) return explicit as LeagueFilter;
+    const conference = String(team.conference ?? '').trim();
+    if (EXTERNAL_LEAGUES.includes(conference as any)) return conference as LeagueFilter;
+    return leagueFromTid(Number(team.id ?? team.tid));
+  };
+
+  const teamsInText = (text: string) => {
+    return allTeams.filter((team: any) => teamMentionedInTransactionText(text, team));
+  };
+
+  const inferEntryLeague = (entry: any, text: string, team: any, player: any): LeagueFilter | undefined => {
+    const explicit = String(entry?.league ?? '').trim();
+    if (EXTERNAL_LEAGUES.includes(explicit as any)) return explicit as LeagueFilter;
+    const tid = Number(entry?.tid);
+    const tidLeague = Number.isFinite(tid) ? leagueFromTid(tid) : undefined;
+    if (tidLeague) return tidLeague;
+    const teamLeague = leagueFromTeam(team);
+    if (teamLeague) return teamLeague;
+    const playerTeam = player ? resolveAnyTeam(Number(player.tid), state.teams, state.nonNBATeams ?? []) : null;
+    const playerLeague = player
+      ? leagueFromTeam(playerTeam) ?? leagueFromTid(Number(player.tid)) ?? (EXTERNAL_LEAGUES.includes(String(player.status ?? '') as any) ? String(player.status) as LeagueFilter : undefined)
+      : undefined;
+    if (playerLeague) return playerLeague;
+
+    const ids = Array.isArray(entry?.playerIds) ? entry.playerIds : [];
+    const playerLeagues = new Set<LeagueFilter>();
+    ids.forEach((playerId: string) => {
+      const row = playerById.get(playerId);
+      const rowTeam = row ? resolveAnyTeam(Number(row.tid), state.teams, state.nonNBATeams ?? []) : null;
+      const league = row ? leagueFromTeam(rowTeam) ?? leagueFromTid(Number(row.tid)) ?? (EXTERNAL_LEAGUES.includes(String(row.status ?? '') as any) ? String(row.status) as LeagueFilter : undefined) : undefined;
+      if (league) playerLeagues.add(league);
+    });
+    if (playerLeagues.size === 1) return Array.from(playerLeagues)[0];
+
+    const textLeagues = new Set<LeagueFilter>();
+    teamsInText(text).forEach(textTeam => {
+      const league = leagueFromTeam(textTeam);
+      if (league) textLeagues.add(league);
+    });
+    if (textLeagues.size === 1) return Array.from(textLeagues)[0];
+    if (/commissioner's cup|governors' cup|philippine cup/i.test(text)) return 'PBA';
+    return undefined;
+  };
 
   const enrichedHistory = useMemo<EnrichedEntry[]>(() => (
-    [...(state.history || [])]
-      .sort((left, right) => {
-        const leftDate = typeof left === 'string' ? state.date : (left as any).date || state.date;
-        const rightDate = typeof right === 'string' ? state.date : (right as any).date || state.date;
-        return new Date(rightDate).getTime() - new Date(leftDate).getTime();
-      })
+    sortTransactionHistoryNewestFirst([...(state.history || [])], state.date)
+      .filter(raw => typeof raw === 'string' || normalizeDate((raw as any).date || state.date) <= normalizeDate(state.date))
       .map(raw => {
         const entry = typeof raw === 'string' ? { text: raw, date: state.date, type: 'League Event' } : raw as { text: string; date: string; type?: string };
         const text = normalizePersonnelRoleText(entry.text || '');
-        const player = Array.isArray((entry as any).playerIds)
+        const playerFromId = Array.isArray((entry as any).playerIds)
           ? ((entry as any).playerIds as string[])
             .map(playerId => playerById.get(playerId))
             .find(Boolean) ?? null
@@ -105,36 +199,51 @@ export const TransactionsView: React.FC = () => {
         const team = Number.isFinite(Number((entry as any).tid))
           ? allTeams.find((candidate: any) => Number(candidate?.id ?? candidate?.tid) === Number((entry as any).tid)) ?? null
           : null;
+        const structuredTeam = allTeams.find((candidate: any) =>
+          getTransactionTeamIds(entry as any).includes(Number(candidate?.id ?? candidate?.tid)),
+        ) ?? null;
+        const textTeams = teamsInText(text);
+        const resolvedTeam = team ?? structuredTeam ?? textTeams[0] ?? null;
+        const resolvedPlayer = playerFromId ?? findPlayerInText(text, playerByName);
+        const resolvedStaff = detectType(text, entry.type) === 'Personnel'
+          ? findStaffInText(text, [
+              ...((resolvedTeam as any)?.tycoon?.staffMembers ?? []),
+              ...staffCandidates,
+            ])
+          : null;
         return {
           ...entry,
           text,
           kind: detectType(text, entry.type),
-          league: (entry as any).league ?? (team as any)?.league,
-          team: team ?? findTeamInText(text, allTeams as any),
-          player: player ?? findPlayerInText(text, playerByName),
+          league: inferEntryLeague(entry, text, resolvedTeam, resolvedPlayer),
+          team: resolvedTeam ?? findTeamInText(text, allTeams as any),
+          player: resolvedPlayer,
+          playerIdentityMatch: playerFromId ? 'id' : resolvedPlayer ? 'name' : undefined,
+          staff: resolvedStaff,
         };
       })
-  ), [allTeams, playerById, playerByName, state.date, state.history]);
+  ), [allTeams, playerById, playerByName, staffCandidates, state.date, state.history]);
 
   const availableTeamsForFilter = useMemo(() => {
     if (filterLeague === 'all') return allTeams;
     return allTeams.filter((team: any) => {
       const teamId = Number(team?.id ?? team?.tid ?? -1);
       const teamLeague = String(team?.league ?? team?.conference ?? '');
-      if (filterLeague === 'nba') return teamId >= 0 && teamId < 100;
+      if (filterLeague === ACTIVE_LEAGUE_FILTER) return state.teams.some(activeTeam => activeTeam.id === teamId);
       return teamLeague === filterLeague;
     });
-  }, [allTeams, filterLeague]);
+  }, [allTeams, filterLeague, state.teams]);
 
   const filteredHistory = useMemo(() => enrichedHistory.filter(entry => {
     if (entry.kind === 'League Event') return false;
+    if (isFictional && entry.player && isExternalLeaguePlayer(entry.player)) return false;
     const text = entry.text || '';
     const looksLikePbaConferenceMove = /commissioner's cup|governors' cup|philippine cup/i.test(text);
-    if (selectedYear && getSeasonYear(entry.date || '') !== selectedYear) return false;
+    if (selectedYear && getSeasonYear(entry.date || '', state.leagueStats) !== selectedYear) return false;
     if (searchQuery && !text.toLowerCase().includes(searchQuery.toLowerCase())) return false;
 
     const entryLeague = (entry as any).league as string | undefined;
-    if (filterLeague === 'nba') {
+    if (filterLeague === ACTIVE_LEAGUE_FILTER) {
       if (entryLeague && EXTERNAL_LEAGUES.includes(entryLeague as any)) return false;
       if (!entryLeague && (EXTERNAL_LEAGUES.some(league => text.includes(league)) || looksLikePbaConferenceMove)) return false;
     } else if (filterLeague !== 'all') {
@@ -163,8 +272,10 @@ export const TransactionsView: React.FC = () => {
       const team = allTeams.find((entryTeam: any) => Number(entryTeam?.id ?? entryTeam?.tid) === selectedTeamId) as any;
       if (team) {
         const entryTeamId = Number((entry.team as any)?.id ?? (entry.team as any)?.tid ?? NaN);
+        const structuredTeamIds = getTransactionTeamIds(entry as any);
         if (
           entryTeamId !== selectedTeamId &&
+          !structuredTeamIds.includes(selectedTeamId) &&
           !text.toLowerCase().includes(String(team.name ?? '').toLowerCase()) &&
           !text.toLowerCase().includes(String(team.abbrev ?? '').toLowerCase())
         ) return false;
@@ -172,24 +283,25 @@ export const TransactionsView: React.FC = () => {
     }
 
     if (filterMonth) {
-      const months = ['October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September'];
-      const selectedMonth = months[parseInt(filterMonth, 10) - 1];
-      if (selectedMonth && !entry.date?.includes(selectedMonth.substring(0, 3))) return false;
+      const selectedMonth = Number(filterMonth);
+      if (getGameDateParts(entry.date || '').month !== selectedMonth) return false;
     }
 
     return true;
-  }), [allTeams, enrichedHistory, filterLeague, filterMonth, filterTeam, filterType, searchQuery, selectedYear]);
+  }), [allTeams, enrichedHistory, filterLeague, filterMonth, filterTeam, filterType, isFictional, searchQuery, selectedYear, state.leagueStats]);
 
   const displayItems = useMemo<DisplayItem[]>(() => buildDisplayItems(filteredHistory), [filteredHistory]);
   const totalPages = Math.max(1, Math.ceil(displayItems.length / itemsPerPage));
   const visibleItems = displayItems.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const emptyLabel = filterLeague !== ACTIVE_LEAGUE_FILTER && filterLeague !== 'all'
+    ? `No ${filterLeague} player movement has been recorded for ${selectedYear}.`
+    : undefined;
 
   useEffect(() => {
     setPage(1);
   }, [filterLeague, filterType, filterTeam, filterMonth, searchQuery, selectedYear, itemsPerPage]);
 
   if (selectedTrade) return <TradeDetailView entry={selectedTrade} legs={selectedTrade.legs} onBack={() => setSelectedTrade(null)} />;
-  if (viewingPlayer) return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
 
   return (
     <div className="flex flex-col h-full bg-slate-950 text-slate-200">
@@ -219,20 +331,19 @@ export const TransactionsView: React.FC = () => {
 
           <div className="-mx-4 px-4 sm:mx-0 sm:px-0 flex items-center gap-2 sm:gap-4 overflow-x-auto no-scrollbar sm:flex-wrap sm:overflow-x-visible">
             <FilterSelect label="League" value={filterLeague} onChange={value => { setFilterLeague(value as LeagueFilter); setFilterTeam(''); }}>
-              <option value="nba">NBA</option>
-              <option value="all">All Leagues</option>
-              <option value="Euroleague">Euroleague</option>
-              <option value="G-League">G-League</option>
-              <option value="PBA">PBA</option>
-              <option value="B-League">B-League</option>
-              <option value="Endesa">Endesa</option>
-              <option value="China CBA">China CBA</option>
-              <option value="NBL Australia">NBL Australia</option>
+              <option value={ACTIVE_LEAGUE_FILTER}>{labels.leagueName}</option>
+              {!isFictional && <>
+                <option value="all">All Leagues</option>
+                {availableLeagueFilters
+                  .filter(league => league !== labels.leagueName)
+                  .map(league => <option key={league} value={league}>{league}</option>)}
+              </>}
             </FilterSelect>
             <FilterSelect label="Transaction Type" value={filterType} onChange={setFilterType}>
               <option value="">All Transactions</option>
               <option value="Draft">Draft</option>
               <option value="Signing">Signing / Extension</option>
+              <option value="Contract Option">Contract Option</option>
               <option value="Personnel">Staff / Personnel</option>
               <option value="Trade">Trade</option>
               <option value="Transfer">Transfer (Buyout)</option>
@@ -240,22 +351,22 @@ export const TransactionsView: React.FC = () => {
               <option value="AwardOnWaivers">Claimed off Waivers</option>
               <option value="Retirement">Retirement</option>
               <option value="Jersey Retirement">Jersey Retirement</option>
-              <option value="G-League Assignment">G-League Assignment</option>
-              <option value="G-League Callup">G-League Callup</option>
+              {!isFictional && <option value="G-League Assignment">G-League Assignment</option>}
+              {!isFictional && <option value="G-League Callup">G-League Callup</option>}
               <option value="Training Camp Release">Training Camp Release</option>
             </FilterSelect>
             {availableTeamsForFilter.length > 0 && (
               <FilterSelect label="Team" value={filterTeam} onChange={setFilterTeam}>
                 <option value="">All Teams</option>
                 {[...availableTeamsForFilter].sort((left, right) => left.name.localeCompare(right.name)).map((team: any) => (
-                  <option key={team.id} value={team.id}>{team.name}</option>
+                  <option key={team.id} value={team.id}>{getTeamFullName(team)}</option>
                 ))}
               </FilterSelect>
             )}
             <FilterSelect label="Month" value={filterMonth} onChange={setFilterMonth}>
               <option value="">All Months</option>
-              {['October', 'November', 'December', 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September'].map((month, index) => (
-                <option key={month} value={index + 1}>{month}</option>
+              {transactionMonths.map(({ month, label }) => (
+                <option key={month} value={month}>{label}</option>
               ))}
             </FilterSelect>
             {(filterLeague !== defaultFilterLeague || filterType || filterTeam || filterMonth || searchQuery) && (
@@ -268,7 +379,7 @@ export const TransactionsView: React.FC = () => {
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 sm:p-8 custom-scrollbar">
-        <LeagueTransactionsFeed visibleItems={visibleItems} teams={allTeams as any} ownTid={ownTid} ownTeam={ownTeam as any} setSelectedTrade={setSelectedTrade} setViewingPlayer={setViewingPlayer} />
+        <LeagueTransactionsFeed visibleItems={visibleItems} teams={allTeams as any} ownTid={ownTid} ownTeam={ownTeam as any} setSelectedTrade={setSelectedTrade} onViewPlayer={navigateToPlayer} emptyLabel={emptyLabel} />
       </div>
 
       <TransactionsPagination displayCount={displayItems.length} page={page} totalPages={totalPages} itemsPerPage={itemsPerPage} setItemsPerPage={setItemsPerPage} setPage={setPage} />

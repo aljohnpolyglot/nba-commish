@@ -6,6 +6,7 @@ export interface ThreePointContestant {
   id: string;
   name: string;
   team: string;
+  teamLogoUrl?: string;
   pos: string;
   nbaSlug: string;
   imgURL: string;
@@ -19,5 +20,6 @@ export interface ThreePointContestant {
     'Limitless Range'?: 'HOF' | 'Gold' | 'Silver' | 'Bronze';
   };
   age: number;
+  seasonStats?: { gp: number; tp: number; tpa: number };
   awards?: { season: number; type: string }[];
 }

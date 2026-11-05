@@ -4,22 +4,32 @@ import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { CheckCircle, XCircle } from 'lucide-react';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
-import { getDisplayPotential } from '../../../../../utils/playerRatings';
 import { computeContractOffer, formatPlayerSalaryDisplay, getPlayerCurrentSalaryUSD, hasBirdRights } from '../../../../../utils/salaryUtils';
 import { computeMoodScore, normalizeMoodTraits } from '../../../../../utils/mood/moodScore';
 import { computeResignProbability } from '../../PlayerBioMoraleTab';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
-import type { NBAPlayer } from '../../../../../types';
+import type { GameState, NBAPlayer } from '../../../../../types';
 import { isOnRoster, resolveAnyTeam } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
-import { getDisplayAge, getDisplayOverall } from '../../../../../store/playerRatingStore';
-import { parseGameDate } from '../../../../../utils/dateUtils';
+import { getDisplayAge } from '../../../../../store/playerRatingStore';
+import { getTwoWayRosterLimit } from '../../../../../utils/rosterLimits';
+import { isNonGuaranteedContract, isTwoWayContract } from '../../../../../utils/contractTypes';
+import { isRfaMatchingEnabled } from '../../../../../utils/ruleFlags';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../../../utils/scoutingFuzz';
+import { getCalibratedPer } from '../../../../../utils/advancedStatCalibration';
+import { areWnbaDevelopmentalContractsEnabled } from '../../../../../services/wnba/developmentalContracts';
+import {
+  getEffectiveContractEndYear,
+  getOffseasonDecisionTeamId,
+  resolveOffseasonContractDecision,
+} from '../../../../../services/freeAgency/offseasonContractDecision';
+import { isPlayerRestrictedFreeAgent } from '../../../../../services/freeAgency/rfaEligibility';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-function getK2Ovr(p: NBAPlayer): number {
-  return getDisplayOverall(p);
+function getVisibleOvr(state: GameState, p: NBAPlayer, currentYear: number): number {
+  return getScoutedDisplayOverall(state, p, currentYear);
 }
 
 function getLastSeasonPg(p: NBAPlayer) {
@@ -33,17 +43,12 @@ function getLastSeasonPg(p: NBAPlayer) {
     pts: (last.pts ?? 0) / gp,
     reb: ((last.orb ?? 0) + (last.drb ?? 0)) / gp || (last.trb ?? 0) / gp,
     ast: (last.ast ?? 0) / gp,
-    per: last.per ?? 0,
+    per: getCalibratedPer(last),
   };
 }
 
 function isPlayerRFA(p: NBAPlayer): boolean {
-  const c = (p as any).contract;
-  if (c?.isRestrictedFA || c?.restrictedFA) return true;
-  // Real-player imports never get contract.restrictedFA stamped — only in-sim
-  // drafted players go through autoResolvers. R1 rookie deal → RFA on expiry.
-  if (c?.rookie && (p as any).draft?.round === 1) return true;
-  return false;
+  return isPlayerRestrictedFreeAgent(p);
 }
 
 function getContractOption(p: NBAPlayer): 'player' | 'team' | 'rookie' | null {
@@ -82,11 +87,11 @@ function resignLabel(val: number): string {
 // ── Types ──────────────────────────────────────────────────────────────────────
 
 type TierFilter = 'all' | '90+' | '80-89' | '70-79' | 'u25';
-type SortCol = 'name' | 'pos' | 'age' | 'k2' | 'pot' | 'pts' | 'reb' | 'ast' | 'per' | 'type' | 'bird' | 'option' | 'exp' | 'contract' | 'asking' | 'pct';
+type SortCol = 'name' | 'pos' | 'age' | 'ovr' | 'pot' | 'pts' | 'reb' | 'ast' | 'per' | 'type' | 'bird' | 'option' | 'exp' | 'contract' | 'asking' | 'pct';
 
 interface RowData {
   player: NBAPlayer;
-  k2: number;
+  ovr: number;
   age: number;
   pot: number;
   pg: { g: number; mp: number; pts: number; reb: number; ast: number; per: number } | null;
@@ -97,6 +102,8 @@ interface RowData {
   currentSalaryLabel: string;
   offer: { salaryUSD: number; years: number };
   resignScore: number | null;
+  retirementStatus: 'retiring' | 'considering' | null;
+  effectiveExp: number;
   yearsLeft: number;
   isExpiring: boolean;
   isTwoWay: boolean;
@@ -108,6 +115,15 @@ interface Props {
   onPlayerClick?: (player: NBAPlayer) => void;
 }
 
+export function isTeamIntelContractBoardPlayer(
+  player: NBAPlayer,
+  teamId: number,
+  offseasonOpen: boolean,
+): boolean {
+  return player.tid === teamId
+    || (offseasonOpen && getOffseasonDecisionTeamId(player) === teamId);
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
@@ -115,24 +131,31 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
   const quick = usePlayerQuickActions();
   const isOwnTeam = teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-  const expiringAnchorYear = state.date
-    ? parseGameDate(state.date).getUTCFullYear()
-    : currentYear;
   const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
-  const birdRightsEnabled = state.leagueStats?.birdRightsEnabled !== false;
-  const playerOptionsEnabled = state.leagueStats?.playerOptionsEnabled !== false;
+  const birdRightsEnabled = !hideNbaContractBadges && state.leagueStats?.birdRightsEnabled !== false;
+  const playerOptionsEnabled = !hideNbaContractBadges && state.leagueStats?.playerOptionsEnabled !== false;
+  const rookieScaleEnabled = !hideNbaContractBadges && (state.leagueStats as any)?.rookieScaleType !== 'none';
+  const rookieTeamOptionsEnabled = rookieScaleEnabled && (state.leagueStats as any)?.rookieTeamOptionsEnabled !== false;
+  const rfaEnabled = !hideNbaContractBadges && isRfaMatchingEnabled(state.leagueStats);
+  const twoWayContractsEnabled = !hideNbaContractBadges && getTwoWayRosterLimit(state.leagueStats as any) > 0;
+  const developmentalActive = areWnbaDevelopmentalContractsEnabled(state.leagueStats);
+  const nonGuaranteedContractsEnabled = !hideNbaContractBadges && state.leagueStats?.nonGuaranteedContractsEnabled !== false;
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const gamesPlayed = (team?.wins ?? 0) + (team?.losses ?? 0);
   const teamWinPct = gamesPlayed > 0 ? (team?.wins ?? 0) / gamesPlayed : 0.5;
 
   const teamPlayers = useMemo(
-    () => (state.players ?? []).filter(p => p.tid === teamId),
-    [state.players, teamId],
+    () => (state.players ?? []).filter(p => isTeamIntelContractBoardPlayer(
+      p,
+      teamId,
+      state.seasonLifecycle?.offseasonOpen === true,
+    )),
+    [state.players, state.seasonLifecycle?.offseasonOpen, teamId],
   );
 
   const [tierFilter, setTierFilter] = useState<TierFilter>('all');
-  const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({ col: 'k2', dir: 'desc' });
+  const [sort, setSort] = useState<{ col: SortCol; dir: 'asc' | 'desc' }>({ col: 'ovr', dir: 'desc' });
 
   const handleSort = (col: SortCol) =>
     setSort(prev => ({ col, dir: prev.col === col && prev.dir === 'desc' ? 'asc' : 'desc' }));
@@ -149,8 +172,9 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
 
   // Pre-compute all row data including real moodScore → resignProbability
   const allRows = useMemo((): RowData[] => {
-    const active = teamPlayers.filter(p => isOnRoster(p) && p.contract);
+    const active = teamPlayers.filter(p => (isOnRoster(p) || getOffseasonDecisionTeamId(p) === teamId) && p.contract);
     return active.map(p => {
+      const contractDecision = resolveOffseasonContractDecision(p, state);
       const { score: moodScore } = computeMoodScore(
         p, team, state.date, false, false, false, teamPlayers, currentYear,
       );
@@ -160,38 +184,48 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
       // current-year deal until rollover; the new commitment lives in contractYears.
       // Use the later of the two so a freshly re-signed player drops off the
       // expiring list instead of staying flagged as "expires this year".
-      const cyYears = (((p as any).contractYears ?? []) as Array<{ season?: string }>)
-        .map(cy => parseInt((cy.season ?? '').split('-')[0], 10) + 1)
-        .filter(y => Number.isFinite(y));
-      const latestCY = cyYears.length > 0 ? Math.max(...cyYears) : 0;
-      const effectiveExp = Math.max(p.contract?.exp ?? expiringAnchorYear, latestCY);
-      const yearsLeft = Math.max(0, effectiveExp - expiringAnchorYear);
+      const effectiveExp = getEffectiveContractEndYear(p) ?? currentYear;
+      const yearsLeft = Math.max(0, effectiveExp - currentYear);
+      const rawOpt = contractDecision.kind === 'ROOKIE_TEAM_OPTION_DUE' ? 'rookie'
+        : contractDecision.kind === 'TEAM_OPTION_DUE' ? 'team'
+        : contractDecision.kind === 'PLAYER_OPTION_DUE' ? 'player'
+        : getContractOption(p);
+      const opt = rawOpt === 'player' && playerOptionsEnabled ? rawOpt
+        : rawOpt === 'rookie' && rookieScaleEnabled ? rawOpt
+        : rawOpt === 'team' && rookieTeamOptionsEnabled ? rawOpt
+        : null;
       return {
         player: p,
-        k2: getK2Ovr(p),
+        ovr: getVisibleOvr(state, p, currentYear),
         age: getDisplayAge(p, currentYear),
-        pot: getDisplayPotential(p, currentYear),
+        pot: getScoutedDisplayPotential(state, p, currentYear, currentYear),
         pg: getLastSeasonPg(p),
-        rfa: isPlayerRFA(p),
-        bird: hasBirdRights(p),
-        opt: getContractOption(p),
+        rfa: rfaEnabled && (
+          contractDecision.kind === 'ROOKIE_EXIT_RFA_QO'
+          || contractDecision.kind === 'RFA_QO_DUE'
+          || isPlayerRFA(p)
+        ),
+        bird: birdRightsEnabled && hasBirdRights(p),
+        opt,
         currentSalaryUSD: getPlayerCurrentSalaryUSD(p as any, currentYear),
         currentSalaryLabel: formatPlayerSalaryDisplay(p as any, currentYear, state.nonNBATeams ?? []),
         offer: computeContractOffer(p, state.leagueStats),
         resignScore: resign?.score ?? null,
+        retirementStatus: resign?.retirementStatus ?? null,
+        effectiveExp,
         yearsLeft,
-        isExpiring: yearsLeft === 0,
-        isTwoWay: !hideNbaContractBadges && !!(p as any).twoWay,
-        isNonGuaranteed: !hideNbaContractBadges && !!(p as any).nonGuaranteed,
+        isExpiring: effectiveExp <= currentYear,
+        isTwoWay: twoWayContractsEnabled && isTwoWayContract(p, state.leagueStats),
+        isNonGuaranteed: nonGuaranteedContractsEnabled && isNonGuaranteedContract(p, state.leagueStats),
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, expiringAnchorYear, teamWinPct, hideNbaContractBadges, state.nonNBATeams]);
+  }, [teamPlayers, team, state.date, state.leagueStats, currentYear, teamWinPct, rfaEnabled, birdRightsEnabled, playerOptionsEnabled, rookieScaleEnabled, rookieTeamOptionsEnabled, twoWayContractsEnabled, nonGuaranteedContractsEnabled, state.nonNBATeams]);
 
   const rows = useMemo((): RowData[] => {
     const filtered = allRows.filter(r => {
-      if (tierFilter === '90+')   return r.k2 >= 90;
-      if (tierFilter === '80-89') return r.k2 >= 80 && r.k2 < 90;
-      if (tierFilter === '70-79') return r.k2 >= 70 && r.k2 < 80;
+      if (tierFilter === '90+')   return r.ovr >= 90;
+      if (tierFilter === '80-89') return r.ovr >= 80 && r.ovr < 90;
+      if (tierFilter === '70-79') return r.ovr >= 70 && r.ovr < 80;
       if (tierFilter === 'u25')   return r.age < 25;
       return true;
     });
@@ -201,7 +235,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
       if (col === 'name')   { av = a.player.name; bv = b.player.name; }
       else if (col === 'pos')  { av = a.player.pos ?? ''; bv = b.player.pos ?? ''; }
       else if (col === 'age')  { av = a.age;  bv = b.age; }
-      else if (col === 'k2')   { av = a.k2;   bv = b.k2; }
+      else if (col === 'ovr')  { av = a.ovr;  bv = b.ovr; }
       else if (col === 'pot')  { av = a.pot;  bv = b.pot; }
       else if (col === 'pts')  { av = a.pg?.pts ?? 0; bv = b.pg?.pts ?? 0; }
       else if (col === 'reb')  { av = a.pg?.reb ?? 0; bv = b.pg?.reb ?? 0; }
@@ -212,7 +246,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
       else if (col === 'option') { av = a.opt ?? ''; bv = b.opt ?? ''; }
       else if (col === 'contract') { av = a.currentSalaryUSD; bv = b.currentSalaryUSD; }
       else if (col === 'asking') { av = a.offer.salaryUSD * a.offer.years; bv = b.offer.salaryUSD * b.offer.years; }
-      else if (col === 'exp')  { av = a.player.contract?.exp ?? 0; bv = b.player.contract?.exp ?? 0; }
+      else if (col === 'exp')  { av = a.effectiveExp; bv = b.effectiveExp; }
       else if (col === 'pct')  { av = a.resignScore ?? -1; bv = b.resignScore ?? -1; }
       if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       return dir === 'asc' ? av - bv : bv - av;
@@ -265,7 +299,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
                 <th className="text-center px-2 py-2 w-[52px]">Team</th>
                 <SortTh col="pos"    label="Pos"  cls="text-center" />
                 <SortTh col="age"    label="Age"  cls="text-center" />
-                <SortTh col="k2"     label="K2 ▼" />
+                <SortTh col="ovr"    label="OVR ▼" />
                 <SortTh col="pot"    label="POT" />
                 <th className="text-center px-2 py-2">G</th>
                 <th className="text-right px-1.5 py-2">MP</th>
@@ -283,7 +317,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
               </tr>
             </thead>
             <tbody>
-              {rows.map(({ player: p, k2, age, pot, pg, rfa, bird, opt, currentSalaryUSD, currentSalaryLabel, offer, resignScore, yearsLeft, isExpiring, isTwoWay, isNonGuaranteed }) => (
+              {rows.map(({ player: p, ovr, age, pot, pg, rfa, bird, opt, currentSalaryUSD, currentSalaryLabel, offer, resignScore, retirementStatus, effectiveExp, yearsLeft, isExpiring, isTwoWay, isNonGuaranteed }) => (
                 <tr
                   key={p.internalId}
                   className={cn(
@@ -302,7 +336,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
                       <PlayerPortrait playerName={p.name} imgUrl={p.imgURL} face={(p as any).face} size={26} />
                       <PlayerNameWithHover player={p} className="font-semibold truncate max-w-[110px]">{p.name}</PlayerNameWithHover>
                       {isTwoWay && (
-                        <span className="text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded bg-violet-500/30 text-violet-300 border border-violet-500/50 shrink-0">2W</span>
+                        <span className="text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded bg-violet-500/30 text-violet-300 border border-violet-500/50 shrink-0">{developmentalActive ? 'DEV' : '2W'}</span>
                       )}
                       {isNonGuaranteed && !isTwoWay && (
                         <span className="text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded bg-amber-500/30 text-amber-300 border border-amber-500/50 shrink-0">NG</span>
@@ -320,11 +354,11 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
                   <td className="text-center text-slate-400 px-2">{p.pos}</td>
                   <td className="text-center text-slate-400 tabular-nums px-2">{age}</td>
 
-                  {/* K2 */}
+                  {/* OVR */}
                   <td className={cn(
                     'text-right font-black tabular-nums px-2',
-                    k2 >= 90 ? 'text-blue-300' : k2 >= 85 ? 'text-emerald-300' : k2 >= 78 ? 'text-amber-300' : 'text-slate-400',
-                  )}>{k2}</td>
+                    ovr >= 90 ? 'text-blue-300' : ovr >= 85 ? 'text-emerald-300' : ovr >= 78 ? 'text-amber-300' : 'text-slate-400',
+                  )}>{ovr}</td>
 
                   {/* POT */}
                   <td className={cn(
@@ -384,13 +418,13 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
                   <td className="text-center px-2">
                     <span className={cn(
                       'inline-block px-1.5 py-0.5 rounded text-[9px] font-black tracking-wider tabular-nums',
-                      yearsLeft === 0
+                      isExpiring
                         ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40'
                         : yearsLeft === 1
                         ? 'bg-amber-500/20 text-amber-300 border border-amber-500/40'
                         : 'bg-slate-700/40 text-slate-400 border border-slate-700',
                     )}>
-                      {p.contract?.exp ?? '—'}
+                      {effectiveExp}
                     </span>
                   </td>
 
@@ -408,7 +442,11 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
 
                   {/* Re-sign % — or Exercise/Decline for team option players */}
                   <td className="text-center px-3 py-1">
-                    {isOwnTeam && opt === 'team' ? (
+                    {retirementStatus === 'retiring' ? (
+                      <span className="px-2.5 py-1 rounded text-[10px] font-black uppercase tracking-wider whitespace-nowrap border bg-rose-500/15 text-rose-300 border-rose-500/40">
+                        0% · Retiring
+                      </span>
+                    ) : isOwnTeam && opt === 'team' ? (
                       <div className="flex items-center justify-center gap-1">
                         <button
                           onClick={(e) => { e.stopPropagation(); dispatchAction({ type: 'EXERCISE_TEAM_OPTION', payload: { playerId: p.internalId } } as any); }}
@@ -448,7 +486,7 @@ export function TeamIntelExpiring({ teamId, onPlayerClick }: Props) {
                         )}
                         title={isOwnTeam ? 'Open signing offer' : undefined}
                       >
-                        {resignScore}% · {resignLabel(resignScore)}
+                        {resignScore}% · {retirementStatus === 'considering' ? 'Considering Retirement' : resignLabel(resignScore)}
                       </button>
                     )}
                   </td>

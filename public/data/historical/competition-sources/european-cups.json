@@ -1,0 +1,3008 @@
+{
+  "copa_del_rey_spain": [
+    {
+      "year": "1933",
+      "winner": "Rayo Club Madrid",
+      "score": "21–11",
+      "runners_up": "Madrid CF",
+      "venue": "Jardines del Cine Goya",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Juan Castellví",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1934",
+      "winner": null,
+      "score": null,
+      "runners_up": null,
+      "venue": null,
+      "location": null,
+      "note": "Not played as a result of the boycott by Catalan teams."
+    },
+    {
+      "year": "1935",
+      "winner": "Societé Patrie",
+      "score": "23–19",
+      "runners_up": "Rayo Club Madrid",
+      "venue": "Parc Municipal de Montjuïc",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "Fernando Font",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1936",
+      "winner": "Rayo Club Madrid",
+      "score": "23–20",
+      "runners_up": "Societé Patrie",
+      "venue": "Frontón de Recoletos",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Raoul Arnaud",
+        "nationality": "France",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1940",
+      "winner": "L'Hospitalet",
+      "score": "20–17",
+      "runners_up": "Atlético Gracia",
+      "venue": "Polideportivo de Sarriá",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "Ramón Sanahuja",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1941",
+      "winner": "Español",
+      "score": "35–20",
+      "runners_up": "L'Hospitalet",
+      "venue": "Frontón Fiesta Alegre",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Ramón Sanahuja",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1942",
+      "winner": "Layetano",
+      "score": "30–28",
+      "runners_up": "FC Barcelona",
+      "venue": "Frontón Zaragozano",
+      "location": "Zaragoza",
+      "top_scorer_or_mvp": {
+        "name": "Sebastián Navarrete",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1943",
+      "winner": "FC Barcelona",
+      "score": "27–25",
+      "runners_up": "Layetano",
+      "venue": "Frontón Balear",
+      "location": "Palma",
+      "top_scorer_or_mvp": {
+        "name": "Eduardo Kucharski",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1944",
+      "winner": "Layetano",
+      "score": "32–18",
+      "runners_up": "Real Madrid",
+      "venue": "Club de Campo",
+      "location": "Vigo",
+      "top_scorer_or_mvp": {
+        "name": "Eduardo Kucharski",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1945",
+      "winner": "FC Barcelona",
+      "score": "37–34",
+      "runners_up": "Layetano",
+      "venue": "Pista de Gran Vía",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "Eduardo Kucharski",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1946",
+      "winner": "FC Barcelona",
+      "score": "44–35",
+      "runners_up": "Montgat",
+      "venue": "Plaza de toros de las Arenas",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "Juan Ferrando",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1947",
+      "winner": "FC Barcelona",
+      "score": "39–25",
+      "runners_up": "Canarias de Madrid",
+      "venue": "Centro de Natación Helios",
+      "location": "Zaragoza",
+      "top_scorer_or_mvp": {
+        "name": "Juan Ferrando",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1948",
+      "winner": "Juventud Badalona",
+      "score": "41–32",
+      "runners_up": "Real Madrid",
+      "venue": "Instituto Deportivo General Yagüe",
+      "location": "Burgos",
+      "top_scorer_or_mvp": {
+        "name": "Andrés Oller",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1949",
+      "winner": "FC Barcelona",
+      "score": "(play-off)",
+      "runners_up": "Real Madrid",
+      "venue": "Palacio de Deportes del Club América",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Andrés Oller",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1950",
+      "winner": "FC Barcelona",
+      "score": "46–39",
+      "runners_up": "Juventud Badalona",
+      "venue": "Plaza de toros de las Arenas",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "Andrés Oller",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1951",
+      "winner": "Real Madrid",
+      "score": "47–36",
+      "runners_up": "FC Barcelona",
+      "venue": "Frontón Gros",
+      "location": "San Sebastián",
+      "top_scorer_or_mvp": {
+        "name": "Guillermo Galíndez",
+        "nationality": "Puerto Rico",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1952",
+      "winner": "Real Madrid",
+      "score": "43–31",
+      "runners_up": "Juventud Badalona",
+      "venue": "Plaza de toros de Alicante",
+      "location": "Alicante",
+      "top_scorer_or_mvp": {
+        "name": "Guillermo Galíndez",
+        "nationality": "Puerto Rico",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1953",
+      "winner": "Juventud Badalona",
+      "score": "41–39",
+      "runners_up": "Real Madrid",
+      "venue": "Colegio San José",
+      "location": "Valladolid",
+      "top_scorer_or_mvp": {
+        "name": "Ignacio Pinedo",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1954",
+      "winner": "Real Madrid",
+      "score": "56–41",
+      "runners_up": "Juventud Badalona",
+      "venue": "Frontón Fiesta Alegre",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Guillermo Galíndez",
+        "nationality": "Puerto Rico",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1955",
+      "winner": "Juventud Badalona",
+      "score": "59–44",
+      "runners_up": "Real Madrid",
+      "venue": "Pabellón del Deporte",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "José Brunet",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1956",
+      "winner": "Real Madrid",
+      "score": "59–55",
+      "runners_up": "Aismalíbar",
+      "venue": "Frontón Fiesta Alegre",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Alfonso Martínez",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1957",
+      "winner": "Real Madrid",
+      "score": "54–50",
+      "runners_up": "Aismalíbar",
+      "venue": "Pista de Vista Alegre",
+      "location": "Vigo",
+      "top_scorer_or_mvp": {
+        "name": "Alfonso Martínez",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1958",
+      "winner": "Juventud Badalona",
+      "score": "74–69",
+      "runners_up": "Real Madrid",
+      "venue": "Centro de Natación Helios",
+      "location": "Zaragoza",
+      "top_scorer_or_mvp": {
+        "name": "José Brunet",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1959",
+      "winner": "FC Barcelona",
+      "score": "50–36",
+      "runners_up": "Aismalíbar",
+      "venue": "Palacio de los Deportes",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "Jorge Bonareu",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1960",
+      "winner": "Real Madrid",
+      "score": "76–64",
+      "runners_up": "Hesperia",
+      "venue": "Frontón Fiesta Alegre",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Travis Montgomery",
+        "nationality": "United States",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1961",
+      "winner": "Real Madrid",
+      "score": "76–51",
+      "runners_up": "FC Barcelona",
+      "venue": "Frontón Deportivo",
+      "location": "Bilbao",
+      "top_scorer_or_mvp": {
+        "name": "Emiliano Rodríguez",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1962",
+      "winner": "Real Madrid",
+      "score": "80–66",
+      "runners_up": "Estudiantes",
+      "venue": "Palacio de los Deportes",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "José Ramón Ramos",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1963",
+      "winner": "Estudiantes",
+      "score": "94–90",
+      "runners_up": "Real Madrid",
+      "venue": "Frontón Urumea",
+      "location": "San Sebastián",
+      "top_scorer_or_mvp": {
+        "name": "José Ramón Ramos",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1964",
+      "winner": "Picadero",
+      "score": "63–51",
+      "runners_up": "Aismalíbar",
+      "venue": "Palacio dos Deportes",
+      "location": "Lugo",
+      "top_scorer_or_mvp": {
+        "name": "Miguel Albanell",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1965",
+      "winner": "Real Madrid",
+      "score": "102–82",
+      "runners_up": "Náutico Tenerife",
+      "venue": "Pabellón de Deportes",
+      "location": "Salamanca",
+      "top_scorer_or_mvp": {
+        "name": "Alejandro Plasencia / Lolo Sainz",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1966",
+      "winner": "Real Madrid",
+      "score": "62–61",
+      "runners_up": "Juventud Kalso",
+      "venue": "Pabellón del Casal Sagrada Familia",
+      "location": "Terrassa",
+      "top_scorer_or_mvp": {
+        "name": "Clifford Luyk",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1967",
+      "winner": "Real Madrid",
+      "score": "82–80",
+      "runners_up": "Kas Vitoria",
+      "venue": "Frontón Vitoriano",
+      "location": "Vitoria-Gasteiz",
+      "top_scorer_or_mvp": {
+        "name": "Clifford Luyk",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1968",
+      "winner": "Picadero",
+      "score": "58–55",
+      "runners_up": "Juventud Kalso",
+      "venue": "Pabellón de Deportes de La Arena",
+      "location": "Gijón",
+      "top_scorer_or_mvp": {
+        "name": "Enrique Margall",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1969",
+      "winner": "Juventud Nerva",
+      "score": "82–81",
+      "runners_up": "Real Madrid",
+      "venue": "Pabellón de Deportes",
+      "location": "Ourense",
+      "top_scorer_or_mvp": {
+        "name": "Clifford Luyk",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1970",
+      "winner": "Real Madrid",
+      "score": "102–90",
+      "runners_up": "Juventud Nerva",
+      "venue": "Palacio de los Deportes",
+      "location": "León",
+      "top_scorer_or_mvp": {
+        "name": "Clifford Luyk",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1971",
+      "winner": "Real Madrid",
+      "score": "72–63",
+      "runners_up": "Juventud Nerva",
+      "venue": "Pabellón de Deportes de Mendizorroza",
+      "location": "Vitoria-Gasteiz",
+      "top_scorer_or_mvp": {
+        "name": "Clifford Luyk / Luis Miguel Santillana",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1972",
+      "winner": "Real Madrid",
+      "score": "92–77",
+      "runners_up": "Juventud Schweppes",
+      "venue": "Palacio de Deportes de Riazor",
+      "location": "A Coruña",
+      "top_scorer_or_mvp": {
+        "name": "Emiliano Rodríguez",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1973",
+      "winner": "Real Madrid",
+      "score": "123–79",
+      "runners_up": "Estudiantes Monteverde",
+      "venue": "Pabellón Polideportivo de La Salle",
+      "location": "Paterna",
+      "top_scorer_or_mvp": {
+        "name": "Clifford Luyk",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1974",
+      "winner": "Real Madrid",
+      "score": "87–85",
+      "runners_up": "Juventud Schweppes",
+      "venue": "Pabellón de Deportes",
+      "location": "Alicante",
+      "top_scorer_or_mvp": {
+        "name": "Miguel Ángel Estrada",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1975",
+      "winner": "Real Madrid",
+      "score": "114–85",
+      "runners_up": "Estudiantes Monteverde",
+      "venue": "Pabellón Polideportivo",
+      "location": "Jaén",
+      "top_scorer_or_mvp": {
+        "name": "Gonzalo Sagi-Vela",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1976",
+      "winner": "Juventud Schweppes",
+      "score": "99–88",
+      "runners_up": "Real Madrid",
+      "venue": "Pabellón Municipal",
+      "location": "Cartagena",
+      "top_scorer_or_mvp": {
+        "name": "Wayne Brabender",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1977",
+      "winner": "Real Madrid",
+      "score": "97–71",
+      "runners_up": "FC Barcelona",
+      "venue": "Nuevo Palacio de Deportes",
+      "location": "Palma",
+      "top_scorer_or_mvp": {
+        "name": "Wayne Brabender",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1978",
+      "winner": "FC Barcelona",
+      "score": "103–96",
+      "runners_up": "Real Madrid",
+      "venue": "Pabellón Municipal",
+      "location": "Zaragoza",
+      "top_scorer_or_mvp": {
+        "name": "Bob Guyette",
+        "nationality": "United States",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1979",
+      "winner": "FC Barcelona",
+      "score": "130–113",
+      "runners_up": "Tempus",
+      "venue": "Polideportivo Anaitasuna",
+      "location": "Pamplona",
+      "top_scorer_or_mvp": {
+        "name": "Chicho Sibilio",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1980",
+      "winner": "FC Barcelona",
+      "score": "92–83",
+      "runners_up": "Manresa EB",
+      "venue": "Pavillón Municipal de Punta Arnela",
+      "location": "Ferrol",
+      "top_scorer_or_mvp": {
+        "name": "Bob Fullarton",
+        "nationality": "United States",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1981",
+      "winner": "FC Barcelona",
+      "score": "106–90",
+      "runners_up": "Real Madrid",
+      "venue": "Pabellón Municipal",
+      "location": "Almería",
+      "top_scorer_or_mvp": {
+        "name": "Epi",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1982",
+      "winner": "FC Barcelona",
+      "score": "110–108",
+      "runners_up": "Real Madrid",
+      "venue": "Polideportivo Entrepuentes",
+      "location": "Badajoz",
+      "top_scorer_or_mvp": {
+        "name": "Chicho Sibilio",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1983",
+      "winner": "FC Barcelona",
+      "score": "125–93",
+      "runners_up": "Inmobanco",
+      "venue": "Pabellón Municipal de Deportes",
+      "location": "Palencia",
+      "top_scorer_or_mvp": {
+        "name": "Epi",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1984",
+      "winner": "CAI Zaragoza",
+      "score": "81–78",
+      "runners_up": "FC Barcelona",
+      "venue": "Pabellón Municipal",
+      "location": "Zaragoza",
+      "top_scorer_or_mvp": {
+        "name": "Epi",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1985",
+      "winner": "Real Madrid",
+      "score": "90–76",
+      "runners_up": "Ron Negrita Joventut",
+      "venue": "Pavelló Club Joventut Badalona",
+      "location": "Badalona",
+      "top_scorer_or_mvp": {
+        "name": "Fernando Martín",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1986",
+      "winner": "Real Madrid",
+      "score": "87–79",
+      "runners_up": "Ron Negrita Joventut",
+      "venue": "Palau Blaugrana",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "Jordi Villacampa",
+        "nationality": "Spain",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1987",
+      "winner": "FC Barcelona",
+      "score": "110–102",
+      "runners_up": "Ron Negrita Joventut",
+      "venue": "Palacio Municipal de Deportes",
+      "location": "Santa Cruz de Tenerife",
+      "top_scorer_or_mvp": {
+        "name": "Wallace Bryant",
+        "nationality": "United States",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1988",
+      "winner": "FC Barcelona",
+      "score": "84–83",
+      "runners_up": "Real Madrid",
+      "venue": "Pabellón Polideportivo Pisuerga",
+      "location": "Valladolid",
+      "top_scorer_or_mvp": {
+        "name": "Wendell Alexis",
+        "nationality": "United States",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1989",
+      "winner": "Real Madrid",
+      "score": "85–81",
+      "runners_up": "FC Barcelona",
+      "venue": "Pazo dos Deportes de Riazor",
+      "location": "A Coruña",
+      "top_scorer_or_mvp": {
+        "name": "Dražen Petrović",
+        "nationality": "Yugoslavia",
+        "type": "top_scorer"
+      }
+    },
+    {
+      "year": "1990",
+      "winner": "CAI Zaragoza",
+      "score": "76–69",
+      "runners_up": "Ram Joventut",
+      "venue": "Centro Insular de Deportes",
+      "location": "Las Palmas",
+      "top_scorer_or_mvp": {
+        "name": "Mark Davis",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "1991",
+      "winner": "FC Barcelona Banca Catalana",
+      "score": "67–65",
+      "runners_up": "Estudiantes Caja Postal",
+      "venue": "Pabellón Príncipe Felipe",
+      "location": "Zaragoza",
+      "top_scorer_or_mvp": {
+        "name": "Juan Antonio Orenga",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "1992",
+      "winner": "Estudiantes Caja Postal",
+      "score": "61–56",
+      "runners_up": "CAI Zaragoza",
+      "venue": "Palacio de Deportes",
+      "location": "Granada",
+      "top_scorer_or_mvp": {
+        "name": "John Pinone",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "1993",
+      "winner": "Real Madrid Teka",
+      "score": "74–71",
+      "runners_up": "Marbella Joventut",
+      "venue": "Coliseum da Coruña",
+      "location": "A Coruña",
+      "top_scorer_or_mvp": {
+        "name": "Joe Arlauckas",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "1994",
+      "winner": "FC Barcelona Banca Catalana",
+      "score": "86–75",
+      "runners_up": "Taugrés",
+      "venue": "Palacio San Pablo",
+      "location": "Sevilla",
+      "top_scorer_or_mvp": {
+        "name": "Velimir Perasović",
+        "nationality": "Croatia",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "1995",
+      "winner": "Taugrés",
+      "score": "88–80",
+      "runners_up": "Amway Zaragoza",
+      "venue": "Palacio de Deportes",
+      "location": "Granada",
+      "top_scorer_or_mvp": {
+        "name": "Pablo Laso",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "1996",
+      "winner": "TDK Manresa",
+      "score": "94–92",
+      "runners_up": "FC Barcelona Banca Catalana",
+      "venue": "Palacio de Deportes",
+      "location": "Murcia",
+      "top_scorer_or_mvp": {
+        "name": "Joan Creus",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "1997",
+      "winner": "Festina Joventut",
+      "score": "79–71",
+      "runners_up": "Cáceres",
+      "venue": "Palacio de los Deportes",
+      "location": "León",
+      "top_scorer_or_mvp": {
+        "name": "Andre Turner",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "1998",
+      "winner": "Pamesa Valencia",
+      "score": "87–75",
+      "runners_up": "Pinturas Bruguer Badalona",
+      "venue": "Pabellón Polideportivo Pisuerga",
+      "location": "Valladolid",
+      "top_scorer_or_mvp": {
+        "name": "Nacho Rodilla",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "1999",
+      "winner": "Tau Cerámica",
+      "score": "70–61",
+      "runners_up": "Caja San Fernando",
+      "venue": "Pabellón Fuente de San Luis",
+      "location": "Valencia",
+      "top_scorer_or_mvp": {
+        "name": "Elmer Bennett",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2000",
+      "winner": "Adecco Estudiantes",
+      "score": "73–63",
+      "runners_up": "Pamesa Valencia",
+      "venue": "Fernando Buesa Arena",
+      "location": "Vitoria-Gasteiz",
+      "top_scorer_or_mvp": {
+        "name": "Alfonso Reyes",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2001",
+      "winner": "FC Barcelona",
+      "score": "80–77",
+      "runners_up": "Real Madrid Teka",
+      "venue": "Palacio Martín Carpena",
+      "location": "Málaga",
+      "top_scorer_or_mvp": {
+        "name": "Pau Gasol",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2002",
+      "winner": "Tau Cerámica",
+      "score": "85–83",
+      "runners_up": "FC Barcelona",
+      "venue": "Fernando Buesa Arena",
+      "location": "Vitoria-Gasteiz",
+      "top_scorer_or_mvp": {
+        "name": "Dejan Tomašević",
+        "nationality": "Yugoslavia",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2003",
+      "winner": "FC Barcelona",
+      "score": "84–78",
+      "runners_up": "Tau Cerámica",
+      "venue": "Pabellón Fuente de San Luis",
+      "location": "Valencia",
+      "top_scorer_or_mvp": {
+        "name": "Dejan Bodiroga",
+        "nationality": "Serbia and Montenegro",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2004",
+      "winner": "Tau Cerámica",
+      "score": "81–77",
+      "runners_up": "DKV Joventut",
+      "venue": "Palacio San Pablo",
+      "location": "Sevilla",
+      "top_scorer_or_mvp": {
+        "name": "Rudy Fernández",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2005",
+      "winner": "Unicaja",
+      "score": "80–76",
+      "runners_up": "Real Madrid",
+      "venue": "Pabellón Príncipe Felipe",
+      "location": "Zaragoza",
+      "top_scorer_or_mvp": {
+        "name": "Jorge Garbajosa",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2006",
+      "winner": "Tau Cerámica",
+      "score": "85–80",
+      "runners_up": "Pamesa Valencia",
+      "venue": "Palacio de los Deportes",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Pablo Prigioni",
+        "nationality": "Argentina",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2007",
+      "winner": "Winterthur FC Barcelona",
+      "score": "69–53",
+      "runners_up": "Real Madrid",
+      "venue": "Palacio Martín Carpena",
+      "location": "Málaga",
+      "top_scorer_or_mvp": {
+        "name": "Jordi Trias",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2008",
+      "winner": "DKV Joventut",
+      "score": "82–80",
+      "runners_up": "Tau Cerámica",
+      "venue": "Fernando Buesa Arena",
+      "location": "Vitoria-Gasteiz",
+      "top_scorer_or_mvp": {
+        "name": "Rudy Fernández",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2009",
+      "winner": "Tau Cerámica",
+      "score": "100–98",
+      "runners_up": "Unicaja",
+      "venue": "Palacio de los Deportes",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Mirza Teletović",
+        "nationality": "Bosnia and Herzegovina",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2010",
+      "winner": "Regal FC Barcelona",
+      "score": "80–61",
+      "runners_up": "Real Madrid",
+      "venue": "Bizkaia Arena",
+      "location": "Bilbao",
+      "top_scorer_or_mvp": {
+        "name": "Fran Vázquez",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2011",
+      "winner": "Regal FC Barcelona",
+      "score": "68–60",
+      "runners_up": "Real Madrid",
+      "venue": "Palacio de los Deportes",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Alan Anderson",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2012",
+      "winner": "Real Madrid",
+      "score": "91–74",
+      "runners_up": "FC Barcelona Regal",
+      "venue": "Palau Sant Jordi",
+      "location": "Barcelona",
+      "top_scorer_or_mvp": {
+        "name": "Sergio Llull",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2013",
+      "winner": "FC Barcelona Regal",
+      "score": "85–69",
+      "runners_up": "Valencia Basket",
+      "venue": "Fernando Buesa Arena",
+      "location": "Vitoria-Gasteiz",
+      "top_scorer_or_mvp": {
+        "name": "Pete Mickeal",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2014",
+      "winner": "Real Madrid",
+      "score": "77–76",
+      "runners_up": "FC Barcelona",
+      "venue": "Palacio Martín Carpena",
+      "location": "Málaga",
+      "top_scorer_or_mvp": {
+        "name": "Nikola Mirotić",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2015",
+      "winner": "Real Madrid",
+      "score": "77–71",
+      "runners_up": "FC Barcelona",
+      "venue": "Gran Canaria Arena",
+      "location": "Las Palmas",
+      "top_scorer_or_mvp": {
+        "name": "Rudy Fernández",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2016",
+      "winner": "Real Madrid",
+      "score": "85–81",
+      "runners_up": "Herbalife Gran Canaria",
+      "venue": "Coliseum da Coruña",
+      "location": "A Coruña",
+      "top_scorer_or_mvp": {
+        "name": "Gustavo Ayón",
+        "nationality": "Mexico",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2017",
+      "winner": "Real Madrid",
+      "score": "97–95",
+      "runners_up": "Valencia Basket",
+      "venue": "Fernando Buesa Arena",
+      "location": "Vitoria-Gasteiz",
+      "top_scorer_or_mvp": {
+        "name": "Sergio Llull",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2018",
+      "winner": "FC Barcelona Lassa",
+      "score": "92–90",
+      "runners_up": "Real Madrid",
+      "venue": "Gran Canaria Arena",
+      "location": "Las Palmas",
+      "top_scorer_or_mvp": {
+        "name": "Thomas Heurtel",
+        "nationality": "France",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2019",
+      "winner": "Barça Lassa",
+      "score": "94–93",
+      "runners_up": "Real Madrid",
+      "venue": "Palacio de los Deportes",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Thomas Heurtel",
+        "nationality": "France",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2020",
+      "winner": "Real Madrid",
+      "score": "95–68",
+      "runners_up": "Unicaja",
+      "venue": "Palacio Martín Carpena",
+      "location": "Málaga",
+      "top_scorer_or_mvp": {
+        "name": "Facundo Campazzo",
+        "nationality": "Argentina",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2021",
+      "winner": "Barça",
+      "score": "88–73",
+      "runners_up": "Real Madrid",
+      "venue": "Palacio de los Deportes",
+      "location": "Madrid",
+      "top_scorer_or_mvp": {
+        "name": "Cory Higgins",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2022",
+      "winner": "Barça",
+      "score": "64–59",
+      "runners_up": "Real Madrid",
+      "venue": "Palacio de Deportes",
+      "location": "Granada",
+      "top_scorer_or_mvp": {
+        "name": "Nikola Mirotić",
+        "nationality": "Spain",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2023",
+      "winner": "Unicaja",
+      "score": "83–80",
+      "runners_up": "Lenovo Tenerife",
+      "venue": "Palau Municipal d'Esports de Badalona",
+      "location": "Badalona",
+      "top_scorer_or_mvp": {
+        "name": "Tyson Carter",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2024",
+      "winner": "Real Madrid",
+      "score": "96–85",
+      "runners_up": "Barça",
+      "venue": "Palacio Martín Carpena",
+      "location": "Málaga",
+      "top_scorer_or_mvp": {
+        "name": "Facundo Campazzo",
+        "nationality": "Argentina",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2025",
+      "winner": "Unicaja",
+      "score": "93–79",
+      "runners_up": "Real Madrid",
+      "venue": "Gran Canaria Arena",
+      "location": "Las Palmas",
+      "top_scorer_or_mvp": {
+        "name": "Kendrick Perry",
+        "nationality": "Montenegro",
+        "type": "mvp"
+      }
+    },
+    {
+      "year": "2026",
+      "winner": "Kosner Baskonia",
+      "score": "100–89",
+      "runners_up": "Real Madrid",
+      "venue": "Roig Arena",
+      "location": "Valencia",
+      "top_scorer_or_mvp": {
+        "name": "Trent Forrest",
+        "nationality": "United States",
+        "type": "mvp"
+      }
+    }
+  ],
+  "supercopa_acb": [
+    {
+      "year": "1984",
+      "host": "L'Alcora",
+      "arena": "Polideportivo Municipal",
+      "champion": "Real Madrid",
+      "runner_up": "CAI Zaragoza",
+      "score": "101–61",
+      "era": "Predecessor"
+    },
+    {
+      "year": "1985",
+      "host": "Valladolid",
+      "arena": "Polideportivo Pisuerga",
+      "champion": "Ron Negrita Joventut",
+      "runner_up": "Real Madrid",
+      "score": "104–91",
+      "era": "Predecessor"
+    },
+    {
+      "year": "1986",
+      "host": "A Coruña",
+      "arena": "Riazor",
+      "champion": "Ron Negrita Joventut",
+      "runner_up": "Real Madrid",
+      "score": "74–67",
+      "era": "Predecessor"
+    },
+    {
+      "year": "1987",
+      "host": "Vigo",
+      "arena": "Polideportivo Municipal",
+      "champion": "FC Barcelona",
+      "runner_up": "RAM Joventut",
+      "score": "91–88",
+      "era": "Predecessor"
+    },
+    {
+      "year": "2004",
+      "host": "Málaga",
+      "arena": "Martín Carpena",
+      "champion": "FC Barcelona",
+      "runner_up": "Real Madrid",
+      "score": "76–75",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2005",
+      "host": "Granada",
+      "arena": "Palacio de Deportes",
+      "champion": "TAU Cerámica",
+      "runner_up": "CB Granada",
+      "score": "61–55",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2006",
+      "host": "Málaga",
+      "arena": "Martín Carpena",
+      "champion": "TAU Cerámica",
+      "runner_up": "Unicaja",
+      "score": "83–78",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2007",
+      "host": "Bilbao",
+      "arena": "Bizkaia Arena",
+      "champion": "TAU Cerámica",
+      "runner_up": "iurbentia Bilbao Basket",
+      "score": "85–73",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2008",
+      "host": "Zaragoza",
+      "arena": "Pabellón Príncipe Felipe",
+      "champion": "TAU Cerámica",
+      "runner_up": "CAI Zaragoza",
+      "score": "86–85",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2009",
+      "host": "Las Palmas",
+      "arena": "Centro Insular de Deportes",
+      "champion": "Regal FC Barcelona",
+      "runner_up": "Real Madrid",
+      "score": "86–82",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2010",
+      "host": "Vitoria-Gasteiz",
+      "arena": "Buesa Arena",
+      "champion": "Regal FC Barcelona",
+      "runner_up": "Power Electronics Valencia",
+      "score": "83–63",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2011",
+      "host": "Bilbao",
+      "arena": "Bilbao Arena",
+      "champion": "FC Barcelona Regal",
+      "runner_up": "Caja Laboral",
+      "score": "82–73",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2012",
+      "host": "Zaragoza",
+      "arena": "Pabellón Príncipe Felipe",
+      "champion": "Real Madrid",
+      "runner_up": "FC Barcelona Regal",
+      "score": "95–84",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2013",
+      "host": "Vitoria-Gasteiz",
+      "arena": "Buesa Arena",
+      "champion": "Real Madrid",
+      "runner_up": "FC Barcelona",
+      "score": "83–79",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2014",
+      "host": null,
+      "arena": null,
+      "champion": "Real Madrid",
+      "runner_up": "FC Barcelona",
+      "score": "99–78",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2015",
+      "host": "Málaga",
+      "arena": "Martín Carpena",
+      "champion": "FC Barcelona Lassa",
+      "runner_up": "Unicaja",
+      "score": "80–62",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2016",
+      "host": "Vitoria-Gasteiz",
+      "arena": "Buesa Arena",
+      "champion": "Herbalife Gran Canaria",
+      "runner_up": "FC Barcelona Lassa",
+      "score": "79–59",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2017",
+      "host": "Las Palmas",
+      "arena": "Gran Canaria Arena",
+      "champion": "Valencia Basket",
+      "runner_up": "Herbalife Gran Canaria",
+      "score": "69–63",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2018",
+      "host": "Santiago de Compostela",
+      "arena": "Fontes do Sar",
+      "champion": "Real Madrid",
+      "runner_up": "Kirolbet Baskonia",
+      "score": "80–73",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2019",
+      "host": "Madrid",
+      "arena": "WiZink Center",
+      "champion": "Real Madrid",
+      "runner_up": "FC Barcelona",
+      "score": "89–79",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2020",
+      "host": "La Laguna",
+      "arena": "Santiago Martín",
+      "champion": "Real Madrid",
+      "runner_up": "FC Barcelona",
+      "score": "72–67",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2021",
+      "host": null,
+      "arena": null,
+      "champion": "Real Madrid",
+      "runner_up": "FC Barcelona",
+      "score": "88–83",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2022",
+      "host": "Seville",
+      "arena": "San Pablo",
+      "champion": "Real Madrid",
+      "runner_up": "FC Barcelona",
+      "score": "89–83",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2023",
+      "host": "Murcia",
+      "arena": "Palacio de Deportes",
+      "champion": "Real Madrid",
+      "runner_up": "Unicaja",
+      "score": "88–81",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2024",
+      "host": "Málaga",
+      "arena": "Martín Carpena",
+      "champion": "Unicaja",
+      "runner_up": "Real Madrid",
+      "score": "90–80",
+      "era": "Supercopa ACB"
+    },
+    {
+      "year": "2025",
+      "host": "Málaga",
+      "arena": "Martín Carpena",
+      "champion": "Valencia Basket",
+      "runner_up": "Real Madrid",
+      "score": "98–94",
+      "era": "Supercopa ACB"
+    }
+  ],
+  "coppa_italia": [
+    {
+      "season": "1967–68",
+      "winner": "Ignis Sud Napoli"
+    },
+    {
+      "season": "1968–69",
+      "winner": "Ignis Varese"
+    },
+    {
+      "season": "1969–70",
+      "winner": "Ignis Varese"
+    },
+    {
+      "season": "1970–71",
+      "winner": "Ignis Varese"
+    },
+    {
+      "season": "1971–72",
+      "winner": "Simmenthal Milano"
+    },
+    {
+      "season": "1972–73",
+      "winner": "Ignis Varese"
+    },
+    {
+      "season": "1973–74",
+      "winner": "Norda Bologna"
+    },
+    {
+      "season": "1974–83",
+      "winner": null,
+      "note": "Not Held"
+    },
+    {
+      "season": "1983–84",
+      "winner": "Granarolo Bologna"
+    },
+    {
+      "season": "1984–85",
+      "winner": "Scavolini Pesaro"
+    },
+    {
+      "season": "1985–86",
+      "winner": "Simac Milano"
+    },
+    {
+      "season": "1986–87",
+      "winner": "Tracer Milano"
+    },
+    {
+      "season": "1987–88",
+      "winner": "Snaidero Caserta"
+    },
+    {
+      "season": "1988–89",
+      "winner": "Knorr Bologna"
+    },
+    {
+      "season": "1989–90",
+      "winner": "Knorr Bologna"
+    },
+    {
+      "season": "1990–91",
+      "winner": "Glaxo Verona"
+    },
+    {
+      "season": "1991–92",
+      "winner": "Scavolini Pesaro"
+    },
+    {
+      "season": "1992–93",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "season": "1993–94",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "season": "1994–95",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "season": "1995–96",
+      "winner": "Stefanel Milano"
+    },
+    {
+      "season": "1996–97",
+      "winner": "Kinder Bologna"
+    },
+    {
+      "season": "1997–98",
+      "winner": "Teamsystem Bologna"
+    },
+    {
+      "season": "1998–99",
+      "winner": "Kinder Bologna"
+    },
+    {
+      "season": "1999–00",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "season": "2000–01",
+      "winner": "Kinder Bologna"
+    },
+    {
+      "season": "2001–02",
+      "winner": "Kinder Bologna"
+    },
+    {
+      "season": "2002–03",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "season": "2003–04",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "season": "2004–05",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "season": "2005–06",
+      "winner": "Carpisa Napoli"
+    },
+    {
+      "season": "2006–07",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "season": "2007–08",
+      "winner": "A.IR. Avellino"
+    },
+    {
+      "season": "2008–09",
+      "winner": "Montepaschi Siena"
+    },
+    {
+      "season": "2009–10",
+      "winner": "Montepaschi Siena"
+    },
+    {
+      "season": "2010–11",
+      "winner": "Montepaschi Siena"
+    },
+    {
+      "season": "2011–12",
+      "winner": "Montepaschi Siena",
+      "note": "revoked"
+    },
+    {
+      "season": "2012–13",
+      "winner": "Montepaschi Siena",
+      "note": "revoked"
+    },
+    {
+      "season": "2013–14",
+      "winner": "Banco di Sardegna Sassari"
+    },
+    {
+      "season": "2014–15",
+      "winner": "Banco di Sardegna Sassari"
+    },
+    {
+      "season": "2015–16",
+      "winner": "EA7 Emporio Armani Milano"
+    },
+    {
+      "season": "2016–17",
+      "winner": "EA7 Emporio Armani Milano"
+    },
+    {
+      "season": "2017–18",
+      "winner": "Fiat Torino"
+    },
+    {
+      "season": "2018–19",
+      "winner": "Vanoli Cremona"
+    },
+    {
+      "season": "2019–20",
+      "winner": "Umana Reyer Venezia"
+    },
+    {
+      "season": "2020–21",
+      "winner": "AX Armani Exchange Milano"
+    },
+    {
+      "season": "2021–22",
+      "winner": "AX Armani Exchange Milano"
+    },
+    {
+      "season": "2022–23",
+      "winner": "Germani Brescia"
+    },
+    {
+      "season": "2023–24",
+      "winner": "Napoli Basket"
+    },
+    {
+      "season": "2024–25",
+      "winner": "Dolomiti Energia Trento"
+    },
+    {
+      "season": "2025–26",
+      "winner": "EA7 Emporio Armani Milano"
+    }
+  ],
+  "supercoppa_italiana": [
+    {
+      "year": "1995",
+      "winner": "Buckler Beer Bologna"
+    },
+    {
+      "year": "1996",
+      "winner": "Riello Mash Verona"
+    },
+    {
+      "year": "1997",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "year": "1998",
+      "winner": "Teamsystem Bologna"
+    },
+    {
+      "year": "1999",
+      "winner": "Varese Roosters"
+    },
+    {
+      "year": "2000",
+      "winner": "Aeroporti di Roma Virtus"
+    },
+    {
+      "year": "2001",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "year": "2002",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "year": "2003",
+      "winner": "Oregon Scientific Cantù"
+    },
+    {
+      "year": "2004",
+      "winner": "Montepaschi Siena"
+    },
+    {
+      "year": "2005",
+      "winner": "Climamio Bologna"
+    },
+    {
+      "year": "2006",
+      "winner": "Benetton Treviso"
+    },
+    {
+      "year": "2007",
+      "winner": "Montepaschi Siena"
+    },
+    {
+      "year": "2008",
+      "winner": "Montepaschi Siena"
+    },
+    {
+      "year": "2009",
+      "winner": "Montepaschi Siena"
+    },
+    {
+      "year": "2010",
+      "winner": "Montepaschi Siena"
+    },
+    {
+      "year": "2011",
+      "winner": "Montepaschi Siena"
+    },
+    {
+      "year": "2012",
+      "winner": "Lenovo Cantù"
+    },
+    {
+      "year": "2013",
+      "winner": "Montepaschi Siena",
+      "note": "revoked"
+    },
+    {
+      "year": "2014",
+      "winner": "Banco di Sardegna Sassari"
+    },
+    {
+      "year": "2015",
+      "winner": "Grissin Bon Reggio Emilia"
+    },
+    {
+      "year": "2016",
+      "winner": "EA7 Emporio Armani Milano"
+    },
+    {
+      "year": "2017",
+      "winner": "EA7 Emporio Armani Milano"
+    },
+    {
+      "year": "2018",
+      "winner": "AX Armani Exchange Milano"
+    },
+    {
+      "year": "2019",
+      "winner": "Banco di Sardegna Sassari"
+    },
+    {
+      "year": "2020",
+      "winner": "AX Armani Exchange Milano"
+    },
+    {
+      "year": "2021",
+      "winner": "Virtus Segafredo Bologna"
+    },
+    {
+      "year": "2022",
+      "winner": "Virtus Segafredo Bologna"
+    },
+    {
+      "year": "2023",
+      "winner": "Virtus Segafredo Bologna"
+    },
+    {
+      "year": "2024",
+      "winner": "EA7 Emporio Armani Milano"
+    },
+    {
+      "year": "2025",
+      "winner": "EA7 Emporio Armani Milano"
+    }
+  ],
+  "leaders_cup_france": [
+    {
+      "year": "1988",
+      "winner": "Limoges CSP",
+      "score": "88–85",
+      "runners_up": "Pitch Cholet",
+      "tournament_type": "Tournoi des As"
+    },
+    {
+      "year": "1989",
+      "winner": "Mulhouse",
+      "score": "82–80",
+      "runners_up": "Pitch Cholet",
+      "tournament_type": "Tournoi des As"
+    },
+    {
+      "year": "1990",
+      "winner": "Limoges CSP",
+      "score": "87–84",
+      "runners_up": "Pitch Cholet",
+      "tournament_type": "Tournoi des As"
+    },
+    {
+      "year": "1991",
+      "winner": "Orthez",
+      "score": "68–65",
+      "runners_up": "Limoges CSP",
+      "tournament_type": "Tournoi des As"
+    },
+    {
+      "year": "1992",
+      "winner": "Pau-Orthez",
+      "score": "83–75",
+      "runners_up": "Limoges CSP",
+      "tournament_type": "Tournoi des As"
+    },
+    {
+      "year": "1993",
+      "winner": "Pau-Orthez",
+      "score": "71–58",
+      "runners_up": "Pitch Cholet",
+      "tournament_type": "Tournoi des As"
+    },
+    {
+      "year": "2003",
+      "winner": "Pau-Orthez",
+      "score": "101–80",
+      "runners_up": "Le Havre",
+      "venue": "Palais des Sports de Pau",
+      "location": "Pau",
+      "mvp": null,
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2004",
+      "winner": "JDA Dijon",
+      "score": "62–60",
+      "runners_up": "Le Mans Sarthe",
+      "venue": "Palais des Sports de Mulhouse",
+      "location": "Mulhouse",
+      "mvp": null,
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2005",
+      "winner": "SLUC Nancy",
+      "score": "112–76",
+      "runners_up": "BCM Gravelines",
+      "venue": "Maison des Sports de C-F",
+      "location": "Clermont-Ferrand",
+      "mvp": null,
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2006",
+      "winner": "Le Mans Sarthe",
+      "score": "78–60",
+      "runners_up": "JL Bourg-en-Bresse",
+      "venue": "Palais des Sports de Dijon",
+      "location": "Dijon",
+      "mvp": "Eric Campbell (United States)",
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2007",
+      "winner": "Chorale Roanne",
+      "score": "87–82",
+      "runners_up": "Le Mans Sarthe",
+      "venue": "Palais des Sports Jean Weille",
+      "location": "Nancy",
+      "mvp": "Marc Salyers (United States)",
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2008",
+      "winner": "Cholet",
+      "score": "67–40",
+      "runners_up": "JA Vichy",
+      "venue": "Palais des Sports de Toulon",
+      "location": "Toulon",
+      "mvp": "Nando de Colo (France)",
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2009",
+      "winner": "Le Mans Sarthe",
+      "score": "74–64",
+      "runners_up": "Orléans",
+      "venue": "Salle des Docks Océane",
+      "location": "Le Havre",
+      "mvp": "David Blu (Israel)",
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2010",
+      "winner": "ASVEL",
+      "score": "70–69",
+      "runners_up": "Orléans",
+      "venue": "Astroballe",
+      "location": "Villeurbanne",
+      "mvp": "Mindaugas Lukauskis (Lithuania)",
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2011",
+      "winner": "BCM Gravelines",
+      "score": "79–71",
+      "runners_up": "Élan Chalon",
+      "venue": "Palais des Sports de Pau",
+      "location": "Pau",
+      "mvp": "Yannick Bokolo (France)",
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2012",
+      "winner": "Élan Chalon",
+      "score": "73–66",
+      "runners_up": "BCM Gravelines",
+      "venue": "Halle André Vacheresse",
+      "location": "Roanne",
+      "mvp": "Blake Schilb (United States)",
+      "tournament_type": "Semaine des As"
+    },
+    {
+      "year": "2013",
+      "winner": "BCM Gravelines",
+      "score": "77–69",
+      "runners_up": "SIG",
+      "venue": "Disneyland Paris",
+      "location": "Paris",
+      "mvp": "Ludovic Vaty (France)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2014",
+      "winner": "Le Mans Sarthe",
+      "score": "74–64",
+      "runners_up": "JSF Nanterre",
+      "venue": "Disneyland Paris",
+      "location": "Paris",
+      "mvp": "João Paulo Batista (Brazil)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2015",
+      "winner": "SIG",
+      "score": "60–58",
+      "runners_up": "Le Mans Sarthe",
+      "venue": "Disneyland Paris",
+      "location": "Paris",
+      "mvp": "Antoine Diot (France)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2016",
+      "winner": "Monaco",
+      "score": "99–74",
+      "runners_up": "Élan Chalon",
+      "venue": "Disneyland Paris",
+      "location": "Paris",
+      "mvp": "Jamal Shuler (United States)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2017",
+      "winner": "Monaco",
+      "score": "95–91",
+      "runners_up": "ASVEL",
+      "venue": "Disneyland Paris",
+      "location": "Paris",
+      "mvp": "Sergii Gladyr (Ukraine)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2018",
+      "winner": "Monaco",
+      "score": "83–78",
+      "runners_up": "Le Mans Sarthe",
+      "venue": "Disneyland Paris",
+      "location": "Paris",
+      "mvp": "D. J. Cooper (United States)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2019",
+      "winner": "SIG",
+      "score": "98–97",
+      "runners_up": "JL Bourg-en-Bresse",
+      "venue": "Disneyland Paris",
+      "location": "Paris",
+      "mvp": "Jarell Eddie (United States)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2020",
+      "winner": "JDA Dijon",
+      "score": "77–69",
+      "runners_up": "ASVEL",
+      "venue": "Disneyland Paris",
+      "location": "Paris",
+      "mvp": "Rasheed Sulaimon (United States)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2021",
+      "note": "Cancelled due to the COVID-19 pandemic in France"
+    },
+    {
+      "year": "2022",
+      "note": "Cancelled due to economic problems"
+    },
+    {
+      "year": "2023",
+      "winner": "ASVEL",
+      "score": "83–74",
+      "runners_up": "JL Bourg-en-Bresse",
+      "venue": "Arena Saint-Étienne Métropole",
+      "location": "Saint-Chamond, Loire",
+      "mvp": "Nando de Colo (France)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2024",
+      "winner": "Paris",
+      "score": "90–85",
+      "runners_up": "Nanterre",
+      "venue": "Arena Saint-Étienne Métropole",
+      "location": "Saint-Chamond, Loire",
+      "mvp": "T. J. Shorts (North Macedonia)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2025",
+      "winner": "Le Mans",
+      "score": "104–96",
+      "runners_up": "Monaco",
+      "venue": "Palais des Sports de Caen la mer",
+      "location": "Caen",
+      "mvp": "Trevor Hudgins (United States)",
+      "tournament_type": "Leaders Cup"
+    },
+    {
+      "year": "2026",
+      "winner": "Monaco",
+      "score": "103–79",
+      "runners_up": "Le Mans",
+      "venue": "Arena Futuroscope",
+      "location": "Chasseneuil-du-Poitou",
+      "mvp": "Elie Okobo (France)",
+      "tournament_type": "Leaders Cup"
+    }
+  ],
+  "coupe_de_france": [
+    {
+      "season": "2005",
+      "winner": "BCM Gravelines-Dunkerque",
+      "score": "88–71",
+      "runners_up": "SIG",
+      "location": "Gravelines",
+      "mvp": null
+    },
+    {
+      "season": "2006",
+      "winner": "JDA Dijon",
+      "score": "70–69",
+      "runners_up": "Le Mans Sarthe",
+      "location": "Dijon",
+      "mvp": null
+    },
+    {
+      "season": "2007",
+      "winner": "Pau-Orthez",
+      "score": "79–74",
+      "runners_up": "Chorale Roanne",
+      "location": "Pau",
+      "mvp": null
+    },
+    {
+      "season": "2008",
+      "winner": "SLUC Nancy",
+      "score": "76–73",
+      "runners_up": "ASVEL",
+      "location": "Nancy",
+      "mvp": null
+    },
+    {
+      "season": "2009",
+      "winner": "ASVEL",
+      "score": "76–54",
+      "runners_up": "Le Mans Sarthe",
+      "location": "Angers",
+      "mvp": null
+    },
+    {
+      "season": "2010",
+      "winner": "Cholet",
+      "score": "85–79 (OT)",
+      "runners_up": "Orléans Loiret",
+      "location": "Cholet",
+      "mvp": "Fabien Causeur (France)"
+    },
+    {
+      "season": "2011",
+      "winner": "SLUC Nancy",
+      "score": "89–83",
+      "runners_up": "Élan Chalon",
+      "location": "Nancy",
+      "mvp": "Nicolas Batum (France)"
+    },
+    {
+      "season": "2012",
+      "winner": "Limoges CSP",
+      "score": "78–76",
+      "runners_up": "Élan Chalon",
+      "location": "Paris",
+      "mvp": "Jean-Michel Mipoka (France)"
+    },
+    {
+      "season": "2013",
+      "winner": "Paris-Levallois",
+      "score": "81–72",
+      "runners_up": "JSF Nanterre",
+      "location": "Mouilleron-le-Captif",
+      "mvp": "Nicolas Lang (France)"
+    },
+    {
+      "season": "2014",
+      "winner": "JSF Nanterre",
+      "score": "70–54",
+      "runners_up": "Limoges CSP",
+      "location": "Rouen",
+      "mvp": "Kyle Weems (United States)"
+    },
+    {
+      "season": "2015",
+      "winner": "SIG",
+      "score": "86–59",
+      "runners_up": "Limoges CSP",
+      "location": "Lyon",
+      "mvp": "Rodrigue Beaubois (France)"
+    },
+    {
+      "season": "2016",
+      "winner": "ASVEL",
+      "score": "75–71",
+      "runners_up": "Le Mans Sarthe",
+      "location": "Mouilleron-le-Captif",
+      "mvp": "Adrian Uter (Jamaica)"
+    },
+    {
+      "season": "2017",
+      "winner": "Nanterre 92",
+      "score": "95–69",
+      "runners_up": "Élan Chalon",
+      "location": "Mouilleron-le-Captif",
+      "mvp": "Terran Petteway (United States)"
+    },
+    {
+      "season": "2025",
+      "winner": "AS Monaco",
+      "score": "104–79",
+      "runners_up": "Le Mans Sarthe",
+      "location": "Paris",
+      "mvp": "Mike James (United States)"
+    }
+  ],
+  "greek_super_cup": [
+    {
+      "year": "1986",
+      "winner": "Aris",
+      "score": "Game 1: 117–85, Game 2: 104–88, Aggregate: 221–173",
+      "runners_up": "Panathinaikos",
+      "venue": "Alexandreio Melathron & Peace and Friendship Stadium",
+      "location": "Thessaloniki & Piraeus",
+      "mvp": null,
+      "top_scorer": "Nikos Galis (Greece)"
+    },
+    {
+      "year": "2020",
+      "winner": "Promitheas Patras",
+      "score": "82–74",
+      "runners_up": "Peristeri",
+      "venue": "Andreas Papandreou Indoor Hall",
+      "location": "Athens",
+      "mvp": "Danny Agbelese (United States)",
+      "top_scorer": "Ian Miller (United States)"
+    },
+    {
+      "year": "2021",
+      "winner": "Panathinaikos OPAP",
+      "score": "92–83",
+      "runners_up": "Promitheas Patras",
+      "venue": "Dimitris Tofalos Arena",
+      "location": "Patras",
+      "mvp": "Georgios Papagiannis (Greece)",
+      "top_scorer": "Ioannis Papapetrou (Greece)"
+    },
+    {
+      "year": "2022",
+      "winner": "Olympiacos",
+      "score": "67–52",
+      "runners_up": "Panathinaikos OPAP",
+      "venue": "Kallithea Palais des Sports",
+      "location": "Rhodes",
+      "mvp": "Moustapha Fall (France)",
+      "top_scorer": "Sasha Vezenkov (Bulgaria / Greece)"
+    },
+    {
+      "year": "2023",
+      "winner": "Olympiacos",
+      "score": "75–51",
+      "runners_up": "Panathinaikos Aktor",
+      "venue": "Kallithea Palais des Sports",
+      "location": "Rhodes",
+      "mvp": "Giannoulis Larentzakis (Greece)",
+      "top_scorer": "Giannoulis Larentzakis (Greece)"
+    },
+    {
+      "year": "2024",
+      "winner": "Olympiacos",
+      "score": "86–85",
+      "runners_up": "Panathinaikos Aktor",
+      "venue": "Kallithea Palais des Sports",
+      "location": "Rhodes",
+      "mvp": "Sasha Vezenkov (Bulgaria / Greece)",
+      "top_scorer": "Sasha Vezenkov (Bulgaria / Greece)"
+    },
+    {
+      "year": "2025",
+      "winner": "Olympiacos",
+      "score": "92–83",
+      "runners_up": "Promitheas Patras",
+      "venue": "Kallithea Palais des Sports",
+      "location": "Rhodes",
+      "mvp": null,
+      "top_scorer": null
+    }
+  ],
+  "turkish_cup": [
+    {
+      "season": "1966–67",
+      "winner": "Fenerbahçe",
+      "score": "84–67 / 65–76",
+      "runners_up": "Muhafızgücü",
+      "mvp": null
+    },
+    {
+      "season": "1967–68",
+      "winner": "Altınordu",
+      "score": "71–56 / 63–67",
+      "runners_up": "Muhafızgücü",
+      "mvp": null
+    },
+    {
+      "season": "1968–69",
+      "winner": "İTÜ",
+      "score": "64–56",
+      "runners_up": "Galatasaray",
+      "mvp": null
+    },
+    {
+      "season": "1969–70",
+      "winner": "Galatasaray",
+      "score": "86–83",
+      "runners_up": "İTÜ",
+      "mvp": null
+    },
+    {
+      "season": "1970–71",
+      "winner": "İTÜ",
+      "score": "74–69",
+      "runners_up": "Beşiktaş",
+      "mvp": null
+    },
+    {
+      "season": "1971–72",
+      "winner": "Galatasaray",
+      "score": "70–69",
+      "runners_up": "İTÜ",
+      "mvp": null
+    },
+    {
+      "season": "1972–73",
+      "winner": "TED Ankara Kolejliler",
+      "score": "64–68 / 68–56",
+      "runners_up": "Beşiktaş",
+      "mvp": null
+    },
+    {
+      "season": "1974–91",
+      "note": "Not held"
+    },
+    {
+      "season": "1992",
+      "winner": "Paşabahçe",
+      "score": "79–71",
+      "runners_up": "Nasaş",
+      "mvp": null
+    },
+    {
+      "season": "1993",
+      "winner": "Tofaş",
+      "score": "90–64",
+      "runners_up": "Nasaş",
+      "mvp": null
+    },
+    {
+      "season": "1993–94",
+      "winner": "Efes Pilsen",
+      "score": "81–76",
+      "runners_up": "Fenerbahçe",
+      "mvp": null
+    },
+    {
+      "season": "1994–95",
+      "winner": "Galatasaray",
+      "score": "66–54",
+      "runners_up": "Ortaköy",
+      "mvp": null
+    },
+    {
+      "season": "1995–96",
+      "winner": "Efes Pilsen",
+      "score": "89–63",
+      "runners_up": "Türk Telekom",
+      "mvp": null
+    },
+    {
+      "season": "1996–97",
+      "winner": "Efes Pilsen",
+      "score": "84–71",
+      "runners_up": "Fenerbahçe",
+      "mvp": null
+    },
+    {
+      "season": "1997–98",
+      "winner": "Efes Pilsen",
+      "score": "71–67",
+      "runners_up": "Türk Telekom",
+      "mvp": null
+    },
+    {
+      "season": "1998–99",
+      "winner": "Tofaş",
+      "score": "77–75",
+      "runners_up": "Fenerbahçe",
+      "mvp": null
+    },
+    {
+      "season": "1999–00",
+      "winner": "Tofaş",
+      "score": "72–54",
+      "runners_up": "Ülker",
+      "mvp": null
+    },
+    {
+      "season": "2000–01",
+      "winner": "Efes Pilsen",
+      "score": "85–78",
+      "runners_up": "Türk Telekom",
+      "mvp": null
+    },
+    {
+      "season": "2001–02",
+      "winner": "Efes Pilsen",
+      "score": "78–74",
+      "runners_up": "Darüşşafaka",
+      "mvp": null
+    },
+    {
+      "season": "2002–03",
+      "winner": "Ülker",
+      "score": "79–63",
+      "runners_up": "Türk Telekom",
+      "mvp": null
+    },
+    {
+      "season": "2003–04",
+      "winner": "Ülker",
+      "score": "84–74",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "season": "2004–05",
+      "winner": "Ülker",
+      "score": "73–41",
+      "runners_up": "Pınar Karşıyaka",
+      "mvp": null
+    },
+    {
+      "season": "2005–06",
+      "winner": "Efes Pilsen",
+      "score": "74–68",
+      "runners_up": "Ülker",
+      "mvp": null
+    },
+    {
+      "season": "2006–07",
+      "winner": "Efes Pilsen",
+      "score": "73–59",
+      "runners_up": "Banvit",
+      "mvp": null
+    },
+    {
+      "season": "2007–08",
+      "winner": "Türk Telekom",
+      "score": "80–61",
+      "runners_up": "Oyak Renault",
+      "mvp": null
+    },
+    {
+      "season": "2008–09",
+      "winner": "Efes Pilsen",
+      "score": "79–70",
+      "runners_up": "Erdemirspor",
+      "mvp": null
+    },
+    {
+      "season": "2009–10",
+      "winner": "Fenerbahçe Ülker",
+      "score": "72–68",
+      "runners_up": "Mersin B.B.",
+      "mvp": null
+    },
+    {
+      "season": "2010–11",
+      "winner": "Fenerbahçe Ülker",
+      "score": "81–72",
+      "runners_up": "Beşiktaş Cola Turka",
+      "mvp": "Emir Preldžič (Turkey)"
+    },
+    {
+      "season": "2011–12",
+      "winner": "Beşiktaş Milangaz",
+      "score": "78–74",
+      "runners_up": "Banvit",
+      "mvp": "Serhat Çetin (Turkey)"
+    },
+    {
+      "season": "2012–13",
+      "winner": "Fenerbahçe Ülker",
+      "score": "63–57",
+      "runners_up": "Galatasaray Medical Park",
+      "mvp": "David Andersen (Australia)"
+    },
+    {
+      "season": "2013–14",
+      "winner": "Pınar Karşıyaka",
+      "score": "66–65",
+      "runners_up": "Anadolu Efes",
+      "mvp": "Bobby Dixon (Turkey)"
+    },
+    {
+      "season": "2014–15",
+      "winner": "Anadolu Efes",
+      "score": "70–60",
+      "runners_up": "Fenerbahçe Ülker",
+      "mvp": "Thomas Heurtel (France)"
+    },
+    {
+      "season": "2016",
+      "winner": "Fenerbahçe",
+      "score": "67–65",
+      "runners_up": "Darüşşafaka Doğuş",
+      "mvp": "Bogdan Bogdanović (Serbia)"
+    },
+    {
+      "season": "2017",
+      "winner": "Banvit",
+      "score": "75–66",
+      "runners_up": "Anadolu Efes",
+      "mvp": "Jordan Theodore (North Macedonia)"
+    },
+    {
+      "season": "2018",
+      "winner": "Anadolu Efes",
+      "score": "78–61",
+      "runners_up": "Tofaş",
+      "mvp": "Krunoslav Simon (Croatia)"
+    },
+    {
+      "season": "2019",
+      "winner": "Fenerbahçe Beko",
+      "score": "80–70",
+      "runners_up": "Anadolu Efes",
+      "mvp": "Luigi Datome (Italy)"
+    },
+    {
+      "season": "2020",
+      "winner": "Fenerbahçe Beko",
+      "score": "74–71",
+      "runners_up": "Darüşşafaka",
+      "mvp": "Luigi Datome (Italy)"
+    },
+    {
+      "season": "2021",
+      "note": "Cancelled due to the COVID-19 pandemic."
+    },
+    {
+      "season": "2022",
+      "winner": "Anadolu Efes",
+      "score": "86–72",
+      "runners_up": "Fenerbahçe Beko",
+      "mvp": "Tibor Pleiß (Germany)"
+    },
+    {
+      "season": "2023",
+      "note": "Cancelled after the 2023 Turkey–Syria earthquake."
+    },
+    {
+      "season": "2024",
+      "winner": "Fenerbahçe Beko",
+      "score": "80–67",
+      "runners_up": "Anadolu Efes",
+      "mvp": "Nick Calathes (Greece)"
+    },
+    {
+      "season": "2025",
+      "winner": "Fenerbahçe Beko",
+      "score": "104–81",
+      "runners_up": "Beşiktaş Fibabanka",
+      "mvp": "Nigel Hayes-Davis (United States)"
+    },
+    {
+      "season": "2026",
+      "winner": "Fenerbahçe Beko",
+      "score": "91–74",
+      "runners_up": "Beşiktaş Gain",
+      "mvp": "Tarik Biberović (Turkey)"
+    }
+  ],
+  "turkish_presidential_cup": [
+    {
+      "year": "1985",
+      "winner": "Galatasaray",
+      "score": "85–84",
+      "runners_up": "Fenerbahçe",
+      "mvp": null
+    },
+    {
+      "year": "1986",
+      "winner": "Efes Pilsen",
+      "score": "101–100",
+      "runners_up": "Galatasaray",
+      "mvp": null
+    },
+    {
+      "year": "1987",
+      "winner": "Karşıyaka",
+      "score": "81–65",
+      "runners_up": "Beşiktaş",
+      "mvp": null
+    },
+    {
+      "year": "1988",
+      "winner": "Eczacıbaşı",
+      "score": "89–87",
+      "runners_up": "Fenerbahçe",
+      "mvp": null
+    },
+    {
+      "year": "1989",
+      "winner": "Çukurova Sanayi",
+      "score": "82–74",
+      "runners_up": "Eczacıbaşı",
+      "mvp": null
+    },
+    {
+      "year": "1990",
+      "winner": "Fenerbahçe",
+      "score": "95–86",
+      "runners_up": "Galatasaray",
+      "mvp": null
+    },
+    {
+      "year": "1991",
+      "winner": "Fenerbahçe",
+      "score": "75–72",
+      "runners_up": "Tofaş SAS",
+      "mvp": null
+    },
+    {
+      "year": "1992",
+      "winner": "Efes Pilsen",
+      "score": "102–98",
+      "runners_up": "Paşabahçe",
+      "mvp": null
+    },
+    {
+      "year": "1993",
+      "winner": "Efes Pilsen",
+      "score": "88–63",
+      "runners_up": "Tofaş",
+      "mvp": null
+    },
+    {
+      "year": "1994",
+      "winner": "Fenerbahçe",
+      "score": "85–74",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "year": "1995",
+      "winner": "Ülker",
+      "score": "70–55",
+      "runners_up": "Galatasaray",
+      "mvp": null
+    },
+    {
+      "year": "1996",
+      "winner": "Efes Pilsen",
+      "score": "69–44",
+      "runners_up": "Türk Telekom",
+      "mvp": null
+    },
+    {
+      "year": "1997",
+      "winner": "Türk Telekom",
+      "score": "78–75",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "year": "1998",
+      "winner": "Efes Pilsen",
+      "score": "76–63",
+      "runners_up": "Ülker",
+      "mvp": null
+    },
+    {
+      "year": "1999",
+      "winner": "Tofaş",
+      "score": "77–66",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "year": "2000",
+      "winner": "Efes Pilsen",
+      "score": "66–65",
+      "runners_up": "Ülker",
+      "mvp": null
+    },
+    {
+      "year": "2001",
+      "winner": "Ülker",
+      "score": "94–87",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "year": "2002",
+      "winner": "Ülker",
+      "score": "83–78",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "year": "2003",
+      "winner": "Ülker",
+      "score": "68–66",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "year": "2004",
+      "winner": "Ülker",
+      "score": "68–66",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "year": "2005",
+      "winner": "Ülker",
+      "score": "83–72",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "year": "2006",
+      "winner": "Efes Pilsen",
+      "score": "77–61",
+      "runners_up": "Alpella",
+      "mvp": null
+    },
+    {
+      "year": "2007",
+      "winner": "Fenerbahçe Ülker",
+      "score": "79–77",
+      "runners_up": "Efes Pilsen",
+      "mvp": null
+    },
+    {
+      "year": "2008",
+      "winner": "Türk Telekom",
+      "score": "83–79",
+      "runners_up": "Fenerbahçe Ülker",
+      "mvp": null
+    },
+    {
+      "year": "2009",
+      "winner": "Efes Pilsen",
+      "score": "81–74",
+      "runners_up": "Fenerbahçe Ülker",
+      "mvp": null
+    },
+    {
+      "year": "2010",
+      "winner": "Efes Pilsen",
+      "score": "79–77",
+      "runners_up": "Fenerbahçe Ülker",
+      "mvp": null
+    },
+    {
+      "year": "2011",
+      "winner": "Galatasaray Medical Park",
+      "score": "103–97",
+      "runners_up": "Fenerbahçe Ülker",
+      "mvp": null
+    },
+    {
+      "year": "2012",
+      "winner": "Beşiktaş",
+      "score": "77–75",
+      "runners_up": "Anadolu Efes",
+      "mvp": null
+    },
+    {
+      "year": "2013",
+      "winner": "Fenerbahçe Ülker",
+      "score": "64–62",
+      "runners_up": "Galatasaray Liv Hospital",
+      "mvp": null
+    },
+    {
+      "year": "2014",
+      "winner": "Pınar Karşıyaka",
+      "score": "77–75",
+      "runners_up": "Fenerbahçe Ülker",
+      "mvp": null
+    },
+    {
+      "year": "2015",
+      "winner": "Anadolu Efes",
+      "score": "76–74",
+      "runners_up": "Pınar Karşıyaka",
+      "mvp": null
+    },
+    {
+      "year": "2016",
+      "winner": "Fenerbahçe",
+      "score": "77–69",
+      "runners_up": "Anadolu Efes",
+      "mvp": "Bobby Dixon (Turkey)"
+    },
+    {
+      "year": "2017",
+      "winner": "Fenerbahçe Doğuş",
+      "score": "75–64",
+      "runners_up": "Banvit",
+      "mvp": "Luigi Datome (Italy)"
+    },
+    {
+      "year": "2018",
+      "winner": "Anadolu Efes",
+      "score": "65–62",
+      "runners_up": "Fenerbahçe",
+      "mvp": "Doğuş Balbay (Turkey)"
+    },
+    {
+      "year": "2019",
+      "winner": "Anadolu Efes",
+      "score": "79–74",
+      "runners_up": "Fenerbahçe Beko",
+      "mvp": "Krunoslav Simon (Croatia)"
+    },
+    {
+      "year": "2020",
+      "note": "Cancelled due to the COVID-19 pandemic."
+    },
+    {
+      "year": "2022",
+      "winner": "Anadolu Efes",
+      "score": "71–62",
+      "runners_up": "Fenerbahçe Beko",
+      "mvp": "Ante Žižić (Croatia)"
+    },
+    {
+      "year": "2023",
+      "note": "Cancelled after the 2023 Turkey–Syria earthquake."
+    },
+    {
+      "year": "2024",
+      "winner": "Anadolu Efes",
+      "score": "83–82",
+      "runners_up": "Fenerbahçe Beko",
+      "mvp": "Elijah Bryant (United States)"
+    },
+    {
+      "year": "2025",
+      "winner": "Fenerbahçe Beko",
+      "score": "85–83",
+      "runners_up": "Beşiktaş Gain",
+      "mvp": "Devon Hall (United States)"
+    }
+  ],
+  "lithuanian_cup_kmt": [
+    {
+      "year": "2016",
+      "winner": "Rytas",
+      "score": "67–57",
+      "runners_up": "Žalgiris",
+      "third_place": "Neptūnas",
+      "third_place_score": "88–51",
+      "fourth_place": "Prienai",
+      "city": "Vilnius",
+      "venue": "Siemens Arena",
+      "mvp": "Antanas Kavaliauskas (Lithuania)"
+    },
+    {
+      "year": "2017",
+      "winner": "Žalgiris",
+      "score": "84–63",
+      "runners_up": "Lietkabelis",
+      "third_place": "Juventus",
+      "third_place_score": "70–61",
+      "fourth_place": "Prienai",
+      "city": "Kaunas",
+      "venue": "Žalgiris Arena",
+      "mvp": "Edgaras Ulanovas (Lithuania)"
+    },
+    {
+      "year": "2018",
+      "winner": "Žalgiris",
+      "score": "81–62",
+      "runners_up": "Rytas",
+      "third_place": "Lietkabelis",
+      "third_place_score": "81–78",
+      "fourth_place": "Dzūkija",
+      "city": "Klaipėda",
+      "venue": "Švyturys Arena",
+      "mvp": "Edgaras Ulanovas (Lithuania)"
+    },
+    {
+      "year": "2018–19",
+      "winner": "Rytas",
+      "score": "70–67",
+      "runners_up": "Žalgiris",
+      "third_place": "Lietkabelis",
+      "third_place_score": "94–67",
+      "fourth_place": "Neptūnas",
+      "city": "Vilnius",
+      "venue": "Siemens Arena",
+      "mvp": "Artsiom Parakhouski (Belarus)"
+    },
+    {
+      "year": "2019–20",
+      "winner": "Žalgiris",
+      "score": "80–60",
+      "runners_up": "Rytas",
+      "third_place": "Lietkabelis",
+      "third_place_score": "84–73",
+      "fourth_place": "Neptūnas",
+      "city": "Klaipėda",
+      "venue": "Švyturys Arena",
+      "mvp": "Edgaras Ulanovas (Lithuania)"
+    },
+    {
+      "year": "2020–21",
+      "winner": "Žalgiris",
+      "score": "76–69",
+      "runners_up": "Lietkabelis",
+      "third_place": "Juventus",
+      "third_place_score": "86–69",
+      "fourth_place": "Neptūnas",
+      "city": "Panevėžys",
+      "venue": "Cido Arena",
+      "mvp": "Joffrey Lauvergne (France)"
+    },
+    {
+      "year": "2021–22",
+      "winner": "Žalgiris",
+      "score": "91–66",
+      "runners_up": "Lietkabelis",
+      "third_place": "Rytas",
+      "third_place_score": "76–71",
+      "fourth_place": "Šiauliai",
+      "city": "Vilnius",
+      "venue": "Avia Solutions Group Arena",
+      "mvp": "Joffrey Lauvergne (France)"
+    },
+    {
+      "year": "2022–23",
+      "winner": "Žalgiris",
+      "score": "81–77",
+      "runners_up": "Jonava",
+      "third_place": "Lietkabelis",
+      "third_place_score": "91–88",
+      "fourth_place": "Rytas",
+      "city": "Šiauliai",
+      "venue": "Šiauliai Arena",
+      "mvp": "Edgaras Ulanovas (Lithuania)"
+    },
+    {
+      "year": "2023–24",
+      "winner": "Žalgiris",
+      "score": "86–70",
+      "runners_up": "Lietkabelis",
+      "third_place": "Rytas",
+      "third_place_score": "94–89",
+      "fourth_place": "Šiauliai",
+      "city": "Kaunas",
+      "venue": "Žalgiris Arena",
+      "mvp": "Laurynas Birutis (Lithuania)"
+    },
+    {
+      "year": "2024–25",
+      "winner": "Žalgiris",
+      "score": "91–89",
+      "runners_up": "Neptūnas",
+      "third_place": "7bet–Lietkabelis",
+      "third_place_score": "100–91",
+      "fourth_place": "Wolves Twinsbet",
+      "city": "Vilnius",
+      "venue": "Twinsbet Arena",
+      "mvp": "Ignas Brazdeikis (Lithuania)"
+    },
+    {
+      "year": "2025–26",
+      "winner": "Žalgiris",
+      "score": "101–85",
+      "runners_up": "Rytas",
+      "third_place": "Lietkabelis",
+      "third_place_score": "94–73",
+      "fourth_place": "Neptūnas",
+      "city": "Šiauliai",
+      "venue": "Šiauliai Arena",
+      "mvp": "Moses Wright (United States)"
+    }
+  ],
+  "aba_league_supercup": [
+    {
+      "year": "2017",
+      "host": "Bar, Montenegro",
+      "winner": "Cedevita (Croatia)",
+      "score": "78–69",
+      "runner_up": "Budućnost VOLI (Montenegro)"
+    },
+    {
+      "year": "2018",
+      "host": "Laktaši, Bosnia and Herzegovina",
+      "winner": "Crvena zvezda mts (Serbia)",
+      "score": "89–75",
+      "runner_up": "Budućnost VOLI (Montenegro)"
+    },
+    {
+      "year": "2019",
+      "host": "Zagreb, Croatia",
+      "winner": "Partizan NIS (Serbia)",
+      "score": "99–77",
+      "runner_up": "Cedevita Olimpija (Slovenia)"
+    },
+    {
+      "year": "2020",
+      "host": "Podgorica, Montenegro",
+      "note": "Canceled due to the COVID-19 pandemic"
+    },
+    {
+      "year": "2021–2022",
+      "note": "Not held"
+    },
+    {
+      "year": "2023",
+      "host": "Podgorica, Montenegro",
+      "winner": "SC Derby (Montenegro)",
+      "score": "83–81",
+      "runner_up": "Partizan Mozzart Bet (Serbia)"
+    }
+  ],
+  "vtb_united_league_supercup": [
+    {
+      "season": "2021",
+      "host": "Russia (VTB Arena Park, Moscow)",
+      "gold": "CSKA Moscow",
+      "score": "81–73",
+      "silver": "Zenit Saint Petersburg",
+      "bronze": "UNICS",
+      "bronze_score": "84–70",
+      "fourth_place": "Lokomotiv Kuban"
+    },
+    {
+      "season": "2022",
+      "host": null,
+      "gold": "Zenit Saint Petersburg",
+      "score": "71–70",
+      "silver": "CSKA Moscow",
+      "bronze": "UNICS",
+      "bronze_score": "83–77",
+      "fourth_place": "Partizan"
+    },
+    {
+      "season": "2023",
+      "host": null,
+      "gold": "Zenit Saint Petersburg",
+      "score": "85–83",
+      "silver": "Lokomotiv Kuban",
+      "bronze": "Fenerbahçe",
+      "bronze_score": "82–80",
+      "fourth_place": "Nizhny Novgorod"
+    },
+    {
+      "season": "2024",
+      "host": null,
+      "gold": "CSKA Moscow",
+      "score": "87–72",
+      "silver": "UNICS",
+      "bronze": "Zenit Saint Petersburg",
+      "bronze_score": "83–70",
+      "fourth_place": "Crvena zvezda"
+    },
+    {
+      "season": "2025",
+      "host": "Serbia (Belgrade Arena, Belgrade)",
+      "gold": "CSKA Moscow",
+      "score": "96–79",
+      "silver": "Zenit Saint Petersburg",
+      "bronze": "Crvena zvezda",
+      "bronze_score": "82–80",
+      "fourth_place": "Dubai"
+    }
+  ]
+}

@@ -17,6 +17,7 @@ export interface GameHighlight {
   assisterId?: string;    // alley_oop (passer), fastbreak_dunk (break starter), break_starter (finisher), versatile_visionary (recipient)
   assisterName?: string;
   pts?: number;           // for scoring plays
+  count?: number;
   description?: string;   // flavor text (cosmetics, or future tweet seed)
 }
 
@@ -26,6 +27,10 @@ export interface PlayerGameStats {
   min: number;
   sec?: number;
   pts: number;
+  q4Pts?: number;
+  q4Reb?: number;
+  q4Ast?: number;
+  gameWinners?: number;
   reb: number;
   orb: number;
   drb: number;
@@ -55,6 +60,8 @@ export interface PlayerGameStats {
   ba?: number; // blocked attempts (times this player got blocked)
   dunks?: number; // dunk count (incremented by HighlightGenerator)
   techs?: number; // technical fouls (incremented by HighlightGenerator)
+  deflections?: number;
+  chargesDrawn?: number;
   // Transient night profile fields — set in initial.ts, consumed in coordinated.ts, not persisted to season stats
   _nightOrbMult?: number;
   _nightDrbMult?: number;
@@ -64,8 +71,92 @@ export interface PlayerGameStats {
   _nightBallCtrl?: number;
 }
 
+export interface GameRuleConfig {
+  dribbleRule: 'none' | 'single_bounce_no_shot' | 'continuous';
+  threePointLineEnabled: boolean;
+  startOfPossessionMethod: 'jump_ball' | 'coin_toss' | 'rock_paper_scissors';
+  possessionPattern: 'nba' | 'alternating';
+  coachChallenges: boolean;
+  maxCoachChallenges: number;
+  challengeReimbursed: boolean;
+  maxTimeouts: number;
+  clutchTimeoutLimit: number;
+  heaveRuleEnabled: boolean;
+  shotClockEnabled: boolean;
+  shotClockSeconds: number;
+  offensiveReboundResetSeconds: number;
+  backcourtTimerEnabled: boolean;
+  backcourtTimerSeconds: number;
+  offensiveThreeSecondEnabled: boolean;
+  offensiveThreeSecondSeconds: number;
+  defensiveThreeSecondEnabled: boolean;
+  defensiveThreeSecondSeconds: number;
+  backToBasketTimerEnabled: boolean;
+  backToBasketTimerSeconds: number;
+  inboundTimerEnabled: boolean;
+  inboundTimerSeconds: number;
+  travelingEnabled: boolean;
+  doubleDribbleEnabled: boolean;
+  backcourtViolationEnabled: boolean;
+  basketInterferenceEnabled: boolean;
+  kickedBallEnabled: boolean;
+  outOfBoundsEnabled: boolean;
+  cornerThrowInEnabled: boolean;
+  foulOutLimit: number;
+  teamFoulPenalty: number;
+  substitutionLimitEnabled: boolean;
+  maxSubstitutions: number;
+  fieldGoalValue: 1 | 2;
+  dunkValue: 1 | 2 | 3;
+  freeThrowsEnabled: boolean;
+  madeBasketRestart: 'center_jump' | 'inbound';
+  teamFoulPenaltyMode: 'free_throws' | 'award_goal';
+  teamFoulPenaltyPoints: number;
+  temporaryDisqualificationFoulLimit: number;
+  temporaryDisqualificationUntilNextScore: boolean;
+  temporaryDisqualificationAllowsSubstitute: boolean;
+  shootoutRounds: number;
+  overtimeTieBreaker: 'target_score' | 'shootout' | 'sudden_death';
+  techEjectionLimit: number;
+  flagrant1EjectionLimit: number;
+  flagrant2EjectionLimit: number;
+  fightingInstantEjection: boolean;
+  useYellowRedCards: boolean;
+}
+
+export interface GameEjection {
+  playerId: string;
+  playerName: string;
+  teamId: number;
+  reason: 'foul_out' | 'technical' | 'flagrant_1' | 'flagrant_2' | 'fighting' | 'red_card';
+  quarter: number;
+  clock: string;
+  card?: 'yellow' | 'red';
+  suspensionGames?: number;
+}
+
+export interface GameTiebreaker {
+  type: 'shootout' | 'target_score' | 'sudden_death';
+  rounds?: number;
+  homeScore: number;
+  awayScore: number;
+  homeShooterId?: string;
+  awayShooterId?: string;
+}
+
+export interface GameHeaveEvent {
+  teamId: number;
+  playerId: string;
+  playerName: string;
+  quarter: number;
+  made: boolean;
+  protectedFromIndividualStats: boolean;
+  distanceFeet: number;
+  startedInBackcourt: true;
+}
+
 export interface GameLiveEvent {
-  kind: 'injury' | 'fight';
+  kind: 'injury' | 'fight' | 'rule' | 'ejection' | 'tiebreaker';
   team: 'HOME' | 'AWAY';
   quarter: number;
   gs: number;
@@ -96,9 +187,16 @@ export interface GameResult {
   homeStats: PlayerGameStats[];
   awayStats: PlayerGameStats[];
   winnerId: number;
+  isDraw?: boolean;
   lead: number;
   isOT: boolean;
   otCount: number;
+  simulationEngine?: 'fast' | 'realistic' | 'fast-fallback';
+  teamShotStats?: {
+    home: { pointsInPaint: number; paintMakes: number; paintAttempts: number };
+    away: { pointsInPaint: number; paintMakes: number; paintAttempts: number };
+  };
+  playersOnCourt?: number;
   playerDNPs?: Record<string, string>; // playerId → "DNP — Injury (Type)" | "DNP — Coach's Decision"
   playerInGameInjuries?: Record<string, { type: string; quarter: number }>; // playerId → injury + quarter exited for players who left mid-game
   playersPlayingHurt?: Record<string, string>; // playerId → injuryType for players who suited up already injured (played through pain)
@@ -133,12 +231,17 @@ export interface GameResult {
     gamesRemaining: number;
   }[];
   fight?: FightResult;
+  gameRules?: GameRuleConfig;
+  ejections?: GameEjection[];
+  tiebreaker?: GameTiebreaker;
+  heaves?: GameHeaveEvent[];
   highlights?: GameHighlight[];
   /** Calendar year the game was played — written by the simulator so the
    *  boxScoreLookup helper can disambiguate recycled gameIds across seasons. */
   season?: number;
   isPreseason?: boolean;
   isPlayoff?: boolean;
+  isEliminationGame?: boolean;
   isPlayIn?: boolean;
   isNBACup?: boolean;
   nbaCupRound?: 'group' | 'QF' | 'SF' | 'Final';

@@ -1,91 +1,106 @@
-import React from 'react';
-import { motion } from 'motion/react';
-import { Trophy, Play } from 'lucide-react';
-import { useGame } from '../../store/GameContext';
-import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
+import { useEffect, useRef, useState } from 'react';
+import { Loader2, Trophy } from 'lucide-react';
+import type { GameState } from '../../types';
+import { buildPbaOpeningCeremonyTeams } from '../../services/pba/openingCeremony';
+import { ArenaStage } from './openingCeremony/components/ArenaStage';
+import { Navbar } from './openingCeremony/components/Navbar';
+import type { ArenaLighting, PBATeam } from './openingCeremony/types';
 
-const CONFERENCE_LABELS: Record<string, string> = {
-  philippine: 'Philippine Cup',
-  commissioners: "Commissioner's Cup",
-  governors: "Governors' Cup",
+const LIGHTING_MODES: ArenaLighting[] = ['stadium', 'spotlight', 'fiesta', 'gold', 'neon'];
+
+type Props = {
+  open: boolean;
+  state: GameState;
+  onExit: () => void;
+  onSkip: () => void;
 };
 
-interface Props {
-  onStart: () => void;
-  onSkip: () => void;
-}
+export const PBAOpeningCeremonyView: React.FC<Props> = ({ open, state, onExit, onSkip }) => {
+  const [teams, setTeams] = useState<PBATeam[]>([]);
+  const [currentTeamIndex, setCurrentTeamIndex] = useState(0);
+  const [isPlaying, setIsPlaying] = useState(true);
+  const [soundEnabled, setSoundEnabled] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const closeHandled = useRef(false);
 
-export const PBAOpeningCeremonyView: React.FC<Props> = ({ onStart, onSkip }) => {
-  const { state } = useGame();
-  const ls = state.leagueStats as any;
-  const conf = ls?.pbaConference ?? 'philippine';
-  const season = ls?.year ?? new Date().getFullYear();
-  const label = CONFERENCE_LABELS[conf] ?? 'Conference';
-  const spec = PBA_COMPETITIONS[conf === 'philippine' ? 0 : conf === 'commissioners' ? 1 : 2];
+  useEffect(() => {
+    if (!open) return;
+    let active = true;
+    closeHandled.current = false;
+    setLoading(true);
+    setTeams([]);
+    setCurrentTeamIndex(0);
+    setIsPlaying(true);
+    void buildPbaOpeningCeremonyTeams(state).then(result => {
+      if (!active) return;
+      setTeams(result);
+      setLoading(false);
+    });
+    return () => {
+      active = false;
+    };
+  }, [open, state]);
 
-  const pbaTeams = ((state as any).nonNBATeams ?? []).filter((t: any) => t.tid >= 2000 && t.tid < 2100);
+  useEffect(() => {
+    if (!open) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== 'Escape' || closeHandled.current) return;
+      closeHandled.current = true;
+      onExit();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onExit]);
+
+  if (!open) return null;
+  const finish = (action: () => void) => {
+    if (closeHandled.current) return;
+    closeHandled.current = true;
+    action();
+  };
+  const season = Number(state.leagueStats?.year ?? new Date().getFullYear());
+  const lighting = LIGHTING_MODES[currentTeamIndex % LIGHTING_MODES.length];
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/10 via-slate-950 to-slate-950 pointer-events-none" />
-
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 w-full max-w-3xl text-center space-y-8"
-      >
-        <div>
-          <div className="text-5xl mb-4">🏀</div>
-          <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight">
-            {label}
-          </h1>
-          <p className="text-sm text-slate-400 mt-2">Season {season} Opening Ceremony</p>
-        </div>
-
-        {/* Team Parade Grid */}
-        <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
-          {pbaTeams.map((t: any) => (
-            <div key={t.tid} className="flex flex-col items-center gap-1 p-2 bg-slate-900/40 rounded-xl border border-slate-800/30">
-              {t.imgURL && <img src={t.imgURL} alt="" className="w-8 h-8 object-contain" />}
-              <span className="text-[9px] font-bold text-slate-400 uppercase truncate max-w-full">
-                {t.abbrev ?? t.name?.split(' ').pop()}
-              </span>
-            </div>
-          ))}
-        </div>
-
-        {/* Conference Info */}
-        <div className="inline-flex items-center gap-3 px-5 py-3 bg-slate-900/60 border border-slate-800/50 rounded-2xl">
-          <Trophy className="w-5 h-5 text-amber-400" />
-          <div className="text-left">
-            <p className="text-xs font-bold text-white">{spec.gamesPerTeam} Games • {spec.teamCount} Teams</p>
-            <p className="text-[10px] text-slate-500 uppercase tracking-wider">
-              {spec.importRule === 'none'
-                ? 'All-Filipino Conference'
-                : spec.importRule === 'one_no_height_limit'
-                  ? '1 Import — No Height Limit'
-                  : "1 Import — Max 6'5\""}
-            </p>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={`PBA ${season} Opening Ceremony`}
+      className="fixed inset-0 z-[220] overflow-y-auto bg-slate-950 font-sans text-slate-100 antialiased selection:bg-amber-500 selection:text-slate-950"
+    >
+      <Navbar
+        title={`PBA ${season} Opening Ceremony`}
+        soundEnabled={soundEnabled}
+        setSoundEnabled={setSoundEnabled}
+        onSkip={() => finish(onSkip)}
+        onExit={() => finish(onExit)}
+      />
+      <main className="mx-auto w-full max-w-7xl space-y-8 px-2 py-3 sm:px-4 sm:py-6">
+        {loading ? (
+          <div className="flex min-h-[70vh] flex-col items-center justify-center rounded-3xl border border-slate-800 bg-slate-950">
+            <Loader2 className="mb-5 h-10 w-10 animate-spin text-amber-400" />
+            <h2 className="text-xl font-black uppercase tracking-tight text-white">Preparing Ceremony</h2>
+            <p className="mt-2 px-4 text-center text-sm text-slate-400">The teams are lining up for their introductions.</p>
           </div>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-center gap-4">
-          <button
-            onClick={onSkip}
-            className="px-6 py-3 text-sm font-bold text-slate-500 hover:text-white transition-colors"
-          >
-            Skip Ceremony
-          </button>
-          <button
-            onClick={onStart}
-            className="flex items-center gap-2 px-8 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-black text-sm uppercase tracking-wider rounded-xl transition-colors shadow-lg shadow-indigo-500/20"
-          >
-            <Play className="w-4 h-4" />
-            Start {label}
-          </button>
-        </div>
-      </motion.div>
+        ) : teams.length > 0 ? (
+          <ArenaStage
+            teams={teams}
+            currentTeamIndex={currentTeamIndex}
+            setCurrentTeamIndex={setCurrentTeamIndex}
+            isPlaying={isPlaying}
+            setIsPlaying={setIsPlaying}
+            arenaLighting={lighting}
+            soundEnabled={soundEnabled}
+            onToggleSound={() => setSoundEnabled(enabled => !enabled)}
+          />
+        ) : (
+          <div className="flex min-h-[70vh] flex-col items-center justify-center rounded-3xl border border-slate-800 bg-slate-950 px-5 text-center">
+            <Trophy className="mb-5 h-12 w-12 text-amber-400" />
+            <h2 className="text-xl font-black uppercase tracking-tight text-white">Opening Ceremony</h2>
+            <p className="mt-2 max-w-md text-sm text-slate-400">The team parade is unavailable, but you can safely continue to the new season.</p>
+          </div>
+        )}
+      </main>
     </div>
   );
 };

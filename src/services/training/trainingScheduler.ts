@@ -4,14 +4,8 @@
  * generated, this runs to fill each team's `trainingCalendar` with sensible
  * defaults the user can override per-day from the Training Center.
  *
- * Phase awareness (per docs/training.md + simulation.ts brainstorm):
- *  - Training Camp (Aug 15 – Sep 30): high-intensity Full Training, builds System Familiarity.
- *  - Preseason (Oct 1 – Oct 23): mixed — game days, scrimmages, balanced practice.
- *  - Regular Season (Oct 24 – Apr 13): Balanced practice, tune around games.
- *  - Trade Deadline (~Feb 15): NO team training that week — front office work only.
- *  - Playoffs (Apr 16 – Jun 20): Recovery + opponent film. Minimal physical load.
- *  - Free Agency (Jul 1 – Jul 31): NO team training — players negotiating, traveling.
- *  - Offseason (Jun 21 – Jun 30 + Aug 1 – Aug 14): NO team training, individual work only.
+ * Phase awareness follows the saved league calendar for camp, preseason,
+ * regular season, deadline, playoffs, free agency, and offseason windows.
  *
  * Proximity logic:
  *  - Day OF a game: Game (no training plan written — game day handled at render).
@@ -23,7 +17,9 @@
  * Auto-fill skips those entries to never clobber user edits.
  */
 
-import type { Game, NBATeam } from '../../types';
+import type { Game, LeagueStats, NBATeam } from '../../types';
+import { getLeagueCalendarDates } from '../leagueCalendar';
+import { getTradeDeadlineDate, isInFreeAgencyWindow } from '../../utils/dateUtils';
 
 type Paradigm = 'Balanced' | 'Offensive' | 'Defensive' | 'Biometrics' | 'Recovery';
 type Allocations = { offense: number; defense: number; conditioning: number; recovery: number; systemFocus?: string[] };
@@ -41,7 +37,62 @@ interface DailyPlan {
 // Offensive, Defensive paradigms are user-only — auto cells always render
 // identically to a user-set Balanced day so the schedule reads as one uniform
 // surface. Bumping the version triggers re-autofill of any older auto-plans.
-export const TRAINING_CALENDAR_VERSION = 5;
+export const TRAINING_CALENDAR_VERSION = 6;
+
+export function getTrainingCalendarScheduleKey(schedule: Game[]): string {
+  let hash = 2166136261;
+  for (const game of schedule) {
+    const token = `${String(game.date).slice(0, 10)}|${game.homeTid}|${game.awayTid}|${game.gid}|${game.isPlayoff ? 1 : 0}|${game.competitionId ?? ''}`;
+    for (let i = 0; i < token.length; i++) {
+      hash ^= token.charCodeAt(i);
+      hash = Math.imul(hash, 16777619);
+    }
+  }
+  return `${schedule.length}:${hash >>> 0}`;
+}
+
+function isTeamTrainingGame(game: Game, teamId: number): boolean {
+  if (game.homeTid !== teamId && game.awayTid !== teamId) return false;
+  return !(
+    game.isAllStar
+    || game.isRisingStars
+    || game.isCelebrityGame
+    || game.isDunkContest
+    || game.isThreePointContest
+    || (game as Game & { isSkillsChallenge?: boolean }).isSkillsChallenge
+  );
+}
+
+export function haveCurrentTrainingCalendars(
+  teams: NBATeam[],
+  schedule: Game[],
+  currentDate: string,
+  daysAhead = 365,
+  completedPostseason = false,
+): boolean {
+  if (teams.length === 0) return true;
+  const expectedScheduleKey = getTrainingCalendarScheduleKey(schedule);
+  const currentTime = new Date(`${String(currentDate).slice(0, 10)}T00:00:00Z`).getTime();
+  return teams.every(team => {
+    const generation = team.trainingCalendarGeneration;
+    const hasUpcomingUnplayedTeamGame = schedule.some(game => {
+      if (game.played || (completedPostseason && game.isPlayoff) || !isTeamTrainingGame(game, team.id)) return false;
+      const gameTime = new Date(`${String(game.date).slice(0, 10)}T00:00:00Z`).getTime();
+      return Number.isFinite(gameTime) && Number.isFinite(currentTime) && gameTime >= currentTime;
+    });
+    if (
+      generation?.version !== TRAINING_CALENDAR_VERSION
+      || (generation.scheduleKey !== expectedScheduleKey && hasUpcomingUnplayedTeamGame)
+      || generation.daysAhead < daysAhead
+    ) {
+      return false;
+    }
+    const anchorTime = new Date(`${String(generation.anchorDate ?? '').slice(0, 10)}T00:00:00Z`).getTime();
+    if (!Number.isFinite(currentTime) || !Number.isFinite(anchorTime)) return false;
+    const daysSinceAnchor = Math.floor((currentTime - anchorTime) / 86_400_000);
+    return daysSinceAnchor >= -30 && daysSinceAnchor <= Math.max(30, generation.daysAhead - 180);
+  });
+}
 
 // Allocation presets per paradigm — match DailyPlanModal PARADIGM_TEMPLATES.
 const PRESETS: Record<Paradigm, { intensity: number; allocations: Allocations }> = {
@@ -67,25 +118,28 @@ function isoDate(d: Date): string {
   return d.toISOString().slice(0, 10);
 }
 
-// Phase windows — uses calendar-month boundaries (mirrors src/constants.ts SEASON_DATES).
 type Phase = 'training_camp' | 'preseason' | 'regular' | 'trade_deadline' | 'playoffs' | 'offseason' | 'free_agency';
 
-function phaseFromDate(d: Date): Phase {
-  const m = d.getUTCMonth() + 1;
-  const day = d.getUTCDate();
-  // Trade deadline week — Feb 13–17 (around Feb 15 per constants.ts).
-  if (m === 2 && day >= 13 && day <= 17) return 'trade_deadline';
-  // Aug 15 – Sep 30
-  if ((m === 8 && day >= 15) || m === 9) return 'training_camp';
-  // Oct 1 – Oct 23
-  if (m === 10 && day <= 23) return 'preseason';
-  // Apr 16 – Jun 20
-  if ((m === 4 && day >= 16) || m === 5 || (m === 6 && day <= 20)) return 'playoffs';
-  // Jul 1 – Jul 31
-  if (m === 7) return 'free_agency';
-  // Jun 21 – Jun 30 + Aug 1 – Aug 14
-  if ((m === 6 && day >= 21) || (m === 8 && day <= 14)) return 'offseason';
-  return 'regular';
+function phaseFromDate(d: Date, leagueStats?: LeagueStats, schedule: Game[] = []): Phase {
+  const time = d.getTime();
+  const year = d.getUTCFullYear();
+  const candidateSeasons = [year - 1, year, year + 1, year + 2];
+  for (const season of candidateSeasons) {
+    const deadline = getTradeDeadlineDate(season, leagueStats as any).getTime();
+    if (Math.abs(time - deadline) <= 2 * 86_400_000) return 'trade_deadline';
+  }
+  for (const season of candidateSeasons) {
+    const dates = getLeagueCalendarDates(season, leagueStats);
+    const campStart = dates.trainingCampStart ?? dates.preseasonStart;
+    const preseasonStart = dates.preseasonStart ?? campStart;
+    if (campStart && preseasonStart && time >= campStart.getTime() && time < preseasonStart.getTime()) return 'training_camp';
+    if (preseasonStart && time >= preseasonStart.getTime() && time < dates.regularSeasonStart.getTime()) return 'preseason';
+    if (time >= dates.regularSeasonStart.getTime() && time <= dates.regularSeasonEnd.getTime()) return 'regular';
+    if (time >= dates.playoffStart.getTime() && time < dates.rollover.getTime()) return 'playoffs';
+  }
+  return isInFreeAgencyWindow(d, leagueStats?.year ?? year, leagueStats as any, schedule)
+    ? 'free_agency'
+    : 'offseason';
 }
 
 /**
@@ -113,6 +167,7 @@ export function autoGenerateTrainingCalendar(
   existing?: Record<string, DailyPlan>,
   /** Days to walk BEFORE startISO so past months persist. Default 8 months. */
   lookbackDays: number = 240,
+  leagueStats?: LeagueStats,
 ): Record<string, DailyPlan> {
   const start = new Date(`${startISO}T00:00:00Z`);
   if (isNaN(start.getTime())) return existing ?? {};
@@ -127,8 +182,7 @@ export function autoGenerateTrainingCalendar(
   // practice days, which doesn't match what actually happened.
   const teamGameDays = new Set<string>();
   for (const g of schedule) {
-    if (g.homeTid !== teamId && g.awayTid !== teamId) continue;
-    if (g.isAllStar || g.isRisingStars || g.isCelebrityGame || g.isDunkContest || g.isThreePointContest) continue;
+    if (!isTeamTrainingGame(g, teamId)) continue;
     teamGameDays.add(g.date.slice(0, 10));
   }
 
@@ -160,7 +214,7 @@ export function autoGenerateTrainingCalendar(
       continue;
     }
 
-    const phase = phaseFromDate(d);
+    const phase = phaseFromDate(d, leagueStats, schedule);
 
     // No team training during these windows — leave the day empty (decay applies).
     if (phase === 'offseason' || phase === 'free_agency' || phase === 'trade_deadline') {
@@ -236,8 +290,10 @@ export function autoGenerateTrainingCalendarsForAllTeams(
   teams: NBATeam[],
   schedule: Game[],
   startISO: string,
-  daysAhead: number = 365
+  daysAhead: number = 365,
+  leagueStats?: LeagueStats,
 ): NBATeam[] {
+  const scheduleKey = getTrainingCalendarScheduleKey(schedule);
   return teams.map(t => ({
     ...t,
     trainingCalendar: autoGenerateTrainingCalendar(
@@ -248,6 +304,14 @@ export function autoGenerateTrainingCalendarsForAllTeams(
       Object.fromEntries(
         Object.entries((t.trainingCalendar as any) ?? {}).filter(([, plan]: [string, any]) => plan?.auto === false)
       ) as any,
+      240,
+      leagueStats,
     ),
+    trainingCalendarGeneration: {
+      version: TRAINING_CALENDAR_VERSION,
+      anchorDate: startISO.slice(0, 10),
+      daysAhead,
+      scheduleKey,
+    },
   }));
 }

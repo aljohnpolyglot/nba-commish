@@ -1,18 +1,20 @@
 import React from 'react';
 import { ChevronLeft, ChevronRight, Search, SlidersHorizontal, X } from 'lucide-react';
 import { PER_PAGE_OPTIONS, Phase, SeasonMode, StatType } from './PlayerStatsShared';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { SeasonChevronControl } from '../../shared/SeasonChevronControl';
 
 interface TeamOption {
   id: number;
   abbrev: string;
+  name: string;
+  region?: string;
 }
 
 interface PlayerStatsControlsProps {
   availableSeasons: number[];
   season: SeasonMode;
   setSeason: React.Dispatch<React.SetStateAction<SeasonMode>>;
-  prevSeason: () => void;
-  nextSeason: () => void;
   sortedTeams: TeamOption[];
   teamFilter: string;
   setTeamFilter: React.Dispatch<React.SetStateAction<string>>;
@@ -21,7 +23,7 @@ interface PlayerStatsControlsProps {
   statType: StatType;
   setStatType: React.Dispatch<React.SetStateAction<StatType>>;
   phase: Phase;
-  setPhase: React.Dispatch<React.SetStateAction<Phase>>;
+  setPhase: (phase: Phase) => void;
   pbaCompetitionFilter?: string;
   setPbaCompetitionFilter?: React.Dispatch<React.SetStateAction<string>>;
   pbaCompetitionOptions?: Array<{ id: string; label: string }>;
@@ -36,14 +38,15 @@ interface PlayerStatsControlsProps {
   euroIsolated: boolean;
   pbaIsolated: boolean;
   cupShort: string;
+  title?: string;
+  knockoutOnly?: boolean;
+  formatSeasonLabel: (season: number) => string;
 }
 
 export function PlayerStatsControls({
   availableSeasons,
   season,
   setSeason,
-  prevSeason,
-  nextSeason,
   sortedTeams,
   teamFilter,
   setTeamFilter,
@@ -67,13 +70,17 @@ export function PlayerStatsControls({
   euroIsolated,
   pbaIsolated,
   cupShort,
+  title: explicitTitle,
+  knockoutOnly = false,
+  formatSeasonLabel,
 }: PlayerStatsControlsProps) {
-  const title = pbaIsolated ? 'PBA Player Stats' : 'Player Stats';
+  const title = explicitTitle ?? (pbaIsolated ? 'PBA Player Stats' : 'Player Stats');
+  const selectedSeason = typeof season === 'number' ? season : availableSeasons[0];
 
   return (
     <div className="shrink-0 px-3 sm:px-4 py-2.5 border-b border-slate-800 bg-slate-950">
       <div className="flex items-center justify-between mb-2">
-        <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">{title}</h2>
+        <h2 className="min-w-0 truncate pr-2 text-base font-black uppercase tracking-tight text-white sm:text-lg">{title}</h2>
         <div className="relative sm:hidden">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" size={13} />
           <input
@@ -95,12 +102,12 @@ export function PlayerStatsControls({
           <select
             value={teamFilter}
             onChange={e => setTeamFilter(e.target.value)}
-            className="h-7 bg-slate-900 border-y border-slate-700 text-white text-xs px-1.5 focus:outline-none focus:border-indigo-500 appearance-none min-w-[80px]"
+            className="h-7 bg-slate-900 border-y border-slate-700 text-white text-xs px-1.5 [color-scheme:dark] focus:outline-none focus:border-indigo-500 appearance-none min-w-[80px]"
           >
-            <option value="all">All Teams</option>
+            <option className="bg-slate-900 text-white" value="all">All Teams</option>
             {sortedTeams.map(team => (
-              <option key={team.id} value={team.abbrev}>
-                {team.abbrev}
+              <option className="bg-slate-900 text-white" key={team.id} value={String(team.id)}>
+                {getTeamFullName(team)}
               </option>
             ))}
           </select>
@@ -109,53 +116,44 @@ export function PlayerStatsControls({
           </button>
         </div>
 
-        <div className="flex items-center gap-0">
-          <button onClick={prevSeason} className="w-6 h-7 flex items-center justify-center text-slate-500 hover:text-white active:text-white bg-slate-900 border border-slate-700 rounded-l transition-colors">
-            <ChevronLeft size={12} />
-          </button>
-          <select
-            value={typeof season === 'number' ? season : season}
-            onChange={e => {
-              const value = e.target.value;
-              setSeason(value === 'career' || value === 'all' ? (value as SeasonMode) : Number(value));
-            }}
-            className="h-7 bg-slate-900 border-y border-slate-700 text-white text-xs px-1.5 focus:outline-none focus:border-indigo-500 appearance-none min-w-[70px]"
-          >
-            <option value="career">Career</option>
-            <option value="all">All Time</option>
-            {availableSeasons.map(value => (
-              <option key={value} value={value}>
-                {value - 1}–{String(value).slice(2)}
-              </option>
-            ))}
-          </select>
-          <button onClick={nextSeason} className="w-6 h-7 flex items-center justify-center text-slate-500 hover:text-white active:text-white bg-slate-900 border border-slate-700 rounded-r transition-colors">
-            <ChevronRight size={12} />
-          </button>
-        </div>
+        {selectedSeason !== undefined && (
+          <SeasonChevronControl<number>
+            values={availableSeasons}
+            value={selectedSeason}
+            onChange={value => setSeason(value)}
+            formatValue={formatSeasonLabel}
+          />
+        )}
 
         <select
           value={statType}
           onChange={e => setStatType(e.target.value as StatType)}
-          className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded focus:outline-none focus:border-indigo-500 appearance-none"
+          className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded [color-scheme:dark] focus:outline-none focus:border-indigo-500 appearance-none"
         >
-          <option value="perGame">Per Game</option>
-          <option value="per36">Per 36</option>
-          <option value="totals">Totals</option>
-          <option value="advanced">Advanced</option>
-          <option value="shotLocations">Shot Locations & Feats</option>
+          <option className="bg-slate-900 text-white" value="perGame">Per Game</option>
+          <option className="bg-slate-900 text-white" value="per36">Per 36</option>
+          <option className="bg-slate-900 text-white" value="totals">Totals</option>
+          <option className="bg-slate-900 text-white" value="advanced">Advanced</option>
+          <option className="bg-slate-900 text-white" value="shotLocations">Shot Locations & Feats</option>
         </select>
 
-        <select
-          value={phase}
-          onChange={e => setPhase(e.target.value as Phase)}
-          className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded focus:outline-none focus:border-indigo-500 appearance-none"
-        >
-          <option value="regular">Regular Season</option>
-          <option value="playoffs">Playoffs</option>
-          <option value="combined">Combined</option>
-          {!euroIsolated && !pbaIsolated && <option value="cup">{cupShort}</option>}
-        </select>
+        {knockoutOnly ? (
+          <span className="inline-flex h-7 items-center rounded border border-slate-700 bg-slate-900 px-2 text-xs font-bold text-slate-300">
+            Tournament Games
+          </span>
+        ) : (
+          <select
+            value={phase}
+            onChange={e => setPhase(e.target.value as Phase)}
+            className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded focus:outline-none focus:border-indigo-500 appearance-none"
+          >
+            <option value="preseason">Preseason</option>
+            <option value="regular">Regular Season</option>
+            <option value="playoffs">Playoffs</option>
+            <option value="combined">Combined</option>
+            {!euroIsolated && !pbaIsolated && <option value="cup">{cupShort}</option>}
+          </select>
+        )}
 
         {pbaIsolated && pbaCompetitionFilter && setPbaCompetitionFilter && pbaCompetitionOptions && (
           <select

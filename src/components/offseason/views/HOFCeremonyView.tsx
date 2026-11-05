@@ -1,49 +1,44 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion } from 'motion/react';
 import { Crown, ChevronRight, Star, Trophy, X } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
-import { careerWinShares, getHOFCeremonyDateString } from '../../../services/playerDevelopment/hofChecker';
-import { parseGameDate } from '../../../utils/dateUtils';
+import { careerWinShares, getHOFCeremonyDateString, getHOFReviewClassYear } from '../../../services/playerDevelopment/hofChecker';
+import { filterExternalHOFInducteesForTimeline, getExternalHOFMaxInductionYear } from '../../../services/playerDevelopment/hofHistoryWindow';
 import { normalizeDate } from '../../../utils/helpers';
-import { fetchHOFData, type ProcessedHOFPlayer } from '../../../data/HOFData';
+import { adaptProcessedHOFPlayer, fetchHOFData, type ProcessedHOFPlayer } from '../../../data/HOFData';
 import type { NBAPlayer } from '../../../types';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { PlayerBioView } from '../../central/view/PlayerBioView';
-
-const normalizeName = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '').trim();
-
-function adaptExternalPlayer(p: ProcessedHOFPlayer): NBAPlayer {
-  return {
-    internalId: `ext-${normalizeName(p.name)}`,
-    name: p.name,
-    tid: p.tid ?? -1,
-    pos: p.pos,
-    hgt: p.hgt,
-    weight: p.weight,
-    imgURL: p.imgURL,
-    born: p.born,
-    draft: p.draft as any,
-    awards: p.awards,
-    hof: true,
-    retiredYear: p.retiredYear,
-    hofInductionYear: p.inductionYear,
-    status: 'Retired',
-    overallRating: 0,
-  } as unknown as NBAPlayer;
-}
+import { normalizePlayerAwardType } from '../../../utils/playerAwardNormalizer';
+import { resolveSavedHistoryPlayer } from '../../../services/navigation/historyPlayerNavigation';
 
 function countAward(p: NBAPlayer, type: string): number {
-  return (p.awards ?? []).filter(a => a.type === type).length;
+  const target = normalizePlayerAwardType(type);
+  const seasons = new Set(
+    (p.awards ?? [])
+      .filter(a => normalizePlayerAwardType(a.type) === target)
+      .map(a => Number(a.season))
+      .filter(Number.isFinite),
+  );
+  return seasons.size;
+}
+
+function countChampionships(p: NBAPlayer): number {
+  return countAward(p, 'Won Championship') + countAward(p, 'Champion') + countAward(p, 'NBA Champion');
 }
 
 function definingMoments(p: NBAPlayer): string[] {
   const out: string[] = [];
   const mvps = countAward(p, 'Most Valuable Player');
   const fmvps = countAward(p, 'Finals MVP');
-  const champs = countAward(p, 'Won Championship') + countAward(p, 'Champion');
+  const champs = countChampionships(p);
   const allStars = countAward(p, 'All-Star');
   const dpoys = countAward(p, 'Defensive Player of the Year');
-  const allNba = (p.awards ?? []).filter(a => a.type.includes('All-NBA') || a.type.includes('All-League')).length;
+  const allNba = new Set((p.awards ?? [])
+    .filter(a => normalizePlayerAwardType(a.type).includes('All-NBA'))
+    .map(a => Number(a.season))
+    .filter(Number.isFinite)).size;
   const ws = careerWinShares(p);
   if (mvps > 0) out.push(`${mvps}× League MVP`);
   if (fmvps > 0) out.push(`${fmvps}× Finals MVP`);
@@ -74,11 +69,21 @@ function careerLine(p: NBAPlayer): { ppg: string; rpg: string; apg: string; year
   };
 }
 
-function isHofScopeTid(tid: number, teamsByTid: Map<number, any>, uiMode?: string): boolean {
+export function isHofScopeTid(tid: number, teamsByTid: Map<number, any>, uiMode?: string): boolean {
   if (uiMode === 'pba_isolated') {
     return (tid >= 2000 && tid < 2100) || teamsByTid.get(tid)?.league === 'PBA';
   }
+  if (uiMode === 'wnba_isolated') {
+    return (tid >= 3000 && tid < 4000) || teamsByTid.get(tid)?.league === 'WNBA';
+  }
   return tid >= 0 && tid < 100;
+}
+
+export function shouldLoadExternalHOFForMode(isFictional: boolean, uiMode?: string): boolean {
+  return !isFictional
+    && uiMode !== 'pba_isolated'
+    && uiMode !== 'euro_isolated'
+    && uiMode !== 'wnba_isolated';
 }
 
 function hasHofScopeCareer(player: NBAPlayer, teamsByTid: Map<number, any>, uiMode?: string): boolean {
@@ -90,21 +95,32 @@ function hasHofScopeCareer(player: NBAPlayer, teamsByTid: Map<number, any>, uiMo
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onDone?: () => void;
 }
 
-export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
-  const { state, dispatchAction } = useGame();
+const renderModalPortal = (content: React.ReactNode) =>
+  typeof document === 'undefined' ? content : createPortal(content, document.body);
+
+export default function HOFCeremonyModal({ isOpen, onClose, onDone }: Props) {
+  const { state, dispatchAction, navigateToPlayer } = useGame();
   const [drillPlayer, setDrillPlayer] = useState<NBAPlayer | null>(null);
   const [externalInductees, setExternalInductees] = useState<ProcessedHOFPlayer[]>([]);
+  const [externalHofLoading, setExternalHofLoading] = useState(false);
 
-  const classYear = state.date
-    ? parseGameDate(state.date).getUTCFullYear()
-    : state.leagueStats?.year ?? new Date().getFullYear();
+  const reviewDate = state.date ?? `${state.leagueStats?.year ?? new Date().getFullYear()}-12-31`;
+  const classYear = getHOFReviewClassYear(reviewDate, state.leagueStats?.hofClassesInducted ?? []);
   const ceremonyDate = getHOFCeremonyDateString(classYear);
   const currentDate = normalizeDate(state.date ?? ceremonyDate);
   const isFictional = state.leagueType === 'fictional';
   const uiMode = state.leagueStats?.uiMode;
-  const shouldLoadExternalHOF = !isFictional && uiMode !== 'pba_isolated' && uiMode !== 'euro_isolated';
+  const hofTimelineInput = {
+    currentYear: state.leagueStats?.year ?? classYear,
+    leagueType: state.leagueType,
+    moddedLeagueBase: state.moddedLeagueBase,
+    nbaStartYear: state.nbaStartYear,
+  };
+  const externalMaxInductionYear = getExternalHOFMaxInductionYear(hofTimelineInput);
+  const shouldLoadExternalHOF = shouldLoadExternalHOFForMode(isFictional, uiMode);
   const teamsByTid = useMemo(() => {
     const map = new Map<number, any>();
     for (const team of [...(state.teams ?? []), ...((state as any).nonNBATeams ?? [])] as any[]) {
@@ -114,26 +130,45 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
   }, [state.teams, (state as any).nonNBATeams]);
 
   useEffect(() => {
-    if (!isOpen || !shouldLoadExternalHOF) return;
+    if (!isOpen || !shouldLoadExternalHOF) {
+      setExternalHofLoading(false);
+      return;
+    }
+    if (externalMaxInductionYear && classYear > externalMaxInductionYear) {
+      setExternalInductees([]);
+      setExternalHofLoading(false);
+      return;
+    }
     let cancelled = false;
-    fetchHOFData()
+    setExternalHofLoading(true);
+    fetchHOFData({ inductionYear: classYear, maxInductionYear: externalMaxInductionYear })
       .then(data => {
         if (!cancelled) setExternalInductees(data);
       })
-      .catch(err => console.error('[HOF Ceremony] External fetch failed:', err));
+      .catch(err => console.error('[HOF Ceremony] External fetch failed:', err))
+      .finally(() => {
+        if (!cancelled) setExternalHofLoading(false);
+      });
     return () => {
       cancelled = true;
     };
-  }, [isOpen, shouldLoadExternalHOF]);
+  }, [classYear, externalMaxInductionYear, isOpen, shouldLoadExternalHOF]);
+
+  const timelineExternalInductees = useMemo(() => {
+    return filterExternalHOFInducteesForTimeline(externalInductees, hofTimelineInput);
+  }, [externalInductees, state.leagueStats?.year, state.leagueType, state.moddedLeagueBase, state.nbaStartYear, classYear]);
 
   const inductees = useMemo(() => {
     if (!isOpen) return [];
-    const byName = new Map<string, NBAPlayer>();
+    const byIdentity = new Map<string, NBAPlayer>();
 
     if (shouldLoadExternalHOF && currentDate >= ceremonyDate) {
-      externalInductees.forEach(p => {
+      timelineExternalInductees.forEach(p => {
         if (!p.name || p.inductionYear !== classYear) return;
-        byName.set(normalizeName(p.name), adaptExternalPlayer(p));
+        const sourcePlayer = adaptProcessedHOFPlayer(p);
+        const savedPlayer = resolveSavedHistoryPlayer(state.players, sourcePlayer);
+        const player = savedPlayer ?? sourcePlayer;
+        byIdentity.set(`${savedPlayer ? 'saved' : 'source'}:${player.internalId}`, player);
       });
     }
 
@@ -141,11 +176,21 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
       .filter(p => p.hof === true && p.hofInductionYear === classYear)
       .filter(p => hasHofScopeCareer(p, teamsByTid, uiMode))
       .forEach(p => {
-        byName.set(normalizeName(p.name), p);
+        byIdentity.set(`saved:${p.internalId}`, p);
       });
 
-    return Array.from(byName.values()).sort((a, b) => careerWinShares(b) - careerWinShares(a));
-  }, [isOpen, shouldLoadExternalHOF, currentDate, ceremonyDate, externalInductees, state.players, classYear, teamsByTid, uiMode]);
+    return Array.from(byIdentity.values()).sort((a, b) => careerWinShares(b) - careerWinShares(a));
+  }, [isOpen, shouldLoadExternalHOF, currentDate, ceremonyDate, timelineExternalInductees, state.players, classYear, teamsByTid, uiMode]);
+
+  const openInductee = (player: NBAPlayer) => {
+    const savedPlayer = state.players.find(candidate => candidate.internalId === player.internalId);
+    if (savedPlayer) {
+      onClose();
+      navigateToPlayer(savedPlayer);
+      return;
+    }
+    setDrillPlayer(player);
+  };
 
   const firstBallot = inductees.filter(p => {
     const ws = careerWinShares(p);
@@ -154,24 +199,25 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
     return mvps >= 2 || fmvps >= 2 || ws >= 100;
   });
 
-  const handleDone = () => {
-    dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'hofCeremony' } } as any);
+  const handleDone = async () => {
+    if (onDone) await onDone();
+    else await dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'hofCeremony' } } as any);
     onClose();
   };
 
   if (drillPlayer) {
-    return (
+    return renderModalPortal(
       <AnimatePresence>
         {isOpen && (
           <div className="fixed inset-0 z-[120] bg-zinc-950 overflow-y-auto">
             <PlayerBioView player={drillPlayer} onBack={() => setDrillPlayer(null)} />
           </div>
         )}
-      </AnimatePresence>
+      </AnimatePresence>,
     );
   }
 
-  return (
+  return renderModalPortal(
     <AnimatePresence>
       {isOpen && (
         <div className="fixed inset-0 z-[115] flex items-center justify-center p-0 sm:p-2 md:p-6">
@@ -191,19 +237,21 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
             {/* Hero header */}
             <div className="relative shrink-0 overflow-hidden border-b border-amber-400/20 px-4 sm:px-6 py-6 sm:py-8">
               <div className="absolute inset-0 z-0 bg-[radial-gradient(circle_at_50%_30%,rgba(212,175,55,0.18),transparent_60%)]" />
-              <button onClick={onClose} className="absolute right-4 top-4 z-10 text-zinc-500 transition-colors hover:text-white">
+              <button onClick={onClose} className="absolute right-4 top-4 z-10 rounded-md p-1 text-zinc-500 transition-colors hover:bg-white/5 hover:text-white">
                 <X size={18} />
               </button>
               <div className="relative z-10 text-center">
                 <Crown size={36} className="mx-auto mb-2 text-amber-300" />
                 <span className="block text-[10px] font-bold uppercase tracking-[0.35em] text-amber-300/80">
-                  Enshrinement Weekend · {ceremonyDate}
+                  Hall of Fame Review · {ceremonyDate}
                 </span>
                 <h2 className="mt-2 font-display text-3xl sm:text-4xl md:text-5xl font-black">
                   CLASS OF <span className="bg-gradient-to-b from-amber-200 to-amber-500 bg-clip-text text-transparent">{classYear}</span>
                 </h2>
                 <p className="mx-auto mt-2 max-w-2xl text-xs italic text-zinc-400 md:text-sm">
-                  {inductees.length === 0
+                  {externalHofLoading
+                    ? `Loading the Class of ${classYear} ballot…`
+                    : inductees.length === 0
                     ? 'No inductees this year — the ballot was thin.'
                     : `${inductees.length} legend${inductees.length === 1 ? '' : 's'} take${inductees.length === 1 ? 's' : ''} ${inductees.length === 1 ? 'his' : 'their'} place among the immortals.`}
                 </p>
@@ -220,7 +268,12 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
 
             {/* Inductee grid */}
             <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 sm:py-6" style={{ scrollbarWidth: 'thin' }}>
-              {inductees.length === 0 ? (
+              {externalHofLoading ? (
+                <div className="rounded-2xl border border-dashed border-amber-400/20 bg-amber-400/5 py-20 text-center">
+                  <Trophy size={32} className="mx-auto mb-3 animate-pulse text-amber-300/60" />
+                  <p className="text-sm italic text-zinc-400">Loading the historical ballot…</p>
+                </div>
+              ) : inductees.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-zinc-800 bg-zinc-900/20 py-20 text-center">
                   <Trophy size={32} className="mx-auto mb-3 text-zinc-700" />
                   <p className="text-sm italic text-zinc-500">
@@ -230,7 +283,7 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
               ) : (
                 <div className="grid gap-4 md:grid-cols-2">
                   {inductees.map((p, i) => (
-                    <InducteeCard key={p.internalId} player={p} delay={i * 0.06} onOpen={() => setDrillPlayer(p)} />
+                    <InducteeCard key={p.internalId} player={p} delay={i * 0.06} onOpen={() => openInductee(p)} />
                   ))}
                 </div>
               )}
@@ -239,11 +292,11 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
             {/* Footer */}
             <div className="flex shrink-0 flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-t border-zinc-800 bg-regal-black/95 px-4 sm:px-6 py-3">
               <span className="text-xs text-zinc-500 text-center sm:text-left">
-                Closes Hall of Fame Weekend and clears the legacy step from your offseason checklist.
+                This review is optional and never blocks the next season.
               </span>
               <button
                 onClick={handleDone}
-                className="inline-flex items-center gap-2 rounded-lg bg-amber-400 px-4 py-2 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-300"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-lg bg-amber-400 px-4 py-2 text-sm font-bold text-zinc-950 transition-colors hover:bg-amber-300 sm:w-auto"
               >
                 Done
                 <ChevronRight size={16} />
@@ -252,7 +305,7 @@ export default function HOFCeremonyModal({ isOpen, onClose }: Props) {
           </motion.div>
         </div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
   );
 }
 

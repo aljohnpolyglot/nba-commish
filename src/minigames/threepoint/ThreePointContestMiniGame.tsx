@@ -23,6 +23,21 @@ const getK2ThreePoint = (p: NBAPlayer): number => {
 
 const FALLBACK_HEADSHOT = 'https://www.nba.com/assets/img/default-headshot.png';
 
+const getThreePointPercentage = (p: NBAPlayer): number | null => {
+  const stat = [...(p.stats ?? [])]
+    .filter(row => !row.playoffs && Number(row.gp) > 0)
+    .sort((a, b) => Number(b.season) - Number(a.season))[0];
+  if (!stat) return null;
+  const made = Number(stat.tp);
+  const attempted = Number(stat.tpa);
+  if (Number.isFinite(made) && Number.isFinite(attempted) && attempted > 0) {
+    return Math.max(0, Math.min(100, (made / attempted) * 100));
+  }
+  const sourcePercentage = Number(stat.tpp);
+  if (!Number.isFinite(sourcePercentage) || sourcePercentage <= 0) return null;
+  return Math.max(0, Math.min(100, sourcePercentage <= 1 ? sourcePercentage * 100 : sourcePercentage));
+};
+
 function PickerGrid({
   players, selectedIds, onToggle,
 }: {
@@ -46,11 +61,8 @@ function PickerGrid({
       />
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {(search ? filtered : filtered.slice(0, visible)).map(p => {
-          const r: any = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : {};
           const sel = selectedIds.has(p.internalId);
-          const stat = p.stats?.find(s => s.season === 2025 && !s.playoffs) ?? p.stats?.[p.stats.length - 1];
-          const gp = stat?.gp ?? 0;
-          const tpp = stat && gp > 0 ? ((stat as any).tpp ?? 0) : 0;
+          const threePointPercentage = getThreePointPercentage(p);
           const lastName = p.name;
           return (
             <button
@@ -72,7 +84,9 @@ function PickerGrid({
                 <div className="text-[9px] text-zinc-500">{(p as any).pos ?? ''}</div>
                 <div className="flex justify-center gap-2 mt-1">
                   <span className="text-[9px] text-indigo-400 font-bold">3P {getK2ThreePoint(p)}</span>
-                  {tpp > 0 && <span className="text-[9px] text-zinc-500">{(tpp * 100).toFixed(1)}%</span>}
+                  {threePointPercentage != null && (
+                    <span className="text-[9px] text-zinc-500">{threePointPercentage.toFixed(1)}%</span>
+                  )}
                 </div>
               </div>
               {sel && (

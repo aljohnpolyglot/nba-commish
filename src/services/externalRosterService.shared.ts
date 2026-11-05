@@ -19,15 +19,35 @@ export function resolveImgURL(itemUrl: string | undefined, bioImage?: string): s
   return ratingsPng ?? bioImg;
 }
 
-export function extractJerseyNumber(player: { jerseyNumber?: string | number; stats?: Array<{ jerseyNumber?: string | number }> }): string | undefined {
+export function extractJerseyNumber(
+  player: { jerseyNumber?: string | number; stats?: Array<{ jerseyNumber?: string | number; season?: number }> },
+  throughSeason?: number,
+): string | undefined {
   const latestStats = player.stats
-    ?.filter(s => s.jerseyNumber !== undefined && s.jerseyNumber !== null && s.jerseyNumber !== '')
+    ?.filter(s => (
+      s.jerseyNumber !== undefined
+      && s.jerseyNumber !== null
+      && s.jerseyNumber !== ''
+      && (throughSeason === undefined || Number(s.season) <= throughSeason)
+    ))
     .sort((a: any, b: any) => Number(b?.season ?? 0) - Number(a?.season ?? 0))[0];
-  const raw = latestStats?.jerseyNumber ?? player.jerseyNumber;
+  const raw = latestStats?.jerseyNumber ?? (throughSeason === undefined ? player.jerseyNumber : undefined);
   return raw === undefined || raw === null || raw === '' ? undefined : String(raw);
 }
 
-const ATTR_SKIP = new Set(['hgt', 'ft', 'season', 'ovr', 'pot', 'fuzz', 'injuryIndex', 'skills', 'jerseyNumber']);
+const ATTR_SKIP = new Set([
+  'tid',
+  'hgt',
+  'ft',
+  'season',
+  'ovr',
+  'pot',
+  'fuzz',
+  'injuryIndex',
+  'skills',
+  'jerseyNumber',
+  'pbaImportSourceSeason',
+]);
 
 export function scaleRatings(ratings: any[], mult: number, hgtMult?: number): any[] {
   if (!ratings.length) return ratings;
@@ -52,23 +72,19 @@ export function computeLeagueOvr(rawRatings: any, league: string): number {
   const mult = LEAGUE_MULTIPLIERS[league] ?? 1.0;
   const cap = EXTERNAL_LEAGUE_OVR_CAP[league];
 
-  const ovr = league === 'PBA'
-    ? calculateLeagueOverall(rawRatings, league)
-    : (() => {
-        const srcOvr = rawRatings?.ovr;
-        if (srcOvr && srcOvr > 0 && srcOvr <= 100) {
-          return Math.round(Math.max(10, srcOvr * mult));
-        }
-        return calculateLeagueOverall(rawRatings, league);
-      })();
+  const srcOvr = rawRatings?.ovr;
+  const ovr = srcOvr && srcOvr > 0 && srcOvr <= 100
+    ? Math.round(Math.max(10, srcOvr * mult))
+    : calculateLeagueOverall(rawRatings, league);
 
-  return cap !== undefined ? Math.min(ovr, cap) : ovr;
+  return cap !== undefined && league !== 'PBA' ? Math.min(ovr, cap) : ovr;
 }
 
 export type PBAEconomyConfig = {
   salaryCapUSD: number;
   minSalaryUSD: number;
   maxSalaryPct: number;
+  economyScale: number;
 };
 
 type PBAContractPlayerLike = {
@@ -80,17 +96,27 @@ type PBAContractPlayerLike = {
   stats?: Array<{ playoffs?: boolean; gp?: number }>;
 };
 
-type PBAEconomySource = Pick<LeagueStats, 'salaryCap' | 'minContractStaticAmount' | 'maxContractStaticPercentage'>;
+type PBAEconomySource = Pick<
+  LeagueStats,
+  'salaryCap' | 'minContractStaticAmount' | 'maxContractStaticPercentage' | 'historicalEconomyScale'
+>;
 
 export function getPBARosterEconomyConfig(
   leagueStats?: Partial<PBAEconomySource>,
   mode: 'pba_isolated' | 'external' = 'pba_isolated',
 ): PBAEconomyConfig {
-  const salaryCapUSD = leagueStats?.salaryCap
+  const baseSalaryCapUSD = leagueStats?.salaryCap
     ?? (mode === 'pba_isolated'
       ? PBA_ISOLATED_DEFAULTS.salaryCap
       : INITIAL_LEAGUE_STATS.salaryCap)
     ?? INITIAL_LEAGUE_STATS.salaryCap;
+  const rawEconomyScale = mode === 'pba_isolated'
+    ? Number(leagueStats?.historicalEconomyScale ?? 1)
+    : 1;
+  const economyScale = Number.isFinite(rawEconomyScale)
+    ? Math.max(0.05, rawEconomyScale)
+    : 1;
+  const salaryCapUSD = Math.round(baseSalaryCapUSD * economyScale);
 
   if (mode === 'external') {
     const scale = EXTERNAL_SALARY_SCALE.PBA ?? { minPct: 0.001, maxPct: 0.0088 };
@@ -98,6 +124,7 @@ export function getPBARosterEconomyConfig(
       salaryCapUSD,
       minSalaryUSD: Math.round(salaryCapUSD * scale.minPct),
       maxSalaryPct: scale.maxPct * 100,
+      economyScale,
     };
   }
 
@@ -112,8 +139,9 @@ export function getPBARosterEconomyConfig(
 
   return {
     salaryCapUSD,
-    minSalaryUSD: Math.round(minContractStaticAmount * 1_000_000),
+    minSalaryUSD: Math.round(minContractStaticAmount * 1_000_000 * economyScale),
     maxSalaryPct: maxContractStaticPercentage,
+    economyScale,
   };
 }
 
@@ -143,11 +171,11 @@ export function computeLocalPBASalaryUSD(
   player?: PBAContractPlayerLike,
   currentYear = new Date().getFullYear(),
 ): number {
-  const minSalaryUSD = Math.max(10_000, economy.minSalaryUSD);
+  const minSalaryUSD = Math.max(2_500, economy.minSalaryUSD);
   const maxSalaryUSD = Math.max(minSalaryUSD, Math.round(economy.salaryCapUSD * (economy.maxSalaryPct / 100)));
   const age = player?.born?.year ? currentYear - player.born.year : player?.age ?? 28;
   const service = (player?.stats ?? []).filter(row => !row.playoffs && (row.gp ?? 0) > 0).length;
-  const ratingScore = Math.pow(Math.max(0, Math.min(1, (pbaOvr - 50) / 18)), 1.15);
+  const ratingScore = Math.pow(Math.max(0, Math.min(1, (pbaOvr - 15) / 25)), 1.15);
   const veteranBump =
     age >= 36 ? 0.10 :
     age >= 32 ? 0.18 :

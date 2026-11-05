@@ -26,8 +26,11 @@ import { runTiers, runAdvCheck, runBenchEff } from './realisticAdvancedCheats';
 import { runPerSample } from './realisticPerCheats';
 import { runSimBench } from './realisticBenchmarkLeagueCheats';
 import { runPlayerBench } from './realisticBenchmarkPlayerCheats';
-import { runSimLeaders, runSimTrace } from './realisticBenchmarkLeaderCheats';
+import { runSimLeaders, runSimPerf, runSimTrace } from './realisticBenchmarkLeaderCheats';
+import { runSimOutcomeAudit } from './simOutcomeAuditCheats';
 import { runSpam, runWarp, runStuck, runPhaseDump, runGateScan, runWarpSlow } from './stressCheats';
+import { runHistoricalAudit } from './historicalAuditCheats';
+import { runAllStarAudit, runAllStarHostAudit } from './allStarAuditCheats';
 import { resolveEffectiveTrainingPlan } from '../../services/training/trainingPlanResolver';
 import { MinutesPlayedService } from '../../services/simulation/MinutesPlayedService';
 import { resolveRotationPlan } from '../../services/simulation/rotationPlan';
@@ -36,8 +39,24 @@ import { deriveOfficialNbaRecords } from '../nbaOfficialRecords';
 import { rebuildCupGroupStandingsFromSchedule } from '../../services/nbaCup/resolveGroupStage';
 import { isFilipino } from '../../services/pba/importManager';
 import { getPbaDraftPool, tunePbaDraftProspects } from '../../services/pba/draftRules';
+import { getLeagueCalendarDates } from '../../services/leagueCalendar';
 import { logPbaLazySimAudit } from '../pbaLazySimDebug';
 import { logBasketballUniverseAudit } from '../basketballUniverseAudit';
+import { getSpainClubIdentityKey } from '../../data/templates/spain/teamPopulations';
+import { EURO_BASKETBALL_SOURCE_ARCHIVES } from '../../data/euroBasketballSources';
+import {
+  buildCompletedEuroSeasonReviewPatch,
+  getCompletedManagedEuroSeasonResolutions,
+} from '../../services/competition/euroSeasonReview';
+import { getManagedEuroCompetitions } from '../euroLeagueDefaults';
+import { selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
+import {
+  hasUnresolvedEuroSeasonCompetitions,
+  resolveCompetitionSeason,
+} from '../../services/competition/competitionResolver';
+import { dateForCompetitionSeason, matchesBoxScoreSeason, matchesScheduleSeason } from '../../services/competition/competitionSeasonState';
+import { EURO_TOURNAMENTS_REQUIRING_LOWER_DIVISIONS } from '../../services/euro/competitionCatalog';
+import { getOffseasonState } from '../../services/offseason/offseasonState';
 
 export type { CheatContext, CheatResult } from './shared';
 
@@ -60,7 +79,8 @@ export const CHEAT_CODES = {
   FATIGUEAUDIT: 'Investigate trainingFatigue spikes. Logs league-wide 90+ fatigue outliers, your roster with MPG/training/recent game load, and the next/last 7 days of schedule + plans.',
   FATIGUEFIX: 'Emergency league fatigue repair: caps NBA roster fatigue to MPG-based sane values and logs before/after rows. Use after FATIGUEAUDIT.',
   FATIGUEFIXALL: 'Alias for FATIGUEFIX.',
-  EUROAUDIT: 'Euro-isolated save audit: roster ids/statuses, external club roster counts, contaminated Euro box scores, NBA-state leaks.',
+  EUROAUDIT: 'Euro-isolated save audit: rosters, source cutoffs, competition stats/history/awards, domestic-cup progression, calendar collisions, contaminated box scores, NBA-state leaks.',
+  LIVESIMAUDIT: 'Inspect the most recent live-game playback for score deltas, missing actors, and final-score divergence.',
   EUROFIX: 'Euro-isolated save repair: normalize external player tids/statuses, clear NBA FA state, heal FIBA timing, purge contaminated Euro box scores and rebuild Euro season stats.',
   COPYTP: 'Copy current Player Stats rows with TP/FG ratings + 3PA context as TSV',
   NAMECHECK: 'Audit for country → name mismatch (USA names in Euroleague, etc.)',
@@ -78,6 +98,7 @@ export const CHEAT_CODES = {
   PICKS: 'Draft pick inventory — picks per season, per-team ownership counts, missing-team detector',
   PBADRAFT: 'PBA draft-pool audit — logs current mock-draft visibility inputs, year buckets, Filipino filter matches, and blocked prospects',
   PBADRAFTFIX: 'Retune the current save’s Filipino draft prospects in place — rewrites age/OVR/POT for the already-seeded PBA class',
+  PBASEASON: 'PBA season audit — logs conference calendar, regular season, playoffs, finals, awards, imports, All-Star, transitions, and missing checkpoints.',
   PBA_TEST_LAZY_SIM: 'PBA lazy-sim audit — logs regular season, playoffs, finals, awards, imports, conference transitions, and missing checkpoints.',
   BASKETAUDIT: 'Read-only basketball universe sanity check — NBA schedule/playoffs, Euro competitions, PBA conferences, roster scopes.',
   SALARYAUDIT: 'Players with 3+ NBA seasons played but sparse/missing contractYears — tracks contract history gaps as sim progresses',
@@ -87,9 +108,12 @@ export const CHEAT_CODES = {
   JERSEYHEAL: 'Repair raw jersey numbers, then apply any due/overdue automatic jersey retirements to the current save',
   STRATEGY: 'Per-team strategy profile (key/role/mode/weights) + executed trades with sender/receiver TVs',
   CUPDEBUG: 'NBA Cup state dump — groups, scheduled cup games, played count, knockout bracket, awards',
-  CUPSIM: 'Sim-jump to Dec 17 to play out the entire Cup window (group stage → knockouts → awards)',
+  CUPSIM: 'Sim-jump past the configured Cup final to play out the entire Cup window',
   CUPINJECT: 'Retroactively inject Cup group games into a save where groups exist but no Cup games were scheduled (recovers broken pre-fix saves)',
   SCHEDAUDIT: 'Schedule integrity audit — orphaned games, per-team GP vs 82, All-Star blackout casualties, asymmetric W/L',
+  HISTAUDIT: 'Read-only historical NBA save audit — rules, source contracts, team lifecycle, POT bounds, All-Star event state, waivers, offseason, awards, and standings',
+  ALLSTARAUDIT: 'Read-only All-Star source audit — compares save awards against compact-bio and full-roster award rows, including raw/no-awards source matches',
+  ALLSTARHOST: 'Read-only All-Star host audit — prints saved host rows, normalized teams, target-year assignment, and Commissioner task records.',
   SCHEDFIX: 'Repair current-season 82-game schedule gaps: moves orphaned unplayed games to today and adds makeup games for teams scheduled below 82',
   FIXPOT: 'Clamp inflated POT on PBA (→50) and ChinaCBA (→54) players in the current save',
   APRON: 'List teams over the 2nd apron with cap status, live payroll, and dead-money load',
@@ -120,7 +144,10 @@ export const CHEAT_CODES = {
   SIMBENCH: 'Aggregate per-team-game stats from already-played NBA box scores and compare against 2026SimBenchmark.md league averages. Logs delta table (PPG, FG%, 3P%, eFG%, TS%, AST, REB, ORB, TOV, PF, PACE) + TSV to clipboard.',
   PLAYERBENCH: 'Aggregate per-player-game stats from already-played NBA box scores and compare against 2026SimBenchmark.md Part 5 (distribution shape: P10/P25/median/P75/P90) and Part 6 (positional averages PG/SG/SF/PF/C). TSV to clipboard.',
   SIMTRACE: 'Toggle realistic-engine possession trace. When ON, every possession of the next sim logs to console (zone, made/miss, shooter, assister, fouled, FT). Run again to turn OFF.',
+  SIMPERF: 'Toggle realistic game-sim profiling. Run it, simulate games, then run it again for per-game milliseconds by setup, possessions, advanced stats, injuries, and highlights.',
+  OSPLANTRACE: 'Toggle offseason-plan console tracing. Keep off during normal simulation.',
   SIMLEADERS: 'Compare sim Top 10 in 8 categories (PPG/RPG/APG/SPG/BPG/3PM/3PA/FGA/FT%/FG%/eFG%/TS%) and team ranges (PPG/FG%/3P%/eFG%/ORtg/DRtg/PACE) against 2026SimBenchmark.md Part 2+3+4+5. Highlights gap between sim leader and NBA reference (Doncic 33.5, Wemby 4.0 BPG, Jokic 10.7 APG, Curry 4.6 3PM, etc.).',
+  SIMAUDIT: 'Standings-vs-strength audit. Logs display OVR, rotation strength, injuries, rank deltas, OKC drilldown by default, recent games, and losses as heavy favorite. Copies TSV.',
 } as const;
 
 export type CheatCode = keyof typeof CHEAT_CODES;
@@ -771,15 +798,16 @@ function applyDueJerseyRetirements(state: GameState): { patched: GameState; appl
   };
 }
 
-const EURO_ROSTER_STATUSES = new Set(['Euroleague', 'Endesa', 'PBA', 'B-League', 'China CBA', 'NBL Australia']);
+const EURO_ROSTER_STATUSES = new Set(['Euroleague', 'Endesa', 'PBA', 'B-League', 'G-League', 'China CBA', 'NBL Australia']);
 
 function euroStatusForTid(tid: number): string | undefined {
   if (tid >= 1000 && tid < 2000) return 'Euroleague';
   if (tid >= 2000 && tid < 3000) return 'PBA';
   if (tid >= 4000 && tid < 5000) return 'B-League';
   if (tid >= 5000 && tid < 6000) return 'Endesa';
-  if (tid >= 7000 && tid < 8000) return 'China CBA';
-  if (tid >= 8000 && tid < 9000) return 'NBL Australia';
+  if (tid >= 16000 && tid < 17000) return 'G-League';
+  if (tid >= 17000 && tid < 18000) return 'China CBA';
+  if (tid >= 18000 && tid < 19000) return 'NBL Australia';
   return undefined;
 }
 
@@ -788,8 +816,9 @@ function euroTidOffsetForStatus(status?: string): number | null {
   if (status === 'PBA') return 2000;
   if (status === 'B-League') return 4000;
   if (status === 'Endesa') return 5000;
-  if (status === 'China CBA') return 7000;
-  if (status === 'NBL Australia') return 8000;
+  if (status === 'G-League') return 16000;
+  if (status === 'China CBA') return 17000;
+  if (status === 'NBL Australia') return 18000;
   return null;
 }
 
@@ -816,9 +845,9 @@ function originalExternalTidFromId(player: any): number | null {
   match = id.match(/^bleague-(\d+)-/);
   if (match) return 4000 + Number(match[1]);
   match = id.match(/^chinacba-(\d+)-/);
-  if (match) return 7000 + Number(match[1]);
+  if (match) return 17000 + Number(match[1]);
   match = id.match(/^nblauss-(\d+)-/);
-  if (match) return 8000 + Number(match[1]);
+  if (match) return 18000 + Number(match[1]);
   match = id.match(/^euro-.+-(1\d{3})$/);
   if (match) return Number(match[1]);
   return null;
@@ -886,6 +915,29 @@ function buildEuroAudit(state: GameState) {
   const transferActivity = ((state as any).transferActivity ?? []) as any[];
   const byId = new Map(players.map(p => [p.internalId, p]));
   const euroTeams = nonNBATeams.filter(t => ['Euroleague', 'Endesa'].includes(t.league));
+  const clubsByIdentity = new Map<string, any[]>();
+  for (const team of euroTeams) {
+    const identity = getSpainClubIdentityKey(team.region, team.name);
+    if (!identity) continue;
+    clubsByIdentity.set(identity, [...(clubsByIdentity.get(identity) ?? []), team]);
+  }
+  const duplicateClubIdentities = [...clubsByIdentity.entries()]
+    .filter(([, teams]) => teams.length > 1)
+    .map(([identity, teams]) => ({
+      identity,
+      teams: teams.map(team => ({ tid: team.tid, league: team.league, region: team.region, name: team.name })),
+    }));
+  const playersByIdentity = new Map<string, any[]>();
+  for (const player of players.filter(player => Number(player.tid) >= 100 && EURO_ROSTER_STATUSES.has(player.status))) {
+    const identity = `${String(player.name ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '')}|${player.born?.year ?? ''}`;
+    playersByIdentity.set(identity, [...(playersByIdentity.get(identity) ?? []), player]);
+  }
+  const duplicatePlayerIdentities = [...playersByIdentity.entries()]
+    .filter(([, matches]) => matches.length > 1)
+    .map(([identity, matches]) => ({
+      identity,
+      players: matches.map(player => ({ internalId: player.internalId, name: player.name, tid: player.tid, status: player.status })),
+    }));
 
   const legacyTidPlayers = players.filter(p =>
     EURO_ROSTER_STATUSES.has(p.status) &&
@@ -984,6 +1036,8 @@ function buildEuroAudit(state: GameState) {
     contaminatedBoxes,
     nbaStateLeaks,
     unauthorizedUserIncomingTransfers,
+    duplicateClubIdentities,
+    duplicatePlayerIdentities,
   };
 }
 
@@ -1064,13 +1118,14 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
   const { state, dispatchAction, healPlayer } = ctx;
 
   switch (code) {
+    case 'PBASEASON':
     case 'PBA_TEST_LAZY_SIM': {
       const live = getLive(ctx);
       if ((live.leagueStats as any)?.uiMode !== 'pba_isolated') {
-        return { title: 'PBA_TEST_LAZY_SIM', body: 'Current save is not pba_isolated.', ok: false };
+        return { title: code, body: 'Current save is not pba_isolated.', ok: false };
       }
       logPbaLazySimAudit(live, 'manual');
-      return { title: 'PBA_TEST_LAZY_SIM', body: 'PBA lazy-sim audit printed to console.', ok: true };
+      return { title: code, body: 'PBA season audit printed to console.', ok: true };
     }
     case 'BASKETAUDIT': {
       logBasketballUniverseAudit(getLive(ctx), 'manual');
@@ -1306,8 +1361,240 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       };
     }
 
+    case 'LIVESIMAUDIT': {
+      const audit = window.__livePlaybackAudit;
+      if (!audit) return { title: 'LIVESIMAUDIT', body: 'Open a game in the live simulator first.', ok: false };
+      console.group('%cLIVESIMAUDIT', 'color:#f59e0b;font-weight:bold');
+      console.log(audit);
+      if (audit.scoringDivergences.length > 0) console.table(audit.scoringDivergences);
+      if (audit.missingActors.length > 0) console.warn('Scoring lines missing the actor name:', audit.missingActors);
+      console.groupEnd();
+      const issues = audit.scoringDivergences.length + audit.missingActors.length + Number(!audit.finalMatches);
+      return {
+        title: 'LIVESIMAUDIT',
+        body: `${issues} playback issue signal(s). Final ${audit.playbackFinal.home}-${audit.playbackFinal.away}; result ${audit.resultFinal.home}-${audit.resultFinal.away}.`,
+        ok: issues === 0,
+      };
+    }
+
     case 'EUROAUDIT': {
       const audit = buildEuroAudit(state);
+      const euroScouting = (state as any).euroScouting;
+      const academyPlayers = Array.isArray(euroScouting?.academyPlayers) ? euroScouting.academyPlayers : [];
+      const scoutingAssignments = Array.isArray(euroScouting?.assignments) ? euroScouting.assignments : [];
+      const academyPlayerIds = new Set(academyPlayers.map((player: any) => player.internalId));
+      const academyLeaks = (state.players ?? []).filter((player: any) => academyPlayerIds.has(player.internalId));
+      const invalidAcademyOwnership = academyPlayers.filter((player: any) => player.academyTeamId !== state.userTeamId);
+      const materializedSourceIdentities = new Set([
+        ...(state.players ?? []).map((player: any) => player.historicalEndesaSource?.identityKey).filter(Boolean),
+        ...academyPlayers.map((player: any) => player.historicalEndesaSource?.identityKey).filter(Boolean),
+      ]);
+      const pendingSourceReportDuplicates = scoutingAssignments.flatMap((assignment: any) => (
+        (assignment.prospects ?? [])
+          .filter((prospect: any) => {
+            const identityKey = prospect.historicalEndesaSource?.identityKey;
+            return identityKey
+              && !assignment.assignedProspectIds?.includes(prospect.internalId)
+              && materializedSourceIdentities.has(identityKey);
+          })
+          .map((prospect: any) => ({ assignmentId: assignment.id, player: prospect.name, identityKey: prospect.historicalEndesaSource.identityKey }))
+      ));
+      const euroSourceSeasons = state.euroSourceSeasons ?? {};
+      const euroCompetitionTeamTids = state.euroCompetitionTeamTids ?? {};
+      const activeCompetitionIds = new Set((state.activeCompetitions ?? []).map(competition => competition.id));
+      const currentEuroSeason = Number(state.leagueStats?.year);
+      const sourceRows = EURO_BASKETBALL_SOURCE_ARCHIVES.map(source => {
+        const activatedSeason = euroSourceSeasons[source.id];
+        const eligible = currentEuroSeason >= source.coverageStart;
+        const hasCompetition = activeCompetitionIds.has(source.competitionId);
+        const hasSeasonMaterial = [...(state.schedule ?? []), ...(state.boxScores ?? [])]
+          .some((game: any) => game.competitionId === source.competitionId);
+        return {
+          source: source.shortName,
+          cutoff: source.coverageStart,
+          eligible,
+          activatedSeason: activatedSeason ?? '—',
+          competition: hasCompetition,
+          participants: euroCompetitionTeamTids[source.competitionId]?.length ?? 0,
+          seasonMaterial: hasSeasonMaterial,
+          issue: activatedSeason !== undefined && activatedSeason < source.coverageStart
+            ? 'activated before cutoff'
+            : eligible && activatedSeason === undefined
+              ? 'eligible but inactive'
+              : activatedSeason !== undefined && (!hasCompetition || !hasSeasonMaterial)
+                ? 'activation incomplete'
+                : '',
+        };
+      });
+      const sourceCutoffIssues = sourceRows.filter(row => row.issue);
+      const unavailableCupIds = (state.activeCompetitions ?? [])
+        .map(competition => competition.id)
+        .filter(id => EURO_TOURNAMENTS_REQUIRING_LOWER_DIVISIONS.has(id));
+      const domesticCupRows = (state.activeCompetitions ?? [])
+        .filter(spec => !!spec.domesticParentId)
+        .map(spec => {
+          const participantTids = selectCompetitionTeamTids(spec, state);
+          const parentTids = new Set(state.euroCompetitionTeamTids?.[spec.domesticParentId!] ?? []);
+          const expectedParticipants = Math.min(Number(spec.teamCount ?? parentTids.size), parentTids.size);
+          const invalidParticipants = participantTids.filter(tid => !parentTids.has(tid));
+          const games = (state.schedule ?? []).filter(game =>
+            game.competitionId === spec.id && matchesScheduleSeason(game, currentEuroSeason),
+          );
+          const counts = Object.fromEntries(['group', 'qf', 'sf', 'final'].map(phase => [
+            phase,
+            games.filter(game => game.competitionPhase === phase).length,
+          ]));
+          const initialPhase = spec.format === 'group-knockout'
+            ? 'group'
+            : participantTids.length > 4 ? 'qf' : 'sf';
+          const initialGames = games.filter(game => game.competitionPhase === initialPhase);
+          const scheduleDue = spec.qualificationRule !== 'domestic-standings'
+            || normalizeDate(state.date) >= normalizeDate(dateForCompetitionSeason(
+              spec,
+              currentEuroSeason,
+              spec.seasonStart.month,
+              spec.seasonStart.day,
+            ));
+          const issues: string[] = [];
+          if (expectedParticipants >= 2 && participantTids.length !== expectedParticipants) issues.push('participant count');
+          if (new Set(participantTids).size !== participantTids.length) issues.push('duplicate participant');
+          if (invalidParticipants.length > 0) issues.push('non-parent participant');
+          if (spec.format === 'group-knockout' && scheduleDue) {
+            const expectedGroupGames = Math.floor((participantTids.length * Number(spec.gamesPerTeam ?? 0)) / 2);
+            if (expectedGroupGames > 0 && initialGames.length !== expectedGroupGames) issues.push('group schedule size');
+            if (initialGames.length === expectedGroupGames && initialGames.every(game => game.played) && !games.some(game => game.competitionPhase === 'sf')) {
+              issues.push('group-to-semifinal stalled');
+            }
+          } else if (scheduleDue) {
+            const expectedInitialGames = Math.floor(participantTids.length / 2);
+            if (expectedInitialGames > 0 && initialGames.length !== expectedInitialGames) issues.push('opening round size');
+            if (initialGames.some(game => !game.played) && new Set(initialGames.map(game => normalizeDate(game.date))).size > 1) {
+              issues.push('opening round split across dates');
+            }
+          }
+          for (const [sourcePhase, childPhase] of [['qf', 'sf'], ['sf', 'final']] as const) {
+            const sourceGames = games.filter(game => game.competitionPhase === sourcePhase);
+            if (sourceGames.length > 0 && sourceGames.every(game => game.played) && !games.some(game => game.competitionPhase === childPhase)) {
+              issues.push(`${sourcePhase}-to-${childPhase} stalled`);
+            }
+          }
+          const resolution = resolveCompetitionSeason(spec, state.boxScores ?? [], currentEuroSeason, participantTids);
+          return {
+            competition: spec.shortName || spec.displayName,
+            participants: `${participantTids.length}/${expectedParticipants}`,
+            invalidParticipants: invalidParticipants.join(', '),
+            group: counts.group ?? 0,
+            qf: counts.qf ?? 0,
+            sf: counts.sf ?? 0,
+            final: counts.final ?? 0,
+            championTid: resolution?.championTid ?? '—',
+            issue: issues.join(', '),
+          };
+        });
+      const domesticCupIssues = domesticCupRows.filter(row => row.issue);
+      const clubDateCompetitions = new Map<string, Set<string>>();
+      (state.schedule ?? [])
+        .filter(game => !game.played && game.competitionId && activeCompetitionIds.has(game.competitionId))
+        .forEach(game => {
+          for (const tid of [game.homeTid, game.awayTid]) {
+            const key = `${normalizeDate(game.date)}|${tid}`;
+            const competitions = clubDateCompetitions.get(key) ?? new Set<string>();
+            competitions.add(String(game.competitionId));
+            clubDateCompetitions.set(key, competitions);
+          }
+        });
+      const clubDateCollisions = [...clubDateCompetitions.entries()]
+        .filter(([, competitions]) => competitions.size > 1)
+        .map(([key, competitions]) => {
+          const [date, tid] = key.split('|');
+          return { date, tid: Number(tid), competitions: [...competitions].join(', ') };
+        });
+      const managedEuroTeam = state.userTeamId == null
+        ? undefined
+        : (state.nonNBATeams ?? []).find(team => Number(team.tid) === Number(state.userTeamId));
+      const primaryParticipantTids = state.euroPrimaryCompetitionId
+        ? state.euroCompetitionTeamTids?.[state.euroPrimaryCompetitionId] ?? []
+        : [];
+      const managedTeamIssues = (state.leagueStats as any)?.uiMode !== 'euro_isolated'
+        ? []
+        : !managedEuroTeam
+          ? ['managed Euro club missing from nonNBATeams']
+          : primaryParticipantTids.length > 0
+            && !primaryParticipantTids.includes(Number(state.userTeamId))
+            && !(managedEuroTeam as any).euroDomesticRelegatedFrom
+              ? ['managed Euro club missing from its opening domestic competition']
+              : [];
+      const historicalNbaMarketPlayers = (state.players ?? []).filter(player => player.euroMarketOrigin?.source === 'historical-nba');
+      const historicalNbaMarketHistoryLeaks = historicalNbaMarketPlayers.filter(player => {
+        const cutoff = Number(player.euroMarketOrigin?.completedSeasonCutoff ?? 0);
+        return [...(player.stats ?? []), ...(player.awards ?? []), ...(player.transactions ?? [])]
+          .some(row => Number(row.season ?? 0) > cutoff);
+      });
+      const euroTeamIds = new Set((state.nonNBATeams ?? []).map(team => Number(team.tid)));
+      const completedEuroTeamIds = new Set<number>();
+      for (const boxScore of state.boxScores ?? []) {
+        if (!boxScore.competitionId) continue;
+        if (euroTeamIds.has(boxScore.homeTeamId)) completedEuroTeamIds.add(boxScore.homeTeamId);
+        if (euroTeamIds.has(boxScore.awayTeamId)) completedEuroTeamIds.add(boxScore.awayTeamId);
+      }
+      const recordedEuroTeamIds = new Set(
+        (state.simFranchiseRecords ?? [])
+          .map(record => Number(record.tid))
+          .filter(tid => euroTeamIds.has(tid)),
+      );
+      const missingFranchiseRecordTids = [...completedEuroTeamIds].filter(tid => !recordedEuroTeamIds.has(tid));
+      const managedCompetitions = getManagedEuroCompetitions(state as any);
+      const completedManagedSeason = getCompletedManagedEuroSeasonResolutions(state);
+      const pendingSeasonReviewPatch = completedManagedSeason
+        ? buildCompletedEuroSeasonReviewPatch(state)
+        : null;
+      const seasonReviewIssues = completedManagedSeason && pendingSeasonReviewPatch ? 1 : 0;
+      const branchSeason = Number(state.euroStartSeason ?? currentEuroSeason);
+      const finishRows = Object.entries(state.competitionHistory ?? {}).flatMap(([competitionId, entries]) =>
+        ((entries ?? []) as any[])
+          .filter(entry => Number(entry?.season) >= branchSeason && entry?.championTid != null)
+          .map(entry => {
+            const season = Number(entry.season);
+            const awards = (state.historicalAwards ?? []).filter(award =>
+              Number(award.season) === season && award.competitionId === competitionId,
+            );
+            const finalHasPlayerLines = (state.boxScores ?? []).some(game =>
+              game.competitionId === competitionId
+              && game.competitionPhase === 'final'
+              && matchesBoxScoreSeason(game, season)
+              && [...(game.homeStats ?? []), ...(game.awayStats ?? [])].some(line => !!line.playerId),
+            );
+            const championAward = awards.some(award => award.type === 'Champion' && award.tid === entry.championTid);
+            const runnerUpAward = entry.runnerUpTid == null || awards.some(award =>
+              award.type === 'Runner Up' && award.tid === entry.runnerUpTid,
+            );
+            const finishMvp = !finalHasPlayerLines || awards.some(award =>
+              /^(Final Four|Finals|Tournament) MVP$/.test(award.type),
+            );
+            const issues = [
+              !championAward && 'champion award',
+              !runnerUpAward && 'runner-up award',
+              !finishMvp && 'finish MVP',
+            ].filter(Boolean).join(', ');
+            return {
+              competition: competitionId,
+              season,
+              championTid: entry.championTid,
+              runnerUpTid: entry.runnerUpTid ?? '—',
+              issue: issues,
+            };
+          }),
+      );
+      const finishHistoryIssues = finishRows.filter(row => row.issue);
+      const unscopedCurrentStatRows = (state.players ?? []).flatMap((player: any) =>
+        (player.stats ?? [])
+          .filter((stat: any) =>
+            Number(stat.season) === currentEuroSeason
+            && Number(stat.gp ?? stat.gamesPlayed ?? 0) > 0
+            && !stat.competitionId,
+          )
+          .map((stat: any) => ({ player: player.name, tid: player.tid, season: stat.season, gp: stat.gp ?? stat.gamesPlayed })),
+      );
       console.group('%c🇪🇺 EUROAUDIT', 'color:#22d3ee;font-weight:bold');
       console.log('uiMode:', (state.leagueStats as any)?.uiMode);
       console.log('FIBA timing:', {
@@ -1316,6 +1603,95 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
         currency: (state.leagueStats as any)?.currency,
       });
       console.log('NBA-state leaks:', audit.nbaStateLeaks);
+      console.log('World scouting:', {
+        assignments: scoutingAssignments.length,
+        active: scoutingAssignments.filter((assignment: any) => assignment.status === 'active').length,
+        ready: scoutingAssignments.filter((assignment: any) => assignment.status === 'ready').length,
+        academyPlayers: academyPlayers.length,
+        academyLeaksIntoSeniorPool: academyLeaks.length,
+        invalidAcademyOwnership: invalidAcademyOwnership.length,
+        pendingSourceReportDuplicates: pendingSourceReportDuplicates.length,
+      });
+      console.log('Euro franchise records:', {
+        clubsWithCompletedGames: completedEuroTeamIds.size,
+        clubsWithSavedRecords: recordedEuroTeamIds.size,
+        missingRecordTids: missingFranchiseRecordTids,
+      });
+      console.log('Euro season-review handoff:', {
+        season: state.leagueStats?.year,
+        managedCompetitions: managedCompetitions.map(competition => competition.id),
+        completedCompetitions: completedManagedSeason?.map(resolution => resolution.competitionId) ?? [],
+        archivedCompetitions: completedManagedSeason?.filter(resolution =>
+          ((state.competitionHistory?.[resolution.competitionId] ?? []) as any[])
+            .some(entry => Number(entry?.season) === resolution.season && entry?.championTid != null),
+        ).map(resolution => resolution.competitionId) ?? [],
+        seasonSummary: state.offseasonChecklist?.seasonSummary ?? 'missing',
+        needsHandoff: !!pendingSeasonReviewPatch,
+      });
+      const managedEuroState = {
+        ...state,
+        activeCompetitions: getManagedEuroCompetitions(state),
+      };
+      const euroPlayoffsActive = (state.playoffs?.series ?? []).some(series => series.status !== 'complete')
+        || hasUnresolvedEuroSeasonCompetitions(managedEuroState);
+      const euroOffseasonPhase = getOffseasonState(
+        state.date,
+        state.leagueStats,
+        state.schedule,
+        { draftComplete: !!state.draftComplete, playoffsActive: euroPlayoffsActive },
+      ).phase;
+      const futureDatedBoxScores = (state.boxScores ?? []).filter(box =>
+        normalizeDate(box.date) > normalizeDate(state.date)
+      ).length;
+      const futureDatedNews = (state.news ?? []).filter(item =>
+        normalizeDate(item.date) > normalizeDate(state.date)
+      ).length;
+      const futureDatedHistory = (state.history ?? []).filter(entry =>
+        typeof entry !== 'string'
+        && normalizeDate(entry.date) > normalizeDate(state.date)
+      ).length;
+      console.log('Next Fixtures visibility:', {
+        offseasonPhase: euroOffseasonPhase,
+        playoffsActive: euroPlayoffsActive,
+        hidden: euroOffseasonPhase !== 'inSeason' && euroOffseasonPhase !== 'preCamp',
+        futureDatedBoxScores,
+        futureDatedNews,
+        futureDatedHistory,
+      });
+      console.log('Managed Euro club:', {
+        userTeamId: state.userTeamId,
+        club: managedEuroTeam?.name ?? 'missing',
+        primaryCompetition: state.euroPrimaryCompetitionId,
+        primaryParticipant: primaryParticipantTids.includes(Number(state.userTeamId)),
+        issues: managedTeamIssues,
+      });
+      console.log('Historical NBA Euro market:', {
+        entrants: historicalNbaMarketPlayers.length,
+        available: historicalNbaMarketPlayers.filter(player => player.tid === -1 && player.status === 'Free Agent').length,
+        futureHistoryLeaks: historicalNbaMarketHistoryLeaks.length,
+      });
+      console.log('Euro source cutoffs: real archive enters once, branch simulation owns every later season.');
+      console.table(sourceRows);
+      console.log('Domestic cups: parent-league qualification, opening schedule, round progression, and saved champion state.');
+      console.table(domesticCupRows);
+      console.log('Branch competition finishes: every saved winner keeps its own champion, runner-up, and eligible final-MVP records.');
+      console.table(finishRows);
+      if (unscopedCurrentStatRows.length > 0) {
+        console.warn('Current-season player stat rows without a competitionId:', unscopedCurrentStatRows);
+        console.table(unscopedCurrentStatRows);
+      }
+      if (clubDateCollisions.length > 0) {
+        console.warn('Clubs scheduled in multiple competitions on the same date:', clubDateCollisions);
+        console.table(clubDateCollisions);
+      } else {
+        console.log('No cross-competition club/date collisions in the remaining schedule.');
+      }
+      if (unavailableCupIds.length > 0) console.warn('Cups requiring unavailable lower-division participants are still active:', unavailableCupIds);
+      if (academyLeaks.length > 0) console.warn('Academy players duplicated in the senior player pool:', academyLeaks);
+      if (invalidAcademyOwnership.length > 0) console.warn('Academy players owned by another team bucket:', invalidAcademyOwnership);
+      if (pendingSourceReportDuplicates.length > 0) console.warn('Unassigned report identities already materialized elsewhere:', pendingSourceReportDuplicates);
+      if (audit.duplicateClubIdentities.length > 0) console.warn('Duplicate Spanish club identities:', audit.duplicateClubIdentities);
+      if (audit.duplicatePlayerIdentities.length > 0) console.warn('Duplicate Euro player identities:', audit.duplicatePlayerIdentities);
       console.table(audit.rosterRows);
       if (audit.legacyTidPlayers.length > 0) {
         console.warn('Legacy external players using raw 0-99 tids:', audit.legacyTidPlayers.map((p: any) => ({
@@ -1367,10 +1743,28 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
         audit.unauthorizedUserIncomingTransfers.length +
         audit.nbaOriginExternalRosterPlayers.length +
         audit.contaminatedBoxes.length +
+        audit.duplicateClubIdentities.length +
+        audit.duplicatePlayerIdentities.length +
+        academyLeaks.length +
+        invalidAcademyOwnership.length +
+        pendingSourceReportDuplicates.length +
+        sourceCutoffIssues.length +
+        domesticCupIssues.length +
+        clubDateCollisions.length +
+        unavailableCupIds.length +
+        managedTeamIssues.length +
+        historicalNbaMarketHistoryLeaks.length +
+        missingFranchiseRecordTids.length +
+        seasonReviewIssues +
+        finishHistoryIssues.length +
+        unscopedCurrentStatRows.length +
+        futureDatedBoxScores +
+        futureDatedNews +
+        futureDatedHistory +
         Object.values(audit.nbaStateLeaks).reduce((s: number, n: any) => s + Number(n || 0), 0);
       return {
         title: 'EUROAUDIT',
-        body: `${issues} issue signal(s). ${audit.contaminatedBoxes.length} contaminated box score(s), ${audit.unauthorizedUserIncomingTransfers.length} unauthorized user incoming transfer(s), ${audit.nbaOriginExternalRosterPlayers.length} NBA-origin Euro roster player(s). See console.`,
+        body: `${issues} issue signal(s). ${sourceCutoffIssues.length} source cutoff/activation issue(s), ${domesticCupIssues.length + unavailableCupIds.length} cup schedule/catalog issue(s), ${finishHistoryIssues.length} competition finish-history issue(s), ${unscopedCurrentStatRows.length} unscoped current stat row(s), ${clubDateCollisions.length} cross-competition calendar collision(s), ${audit.duplicateClubIdentities.length} duplicate club identity row(s), ${audit.duplicatePlayerIdentities.length} duplicate player identity row(s), ${audit.contaminatedBoxes.length} contaminated box score(s), ${academyLeaks.length} academy/senior duplicate(s), ${seasonReviewIssues} season-review handoff issue(s). See console.`,
         ok: issues === 0,
       };
     }
@@ -3019,6 +3413,7 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
       }
       const seasonYr = state.leagueStats?.year ?? new Date().getFullYear();
       const prevYr = seasonYr - 1;
+      const cupCalendar = getLeagueCalendarDates(seasonYr, state.leagueStats);
 
       // Build scheduledDates map from current schedule so we don't double-book
       const scheduledDates: Record<string, Set<number>> = {};
@@ -3038,7 +3433,11 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
         (state as any).saveId || 'default',
         prevYr,
         scheduledDates,
-        { excludeFromRecord: true },  // retro-injected: don't inflate the 82-game RS
+        {
+          excludeFromRecord: true,
+          cupStart: cupCalendar.cupStart,
+          cupFinal: cupCalendar.cupFinal,
+        },
       );
       const newCupGames = result.games;
       console.log(`⚡ Injected ${newCupGames.length} Cup-tagged games into existing schedule`);
@@ -3067,14 +3466,14 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
     }
 
     case 'CUPSIM': {
-      // Dispatch ONE SIMULATE_TO_DATE to Dec 17. SIMULATE_TO_DATE caps
-      // daysToSimulate per call (30 with LLM, 90 without LLM @ gameSpeed≥8,
-      // 180-365 at high gameSpeed without LLM). If today is months before Cup,
-      // ONE dispatch won't reach the target — re-run CUPSIM until it does.
       const cup = (state as any).nbaCup;
-      if (!cup) return { title: 'No Cup', body: 'state.nbaCup is undefined — sim past Aug 14 first so groups draw', ok: false };
+      if (!cup) return { title: 'No Cup', body: 'state.nbaCup is undefined — sim past Schedule Release first so groups draw', ok: false };
       const seasonYr = state.leagueStats?.year ?? new Date().getFullYear();
-      const targetDate = `${seasonYr - 1}-12-17`;
+      const cupFinal = getLeagueCalendarDates(seasonYr, state.leagueStats).cupFinal;
+      if (!cupFinal) return { title: 'No Cup date', body: 'The Season Calendar has no Cup final date.', ok: false };
+      const afterCupFinal = new Date(cupFinal);
+      afterCupFinal.setUTCDate(afterCupFinal.getUTCDate() + 1);
+      const targetDate = afterCupFinal.toISOString().slice(0, 10);
       const startDate = state.date.split('T')[0];
       if (startDate >= targetDate) return { title: 'Already past', body: `Today is ${startDate}, Cup window already closed`, ok: false };
       const dayDiff = Math.round((new Date(targetDate).getTime() - new Date(startDate).getTime()) / 86400000);
@@ -3595,6 +3994,9 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
     case 'SAMPLE12':   return await runSample12(getLive(ctx));
     case 'SCOREPROF':  return await runScoreProf(getLive(ctx));
     case 'PLAYERDIST': return await runPlayerDist(getLive(ctx));
+    case 'HISTAUDIT':  return await runHistoricalAudit(getLive(ctx));
+    case 'ALLSTARAUDIT': return await runAllStarAudit(getLive(ctx));
+    case 'ALLSTARHOST': return runAllStarHostAudit(getLive(ctx));
     case 'TEAMCHECK':  return await runTeamCheck(getLive(ctx));
     case 'LEADERS':    return await runLeaders(getLive(ctx));
     case 'DISTSHAPE':  return await runDistShape(getLive(ctx));
@@ -3605,7 +4007,18 @@ async function runCheat(code: CheatCode, ctx: CheatContext): Promise<CheatResult
     case 'SIMBENCH':   return await runSimBench(getLive(ctx));
     case 'PLAYERBENCH':return await runPlayerBench(getLive(ctx));
     case 'SIMTRACE':   return runSimTrace();
+    case 'SIMPERF':    return runSimPerf();
+    case 'OSPLANTRACE': {
+      const g = globalThis as any;
+      g.__offseasonPlanTrace = !g.__offseasonPlanTrace;
+      return {
+        title: g.__offseasonPlanTrace ? 'OSPLANTRACE ON' : 'OSPLANTRACE OFF',
+        body: g.__offseasonPlanTrace ? 'Offseason-plan logs are enabled in DevTools.' : 'Offseason-plan logs are disabled.',
+        ok: true,
+      };
+    }
     case 'SIMLEADERS': return await runSimLeaders(getLive(ctx));
+    case 'SIMAUDIT':   return await runSimOutcomeAudit(getLive(ctx));
 
     default:
       return { title: 'Unknown cheat', body: `"${code}" not recognized — try HELP`, ok: false };

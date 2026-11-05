@@ -1,7 +1,46 @@
+import { PBA_COACHING_BIAS, type EraCoachingBias } from './eraCoachingBias';
+import type { GameRuleConfig } from './types';
+import { DEFAULT_GAME_RULES } from './gameRuleRuntime';
+
+export type SimulationEngine = 'fast' | 'realistic';
+
+export interface SimulationEngineCalibration {
+  paceMultiplier?: number;
+  fieldGoalAttemptMult?: number;
+  fastScorePaceMultiplier?: number;
+  efficiencyMultiplier?: number;
+  threePointRateMult?: number;
+  threePointAttemptCapMult?: number;
+  threePointSkillExponentMult?: number;
+  threePointAttemptVolumeMult?: number;
+  threePointAttemptFloorRate?: number;
+  bigThreePointAttemptFloorRate?: number;
+  lowThreePointAttemptCapMult?: number;
+  threePointEfficiencyMult?: number;
+  twoPointEfficiencyMult?: number;
+  ftRateMult?: number;
+  ftEfficiencyMult?: number;
+  blockRateMult?: number;
+  stealRateMult?: number;
+  orbRateMult?: number;
+  assistRateMult?: number;
+  reboundOpportunityMult?: number;
+  tovMult?: number;
+  personalFoulRateMult?: number;
+}
+
 export interface SimulatorKnobs {
+  playersOnCourt?: number;
+  homeCourtAdvantagePoints?: number;
+  /** Apply the normal roster-strength margin correction to explicit tournament rosters. */
+  strengthCorrectionWithOverrideRosters?: boolean;
   /** Multiplies the incoming totalScore before stat distribution.
    *  1.0 = no change, 1.18 = All-Star pace (+18% more scoring) */
   paceMultiplier: number;
+
+  fieldGoalAttemptMult?: number;
+  boxScoreFgaNormalizationMult?: number;
+  fastScorePaceMultiplier?: number;
 
   /** Multiplies 2PT and 3PT shooting % after all other modifiers.
    *  1.25 = All-Star (no defense); 0.70 = Celebrity (bad shooters) */
@@ -14,8 +53,27 @@ export interface SimulatorKnobs {
    *  1.4 = All-Star (everyone gunning 3s); 0.4 = Celebrity (rarely tries) */
   threePointRateMult: number;
 
+  /** Fast-engine adapter for how sharply three-point volume follows shooter skill. */
+  threePointSkillExponentMult?: number;
+
+  /** Fast-engine adapter for era-specific elite-shooter attempt ceilings. */
+  threePointPersonalCapMult?: number;
+
+  /** Fast-engine calibration for league-wide per-player three-point attempt ceilings. */
+  threePointAttemptCapMult?: number;
+
+  /** Fast-engine multiplier applied after per-player attempt ceilings. */
+  threePointAttemptVolumeMult?: number;
+
+  threePointAttemptFloorRate?: number;
+  bigThreePointAttemptFloorRate?: number;
+  lowThreePointAttemptCapMult?: number;
+
   /** Multiplies per-player 3PT make probability. Used for line-distance rules. */
   threePointEfficiencyMult?: number;
+
+  /** Multiplies per-player 2PT make probability. */
+  twoPointEfficiencyMult?: number;
 
   /** Enables 4-point attempts in the stat generator. */
   fourPointAvailable?: boolean;
@@ -98,6 +156,7 @@ export interface SimulatorKnobs {
   /** Optional hard cap on overtime periods. */
   maxOvertimesEnabled?: boolean;
   maxOvertimes?: number;
+  gameRules?: GameRuleConfig;
 
   /** Shot clock in seconds. Drives paceMultiplier — 24/shotClockSeconds.
    *  24 = NBA default (1.0×), 12 = 2.0× pace, 14 = ~1.7× pace. */
@@ -129,6 +188,24 @@ export interface SimulatorKnobs {
    *  Set via rule: goaltendingEnabled=false → 1.6 */
   blockRateMult: number;
 
+  /** Multiplier on the share of turnovers credited as steals. */
+  stealRateMult?: number;
+
+  /** Multiplier on the offensive rebound pool. */
+  orbRateMult?: number;
+
+  /** Multiplier on assisted field goals after player passing quality is applied. */
+  assistRateMult?: number;
+
+  /** Optional era distribution exponent; lower values spread assists across lineups. */
+  assistDistributionExponent?: number;
+
+  /** Fast-engine adapter for era rebound opportunities not represented as live events. */
+  reboundOpportunityMult?: number;
+
+  /** Optional era distribution exponent; lower values spread rebounds across lineups. */
+  reboundDistributionExponent?: number;
+
   /** Multiplier applied to LEAGUE_AVG_TOV in generateStatsForTeam.
    *  <1.0 = fewer turnovers (violations disabled, bigger court, no backcourt timer).
    *  Set via: travelingEnabled=false → 0.88, doubleDribbleEnabled=false → 0.90, etc. */
@@ -138,6 +215,14 @@ export interface SimulatorKnobs {
    *  ftRateMult controls how many FTA are *drawn*; ftEfficiencyMult controls how many *go in*.
    *  Set via: freeThrowDistance > 15 → <1.0 (farther line = harder shots). */
   ftEfficiencyMult: number;
+
+  personalFoulRateMult?: number;
+
+  engineCalibration?: Partial<Record<SimulationEngine, SimulationEngineCalibration>>;
+
+  /** Era-level coaching tendency bias. Rule legality stays in base knobs; this
+   *  leans the existing coaching/system shot mix toward the era. */
+  eraCoachingBias?: EraCoachingBias;
 
   /** Applied in engine.ts to the raw game score BEFORE stat generation.
    *  Use for exhibition games (All-Star ~1.45, Rising Stars ~1.18) so the
@@ -158,11 +243,15 @@ export interface SimulatorKnobs {
 }
 
 export const KNOBS_DEFAULT: SimulatorKnobs = {
+  playersOnCourt:        5,
+  homeCourtAdvantagePoints: 3,
   paceMultiplier:       1.0,
+  fastScorePaceMultiplier: 1.0,
   efficiencyMultiplier: 1.0,
   threePointAvailable:  true,
   threePointRateMult:   1.0,
   threePointEfficiencyMult: 1.0,
+  twoPointEfficiencyMult: 1.0,
   fourPointAvailable:   false,
   fourPointRateMult:    0,
   fourPointEfficiencyMult: 1.0,
@@ -182,12 +271,15 @@ export const KNOBS_DEFAULT: SimulatorKnobs = {
   overtimeTargetPoints: 7,
   maxOvertimesEnabled:  false,
   maxOvertimes:         0,
+  gameRules:            DEFAULT_GAME_RULES,
   shotClockSeconds:     24,
   rimRateMult:          1.0,
   lowPostRateMult:      1.0,
   blockRateMult:        1.0,
+  stealRateMult:        1.0,
   tovMult:              1.0,
   ftEfficiencyMult:     1.0,
+  personalFoulRateMult: 1.0,
 };
 
 /**
@@ -210,7 +302,7 @@ export const KNOBS_ALL_STAR: SimulatorKnobs = {
   ftRateMult:            0.32,   // refs rarely call fouls
   rotationDepthOverride: 12,     // all 12 All-Stars play
   flatMinutes:           true,   // rating-weighted even distribution
-  flatMinutesTarget:     20,     // 240 total / 12 = 20 avg; stars ~26, role players ~14
+  flatMinutesTarget:     20,     // starting weight; normalized to the configured team-minute budget
   ratingFloor:           0,
   conferenceRank:        1,      // neutral — depth fully driven by rotationDepthOverride
   gbFromLeader:          0,
@@ -238,7 +330,7 @@ export const KNOBS_RISING_STARS: SimulatorKnobs = {
   ftRateMult:            0.55,
   rotationDepthOverride: 10,     // 10-man rotation per side
   flatMinutes:           true,   // everyone gets meaningful run
-  flatMinutesTarget:     24,     // 10 players × 24 = 240 min total
+  flatMinutesTarget:     24,     // starting weight; normalized to the configured team-minute budget
   ratingFloor:           0,
   conferenceRank:        4,
   gbFromLeader:          0,
@@ -354,16 +446,43 @@ export const KNOBS_EURO_CLUB_COMPETITION: SimulatorKnobs = {
   quarterLength:         10,
   numQuarters:           4,
   paceMultiplier:        0.95,
-  efficiencyMultiplier:  0.97,
-  threePointRateMult:    0.88,
-  ftRateMult:            0.84,
+  efficiencyMultiplier:  0.91,
+  threePointRateMult:    1.22,
+  ftRateMult:            1.45, // 40-minute whistle still yields roughly NBA-rate attempts per minute
   ftEfficiencyMult:      0.93,
+  blockRateMult:         1.0,
+  stealRateMult:         1.0,
+  orbRateMult:           1.20,
+  assistRateMult:        1.35,
+  reboundOpportunityMult: 0.80,
+  personalFoulRateMult:  1.70, // Fast path includes EuroLeague's larger non-shooting-foul share
   tovMult:               0.98,
   rotationDepthOverride: 11,
   starMpgOverride:       30,
   conferenceRank:        3,
   gbFromLeader:          0,
   gamesRemaining:        20,
+  engineCalibration: {
+    fast: {
+      paceMultiplier: 0.78,
+      threePointRateMult: 1.25,
+      threePointAttemptCapMult: 1.50,
+      threePointEfficiencyMult: 1.22,
+      ftRateMult: 1.75,
+      blockRateMult: 0.62,
+      stealRateMult: 1.50,
+      assistRateMult: 1.20,
+      personalFoulRateMult: 0.95,
+    },
+  },
+};
+
+export const KNOBS_EURO_FRIENDLY: SimulatorKnobs = {
+  ...KNOBS_EURO_CLUB_COMPETITION,
+  paceMultiplier:        0.92,
+  efficiencyMultiplier:  0.90,
+  rotationDepthOverride: 13,
+  starMpgOverride:       24,
 };
 
 /**
@@ -374,16 +493,102 @@ export const KNOBS_EURO_CLUB_COMPETITION: SimulatorKnobs = {
 export const KNOBS_PBA: SimulatorKnobs = {
   ...KNOBS_PRESEASON,
   quarterLength:         12,    // NBA preseason uses NBA rules
-  paceMultiplier:        0.92,  // slightly slower than NBA, but not FIBA-mismatch slow
-  efficiencyMultiplier:  0.95,  // lower than NBA, still league-play realistic
-  threePointRateMult:    0.92,  // moderate volume; below NBA, above old inside-only preset
+  paceMultiplier:        1.0,
+  efficiencyMultiplier:  0.93,
+  interiorEffMult:       0.94,
+  rimRateMult:           0.88,
+  lowPostRateMult:       0.82,
+  midRangeRateMult:      1.18,
+  threePointRateMult:    1.0,
+  threePointEfficiencyMult: 0.84,
   fourPointAvailable:    true,
   fourPointRateMult:     0.78,
   fourPointEfficiencyMult: 0.88,
-  ftRateMult:            1.08,  // physical, but not extreme FIBA-upset whistle inflation
-  ftEfficiencyMult:      0.96,
-  tovMult:               1.03,
+  ftRateMult:            1.28,
+  ftEfficiencyMult:      0.98,
+  blockRateMult:         1.55,
+  orbRateMult:           1.0,
+  assistRateMult:        0.90,
+    assistDistributionExponent: 0.55,
+  reboundDistributionExponent: 0.75,
+  tovMult:               0.95,
   rotationDepthOverride: 11,
+  eraCoachingBias:       PBA_COACHING_BIAS,
+  engineCalibration: {
+    fast: {
+      paceMultiplier: 1.00,
+      fieldGoalAttemptMult: 0.84,
+      threePointRateMult: 2.40,
+      threePointAttemptCapMult: 2.05,
+      threePointSkillExponentMult: 0.30,
+      threePointAttemptVolumeMult: 1.45,
+      threePointAttemptFloorRate: 0.34,
+      bigThreePointAttemptFloorRate: 0.16,
+      lowThreePointAttemptCapMult: 1.43,
+      threePointEfficiencyMult: 1.45,
+      twoPointEfficiencyMult: 1.06,
+      ftRateMult: 1.055,
+      ftEfficiencyMult: 1.03,
+      blockRateMult: 0.80,
+      stealRateMult: 1.50,
+      orbRateMult: 1.80,
+      assistRateMult: 0.94,
+      reboundOpportunityMult: 1.20,
+      tovMult: 1.23,
+      personalFoulRateMult: 1.15,
+    },
+    realistic: {
+      paceMultiplier: 1.13,
+      efficiencyMultiplier: 1.008,
+      threePointRateMult: 3.65,
+      threePointEfficiencyMult: 1.30,
+      ftRateMult: 2.48,
+      orbRateMult: 1.50,
+      assistRateMult: 1.18,
+      blockRateMult: 1.12,
+      stealRateMult: 0.82,
+      tovMult: 1.02,
+    },
+  },
+};
+
+export const KNOBS_WNBA: SimulatorKnobs = {
+  ...KNOBS_DEFAULT,
+  quarterLength: 10,
+  numQuarters: 4,
+  engineCalibration: {
+    fast: {
+      paceMultiplier: 1.00,
+      fieldGoalAttemptMult: 0.78,
+      efficiencyMultiplier: 0.95,
+      threePointRateMult: 1.45,
+      threePointAttemptCapMult: 1.35,
+      threePointEfficiencyMult: 1.00,
+      twoPointEfficiencyMult: 1.08,
+      ftRateMult: 1.205,
+      ftEfficiencyMult: 1.08,
+      blockRateMult: 1.70,
+      stealRateMult: 1.20,
+      orbRateMult: 1.50,
+      assistRateMult: 1.25,
+      reboundOpportunityMult: 1.05,
+      personalFoulRateMult: 1.50,
+    },
+    realistic: {
+      paceMultiplier: 1.04,
+      efficiencyMultiplier: 0.85,
+      threePointRateMult: 0.75,
+      threePointEfficiencyMult: 1.05,
+      ftRateMult: 1.35,
+      ftEfficiencyMult: 1.03,
+      blockRateMult: 2.10,
+      orbRateMult: 1.28,
+      assistRateMult: 1.00,
+      reboundOpportunityMult: 0.81,
+      stealRateMult: 0.93,
+      tovMult: 0.97,
+    },
+  },
 };
 
 /** FIBA-style: 10-min quarters, no 3PT (hypothetical rule experiment). */
@@ -398,6 +603,21 @@ export const KNOBS_NO_THREE: SimulatorKnobs = {
 export const KNOBS_FIBA_QUARTERS: SimulatorKnobs = {
   ...KNOBS_DEFAULT,
   quarterLength: 10,
+  numQuarters: 4,
+  paceMultiplier: 0.93,
+  efficiencyMultiplier: 0.95,
+  threePointRateMult: 0.9,
+  ftRateMult: 0.88,
+  orbRateMult: 0.9,
+  assistRateMult: 0.92,
+  assistDistributionExponent: 0.9,
+  reboundOpportunityMult: 0.95,
+  reboundDistributionExponent: 1.35,
+  rotationDepthOverride: 11,
+  starMpgOverride: 30,
+  conferenceRank: 3,
+  gbFromLeader: 0,
+  gamesRemaining: 20,
 };
 
 export function isEuroClubTeamId(teamId: number): boolean {
@@ -422,6 +642,41 @@ export function isEuroClubCompetitionGame(
  */
 export function getKnobs(overrides?: Partial<SimulatorKnobs>): SimulatorKnobs {
   return { ...KNOBS_DEFAULT, ...overrides };
+}
+
+export function applySimulationEngineCalibration(
+  knobs: SimulatorKnobs,
+  engine: SimulationEngine,
+): SimulatorKnobs {
+  const calibration = knobs.engineCalibration?.[engine];
+  if (!calibration) return knobs;
+  const { engineCalibration: _engineCalibration, ...base } = knobs;
+  const multiply = (value: number | undefined, multiplier: number | undefined) =>
+    (value ?? 1) * (multiplier ?? 1);
+  return {
+    ...base,
+    paceMultiplier: multiply(knobs.paceMultiplier, calibration.paceMultiplier),
+    fieldGoalAttemptMult: multiply(knobs.fieldGoalAttemptMult, calibration.fieldGoalAttemptMult),
+    efficiencyMultiplier: multiply(knobs.efficiencyMultiplier, calibration.efficiencyMultiplier),
+    threePointRateMult: multiply(knobs.threePointRateMult, calibration.threePointRateMult),
+    threePointAttemptCapMult: multiply(knobs.threePointAttemptCapMult, calibration.threePointAttemptCapMult),
+    threePointSkillExponentMult: multiply(knobs.threePointSkillExponentMult, calibration.threePointSkillExponentMult),
+    threePointAttemptVolumeMult: multiply(knobs.threePointAttemptVolumeMult, calibration.threePointAttemptVolumeMult),
+    threePointAttemptFloorRate: calibration.threePointAttemptFloorRate ?? knobs.threePointAttemptFloorRate,
+    bigThreePointAttemptFloorRate: calibration.bigThreePointAttemptFloorRate ?? knobs.bigThreePointAttemptFloorRate,
+    lowThreePointAttemptCapMult: multiply(knobs.lowThreePointAttemptCapMult, calibration.lowThreePointAttemptCapMult),
+    threePointEfficiencyMult: multiply(knobs.threePointEfficiencyMult, calibration.threePointEfficiencyMult),
+    twoPointEfficiencyMult: multiply(knobs.twoPointEfficiencyMult, calibration.twoPointEfficiencyMult),
+    ftRateMult: multiply(knobs.ftRateMult, calibration.ftRateMult),
+    ftEfficiencyMult: multiply(knobs.ftEfficiencyMult, calibration.ftEfficiencyMult),
+    blockRateMult: multiply(knobs.blockRateMult, calibration.blockRateMult),
+    stealRateMult: multiply(knobs.stealRateMult, calibration.stealRateMult),
+    orbRateMult: multiply(knobs.orbRateMult, calibration.orbRateMult),
+    assistRateMult: multiply(knobs.assistRateMult, calibration.assistRateMult),
+    reboundOpportunityMult: multiply(knobs.reboundOpportunityMult, calibration.reboundOpportunityMult),
+    tovMult: multiply(knobs.tovMult, calibration.tovMult),
+    personalFoulRateMult: multiply(knobs.personalFoulRateMult, calibration.personalFoulRateMult),
+  };
 }
 
 export interface SystemKnobMods {

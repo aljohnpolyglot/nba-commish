@@ -3,7 +3,7 @@ import { Info } from 'lucide-react';
 
 const InfoTooltip = ({ text }: { text: string }) => (
     <div className="group relative inline-flex items-center justify-center ml-1">
-        <Info size={12} className="text-slate-500 cursor-help hover:text-indigo-400 transition-colors" />
+        <Info size={12} className="text-slate-500 cursor-default hover:text-indigo-400 transition-colors" />
         <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-slate-800 text-white text-[10px] rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-10 pointer-events-none shadow-xl border border-slate-700 text-center leading-relaxed">
             {text}
             <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-slate-800"></div>
@@ -153,7 +153,7 @@ export const EconomyRookieContractsSection = ({
             <div className="flex items-center justify-between mt-4 pt-4 border-t border-slate-800/50">
                 <div className="flex items-center">
                     <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Non-Guaranteed R2 Contracts</span>
-                    <InfoTooltip text="2nd round rookies sign non-guaranteed deals. Teams can waive them for free before Oct 22. Players who survive to Jan 10 are automatically guaranteed." />
+                    <InfoTooltip text="Second-round rookies sign non-guaranteed deals. An automatic guarantee applies only when the Season Calendar has a guarantee deadline." />
                 </div>
                 <button
                     onClick={() => props.setR2ContractsNonGuaranteed(!(props.r2ContractsNonGuaranteed ?? true))}

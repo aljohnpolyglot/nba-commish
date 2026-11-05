@@ -17,7 +17,7 @@ interface Props {
  * Blocks the next sim step when ALL of:
  *  - User is in euro_isolated mode
  *  - User team has at least one expired sponsorship slot (`sponsorships[slot] === null`)
- *  - The pending sim target date would cross the season rollover date (June 30)
+ *  - The pending sim target date would cross the saved season transition date
  *
  * Surfaces a "Negotiate now or fall back to default sponsors?" modal. The user
  * either opens negotiations (the row in OffseasonAufgaben handles this, but

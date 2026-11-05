@@ -24,7 +24,7 @@ interface AssetActionModalProps {
 type InnerView = 'menu' | 'gift_select' | 'deploy_input';
 
 export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClose, onRemoveAsset }) => {
-  const { dispatchAction } = useGame();
+  const { state, dispatchAction } = useGame();
   const rosterGate = useRosterComplianceGate();
   const draftGate = useDraftEventGate();
 
@@ -50,34 +50,83 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
     onClose();
   };
 
-  /* ─── GIFT ─── person selector → ADVANCE_DAY so LLM narrates it */
   const handleGiftPersonSelected = async (contacts: Contact[]) => {
     if (!contacts.length) return;
     const recipientName = contacts.map(c => c.name).join(', ');
+    const outcomeText = `Commissioner gifted ${qty}x "${asset.product.title}" (valued at $${(unitPrice * qty).toLocaleString()}) to ${recipientName} as a personal gesture.`;
     setIsProcessing(true);
-    onRemoveAsset(asset, qty);
-    onClose();
-    rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
-      type: 'ADVANCE_DAY',
-      payload: {
-        outcomeText: `Commissioner gifted ${qty}x "${asset.product.title}" (valued at $${(unitPrice * qty).toLocaleString()}) to ${recipientName} as a personal gesture.`,
-      },
-    } as any)));
+    rosterGate.attempt(() => draftGate.attempt(() => {
+      onRemoveAsset(asset, qty);
+      onClose();
+      dispatchAction({
+        type: 'ADVANCE_DAY',
+        payload: {
+          nativeOnly: true,
+          outcomeText,
+          nativeNews: [{
+            headline: 'Commissioner Sends Personal Gift',
+            content: outcomeText,
+            date: state.date,
+            type: 'league',
+            read: false,
+          }],
+          nativeSocialPosts: [
+            {
+              author: 'League Wire',
+              handle: '@LeagueWire',
+              content: `${recipientName} received "${asset.product.title}" from the Commissioner today.`,
+              source: 'TwitterX',
+            },
+            {
+              author: 'Hoops Culture',
+              handle: '@HoopsCulture',
+              content: `The Commissioner's gift to ${recipientName} is already drawing reactions around the league.`,
+              source: 'TwitterX',
+            },
+          ],
+        },
+      } as any);
+    }));
     setIsProcessing(false);
   };
 
-  /* ─── DEPLOY ─── LLM-driven, user describes intent */
   const handleDeploySubmit = async () => {
     if (!deployText.trim()) return;
+    const use = deployText.trim();
+    const outcomeText = `Commissioner deployed ${qty}x "${asset.product.title}": ${use}`;
     setIsProcessing(true);
-    onRemoveAsset(asset, qty);
-    onClose();
-    rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
-      type: 'ADVANCE_DAY',
-      payload: {
-        outcomeText: `Commissioner deployed ${qty}x "${asset.product.title}": ${deployText.trim()}`,
-      },
-    } as any)));
+    rosterGate.attempt(() => draftGate.attempt(() => {
+      onRemoveAsset(asset, qty);
+      onClose();
+      dispatchAction({
+        type: 'ADVANCE_DAY',
+        payload: {
+          nativeOnly: true,
+          outcomeText,
+          nativeNews: [{
+            headline: 'Commissioner Deploys Store Asset',
+            content: outcomeText,
+            date: state.date,
+            type: 'league',
+            read: false,
+          }],
+          nativeSocialPosts: [
+            {
+              author: 'League Wire',
+              handle: '@LeagueWire',
+              content: `The Commissioner put "${asset.product.title}" into use today: ${use}`,
+              source: 'TwitterX',
+            },
+            {
+              author: 'Basketball Daily',
+              handle: '@BasketballDaily',
+              content: `League observers are discussing how the Commissioner used "${asset.product.title}".`,
+              source: 'TwitterX',
+            },
+          ],
+        },
+      } as any);
+    }));
     setIsProcessing(false);
   };
 
@@ -204,13 +253,12 @@ export const AssetActionModal: React.FC<AssetActionModalProps> = ({ asset, onClo
                   </div>
                 </button>
 
-                {/* DEPLOY */}
                 <button
                   onClick={() => setInnerView('deploy_input')}
                   className="w-full rounded-2xl bg-purple-600 p-4 text-white transition-all hover:bg-purple-700"
                 >
                   <div className="flex items-center justify-center gap-2 font-black text-base">
-                    <span>🤖</span> USE / DEPLOY
+                    <span>📦</span> USE / DEPLOY
                   </div>
                 </button>
 

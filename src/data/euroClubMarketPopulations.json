@@ -1,0 +1,1802 @@
+[
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 0,
+    "region": "AS",
+    "name": "Monaco",
+    "pop": 0.033
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 1,
+    "region": "ASVEL Basket",
+    "name": "",
+    "pop": 0.1314
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 2,
+    "region": "BCM Gravelines",
+    "name": "",
+    "pop": 0.0131
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 3,
+    "region": "Boulazac Basket Dordogne",
+    "name": "",
+    "pop": 0.0081
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 4,
+    "region": "Chalon-Sur-Saone",
+    "name": "",
+    "pop": 0.0473
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 5,
+    "region": "Cholet Basket",
+    "name": "",
+    "pop": 0.0532
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 6,
+    "region": "CSP Limoges",
+    "name": "",
+    "pop": 0.1412
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 7,
+    "region": "JDA Dijon Basket",
+    "name": "",
+    "pop": 0.158
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 8,
+    "region": "JL Bourg-en-Bresse",
+    "name": "",
+    "pop": 0.0453
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 9,
+    "region": "Le Mans Sarthe Basket",
+    "name": "",
+    "pop": 0.1445
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 10,
+    "region": "Le Portel",
+    "name": "",
+    "pop": 0.0111
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 11,
+    "region": "Nancy Basket",
+    "name": "",
+    "pop": 0.1051
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 12,
+    "region": "Nanterre 92",
+    "name": "",
+    "pop": 0.0867
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 13,
+    "region": "Paris",
+    "name": "Paris",
+    "pop": 2.1386
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 14,
+    "region": "Saint-Quentin Basketball",
+    "name": "",
+    "pop": 0.0554
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 15,
+    "region": "Strasbourg IG",
+    "name": "",
+    "pop": 0.2748
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 16,
+    "region": "ADA Blois Basket",
+    "name": "",
+    "pop": 0.0537
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 17,
+    "region": "Antibes",
+    "name": "",
+    "pop": 0.0764
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 18,
+    "region": "Besancon BCD",
+    "name": "",
+    "pop": 0.1284
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 19,
+    "region": "Boulogne-Levallois",
+    "name": "",
+    "pop": 0.0006
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 20,
+    "region": "Chalons en Champagne",
+    "name": "",
+    "pop": 0.0513
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 21,
+    "region": "Chalons-Reims CB",
+    "name": "",
+    "pop": 0.1966
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 22,
+    "region": "Chorale Roanne Basket",
+    "name": "",
+    "pop": 0.0398
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 23,
+    "region": "Etendard de Brest",
+    "name": "",
+    "pop": 0.1449
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 24,
+    "region": "Fos Sur Mer Byers",
+    "name": "",
+    "pop": 0.0173
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 25,
+    "region": "Hyeres-Toulon",
+    "name": "",
+    "pop": 0.1687
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 26,
+    "region": "JA Vichy",
+    "name": "",
+    "pop": 0.027
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 27,
+    "region": "Orleans Loiret Basket",
+    "name": "",
+    "pop": 0.1163
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 28,
+    "region": "Pau-Orthez",
+    "name": "",
+    "pop": 0.0119
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 29,
+    "region": "Poitiers Basket 86",
+    "name": "",
+    "pop": 0.086
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 30,
+    "region": "Rouen Metropole Basket",
+    "name": "",
+    "pop": 0.2345
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 31,
+    "region": "SO Maritime Boulogne",
+    "name": "",
+    "pop": 0.0006
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 32,
+    "region": "Stade Clermontois BA",
+    "name": "",
+    "pop": 0.1479
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 33,
+    "region": "STB Le Havre",
+    "name": "",
+    "pop": 0.186
+  },
+  {
+    "league": "France Elite",
+    "country": "FR",
+    "tid": 34,
+    "region": "Union La Rochelle",
+    "name": "",
+    "pop": 0.0768
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 0,
+    "region": "Acqua San Bernardo Cantu",
+    "name": "",
+    "pop": 0.0399
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 1,
+    "region": "AX Armani Exchange Milan",
+    "name": "",
+    "pop": 1.3715
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 2,
+    "region": "Banco di Sardegna Sassari",
+    "name": "",
+    "pop": 0.0919
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 3,
+    "region": "Bertram Tortona",
+    "name": "",
+    "pop": 0.0227
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 4,
+    "region": "Dolomiti Energia Trento",
+    "name": "",
+    "pop": 0.1207
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 5,
+    "region": "Grissin Bon Reggio Emilia",
+    "name": "",
+    "pop": 0.1719
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 6,
+    "region": "Maxima Roma",
+    "name": "",
+    "pop": 2.3189
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 7,
+    "region": "Napoli Basket",
+    "name": "",
+    "pop": 0.909
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 8,
+    "region": "Old Wild West Udine",
+    "name": "",
+    "pop": 0.1002
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 9,
+    "region": "OpenJobMetis Varese",
+    "name": "",
+    "pop": 0.0806
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 10,
+    "region": "Pallacanestro Trieste 2004",
+    "name": "",
+    "pop": 0.2043
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 11,
+    "region": "Roma SPQR",
+    "name": "",
+    "pop": 2.3189
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 12,
+    "region": "Umana Venezia",
+    "name": "",
+    "pop": 0.0513
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 13,
+    "region": "Universo De",
+    "name": "",
+    "pop": 0.0858
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 14,
+    "region": "Virtus",
+    "name": "Segafredo Bologna",
+    "pop": 0.3948
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 15,
+    "region": "2B Control Trapani",
+    "name": "",
+    "pop": 0.0675
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 16,
+    "region": "Akern Libertas Livorno",
+    "name": "",
+    "pop": 0.157
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 17,
+    "region": "Banca Tercas Teramo",
+    "name": "",
+    "pop": 0.0543
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 18,
+    "region": "Carpegna Prosciutto Basket Pesaro",
+    "name": "",
+    "pop": 0.0014
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 19,
+    "region": "Edilnol Pallacanestro Biella",
+    "name": "",
+    "pop": 0.043
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 20,
+    "region": "Enel Brindisi",
+    "name": "",
+    "pop": 0.0871
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 21,
+    "region": "Feli Pharma Ferrara",
+    "name": "",
+    "pop": 0.132
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 22,
+    "region": "Fiat Torino",
+    "name": "",
+    "pop": 0.8473
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 23,
+    "region": "Fortituto Kontatto Bologna",
+    "name": "",
+    "pop": 0.3948
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 24,
+    "region": "Georgio Tesi Group Pistoia",
+    "name": "",
+    "pop": 0.0738
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 25,
+    "region": "Givova Scafati",
+    "name": "",
+    "pop": 0.0487
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 26,
+    "region": "Mens Sana 1871 Siena",
+    "name": "",
+    "pop": 0.0539
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 27,
+    "region": "Novipiu Casale Monferrato",
+    "name": "",
+    "pop": 0.0332
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 28,
+    "region": "Orlandina Basket",
+    "name": "",
+    "pop": 0.012
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 29,
+    "region": "Pallacanestro Messina",
+    "name": "",
+    "pop": 0.2199
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 30,
+    "region": "Pallalcesto Amatori Udine",
+    "name": "",
+    "pop": 0.1002
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 31,
+    "region": "Pasta Reggia JuveCaserta",
+    "name": "",
+    "pop": 0.002
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 32,
+    "region": "Roseto Sharks",
+    "name": "",
+    "pop": 0.0165
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 33,
+    "region": "S.S. Basket Napoli",
+    "name": "",
+    "pop": 0.909
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 34,
+    "region": "Sidigas Avellino",
+    "name": "",
+    "pop": 0.0481
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 35,
+    "region": "Solsonica Rieti",
+    "name": "",
+    "pop": 0.0391
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 36,
+    "region": "Sutor Montegranaro",
+    "name": "",
+    "pop": 0.0115
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 37,
+    "region": "Termoiforgia Jesi",
+    "name": "",
+    "pop": 0.037
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 38,
+    "region": "Tezenis Scaligera Verona",
+    "name": "",
+    "pop": 0.258
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 39,
+    "region": "Viola Reggio Calabria",
+    "name": "",
+    "pop": 0.1825
+  },
+  {
+    "league": "Italy Serie A",
+    "country": "IT",
+    "tid": 40,
+    "region": "Virtus Roma",
+    "name": "",
+    "pop": 2.3189
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 0,
+    "region": "Alba",
+    "name": "Berlin",
+    "pop": 3.4264
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 1,
+    "region": "Basketball Lowen Braunschweig",
+    "name": "",
+    "pop": 0.2447
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 2,
+    "region": "FC",
+    "name": "Bayern Munich",
+    "pop": 1.2604
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 3,
+    "region": "Brose Baskets Bamberg",
+    "name": "",
+    "pop": 0.07
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 4,
+    "region": "BV Chemnitz 99",
+    "name": "",
+    "pop": 0.2472
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 5,
+    "region": "EWE Baskets Oldenburg",
+    "name": "",
+    "pop": 0.1592
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 6,
+    "region": "Fraport Skyliners",
+    "name": "",
+    "pop": 0.65
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 7,
+    "region": "Gladiators Trier",
+    "name": "",
+    "pop": 0.1001
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 8,
+    "region": "MHP Riesen",
+    "name": "",
+    "pop": 0.0876
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 9,
+    "region": "Mitteldeutscher BC",
+    "name": "",
+    "pop": 0.0298
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 10,
+    "region": "MLP Academics Heidelberg",
+    "name": "",
+    "pop": 0.1433
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 11,
+    "region": "Ratiopharm Ulm",
+    "name": "",
+    "pop": 0.1205
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 12,
+    "region": "Rostock Seawolves",
+    "name": "",
+    "pop": 0.1983
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 13,
+    "region": "s.Oliver Baskets",
+    "name": "",
+    "pop": 0.1337
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 14,
+    "region": "San Miguel Beermen",
+    "name": "",
+    "pop": 1.6
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 15,
+    "region": "SC Rasta Vechta",
+    "name": "",
+    "pop": 0.0297
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 16,
+    "region": "Science City Jena",
+    "name": "",
+    "pop": 0.1047
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 17,
+    "region": "Telekom Baskets Bonn",
+    "name": "",
+    "pop": 0.3306
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 18,
+    "region": "Veolia Towers Hamburg",
+    "name": "",
+    "pop": 1.8452
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 19,
+    "region": "Artland Dragons",
+    "name": "",
+    "pop": 0.0127
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 20,
+    "region": "Bayer Giants Leverkusen",
+    "name": "",
+    "pop": 0.1627
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 21,
+    "region": "BBC Bayreuth",
+    "name": "",
+    "pop": 0.0751
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 22,
+    "region": "BG Goettingen",
+    "name": "",
+    "pop": 0.1221
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 23,
+    "region": "BG Gottingen",
+    "name": "",
+    "pop": 0.1221
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 24,
+    "region": "BG Karlsruhe",
+    "name": "",
+    "pop": 0.2838
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 25,
+    "region": "BiG Oettinger Rockets Gotha",
+    "name": "",
+    "pop": 0.0466
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 26,
+    "region": "Duesseldorf Baskets",
+    "name": "",
+    "pop": 0.6205
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 27,
+    "region": "Eisbaren Bremerhaven",
+    "name": "",
+    "pop": 0.1136
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 28,
+    "region": "EN Baskets Schwelm",
+    "name": "",
+    "pop": 0.0302
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 29,
+    "region": "Gartenzaun24 Baskets Paderborn",
+    "name": "",
+    "pop": 0.1422
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 30,
+    "region": "Giants TSV 1861 Noerdlingen",
+    "name": "",
+    "pop": 0.0195
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 31,
+    "region": "Giessen 46ers",
+    "name": "",
+    "pop": 0.0744
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 32,
+    "region": "HARKO Merlins Crailsheim",
+    "name": "",
+    "pop": 0.0323
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 33,
+    "region": "Phoenix Hagen",
+    "name": "",
+    "pop": 0.199
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 34,
+    "region": "Rhein Stars Koeln",
+    "name": "",
+    "pop": 0.9634
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 35,
+    "region": "Sellbytel Baskets Nurnberg",
+    "name": "",
+    "pop": 0.5155
+  },
+  {
+    "league": "Germany BBL",
+    "country": "DE",
+    "tid": 36,
+    "region": "Walter Tigers Tubingen",
+    "name": "",
+    "pop": 0.0834
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 0,
+    "region": "AEK",
+    "name": "Athens",
+    "pop": 0.664
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 1,
+    "region": "Aris Midea Thessaloniki",
+    "name": "",
+    "pop": 0.3178
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 2,
+    "region": "AS Karditsas",
+    "name": "",
+    "pop": 0.0328
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 3,
+    "region": "ASP Promitheas Patras",
+    "name": "",
+    "pop": 0.168
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 4,
+    "region": "Iraklis BC",
+    "name": "",
+    "pop": 0.3178
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 5,
+    "region": "Kolossos Rodou BC",
+    "name": "",
+    "pop": 0.0561
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 6,
+    "region": "Maroussi BC",
+    "name": "",
+    "pop": 0.0723
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 7,
+    "region": "Mykonos",
+    "name": "",
+    "pop": 0.0038
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 8,
+    "region": "Olympiacos",
+    "name": "Piraeus",
+    "pop": 0.1637
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 9,
+    "region": "Panathinaikos",
+    "name": "Athens",
+    "pop": 0.664
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 10,
+    "region": "Panionios BC",
+    "name": "",
+    "pop": 0.0731
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 11,
+    "region": "PAOK BC",
+    "name": "",
+    "pop": 0.3178
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 12,
+    "region": "Peristeri Betsson",
+    "name": "",
+    "pop": 0.14
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 13,
+    "region": "AE Doxa Lefkadas",
+    "name": "",
+    "pop": 0.0087
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 14,
+    "region": "AE Nea Kifisia",
+    "name": "",
+    "pop": 0.0473
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 15,
+    "region": "Aries Trikala BC",
+    "name": "",
+    "pop": 0.0617
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 16,
+    "region": "AS Apollon Patras",
+    "name": "",
+    "pop": 0.168
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 17,
+    "region": "ASA Koroivos Amaliadas",
+    "name": "",
+    "pop": 0.0168
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 18,
+    "region": "Charilaos Trikoupis Mesologiou",
+    "name": "",
+    "pop": 0.0128
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 19,
+    "region": "Enosi Kalathosfairisis Kavalas",
+    "name": "",
+    "pop": 0.054
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 20,
+    "region": "Ermis Agias Larissa",
+    "name": "",
+    "pop": 0.1469
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 21,
+    "region": "GS Kymis",
+    "name": "",
+    "pop": 0.003
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 22,
+    "region": "GS Lavrio",
+    "name": "",
+    "pop": 0.0071
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 23,
+    "region": "Holargos",
+    "name": "",
+    "pop": 0.0308
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 24,
+    "region": "Ifestos Limnou",
+    "name": "",
+    "pop": 0.0054
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 25,
+    "region": "Ikaros Kallitheas BC",
+    "name": "",
+    "pop": 0.0006
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 26,
+    "region": "Ilisiakos BC",
+    "name": "",
+    "pop": 0.664
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 27,
+    "region": "Ionikos Nikaias BC",
+    "name": "",
+    "pop": 0.0894
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 28,
+    "region": "KAOD BC",
+    "name": "",
+    "pop": 0.0448
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 29,
+    "region": "Panelefsiniakos AOK Eleusina",
+    "name": "",
+    "pop": 0.0249
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 30,
+    "region": "Rethymno",
+    "name": "",
+    "pop": 0.0325
+  },
+  {
+    "league": "Greece A1",
+    "country": "GR",
+    "tid": 31,
+    "region": "Sefa Arkadikos",
+    "name": "",
+    "pop": 0.0266
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 0,
+    "region": "Anadolu",
+    "name": "Efes Istanbul",
+    "pop": 15.7016
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 1,
+    "region": "Bahcesehir Koleji",
+    "name": "",
+    "pop": 15.7016
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 2,
+    "region": "Besiktas Icrypex",
+    "name": "",
+    "pop": 15.7016
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 3,
+    "region": "Bursaspor",
+    "name": "",
+    "pop": 3.1018
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 4,
+    "region": "Demir Insaat Buyukcekmece",
+    "name": "",
+    "pop": 0.1631
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 5,
+    "region": "Esenler Erokspor",
+    "name": "",
+    "pop": 0.5202
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 6,
+    "region": "Fenerbahce Beko",
+    "name": "",
+    "pop": 15.7016
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 7,
+    "region": "Galatasaray",
+    "name": "",
+    "pop": 15.7016
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 8,
+    "region": "Manisa Buyuksehir Belediye",
+    "name": "",
+    "pop": 0.244
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 9,
+    "region": "Merkezefendi Belediyesi Denizli Basket",
+    "name": "",
+    "pop": 0.2803
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 10,
+    "region": "Mersin BSB",
+    "name": "",
+    "pop": 0.5378
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 11,
+    "region": "Pinar Karsiyaka",
+    "name": "",
+    "pop": 2.9383
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 12,
+    "region": "Socar Petkimspor",
+    "name": "",
+    "pop": 0.0449
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 13,
+    "region": "Tofas SC",
+    "name": "",
+    "pop": 3.1018
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 14,
+    "region": "Trabzonspor",
+    "name": "",
+    "pop": 0.2441
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 15,
+    "region": "Turk Telekom",
+    "name": "",
+    "pop": 3.5172
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 16,
+    "region": "Afyonkarahisar Belediye",
+    "name": "",
+    "pop": 0.2518
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 17,
+    "region": "Aliaga Petkim",
+    "name": "",
+    "pop": 0.0449
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 18,
+    "region": "Antalya BSB",
+    "name": "",
+    "pop": 1.344
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 19,
+    "region": "Aykon TED Kolejliler Ankara",
+    "name": "",
+    "pop": 3.5172
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 20,
+    "region": "Bandirma Kirmizi",
+    "name": "",
+    "pop": 0.1076
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 21,
+    "region": "Best Balikesir Basketbol Kulubu",
+    "name": "",
+    "pop": 0.2382
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 22,
+    "region": "Cagdas Bodrum Spor",
+    "name": "",
+    "pop": 0.0393
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 23,
+    "region": "Darussafaka Basketbol Istanbul",
+    "name": "",
+    "pop": 15.7016
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 24,
+    "region": "Erdemirspor",
+    "name": "",
+    "pop": 0.0921
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 25,
+    "region": "Eskishehir Basket",
+    "name": "",
+    "pop": 0.789
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 26,
+    "region": "Hacettepe Universitesi",
+    "name": "",
+    "pop": 3.5172
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 27,
+    "region": "Istanbul Buyuksehir Belediyesi",
+    "name": "",
+    "pop": 15.7016
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 28,
+    "region": "Lokman Hekim Fethiye Belediye Spor",
+    "name": "",
+    "pop": 0.0604
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 29,
+    "region": "Ormanspor Genc Ankara",
+    "name": "",
+    "pop": 3.5172
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 30,
+    "region": "Royal Hali Gaziantep",
+    "name": "",
+    "pop": 2.1304
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 31,
+    "region": "Sakarya Buyuksehir Basketbol",
+    "name": "",
+    "pop": 0.2868
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 32,
+    "region": "Samsunspor DSI",
+    "name": "",
+    "pop": 0.394
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 33,
+    "region": "Sigortam.net iLab Bakiroy",
+    "name": "",
+    "pop": 15.7016
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 34,
+    "region": "Teksut Bandirma",
+    "name": "",
+    "pop": 0.1076
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 35,
+    "region": "Torku Konyaspor",
+    "name": "",
+    "pop": 1.4339
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 36,
+    "region": "Usak Sportlif",
+    "name": "",
+    "pop": 0.3694
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 37,
+    "region": "Yalova Group Belediye Spor",
+    "name": "",
+    "pop": 0.0713
+  },
+  {
+    "league": "Turkey BSL",
+    "country": "TR",
+    "tid": 38,
+    "region": "Yesilgiresun Belediye",
+    "name": "",
+    "pop": 0.1257
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 0,
+    "region": "7Bet-Lietkabelis Panevezys",
+    "name": "",
+    "pop": 0.0859
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 1,
+    "region": "Gargzdu Gargzdai",
+    "name": "",
+    "pop": 0.0164
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 2,
+    "region": "Jonava Jonavos",
+    "name": "",
+    "pop": 0.0264
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 3,
+    "region": "Juventus",
+    "name": "",
+    "pop": 0.0254
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 4,
+    "region": "Kedainiai Nevezis",
+    "name": "",
+    "pop": 0.0227
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 5,
+    "region": "Lietuvos Rytas",
+    "name": "",
+    "pop": 0.5424
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 6,
+    "region": "Neptunas",
+    "name": "",
+    "pop": 0.1723
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 7,
+    "region": "Siauliai",
+    "name": "",
+    "pop": 0.0995
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 8,
+    "region": "Zalgiris",
+    "name": "Kaunas",
+    "pop": 0.2894
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 9,
+    "region": "Dzukija",
+    "name": "",
+    "pop": 0.0492
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 10,
+    "region": "LKKA LSU Atletas",
+    "name": "",
+    "pop": 0.2894
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 11,
+    "region": "Mazeikiai",
+    "name": "",
+    "pop": 0.0325
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 12,
+    "region": "Palangos Kursiai",
+    "name": "",
+    "pop": 0.0182
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 13,
+    "region": "Pieno Zvaigzdes",
+    "name": "",
+    "pop": 0.0064
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 14,
+    "region": "Sakalai",
+    "name": "",
+    "pop": 0.5424
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 15,
+    "region": "Vytautas Prienu",
+    "name": "",
+    "pop": 0.0086
+  },
+  {
+    "league": "Lithuania LKL",
+    "country": "LT",
+    "tid": 16,
+    "region": "Wolves Twinsbet Vilnius",
+    "name": "",
+    "pop": 0.5424
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 0,
+    "region": "Bnei Herzelia",
+    "name": "",
+    "pop": 0.0975
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 1,
+    "region": "Elitzur Kiryat Ata",
+    "name": "",
+    "pop": 0.059
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 2,
+    "region": "Elitzur Netanya",
+    "name": "",
+    "pop": 0.2282
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 3,
+    "region": "Hapoel Bank Yahav Jerusalem",
+    "name": "",
+    "pop": 0.9718
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 4,
+    "region": "Hapoel Beer Sheva",
+    "name": "",
+    "pop": 0.1866
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 5,
+    "region": "Hapoel HaEmek",
+    "name": "",
+    "pop": 0.0449
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 6,
+    "region": "Hapoel",
+    "name": "Tel Aviv",
+    "pop": 0.4329
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 7,
+    "region": "Hapoel Unet Holon",
+    "name": "",
+    "pop": 0.1963
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 8,
+    "region": "Hapoel Upper Galilee Safed",
+    "name": "",
+    "pop": 0.0361
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 9,
+    "region": "Ironi Nes Ziona",
+    "name": "",
+    "pop": 0.0504
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 10,
+    "region": "Ironi Ramat Gan",
+    "name": "",
+    "pop": 0.1708
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 11,
+    "region": "Maccabi FOX Tel Aviv",
+    "name": "",
+    "pop": 0.4329
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 12,
+    "region": "Maccabi Raanana",
+    "name": "",
+    "pop": 0.0754
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 13,
+    "region": "Maccabi Rishon Lezion",
+    "name": "",
+    "pop": 0.2585
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 14,
+    "region": "BC Habikaa",
+    "name": "",
+    "pop": 0.0286
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 15,
+    "region": "Elizur Ashkelon",
+    "name": "",
+    "pop": 0.1441
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 16,
+    "region": "Hapoel Afula",
+    "name": "",
+    "pop": 0.0449
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 17,
+    "region": "Hapoel Eilat",
+    "name": "",
+    "pop": 0.0523
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 18,
+    "region": "Hapoel Galil Gilboa",
+    "name": "",
+    "pop": 0.0449
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 19,
+    "region": "Hapoel Haifa",
+    "name": "",
+    "pop": 0.2853
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 20,
+    "region": "Ironi Nahariya",
+    "name": "",
+    "pop": 0.0581
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 21,
+    "region": "Maccabi Ashdod",
+    "name": "",
+    "pop": 0.2268
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 22,
+    "region": "Maccabi Bazan Haifa",
+    "name": "",
+    "pop": 0.2853
+  },
+  {
+    "league": "Israel BSL",
+    "country": "IL",
+    "tid": 23,
+    "region": "Maccabi Kiryat Gat",
+    "name": "",
+    "pop": 0.0618
+  }
+]

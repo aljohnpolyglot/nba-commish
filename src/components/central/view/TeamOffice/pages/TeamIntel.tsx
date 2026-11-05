@@ -2,35 +2,30 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
-import { PlayerSelectorGrid, type PlayerSelectorItem } from '../../../../shared/PlayerSelectorGrid';
 import { StarterService } from '../../../../../services/simulation/StarterService';
-import { convertTo2KRating, formatCurrencyWithCode } from '../../../../../utils/helpers';
 import { NBAPlayer, TeamStatus } from '../../../../../types';
 import { calcPlayerTV, calcOvr2K, isUntouchable, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
 import { AwardService } from '../../../../../services/logic/AwardService';
-import { formatSalaryM, getCapThresholds, getTeamCapProfileFromState, MANUAL_STATUS_LABEL } from '../../../../../utils/salaryUtils';
+import { formatSalaryM, getManualStatusLabel } from '../../../../../utils/salaryUtils';
 import { getTradingBlock, saveTradingBlock } from '../../../../../store/tradingBlockStore';
 import { TeamIntelFreeAgency } from './TeamIntelFreeAgency';
 import { TeamIntelExpiring } from './TeamIntelExpiring';
 import { resolveTeamStrategyProfile } from '../../../../../utils/teamStrategy';
-import { compareGameDates, getCurrentOffseasonEffectiveFAStart, parseGameDate } from '../../../../../utils/dateUtils';
-import { getOffseasonState } from '../../../../../services/offseason/offseasonState';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../../../utils/uiMode';
 import { isPbaTradeWindowOpen } from '../../../../../services/pba/tradeWindow';
 import { getTeamFullName } from '../../../../../utils/teamNames';
 import { getDisplayAge } from '../../../../../store/playerRatingStore';
+import { getTeamFreeAgencyCapSummary } from '../../../../../services/freeAgency/capProjection';
+import { getScoutedDisplayOverall } from '../../../../../utils/scoutingFuzz';
+import { getConferenceSpec, type PbaConference } from '../../../../../services/pba/conferenceTransition';
+import { getTeamCompetitionRecord } from '../../../../../utils/competitionRecord';
+import { getPlayersOnCourt } from '../../../../../services/simulation/courtSize';
+import { getEffectiveContractEndYear } from '../../../../../services/freeAgency/offseasonContractDecision';
 
 interface TeamIntelProps {
   teamId: number;
   onPlayerClick?: (player: NBAPlayer) => void;
-}
-
-/** Get K2 (2K-style) overall for a player */
-function getK2Ovr(p: NBAPlayer): number {
-  const r = p.ratings?.[p.ratings.length - 1];
-  if (!r) return p.overallRating;
-  return convertTo2KRating(p.overallRating, r.hgt ?? 50, r.tp ?? 50);
 }
 
 export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
@@ -38,18 +33,6 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const pbaMode = isPbaIsolatedMode(state);
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const players = (state.players || []).filter(p => p.tid === teamId && isOnRoster(p));
-  const expiringAnchorYear = state.date
-    ? parseGameDate(state.date).getUTCFullYear()
-    : state.leagueStats?.year ?? new Date().getFullYear();
-  const allTeamsForPickers = useMemo(
-    () => [
-      ...(state.teams ?? []),
-      ...((state.nonNBATeams ?? [])
-        .map(nonNBA => resolveAnyTeam(nonNBA.tid, state.teams, state.nonNBATeams ?? []))
-        .filter((resolved): resolved is NonNullable<typeof team> => resolved !== null)),
-    ],
-    [state.nonNBATeams, state.teams, team],
-  );
   const teamColor = team?.colors?.[0] || '#552583';
   const teamName = team ? getTeamFullName(team) : '';
 
@@ -61,9 +44,19 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   // sortByPositionSlot does the depth-aware ordering; the player's own `pos`
   // carries the auto-rename (e.g., a Wagner-style swingman tagged 'GF' shows
   // as GF, not SF) so the lineup labels match GamePlan exactly.
-  const currentSeason = state.leagueStats?.year ?? new Date().getFullYear();
-  const projected = StarterService.getProjectedStarters(team, state.players, currentSeason);
-  const sortedStarters = StarterService.sortByPositionSlot(projected.slice(0, 5), currentSeason);
+  const currentYear = state.leagueStats?.year || new Date().getFullYear();
+  const playersOnCourt = getPlayersOnCourt(state.leagueStats);
+  const currentSeason = currentYear;
+  const visibleK2 = (player: NBAPlayer) => getScoutedDisplayOverall(state, player, currentYear);
+  const projected = StarterService.getProjectedStarters(
+    team,
+    state.players,
+    currentSeason,
+    undefined,
+    true,
+    playersOnCourt,
+  );
+  const sortedStarters = StarterService.sortByPositionSlot(projected, currentSeason);
 
   const lineup: { player: NBAPlayer; lineupPos: string }[] = [];
   const usedIds = new Set<string>();
@@ -74,34 +67,29 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   });
 
   // 6th man: best remaining HEALTHY player by K2
-  const sortedByK2 = [...players].sort((a, b) => getK2Ovr(b) - getK2Ovr(a));
+  const sortedByK2 = [...players].sort((a, b) => calcOvr2K(b) - calcOvr2K(a));
   const sixthMan = sortedByK2.find(p => !usedIds.has(p.internalId) && !((p as any).injury?.gamesRemaining > 0));
   if (sixthMan) {
-    lineup.push({ player: sixthMan, lineupPos: '6TH' });
+    lineup.push({ player: sixthMan, lineupPos: playersOnCourt === 5 ? '6TH' : 'NEXT' });
   }
 
-  // Cap space: use the same cap profile helper as Team Intel Free Agency,
-  // including dead money and two-way exclusions.
-  const capProfile = getTeamCapProfileFromState(state, teamId, getCapThresholds(state.leagueStats as any));
-  const currentYear = state.leagueStats?.year || 2026;
-  // isPreFA only applies inside the offseason window (between rollover and FA-open).
-  // In-season (Nov–May) the "Projected cap (post-rollover)" label was lying — current
-  // payroll is already locked, no rollover is imminent.
-  const offseasonPhase = state.date
-    ? getOffseasonState(state.date, state.leagueStats as any, state.schedule as any).phase
-    : 'inSeason';
-  const isPreFA = offseasonPhase === 'preDraft' || offseasonPhase === 'draftDay' || offseasonPhase === 'postDraft' || offseasonPhase === 'moratorium';
-  const expiringSalaryUSD = isPreFA
-    ? players
-      .filter(p => (p.contract?.exp ?? 0) === currentYear && !(p as any).twoWay && (p.contract as any)?.type !== 'TWO_WAY')
-      .reduce((sum, p) => sum + ((p.contract?.amount ?? 0) * 1_000), 0)
-    : 0;
-  const displayedCapSpaceUSD = capProfile.capSpaceUSD + expiringSalaryUSD;
+  const capSummary = getTeamFreeAgencyCapSummary(state, teamId);
+  const displayedCapSpaceUSD = capSummary.capSpaceUSD;
   const euroIsolated = isEuroIsolatedMode(state);
+  const activeCompetitionId = pbaMode
+    ? getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id
+    : euroIsolated
+      ? state.euroPrimaryCompetitionId
+      : undefined;
+  const competitionRecord = activeCompetitionId
+    ? getTeamCompetitionRecord(state.boxScores ?? [], teamId, currentYear, activeCompetitionId)
+    : null;
+  const displayWins = competitionRecord?.wins ?? team.wins ?? 0;
+  const displayLosses = competitionRecord?.losses ?? team.losses ?? 0;
   const capFormatted = pbaMode
     ? 'No Cap'
     : euroIsolated
-    ? formatCurrencyWithCode(displayedCapSpaceUSD, state.leagueStats?.currency ?? 'EUR', false)
+    ? '—'
     : formatSalaryM(displayedCapSpaceUSD);
 
   const { status, strategyKey, tradingBlock, untouchables, targets } = useMemo(() => {
@@ -189,19 +177,14 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
   const expiring = [...players]
     .filter(p => {
       if (!p.contract) return false;
-      const cyYears = ((((p as any).contractYears) ?? []) as Array<{ season?: string }>)
-        .map(cy => parseInt(String(cy.season ?? '').split('-')[0], 10) + 1)
-        .filter(y => Number.isFinite(y));
-      const latestCY = cyYears.length > 0 ? Math.max(...cyYears) : 0;
-      const effectiveExp = Math.max(p.contract.exp ?? expiringAnchorYear, latestCY);
-      return effectiveExp <= expiringAnchorYear;
+      const effectiveExp = getEffectiveContractEndYear(p) ?? currentYear;
+      return effectiveExp <= currentYear;
     })
-    .sort((a, b) => getK2Ovr(b) - getK2Ovr(a));
+    .sort((a, b) => visibleK2(b) - visibleK2(a));
 
   // ── Editable lists (own team only) ──────────────────────────────────────
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
-  const [editingList, setEditingList] = useState<'untouchable' | 'block' | 'targets' | null>(null);
   // ── Sub-tab pill: Trades (existing) | Free Agency (new) ─────────────────
   // Both views share the team banner; only the body switches. Persists per-mount.
   const tradesDisabled = state.leagueStats?.tradesAllowed === false || (pbaMode && !isPbaTradeWindowOpen(state));
@@ -288,66 +271,6 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
     });
   }, [isOwnTeam, teamId, untouchableIds, blockIds, targetIds]);
 
-  // Build items for selectors
-  const ownRosterItems: PlayerSelectorItem[] = useMemo(() =>
-    players.map(p => ({
-      player: p,
-      score: getK2Ovr(p),
-      subtitle: `${getK2Ovr(p)} OVR`,
-    })),
-  [players]);
-
-  const leagueTargetItems: PlayerSelectorItem[] = useMemo(() =>
-    state.players
-      .filter(p => p.tid >= 0 && p.tid !== teamId && isOnRoster(p))
-      .filter(p => !pbaMode || p.status === 'PBA' || (p.tid >= 2000 && p.tid < 3000))
-      .map(p => ({
-        player: p,
-        score: getK2Ovr(p),
-        subtitle: `${getK2Ovr(p)} OVR`,
-      })),
-  [pbaMode, state.players, teamId]);
-
-  // Untouchable and block are mutually exclusive — adding to one removes
-  // from the other so the narrative + Trading Block UI never disagree.
-  const toggleUntouchable = (id: string) => {
-    setUntouchableIds(prev => {
-      const n = new Set(prev);
-      if (n.has(id)) { n.delete(id); return n; }
-      if (n.size >= 3) return prev;
-      n.add(id);
-      return n;
-    });
-    setBlockIds(prev => {
-      if (!prev.has(id)) return prev;
-      const n = new Set(prev);
-      n.delete(id);
-      return n;
-    });
-  };
-  const toggleBlock = (id: string) => {
-    setBlockIds(prev => {
-      const n = new Set(prev);
-      if (n.has(id)) { n.delete(id); return n; }
-      if (n.size >= 5) return prev;
-      n.add(id);
-      return n;
-    });
-    setUntouchableIds(prev => {
-      if (!prev.has(id)) return prev;
-      const n = new Set(prev);
-      n.delete(id);
-      return n;
-    });
-  };
-  const toggleTarget = (id: string) => {
-    setTargetIds(prev => {
-      const n = new Set(prev);
-      if (n.has(id)) n.delete(id); else if (n.size < 5) n.add(id);
-      return n;
-    });
-  };
-
   return (
     <>
     <div className="h-full flex flex-col relative z-10">
@@ -370,7 +293,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
         <div className="relative z-10 flex gap-4 sm:gap-10 text-center w-full md:w-auto justify-center flex-wrap">
           <div>
             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">Record</div>
-            <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{team.wins}-{team.losses}</div>
+            <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{displayWins}-{displayLosses}</div>
           </div>
           {!euroIsolated && !pbaMode && (() => {
             // NBA-only: Conf + Div ranks. Endesa/EuroLeague don't have conferences
@@ -395,7 +318,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
           })()}
           <div>
             <div className="text-[10px] sm:text-xs font-bold uppercase tracking-widest text-white/70 mb-2 border-b border-white/20 pb-1">
-              {pbaMode ? 'Cap Status' : euroIsolated ? 'Wage Headroom' : isPreFA ? 'Projected cap (post-rollover)' : 'Cap Space'}
+              {pbaMode ? 'Cap Status' : euroIsolated ? 'Wage Headroom' : capSummary.isProjectedAfterSeasonEnd ? 'Projected Cap Space' : 'Cap Space'}
             </div>
             <div className="text-xl sm:text-3xl font-light text-white drop-shadow-md">{capFormatted}</div>
           </div>
@@ -406,7 +329,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
       <div className="flex border-x border-[#30363d] bg-[#0d1117]">
         {([
           ...(tradesDisabled ? [] : [{ key: 'trades' as const, label: 'Trades' }]),
-          ...(showFreeAgencyTab ? [{ key: 'fa' as const, label: 'Free Agency' }] : []),
+          ...(showFreeAgencyTab ? [{ key: 'fa' as const, label: euroIsolated ? 'Signing Market' : 'Free Agency' }] : []),
           { key: 'expiring' as const, label: 'Expiring' },
         ]).map(t => (
           <button
@@ -450,7 +373,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
               <span className="text-center">OVR</span>
             </div>
             {lineup.map(({ player: p, lineupPos }, i) => {
-              const k2 = getK2Ovr(p);
+              const k2 = visibleK2(p);
               return (
                 <div key={i} onClick={() => onPlayerClick?.(p)} className="grid grid-cols-[40px_40px_1fr_40px] gap-2 items-center px-2 py-2 bg-white/5 rounded hover:bg-white/10 transition-colors cursor-pointer group">
                   <span className="text-[#8b949e] font-bold text-xs">{lineupPos}</span>
@@ -490,7 +413,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
               >
                 <option value="">Auto ({status})</option>
                 {(['contending', 'win_now', 'play_in_push', 'retooling', 'cap_clearing', 'rebuilding', 'development'] as TeamStatus[]).map(s => (
-                  <option key={s} value={s}>{MANUAL_STATUS_LABEL[s]}</option>
+                  <option key={s} value={s}>{getManualStatusLabel(s, state.leagueStats?.playIn !== false)}</option>
                 ))}
               </select>
             ) : (
@@ -534,7 +457,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
                         {isOwnTeam ? 'Your trading block: ' : strategyKey === 'contending' || strategyKey === 'win_now' || strategyKey === 'play_in_push' ? 'Moveable depth pieces: ' : 'Players potentially available via trade: '}
                         {blockPlayers.map((p, i) => (
                           <span key={i}>
-                            <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-medium cursor-pointer hover:underline">{p.name}</span> ({p.pos}, {getK2Ovr(p)} OVR)
+                            <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-medium cursor-pointer hover:underline">{p.name}</span> ({p.pos}, {visibleK2(p)} OVR)
                             {i < blockPlayers.length - 1 ? ', ' : ''}
                           </span>
                         ))}
@@ -558,7 +481,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
                         Untouchables:{' '}
                         {untouchPlayers.map((p, i) => (
                           <span key={i}>
-                            <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-bold cursor-pointer hover:underline">{p.name}</span> ({getK2Ovr(p)} OVR)
+                            <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-bold cursor-pointer hover:underline">{p.name}</span> ({visibleK2(p)} OVR)
                             {i < untouchPlayers.length - 1 ? ', ' : ''}
                           </span>
                         ))}
@@ -586,13 +509,16 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
                             const tTeam = state.teams.find(t => t.id === p.tid);
                             return (
                               <span key={i}>
-                                <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-medium cursor-pointer hover:underline">{p.name}</span> ({tTeam?.abbrev}, {getK2Ovr(p)} OVR)
+                                <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-medium cursor-pointer hover:underline">{p.name}</span> ({tTeam?.abbrev}, {visibleK2(p)} OVR)
                                 {i < targetPlayers.length - 1 ? ', ' : ''}
                               </span>
                             );
                           })}
                         </>
                       );
+                    }
+                    if (isOwnTeam) {
+                      return 'You have not added any acquisition targets. Open an opposing player and use Player Actions to add one.';
                     }
                     if (targets.length > 0) {
                       return strategyKey === 'contending' || strategyKey === 'win_now' || strategyKey === 'play_in_push'
@@ -614,7 +540,7 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
                 <p>
                   Expiring contracts:{' '}
                   {expiring.slice(0, 3).map((p, i) => {
-                    const k2 = getK2Ovr(p);
+                    const k2 = visibleK2(p);
                     return (
                       <span key={i}>
                         <span onClick={() => onPlayerClick?.(p)} className="text-[#FDB927] font-medium cursor-pointer hover:underline">{p.name}</span> ({p.pos}, {k2}, ${((p.contract?.amount || 0) / 1000).toFixed(1)}M)
@@ -630,36 +556,6 @@ export function TeamIntel({ teamId, onPlayerClick }: TeamIntelProps) {
         </div>
       </div>
       </>
-      )}
-
-      {/* ── Player Selector Modal ──────────────────────────────────────── */}
-      {editingList && (
-        <div className="fixed inset-0 bg-black/85 backdrop-blur-sm flex items-end sm:items-center justify-center sm:p-4 z-50" onClick={() => setEditingList(null)}>
-          <div className="bg-slate-900 border border-slate-800 rounded-t-2xl sm:rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[92dvh] sm:max-h-[85vh]" onClick={e => e.stopPropagation()}>
-            <div className="p-4 sm:p-6 border-b border-slate-800 flex items-center justify-between shrink-0">
-              <h3 className="text-sm sm:text-lg font-black text-white uppercase tracking-widest">
-                {editingList === 'untouchable' ? 'Untouchables' : editingList === 'block' ? 'Trading Block' : 'Target List'}
-              </h3>
-              <div className="flex items-center gap-3">
-                <span className="text-xs text-slate-400">
-                  {editingList === 'untouchable' ? `${untouchableIds.size}/3` : editingList === 'block' ? `${blockIds.size}/5` : `${targetIds.size}/5`}
-                </span>
-                <button onClick={() => setEditingList(null)} className="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-white font-bold uppercase text-xs rounded-xl">Done</button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto p-4 sm:p-6">
-              <PlayerSelectorGrid
-                items={editingList === 'targets' ? leagueTargetItems : ownRosterItems}
-                teams={allTeamsForPickers as any}
-                selectedIds={editingList === 'untouchable' ? untouchableIds : editingList === 'block' ? blockIds : targetIds}
-                onToggle={editingList === 'untouchable' ? toggleUntouchable : editingList === 'block' ? toggleBlock : toggleTarget}
-                maxSelections={editingList === 'untouchable' ? 3 : 5}
-                accentColor={editingList === 'untouchable' ? 'emerald' : editingList === 'block' ? 'red' : 'indigo'}
-                searchPlaceholder={editingList === 'targets' ? 'Search league players...' : 'Search your roster...'}
-              />
-            </div>
-          </div>
-        </div>
       )}
     </div>
     </>

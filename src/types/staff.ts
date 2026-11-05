@@ -7,6 +7,8 @@ export interface StaffMember {
   playerPortraitUrl?: string;
   teamLogoUrl?: string;
   nationality?: string;
+  gender?: 'male' | 'female';
+  attributes?: import('../services/staff/gmAttributes').GMAttributes;
   bornYear?: number;
   careerStartYear?: number;
   yearsWithTeam?: number;
@@ -18,10 +20,47 @@ export interface StaffMember {
   staffImageId?: number;
   leagueId?: string;
   reputation?: number;
+  rating?: number;
+  salary?: number;
+  staffEconomyVersion?: number;
+  salaryAskMultiplier?: number;
+  salaryAskYears?: number;
+  salaryAskBonusRate?: number;
   id?: string;
   contractYears?: number;
+  hiredYear?: number;
+  roleStartYear?: number;
+  formerTeam?: string;
+  formerTeamLogoUrl?: string;
+  formerRole?: string;
+  historicalClubPreferences?: Array<{
+    team: string;
+    role: string;
+    startYear: number;
+    endYear: number;
+    tenureYears: number;
+  }>;
+  sourceObservedTenureYears?: number;
   sourcePlayerId?: string;
   source?: string;
+  coachingYears?: number;
+  playingYears?: number;
+  coaching_career?: string;
+  career_history?: string;
+  awardsSummary?: string[];
+  coachAchievements?: Array<{
+    season: number;
+    type: string;
+    label: string;
+    league?: string;
+    competitionId?: string;
+    teamId?: number;
+    teamName?: string;
+    role?: string;
+  }>;
+  sourceCoachRating?: number;
+  sourceCoachPercentile?: number;
+  sourceExperience?: Record<string, unknown> | Array<Record<string, unknown>>;
   staffJoinChance?: number;
   staffArchetype?: string;
   motivationType?: import('../services/staff/staffRetirement').StaffMotivationType;
@@ -33,9 +72,24 @@ export interface StaffMember {
   deathType?: 'natural' | 'tragic';
   deathCheckDate?: string;
   retiredYear?: number;
+  sourceRetirement?: {
+    retiredYear: number;
+    confidence: number;
+    evidence: 'explicit' | 'inferred';
+    lastMeaningfulSeason: number;
+    evidenceThrough: number;
+    inactivityBufferYears: number;
+  };
   retiredDate?: string;
   retirementReason?: import('../services/staff/staffRetirement').StaffRetirementReason;
   retirementReasonLabel?: string;
+  basketballReferenceUrl?: string;
+  bioText?: string;
+  executiveId?: string;
+  executiveBio?: Record<string, unknown>;
+  executiveAwards?: Array<Record<string, unknown>>;
+  executiveCareerRecords?: Array<Record<string, unknown>>;
+  tenures?: Array<Record<string, unknown>>;
 }
 
 export interface StaffData {
@@ -43,5 +97,5 @@ export interface StaffData {
   gms: StaffMember[];
   coaches: StaffMember[];
   leagueOffice: StaffMember[];
-  referees?: { id: string; name: string; slug?: string }[];
+  referees?: import('../data/photos/referees').RefereeData[];
 }

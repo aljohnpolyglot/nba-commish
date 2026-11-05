@@ -7,7 +7,6 @@ import { getDisplayOverall } from '../../../../../../utils/playerRatings';
 import {
   getIdealRotation,
   saveIdealRotation,
-  clearIdealRotation,
   reconcileIdealMinutes,
   reconcileStarters,
 } from '../../../../../../store/idealRotationStore';
@@ -15,7 +14,10 @@ import type { NBAPlayer } from '../../../../../../types';
 import { getLockedStrategy, lockStrategy } from '../../../../../../store/coachStrategyLockStore';
 import { calculateCoachSliders } from '../lib/coachSliders';
 import { resolveAnyTeam, isOnRoster } from '../../../../../../utils/teamLookup';
-import { getGameDateParts } from '../../../../../../utils/dateUtils';
+import { getTwoWayRosterLimit } from '../../../../../../utils/rosterLimits';
+import { isTwoWayContract } from '../../../../../../utils/contractTypes';
+import { areWnbaDevelopmentalContractsEnabled } from '../../../../../../services/wnba/developmentalContracts';
+import { isLeaguePostseasonWindow } from '../../../../../../services/leagueCalendar';
 import { computeBaselineFromService, computeStrengthOptimalBaseline, OUTLOOK_OPTIONS, PBA_IDEAL_KNOBS, type OutlookKey } from './idealRotationBaseline';
 import { IdealRotationReseedModal } from './IdealRotationReseedModal';
 import {
@@ -26,6 +28,7 @@ import {
   IdealRotationSwapHint,
   IdealRotationTwoWayPanel,
 } from './IdealRotationPanels';
+import { getPlayersOnCourt } from '../../../../../../services/simulation/courtSize';
 
 interface IdealRotationTabProps {
   teamId: number;
@@ -36,7 +39,8 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
   const isEuroClubTeam = useMemo(() => isEuroClubTeamId(teamId), [teamId]);
   const isPbaTeam = useMemo(() => teamId >= 2000 && teamId < 3000, [teamId]);
   const gameLengthMinutes = (state.leagueStats?.quarterLength ?? (isEuroClubTeam ? 10 : 12)) * (state.leagueStats?.numQuarters ?? 4);
-  const targetMinutes = gameLengthMinutes * 5;
+  const playersOnCourt = getPlayersOnCourt(state.leagueStats);
+  const targetMinutes = gameLengthMinutes * playersOnCourt;
   const maxPlayerMinutes = gameLengthMinutes;
 
   const benchDepth = useMemo(() => {
@@ -59,33 +63,50 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
         confRank,
         0,
         topNAvgK2(teamPlayers, 3),
-        topNAvgK2(state.players.filter(player => player.tid >= 0 && player.tid < 30), 3),
+        topNAvgK2(state.players.filter(player => player.tid >= 0 && player.tid < 100), 3),
       );
       const roleDepth: Record<string, number> = { heavy_buyer: 15, buyer: 30, neutral: 50, seller: 65, rebuilding: 85 };
       return roleDepth[outlook.role] ?? 50;
     }
-    return calculateCoachSliders(state.players.filter(player => player.tid === teamId && isOnRoster(player)) as any).benchDepth;
+    return calculateCoachSliders(state.players.filter(player => player.tid === teamId && isOnRoster(player)) as any, undefined, state.leagueStats).benchDepth;
   }, [teamId, state.players, state.teams, state.leagueStats]);
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const isCommissioner = state.gameMode !== 'gm';
   const canEdit = isCommissioner || teamId === state.userTeamId;
+  const twoWayContractsEnabled = teamId >= 0 && teamId < 100 && getTwoWayRosterLimit(state.leagueStats as any) > 0;
   const isPlayoffSeason = useMemo(() => {
     if (!state.date) return false;
-    const { month } = getGameDateParts(state.date);
-    return month >= 4 && month <= 6;
-  }, [state.date]);
+    return isLeaguePostseasonWindow(state.date, state.leagueStats);
+  }, [state.date, state.leagueStats]);
 
   const allRoster = useMemo(() => state.players.filter(player => player.tid === teamId && isOnRoster(player)), [state.players, teamId]);
-  const twoWayIneligible = useMemo(() => (isPlayoffSeason ? allRoster.filter(player => (player as any).twoWay) : []), [allRoster, isPlayoffSeason]);
-  const roster = useMemo(() => (isPlayoffSeason ? allRoster.filter(player => !(player as any).twoWay) : allRoster), [allRoster, isPlayoffSeason]);
+  const isActiveTwoWay = (player: NBAPlayer) => twoWayContractsEnabled && isTwoWayContract(player, state.leagueStats);
+  const secondaryContractsPlayoffIneligible = isPlayoffSeason
+    && twoWayContractsEnabled
+    && !areWnbaDevelopmentalContractsEnabled(state.leagueStats);
+  const twoWayIneligible = useMemo(() => (
+    secondaryContractsPlayoffIneligible
+      ? allRoster.filter(isActiveTwoWay)
+      : []
+  ), [allRoster, secondaryContractsPlayoffIneligible, state.leagueStats]);
+  const roster = useMemo(() => (secondaryContractsPlayoffIneligible ? allRoster.filter(player => !isActiveTwoWay(player)) : allRoster), [allRoster, secondaryContractsPlayoffIneligible, state.leagueStats]);
   const rosterIds = useMemo(() => roster.map(player => player.internalId), [roster]);
   const rosterIdKey = rosterIds.join('|');
   const currentYear = state.leagueStats?.year || 2026;
 
   const projectedStarters = useMemo(
-    () => (team ? StarterService.getProjectedStarters(team, state.players).slice(0, 5).map(player => player.internalId) : []),
-    [team, state.players],
+    () => (team
+      ? StarterService.getProjectedStarters(
+          team,
+          state.players,
+          currentYear,
+          undefined,
+          true,
+          playersOnCourt,
+        ).map(player => player.internalId)
+      : []),
+    [team, state.players, currentYear, playersOnCourt],
   );
   const standingsCtx = useMemo(() => {
     if (!team) return { conferenceRank: 8, gbFromLeader: 0, gamesRemaining: 41 };
@@ -137,8 +158,8 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
             state.leagueStats,
             PBA_IDEAL_KNOBS,
           )
-        : computeStrengthOptimalBaseline(team, roster, currentYear, reseedDepth, bias, targetMinutes, maxPlayerMinutes);
-  }, [reseedOpen, team, reseedOutlook, isEuroClubTeam, isPbaTeam, state.players, roster, currentYear, standingsCtx, reseedDepth, state.leagueStats, state.leagueStats?.quarterLength, state.leagueStats?.numQuarters, targetMinutes, maxPlayerMinutes]);
+        : computeStrengthOptimalBaseline(team, roster, currentYear, reseedDepth, bias, targetMinutes, maxPlayerMinutes, playersOnCourt);
+  }, [reseedOpen, team, reseedOutlook, isEuroClubTeam, isPbaTeam, state.players, roster, currentYear, standingsCtx, reseedDepth, state.leagueStats, state.leagueStats?.quarterLength, state.leagueStats?.numQuarters, targetMinutes, maxPlayerMinutes, playersOnCourt]);
 
   const [tick, setTick] = useState(0);
   const saved = useMemo(() => getIdealRotation(teamId), [teamId, tick, rosterIdKey]);
@@ -171,15 +192,15 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
             state.leagueStats,
             PBA_IDEAL_KNOBS,
           )
-        : computeStrengthOptimalBaseline(team, roster, currentYear, benchDepth, 1.0, targetMinutes, maxPlayerMinutes);
+        : computeStrengthOptimalBaseline(team, roster, currentYear, benchDepth, 1.0, targetMinutes, maxPlayerMinutes, playersOnCourt);
     const byOvr = [...roster].sort((a, b) => getDisplayOverall(b) - getDisplayOverall(a)).map(player => player.internalId);
     const fallback = baseline.starterIds.length ? baseline.starterIds : (projectedStarters.length ? projectedStarters : byOvr);
 
     if (!locked || !saved) {
-      return { starters: reconcileStarters([], rosterIds, fallback), minutes: baseline.minutes };
+      return { starters: reconcileStarters([], rosterIds, fallback, playersOnCourt), minutes: baseline.minutes };
     }
 
-    const reconciledStarters = reconcileStarters(saved.starterIds, rosterIds, fallback);
+    const reconciledStarters = reconcileStarters(saved.starterIds, rosterIds, fallback, playersOnCourt);
     const reconciledMinutes = reconcileIdealMinutes(saved.minutes, rosterIds);
     const changed =
       reconciledStarters.join('|') !== saved.starterIds.join('|') ||
@@ -189,7 +210,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
       saveIdealRotation(teamId, { starterIds: reconciledStarters, minutes: reconciledMinutes, locked: true, benchOrder: saved.benchOrder });
     }
     return { starters: reconciledStarters, minutes: reconciledMinutes };
-  }, [isEuroClubTeam, isPbaTeam, team, state.players, state.leagueStats, state.leagueStats?.quarterLength, state.leagueStats?.numQuarters, roster, currentYear, standingsCtx, benchDepth, targetMinutes, maxPlayerMinutes, projectedStarters, locked, saved, rosterIds, canEdit, teamId]);
+  }, [isEuroClubTeam, isPbaTeam, team, state.players, state.leagueStats, state.leagueStats?.quarterLength, state.leagueStats?.numQuarters, roster, currentYear, standingsCtx, benchDepth, targetMinutes, maxPlayerMinutes, projectedStarters, locked, saved, rosterIds, canEdit, teamId, playersOnCourt]);
 
   const playersById = useMemo(() => new Map(state.players.map(player => [player.internalId, player] as const)), [state.players]);
   const benchPlayers = useMemo(() => {
@@ -238,17 +259,13 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
     }
     persistEdit(starters, { ...minutes, [id]: clamped });
   };
-  const toggleLock = () => {
-    if (!canEdit) return;
-    if (locked) {
-      clearIdealRotation(teamId);
-    } else {
-      const ordered = StarterService.sortByPositionSlot(
-        starters.map(id => playersById.get(id)).filter((player): player is NBAPlayer => !!player),
-        currentYear,
-      ).map(player => player.internalId);
-      saveIdealRotation(teamId, { starterIds: ordered, minutes, locked: true, benchOrder: benchPlayers.map(player => player.internalId) });
-    }
+  const startCustomization = () => {
+    if (!canEdit || locked) return;
+    const ordered = StarterService.sortByPositionSlot(
+      starters.map(id => playersById.get(id)).filter((player): player is NBAPlayer => !!player),
+      currentYear,
+    ).map(player => player.internalId);
+    saveIdealRotation(teamId, { starterIds: ordered, minutes, locked: true, benchOrder: benchPlayers.map(player => player.internalId) });
     setTick(value => value + 1);
   };
   const applyReseed = () => {
@@ -263,7 +280,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
       .map(([id]) => id);
     saveIdealRotation(teamId, { starterIds: ordered, minutes: reseedPreview.minutes, locked: true, benchOrder });
     const rosterForSliders = state.players.filter(player => player.tid === teamId && isOnRoster(player));
-    const baseSliders = getLockedStrategy(teamId)?.sliders ?? calculateCoachSliders(rosterForSliders as any);
+    const baseSliders = getLockedStrategy(teamId)?.sliders ?? calculateCoachSliders(rosterForSliders as any, undefined, state.leagueStats);
     lockStrategy(teamId, { ...baseSliders, benchDepth: reseedDepth });
     setTick(value => value + 1);
     setReseedOpen(false);
@@ -424,8 +441,8 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
         remaining={remaining}
         targetMinutes={targetMinutes}
         totalMinutes={totalMinutes}
-        onReseed={() => setReseedOpen(true)}
-        onToggleLock={toggleLock}
+        onCustomize={startCustomization}
+        onUseAuto={() => setReseedOpen(true)}
       />
       <IdealRotationReseedModal
         open={reseedOpen}
@@ -441,12 +458,14 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
       />
       <IdealRotationSwapHint selectedId={selectedId} onCancel={() => setSelectedId(null)} />
       <IdealRotationStartersPanel
+        currentYear={currentYear}
         dragStyle={dragStyle}
         onCardClick={onCardClick}
         onCardPointerDown={onCardPointerDown}
         selectedId={selectedId}
         starterPlayers={starterPlayers}
         writable={writable}
+        playersOnCourt={playersOnCourt}
       />
       <IdealRotationTwoWayPanel currentYear={currentYear} isPlayoffSeason={isPlayoffSeason} players={twoWayIneligible} />
       <IdealRotationFloatingMinutes remaining={remaining} targetMinutes={targetMinutes} totalMinutes={totalMinutes} visible={headerMinutesVisible} />
@@ -470,6 +489,7 @@ export function IdealRotationTab({ teamId }: IdealRotationTabProps) {
         selectedId={selectedId}
         starterPlayers={starterPlayers}
         writable={writable}
+        playersOnCourt={playersOnCourt}
       />
     </div>
   );

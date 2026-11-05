@@ -1,4 +1,17 @@
 import { Crown, Sparkles, Star, Target, Users, Zap } from 'lucide-react';
+import {
+  isAllStarGameEnabled,
+  isCelebrityGameEnabled,
+  isDunkContestEnabled,
+  isRisingStarsEnabled,
+  isShootingStarsEnabled,
+  isSkillsChallengeEnabled,
+  isThreePointContestEnabled,
+  getRisingStarsEventLabel,
+} from '../../services/allStar/allStarEventAvailability';
+import type { GameState } from '../../types';
+import { getLeagueEventDisplayName } from '../../services/franchises/franchiseEventNaming';
+import { getAllStarWeekendCompletion } from '../../services/allStar/allStarCompletion';
 
 export type AllStarTab = 'overview' | 'votes' | 'roster' | 'rising-stars' | 'celebrity' | 'dunk' | 'three-point' | 'shooting-stars' | 'skills' | 'horse' | 'throne';
 
@@ -16,50 +29,60 @@ export const buildAllStarTabs = ({
   dates,
   leagueStats,
   phase,
+  state,
 }: {
   allStar: any;
   currentDate: Date;
   dates: any;
   leagueStats: any;
+  state?: GameState;
   phase: 'upcoming' | 'voting' | 'starters' | 'roster' | 'complete';
-}): AllStarTabConfig[] => [
+}): AllStarTabConfig[] => {
+  const allStarGameDisabled = !isAllStarGameEnabled(leagueStats);
+  const completion = state ? getAllStarWeekendCompletion(state) : null;
+  const announcementLocked = (announced: boolean, announcementDate: Date, complete = false) =>
+    currentDate < announcementDate || (!announced && !complete);
+  const named = (assetId: string, fallback: string) =>
+    state ? getLeagueEventDisplayName(state, assetId, fallback) : fallback;
+  return [
   { id: 'overview', label: 'Overview', icon: Star },
-  { id: 'votes', label: 'Voting', icon: Target, locked: phase === 'upcoming', hidden: leagueStats?.uiMode === 'pba_isolated' },
-  { id: 'roster', label: 'Roster', icon: Star, locked: phase === 'upcoming' || phase === 'voting' },
-  { id: 'rising-stars', label: 'Rising Stars', icon: Zap, locked: !allStar?.risingStarsAnnounced && currentDate < dates.risingStars, hidden: leagueStats?.uiMode === 'pba_isolated' },
-  { id: 'celebrity', label: 'Celebrity Game', icon: Users, locked: !allStar?.celebrityRoster, hidden: leagueStats?.uiMode === 'pba_isolated' || !leagueStats.celebrityGameEnabled },
-  { id: 'dunk', label: 'Dunk Contest', icon: Zap, locked: !allStar?.dunkContestAnnounced && currentDate < dates.saturday },
-  { id: 'three-point', label: '3-Point Contest', icon: Target, locked: !allStar?.threePointAnnounced && currentDate < dates.saturday },
+  { id: 'votes', label: 'Voting', icon: Target, locked: phase === 'upcoming', hidden: allStarGameDisabled || leagueStats?.uiMode === 'pba_isolated' },
+  { id: 'roster', label: 'Roster', icon: Star, locked: phase === 'upcoming' || phase === 'voting', hidden: allStarGameDisabled },
+  { id: 'rising-stars', label: named('rising_stars', getRisingStarsEventLabel(leagueStats)), icon: Zap, locked: announcementLocked(!!allStar?.risingStarsAnnounced, dates.risingStarsAnnounced, completion?.risingStars ?? allStar?.risingStarsBracket?.complete === true), hidden: !isRisingStarsEnabled(leagueStats) },
+  { id: 'celebrity', label: named('celebrity_game', 'Celebrity Game'), icon: Users, locked: announcementLocked(!!allStar?.celebrityAnnounced && (allStar?.celebrityRoster?.length ?? 0) > 0, dates.celebrityAnnounced, completion?.celebrity ?? !!allStar?.celebrityGameResult), hidden: !isCelebrityGameEnabled(leagueStats) },
+  { id: 'dunk', label: named('slam_dunk', 'Dunk Contest'), icon: Zap, locked: announcementLocked(!!allStar?.dunkContestAnnounced, dates.dunkContestAnnounced, completion?.dunk ?? allStar?.dunkContest?.complete === true), hidden: !isDunkContestEnabled(leagueStats) },
+  { id: 'three-point', label: named('three_point', '3-Point Contest'), icon: Target, locked: announcementLocked(!!allStar?.threePointAnnounced, dates.threePointAnnounced, completion?.threePoint ?? allStar?.threePointContest?.complete === true), hidden: !isThreePointContestEnabled(leagueStats) },
   {
     id: 'shooting-stars',
-    label: 'Shooting Stars',
+    label: named('shooting_stars', 'Shooting Stars'),
     icon: Sparkles,
-    hidden: leagueStats?.uiMode === 'pba_isolated' || leagueStats.allStarShootingStars === false,
-    locked: !(allStar as any)?.shootingStarsAnnounced && !(allStar as any)?.shootingStars?.complete && currentDate < dates.saturday,
+    hidden: !isShootingStarsEnabled(leagueStats),
+    locked: announcementLocked(!!(allStar as any)?.shootingStarsAnnounced, dates.shootingStarsAnnounced, completion?.shootingStars ?? (allStar as any)?.shootingStars?.complete === true),
   },
   {
     id: 'skills',
-    label: 'Skills Challenge',
+    label: named('skills_challenge', 'Skills Challenge'),
     icon: Target,
-    hidden: leagueStats?.uiMode !== 'pba_isolated' && leagueStats.allStarSkillsChallenge !== true,
-    locked: !(allStar as any)?.skillsChallengeAnnounced && !(allStar as any)?.skillsChallenge?.complete && currentDate < dates.saturday,
+    hidden: !isSkillsChallengeEnabled(leagueStats),
+    locked: announcementLocked(!!(allStar as any)?.skillsChallengeAnnounced, dates.skillsChallengeAnnounced, completion?.skills ?? (allStar as any)?.skillsChallenge?.complete === true),
   },
   {
     id: 'horse',
     label: 'H-O-R-S-E',
     icon: Target,
-    hidden: leagueStats?.uiMode === 'pba_isolated' || leagueStats.allStarHorse !== true,
-    locked: !(allStar as any)?.horseAnnounced && !(allStar as any)?.horseTournament?.complete && currentDate < dates.saturday,
+    hidden: allStarGameDisabled || leagueStats?.uiMode === 'pba_isolated' || leagueStats?.uiMode === 'wnba_isolated' || leagueStats.allStarHorse !== true,
+    locked: announcementLocked(!!(allStar as any)?.horseAnnounced, dates.horseAnnounced, !!(allStar as any)?.horseTournament?.complete),
   },
   {
     id: 'throne',
     label: 'The Throne',
     icon: Crown,
-    hidden: leagueStats?.uiMode === 'pba_isolated' || !leagueStats.allStarThroneEnabled,
+    hidden: allStarGameDisabled || leagueStats?.uiMode === 'pba_isolated' || leagueStats?.uiMode === 'wnba_isolated' || !leagueStats.allStarThroneEnabled,
     locked:
       !(allStar as any)?.throneSignupSchedule
       && !(allStar as any)?.throneAnnounced
       && !(allStar as any)?.throne?.complete
       && currentDate < (dates as any).throneSignupOpens,
   },
-];
+  ];
+};

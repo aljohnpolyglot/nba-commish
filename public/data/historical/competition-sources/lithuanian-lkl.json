@@ -1,0 +1,1385 @@
+{
+  "lkl_finals_series_results": [
+    {
+      "season": "1993–94",
+      "champion": "Žalgiris",
+      "result": "3–1",
+      "runner_up": "Atletas"
+    },
+    {
+      "season": "1994–95",
+      "champion": "Žalgiris",
+      "result": "3–0",
+      "runner_up": "Atletas"
+    },
+    {
+      "season": "1995–96",
+      "champion": "Žalgiris",
+      "result": "3–2",
+      "runner_up": "Atletas"
+    },
+    {
+      "season": "1996–97",
+      "champion": "Žalgiris",
+      "result": "3–0",
+      "runner_up": "Olimpas"
+    },
+    {
+      "season": "1997–98",
+      "champion": "Žalgiris",
+      "result": "3–1",
+      "runner_up": "Atletas"
+    },
+    {
+      "season": "1998–99",
+      "champion": "Žalgiris",
+      "result": "3–0",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "1999–00",
+      "champion": "Lietuvos Rytas",
+      "result": "3–1",
+      "runner_up": "Žalgiris"
+    },
+    {
+      "season": "2000–01",
+      "champion": "Žalgiris",
+      "result": "3–2",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2001–02",
+      "champion": "Lietuvos Rytas",
+      "result": "4–3",
+      "runner_up": "Žalgiris"
+    },
+    {
+      "season": "2002–03",
+      "champion": "Žalgiris",
+      "result": "4–2",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2003–04",
+      "champion": "Žalgiris",
+      "result": "4–0",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2004–05",
+      "champion": "Žalgiris",
+      "result": "4–0",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2005–06",
+      "champion": "Lietuvos Rytas",
+      "result": "4–0",
+      "runner_up": "Žalgiris"
+    },
+    {
+      "season": "2006–07",
+      "champion": "Žalgiris",
+      "result": "4–2",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2007–08",
+      "champion": "Žalgiris",
+      "result": "4–1",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2008–09",
+      "champion": "Lietuvos Rytas",
+      "result": "4–1",
+      "runner_up": "Žalgiris"
+    },
+    {
+      "season": "2009–10",
+      "champion": "Lietuvos Rytas",
+      "result": "4–3",
+      "runner_up": "Žalgiris"
+    },
+    {
+      "season": "2010–11",
+      "champion": "Žalgiris",
+      "result": "4–1",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2011–12",
+      "champion": "Žalgiris",
+      "result": "3–0",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2012–13",
+      "champion": "Žalgiris",
+      "result": "4–0",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2013–14",
+      "champion": "Žalgiris",
+      "result": "4–2",
+      "runner_up": "Neptūnas"
+    },
+    {
+      "season": "2014–15",
+      "champion": "Žalgiris",
+      "result": "4–0",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2015–16",
+      "champion": "Žalgiris",
+      "result": "4–1",
+      "runner_up": "Neptūnas"
+    },
+    {
+      "season": "2016–17",
+      "champion": "Žalgiris",
+      "result": "4–1",
+      "runner_up": "Lietkabelis"
+    },
+    {
+      "season": "2017–18",
+      "champion": "Žalgiris",
+      "result": "4–1",
+      "runner_up": "Lietuvos Rytas"
+    },
+    {
+      "season": "2018–19",
+      "champion": "Žalgiris",
+      "result": "3–0",
+      "runner_up": "Rytas"
+    },
+    {
+      "season": "2019–20",
+      "champion": null,
+      "result": null,
+      "runner_up": null,
+      "note": "Finals were not held"
+    },
+    {
+      "season": "2020–21",
+      "champion": "Žalgiris",
+      "result": "3–0",
+      "runner_up": "Rytas"
+    },
+    {
+      "season": "2021–22",
+      "champion": "Rytas",
+      "result": "4–1",
+      "runner_up": "Lietkabelis"
+    },
+    {
+      "season": "2022–23",
+      "champion": "Žalgiris",
+      "result": "3–2",
+      "runner_up": "Rytas"
+    },
+    {
+      "season": "2023–24",
+      "champion": "Rytas",
+      "result": "3–1",
+      "runner_up": "Žalgiris"
+    },
+    {
+      "season": "2024–25",
+      "champion": "Žalgiris",
+      "result": "3–2",
+      "runner_up": "Rytas"
+    },
+    {
+      "season": "2025–26",
+      "champion": "Žalgiris",
+      "result": "3–0",
+      "runner_up": "Juventus"
+    }
+  ],
+  "king_mindaugas_cup_finals": [
+    {
+      "year": "2016",
+      "champion": "Rytas",
+      "score": "67–57",
+      "runner_up": "Žalgiris",
+      "third_place": "Neptūnas",
+      "third_place_score": "88–51",
+      "fourth_place": "Prienai",
+      "city": "Vilnius",
+      "venue": "Siemens Arena",
+      "mvp": {
+        "player": "Antanas Kavaliauskas",
+        "nationality": "Lithuania",
+        "position": "PF/C"
+      }
+    },
+    {
+      "year": "2017",
+      "champion": "Žalgiris",
+      "score": "84–63",
+      "runner_up": "Lietkabelis",
+      "third_place": "Juventus",
+      "third_place_score": "70–61",
+      "fourth_place": "Prienai",
+      "city": "Kaunas",
+      "venue": "Žalgiris Arena",
+      "mvp": {
+        "player": "Edgaras Ulanovas",
+        "nationality": "Lithuania",
+        "position": "SF"
+      }
+    },
+    {
+      "year": "2018",
+      "champion": "Žalgiris",
+      "score": "81–62",
+      "runner_up": "Rytas",
+      "third_place": "Lietkabelis",
+      "third_place_score": "81–78",
+      "fourth_place": "Dzūkija",
+      "city": "Klaipėda",
+      "venue": "Švyturys Arena",
+      "mvp": {
+        "player": "Edgaras Ulanovas",
+        "nationality": "Lithuania",
+        "position": "SF"
+      }
+    },
+    {
+      "year": "2018–19",
+      "champion": "Rytas",
+      "score": "70–67",
+      "runner_up": "Žalgiris",
+      "third_place": "Lietkabelis",
+      "third_place_score": "94–67",
+      "fourth_place": "Neptūnas",
+      "city": "Vilnius",
+      "venue": "Siemens Arena",
+      "mvp": {
+        "player": "Artsiom Parakhouski",
+        "nationality": "Belarus",
+        "position": "C"
+      }
+    },
+    {
+      "year": "2019–20",
+      "champion": "Žalgiris",
+      "score": "80–60",
+      "runner_up": "Rytas",
+      "third_place": "Lietkabelis",
+      "third_place_score": "84–73",
+      "fourth_place": "Neptūnas",
+      "city": "Klaipėda",
+      "venue": "Švyturys Arena",
+      "mvp": {
+        "player": "Edgaras Ulanovas",
+        "nationality": "Lithuania",
+        "position": "SF"
+      }
+    },
+    {
+      "year": "2020–21",
+      "champion": "Žalgiris",
+      "score": "76–69",
+      "runner_up": "Lietkabelis",
+      "third_place": "Juventus",
+      "third_place_score": "86–69",
+      "fourth_place": "Neptūnas",
+      "city": "Panevėžys",
+      "venue": "Cido Arena",
+      "mvp": {
+        "player": "Joffrey Lauvergne",
+        "nationality": "France",
+        "position": "C"
+      }
+    },
+    {
+      "year": "2021–22",
+      "champion": "Žalgiris",
+      "score": "91–66",
+      "runner_up": "Lietkabelis",
+      "third_place": "Rytas",
+      "third_place_score": "76–71",
+      "fourth_place": "Šiauliai",
+      "city": "Vilnius",
+      "venue": "Avia Solutions Group Arena",
+      "mvp": {
+        "player": "Joffrey Lauvergne",
+        "nationality": "France",
+        "position": "C"
+      }
+    },
+    {
+      "year": "2022–23",
+      "champion": "Žalgiris",
+      "score": "81–77",
+      "runner_up": "Jonava",
+      "third_place": "Lietkabelis",
+      "third_place_score": "91–88",
+      "fourth_place": "Rytas",
+      "city": "Šiauliai",
+      "venue": "Šiauliai Arena",
+      "mvp": {
+        "player": "Edgaras Ulanovas",
+        "nationality": "Lithuania",
+        "position": "F"
+      }
+    },
+    {
+      "year": "2023–24",
+      "champion": "Žalgiris",
+      "score": "86–70",
+      "runner_up": "Lietkabelis",
+      "third_place": "Rytas",
+      "third_place_score": "94–89",
+      "fourth_place": "Šiauliai",
+      "city": "Kaunas",
+      "venue": "Žalgiris Arena",
+      "mvp": {
+        "player": "Laurynas Birutis",
+        "nationality": "Lithuania",
+        "position": "C"
+      }
+    },
+    {
+      "year": "2024–25",
+      "champion": "Žalgiris",
+      "score": "91–89",
+      "runner_up": "Neptūnas",
+      "third_place": "7bet–Lietkabelis",
+      "third_place_score": "100–91",
+      "fourth_place": "Wolves Twinsbet",
+      "city": "Vilnius",
+      "venue": "Twinsbet Arena",
+      "mvp": {
+        "player": "Ignas Brazdeikis",
+        "nationality": "Lithuania",
+        "position": "SF"
+      }
+    },
+    {
+      "year": "2025–26",
+      "champion": "Žalgiris",
+      "score": "101–85",
+      "runner_up": "Rytas",
+      "third_place": "Lietkabelis",
+      "third_place_score": "94–73",
+      "fourth_place": "Neptūnas",
+      "city": "Šiauliai",
+      "venue": "Šiauliai Arena",
+      "mvp": {
+        "player": "Moses Wright",
+        "nationality": "United States",
+        "position": "C"
+      }
+    }
+  ],
+  "historical_lithuanian_champions": {
+    "early_era_1924_1941": [
+      {
+        "year": "1924",
+        "champion": "LFLS Kaunas"
+      },
+      {
+        "year": "1925",
+        "champion": "Kovas Kaunas"
+      },
+      {
+        "year": "1926",
+        "champion": "LFLS Kaunas"
+      },
+      {
+        "year": "1927",
+        "champion": "LFLS Kaunas"
+      },
+      {
+        "year": "1928",
+        "champion": "LFLS Kaunas"
+      },
+      {
+        "year": "1933",
+        "champion": "LGSF Kaunas"
+      },
+      {
+        "year": "1934",
+        "champion": "LGSF Kaunas"
+      },
+      {
+        "year": "1934–35",
+        "champion": "LFLS Kaunas"
+      },
+      {
+        "year": "1935–36",
+        "champion": "LFLS Kaunas"
+      },
+      {
+        "year": "1936–37",
+        "champion": "CJSO Kaunas"
+      },
+      {
+        "year": "1936–38",
+        "champion": "CJSO Kaunas"
+      },
+      {
+        "year": "1938–39",
+        "champion": "CJSO Kaunas"
+      },
+      {
+        "year": "1939–40",
+        "champion": "CJSO Kaunas"
+      },
+      {
+        "year": "1941",
+        "champion": "Perkūnas Kaunas",
+        "note": "Not finished"
+      }
+    ],
+    "soviet_era_1945_1990": [
+      {
+        "year": "1945",
+        "champion": "ASK Kaunas"
+      },
+      {
+        "year": "1946",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1947",
+        "champion": "KKI Kaunas"
+      },
+      {
+        "year": "1948",
+        "champion": "KKI Kaunas"
+      },
+      {
+        "year": "1949",
+        "champion": "KKI Kaunas"
+      },
+      {
+        "year": "1950",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1951",
+        "champion": "KKI Kaunas"
+      },
+      {
+        "year": "1952",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1953",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1954",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1955",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1956",
+        "champion": "Kaunas"
+      },
+      {
+        "year": "1957–58",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1958",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1958–59",
+        "champion": "KPI Kaunas"
+      },
+      {
+        "year": "1959–60",
+        "champion": "LŽŪA Kaunas"
+      },
+      {
+        "year": "1960–61",
+        "champion": "LŽŪA Kaunas"
+      },
+      {
+        "year": "1961–62",
+        "champion": "Maistas Klaipėda"
+      },
+      {
+        "year": "1963",
+        "champion": "Kaunas"
+      },
+      {
+        "year": "1963–64",
+        "champion": "Drobė Kaunas"
+      },
+      {
+        "year": "1964–65",
+        "champion": "Politechnika Kaunas"
+      },
+      {
+        "year": "1966",
+        "champion": "Politechnika Kaunas"
+      },
+      {
+        "year": "1967",
+        "champion": "Kaunas"
+      },
+      {
+        "year": "1968",
+        "champion": "Atletas Kaunas"
+      },
+      {
+        "year": "1969",
+        "champion": "Drobė Kaunas"
+      },
+      {
+        "year": "1970",
+        "champion": "Drobė Kaunas"
+      },
+      {
+        "year": "1971",
+        "champion": "Banga Kaunas"
+      },
+      {
+        "year": "1972",
+        "champion": "Statyba Vilnius"
+      },
+      {
+        "year": "1973",
+        "champion": "Statyba Vilnius"
+      },
+      {
+        "year": "1974",
+        "champion": "Kaunas"
+      },
+      {
+        "year": "1975",
+        "champion": "Statyba Vilnius"
+      },
+      {
+        "year": "1976",
+        "champion": "Drobė Kaunas"
+      },
+      {
+        "year": "1977",
+        "champion": "Statyba Vilnius"
+      },
+      {
+        "year": "1977–78",
+        "champion": "Drobė Kaunas"
+      },
+      {
+        "year": "1979",
+        "champion": "Drobė Kaunas"
+      },
+      {
+        "year": "1979–80",
+        "champion": "Drobė Kaunas"
+      },
+      {
+        "year": "1981",
+        "champion": "Statyba Vilnius"
+      },
+      {
+        "year": "1982",
+        "champion": "Atletas Kaunas"
+      },
+      {
+        "year": "1983",
+        "champion": "Atletas Kaunas"
+      },
+      {
+        "year": "1984",
+        "champion": "Statyba Vilnius"
+      },
+      {
+        "year": "1985",
+        "champion": "Lietkabelis Panevėžys"
+      },
+      {
+        "year": "1985–86",
+        "champion": "Drobė Kaunas"
+      },
+      {
+        "year": "1987",
+        "champion": "Drobė Kaunas"
+      },
+      {
+        "year": "1987–88",
+        "champion": "Lietkabelis Panevėžys"
+      },
+      {
+        "year": "1988–89",
+        "champion": "Atletas Kaunas"
+      },
+      {
+        "year": "1989–90",
+        "champion": "Atletas Kaunas"
+      }
+    ],
+    "transitional_era_1990_1993": [
+      {
+        "year": "1990–91",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1991–92",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1992–93",
+        "champion": "Žalgiris Kaunas"
+      }
+    ],
+    "lkl_era_1993_present": [
+      {
+        "year": "1993–94",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1994–95",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1995–96",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1996–97",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1997–98",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1998–99",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "1999–2000",
+        "champion": "Lietuvos rytas Vilnius"
+      },
+      {
+        "year": "2000–01",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2001–02",
+        "champion": "Lietuvos rytas Vilnius"
+      },
+      {
+        "year": "2002–03",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2003–04",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2004–05",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2005–06",
+        "champion": "Lietuvos rytas Vilnius"
+      },
+      {
+        "year": "2006–07",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2007–08",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2008–09",
+        "champion": "Lietuvos rytas Vilnius"
+      },
+      {
+        "year": "2009–10",
+        "champion": "Lietuvos rytas Vilnius"
+      },
+      {
+        "year": "2010–11",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2011–12",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2012–13",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2013–14",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2014–15",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2015–16",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2016–17",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2017–18",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2018–19",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2019–20",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2020–21",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2021–22",
+        "champion": "Rytas Vilnius"
+      },
+      {
+        "year": "2022–23",
+        "champion": "Žalgiris Kaunas"
+      },
+      {
+        "year": "2023–24",
+        "champion": "Rytas Vilnius"
+      },
+      {
+        "year": "2024–25",
+        "champion": "Žalgiris Kaunas"
+      }
+    ]
+  },
+  "lkl_season_mvp": [
+    {
+      "season": "1993–94",
+      "player": "Gintaras Einikis",
+      "position": "Center",
+      "nationality": "Lithuania",
+      "team": "Žalgiris",
+      "championship_winner": true
+    },
+    {
+      "season": "1994–95",
+      "player": "Gintaras Einikis",
+      "position": "Center",
+      "nationality": "Lithuania",
+      "team": "Žalgiris",
+      "championship_winner": true
+    },
+    {
+      "season": "1995–96",
+      "player": "Tim Brooks",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Olimpas Plungė",
+      "championship_winner": false
+    },
+    {
+      "season": "1996–97",
+      "player": "Andrius Giedraitis",
+      "position": "Guard",
+      "nationality": "Lithuania",
+      "team": "Sakalai",
+      "championship_winner": false
+    },
+    {
+      "season": "1997–98",
+      "player": "Andrius Giedraitis",
+      "position": "Guard",
+      "nationality": "Lithuania",
+      "team": "Sakalai",
+      "championship_winner": false
+    },
+    {
+      "season": "1998–99",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "championship_winner": false,
+      "note": "N/A"
+    },
+    {
+      "season": "1999–00",
+      "player": "Mindaugas Timinskas",
+      "position": "Forward",
+      "nationality": "Lithuania",
+      "team": "Žalgiris",
+      "championship_winner": false
+    },
+    {
+      "season": "2000–01",
+      "player": "Ramūnas Šiškauskas",
+      "position": "Guard/forward",
+      "nationality": "Lithuania",
+      "team": "Lietuvos rytas",
+      "championship_winner": false
+    },
+    {
+      "season": "2001–02",
+      "player": "Ramūnas Šiškauskas",
+      "position": "Guard/forward",
+      "nationality": "Lithuania",
+      "team": "Lietuvos rytas",
+      "championship_winner": true
+    },
+    {
+      "season": "2002–03",
+      "player": "Tanoka Beard",
+      "position": "Forward/center",
+      "nationality": "United States",
+      "team": "Žalgiris",
+      "championship_winner": true
+    },
+    {
+      "season": "2003–04",
+      "player": "Tanoka Beard",
+      "position": "Forward/center",
+      "nationality": "United States",
+      "team": "Žalgiris",
+      "championship_winner": true
+    },
+    {
+      "season": "2004–05",
+      "player": "Tanoka Beard",
+      "position": "Forward/center",
+      "nationality": "United States",
+      "team": "Žalgiris",
+      "championship_winner": true
+    },
+    {
+      "season": "2005–06",
+      "player": "Darjuš Lavrinovič",
+      "position": "Forward/center",
+      "nationality": "Lithuania",
+      "team": "Žalgiris",
+      "championship_winner": false
+    },
+    {
+      "season": "2006–07",
+      "player": "Tanoka Beard",
+      "position": "Forward/center",
+      "nationality": "United States",
+      "team": "Žalgiris",
+      "championship_winner": true
+    },
+    {
+      "season": "2007–08",
+      "player": "Donatas Zavackas",
+      "position": "Forward",
+      "nationality": "Lithuania",
+      "team": "Šiauliai",
+      "championship_winner": false
+    },
+    {
+      "season": "2008–09",
+      "player": "Chuck Eidson",
+      "position": "Forward/guard",
+      "nationality": "United States",
+      "team": "Lietuvos rytas",
+      "championship_winner": true
+    },
+    {
+      "season": "2009–10",
+      "player": "Egidijus Dimša",
+      "position": "Center",
+      "nationality": "Lithuania",
+      "team": "Nevėžis",
+      "championship_winner": false
+    },
+    {
+      "season": "2010–11",
+      "player": "Aurimas Kieža",
+      "position": "Forward",
+      "nationality": "Lithuania",
+      "team": "Juventus",
+      "championship_winner": false
+    },
+    {
+      "season": "2011–12",
+      "player": "Jonas Valančiūnas",
+      "position": "Center",
+      "nationality": "Lithuania",
+      "team": "Lietuvos rytas",
+      "championship_winner": false
+    },
+    {
+      "season": "2012–13",
+      "player": "Gediminas Orelik",
+      "position": "Forward",
+      "nationality": "Lithuania",
+      "team": "Prienai",
+      "championship_winner": false
+    },
+    {
+      "season": "2013–14",
+      "player": "Juan Palacios",
+      "position": "Forward/center",
+      "nationality": "Colombia",
+      "team": "Lietuvos rytas",
+      "championship_winner": false
+    },
+    {
+      "season": "2014–15",
+      "player": "Antanas Kavaliauskas",
+      "position": "Forward/center",
+      "nationality": "Lithuania",
+      "team": "Lietuvos rytas",
+      "championship_winner": false
+    },
+    {
+      "season": "2015–16",
+      "player": "Vytautas Šulskis",
+      "position": "Forward",
+      "nationality": "Lithuania",
+      "team": "Vytautas",
+      "championship_winner": false
+    },
+    {
+      "season": "2016–17",
+      "player": "Jamar Diggs",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Juventus",
+      "championship_winner": false
+    },
+    {
+      "season": "2017–18",
+      "player": "Laurynas Birutis",
+      "position": "Center",
+      "nationality": "Lithuania",
+      "team": "Šiauliai",
+      "championship_winner": false
+    },
+    {
+      "season": "2018–19",
+      "player": "Martinas Geben",
+      "position": "Center",
+      "nationality": "Lithuania",
+      "team": "Juventus",
+      "championship_winner": false
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "championship_winner": false,
+      "note": "N/A"
+    },
+    {
+      "season": "2020–21",
+      "player": "Elvar Már Friðriksson",
+      "position": "Guard",
+      "nationality": "Iceland",
+      "team": "Šiauliai",
+      "championship_winner": false
+    },
+    {
+      "season": "2021–22",
+      "player": "Ivan Buva",
+      "position": "Center",
+      "nationality": "Croatia",
+      "team": "Rytas",
+      "championship_winner": false
+    },
+    {
+      "season": "2022–23",
+      "player": "Ahmad Caver",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Wolves",
+      "championship_winner": false
+    },
+    {
+      "season": "2023–24",
+      "player": "Ąžuolas Tubelis",
+      "position": "Forward",
+      "nationality": "Lithuania",
+      "team": "Neptūnas",
+      "championship_winner": false
+    },
+    {
+      "season": "2024–25",
+      "player": "Anthony Cowan Jr.",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Wolves Twinsbet",
+      "championship_winner": false
+    },
+    {
+      "season": "2025–26",
+      "player": "Arnas Velička",
+      "position": "Point guard",
+      "nationality": "Lithuania",
+      "team": "Neptūnas",
+      "championship_winner": false
+    }
+  ],
+  "lkl_finals_mvp": [
+    {
+      "season": "1993–94",
+      "player": "Gintaras Einikis",
+      "position": "PF/C",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "1994–95",
+      "player": "Gintaras Einikis",
+      "position": "PF/C",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "1995–96",
+      "player": "Rimas Kurtinaitis",
+      "position": "SG",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "1996–97",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "championship_winner": false,
+      "note": "N/A"
+    },
+    {
+      "season": "1997–98",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "championship_winner": false,
+      "note": "N/A"
+    },
+    {
+      "season": "1998–99",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "championship_winner": false,
+      "note": "N/A"
+    },
+    {
+      "season": "1999–00",
+      "player": "Eurelijus Žukauskas",
+      "position": "C",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": false
+    },
+    {
+      "season": "2000–01",
+      "player": "Ramūnas Šiškauskas",
+      "position": "SG/SF",
+      "nationality": "Lithuania",
+      "team": "Lietuvos Rytas Vilnius",
+      "championship_winner": false
+    },
+    {
+      "season": "2001–02",
+      "player": "Arvydas Macijauskas",
+      "position": "SG",
+      "nationality": "Lithuania",
+      "team": "Lietuvos Rytas Vilnius",
+      "championship_winner": true
+    },
+    {
+      "season": "2002–03",
+      "player": "Arvydas Macijauskas",
+      "position": "SG",
+      "nationality": "Lithuania",
+      "team": "Lietuvos Rytas Vilnius",
+      "championship_winner": false
+    },
+    {
+      "season": "2003–04",
+      "player": "Tanoka Beard",
+      "position": "PF/C",
+      "nationality": "United States",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2004–05",
+      "player": "Mindaugas Timinskas",
+      "position": "SF/PF",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2005–06",
+      "player": "Andrius Šležas",
+      "position": "SF/PF",
+      "nationality": "Lithuania",
+      "team": "Lietuvos Rytas Vilnius",
+      "championship_winner": true
+    },
+    {
+      "season": "2006–07",
+      "player": "Tanoka Beard",
+      "position": "PF/C",
+      "nationality": "United States",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2007–08",
+      "player": "Marcus Brown",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2008–09",
+      "player": "Chuck Eidson",
+      "position": "SG/SF",
+      "nationality": "United States",
+      "team": "Lietuvos Rytas Vilnius",
+      "championship_winner": true
+    },
+    {
+      "season": "2009–10",
+      "player": "Martynas Gecevičius",
+      "position": "SG",
+      "nationality": "Lithuania",
+      "team": "Lietuvos Rytas Vilnius",
+      "championship_winner": true
+    },
+    {
+      "season": "2010–11",
+      "player": "Paulius Jankūnas",
+      "position": "PF/C",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2011–12",
+      "player": "Tomas Delininkaitis",
+      "position": "SG",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2012–13",
+      "player": "Mindaugas Kuzminskas",
+      "position": "SF",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2013–14",
+      "player": "Paulius Jankūnas",
+      "position": "PF/C",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2014–15",
+      "player": "Artūras Milaknis",
+      "position": "SG/SF",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2015–16",
+      "player": "Jerome Randle",
+      "position": "PG",
+      "nationality": "Ukraine",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2016–17",
+      "player": "Edgaras Ulanovas",
+      "position": "SF",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2017–18",
+      "player": "Brandon Davies",
+      "position": "PF",
+      "nationality": "United States",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2018–19",
+      "player": "Edgaras Ulanovas",
+      "position": "SF",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "position": null,
+      "nationality": null,
+      "team": null,
+      "championship_winner": false,
+      "note": "Finals not held"
+    },
+    {
+      "season": "2020–21",
+      "player": "Thomas Walkup",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2021–22",
+      "player": "Arnas Butkevičius",
+      "position": "SF/PF",
+      "nationality": "Lithuania",
+      "team": "Rytas Vilnius",
+      "championship_winner": true
+    },
+    {
+      "season": "2022–23",
+      "player": "Isaiah Taylor",
+      "position": "PG",
+      "nationality": "United States",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2023–24",
+      "player": "Marcus Foster",
+      "position": "SG",
+      "nationality": "United States",
+      "team": "Rytas Vilnius",
+      "championship_winner": true
+    },
+    {
+      "season": "2024–25",
+      "player": "Sylvain Francisco",
+      "position": "PG",
+      "nationality": "France",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    },
+    {
+      "season": "2025–26",
+      "player": "Ąžuolas Tubelis",
+      "position": "PF/C",
+      "nationality": "Lithuania",
+      "team": "Žalgiris Kaunas",
+      "championship_winner": true
+    }
+  ],
+  "lkl_coach_of_the_year": [
+    {
+      "season": "2014–15",
+      "coach": "Dainius Adomaitis",
+      "nationality": "Lithuania",
+      "team": "Juventus"
+    },
+    {
+      "season": "2015–16",
+      "coach": "Dainius Adomaitis",
+      "nationality": "Lithuania",
+      "team": "Neptūnas"
+    },
+    {
+      "season": "2016–17",
+      "coach": "Šarūnas Jasikevičius",
+      "nationality": "Lithuania",
+      "team": "Žalgiris"
+    },
+    {
+      "season": "2017–18",
+      "coach": "Šarūnas Jasikevičius",
+      "nationality": "Lithuania",
+      "team": "Žalgiris"
+    },
+    {
+      "season": "2018–19",
+      "coach": "Šarūnas Jasikevičius",
+      "nationality": "Lithuania",
+      "team": "Žalgiris"
+    },
+    {
+      "season": "2019–20",
+      "coach": null,
+      "nationality": null,
+      "team": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "coach": "Mantas Šernius",
+      "nationality": "Lithuania",
+      "team": "Cbet Prienai"
+    },
+    {
+      "season": "2021–22",
+      "coach": "Giedrius Žibėnas",
+      "nationality": "Lithuania",
+      "team": "Rytas"
+    },
+    {
+      "season": "2022–23",
+      "coach": "Virginijus Šeškus",
+      "nationality": "Lithuania",
+      "team": "Cbet Jonava"
+    },
+    {
+      "season": "2023–24",
+      "coach": "Oliver Kostić",
+      "nationality": "Serbia",
+      "team": "Uniclub Casino – Juventus"
+    },
+    {
+      "season": "2024–25",
+      "coach": "Mantas Šernius",
+      "nationality": "Lithuania",
+      "team": "Cbet Jonava"
+    },
+    {
+      "season": "2025–26",
+      "coach": "Tomas Masiulis",
+      "nationality": "Lithuania",
+      "team": "Žalgiris"
+    }
+  ]
+}

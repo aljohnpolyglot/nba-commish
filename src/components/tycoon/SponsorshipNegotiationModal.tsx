@@ -1,23 +1,24 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { X, Check, XCircle, TrendingUp, PartyPopper } from 'lucide-react';
+import { X, Check, XCircle, TrendingUp, PartyPopper, ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import {
   getMarketOffer,
   applyRenewal,
-  applyDecline,
+  applyMidContractSponsorReplacement,
   classifySponsor,
   isSponsorDueForRenewal,
   SponsorshipOffer,
   SuccessHistory,
   evaluateOffer,
   computeBrandImpact,
+  getSponsorNegotiationBounds,
   type NegotiationStance,
 } from '../../services/tycoon/sponsorshipEngine';
 import { computeStarPower } from '../../services/tycoon/starPower';
 import type { SponsorshipSlot, SponsorIndustry } from '../../types/tycoon';
 import { formatCurrencyWithCode } from '../../utils/helpers';
 import { SponsorLogo } from './SponsorLogo';
-import { getBrandMeta, getSponsorPool } from '../../data/sponsorCatalogFetcher';
+import { getBrandMeta, getSponsorPool, resolveSponsorLeagueKey } from '../../data/sponsorCatalogFetcher';
 import { getIndustryLabel } from '../../utils/sponsorLogos';
 import { SponsorshipControl, SponsorshipDiffRow } from './SponsorshipNegotiationBits';
 import {
@@ -25,6 +26,8 @@ import {
   SPONSORSHIP_SLOT_LABEL,
   SPONSORSHIP_SLOTS,
 } from './sponsorshipModalConfig';
+import { getClubContinentalPrestige } from '../../services/euro/continentalPrestige';
+import { getSeasonEconomyIndex } from '../../services/tycoon/clubFinance';
 
 export type NegotiationMode = 'renegotiate' | 'details' | 'replacement' | 'find-new';
 
@@ -47,7 +50,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
     () => createEmptySponsorshipSlotRecord<string | null>(null),
   );
   const [industryFilter, setIndustryFilter] = useState<SponsorIndustry | 'generic' | 'all'>('all');
-  const [resolution, setResolution] = useState<null | { kind: 'accepted' | 'declined'; sponsor: string; value?: number; years?: number }>(null);
+  const [resolution, setResolution] = useState<null | { kind: 'accepted' | 'declined' | 'rejected'; sponsor: string; value?: number; years?: number }>(null);
 
   useEffect(() => {
     if (initialSlot) setActiveSlot(initialSlot);
@@ -58,8 +61,10 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
     ?? (state.nonNBATeams ?? []).find((t: any) => (t.id ?? t.tid) === userTeamId);
   const currency = state.leagueStats?.currency ?? 'EUR';
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const economyIndex = getSeasonEconomyIndex(state, currentYear);
   const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
   const tycoon = team?.tycoon;
+  const sponsorLeague = resolveSponsorLeagueKey(team?.country, team?.league, team?.region, state.euroPrimaryCompetitionId);
   const sponsorships = tycoon?.sponsorships ?? {};
   const visibleSlots = useMemo(() => {
     if (!showOnlyActionableSlots) return SPONSORSHIP_SLOTS;
@@ -85,11 +90,18 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
     if (firstOpen) setActiveSlot(firstOpen);
   }, [open, mode, tycoon, sponsorships, activeSlot]);
 
-  const history: SuccessHistory = useMemo(() => ({ recentEndesaPositions: (team?.recentEndesaPositions ?? []).slice(-3), recentEuroleagueStages: (team?.recentEuroleagueStages ?? []).slice(-3) }), [team]);
+  const history: SuccessHistory = useMemo(() => ({ recentDomesticPositions: (team?.recentDomesticPositions ?? team?.recentEndesaPositions ?? []).slice(-3), recentEuroleagueStages: (team?.recentEuroleagueStages ?? []).slice(-3) }), [team]);
   const [offerCache, setOfferCache] = useState<Record<SponsorshipSlot, SponsorshipOffer | null>>(
     () => createEmptySponsorshipSlotRecord<SponsorshipOffer | null>(null),
   );
-  const starBoost = useMemo(() => computeStarPower(state.players ?? [], userTeamId).boost, [state.players, userTeamId]);
+  const starBoost = useMemo(() => {
+    const rosterBoost = computeStarPower(state.players ?? [], userTeamId).boost;
+    const continentalBoost = Math.max(
+      0,
+      (getClubContinentalPrestige(state, Number(userTeamId), currentYear) - 35) / 500,
+    );
+    return rosterBoost + continentalBoost;
+  }, [currentYear, state, userTeamId]);
 
   const [confirmCancel, setConfirmCancel] = useState(false);
   useEffect(() => { setConfirmCancel(false); }, [activeSlot, mode, open]);
@@ -99,8 +111,11 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
     if (offerCache[activeSlot]) return;
     const override = pickedSponsor[activeSlot] ?? undefined;
     if (mode === 'find-new' && !override) return;
-    setOfferCache(prev => ({ ...prev, [activeSlot]: getMarketOffer(tycoon, activeSlot, history, starBoost, override) }));
-  }, [activeSlot, open, tycoon, history, offerCache, starBoost, mode, pickedSponsor]);
+    setOfferCache(prev => ({
+      ...prev,
+      [activeSlot]: getMarketOffer(tycoon, activeSlot, history, starBoost, override, sponsorLeague, economyIndex),
+    }));
+  }, [activeSlot, economyIndex, open, tycoon, history, offerCache, starBoost, mode, pickedSponsor, sponsorLeague]);
 
   useEffect(() => {
     if (!open) {
@@ -112,14 +127,14 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
 
   const browseMode = mode === 'find-new' && !pickedSponsor[activeSlot];
   const marketPool = useMemo(() => {
-    if (!tycoon) return [] as Array<{ name: string; industry: SponsorIndustry | 'generic' }>;
-    const pool = getSponsorPool('spain', tycoon.tier, activeSlot);
+    if (!open || !tycoon) return [] as Array<{ name: string; industry: SponsorIndustry | 'generic' }>;
+    const pool = getSponsorPool(sponsorLeague, tycoon.tier, activeSlot);
     return pool.map((name) => {
-      const meta = getBrandMeta('spain', name);
+      const meta = getBrandMeta(sponsorLeague, name);
       const industry = meta?.industry ?? classifySponsor(name).industry ?? 'generic';
       return { name, industry };
     });
-  }, [tycoon, activeSlot]);
+  }, [open, tycoon, activeSlot, sponsorLeague]);
   const availableIndustries = useMemo(() => {
     const set = new Set<SponsorIndustry | 'generic'>();
     for (const item of marketPool) set.add(item.industry);
@@ -168,12 +183,22 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
     signingBonus,
     performanceBonus: performanceBonus ? Math.round((annualValue || offer.valuePerYear) * 0.18) : 0,
   } : null;
-  const evaluation = offer && proposed ? evaluateOffer(offer, proposed, 'balanced') : null;
+  const negotiationBounds = offer ? getSponsorNegotiationBounds(offer) : null;
+  const evaluation = offer && proposed ? evaluateOffer(offer, proposed, 'balanced', tycoon.commercialTrust) : null;
   const impact = proposed ? computeBrandImpact(proposed, tycoon) : null;
 
   const handleAccept = () => {
-    if (!proposed) return;
-    applyTycoonMutation(userTeamId, (t: any) => applyRenewal(t.tycoon, activeSlot, proposed, state.leagueStats.year));
+    if (!proposed || !evaluation) return;
+    if (!evaluation.willAccept) {
+      setOfferCache(prev => ({ ...prev, [activeSlot]: null }));
+      setPickedSponsor(prev => ({ ...prev, [activeSlot]: null }));
+      setResolution({ kind: 'rejected', sponsor: proposed.sponsor });
+      return;
+    }
+    applyTycoonMutation(userTeamId, (t: any) => {
+      if (mode === 'replacement') applyMidContractSponsorReplacement(t.tycoon, activeSlot, currentYear);
+      applyRenewal(t.tycoon, activeSlot, proposed, currentYear);
+    });
     setOfferCache(prev => ({ ...prev, [activeSlot]: null }));
     setPickedSponsor(prev => ({ ...prev, [activeSlot]: null }));
     setResolution({
@@ -185,7 +210,6 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
   };
 
   const handleDecline = () => {
-    applyTycoonMutation(userTeamId, (t: any) => applyDecline(t.tycoon, activeSlot));
     setOfferCache(prev => ({ ...prev, [activeSlot]: null }));
     setResolution({
       kind: 'declined',
@@ -223,7 +247,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
                   }`}
                 >
                   <div className="flex items-center gap-2">
-                    {deal && <SponsorLogo name={deal.sponsor} meta={getBrandMeta('spain', deal.sponsor)} industry={deal.industry ?? 'generic'} size={28} />}
+                    {deal && <SponsorLogo name={deal.sponsor} meta={getBrandMeta(sponsorLeague, deal.sponsor)} industry={deal.industry ?? 'generic'} size={28} />}
                     <div className="min-w-0 flex-1">
                       <div className="text-sm font-black text-white">{SPONSORSHIP_SLOT_LABEL[slot]}</div>
                       <div className="text-xs text-slate-500 mt-0.5">{deal ? `${fmt(deal.valuePerYear)}/yr` : 'Open slot'}</div>
@@ -279,7 +303,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
                         className="rounded-xl border border-slate-800 bg-slate-950/60 hover:border-amber-400 hover:bg-amber-400/5 p-4 text-left transition"
                       >
                         <div className="flex items-center gap-3">
-                          <SponsorLogo name={item.name} meta={getBrandMeta('spain', item.name)} industry={item.industry} size={44} />
+                          <SponsorLogo name={item.name} meta={getBrandMeta(sponsorLeague, item.name)} industry={item.industry} size={44} />
                           <div className="min-w-0 flex-1">
                             <div className="text-sm font-black text-white truncate">{item.name}</div>
                             <div className="text-xs text-slate-500">{getIndustryLabel(item.industry)}</div>
@@ -294,7 +318,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
             <>
             {mode === 'replacement' && (
               <div className="mb-3 rounded-xl border border-rose-500/40 bg-rose-500/10 p-3 text-sm text-rose-200">
-                Replacing current sponsor <span className="font-bold">{current?.sponsor ?? '—'}</span>. Confirming below will void the existing deal.
+                Ending the active agreement with <span className="font-bold">{current?.sponsor ?? '—'}</span> early will damage the club's reputation with commercial partners. Future sponsors may be less willing to negotiate or offer favorable terms.
               </div>
             )}
             {mode === 'details' && (
@@ -310,7 +334,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
             )}
             {offer && impact && (
             <div className="mb-5 flex flex-col gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4 sm:flex-row sm:items-center">
-              <SponsorLogo name={offer.sponsor} meta={getBrandMeta('spain', offer.sponsor)} industry={offer.industry ?? 'generic'} size={56} />
+              <SponsorLogo name={offer.sponsor} meta={getBrandMeta(sponsorLeague, offer.sponsor)} industry={offer.industry ?? 'generic'} size={56} />
               <div className="min-w-0 flex-1">
                 <div className="text-xs font-black uppercase tracking-widest text-amber-300">Negotiating with Sponsor</div>
                 <div className="text-2xl font-black text-white mt-1">{offer.sponsor}</div>
@@ -322,13 +346,17 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
             {offer && evaluation && (
             <div className="grid gap-5 md:grid-cols-[1fr_180px]">
               <div className="space-y-5">
-                <SponsorshipControl label="Annual Value" value={annualValue || offer.valuePerYear} min={Math.round(offer.valuePerYear * 0.65)} max={Math.round(offer.valuePerYear * 1.45)} step={25_000} fmt={fmt} onChange={setAnnualValue} disabled={mode === 'details'} />
-                <SponsorshipControl label="Signing Bonus" value={signingBonus} min={0} max={Math.round(offer.valuePerYear * 2.5)} step={25_000} fmt={fmt} onChange={setSigningBonus} disabled={mode === 'details'} />
+                <SponsorshipControl label="Annual Value" value={annualValue || offer.valuePerYear} min={negotiationBounds?.annualMin ?? 0} step={5_000} fmt={fmt} onChange={setAnnualValue} disabled={mode === 'details'} />
+                <SponsorshipControl label="Signing Bonus" value={signingBonus} min={negotiationBounds?.bonusMin ?? 0} step={5_000} fmt={fmt} onChange={setSigningBonus} disabled={mode === 'details'} />
                 <div>
                   <div className="flex justify-between text-xs font-black uppercase tracking-widest text-slate-500 mb-2">
                     <span>Contract Length</span><span className="text-amber-300">{years} Years</span>
                   </div>
-                  <input type="range" min={1} max={4} step={1} value={years} onChange={e => setYears(parseInt(e.target.value, 10))} className="w-full accent-amber-400" disabled={mode === 'details'} />
+                  <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] gap-2">
+                    <button type="button" onClick={() => setYears(value => Math.max(1, value - 1))} disabled={mode === 'details' || years <= 1} className="flex h-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-300 disabled:opacity-30"><ChevronLeft size={16} /></button>
+                    <div className="flex h-10 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/5 text-sm font-black text-amber-200">{years} Year{years === 1 ? '' : 's'}</div>
+                    <button type="button" onClick={() => setYears(value => Math.min(4, value + 1))} disabled={mode === 'details' || years >= 4} className="flex h-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-950 text-slate-300 disabled:opacity-30"><ChevronRight size={16} /></button>
+                  </div>
                 </div>
                 <label className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950/70 p-3">
                   <span>
@@ -364,7 +392,6 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
                 ['Global Appeal', impact.globalAppeal],
                 ['Social Reach', impact.socialReach],
                 ['Brand Image', impact.brandImage],
-                ['Brand Fit', impact.brandFit],
               ].map(([label, value]) => (
                 <div key={label} className="mb-3">
                   <div className="flex justify-between text-xs mb-1"><span className="text-slate-400">{label}</span><span className="text-white font-bold">{value}</span></div>
@@ -383,7 +410,7 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
               <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-3">Partnership History</div>
               {(current?.relationshipHistory ?? []).length === 0 ? (
                 <div className="text-sm text-slate-500">No relationship history yet.</div>
-              ) : current!.relationshipHistory!.map(item => (
+              ) : (current?.relationshipHistory ?? []).map(item => (
                 <div key={`${item.year}-${item.value}`} className="flex items-center justify-between py-2 border-b border-slate-800 last:border-0">
                   <span className="text-sm text-white">{item.year}</span>
                   <span className="text-xs text-slate-500 uppercase">{item.eventType}</span>
@@ -395,34 +422,33 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
           )}
         </div>
 
-        <div className="flex gap-3 mt-5">
+        <div className="mt-5">
           {browseMode ? null : mode === 'details' ? (
-            <button onClick={onClose} className="flex-1 bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl">
+            <button onClick={onClose} className="w-full bg-amber-500 hover:bg-amber-400 text-slate-950 font-bold py-3 rounded-xl">
               Close
             </button>
           ) : (
             <>
               {mode === 'replacement' && (
-                <label className="flex items-center gap-2 px-4 py-3 text-xs text-rose-200">
+                <label className="mb-3 flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/5 px-4 py-3 text-xs leading-5 text-rose-200">
                   <input type="checkbox" checked={confirmCancel} onChange={(e) => setConfirmCancel(e.target.checked)} className="accent-rose-400" />
-                  <span>I confirm canceling the current contract with {current?.sponsor ?? '—'}</span>
+                  <span>I understand the relationship cost of ending {current?.sponsor ?? '—'}'s contract early</span>
                 </label>
               )}
-              <button
-                onClick={() => {
-                  if (mode === 'replacement') {
-                    applyTycoonMutation(userTeamId, (t: any) => applyDecline(t.tycoon, activeSlot));
-                  }
-                  handleAccept();
-                }}
-                className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40"
-                disabled={!evaluation?.willAccept || (mode === 'replacement' && !confirmCancel)}
-              >
-                <Check size={16} /> {mode === 'replacement' ? 'Replace Sponsor' : 'Accept Deal'}
-              </button>
-              <button onClick={handleDecline} className="flex-1 bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 font-bold py-3 rounded-xl flex items-center justify-center gap-2">
-                <XCircle size={16} /> Decline
-              </button>
+              <div className="flex gap-3">
+                <button onClick={handleDecline} className="flex-1 bg-rose-500/20 border border-rose-500/40 text-rose-300 hover:bg-rose-500/30 font-bold py-3 rounded-xl flex items-center justify-center gap-2">
+                  <XCircle size={16} /> Decline
+                </button>
+                <button
+                  onClick={() => {
+                    handleAccept();
+                  }}
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40"
+                  disabled={mode === 'replacement' && !confirmCancel}
+                >
+                  <Check size={16} /> {mode === 'replacement' ? 'Replace Sponsor' : 'Accept Deal'}
+                </button>
+              </div>
             </>
           )}
         </div>
@@ -447,10 +473,14 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
             <div className={`mt-4 text-xs font-black uppercase tracking-widest ${
               resolution.kind === 'accepted' ? 'text-emerald-300' : 'text-rose-300'
             }`}>
-              {resolution.kind === 'accepted' ? 'Deal Accepted' : 'Offer Declined'}
+              {resolution.kind === 'accepted' ? 'Deal Accepted' : resolution.kind === 'rejected' ? 'Offer Rejected' : 'Talks Ended'}
             </div>
             <h3 className="mt-1 text-2xl font-black text-white">
-              {resolution.kind === 'accepted' ? 'Nice doing business with you!' : 'We will pass for now.'}
+              {resolution.kind === 'accepted'
+                ? 'Nice doing business with you!'
+                : resolution.kind === 'rejected'
+                  ? `${resolution.sponsor} rejected the proposal.`
+                  : 'You ended the negotiation.'}
             </h3>
             {resolution.kind === 'accepted' ? (
               <>
@@ -461,13 +491,27 @@ export const SponsorshipNegotiationModal: React.FC<Props> = ({ open, onClose, in
                 </p>
                 <p className="mt-2 text-xs text-slate-500">The new contract is live immediately.</p>
               </>
+            ) : resolution.kind === 'rejected' ? (
+              <>
+                <p className="mt-3 text-sm text-slate-300">
+                  The requested terms were beyond what <span className="font-bold text-white">{resolution.sponsor}</span> would accept.
+                </p>
+                <p className="mt-2 text-xs text-slate-500">No contract or Cash was changed. They have ended these talks for now.</p>
+              </>
             ) : (
               <>
                 <p className="mt-3 text-sm text-slate-300">
-                  You declined the current offer from <span className="font-bold text-white">{resolution.sponsor}</span>.
+                  You declined the current proposal from <span className="font-bold text-white">{resolution.sponsor}</span>.
                 </p>
-                <p className="mt-2 text-xs text-slate-500">The slot remains open until you sign a replacement.</p>
+                <p className="mt-2 text-xs text-slate-500">No new contract or Cash was booked.</p>
               </>
+            )}
+            {resolution.kind === 'accepted' && proposed?.benefitPackage && (
+              <div className="mb-3 rounded-xl border border-sky-400/30 bg-sky-400/10 p-3">
+                <div className="text-[10px] font-black uppercase tracking-widest text-sky-300">Included Club Service</div>
+                <div className="mt-1 text-sm font-black text-white">{proposed.benefitPackage.label}</div>
+                <div className="mt-1 text-xs text-slate-400">Active for the contract term and removed at expiry; permanent club-owned upgrades are unaffected.</div>
+              </div>
             )}
             <button
               onClick={() => {

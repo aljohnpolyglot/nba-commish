@@ -1,0 +1,7 @@
+Floor Sections — west
+=====================
+
+2	sections/2-west.svg
+21	sections/21-west.svg
+22	sections/22-west.svg
+23	sections/23-west.svg

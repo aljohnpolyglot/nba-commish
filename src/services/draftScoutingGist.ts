@@ -46,7 +46,7 @@ async function fetchDraftClassScouting(year: number): Promise<GistProspect[] | n
     }
     return JSON.parse(text.substring(jsonStart));
   } catch (e) {
-    console.error(`Failed to fetch scouting data for ${year}:`, e);
+    console.warn(`Failed to fetch scouting data for ${year}; continuing without remote scouting enrichment.`, e);
     return null;
   }
 }

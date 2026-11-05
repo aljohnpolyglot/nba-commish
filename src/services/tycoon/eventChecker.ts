@@ -4,6 +4,7 @@
 
 import type { NBATeam } from '../../types';
 import type { SponsorshipSlot, TycoonState } from '../../types/tycoon';
+import { postClubTransaction } from './clubFinance';
 
 export interface TycoonEvent {
   id: string;
@@ -58,11 +59,12 @@ function runChecks(team: NBATeam, date: string, events: TycoonEvent[]): void {
     pushEvent(events, tid, date, 'crisisMeeting', { rank: ts.standingRank });
   }
 
-  if ((team as any).justWonEndesa) {
+  if ((team as any).justWonDomesticTitle || (team as any).justWonEndesa) {
     const slot = pickRandomNonExpiredSlot(t.sponsorships ?? {});
     if (slot) {
       pushEvent(events, tid, date, 'sponsorMidTermBonus', { slot });
     }
+    (team as any).justWonDomesticTitle = false;
     (team as any).justWonEndesa = false;
   }
 
@@ -82,6 +84,7 @@ export function acceptMidTermBonus(team: NBATeam, slot: SponsorshipSlot): void {
   if (!s) return;
   s.valuePerYear = Math.round(s.valuePerYear * 1.20);
   s.yearsRemaining += 2;
+  s.contractEndYear = (s.contractEndYear ?? s.signedYear + s.yearsRemaining - 2) + 2;
 }
 
 export function acceptPoachingOffer(
@@ -102,7 +105,15 @@ export function acceptPoachingOffer(
     valuePerYear: newValue,
     yearsRemaining: newYears,
     signedYear,
+    contractEndYear: signedYear + newYears,
   };
-  t.cashOnHand -= penalty;
+  postClubTransaction(t, {
+    sourceId: `sponsor-poaching-penalty:${team.id}:${slot}:${signedYear}:${newSponsor}`,
+    date: `${signedYear}-07-01`,
+    season: signedYear,
+    category: 'sponsorship',
+    label: `${existing?.sponsor ?? 'Previous sponsor'} termination`,
+    amountEUR: -penalty,
+  });
   return { penalty };
 }

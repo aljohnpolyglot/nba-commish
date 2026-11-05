@@ -24,6 +24,7 @@ const FALLBACK_COUNTRIES = [
 type SearchReferencePlayer = {
   college?: string;
   extractedCountry?: string;
+  extractedCountries?: string[];
 };
 
 export const usePlayerSearchReferenceData = (players: SearchReferencePlayer[]) => {
@@ -47,7 +48,8 @@ export const usePlayerSearchReferenceData = (players: SearchReferencePlayer[]) =
   const allCountries = useMemo(() => {
     const set = new Set<string>();
     players.forEach((player) => {
-      if (player.extractedCountry) set.add(player.extractedCountry);
+      const countries = player.extractedCountries?.length ? player.extractedCountries : [player.extractedCountry].filter(Boolean) as string[];
+      countries.forEach(country => set.add(country));
     });
     return Array.from(set).sort();
   }, [players]);

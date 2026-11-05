@@ -7,12 +7,14 @@ import type { DraftOrderTeam } from '../../services/draft/draftOrder';
 import { SKILL_AXES, type SkillAxis } from '../../services/scoutingReport';
 import { CompactTeamNeedsPanel } from './simulator/CompactTeamNeedsPanel';
 import { CompactAdvisorBoardPanel } from './simulator/CompactAdvisorBoardPanel';
+import { CompactDepthChartPanel } from './simulator/CompactDepthChartPanel';
 import { POSITIONS, getOrdinalSuffix } from './simulator/helpers';
 import type { DraftSimulatorProspect } from './DraftSimulatorView.helpers';
 import type { GameState } from '../../types';
 import { fuzzDraftRatingValue } from '../../utils/scoutingFuzz';
 import { getTeamFullName } from '../../utils/teamNames';
 import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getProspectCollege } from '../../utils/prospectUtils';
 
 interface DraftBoardSectionProps {
   allProspects: DraftSimulatorProspect[];
@@ -28,6 +30,7 @@ interface DraftBoardSectionProps {
   hasStarted: boolean;
   isGM: boolean;
   isUserOnClock: boolean;
+  allowPassPick: boolean;
   userHasMorePicks: boolean;
   nextUserPick: number | null;
   isSimulating: boolean;
@@ -38,6 +41,7 @@ interface DraftBoardSectionProps {
   players: NBAPlayer[];
   onSetPosFilter: (value: string) => void;
   onSetSortBy: (value: 'ovr' | 'pot' | SkillAxis) => void;
+  onOpenPlayerActions: (player: DraftSimulatorProspect) => void;
   onOpenScoutingPlayer: (player: DraftSimulatorProspect) => void;
   onSimToMyPick: () => void;
   onSimToEnd: () => void;
@@ -98,10 +102,10 @@ const ProspectSummary: React.FC<{
       <span className="text-indigo-300">OVR {fuzzDraftRatingValue(player.displayOvr ?? 0, state, player as NBAPlayer, 'ovr')}</span>
       <span className="w-1 h-1 bg-white/20 rounded-full" />
       <span className="text-emerald-400/70">POT {fuzzDraftRatingValue(player.displayPot ?? 0, state, player as NBAPlayer, 'pot')}</span>
-      {(player as any).college && (
+      {(getProspectCollege(player as NBAPlayer) || player.preDraftClub?.name) && (
         <>
           <span className="w-1 h-1 bg-white/20 rounded-full" />
-          <span className="text-white/50">{(player as any).college}</span>
+          <span className="text-white/50">{getProspectCollege(player as NBAPlayer) || player.preDraftClub?.name}</span>
         </>
       )}
     </div>
@@ -129,6 +133,7 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
   hasStarted,
   isGM,
   isUserOnClock,
+  allowPassPick,
   userHasMorePicks,
   nextUserPick,
   isSimulating,
@@ -139,6 +144,7 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
   players,
   onSetPosFilter,
   onSetSortBy,
+  onOpenPlayerActions,
   onOpenScoutingPlayer,
   onSimToMyPick,
   onSimToEnd,
@@ -149,6 +155,7 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
 }) => {
   const displayTeamOnClock = resolveDraftDisplayTeam(teamOnClock, state);
   const displayNextTeam = resolveDraftDisplayTeam(nextTeam, state);
+  const [insightTab, setInsightTab] = React.useState<'needs' | 'depth' | 'board'>('needs');
 
   return (
   <div className="grid lg:grid-cols-[1fr_320px] gap-6">
@@ -199,15 +206,15 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
               <FastForward size={11} /> Sim to My Pick ({nextUserPick})
             </button>
           )}
-          {isGM && !isDraftComplete && !isUserOnClock && (
+          {!isDraftComplete && !isUserOnClock && (
             <button
               onClick={onSimToEnd}
               className="h-8 px-3 text-xs font-black uppercase rounded-sm bg-emerald-600 hover:bg-emerald-500 text-white flex items-center gap-1.5 transition-colors"
             >
-              <FastForward size={11} /> {userHasMorePicks ? 'Assistant GM: Sim to End' : 'Sim to End'}
+              <FastForward size={11} /> {isGM && userHasMorePicks ? 'Assistant GM: Sim to End' : 'Sim to End'}
             </button>
           )}
-          {isGM && !isDraftComplete && isUserOnClock && (
+          {isGM && !isDraftComplete && isUserOnClock && allowPassPick && (
             <button
               onClick={onPassPick}
               className="h-8 px-3 text-xs font-black uppercase rounded-sm bg-zinc-800 hover:bg-zinc-700 text-white/80 border border-zinc-600 flex items-center gap-1.5 transition-colors"
@@ -294,7 +301,16 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
             available.map(player => (
               <div
                 key={player.internalId}
-                onClick={() => onOpenScoutingPlayer(player)}
+                role="button"
+                aria-label={`Open actions for ${player.name}`}
+                tabIndex={0}
+                onClick={() => onOpenPlayerActions(player)}
+                onKeyDown={event => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault();
+                    onOpenPlayerActions(player);
+                  }
+                }}
                 className="flex items-center p-2.5 border-b border-[#333] hover:bg-white/5 transition-colors cursor-pointer group"
               >
                 <div className="w-10 h-10 bg-black/40 rounded-sm font-black text-lg text-white/40 mr-3 shrink-0 flex items-center justify-center">
@@ -323,7 +339,13 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
 
     <div className="space-y-5">
       {displayNextTeam && !isDraftComplete && (
-        <div className="bg-[#1A1A1A] rounded-sm p-3 border border-[#333] flex justify-between items-center">
+        <div
+          className="relative flex items-center justify-between overflow-hidden rounded-sm border p-3"
+          style={{
+            borderColor: `${displayNextTeam.colors?.[0] ?? '#334155'}99`,
+            background: `radial-gradient(circle at 88% 50%, ${displayNextTeam.colors?.[0] ?? '#1e293b'}55, transparent 48%), #1A1A1A`,
+          }}
+        >
           <div>
             <div className="text-[9px] font-black uppercase text-white/40">Next Up — Pick {currentPick + 1}</div>
             <div className="font-black text-white text-sm">{getTeamFullName(displayNextTeam as any) || displayNextTeam.name}</div>
@@ -335,31 +357,37 @@ export const DraftBoardSection: React.FC<DraftBoardSectionProps> = ({
       )}
 
       {isGM && userTeamId != null && (
-        <div className="bg-[#1A1A1A] rounded-sm border border-[#333] p-4">
-          <div className="text-[9px] font-black uppercase text-amber-300 tracking-widest mb-3">Your Team Needs</div>
-          <CompactTeamNeedsPanel teamId={userTeamId} players={players} />
-        </div>
-      )}
-
-      {isGM && userTeamId != null && (
-        <div className="bg-[#1A1A1A] rounded-sm border border-[#333] p-4">
-          <div className="text-[9px] font-black uppercase text-amber-300 tracking-widest mb-3">Advisor's Big Board</div>
-          <CompactAdvisorBoardPanel teamId={userTeamId} draftedIds={draftedSet} />
-        </div>
-      )}
-
-      <div className="bg-[#1A1A1A] rounded-sm border border-[#333] p-4">
-        <div className="text-[9px] font-black uppercase text-indigo-400 tracking-widest mb-3">Top Prospects by OVR</div>
-        {allProspects.filter(player => !draftedSet.has(player.internalId)).slice(0, 10).map((player, index) => (
-          <div key={player.internalId} className="flex items-center gap-2 py-1">
-            <span className="text-[10px] font-black text-white/30 w-5">{index + 1}</span>
-            <span className="text-xs font-bold text-white truncate flex-1">{player.name}</span>
-            <span className="text-[10px] font-black text-indigo-300">
-              {fuzzDraftRatingValue(player.displayOvr ?? 0, state, player as NBAPlayer, 'ovr')}
-            </span>
+        <div className="overflow-hidden rounded-xl border border-[#333] bg-[#1A1A1A]">
+          <div className="border-b border-[#333] px-4 py-3">
+            <div className="text-[9px] font-black uppercase tracking-[0.2em] text-amber-300">Draft Room</div>
+            <div className="mt-2 grid grid-cols-3 rounded-lg bg-black/35 p-1" role="tablist" aria-label="Draft room insights">
+              {([
+                ['needs', 'Needs'],
+                ['depth', 'Depth'],
+                ['board', 'Advisor'],
+              ] as const).map(([key, label]) => (
+                <button
+                  key={key}
+                  type="button"
+                  role="tab"
+                  aria-selected={insightTab === key}
+                  onClick={() => setInsightTab(key)}
+                  className={`h-8 rounded-md text-[9px] font-black uppercase tracking-wider transition-colors ${
+                    insightTab === key ? 'bg-indigo-600 text-white' : 'text-white/45 hover:text-white'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
           </div>
-        ))}
-      </div>
+          <div className="max-h-[430px] overflow-y-auto p-4 custom-scrollbar">
+            {insightTab === 'needs' && <CompactTeamNeedsPanel teamId={userTeamId} players={players} />}
+            {insightTab === 'depth' && <CompactDepthChartPanel state={state} teamId={userTeamId} />}
+            {insightTab === 'board' && <CompactAdvisorBoardPanel teamId={userTeamId} draftedIds={draftedSet} />}
+          </div>
+        </div>
+      )}
     </div>
   </div>
   );

@@ -11,6 +11,8 @@ import { NBAPlayer, NBATeam, Sender } from '../types';
 import { selectRandom } from './storyGenerators';
 import { computeMoodScore, dramaProbability, moodToStoryType } from '../utils/mood';
 import { getTeamCoachingGameplayEffects } from './staff/staffGameplayEffects';
+import { getTeamFullName } from '../utils/teamNames';
+import { computeAge } from '../utils/helpers';
 
 export interface DisciplineStoryResult {
   story: string;
@@ -18,6 +20,12 @@ export interface DisciplineStoryResult {
   playerPortraitUrl?: string;
   teamLogoUrl?: string;
   severity: 'fine' | 'suspend' | 'warn';
+  playerId: string;
+  playerName: string;
+  teamId: number;
+  incidentType: 'conduct' | 'brawl' | 'weapon' | 'peds' | 'gambling';
+  recommendedAmountUSD: number;
+  recommendedGames: number;
 }
 
 // ─── Player archetype derivation ─────────────────────────────────────────────
@@ -125,6 +133,26 @@ const SCENARIOS_INJURY: { text: string; severity: DisciplineStoryResult['severit
   { text: 'publicly contradicted the team\'s official injury timeline, saying "I could play right now if they let me," which conflicts with the franchise\'s official medical reports.', severity: 'warn' },
 ];
 
+const SOURCE_ALIGNED_SCENARIOS: { text: string; severity: DisciplineStoryResult['severity'] }[] = [
+  { text: 'publicly criticized the officiating after the game and continued the remarks in a later media appearance.', severity: 'fine' },
+  { text: 'directed abusive language toward a game official after a disputed call and had to be escorted away from the crew.', severity: 'fine' },
+  { text: 'made an obscene gesture toward spectators after a courtside exchange was caught on the arena broadcast.', severity: 'fine' },
+  { text: 'escalated a confrontation with a fan near the tunnel before arena security separated both sides.', severity: 'suspend' },
+  { text: 'left the bench during an on-court altercation and became involved after officials had begun restoring order.', severity: 'suspend' },
+  { text: 'was identified as an aggressor in an on-court confrontation that continued after the whistle.', severity: 'suspend' },
+  { text: 'committed dangerous contact during a dead-ball sequence and the incident was upgraded after league review.', severity: 'suspend' },
+  { text: 'missed a mandatory team activity without an approved absence and did not notify team officials in advance.', severity: 'warn' },
+  { text: 'violated league rules governing public comments and social-media conduct following a recent game.', severity: 'fine' },
+  { text: 'was found to have violated the league substance policy after the review and appeal process concluded.', severity: 'suspend' },
+];
+
+const SPECIAL_DISCIPLINE_SCENARIOS = [
+  { text: 'returned a confirmed positive test for a banned performance-enhancing substance. The laboratory chain of custody has been verified and the players association has been notified.', severity: 'suspend' as const, incidentType: 'peds' as const, games: 25 },
+  { text: 'displayed a handgun during a social media broadcast. Local authorities report no charges at this time, but the league security review confirmed the footage.', severity: 'suspend' as const, incidentType: 'weapon' as const, games: 12 },
+  { text: 'was identified as the principal aggressor in a tunnel brawl after a game. Security footage shows repeated escalation after staff attempted to separate both groups.', severity: 'suspend' as const, incidentType: 'brawl' as const, games: 6 },
+  { text: 'was linked to prohibited wagering activity after the integrity monitor flagged unusual betting patterns connected to an associate. The matter requires an immediate league response.', severity: 'suspend' as const, incidentType: 'gambling' as const, games: 20 },
+];
+
 // ─── Main generator ───────────────────────────────────────────────────────────
 
 export const generatePlayerDisciplineStory = (
@@ -133,7 +161,12 @@ export const generatePlayerDisciplineStory = (
   dateStr?: string,
   endorsedPlayers?: string[],
 ): DisciplineStoryResult | null => {
-  const activePlayers = players.filter(p => p.overallRating >= 58 && p.tid >= 0 && p.status === 'Active'); // BBGM 58+ = starter tier
+  const activePlayers = players.filter(p =>
+    p.overallRating >= 58
+    && p.tid >= 0
+    && p.tid < 100
+    && p.status === 'Active',
+  );
   if (activePlayers.length === 0) return null;
 
   // Mood-weighted player selection — disgruntled players more likely to generate stories
@@ -164,7 +197,8 @@ export const generatePlayerDisciplineStory = (
   const escalate = traits.includes('DRAMA_MAGNET');
 
   const archetype = getArchetype(player.overallRating);
-  const ageBucket = getAgeBucket(player.age);
+  const parsedYear = new Date(date).getFullYear();
+  const ageBucket = getAgeBucket(computeAge(player, Number.isFinite(parsedYear) ? parsedYear : new Date().getFullYear()));
   const teamCtx = getTeamContext(team);
   const isInjured = player.injury?.type !== 'Healthy' && player.injury?.gamesRemaining > 0;
 
@@ -174,6 +208,7 @@ export const generatePlayerDisciplineStory = (
     ...SCENARIOS_BY_ARCHETYPE[archetype], // double-weight archetype (most relevant)
     ...SCENARIOS_BY_AGE[ageBucket],
     ...SCENARIOS_TEAM_CONTEXT[teamCtx],
+    ...SOURCE_ALIGNED_SCENARIOS,
     ...(isInjured ? SCENARIOS_INJURY : []),
   ];
 
@@ -188,7 +223,9 @@ export const generatePlayerDisciplineStory = (
     pool = [...SCENARIOS_BY_ARCHETYPE[archetype], ...SCENARIOS_BY_AGE[ageBucket]];
   }
 
-  const chosen = selectRandom(pool, 1)[0];
+  const special = Math.random() < 0.18 ? selectRandom(SPECIAL_DISCIPLINE_SCENARIOS, 1)[0] : null;
+  const selected = special ?? selectRandom(pool, 1)[0];
+  const chosen = selected ? { ...selected } : null;
   if (!chosen) return null;
 
   // DRAMA_MAGNET escalates severity one step: fine → warn → suspend
@@ -198,16 +235,34 @@ export const generatePlayerDisciplineStory = (
   }
 
   const sender: Sender = {
-    name: 'Joe Dumars',
-    title: 'Executive VP, Head of Basketball Operations',
-    organization: 'NBA League Office',
+    name: 'League Basketball Operations',
+    title: 'Basketball Operations',
+    organization: 'League Office',
   };
+  const incidentType = special?.incidentType
+    ?? (/physical confrontation|altercation/i.test(chosen.text)
+      ? 'brawl'
+      : /bettor|casino|poker/i.test(chosen.text)
+        ? 'gambling'
+        : 'conduct');
+  const salaryUSD = Math.max(0, Number(player.contract?.amount ?? 0) * 1_000);
+  const fineAnchor = chosen.severity === 'fine' ? 20_000 : chosen.severity === 'warn' ? 10_000 : 50_000;
+  const salaryMultiplier = salaryUSD >= 30_000_000 ? 2 : salaryUSD >= 10_000_000 ? 1.5 : 1;
+  const recommendedAmountUSD = Math.max(5_000, Math.round(fineAnchor * salaryMultiplier / 5_000) * 5_000);
+  const recommendedGames = special?.games
+    ?? (chosen.severity === 'suspend' ? 5 : chosen.severity === 'fine' ? 0 : 1);
 
   return {
-    story: `A major off-court incident has occurred. ${player.name} of the ${team?.name ?? 'Unknown Team'} ${chosen.text}`,
+    story: `A major off-court incident has occurred. ${player.name} of the ${team ? getTeamFullName(team) : 'Unknown Team'} ${chosen.text}`,
     sender,
     severity: chosen.severity,
     playerPortraitUrl: player.imgURL,
     teamLogoUrl: team?.logoUrl,
+    playerId: player.internalId,
+    playerName: player.name,
+    teamId: player.tid,
+    incidentType,
+    recommendedAmountUSD,
+    recommendedGames,
   };
 };

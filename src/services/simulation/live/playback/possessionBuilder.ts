@@ -1,6 +1,8 @@
 import { RotationService } from './rotationService';
 import { PlayerPool, Possession, PossessionOutcome, TeamId, FTShot } from './possessionTypes';
 import { GameTimingConfig, getGameTimingConfig, getPeriodDurationSeconds, getPeriodStartSeconds } from '../../../../utils/gameClock';
+import type { GameRuleConfig } from '../../types';
+import { DEFAULT_GAME_RULES } from '../../gameRuleRuntime';
 
 export function buildPossessions(
   homePool: PlayerPool[],
@@ -8,12 +10,18 @@ export function buildPossessions(
   quarterScores: { home: number[]; away: number[] },
   tipWinner: TeamId,
   otCount: number = 0,
-  timingConfig: GameTimingConfig = getGameTimingConfig()
+  timingConfig: GameTimingConfig = getGameTimingConfig(),
+  playersOnCourt: number = 5,
+  gameRules: GameRuleConfig = DEFAULT_GAME_RULES,
 ): Possession[] {
   const homeBudgets = initBudgets(homePool);
   const awayBudgets = initBudgets(awayPool);
 
-  const TOTAL_PERIODS = timingConfig.numQuarters + otCount;
+  const TOTAL_PERIODS = Math.max(
+    timingConfig.numQuarters + otCount,
+    quarterScores.home.length,
+    quarterScores.away.length,
+  );
   const possessions: Possession[] = [];
   let currentTeam: TeamId = tipWinner;
   let posId = 0;
@@ -21,7 +29,12 @@ export function buildPossessions(
   possessions.push({ id: posId++, team: tipWinner, outcome: 'MADE_2', quarter: 1, pts: 0, isJumpball: true });
 
   for (let q = 1; q <= TOTAL_PERIODS; q++) {
-    const quarterStart = getTipForQuarter(q, tipWinner, timingConfig.numQuarters);
+    const quarterStart = getTipForQuarter(
+      q,
+      tipWinner,
+      timingConfig.numQuarters,
+      gameRules.possessionPattern,
+    );
     currentTeam = quarterStart;
     
     let homeScored = 0;
@@ -62,8 +75,8 @@ export function buildPossessions(
       const activeDiff = currentTeam === 'HOME' ? homeScored - awayScored : awayScored - homeScored;
       const oppDiff = currentTeam === 'HOME' ? awayScored - homeScored : homeScored - awayScored;
       
-      const activeLineup = RotationService.getLineupAtTime(pool, estimatedGs, activeDiff);
-      const oppLineup = RotationService.getLineupAtTime(oppPool, estimatedGs, oppDiff);
+      const activeLineup = RotationService.getLineupAtTime(pool, estimatedGs, activeDiff, playersOnCourt);
+      const oppLineup = RotationService.getLineupAtTime(oppPool, estimatedGs, oppDiff, playersOnCourt);
       
       const ptsNeeded = target - scored;
       const outcome = pickOutcome(budgets, oppBudgets, ptsNeeded, activeLineup, oppLineup, q, estimatedGs, activeDiff, timingConfig, attempts);
@@ -76,7 +89,9 @@ export function buildPossessions(
       const possession = buildOnePossession(
         posId++, currentTeam, outcome, q, 
         activeLineup, oppLineup,
-        budgets, oppBudgets
+        budgets, oppBudgets,
+        gameRules,
+        ptsNeeded,
       );
       
       possessions.push(possession);
@@ -84,40 +99,78 @@ export function buildPossessions(
       if (currentTeam === 'HOME') homeScored += possession.pts;
       else awayScored += possession.pts;
       
-      if (outcome !== 'MISS_2_ORB' && outcome !== 'MISS_3_ORB') {
+      if (outcome !== 'MISS_2_ORB' && outcome !== 'MISS_3_ORB' && outcome !== 'MISS_4_ORB') {
         currentTeam = currentTeam === 'HOME' ? 'AWAY' : 'HOME';
       }
     }
 
-    // Convergence: if the loop bailed before targets were hit (budget gone,
-    // attempt cap reached), synthesize plain MADE buckets to land EXACTLY on
-    // quarterScores. Without this the PBP-final < engine-final and the UI
-    // snaps at FINAL → visible score jump.
-    convergeQuarter('HOME', homeTarget - homeScored, homePool, awayPool, homeBudgets, awayBudgets, possessions, q, () => posId++);
-    convergeQuarter('AWAY', awayTarget - awayScored, awayPool, homePool, awayBudgets, homeBudgets, possessions, q, () => posId++);
+    convergeQuarter(
+      homeTarget - homeScored,
+      awayTarget - awayScored,
+      homePool,
+      awayPool,
+      homeBudgets,
+      awayBudgets,
+      possessions,
+      q,
+      () => posId++,
+      playersOnCourt,
+      gameRules,
+    );
   }
 
   return possessions;
 }
 
 function convergeQuarter(
-  team: TeamId,
-  deficit: number,
-  pool: PlayerPool[],
-  oppPool: PlayerPool[],
-  budgets: Map<string, PlayerPool>,
-  oppBudgets: Map<string, PlayerPool>,
+  homeDeficit: number,
+  awayDeficit: number,
+  homePool: PlayerPool[],
+  awayPool: PlayerPool[],
+  homeBudgets: Map<string, PlayerPool>,
+  awayBudgets: Map<string, PlayerPool>,
   possessions: Possession[],
   quarter: number,
   nextId: () => number,
+  playersOnCourt: number,
+  gameRules: GameRuleConfig,
 ): void {
-  if (deficit <= 0 || pool.length === 0) return;
-  const active = pool.slice(0, 5);
-  const oppActive = oppPool.slice(0, 5);
-  let remaining = deficit;
+  let remainingHome = Math.max(0, homeDeficit);
+  let remainingAway = Math.max(0, awayDeficit);
+  if (remainingHome <= 0 && remainingAway <= 0) return;
+
+  let team: TeamId = possessions[possessions.length - 1]?.team === 'HOME' ? 'AWAY' : 'HOME';
   let i = 0;
-  while (remaining > 0) {
-    if (remaining === 1) {
+  while ((remainingHome > 0 || remainingAway > 0) && i <= 80) {
+    if (team === 'HOME' && remainingHome <= 0) team = 'AWAY';
+    if (team === 'AWAY' && remainingAway <= 0) team = 'HOME';
+
+    const pool = team === 'HOME' ? homePool : awayPool;
+    const oppPool = team === 'HOME' ? awayPool : homePool;
+    const budgets = team === 'HOME' ? homeBudgets : awayBudgets;
+    const oppBudgets = team === 'HOME' ? awayBudgets : homeBudgets;
+    const active = pool.slice(0, playersOnCourt);
+    const oppActive = oppPool.slice(0, playersOnCourt);
+    if (active.length === 0) break;
+
+    const remaining = team === 'HOME' ? remainingHome : remainingAway;
+    if (remaining === gameRules.teamFoulPenaltyPoints && gameRules.teamFoulPenaltyMode === 'award_goal') {
+      const scorer = active[i % active.length];
+      possessions.push({
+        id: nextId(),
+        team,
+        outcome: 'PENALTY_GOAL',
+        quarter,
+        pts: gameRules.teamFoulPenaltyPoints,
+        scorer,
+      });
+      if (team === 'HOME') remainingHome -= gameRules.teamFoulPenaltyPoints;
+      else remainingAway -= gameRules.teamFoulPenaltyPoints;
+      team = team === 'HOME' ? 'AWAY' : 'HOME';
+      i++;
+      continue;
+    }
+    if (remaining === 1 && gameRules.freeThrowsEnabled) {
       const victim = active.find(p => (budgets.get(p.id)?.ftm ?? 0) > 0) ?? active[i % active.length];
       const fouler = oppActive.find(p => (oppBudgets.get(p.id)?.pf ?? 0) > 0)
         ?? oppActive[i % Math.max(oppActive.length, 1)]
@@ -139,16 +192,19 @@ function convergeQuarter(
           { isMake: false, shooter: victim },
         ],
       } as Possession);
-      remaining -= 1;
+      if (team === 'HOME') remainingHome -= 1;
+      else remainingAway -= 1;
+      team = team === 'HOME' ? 'AWAY' : 'HOME';
       i++;
       continue;
     }
 
-    // Prefer 3 when deficit is a multiple of 3, else 2.
-    const useThree = remaining >= 3 && remaining % 3 === 0;
+    const ordinaryValue = gameRules.fieldGoalValue;
+    const useThree = gameRules.threePointLineEnabled && remaining >= 3 && remaining % 3 === 0;
     const scorer = active[i % active.length];
     const outcome: PossessionOutcome = useThree ? 'MADE_3' : 'MADE_2';
-    const pts = useThree ? 3 : 2;
+    const pts = useThree ? 3 : ordinaryValue;
+    if (pts > remaining) break;
     // Charge the budget so player box-score still aligns with totals.
     const b = budgets.get(scorer.id);
     if (b) {
@@ -164,9 +220,10 @@ function convergeQuarter(
       scorer,
       is3: useThree,
     } as Possession);
-    remaining -= pts;
+    if (team === 'HOME') remainingHome -= pts;
+    else remainingAway -= pts;
+    team = team === 'HOME' ? 'AWAY' : 'HOME';
     i++;
-    if (i > 40) break; // safety
   }
 }
 
@@ -231,9 +288,9 @@ function pickOutcome(
   const multTov  = 1.0;
   const multMade = isLateGame ? 0.93 : 1.0;
   
-  if (totalFg2 > 0 && teamFg2 > 0)    options.push({ outcome: 'MADE_2',     weight: totalFg2 * 2 * multMade });
-  if (totalFg3 > 0 && teamFg3 > 0)    options.push({ outcome: 'MADE_3',     weight: totalFg3 * 2 * multMade });
-  if (totalFg4 > 0 && teamFg4 > 0)    options.push({ outcome: 'MADE_4',     weight: totalFg4 * 2 * multMade });
+  if (ptsNeeded >= 2 && totalFg2 > 0 && teamFg2 > 0) options.push({ outcome: 'MADE_2', weight: totalFg2 * 2 * multMade });
+  if (ptsNeeded >= 3 && totalFg3 > 0 && teamFg3 > 0) options.push({ outcome: 'MADE_3', weight: totalFg3 * 2 * multMade });
+  if (ptsNeeded >= 4 && totalFg4 > 0 && teamFg4 > 0) options.push({ outcome: 'MADE_4', weight: totalFg4 * 2 * multMade });
   
   if (totalM2 > 0 && teamM2 > 0 && teamFg2 > 0) {
     const drbWeight = Math.max(0, totalM2 - orbWeight);
@@ -251,7 +308,7 @@ function pickOutcome(
     if (orbWeight > 0)  options.push({ outcome: 'MISS_4_ORB', weight: Math.min(orbWeight * 0.2, totalM4) });
   }
   if (totalTov > 0)    options.push({ outcome: 'TOV',        weight: totalTov * 1.5 * multTov });
-  if (ftTripBudget > 0) options.push({ outcome: 'FOUL_TRIP', weight: ftTripBudget * multFoul });
+  if (ptsNeeded > 0 && ftTripBudget > 0) options.push({ outcome: 'FOUL_TRIP', weight: ftTripBudget * multFoul });
   
   if (options.length === 0) return null;
 
@@ -272,7 +329,9 @@ function buildOnePossession(
   activeLineup: PlayerPool[],
   oppLineup: PlayerPool[],
   budgets: Map<string, PlayerPool>,
-  oppBudgets: Map<string, PlayerPool>
+  oppBudgets: Map<string, PlayerPool>,
+  gameRules: GameRuleConfig,
+  ptsNeeded: number,
 ): Possession {
   const possession: Possession = { id, team, outcome, quarter, pts: 0 };
 
@@ -294,6 +353,12 @@ function buildOnePossession(
       const statKey = is4 ? 'fg4' : is3 ? 'fg3' : 'fg2';
       const scorer = weightedPickPlayer(scorerPool, budgets, statKey);
       decrementBudget(budgets, scorer.id, statKey);
+      const scorerBudget = budgets.get(scorer.id);
+      const isDunk = !is3
+        && !is4
+        && (scorerBudget?.dunks ?? 0) > 0
+        && ptsNeeded >= gameRules.dunkValue;
+      if (isDunk) decrementBudget(budgets, scorer.id, 'dunks');
       
       const assisterPool = safeActive.filter(p => {
         const b = budgets.get(p.id);
@@ -308,7 +373,23 @@ function buildOnePossession(
       possession.assister = assister ?? undefined;
       possession.is3 = is3;
       possession.is4 = is4;
-      possession.pts = is4 ? 4 : is3 ? 3 : 2;
+      possession.isDunk = isDunk;
+      if (!is3 && !is4) {
+        const scorerLocation = budgets.get(scorer.id);
+        if ((scorerLocation?.fgAtRim ?? 0) > 0) {
+          possession.shotLocation = 'paint';
+          decrementBudget(budgets, scorer.id, 'fgAtRim');
+        } else if ((scorerLocation?.fgLowPost ?? 0) > 0) {
+          possession.shotLocation = 'paint';
+          decrementBudget(budgets, scorer.id, 'fgLowPost');
+        } else {
+          possession.shotLocation = 'midrange';
+          decrementBudget(budgets, scorer.id, 'fgMidRange');
+        }
+      } else {
+        possession.shotLocation = is4 ? 'four' : 'three';
+      }
+      possession.pts = isDunk ? gameRules.dunkValue : is4 ? 4 : is3 ? 3 : gameRules.fieldGoalValue;
       break;
     }
 
@@ -346,8 +427,9 @@ function buildOnePossession(
         : null;
       if (blocker) decrementBudget(oppBudgets, blocker.id, 'blk');
       
+      const blockOutOfBounds = !!blocker && Math.random() < 0.12;
       let rebounder: PlayerPool | null = null;
-      if (isOrb) {
+      if (!blockOutOfBounds && isOrb) {
         let orbPool = safeActive.filter(p => {
           const b = budgets.get(p.id);
           return b && b.orb > 0;
@@ -355,7 +437,7 @@ function buildOnePossession(
         if (orbPool.length === 0) orbPool = safeActive;
         rebounder = weightedPickPlayer(orbPool, budgets, 'orb');
         decrementBudget(budgets, rebounder.id, 'orb');
-      } else {
+      } else if (!blockOutOfBounds) {
         let drbPool = safeOpp.filter(p => {
           const b = oppBudgets.get(p.id);
           return b && b.drb > 0;
@@ -372,6 +454,9 @@ function buildOnePossession(
       possession.isOffReb = isOrb;
       possession.is3 = is3;
       possession.is4 = is4;
+      possession.shotValue = is4 ? 4 : is3 ? 3 : 2;
+      possession.shotLocation = is4 ? 'four' : is3 ? 'three' : 'midrange';
+      possession.ballState = blockOutOfBounds ? 'out_of_bounds' : 'live';
       possession.pts = 0;
       break;
     }
@@ -424,7 +509,12 @@ function buildOnePossession(
       let ftMadeLeft = victimBudget.ftm;
       let ftMissLeft = victimBudget.ftmiss ?? 0;
       
-      for (let i = 0; i < 2; i++) {
+      const remainingAttempts = Math.max(0, ftMadeLeft + ftMissLeft);
+      const threePointAttemptShare = (victimBudget.fg3 + victimBudget.m3)
+        / Math.max(1, victimBudget.fg2 + victimBudget.m2 + victimBudget.fg3 + victimBudget.m3);
+      const shotValue: 2 | 3 = remainingAttempts >= 3 && Math.random() < threePointAttemptShare ? 3 : 2;
+      const freeThrowsAwarded = Math.max(1, Math.min(shotValue, remainingAttempts || shotValue));
+      for (let i = 0; i < freeThrowsAwarded; i++) {
         if (ftMadeLeft > 0) {
           fts.push({ isMake: true, shooter: victim });
           ftMadeLeft--;
@@ -443,6 +533,10 @@ function buildOnePossession(
       possession.victim = victim;
       possession.fouler = fouler;
       possession.fts = fts;
+      possession.shotValue = shotValue;
+      possession.freeThrowsAwarded = freeThrowsAwarded;
+      possession.shotLocation = shotValue === 3 ? 'three' : 'paint';
+      possession.ballState = 'free_throws';
       possession.pts = tripPts;
       break;
     }
@@ -480,10 +574,20 @@ function decrementBudget(budgets: Map<string, PlayerPool>, playerId: string, sta
   (b as any)[stat] = Math.max(0, current - 1);
 }
 
-function getTipForQuarter(quarter: number, tipWinner: TeamId, numQuarters: number): TeamId {
+function getTipForQuarter(
+  quarter: number,
+  tipWinner: TeamId,
+  numQuarters: number,
+  possessionPattern: GameRuleConfig['possessionPattern'],
+): TeamId {
   if (quarter === 1) return tipWinner;
   if (quarter <= numQuarters) {
-    return quarter % 2 === 1 ? tipWinner : (tipWinner === 'HOME' ? 'AWAY' : 'HOME');
+    const other = tipWinner === 'HOME' ? 'AWAY' : 'HOME';
+    if (possessionPattern === 'alternating') {
+      return quarter % 2 === 1 ? tipWinner : other;
+    }
+    const pattern: readonly TeamId[] = [tipWinner, other, other, tipWinner];
+    return pattern[(quarter - 1) % pattern.length];
   }
   return Math.random() < 0.5 ? 'HOME' : 'AWAY';
 }

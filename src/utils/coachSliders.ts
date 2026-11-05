@@ -1,4 +1,7 @@
 import { PlayerK2, K2Result } from '../types';
+import type { LeagueStats } from '../types';
+import { applyEraShotDistributionBias, applyEraTempoBias } from '../services/simulation/eraCoachingBias';
+import { getPlayersOnCourt } from '../services/simulation/courtSize';
 import { convertTo2KRating } from './helpers';
 
 export interface CoachSliders {
@@ -26,7 +29,10 @@ export interface CoachSliders {
   ptiPlayoffs: number;
 }
 
-export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[][]): CoachSliders {
+export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[][], leagueStats?: Partial<LeagueStats> | null): CoachSliders {
+  const playersOnCourt = getPlayersOnCourt(leagueStats, roster.length);
+  const analysisDepth = Math.max(8, playersOnCourt + 3);
+  const twoUnitDepth = Math.max(10, playersOnCourt * 2);
   const getDisplayOvr = (player: PlayerK2) => {
     if (typeof player.rating2K === 'number' && Number.isFinite(player.rating2K) && player.rating2K > 0) {
       return player.rating2K;
@@ -43,30 +49,30 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
       return ovrB - ovrA;
     });
 
-    const top8 = sorted.slice(0, 8);
-    const starters = sorted.slice(0, 5);
-    const bench = sorted.slice(5, 12);
-    const top10 = sorted.slice(0, 10);
+    const topUnit = sorted.slice(0, analysisDepth);
+    const starters = sorted.slice(0, playersOnCourt);
+    const bench = sorted.slice(playersOnCourt, playersOnCourt + Math.max(playersOnCourt, 7));
+    const topTwoUnits = sorted.slice(0, twoUnitDepth);
 
     const getAvg = (players: PlayerK2[], attr: keyof PlayerK2['ratings'][0]) => {
       if (!players.length) return 50;
       return players.reduce((acc, p) => acc + (p.ratings[p.ratings.length - 1]?.[attr] || 50), 0) / players.length;
     };
 
-    const spd = getAvg(top8, 'spd');
-    const pss = getAvg(top8, 'pss');
-    const diq = getAvg(top8, 'diq');
-    const oiq = getAvg(top8, 'oiq');
-    const reb = getAvg(top8, 'reb');
-    const jmp = getAvg(top8, 'jmp');
-    const ins = getAvg(top8, 'ins');
-    const dnk = getAvg(top8, 'dnk');
-    const hgt = getAvg(top8, 'hgt');
-    const stre = getAvg(top8, 'stre');
-    const drb = getAvg(top8, 'drb');
-    const tp = getAvg(top8, 'tp');
+    const spd = getAvg(topUnit, 'spd');
+    const pss = getAvg(topUnit, 'pss');
+    const diq = getAvg(topUnit, 'diq');
+    const oiq = getAvg(topUnit, 'oiq');
+    const reb = getAvg(topUnit, 'reb');
+    const jmp = getAvg(topUnit, 'jmp');
+    const ins = getAvg(topUnit, 'ins');
+    const dnk = getAvg(topUnit, 'dnk');
+    const hgt = getAvg(topUnit, 'hgt');
+    const stre = getAvg(topUnit, 'stre');
+    const drb = getAvg(topUnit, 'drb');
+    const tp = getAvg(topUnit, 'tp');
 
-    const fg = getAvg(top8, 'fg');
+    const fg = getAvg(topUnit, 'fg');
 
     const tempo = (spd * 0.3) + (pss * 0.2) + (oiq * 0.5);
     const defPress = (hgt * 0.35) + (jmp * 0.25) + (diq * 0.2) + (spd * 0.2);
@@ -113,8 +119,12 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
       return 14;
     };
 
-    const starterInOut = top10.slice(0, 5).reduce((acc, p) => acc + getPlayerInOutVal(p), 0) / 5;
-    const benchInOut = top10.slice(5, 10).reduce((acc, p) => acc + getPlayerInOutVal(p), 0) / 5;
+    const averageInOut = (players: PlayerK2[]) =>
+      players.length > 0
+        ? players.reduce((acc, player) => acc + getPlayerInOutVal(player), 0) / players.length
+        : 0;
+    const starterInOut = averageInOut(topTwoUnits.slice(0, playersOnCourt));
+    const benchInOut = averageInOut(topTwoUnits.slice(playersOnCourt, playersOnCourt * 2));
     const prefInOut = (starterInOut * 0.7 + benchInOut * 0.3) * (100 / 14);
 
     // Raw shot distribution
@@ -144,11 +154,11 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
     return Math.max(targetMin, Math.min(targetMax, Math.round(res)));
   };
 
-  const tempo = normalize(myRaw.tempo, 'tempo', 50, 100, 1);
+  const tempo = applyEraTempoBias(normalize(myRaw.tempo, 'tempo', 50, 100, 1), leagueStats);
   const defensivePressure = normalize(myRaw.defPress, 'defPress', 50, 100, 1);
   const crashOffensiveGlass = normalize(myRaw.crash, 'crash', 50, 100, 1);
-  const fastBreak = normalize(myRaw.fastBreak, 'fastBreak', 50, 100, 1);
-  const earlyOffense = normalize(myRaw.earlyOffense, 'earlyOffense', 50, 100, 1);
+  const fastBreak = applyEraTempoBias(normalize(myRaw.fastBreak, 'fastBreak', 50, 100, 1), leagueStats);
+  const earlyOffense = applyEraTempoBias(normalize(myRaw.earlyOffense, 'earlyOffense', 50, 100, 1), leagueStats);
   const runPlays = normalize(myRaw.runPlays, 'runPlays', 50, 100, 1);
   const zoneUsage = normalize(myRaw.zone, 'zone', 2, 3, 0);
   const doubleTeam = normalize(myRaw.doubleTeam, 'doubleTeam', 3, 5, 1); // Selective < 5%
@@ -173,13 +183,13 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
     const ovrB = b.bbgmOvr || b.ratings[b.ratings.length - 1]?.ovr || 50;
     return ovrB - ovrA;
   });
-  const top8 = sorted.slice(0, 8);
+  const topUnit = sorted.slice(0, analysisDepth);
   const getAvg = (players: PlayerK2[], attr: keyof PlayerK2['ratings'][0]) => {
     if (!players.length) return 50;
     return players.reduce((acc, p) => acc + (p.ratings[p.ratings.length - 1]?.[attr] || 50), 0) / players.length;
   };
-  const myDiq = getAvg(top8, 'diq');
-  const mySpd = getAvg(top8, 'spd');
+  const myDiq = getAvg(topUnit, 'diq');
+  const mySpd = getAvg(topUnit, 'spd');
   const helpDefense = Math.max(1, Math.min(100, Math.round((myDiq * 0.6) + (mySpd * 0.4))));
 
   // Bench Depth
@@ -189,7 +199,8 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
     const isHealthy = !p.injury || p.injury.gamesRemaining === 0;
     return isHealthy && getDisplayOvr(p) >= 56;
   }).length;
-  const benchDepth = Math.max(1, Math.min(100, Math.round((healthyRotationCaliberPlayers / 12) * 100)));
+  const benchDepthTarget = Math.max(12, playersOnCourt + 7);
+  const benchDepth = Math.max(1, Math.min(100, Math.round((healthyRotationCaliberPlayers / benchDepthTarget) * 100)));
 
   // Shot Distribution
   const shotInsideNorm = normalize(myRaw.rawInside, 'rawInside', 23, 32, 16);
@@ -199,10 +210,12 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
 
   const totalShots = shotInsideNorm + shotCloseNorm + shotMediumNorm + shot3ptNorm;
 
-  const shotInside = Math.round((shotInsideNorm / totalShots) * 100);
-  const shotClose = Math.round((shotCloseNorm / totalShots) * 100);
-  const shotMedium = Math.round((shotMediumNorm / totalShots) * 100);
-  const shot3pt = Math.round((shot3ptNorm / totalShots) * 100);
+  const shotMix = applyEraShotDistributionBias({
+    shotInside: Math.round((shotInsideNorm / totalShots) * 100),
+    shotClose: Math.round((shotCloseNorm / totalShots) * 100),
+    shotMedium: Math.round((shotMediumNorm / totalShots) * 100),
+    shot3pt: Math.round((shot3ptNorm / totalShots) * 100),
+  }, leagueStats);
 
   return {
     tempo,
@@ -215,10 +228,10 @@ export function calculateCoachSliders(roster: PlayerK2[], allRosters?: PlayerK2[
     doubleTeam,
     zoneUsage,
     benchDepth,
-    shotInside,
-    shotClose,
-    shotMedium,
-    shot3pt,
+    shotInside: shotMix.shotInside,
+    shotClose: shotMix.shotClose,
+    shotMedium: shotMix.shotMedium,
+    shot3pt: shotMix.shot3pt,
     attackBasket,
     postPlayers,
     prefSizeSpeed,
@@ -333,7 +346,8 @@ export function computeTeamProficiency(
    * star count reflects familiarity gains earned via daily training paradigms.
    * Source: docs/training.md §2 ("Familiarity becomes a multiplier in simulation").
    */
-  systemFamiliarity?: { offense?: number; defense?: number }
+  systemFamiliarity?: { offense?: number; defense?: number },
+  leagueStats?: Partial<LeagueStats> | null,
 ): {
   sortedProfs: [string, number][];
   bestSystem: string;
@@ -351,7 +365,7 @@ export function computeTeamProficiency(
       DF: [0, 0, 0, 0, 0, 0, 0],
       RB: [0, 0],
     };
-    const sliders = calculateCoachSliders([], allRosters);
+    const sliders = calculateCoachSliders([], allRosters, leagueStats);
     return { sortedProfs: [], bestSystem: '', coachSliders: sliders, avgK2: empty, isVersatile: false, starGap: 0 };
   }
 
@@ -369,8 +383,10 @@ export function computeTeamProficiency(
     DF: new Array(sample.DF.length).fill(0),
     RB: new Array(sample.RB.length).fill(0),
   };
-  const div = Math.min(8, roster.length);
-  roster.slice(0, 8).forEach(p => {
+  const playersOnCourt = getPlayersOnCourt(leagueStats, roster.length);
+  const analysisDepth = Math.max(8, playersOnCourt + 3);
+  const div = Math.min(analysisDepth, roster.length);
+  roster.slice(0, analysisDepth).forEach(p => {
     (Object.keys(avgK2) as (keyof K2Result)[]).forEach(cat => {
       (p.k2 as any)[cat].forEach((v: number, i: number) => {
         if ((avgK2 as any)[cat][i] !== undefined) (avgK2 as any)[cat][i] += v / div;
@@ -382,15 +398,18 @@ export function computeTeamProficiency(
   // TeamTraining PlayerK2 flattens them onto `stats`. Read whichever exists.
   const ratingsOf = (p: any) => p?.currentRating ?? p?.stats ?? {};
 
-  const coachSliders = calculateCoachSliders(roster, allRosters);
+  const coachSliders = calculateCoachSliders(roster, allRosters, leagueStats);
   const fiveOutBonus = coachSliders.prefInOut >= 90 ? 25 : 0;
-  const highIQCount = sortedByBbgm.slice(0, 10).filter((p: any) => (ratingsOf(p).oiq ?? 50) > 70).length;
+  const highIQCount = sortedByBbgm
+    .slice(0, Math.max(10, playersOnCourt * 2))
+    .filter((p: any) => (ratingsOf(p).oiq ?? 50) > 70).length;
 
-  const top7 = sortedByBbgm.slice(0, 7).map(ratingsOf);
+  const versatileDepth = Math.max(7, playersOnCourt + 2);
+  const topUnit = sortedByBbgm.slice(0, versatileDepth).map(ratingsOf);
   const isVersatile =
-    top7.length >= 7 &&
-    top7.every((p: any) => p.oiq > 60 && p.diq > 40 && p.drb > 40 && p.spd > 40) &&
-    top7.filter((p: any) => p.spd > 55 && p.tp > 45).length >= 4;
+    topUnit.length >= versatileDepth &&
+    topUnit.every((p: any) => p.oiq > 60 && p.diq > 40 && p.drb > 40 && p.spd > 40) &&
+    topUnit.filter((p: any) => p.spd > 55 && p.tp > 45).length >= Math.max(4, playersOnCourt - 1);
 
   const profs = getSystemProficiency(
     avgK2,

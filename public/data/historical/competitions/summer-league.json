@@ -1,0 +1,630 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "summer-league-history.2144680981893627",
+  "competitionKey": "summer-league",
+  "competitionName": "NBA Summer League",
+  "leagueKey": "summer-league",
+  "generatedAt": "2026-08-01T22:47:38.378Z",
+  "sources": [
+    {
+      "role": "champions",
+      "source": {
+        "provider": "wikipedia",
+        "pageTitle": "NBA Summer League",
+        "pageUrl": "https://en.wikipedia.org/w/index.php?title=NBA_Summer_League&oldid=1365537695",
+        "revisionId": 1365537695,
+        "fetchedAt": "2026-08-01T22:47:38.378Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "unavailable"
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Golden State Warriors",
+        "sourcePageTitle": "Golden State Warriors",
+        "sourceHref": "/wiki/Golden_State_Warriors",
+        "canonicalKey": "club:golden-state-warriors"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Phoenix Suns",
+        "sourcePageTitle": "Phoenix Suns",
+        "sourceHref": "/wiki/Phoenix_Suns",
+        "canonicalKey": "club:phoenix-suns"
+      },
+      "result": "91–77",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ian Clark",
+                "sourcePageTitle": "Ian Clark (basketball)",
+                "sourceHref": "/wiki/Ian_Clark_(basketball)",
+                "canonicalKey": "person:ian-clark-basketball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Warriors",
+                "sourcePageTitle": "Golden State Warriors",
+                "sourceHref": "/wiki/Golden_State_Warriors",
+                "canonicalKey": "club:golden-state-warriors"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Sacramento Kings",
+        "sourcePageTitle": "Sacramento Kings",
+        "sourceHref": "/wiki/Sacramento_Kings",
+        "canonicalKey": "club:sacramento-kings"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Houston Rockets",
+        "sourcePageTitle": "Houston Rockets",
+        "sourceHref": "/wiki/Houston_Rockets",
+        "canonicalKey": "club:houston-rockets"
+      },
+      "result": "77–68",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ray McCallum Jr.",
+                "sourcePageTitle": "Ray McCallum Jr.",
+                "sourceHref": "/wiki/Ray_McCallum_Jr.",
+                "canonicalKey": "person:ray-mccallum-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "sourcePageTitle": "Sacramento Kings",
+                "sourceHref": "/wiki/Sacramento_Kings",
+                "canonicalKey": "club:sacramento-kings"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "San Antonio Spurs",
+        "sourcePageTitle": "San Antonio Spurs",
+        "sourceHref": "/wiki/San_Antonio_Spurs",
+        "canonicalKey": "club:san-antonio-spurs"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Phoenix Suns",
+        "sourcePageTitle": "Phoenix Suns",
+        "sourceHref": "/wiki/Phoenix_Suns",
+        "canonicalKey": "club:phoenix-suns"
+      },
+      "result": "93–90",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jonathon Simmons",
+                "sourcePageTitle": "Jonathon Simmons",
+                "sourceHref": "/wiki/Jonathon_Simmons",
+                "canonicalKey": "person:jonathon-simmons"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Spurs",
+                "sourcePageTitle": "San Antonio Spurs",
+                "sourceHref": "/wiki/San_Antonio_Spurs",
+                "canonicalKey": "club:san-antonio-spurs"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Chicago Bulls",
+        "sourcePageTitle": "Chicago Bulls",
+        "sourceHref": "/wiki/Chicago_Bulls",
+        "canonicalKey": "club:chicago-bulls"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Minnesota Timberwolves",
+        "sourcePageTitle": "Minnesota Timberwolves",
+        "sourceHref": "/wiki/Minnesota_Timberwolves",
+        "canonicalKey": "club:minnesota-timberwolves"
+      },
+      "result": "84–82 (OT)",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jerian Grant",
+                "sourcePageTitle": "Jerian Grant",
+                "sourceHref": "/wiki/Jerian_Grant",
+                "canonicalKey": "person:jerian-grant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "sourcePageTitle": "Chicago Bulls",
+                "sourceHref": "/wiki/Chicago_Bulls",
+                "canonicalKey": "club:chicago-bulls"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Los Angeles Lakers",
+        "sourcePageTitle": "Los Angeles Lakers",
+        "sourceHref": "/wiki/Los_Angeles_Lakers",
+        "canonicalKey": "club:los-angeles-lakers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Portland Trail Blazers",
+        "sourcePageTitle": "Portland Trail Blazers",
+        "sourceHref": "/wiki/Portland_Trail_Blazers",
+        "canonicalKey": "club:portland-trail-blazers"
+      },
+      "result": "110–98",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Kuzma",
+                "sourcePageTitle": "Kyle Kuzma",
+                "sourceHref": "/wiki/Kyle_Kuzma",
+                "canonicalKey": "person:kyle-kuzma"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "sourcePageTitle": "Los Angeles Lakers",
+                "sourceHref": "/wiki/Los_Angeles_Lakers",
+                "canonicalKey": "club:los-angeles-lakers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Portland Trail Blazers",
+        "sourcePageTitle": "Portland Trail Blazers",
+        "sourceHref": "/wiki/Portland_Trail_Blazers",
+        "canonicalKey": "club:portland-trail-blazers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Los Angeles Lakers",
+        "sourcePageTitle": "Los Angeles Lakers",
+        "sourceHref": "/wiki/Los_Angeles_Lakers",
+        "canonicalKey": "club:los-angeles-lakers"
+      },
+      "result": "91–73",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "K. J. McDaniels",
+                "sourcePageTitle": "K. J. McDaniels",
+                "sourceHref": "/wiki/K._J._McDaniels",
+                "canonicalKey": "person:k-j-mcdaniels"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "sourcePageTitle": "Portland Trail Blazers",
+                "sourceHref": "/wiki/Portland_Trail_Blazers",
+                "canonicalKey": "club:portland-trail-blazers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Memphis Grizzlies",
+        "sourcePageTitle": "Memphis Grizzlies",
+        "sourceHref": "/wiki/Memphis_Grizzlies",
+        "canonicalKey": "club:memphis-grizzlies"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Minnesota Timberwolves",
+        "sourcePageTitle": "Minnesota Timberwolves",
+        "sourceHref": "/wiki/Minnesota_Timberwolves",
+        "canonicalKey": "club:minnesota-timberwolves"
+      },
+      "result": "95–92",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brandon Clarke",
+                "sourcePageTitle": "Brandon Clarke",
+                "sourceHref": "/wiki/Brandon_Clarke",
+                "canonicalKey": "person:brandon-clarke"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "sourcePageTitle": "Memphis Grizzlies",
+                "sourceHref": "/wiki/Memphis_Grizzlies",
+                "canonicalKey": "club:memphis-grizzlies"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled"
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Sacramento Kings",
+        "sourcePageTitle": "Sacramento Kings",
+        "sourceHref": "/wiki/Sacramento_Kings",
+        "canonicalKey": "club:sacramento-kings"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Boston Celtics",
+        "sourcePageTitle": "Boston Celtics",
+        "sourceHref": "/wiki/Boston_Celtics",
+        "canonicalKey": "club:boston-celtics"
+      },
+      "result": "100–67",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Louis King",
+                "sourcePageTitle": "Louis King (basketball)",
+                "sourceHref": "/wiki/Louis_King_(basketball)",
+                "canonicalKey": "person:louis-king-basketball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "sourcePageTitle": "Sacramento Kings",
+                "sourceHref": "/wiki/Sacramento_Kings",
+                "canonicalKey": "club:sacramento-kings"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Portland Trail Blazers",
+        "sourcePageTitle": "Portland Trail Blazers",
+        "sourceHref": "/wiki/Portland_Trail_Blazers",
+        "canonicalKey": "club:portland-trail-blazers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "New York Knicks",
+        "sourcePageTitle": "New York Knicks",
+        "sourceHref": "/wiki/New_York_Knicks",
+        "canonicalKey": "club:new-york-knicks"
+      },
+      "result": "85–77",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Trendon Watford",
+                "sourcePageTitle": "Trendon Watford",
+                "sourceHref": "/wiki/Trendon_Watford",
+                "canonicalKey": "person:trendon-watford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "sourcePageTitle": "Portland Trail Blazers",
+                "sourceHref": "/wiki/Portland_Trail_Blazers",
+                "canonicalKey": "club:portland-trail-blazers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Cleveland Cavaliers",
+        "sourcePageTitle": "Cleveland Cavaliers",
+        "sourceHref": "/wiki/Cleveland_Cavaliers",
+        "canonicalKey": "club:cleveland-cavaliers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Houston Rockets",
+        "sourcePageTitle": "Houston Rockets",
+        "sourceHref": "/wiki/Houston_Rockets",
+        "canonicalKey": "club:houston-rockets"
+      },
+      "result": "99–78",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaiah Mobley",
+                "sourcePageTitle": "Isaiah Mobley",
+                "sourceHref": "/wiki/Isaiah_Mobley",
+                "canonicalKey": "person:isaiah-mobley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "sourcePageTitle": "Cleveland Cavaliers",
+                "sourceHref": "/wiki/Cleveland_Cavaliers",
+                "canonicalKey": "club:cleveland-cavaliers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Miami Heat",
+        "sourcePageTitle": "Miami Heat",
+        "sourceHref": "/wiki/Miami_Heat",
+        "canonicalKey": "club:miami-heat"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Memphis Grizzlies",
+        "sourcePageTitle": "Memphis Grizzlies",
+        "sourceHref": "/wiki/Memphis_Grizzlies",
+        "canonicalKey": "club:memphis-grizzlies"
+      },
+      "result": "120–118 (OT)",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Christopher",
+                "sourcePageTitle": "Josh Christopher",
+                "sourceHref": "/wiki/Josh_Christopher",
+                "canonicalKey": "person:josh-christopher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Miami Heat",
+                "sourcePageTitle": "Miami Heat",
+                "sourceHref": "/wiki/Miami_Heat",
+                "canonicalKey": "club:miami-heat"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Charlotte Hornets",
+        "sourcePageTitle": "Charlotte Hornets",
+        "sourceHref": "/wiki/Charlotte_Hornets",
+        "canonicalKey": "club:charlotte-hornets"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Sacramento Kings",
+        "sourcePageTitle": "Sacramento Kings",
+        "sourceHref": "/wiki/Sacramento_Kings",
+        "canonicalKey": "club:sacramento-kings"
+      },
+      "result": "83–78",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kon Knueppel",
+                "sourcePageTitle": "Kon Knueppel",
+                "sourceHref": "/wiki/Kon_Knueppel",
+                "canonicalKey": "person:kon-knueppel"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Charlotte Hornets",
+                "sourcePageTitle": "Charlotte Hornets",
+                "sourceHref": "/wiki/Charlotte_Hornets",
+                "canonicalKey": "club:charlotte-hornets"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Golden State Warriors",
+        "sourcePageTitle": "Golden State Warriors",
+        "sourceHref": "/wiki/Golden_State_Warriors",
+        "canonicalKey": "club:golden-state-warriors"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Memphis Grizzlies",
+        "sourcePageTitle": "Memphis Grizzlies",
+        "sourceHref": "/wiki/Memphis_Grizzlies",
+        "canonicalKey": "club:memphis-grizzlies"
+      },
+      "result": "94–90",
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yaxel Lendeborg",
+                "sourcePageTitle": "Yaxel Lendeborg",
+                "sourceHref": "/wiki/Yaxel_Lendeborg",
+                "canonicalKey": "person:yaxel-lendeborg"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Warriors",
+                "sourcePageTitle": "Golden State Warriors",
+                "sourceHref": "/wiki/Golden_State_Warriors",
+                "canonicalKey": "club:golden-state-warriors"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

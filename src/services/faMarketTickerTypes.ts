@@ -1,4 +1,5 @@
 import type { GameState, HistoryEntry, NBAPlayer } from '../types';
+import type { AspireSideDeal } from './aspireSideDeals';
 
 export interface MarketTickResult {
   updatedMarkets: any[];
@@ -33,6 +34,12 @@ export interface MarketTickResult {
     signingTeamName: string;
     matched: boolean;
     userInvolved: boolean;
+  }[];
+  aspireOutcomes: {
+    playerId: string;
+    playerName: string;
+    teamId: number;
+    sideDeal: AspireSideDeal;
   }[];
   shouldStopSim: boolean;
 }

@@ -28,8 +28,31 @@ export const fetchInjuryData = async (): Promise<void> => {
 /** Synchronous accessor — always returns the fetched gist list. */
 export const getInjuries = (): InjuryDefinition[] => _cache;
 
+/** Worker-only runtime boundary; restores the realm cache after synchronous simulation. */
+export const withSimulationInjuryDefinitions = <T>(definitions: InjuryDefinition[], run: () => T): T => {
+  const previous = _cache;
+  _cache = definitions;
+  try {
+    return run();
+  } finally {
+    _cache = previous;
+  }
+};
+
 /** Legacy alias */
 export const getInjuryData = fetchInjuryData;
+
+export function formatInjuryRecoveryWindow(gamesRemaining: number): string {
+  const games = Math.max(0, Math.round(gamesRemaining));
+  if (games <= 0) return 'ready to return';
+  if (games <= 2) return 'a few days';
+  const estimatedDays = Math.ceil(games * 2.5);
+  if (estimatedDays <= 14) return '1–2 weeks';
+  if (estimatedDays <= 28) return '2–4 weeks';
+  if (estimatedDays <= 56) return '6–8 weeks';
+  const months = Math.max(2, Math.round(estimatedDays / 30));
+  return `${months}–${months + 1} months`;
+}
 
 export const getRandomInjury = (injuries: InjuryDefinition[]): InjuryDefinition => {
   const totalFreq = injuries.reduce((sum, i) => sum + i.frequency, 0);

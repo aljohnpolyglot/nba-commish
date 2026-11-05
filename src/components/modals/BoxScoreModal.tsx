@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { motion } from 'motion/react';
 import { X } from 'lucide-react';
 import { NBATeam, Game, GameResult, PlayerGameStats, NBAPlayer, PlayoffBracket } from '../../types';
@@ -7,20 +7,30 @@ import { getGameTimingConfig } from '../../utils/gameClock';
 import { isFourPointEnabled } from '../../utils/ruleFlags';
 import { getTeamFullName } from '../../utils/teamNames';
 import { normalizeDate } from '../../utils/helpers';
+import { getTwoWayRosterLimit } from '../../utils/rosterLimits';
+import { isTwoWayContract } from '../../utils/contractTypes';
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { BoxScoreQuarterlyScores, BoxScoreTeamComparison } from './BoxScoreSummary';
+import { didHomeTeamWin } from '../../utils/gameOutcome';
+import { areWnbaDevelopmentalContractsEnabled } from '../../services/wnba/developmentalContracts';
+import { getCanonicalGameIdentity } from '../../services/navigation/gameDeepLinkResolvers';
+import { formatPlayoffSeriesSnapshot, getPlayoffSeriesSnapshot } from '../schedule/view/playoffSeriesSnapshot';
 
 interface BoxScoreModalProps {
   game: Game;
   result?: GameResult;
   homeTeam: NBATeam;
   awayTeam: NBATeam;
+  homeRoster?: NBAPlayer[];
+  awayRoster?: NBAPlayer[];
+  title?: string;
   players: NBAPlayer[];
   onClose: () => void;
   onPlayerClick?: (player: NBAPlayer) => void;
   onTeamClick?: (teamId: number) => void;
   playoffs?: PlayoffBracket | null;
   schedule?: Game[];
+  hideFourPoint?: boolean;
 }
 
 type SortKey = keyof PlayerGameStats | 'fgp' | 'tpp' | 'ftp';
@@ -42,40 +52,56 @@ const collapseRepeatedLabel = (label?: string) => {
 };
 
 export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
-  game, result, homeTeam, awayTeam, players, onClose, onPlayerClick, onTeamClick, playoffs, schedule
+  game, result, homeTeam, awayTeam, homeRoster, awayRoster, title = 'Box Score', players, onClose, onPlayerClick, onTeamClick, playoffs, schedule, hideFourPoint
 }) => {
-  const { state } = useGame();
+  const { state, navigationRoute, navigateToRoute } = useGame();
+  useEffect(() => {
+    if (!state.saveId) return;
+    const gid = String(game.gid);
+    const alreadyLinked = navigationRoute?.kind === 'game' && (
+      navigationRoute.gameId === gid
+      || navigationRoute.gameId === `game:${gid}`
+      || navigationRoute.gameId.endsWith(`:${gid}`)
+    );
+    if (alreadyLinked) return;
+    navigateToRoute({
+      kind: 'game',
+      saveId: state.saveId,
+      gameId: getCanonicalGameIdentity(game),
+    });
+  }, [game, navigateToRoute, navigationRoute, state.saveId]);
   const timingConfig = useMemo(() => getGameTimingConfig(state.leagueStats), [state.leagueStats]);
-  const fourPointEnabled = isFourPointEnabled(state.leagueStats);
+  const fourPointEnabled = !hideFourPoint && isFourPointEnabled(state.leagueStats);
+  const twoWayContractsActive = getTwoWayRosterLimit(state.leagueStats as any) > 0;
+  const outcome = result ?? game;
+  const homeWon = didHomeTeamWin(outcome);
+  const tiebreaker = result?.tiebreaker ?? game.tiebreaker;
   // For playoff/play-in games, find the series to show series score instead of W-L record
   const seriesInfo = useMemo(() => {
     if ((!game.isPlayoff && !game.isPlayIn) || !playoffs || !game.playoffSeriesId) return null;
     const series = playoffs.series.find(s => s.id === game.playoffSeriesId);
     if (!series) return null;
-    const hW = series.higherSeedTid === homeTeam.id ? series.higherSeedWins : series.lowerSeedWins;
-    const aW = series.higherSeedTid === awayTeam.id ? series.higherSeedWins : series.lowerSeedWins;
-    const winsNeeded = Math.ceil(series.gamesNeeded / 2);
-    const complete = series.status === 'complete';
+    const snapshot = getPlayoffSeriesSnapshot(game, series, schedule ?? state.schedule ?? []);
+    const hW = series.higherSeedTid === homeTeam.id ? snapshot.higherSeedWins : snapshot.lowerSeedWins;
+    const aW = series.higherSeedTid === awayTeam.id ? snapshot.higherSeedWins : snapshot.lowerSeedWins;
     const homeSeriesW = hW;
     const awaySeriesW = aW;
-    if (complete) {
-      const champ = series.winnerId === homeTeam.id ? homeTeam.abbrev : awayTeam.abbrev;
-      return { homeLabel: `${homeSeriesW}`, awayLabel: `${awaySeriesW}`, sub: `${champ} WINS ${Math.max(hW,aW)}-${Math.min(hW,aW)}` };
-    }
-    const leader = hW > aW ? homeTeam.abbrev : aW > hW ? awayTeam.abbrev : null;
-    const sub = leader
-      ? `${leader} leads ${Math.max(hW,aW)}-${Math.min(hW,aW)}`
-      : `Series tied ${hW}-${aW}`;
+    const sub = formatPlayoffSeriesSnapshot(
+      game.playoffGameNumber ?? hW + aW,
+      snapshot,
+      series.higherSeedTid === homeTeam.id ? homeTeam.abbrev : awayTeam.abbrev,
+      series.lowerSeedTid === homeTeam.id ? homeTeam.abbrev : awayTeam.abbrev,
+      series.gamesNeeded,
+    );
     return { homeLabel: `${homeSeriesW}`, awayLabel: `${awaySeriesW}`, sub };
-  }, [game, playoffs, homeTeam, awayTeam]);
-  const isIntraSquad = game.homeTid === game.awayTid;
+  }, [awayTeam, game, homeTeam, playoffs, schedule, state.schedule]);
   const displayTeamName = (team: NBATeam) => collapseRepeatedLabel(team.id < 0 ? team.name : (getTeamFullName(team) || team.name));
   const awayBaseName = displayTeamName(awayTeam);
   const homeBaseName = displayTeamName(homeTeam);
-  const awayDisplayName = isIntraSquad ? `${awayBaseName} B` : awayBaseName;
-  const homeDisplayName = isIntraSquad ? `${homeBaseName} A` : homeBaseName;
-  const awayAbbrevLabel = isIntraSquad ? `${awayTeam.abbrev} B` : awayTeam.abbrev;
-  const homeAbbrevLabel = isIntraSquad ? `${homeTeam.abbrev} A` : homeTeam.abbrev;
+  const awayDisplayName = awayBaseName;
+  const homeDisplayName = homeBaseName;
+  const awayAbbrevLabel = awayTeam.abbrev;
+  const homeAbbrevLabel = homeTeam.abbrev;
   const datedRecords = useMemo(() => {
     if (seriesInfo) return null;
     const targetDate = normalizeDate(result?.date || game.date);
@@ -123,7 +149,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
       });
 
     for (const box of relevantGames) {
-      const homeWon = (box.homeScore ?? 0) > (box.awayScore ?? 0);
+      const homeWon = didHomeTeamWin(box);
       if (box.homeTeamId === homeTeam.id) {
         if (homeWon) homeWins++; else homeLosses++;
       } else if (box.awayTeamId === homeTeam.id) {
@@ -142,38 +168,13 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     };
   }, [awayTeam.id, game, homeTeam.id, result, schedule, seriesInfo, state.boxScores, state.leagueStats?.year]);
 
-  // Style + label per "fake-team" archetype for All-Star / Rising Stars / Celebrity placeholders.
-  const FAKE_TEAM_STYLES = {
-    usa:   { cls: 'bg-sky-900/50 border-sky-500/60 text-sky-300',         label: '🇺🇸' },
-    world: { cls: 'bg-emerald-900/50 border-emerald-500/60 text-emerald-300', label: '🌍' },
-    east:  { cls: 'bg-blue-900/50 border-blue-500/60 text-blue-300',      label: 'E'  },
-    west:  { cls: 'bg-amber-900/50 border-amber-500/60 text-amber-300',   label: 'W'  },
-  } as const;
-  const classifyFakeTeam = (team: NBATeam): keyof typeof FAKE_TEAM_STYLES => {
-    const name = (team.name || '').toLowerCase();
-    if (name.includes('usa') || name.includes('stripe') || (name.includes('star') && !name.includes('rising'))) return 'usa';
-    if (name.includes('world')) return 'world';
-    if (team.conference === 'East' || name.includes('eastern')) return 'east';
-    return 'west';
-  };
-
   const renderTeamLogo = (team: NBATeam) => {
-    // Prefer threaded-through logoUrl whenever present.
     if (team.logoUrl) {
       const sizeCls = team.id < 0 ? 'w-16 h-16 md:w-24 md:h-24' : 'w-12 h-12 md:w-24 md:h-24';
       return <img src={team.logoUrl} alt={displayTeamName(team)} className={`${sizeCls} object-contain drop-shadow-2xl group-hover:scale-110 transition-transform`} referrerPolicy="no-referrer" />;
     }
-    if (team.id < 0) {
-      const { cls, label } = FAKE_TEAM_STYLES[classifyFakeTeam(team)];
-      return (
-        <div className={`w-16 h-16 md:w-24 md:h-24 rounded-full flex items-center justify-center text-3xl md:text-5xl font-black border-2 group-hover:scale-110 transition-transform ${cls}`}>
-          {label}
-        </div>
-      );
-    }
-    // Non-NBA team without logo
     return (
-      <div className="w-12 h-12 md:w-24 md:h-24 rounded-full bg-emerald-900/30 border-2 border-emerald-500/40 flex items-center justify-center text-emerald-400 font-black text-lg group-hover:scale-110 transition-transform">
+      <div className="w-12 h-12 md:w-24 md:h-24 rounded-full bg-slate-900 border-2 border-slate-700 flex items-center justify-center text-slate-300 font-black text-lg group-hover:scale-110 transition-transform">
         {team.abbrev?.slice(0, 3) || '?'}
       </div>
     );
@@ -219,11 +220,11 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
     if ((player.injury?.gamesRemaining ?? 0) > 0) {
       return `DNP — Injury (${player.injury!.type})`;
     }
-    if ((game.isPlayoff || game.isPlayIn) && (player as any).twoWay) {
+    if ((game.isPlayoff || game.isPlayIn) && twoWayContractsActive && !areWnbaDevelopmentalContractsEnabled(state.leagueStats) && isTwoWayContract(player, state.leagueStats)) {
       return 'DNP — Two Way';
     }
     return "DNP — Coach's Decision";
-  }, [game.isPlayIn, game.isPlayoff, result?.playerDNPs]);
+  }, [game.isPlayIn, game.isPlayoff, result?.playerDNPs, twoWayContractsActive]);
 
   const renderStatsTable = (stats: PlayerGameStats[], teamId: number) => {
     const sortedStats = [...stats].sort((a, b) => {
@@ -310,7 +311,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                       return (
                         <span
                           title={`Left in ${q} — ${exit.type}`}
-                          className="ml-1.5 inline-block text-[9px] font-black text-red-500 cursor-help align-middle"
+                          className="ml-1.5 inline-block text-[9px] font-black text-red-500 cursor-default align-middle"
                         >
                           ✚
                         </span>
@@ -321,7 +322,7 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
                       return (
                         <span
                           title={`Playing hurt — ${hurt}`}
-                          className="ml-1.5 inline-block text-[9px] font-black text-orange-500 cursor-help align-middle"
+                          className="ml-1.5 inline-block text-[9px] font-black text-orange-500 cursor-default align-middle"
                         >
                           ✚
                         </span>
@@ -355,8 +356,8 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
           </tbody>
         </table>
       {(() => {
-        const dnpPlayers = players.filter(p =>
-          isBoxScoreRosterPlayer(p, teamId) &&
+        const resolvedRoster = teamId === homeTeam.id ? homeRoster : teamId === awayTeam.id ? awayRoster : undefined;
+        const dnpPlayers = (resolvedRoster ?? players.filter(p => isBoxScoreRosterPlayer(p, teamId))).filter(p =>
           !stats.some(s => s.playerId === p.internalId)
         );
         if (dnpPlayers.length === 0) return null;
@@ -394,12 +395,12 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        className="relative bg-[#0a0a0a] border border-white/10 rounded-[24px] md:rounded-[32px] w-full max-w-5xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl overflow-hidden"
+        className="relative bg-[#0a0a0a] text-slate-200 border border-white/10 rounded-[24px] md:rounded-[32px] w-full max-w-5xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] flex flex-col shadow-2xl overflow-hidden"
       >
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10 bg-[#111]">
           <div>
-            <h2 className="text-2xl font-black text-white uppercase tracking-tight">{isIntraSquad ? 'Scrimmage' : 'Box Score'}</h2>
+            <h2 className="text-2xl font-black text-white uppercase tracking-tight">{title}</h2>
             {(result?.date || game.date) && (
               <p className="text-[11px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">
                 {new Date(result?.date || game.date).toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
@@ -440,10 +441,17 @@ export const BoxScoreModal: React.FC<BoxScoreModalProps> = ({
 
             <div className="flex flex-col items-center gap-1">
               <div className="flex items-center gap-2 md:gap-8">
-                <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${(game.awayScore || 0) > (game.homeScore || 0) ? 'text-white' : 'text-slate-500'}`}>{game.awayScore || 0}</span>
+                <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${!homeWon ? 'text-white' : 'text-slate-500'}`}>{outcome.awayScore || 0}</span>
                 <span className="text-slate-800 font-black text-xl md:text-3xl">-</span>
-                <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${(game.homeScore || 0) > (game.awayScore || 0) ? 'text-white' : 'text-slate-500'}`}>{game.homeScore || 0}</span>
+                <span className={`text-3xl md:text-6xl font-black font-mono tracking-tighter ${homeWon ? 'text-white' : 'text-slate-500'}`}>{outcome.homeScore || 0}</span>
               </div>
+              {tiebreaker && (
+                <div className="text-[10px] font-black text-violet-300 uppercase tracking-widest">
+                  {tiebreaker.type === 'shootout'
+                    ? `Shootout: ${tiebreaker.awayScore}-${tiebreaker.homeScore}`
+                    : tiebreaker.type === 'target_score' ? 'Target-score tiebreak' : 'Sudden-death tiebreak'}
+                </div>
+              )}
               {seriesInfo?.sub && (
                 <div className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{seriesInfo.sub}</div>
               )}

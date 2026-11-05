@@ -1,15 +1,149 @@
-import type { GameState } from '../../../types';
-import { LOTTERY_PRESETS, computeTopKOdds } from '../../../lib/lotteryPresets';
+import type { GameState, NBAPlayer } from '../../../types';
+import { isDraftLotteryEnabled } from '../../../lib/lotteryPresets';
 import { UNDRAFTED_OVR_CAP } from '../../../constants';
 import { isDraftBlockedByUnresolvedPlayoffs } from '../../../utils/dateUtils';
 import { normalizeTeamJerseyNumbers, pickJerseyNumber } from '../../../utils/jerseyUtils';
 import { getLsYear } from '../../../utils/leagueYear';
-import { computeRookieSalaryUSD } from '../../../utils/rookieContractUtils';
-import { buildDraftOrderFromState } from '../../draft/draftOrder';
+import { getTrainingCampRosterLimit, getTwoWayRosterLimit } from '../../../utils/rosterLimits';
+import { isTwoWayContract } from '../../../utils/contractTypes';
+import { isHistoricalNbaStart } from '../../../data/historicalNbaSeasons';
+import { applyDraftPickForfeitures, buildDraftOrderFromState } from '../../draft/draftOrder';
 import { returnUndraftedToHomeLeague } from '../../externalLeagueSustainer';
 import { logPlanEvent } from '../../offseason/offseasonPlan';
 import { isNoDraftLeague } from '../../offseason/offseasonState';
 import { buildPbaDraftOrderTeams, getPbaDraftPool, tunePbaDraftProspects } from '../../pba/draftRules';
+import { applyLotteryPickOverrides, getPossibleLotteryPicks, getSeasonLotteryOverrides } from '../../draft/lotteryOverrides';
+import { clearWaiverMarkers, historicalContractYearsBefore, stripLiveContractAfterWaive } from '../../../utils/contractCleanup';
+import { appendPlayerTransaction } from '../../../utils/playerBirdRights';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { getDraftSeasonYearForState } from '../../offseason/offseasonState';
+import { buildDraftLotteryPool } from '../../draft/draftLotteryPool';
+import { buildCanonicalDraftProspectPool, dedupeDraftProspectPool } from '../../draft/draftProspectPool';
+import { selectAiDraftProspect } from '../../draft/aiDraftBoard';
+import { computeDraftPickFields, signDraftedRookieContracts } from '../../draft/draftSelection';
+import {
+  areWnbaDevelopmentalContractsEnabled,
+  getWnbaDevelopmentalBaseStipendUSD,
+  getWnbaDevelopmentalContractLabel,
+  isWnbaDevelopmentalServiceEligible,
+} from '../../wnba/developmentalContracts';
+import {
+  isCanonicalDraftComplete,
+  lifecycleWithDraftOrderReviewed,
+  lifecycleWithLotteryComplete,
+  lifecycleWithDraftProgress,
+  resolveLeagueSeasonLifecycle,
+} from '../../lifecycle/leagueSeasonLifecycle';
+import { getSimulationSeed } from '../../saveIdentity';
+import { withDeterministicRandom } from '../../simulation/deterministicRandom';
+import { isInternationalTournamentOnlyPlayer } from '../../../utils/prospectUtils';
+
+const TWO_WAY_SALARY_THOUSANDS = 625;
+
+export function signDraftPoolTwoWayPlayer(
+  player: NBAPlayer,
+  teamId: number,
+  draftSeason: number,
+  signedDate: string,
+  leagueStats?: GameState['leagueStats'],
+): NBAPlayer {
+  const contractSeason = draftSeason + 1;
+  const developmental = areWnbaDevelopmentalContractsEnabled(leagueStats);
+  const salaryThousands = developmental
+    ? Math.round(getWnbaDevelopmentalBaseStipendUSD(leagueStats) / 1_000)
+    : TWO_WAY_SALARY_THOUSANDS;
+  return clearWaiverMarkers({
+    ...player,
+    tid: teamId,
+    status: (developmental ? 'WNBA' : 'Active') as NBAPlayer['status'],
+    twoWay: !developmental,
+    developmentalContract: developmental || undefined,
+    developmentalGamesPlayed: developmental ? 0 : undefined,
+    developmentalContractSeason: developmental ? contractSeason : undefined,
+    nonGuaranteed: false,
+    yearsWithTeam: 0,
+    hasBirdRights: false,
+    signedDate,
+    tradeEligibleDate: undefined,
+    contract: {
+      amount: salaryThousands,
+      exp: contractSeason,
+      type: developmental ? 'DEVELOPMENTAL' : 'TWO_WAY',
+      hasPlayerOption: false,
+    },
+    contractYears: [
+      ...historicalContractYearsBefore(player, contractSeason),
+      {
+        season: `${draftSeason}-${String(contractSeason).slice(-2)}`,
+        guaranteed: salaryThousands * 1_000,
+        option: developmental ? 'Developmental' : 'Two-Way',
+      },
+    ],
+    transactions: appendPlayerTransaction(player, { season: draftSeason, tid: teamId, type: 'freeAgent' }),
+  } as NBAPlayer);
+}
+
+function trimAiDraftDayTwoWayOverflow(
+  players: NBAPlayer[],
+  state: GameState,
+  season: number,
+): { players: NBAPlayer[]; historyEntries: Array<{ text: string; date: string; type: string; playerIds: string[]; tid: number }> } {
+  const limit = getTrainingCampRosterLimit(state.leagueStats);
+  const secondaryLabel = getWnbaDevelopmentalContractLabel(state.leagueStats).toLowerCase();
+  const userTeamId = state.gameMode === 'gm' ? state.userTeamId : undefined;
+  const releasedById = new Map<string, { playerId: string; teamId: number; playerName: string; teamName: string }>();
+
+  for (const team of state.teams.filter(candidate => candidate.id >= 0 && candidate.id < 100)) {
+    if (team.id === userTeamId) continue;
+    const roster = players.filter(player => player.tid === team.id && player.status === 'Active');
+    let excess = roster.length - limit;
+    if (excess <= 0) continue;
+    const twoWayCandidates = roster
+      .filter(player => isTwoWayContract(player, state.leagueStats))
+      .sort((left, right) =>
+        Number(left.overallRating ?? 0) - Number(right.overallRating ?? 0)
+        || String(left.internalId).localeCompare(String(right.internalId)));
+    for (const player of twoWayCandidates) {
+      if (excess <= 0) break;
+      releasedById.set(player.internalId, {
+        playerId: player.internalId,
+        teamId: team.id,
+        playerName: player.name,
+        teamName: getTeamFullName(team),
+      });
+      excess -= 1;
+    }
+  }
+
+  if (releasedById.size === 0) return { players, historyEntries: [] };
+  return {
+    players: players.map(player => {
+      const release = releasedById.get(player.internalId);
+      if (!release) return player;
+      const cleared = stripLiveContractAfterWaive(player, season);
+      return {
+        ...cleared,
+        tid: -1,
+        status: 'Free Agent',
+        gLeagueAssigned: false,
+        hasBirdRights: false,
+        yearsWithTeam: 0,
+        signedDate: undefined,
+        tradeEligibleDate: undefined,
+        recentlyWaivedBy: release.teamId,
+        recentlyWaivedDate: state.date,
+        transactions: appendPlayerTransaction(player, { season, tid: -1, type: 'waive' }),
+      } as NBAPlayer;
+    }),
+    historyEntries: [...releasedById.values()].map(release => ({
+      text: `${release.playerName} was released from a ${secondaryLabel} contract by the ${release.teamName} after the draft.`,
+      date: state.date,
+      type: 'Waiver',
+      playerIds: [release.playerId],
+      tid: release.teamId,
+    })),
+  };
+}
 
 function runWeightedLottery<T extends { originalSeed: number }>(
   teams: T[],
@@ -46,86 +180,177 @@ export const autoRunLottery = (state: GameState): Partial<GameState> => {
   logPlanEvent('autoResolvers.autoRunLottery', 'fire', `date=${state.date}`);
   if (state.leagueStats?.uiMode === 'pba_isolated') return {};
   if (isNoDraftLeague(state.leagueStats)) return {};
-  if ((state as any).draftLotteryResult) return {};
+  if ((state.draftLotteryResult?.length ?? 0) > 0) return {};
+  if (!isDraftLotteryEnabled(state.leagueStats?.draftType)) return {};
 
-  const preset = LOTTERY_PRESETS[state.leagueStats?.draftType ?? 'nba2019'] ?? LOTTERY_PRESETS.nba2019;
-  const sorted = [...state.teams]
-    .filter(t => t.id >= 0 && t.id < 100)
-    .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)))
-    .slice(0, Math.min(14, preset.chances.length));
+  const draftSeason = getDraftSeasonYearForState(state);
+  const pool = buildDraftLotteryPool(state, draftSeason);
+  const preset = pool.preset;
+  const lotteryTeams = pool.teams;
+  if (lotteryTeams.length < Math.min(2, preset.chances.length)) {
+    return { _deferred: true } as any;
+  }
 
-  const lotteryTeams = sorted.map((t, i) => {
-    const chance = preset.chances[i] ?? 0;
-    const gp = t.wins + t.losses;
-    const winPct = gp > 0 ? (t.wins / gp).toFixed(3) : '.000';
-    return {
-      id: t.id,
-      tid: t.id,
-      name: t.name,
-      city: (t as any).region ?? t.name,
-      logoUrl: (t as any).logoUrl ?? '',
-      record: `${t.wins}-${t.losses}`,
-      winPct,
-      odds1st: parseFloat(((chance / preset.total) * 100).toFixed(1)),
-      oddsTopN: parseFloat((computeTopKOdds(preset.chances, i, preset.numToPick) * 100).toFixed(1)),
-      oddsTop4: parseFloat((computeTopKOdds(preset.chances, i, preset.numToPick) * 100).toFixed(1)),
-      color: (t as any).colors?.[0] ?? '#333333',
-      originalSeed: i + 1,
-    };
-  });
+  const weighted = withDeterministicRandom(
+    [getSimulationSeed(state), draftSeason, state.date, 'draft-lottery'].join(':'),
+    () => runWeightedLottery(lotteryTeams, pool.chances, preset.numToPick),
+  );
+  const storedOverrides = getSeasonLotteryOverrides(state.draftLotteryOverrides, draftSeason);
+  const validOverrides = Object.fromEntries(
+    Object.entries(storedOverrides).filter(([tid, pick]) => {
+      const teamIndex = lotteryTeams.findIndex(team => team.tid === Number(tid));
+      return getPossibleLotteryPicks(
+        pool.chances,
+        teamIndex,
+        preset.numToPick,
+      ).includes(Number(pick));
+    }),
+  );
+  const draftLotteryResult = applyLotteryPickOverrides(weighted, validOverrides);
+  return {
+    draftLotteryResult,
+    seasonLifecycle: lifecycleWithLotteryComplete({ ...state, draftLotteryResult }),
+  } as any;
+};
 
-  return { draftLotteryResult: runWeightedLottery(lotteryTeams, preset.chances, preset.numToPick) } as any;
+export const autoReviewDraftOrder = (state: GameState): Partial<GameState> => {
+  const lifecycle = resolveLeagueSeasonLifecycle(state);
+  if (lifecycle.draft.orderReview === 'complete') return {};
+  const seasonComplete = lifecycle.completedSeason === lifecycle.activeSeason
+    && lifecycle.offseasonCycle === lifecycle.activeSeason;
+  if (
+    lifecycle.draft.authority.draftOrderReview !== 'delegated'
+    || lifecycle.draft.lottery !== 'complete'
+    || lifecycle.draft.orderLedger.length === 0
+    || !seasonComplete
+  ) return { _deferred: true } as any;
+  return {
+    seasonLifecycle: lifecycleWithDraftOrderReviewed(state),
+    offseasonChecklist: state.offseasonChecklist
+      ? { ...state.offseasonChecklist, draftOrderReview: 'done' }
+      : state.offseasonChecklist,
+  };
+};
+
+export const completeDraftedRookieContracts = (state: GameState): Partial<GameState> => {
+  const patch = signDraftedRookieContracts(state);
+  if (Object.keys(patch).length === 0) return {};
+  const signedState = { ...state, ...patch } as GameState;
+  const season = Number(signedState.seasonLifecycle?.draft.year ?? signedState.leagueStats.year);
+  const trim = trimAiDraftDayTwoWayOverflow(signedState.players, signedState, season);
+  const lifecycleAfterTrim = lifecycleWithDraftProgress(
+    { ...signedState, players: trim.players },
+    signedState.seasonLifecycle?.draft.selectedPlayerIdsBySlot ?? {},
+    signedState.seasonLifecycle?.draft.passedSlots ?? [],
+    signedState.seasonLifecycle?.draft.expectedSlots ?? 0,
+    true,
+  );
+  return {
+    ...patch,
+    players: trim.players,
+    history: [...(signedState.history ?? []), ...trim.historyEntries],
+    seasonLifecycle: lifecycleAfterTrim,
+    offseasonChecklist: state.offseasonChecklist
+      ? { ...state.offseasonChecklist, rookieContracts: 'done' }
+      : state.offseasonChecklist,
+  };
+};
+
+export const autoRunRookieContracts = (state: GameState): Partial<GameState> => {
+  const lifecycle = resolveLeagueSeasonLifecycle(state);
+  if (lifecycle.draft.rookieContracts === 'complete') return {};
+  if (
+    lifecycle.draft.authority.rookieContracts !== 'delegated'
+    || lifecycle.draft.draft !== 'complete'
+    || !lifecycle.draft.historyPersisted
+  ) return { _deferred: true } as any;
+  const patch = completeDraftedRookieContracts(state);
+  return Object.keys(patch).length > 0 ? patch : { _deferred: true } as any;
 };
 
 export const autoRunDraft = (state: GameState): Partial<GameState> => {
   logPlanEvent('autoResolvers.autoRunDraft', 'fire', `date=${state.date}`);
   const pbaIsolated = state.leagueStats?.uiMode === 'pba_isolated';
+  const wnbaIsolated = state.leagueStats?.uiMode === 'wnba_isolated';
   if (isNoDraftLeague(state.leagueStats)) return {};
-  if ((state as any).draftComplete) return {};
+  if (isCanonicalDraftComplete(state)) return {};
+  if (!pbaIsolated && resolveLeagueSeasonLifecycle(state).draft.orderReview !== 'complete') {
+    return { _deferred: true } as any;
+  }
   if (!pbaIsolated && isDraftBlockedByUnresolvedPlayoffs(state)) return { _deferred: true } as any;
 
-  const season = getLsYear(state);
-  const guaranteedYrs = state.leagueStats?.rookieContractLength ?? 2;
-  const teamOptEnabled: boolean = (state.leagueStats as any)?.rookieTeamOptionsEnabled ?? true;
-  const teamOptYears: number = (state.leagueStats as any)?.rookieTeamOptionYears ?? 2;
-  const restrictedFA: boolean = (state.leagueStats as any)?.rookieRestrictedFreeAgentEligibility ?? true;
-  const EXTERNAL_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
+  const season = pbaIsolated ? getLsYear(state) : getDraftSeasonYearForState(state);
+  const draftScope = wnbaIsolated
+    ? 'wnba'
+    : state.leagueStats?.uiMode === 'fictional'
+      ? 'fictional'
+      : 'nba';
 
   const tunedPlayers = pbaIsolated ? tunePbaDraftProspects(state.players, season, state.leagueStats) : state.players;
   const pbaDraftPool = pbaIsolated ? getPbaDraftPool(tunedPlayers, season, state.leagueStats) : [];
-  const pbaDraftPoolIds = new Set(pbaDraftPool.map(player => player.internalId));
-  const draftOrder = (((state as any).activeDraftOrder?.length ?? 0) > 0
+  const draftOrder = applyDraftPickForfeitures((((state as any).activeDraftOrder?.length ?? 0) > 0
     ? (state as any).activeDraftOrder
     : pbaIsolated
-      ? buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], season, pbaDraftPool.length)
-      : buildDraftOrderFromState(state)) as any[];
-  const prospects = (pbaIsolated ? pbaDraftPool : tunedPlayers.filter(p => {
-    const isProspect = p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect';
-    if (!isProspect) return false;
-    if (EXTERNAL_STATUSES.has(p.status ?? '')) return false;
-    const draftYear = (p as any).draft?.year;
-    if (draftYear != null && Number(draftYear) !== season) return false;
-    return true;
-  }))
+      ? buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], season, pbaDraftPool.length, state.draftPicks)
+      : buildDraftOrderFromState(state)) as any[], state.draftPicks ?? [], season);
+  const prospects = (pbaIsolated
+    ? dedupeDraftProspectPool(pbaDraftPool, season)
+    : buildCanonicalDraftProspectPool(tunedPlayers, season, draftScope))
     .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))
     .slice(0, 100);
+  const draftPoolIds = new Set(prospects.map(player => player.internalId));
 
   const assignedIds = new Set<string>();
   const pickMap = new Map<number, { player: typeof state.players[0]; team: any }>();
   const activeDraftPicks: Record<number, any> = (state as any).activeDraftPicks ?? {};
   const passedSlots = new Set(Object.keys((state as any).activeDraftPassedPicks ?? {}).map(Number));
+  draftOrder.forEach((team, index) => { if (team._forfeited) passedSlots.add(index + 1); });
   for (const [slotKey, savedPlayer] of Object.entries(activeDraftPicks)) {
     const slot = Number(slotKey);
     const team = draftOrder[slot - 1];
-    if (!team || !savedPlayer?.internalId) continue;
+    if (!team || !savedPlayer?.internalId || !draftPoolIds.has(savedPlayer.internalId)) continue;
     const live = state.players.find(p => p.internalId === savedPlayer.internalId) ?? savedPlayer;
     pickMap.set(slot, { player: live, team });
     assignedIds.add(savedPlayer.internalId);
   }
+  const nbaRoundSize = Math.max(1, state.teams.filter(candidate => candidate.id >= 0 && candidate.id < 100).length);
+  for (const player of prospects) {
+    if (assignedIds.has(player.internalId) || player.preDraftClub?.draftSelection !== 'source') continue;
+    const round = Number(player.draft?.round ?? 0);
+    const pick = Number(player.draft?.pick ?? 0);
+    const slot = ((round - 1) * nbaRoundSize) + pick;
+    if (round < 1 || pick < 1 || pick > nbaRoundSize || slot > draftOrder.length) continue;
+    if (pickMap.has(slot) || passedSlots.has(slot)) continue;
+    assignedIds.add(player.internalId);
+    pickMap.set(slot, { player, team: draftOrder[slot - 1] });
+  }
+  const projectedDeclarations = prospects
+    .filter(player =>
+      !assignedIds.has(player.internalId)
+      && player.preDraftClub?.draftSelection === 'projection'
+      && Number(player.preDraftClub.projectedOverallPick ?? 0) > 0)
+    .sort((left, right) =>
+      Number(left.preDraftClub?.projectedOverallPick ?? 999)
+      - Number(right.preDraftClub?.projectedOverallPick ?? 999));
+  for (const player of projectedDeclarations) {
+    const preferred = Number(player.preDraftClub?.projectedOverallPick ?? 1);
+    const openSlots = draftOrder
+      .map((_, index) => index + 1)
+      .filter(slot => !pickMap.has(slot) && !passedSlots.has(slot));
+    if (openSlots.length === 0) break;
+    openSlots.sort((left, right) => Math.abs(left - preferred) - Math.abs(right - preferred) || left - right);
+    const slot = openSlots[0];
+    assignedIds.add(player.internalId);
+    pickMap.set(slot, { player, team: draftOrder[slot - 1] });
+  }
   for (let slot = 1; slot <= draftOrder.length; slot++) {
     if (pickMap.has(slot) || passedSlots.has(slot)) continue;
     const team = draftOrder[slot - 1];
-    const best = prospects.find(p => !assignedIds.has(p.internalId));
+    const available = prospects.filter(player => !assignedIds.has(player.internalId));
+    const teamId = Number(team?.id ?? team?.tid);
+    const best = Number.isFinite(teamId)
+      ? selectAiDraftProspect({ state, teamId, pickSlot: slot, season, pool: available })
+      : available[0];
     if (!best) break;
     assignedIds.add(best.internalId);
     pickMap.set(slot, { player: best, team });
@@ -156,53 +381,31 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
 
   const undrafted: Array<{ name: string; id: string }> = [];
   const tunedById = new Map(tunedPlayers.map(player => [player.internalId, player]));
-  const updatedPlayers = state.players.map(p => {
+  const updatedPlayers: NBAPlayer[] = state.players.map(p => {
     for (const [slot, { player, team }] of pickMap.entries()) {
       if (player.internalId !== p.internalId) continue;
-      const roundSize = pbaIsolated ? (Number((team as any)._roundSize) || 12) : 30;
-      const round = pbaIsolated ? (Number((team as any)._round) || ((team as any)._r2 ? 2 : 1)) : (slot <= 30 ? 1 : 2);
-      const pickInRound = slot - ((round - 1) * roundSize);
-      const salaryAmount = computeRookieSalaryUSD(slot, state.leagueStats, roundSize);
-      const baseYrs = round === 1 ? guaranteedYrs : 2;
-      const optionYrs = (round === 1 && teamOptEnabled) ? teamOptYears : 0;
-      const totalYrs = baseYrs + optionYrs;
-      const r2NonGuaranteed = round >= 2 && ((state.leagueStats as any)?.r2ContractsNonGuaranteed ?? true);
-      const contractYears = Array.from({ length: totalYrs }, (_, i) => {
-        const yr = season + i;
-        return {
-          season: `${yr}-${String(yr + 1).slice(-2)}`,
-          guaranteed: Math.round(salaryAmount * Math.pow(1.05, i)),
-          option: i >= baseYrs ? 'Team' : '',
-        };
-      });
+      const selectionFields = computeDraftPickFields(slot, team, state.leagueStats, season);
+      if (!selectionFields) return p;
+      const existingTransactions = p.transactions ?? [];
+      const hasDraftTransaction = existingTransactions.some(transaction => (
+        transaction.type === 'draft' && Number(transaction.season) === season
+      ));
       return {
         ...p,
+        pos: player.pos,
         overallRating: player.overallRating,
         potential: player.potential,
         ratings: player.ratings,
+        ovrHistory: (player as any).ovrHistory ?? (p as any).ovrHistory,
+        ovrTimeline: (player as any).ovrTimeline ?? (p as any).ovrTimeline,
         pbaDraftTunedVersion: (player as any).pbaDraftTunedVersion,
-        tid: team.id,
-        status: pbaIsolated ? 'PBA' as const : 'Active' as const,
+        ...selectionFields,
+        euroAcademyPlayer: undefined,
+        promotedFromAcademy: undefined,
         jerseyNumber: draftJerseyAssignments.get(p.internalId) ?? p.jerseyNumber,
-        ...(r2NonGuaranteed && { nonGuaranteed: true }),
-        transactions: [
-          ...((p as any).transactions ?? []),
-          { season, tid: team.id, type: 'draft', phase: 0, pickNum: slot },
-        ],
-        draft: { round, pick: pickInRound, year: season, tid: team.id, originalTid: team.id },
-        signedDate: state.date,
-        contract: {
-          amount: salaryAmount / 1_000,
-          exp: season + totalYrs,
-          salaryDetails: [{ season, amount: salaryAmount }],
-          ...(optionYrs > 0 && {
-            hasTeamOption: true,
-            teamOptionExp: season + baseYrs + 1,
-          }),
-          ...(round === 1 && restrictedFA && { restrictedFA: true }),
-          rookie: true,
-        },
-        contractYears,
+        transactions: hasDraftTransaction
+          ? existingTransactions
+          : [...existingTransactions, { season, tid: team.id, type: 'draft', phase: 0, pickNum: slot }],
       };
     }
     const draftYear = (p as any).draft?.year;
@@ -210,16 +413,19 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     if (
       isCurrentClass &&
       (p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect') &&
-      (!pbaIsolated || pbaDraftPoolIds.has(p.internalId)) &&
+      draftPoolIds.has(p.internalId) &&
       !assignedIds.has(p.internalId)
     ) {
       const tuned = tunedById.get(p.internalId);
       undrafted.push({ name: p.name, id: p.internalId });
       return {
         ...p,
+        pos: tuned?.pos ?? p.pos,
         overallRating: Math.min(tuned?.overallRating ?? p.overallRating ?? 99, UNDRAFTED_OVR_CAP),
         potential: tuned?.potential ?? p.potential,
         ratings: tuned?.ratings ?? p.ratings,
+        ovrHistory: (tuned as any)?.ovrHistory ?? (p as any).ovrHistory,
+        ovrTimeline: (tuned as any)?.ovrTimeline ?? (p as any).ovrTimeline,
         pbaDraftTunedVersion: (tuned as any)?.pbaDraftTunedVersion ?? (p as any).pbaDraftTunedVersion,
         tid: -1 as const,
         status: 'Free Agent' as const,
@@ -239,7 +445,19 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     return n + (s[(v - 20) % 10] || s[v] || s[0]);
   };
   const draftHistoryEntries: Array<{ text: string; date: string; type: string; playerIds: string[] }> = [];
+  const existingDraftHistory = (state.history ?? []).filter(entry => (
+    typeof entry !== 'string'
+    && entry.type === 'Draft'
+    && (String(entry.text ?? '').includes(String(season)) || String(entry.date ?? '').startsWith(String(season)))
+  ));
+  const historyPlayerIds = new Set(existingDraftHistory.flatMap(entry => typeof entry === 'string' ? [] : entry.playerIds ?? []));
+  const historyPassedSlots = new Set(existingDraftHistory.flatMap(entry => {
+    if (typeof entry === 'string') return [];
+    const match = String(entry.text ?? '').match(/pass(?:es)? on the (\d+)(?:st|nd|rd|th)? overall pick/i);
+    return match ? [Number(match[1])] : [];
+  }));
   for (const [slot, { player, team }] of pickMap.entries()) {
+    if (historyPlayerIds.has(player.internalId)) continue;
     draftHistoryEntries.push({
       text: `The ${team.name} select ${player.name} as the ${ordinal(slot)} overall pick of the ${season} ${pbaIsolated ? 'PBA' : 'NBA'} Draft.`,
       date: state.date,
@@ -256,9 +474,11 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     });
   }
 
-  const TWO_WAY_SALARY_THOUSANDS = 625;
-  const maxTwoWay = state.leagueStats?.maxTwoWayPlayersPerTeam ?? 2;
-  const twoWayEnabled = state.leagueStats?.twoWayContractsEnabled ?? true;
+  const maxTwoWay = getTwoWayRosterLimit(state.leagueStats as any);
+  const twoWayEnabled = maxTwoWay > 0;
+  const wnbaDevelopmental = areWnbaDevelopmentalContractsEnabled(state.leagueStats);
+  const secondaryLabel = getWnbaDevelopmentalContractLabel(state.leagueStats).toLowerCase();
+  const isActiveTwoWay = (player: any) => twoWayEnabled && isTwoWayContract(player, state.leagueStats);
   const gmUserTeamId = state.gameMode === 'gm' ? (state as any).userTeamId : -999;
   const hasValidGmUserTeamId = state.gameMode !== 'gm' || (Number.isInteger(gmUserTeamId) && gmUserTeamId >= 0);
   let warnedUserTeamFillSkip = false;
@@ -277,11 +497,16 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
     history: state.history,
     targetTeamIds: draftedTeamIds,
   });
+  const twoWayHistoryEntries: Array<{ text: string; date: string; type: string; playerIds: string[] }> = [];
   if (!pbaIsolated && twoWayEnabled && maxTwoWay > 0) {
     const TWO_WAY_OVR_CAP = 45;
     const twoWayPool = twoWayPlayers
-      .filter(p => p.tid === -1 && p.status === 'Free Agent' && (p.overallRating ?? 99) <= TWO_WAY_OVR_CAP)
+      .filter(p => p.tid === -1
+        && p.status === 'Free Agent'
+        && !isInternationalTournamentOnlyPlayer(p)
+        && (p.overallRating ?? 99) <= TWO_WAY_OVR_CAP)
       .filter(p => {
+        if (wnbaDevelopmental) return isWnbaDevelopmentalServiceEligible(p, season, state.leagueStats);
         const age = p.born?.year ? season - p.born.year : (p.age ?? 99);
         if (age >= 30) return false;
         if (age <= 24) return true;
@@ -294,9 +519,14 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
 
     const twoWayAssignments = new Map<string, number>();
     const twoWayCountByTeam = new Map<number, number>();
+    for (const player of twoWayPlayers) {
+      if (player.tid >= 0 && player.tid < 100 && isActiveTwoWay(player)) {
+        twoWayCountByTeam.set(player.tid, (twoWayCountByTeam.get(player.tid) ?? 0) + 1);
+      }
+    }
     for (const team of state.teams.filter(t => t.id >= 0 && t.id < 100)) {
       if (shouldSkipUserTeamFill(team.id)) continue;
-      const standardCount = twoWayPlayers.filter(p => p.tid === team.id && !(p as any).twoWay).length;
+      const standardCount = twoWayPlayers.filter(p => p.tid === team.id && !isActiveTwoWay(p)).length;
       if (standardCount < 1) continue;
 
       let given = twoWayCountByTeam.get(team.id) ?? 0;
@@ -309,7 +539,6 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
       }
     }
 
-    const twoWayHistoryEntries: Array<{ text: string; date: string; type: string; playerIds: string[] }> = [];
     if (twoWayAssignments.size > 0) {
       twoWayPlayers = twoWayPlayers.map(p => {
         const teamId = twoWayAssignments.get(p.internalId);
@@ -317,51 +546,72 @@ export const autoRunDraft = (state: GameState): Partial<GameState> => {
         const team = state.teams.find(t => t.id === teamId);
         const teamName = team?.name ?? `Team ${teamId}`;
         twoWayHistoryEntries.push({
-          text: `${p.name} signed a two-way contract with the ${teamName}.`,
-          date: state.date ?? `Jul 1, ${season}`,
+          text: `${p.name} signed a ${secondaryLabel} contract with the ${teamName}.`,
+          date: state.date,
           type: 'Signing',
           playerIds: [p.internalId],
         });
-        return {
-          ...p,
-          tid: teamId,
-          status: 'Active' as const,
-          twoWay: true,
-          contract: { amount: TWO_WAY_SALARY_THOUSANDS, exp: season },
-        };
+        return signDraftPoolTwoWayPlayer(p, teamId, season, state.date, state.leagueStats);
       });
-    }
-    if (twoWayHistoryEntries.length > 0) {
-      const existingHistory: any[] = (state.history as any[]) ?? [];
-      return {
-        players: normalizeTeamJerseyNumbers(twoWayPlayers, state.teams, season, {
-          history: state.history,
-          targetTeamIds: draftedTeamIds,
-        }),
-        draftComplete: true,
-        draftPicks: (state.draftPicks ?? []).filter(p => p.season !== season),
-        activeDraftPicks: undefined,
-        activeDraftPassedPicks: undefined,
-        activeDraftOrder: undefined,
-        history: [...existingHistory, ...draftHistoryEntries, ...twoWayHistoryEntries],
-      } as any;
     }
   }
 
-  const { players: playersAfterReturn, historyEntries: returnHistory } = pbaIsolated
-    ? { players: twoWayPlayers, historyEntries: [] }
+  const keepHistoricalUndraftedInNbaFa = !pbaIsolated && isHistoricalNbaStart(Number((state as any).nbaStartYear ?? 0));
+  const returned = pbaIsolated || keepHistoricalUndraftedInNbaFa
+    ? { players: twoWayPlayers, historyEntries: [], euroScouting: state.euroScouting }
     : returnUndraftedToHomeLeague(twoWayPlayers, season, state as any);
+  const draftDayTrim = pbaIsolated
+    ? { players: returned.players, historyEntries: [] }
+    : trimAiDraftDayTwoWayOverflow(returned.players, state, season);
+  const playersAfterReturn = draftDayTrim.players;
+  const returnHistory = returned.historyEntries;
   const existingHistory: any[] = (state.history as any[]) ?? [];
+  const selectedPlayerIdsBySlot = Object.fromEntries(
+    [...pickMap.entries()].map(([slot, row]) => [slot, row.player.internalId]),
+  );
+  const completedPassedSlots = draftOrder
+    .map((_, index) => index + 1)
+    .filter(slot => !pickMap.has(slot) && !draftOrder[slot - 1]._forfeited);
+  for (const slot of completedPassedSlots) {
+    if (historyPassedSlots.has(slot)) continue;
+    const team = draftOrder[slot - 1];
+    draftHistoryEntries.push({
+      text: `The ${getTeamFullName(team) || team.name} pass on the ${ordinal(slot)} overall pick of the ${season} ${pbaIsolated ? 'PBA' : 'NBA'} Draft.`,
+      date: state.date,
+      type: 'Draft',
+      playerIds: [],
+    });
+  }
+  const completedLifecycle = lifecycleWithDraftProgress(
+    { ...state, players: playersAfterReturn },
+    selectedPlayerIdsBySlot,
+    completedPassedSlots,
+    draftOrder.length,
+    true,
+  );
   return {
     players: normalizeTeamJerseyNumbers(playersAfterReturn, state.teams, season, {
       history: state.history,
       targetTeamIds: draftedTeamIds,
     }),
     draftComplete: true,
-    draftPicks: (state.draftPicks ?? []).filter(p => p.season !== season),
+    seasonLifecycle: completedLifecycle,
+    ...(pbaIsolated ? {
+      leagueStats: {
+        ...state.leagueStats,
+        pbaDraftComplete: true,
+        pbaDraftCompleteSeason: season,
+      },
+    } : {}),
+    draftPicks: (state.draftPicks ?? []).filter(p => p.forfeiture || p.season !== season
+      || !draftOrder.some(team => (team._originalTid ?? team.id) === p.originalTid)),
     activeDraftPicks: undefined,
     activeDraftPassedPicks: undefined,
     activeDraftOrder: undefined,
-    history: [...existingHistory, ...draftHistoryEntries, ...returnHistory],
+    euroScouting: returned.euroScouting,
+    history: [...existingHistory, ...draftHistoryEntries, ...twoWayHistoryEntries, ...returnHistory, ...draftDayTrim.historyEntries],
+    offseasonChecklist: state.offseasonChecklist
+      ? { ...state.offseasonChecklist, draft: 'done' }
+      : state.offseasonChecklist,
   } as any;
 };

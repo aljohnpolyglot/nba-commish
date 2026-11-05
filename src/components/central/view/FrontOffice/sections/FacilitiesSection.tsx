@@ -1,374 +1,307 @@
-import React, { useState } from 'react';
-import { Building2, TrendingUp, HeartPulse, Smile, Plane, Shield, Dumbbell, Target, Landmark } from 'lucide-react';
+import React from 'react';
+import {
+  ArrowRight,
+  Building2,
+  Dumbbell,
+  HeartPulse,
+  Landmark,
+  Plane,
+  Shield,
+  Star,
+  Target,
+  TrendingUp,
+} from 'lucide-react';
 import type { TycoonState } from '../../../../../types/tycoon';
-import { medicalQuality } from '../../../../../services/tycoon/medicalEngine';
-import { FacilityKpi } from '../shared/FacilityKpi';
-import { getTycoonFacilityLevel, getTycoonStadiumCapacity } from '../../../../../services/tycoon/tierBase';
+import { getAcademyBudgetStrength, normalizeAcademyBudgetEUR } from '../../../../../services/tycoon/economyScale';
+import { getMedicalAreaLevels, getMedicalDepartmentBreakdown } from '../../../../../services/tycoon/medicalEngine';
+import {
+  getTycoonFacilityLevel,
+  getTycoonStadiumCapacity,
+} from '../../../../../services/tycoon/tierBase';
+import { SectionTitle } from '../shared/helpers';
+import { getArenaRating, getTrainingAreaLevels, getTrainingCenterRating } from '../../../../../services/tycoon/facilityUpgradeEngine';
+import { getTravelDepartmentRating, getTravelServiceQuality } from '../../../../../services/tycoon/travelGameplayEffects';
 
-const SectionTitle: React.FC<{ icon: React.ReactNode; title: string; subtitle: string }> = ({ icon, title, subtitle }) => (
-  <div className="flex items-start gap-3">
-    <div className="w-11 h-11 rounded-2xl border border-amber-400/30 bg-amber-400/10 flex items-center justify-center text-amber-300">{icon}</div>
-    <div>
-      <h2 className="text-2xl font-black tracking-tight text-white">{title}</h2>
-      <p className="text-sm text-slate-400 mt-1">{subtitle}</p>
-    </div>
-  </div>
-);
+type FacilityTone = 'amber' | 'violet' | 'emerald' | 'cyan' | 'sky';
 
-const FacilityCard: React.FC<{
+interface FacilitySummary {
   title: string;
   icon: React.ReactNode;
   rating: number;
-  tone: string;
-  badge: string;
-  attributes: Array<[string, number]>;
-  chips: string[];
+  level: string;
+  impact: string;
+  tone: FacilityTone;
   onDetails?: () => void;
-}> = ({ title, icon, rating, tone, badge, attributes, chips, onDetails }) => {
-  const accent = tone === 'amber' ? 'text-amber-300 border-amber-400/40 bg-amber-400/10'
-    : tone === 'violet' ? 'text-violet-300 border-violet-400/40 bg-violet-400/10'
-    : tone === 'emerald' ? 'text-emerald-300 border-emerald-400/40 bg-emerald-400/10'
-    : tone === 'cyan' ? 'text-cyan-300 border-cyan-400/40 bg-cyan-400/10'
-    : 'text-sky-300 border-sky-400/40 bg-sky-400/10';
-  return (
-    <div className={`rounded-2xl border border-slate-800 bg-slate-900/70 p-5 ${tone === 'amber' ? 'shadow-lg shadow-amber-950/20' : ''}`}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className={`w-12 h-12 rounded-full border flex items-center justify-center ${accent}`}>{icon}</div>
-          <div className="text-sm font-black text-white uppercase tracking-wide">{title}</div>
-        </div>
-        <div className={`rounded-lg border px-2 py-1 text-xs font-black uppercase ${accent}`}>{badge}</div>
-      </div>
-      <div className="mt-6 grid grid-cols-[96px_1fr] gap-5 items-center">
-        <div className="w-24 h-24 rounded-full mx-auto flex items-center justify-center bg-[conic-gradient(#74d66f_0deg,#74d66f_var(--rating),#1e293b_var(--rating))]" style={{ '--rating': `${Math.min(99, rating) * 3.6}deg` } as React.CSSProperties}>
-          <div className="w-16 h-16 rounded-full bg-slate-950 border border-slate-800 flex flex-col items-center justify-center">
-            <div className="text-2xl font-black text-emerald-300">{Math.min(99, rating)}</div>
-          </div>
-        </div>
-        <div className="space-y-2">
-          {attributes.map(([label, value]) => (
-            <div key={label} className="grid grid-cols-[1fr_56px] items-center gap-3">
-              <div className="text-xs text-slate-300 truncate">{label}</div>
-              <div className="flex items-center gap-2">
-                <div className="w-10 h-1.5 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-emerald-400" style={{ width: `${Math.max(20, Math.min(99, value))}%` }} /></div>
-                <span className="text-xs font-black text-emerald-300 tabular-nums">{Math.max(1, Math.min(99, value))}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="mt-5 text-xs font-black uppercase tracking-widest text-slate-500">Key Features</div>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {chips.slice(0, 4).map(chip => <span key={chip} className="rounded-md border border-slate-700 bg-slate-950/70 px-2 py-1 text-[10px] font-bold text-slate-300">{chip}</span>)}
-      </div>
-      <button onClick={onDetails} className={`mt-4 w-full h-11 rounded-xl border font-black ${accent}`}>View Details →</button>
-    </div>
-  );
+}
+
+interface FacilityPortfolioMetrics {
+  medicalRating: number;
+  medicalOwned: number;
+  travelAverage: number;
+  travelRating: number;
+  stadiumLevel: number;
+  trainingLevel: number;
+  academyLevel: number;
+  academyBudget: number;
+  stadiumCapacity: number;
+  trainingRating: number;
+  trainingOwned: number;
+  academyRating: number;
+  arenaRating: number;
+  analyticsRating: number;
+  maintenance: number;
+  facilityValue: number;
+  overallRating: number;
+}
+
+const toneClasses: Record<FacilityTone, string> = {
+  amber: 'border-amber-400/40 bg-amber-400/10 text-amber-300',
+  violet: 'border-violet-400/40 bg-violet-400/10 text-violet-300',
+  emerald: 'border-emerald-400/40 bg-emerald-400/10 text-emerald-300',
+  cyan: 'border-cyan-400/40 bg-cyan-400/10 text-cyan-300',
+  sky: 'border-sky-400/40 bg-sky-400/10 text-sky-300',
 };
+
+const FacilityRow: React.FC<FacilitySummary> = ({ title, icon, rating, level, impact, tone, onDetails }) => (
+  <button
+    type="button"
+    onClick={onDetails}
+    disabled={!onDetails}
+    className="group w-full rounded-2xl border border-slate-800 bg-slate-900/70 p-4 text-left transition hover:border-slate-600 disabled:cursor-default disabled:opacity-70 sm:p-5"
+  >
+    <div className="flex items-start gap-3">
+      <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl border ${toneClasses[tone]}`}>{icon}</div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <div className="text-sm font-black text-white">{title}</div>
+            <div className="mt-1 text-xs leading-5 text-slate-400">{impact}</div>
+          </div>
+          <ArrowRight size={17} className="mt-1 shrink-0 text-slate-600 transition group-hover:translate-x-0.5 group-hover:text-amber-300" />
+        </div>
+        <div className="mt-4 flex items-center gap-3">
+          <div className="h-2 flex-1 overflow-hidden rounded-full bg-slate-800">
+            <div className="h-full rounded-full bg-emerald-400" style={{ width: `${Math.max(8, Math.min(99, rating))}%` }} />
+          </div>
+          <span className="w-7 text-right text-sm font-black tabular-nums text-emerald-300">{Math.min(99, rating)}</span>
+          <span className={`rounded-md border px-2 py-1 text-[10px] font-black uppercase tracking-wider ${toneClasses[tone]}`}>{level}</span>
+        </div>
+      </div>
+    </div>
+  </button>
+);
 
 export const FacilitiesSection: React.FC<{
   tycoon: TycoonState;
-  fmt: (v: number) => string;
+  fmt: (value: number) => string;
+  economyIndex?: number;
+  leagueTycoons?: TycoonState[];
   onTravelDetails?: () => void;
   onMedicalDetails?: () => void;
   onAnalyticsDetails?: () => void;
   onArenaDetails?: () => void;
   onTrainingDetails?: () => void;
   onAcademyDetails?: () => void;
-}> = ({ tycoon, fmt, onTravelDetails, onMedicalDetails, onAnalyticsDetails, onArenaDetails, onTrainingDetails, onAcademyDetails }) => {
-  const [facilityModal, setFacilityModal] = useState<{ title: string; body: string; tone: 'amber' | 'slate'; comingSoon?: boolean } | null>(null);
-  const openComingSoon = (title: string, tone: 'amber' | 'slate' = 'amber') =>
-    setFacilityModal({
-      title,
-      body: 'This screen is under construction. It will let you plan, approve, and track infrastructure projects directly from the Front Office in a future update.',
-      tone,
-      comingSoon: true,
-    });
-  const medicalRating = 50 + Math.round(medicalQuality(tycoon.medicalBudget) * 45);
-  const travelAverage = tycoon.travelPreferences
-    ? Math.round((tycoon.travelPreferences.hotel + tycoon.travelPreferences.flight + tycoon.travelPreferences.bus) / 3)
-    : 2;
-  const travelRating = 58 + travelAverage * 8;
-  const stadiumLevel = getTycoonFacilityLevel(tycoon.facilities?.stadium);
-  const trainingLevel = getTycoonFacilityLevel(tycoon.facilities?.trainingCenter);
-  const academyLevel = getTycoonFacilityLevel(tycoon.facilities?.academy);
-  const stadiumCapacity = getTycoonStadiumCapacity(tycoon);
-  const trainingRating = 58 + trainingLevel * 9;
-  const academyRating = 54 + academyLevel * 9;
-  const arenaRating = 56 + stadiumLevel * 9;
-  const analyticsRating = 72;
-  const cards: Array<{
-    title: string;
-    icon: React.ReactNode;
-    rating: number;
-    tone: string;
-    badge: string;
-    attributes: Array<[string, number]>;
-    chips: string[];
-  }> = [
+}> = ({
+  tycoon,
+  fmt,
+  economyIndex = 1,
+  leagueTycoons = [],
+  onTravelDetails,
+  onMedicalDetails,
+  onAnalyticsDetails,
+  onArenaDetails,
+  onTrainingDetails,
+  onAcademyDetails,
+}) => {
+  const metrics = getFacilityPortfolioMetrics(tycoon, economyIndex);
+  const {
+    medicalRating,
+    medicalOwned,
+    travelAverage,
+    travelRating,
+    trainingRating,
+    trainingOwned,
+    academyBudget,
+    academyRating,
+    arenaRating,
+    analyticsRating,
+    maintenance,
+    facilityValue,
+    overallRating,
+  } = metrics;
+  const facilities: FacilitySummary[] = [
     {
       title: 'Training Center',
-      icon: <Dumbbell size={26} />,
+      icon: <Dumbbell size={23} />,
       rating: trainingRating,
+      level: `${trainingOwned}/60`,
+      impact: 'Player development and training effectiveness.',
       tone: 'sky',
-      badge: trainingRating >= 90 ? 'Elite' : 'A',
-      attributes: [
-        ['Training Quality', trainingRating],
-        ['Skill Development', trainingRating - 2],
-        ['Shooting Labs', trainingRating - 3],
-        ['Weight Rooms', trainingRating - 5],
-        ['Biomechanics', trainingRating - 6],
-      ],
-      chips: ['Smart Courts', 'AI Motion Capture', 'Recovery Pools', 'Altitude Chambers'],
+      onDetails: onTrainingDetails,
     },
     {
-      title: 'Medical & Recovery Center',
-      icon: <HeartPulse size={26} />,
+      title: 'Medical & Recovery',
+      icon: <HeartPulse size={23} />,
       rating: medicalRating,
+      level: `${medicalOwned}/60`,
+      impact: 'Injury frequency, recovery time, and availability.',
       tone: 'violet',
-      badge: medicalRating >= 90 ? 'Elite' : 'A',
-      attributes: [
-        ['Injury Prevention', medicalRating],
-        ['Rehab Speed', medicalRating - 2],
-        ['Conditioning', medicalRating - 3],
-        ['Load Management', medicalRating - 1],
-        ['Recovery Tech', medicalRating - 4],
-      ],
-      chips: ['Cryotherapy', 'Hyperbaric Chambers', 'MRI Center', 'Sleep Labs'],
+      onDetails: onMedicalDetails,
     },
     {
       title: 'Youth Academy',
-      icon: <Target size={26} />,
+      icon: <Target size={23} />,
       rating: academyRating,
+      level: fmt(academyBudget),
+      impact: 'Youth intake, development, and the club talent pipeline.',
       tone: 'emerald',
-      badge: academyRating >= 90 ? 'Elite' : 'A',
-      attributes: [
-        ['Talent Pipeline', academyRating],
-        ['Youth Coaching', academyRating - 2],
-        ['Recruitment', academyRating - 4],
-        ['Academy Prestige', academyRating + 1],
-        ['Education', academyRating - 3],
-      ],
-      chips: ['Dormitories', 'School Partnerships', 'Regional Camps', 'Scouting Hub'],
+      onDetails: onAcademyDetails,
     },
     {
       title: 'Analytics Lab',
-      icon: <TrendingUp size={26} />,
+      icon: <TrendingUp size={23} />,
       rating: analyticsRating,
+      level: 'Active',
+      impact: 'Market coverage and confidence in player reports.',
       tone: 'cyan',
-      badge: 'A',
-      attributes: [
-        ['Tactical Analysis', analyticsRating + 4],
-        ['Opponent Scouting', analyticsRating + 2],
-        ['Data Infrastructure', analyticsRating],
-        ['AI Models', analyticsRating - 1],
-        ['Match Preparation', analyticsRating + 3],
-      ],
-      chips: ['AI Video Analysis', 'Big Data Platform', 'Tracking System', 'Scouting AI'],
+      onDetails: onAnalyticsDetails,
     },
     {
       title: 'Arena & Fan Experience',
-      icon: <Landmark size={26} />,
+      icon: <Landmark size={23} />,
       rating: arenaRating,
+      level: `${arenaRating}/99`,
+      impact: 'Attendance, matchday revenue, and home atmosphere.',
       tone: 'amber',
-      badge: arenaRating >= 90 ? 'Elite' : 'A',
-      attributes: [
-        ['Arena Quality', arenaRating + 2],
-        ['Attendance', arenaRating],
-        ['VIP Revenue', arenaRating - 2],
-        ['Atmosphere', arenaRating + 1],
-        ['Fan Engagement', arenaRating - 1],
-      ],
-      chips: ['LED System', 'VIP Lounges', 'Giant Screens', 'Fan Zones'],
+      onDetails: onArenaDetails,
     },
     {
-      title: 'Travel & Logistics Hub',
-      icon: <Plane size={26} />,
+      title: 'Travel & Logistics',
+      icon: <Plane size={23} />,
       rating: travelRating,
+      level: `${travelAverage.toFixed(1)} / 5`,
+      impact: 'Road fatigue, morale, and travel operating costs.',
       tone: 'sky',
-      badge: travelRating >= 90 ? 'Elite' : 'A',
-      attributes: [
-        ['Travel Comfort', travelRating],
-        ['Jet Quality', travelRating - 1],
-        ['Recovery Efficiency', travelRating - 2],
-        ['International Ops', travelRating - 1],
-        ['Logistics', travelRating - 3],
-      ],
-      chips: ['Balanced', 'Optimal cost control', 'Road Recovery', 'European Ops'],
+      onDetails: onTravelDetails,
     },
   ];
-  const avgRating = Math.round(cards.reduce((sum, card) => sum + card.rating, 0) / cards.length);
-  const maintenance = (stadiumLevel + trainingLevel + academyLevel) * 2_600_000
-    + (tycoon.medicalBudget ?? 0) * 0.35 + travelAverage * 450_000;
-  const facilityValue = stadiumCapacity * 4_500
-    + trainingLevel * 16_000_000
-    + academyLevel * 9_000_000
-    + (tycoon.medicalBudget ?? 0) * 5;
+  const rankedMetrics = (leagueTycoons.length > 0 ? leagueTycoons : [tycoon])
+    .map(teamTycoon => getFacilityPortfolioMetrics(teamTycoon, economyIndex));
+  const valueRank = 1 + rankedMetrics.filter(item => item.facilityValue > facilityValue).length;
+  const costRank = 1 + rankedMetrics.filter(item => item.maintenance > maintenance).length;
+
   return (
     <div className="space-y-6">
-      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
-        <SectionTitle icon={<Building2 size={22} />} title="Facilities" subtitle="Manage and upgrade your club's infrastructure and facilities." />
-        <button
-          onClick={() => openComingSoon('Facility Masterplan')}
-          className="h-14 rounded-xl border border-amber-400/50 bg-amber-400/10 px-8 text-amber-200 font-black hover:bg-amber-400/15"
-        >
-          View Masterplan →
-        </button>
+      <SectionTitle icon={<Building2 size={22} />} title="Facilities" subtitle="Review club operations and adjust the areas that matter most." />
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <FacilityHeaderMetric
+          icon={<Landmark size={25} />}
+          label="Facility Value"
+          value={fmt(facilityValue)}
+          rank={`#${valueRank} in league`}
+        />
+        <FacilityHeaderMetric
+          icon={<Shield size={25} />}
+          label="Annual Cost"
+          value={fmt(maintenance)}
+          rank={`#${costRank} in league`}
+        />
+        <FacilityHeaderMetric
+          icon={<Star size={25} />}
+          label="Overall Rating"
+          value={String(overallRating)}
+          rank={overallRating >= 88 ? 'Elite' : overallRating >= 75 ? 'Strong' : 'Developing'}
+          progress={overallRating}
+          suffix="/ 100"
+        />
       </div>
 
-      <div className="grid md:grid-cols-2 xl:grid-cols-5 gap-3">
-        <FacilityKpi icon={<Building2 size={22} />} label="Total Facility Value" value={fmt(facilityValue)} sub="All Facilities" />
-        <FacilityKpi icon={<Shield size={22} />} label="Annual Maintenance" value={`${fmt(maintenance)} / year`} sub="Projected cost" />
-        <FacilityKpi icon={<TrendingUp size={22} />} label="Facility Rating" value={String(avgRating)} sub={avgRating >= 88 ? 'Elite' : 'Strong'} />
-        <FacilityKpi icon={<Smile size={22} />} label="Player Satisfaction" value={String(Math.min(99, avgRating - 3))} sub="Great" />
-        <FacilityKpi icon={<HeartPulse size={22} />} label="Injury Prevention" value={`+${Math.round(medicalQuality(tycoon.medicalBudget) * 20)}%`} sub="vs baseline" />
-      </div>
-
-      <div className="grid xl:grid-cols-[1fr_370px] gap-6">
-        <div className="space-y-6">
-          <div className="grid md:grid-cols-2 2xl:grid-cols-3 gap-4">
-            {cards.map(card => (
-              <FacilityCard
-                key={card.title}
-                {...card}
-                onDetails={
-                  card.title === 'Travel & Logistics Hub' && onTravelDetails
-                    ? onTravelDetails
-                    : card.title === 'Medical & Recovery Center' && onMedicalDetails
-                    ? onMedicalDetails
-                    : card.title === 'Analytics Lab' && onAnalyticsDetails
-                    ? onAnalyticsDetails
-                    : card.title === 'Arena & Fan Experience' && onArenaDetails
-                    ? onArenaDetails
-                    : card.title === 'Training Center' && onTrainingDetails
-                    ? onTrainingDetails
-                    : card.title === 'Youth Academy' && onAcademyDetails
-                    ? onAcademyDetails
-                    : () => setFacilityModal({
-                        title: card.title,
-                        body: `${card.title} is rated ${Math.min(99, card.rating)}. The strongest traits are ${card.attributes.slice(0, 2).map(([label]) => label).join(' and ')}. Upgrades here raise the club's operational ceiling without changing NBA-mode behavior.`,
-                        tone: card.tone === 'amber' ? 'amber' : 'slate',
-                      })
-                }
-              />
-            ))}
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5 overflow-hidden">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-5">Club Performance Ecosystem</div>
-            <div className="grid lg:grid-cols-[1fr_220px_1fr] gap-5 items-center">
-              <div className="space-y-3">
-                {cards.slice(0, 3).map(card => (
-                  <div key={card.title} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 flex items-center gap-3">
-                    <span className="text-sky-300">{card.icon}</span>
-                    <div><div className="text-sm font-black text-white">{card.title.replace(' & Recovery Center', ' Center')}</div><div className="text-xs text-slate-500">Feeds long-term club strength</div></div>
-                  </div>
-                ))}
-              </div>
-              <div className="relative mx-auto w-52 h-52 rounded-full border border-amber-400/50 bg-slate-950 shadow-2xl shadow-amber-950/30 flex flex-col items-center justify-center text-center">
-                <div className="absolute inset-5 rounded-full border border-amber-400/20" />
-                <div className="text-4xl font-black text-white">{avgRating}</div>
-                <div className="text-sm font-black text-amber-300">Club Success</div>
-                <div className="text-xs text-slate-500">Winning · Growth · Legacy</div>
-              </div>
-              <div className="space-y-3">
-                {cards.slice(3).map(card => (
-                  <div key={card.title} className="rounded-xl border border-slate-800 bg-slate-950/70 p-3 flex items-center gap-3">
-                    <span className="text-amber-300">{card.icon}</span>
-                    <div><div className="text-sm font-black text-white">{card.title}</div><div className="text-xs text-slate-500">Improves operational ceiling</div></div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="grid md:grid-cols-5 gap-3">
-            {['Upgrade Facility', 'View Blueprints', 'Hire Architects', 'Compare League Facilities', 'Infrastructure Report'].map((action, index) => (
-              <button
-                key={action}
-                onClick={() => openComingSoon(action, index === 0 ? 'amber' : 'slate')}
-                className={`h-14 rounded-xl border font-black text-sm ${index === 0 ? 'border-amber-400/50 bg-amber-400/15 text-amber-200' : 'border-slate-800 bg-slate-900/70 text-slate-300 hover:border-slate-600'}`}
-              >
-                {action}
-              </button>
-            ))}
-          </div>
+      <div>
+        <div className="mb-3 text-xs font-black uppercase tracking-widest text-slate-500">Club operations</div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          {facilities.map(facility => <FacilityRow key={facility.title} {...facility} />)}
         </div>
-
-        <aside className="space-y-5">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Operational Insights</div>
-            {[
-              ['good', 'Training facilities are world-class. Player development is at elite level.'],
-              ['warn', `Arena capacity of ${stadiumCapacity.toLocaleString()} may limit future revenue.`],
-              ['warn', 'Youth academy facilities could be upgraded.'],
-              ['good', 'Medical center is reducing injury risk effectively.'],
-              ['info', 'Three European clubs have better travel conditions.'],
-            ].map(([kind, text]) => (
-              <div key={text} className="py-3 border-b border-slate-800 last:border-b-0 flex gap-3 text-sm text-slate-300">
-                <span className={`mt-1 w-5 h-5 rounded-full flex items-center justify-center text-xs font-black ${kind === 'good' ? 'bg-emerald-500/20 text-emerald-300' : kind === 'warn' ? 'bg-amber-500/20 text-amber-300' : 'bg-orange-500/20 text-orange-300'}`}>!</span>
-                <span>{text}</span>
-              </div>
-            ))}
-            <button
-              onClick={() => openComingSoon('Infrastructure Report', 'slate')}
-              className="mt-4 w-full h-12 rounded-xl border border-slate-700 text-slate-300 hover:text-white"
-            >
-              View Full Report →
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Facility Masterplan</div>
-            <div className="flex items-center justify-between text-sm font-black text-amber-300 mb-4">
-              <span>Under Construction</span><span>2 Active Projects</span>
-            </div>
-            {[
-              ['Recovery Wing Expansion', 'Medical Center', 65, 'Dec 2026'],
-              ['Arena Expansion Phase 1', 'Arena', 40, 'May 2027'],
-            ].map(([name, area, pct, date]) => (
-              <div key={name as string} className="mb-5">
-                <div className="flex justify-between gap-3 text-sm"><span className="font-black text-white">{name}</span><span className="text-slate-500">{pct}%</span></div>
-                <div className="text-xs text-slate-500">{area} · Completion: {date}</div>
-                <div className="mt-2 h-2 rounded-full bg-slate-800 overflow-hidden"><div className="h-full bg-amber-400" style={{ width: `${pct}%` }} /></div>
-              </div>
-            ))}
-            <div className="pt-2 border-t border-slate-800 text-sm font-black text-amber-300">Planned <span className="float-right">3 Projects</span></div>
-            {['AI Training Dome', 'Youth Dormitories', 'New Practice Arena'].map((name) => (
-              <div key={name} className="py-3 border-b border-slate-800 text-sm">
-                <div className="font-black text-white">{name}</div>
-                <div className="text-xs text-slate-500">Starts next planning cycle</div>
-              </div>
-            ))}
-            <button
-              onClick={() => openComingSoon('Facility Masterplan')}
-              className="mt-4 w-full h-14 rounded-xl border border-amber-400/50 bg-amber-400/10 text-amber-200 font-black"
-            >
-              View Masterplan →
-            </button>
-          </div>
-        </aside>
       </div>
-      {facilityModal && (
-        <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
-          <button className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={() => setFacilityModal(null)} />
-          <div className={`relative w-full max-w-xl rounded-2xl border bg-slate-950 p-6 shadow-2xl ${facilityModal.tone === 'amber' ? 'border-amber-400/40' : 'border-slate-700'}`}>
-            <div className={`text-xs font-black uppercase tracking-widest ${facilityModal.tone === 'amber' ? 'text-amber-300' : 'text-slate-400'}`}>Facilities</div>
-            <div className="mt-2 flex items-center gap-3 flex-wrap">
-              <h3 className="text-2xl font-black text-white">{facilityModal.title}</h3>
-              {facilityModal.comingSoon && (
-                <span className="rounded-md border border-amber-400/40 bg-amber-400/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-amber-300">
-                  Coming Soon
-                </span>
-              )}
-            </div>
-            <p className="mt-4 text-sm leading-6 text-slate-300">{facilityModal.body}</p>
-            <button onClick={() => setFacilityModal(null)} className="mt-6 w-full h-12 rounded-xl border border-slate-700 text-slate-200 font-black hover:border-amber-400/50">
-              Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
+
+function getFacilityPortfolioMetrics(tycoon: TycoonState, economyIndex: number): FacilityPortfolioMetrics {
+  const medicalRating = getMedicalDepartmentBreakdown(tycoon, economyIndex).quality;
+  const medicalOwned = Object.values(getMedicalAreaLevels(tycoon)).reduce((sum, value) => sum + value, 0);
+  const travelAverage = getTravelServiceQuality(tycoon);
+  const travelRating = getTravelDepartmentRating(tycoon);
+  const stadiumLevel = getTycoonFacilityLevel(tycoon.facilities?.stadium);
+  const trainingLevel = getTycoonFacilityLevel(tycoon.facilities?.trainingCenter);
+  const academyLevel = getTycoonFacilityLevel(tycoon.facilities?.academy);
+  const academyBudget = normalizeAcademyBudgetEUR(tycoon.academyBudget, tycoon.tier, economyIndex);
+  const academyBudgetStrength = getAcademyBudgetStrength(academyBudget, tycoon.tier, economyIndex);
+  const stadiumCapacity = getTycoonStadiumCapacity(tycoon);
+  const trainingRating = getTrainingCenterRating(tycoon);
+  const trainingOwned = Object.values(getTrainingAreaLevels(tycoon)).reduce((sum, value) => sum + value, 0);
+  const academyRating = Math.min(99, 50 + Math.round(academyBudgetStrength * 49));
+  const arenaRating = getArenaRating(tycoon.facilities.stadium, stadiumCapacity);
+  const analyticsRating = 72;
+  const ratings = [trainingRating, medicalRating, academyRating, analyticsRating, arenaRating, travelRating];
+  const maintenance = (stadiumLevel + trainingLevel + academyLevel) * 2_600_000 * economyIndex
+    + academyBudget
+    + (tycoon.medicalBudget ?? 0) * 0.35
+    + medicalOwned * 35_000 * economyIndex
+    + travelAverage * 450_000 * economyIndex;
+  const facilityValue = (stadiumCapacity * 4_500
+    + trainingLevel * 16_000_000
+    + academyLevel * 9_000_000) * economyIndex
+    + (tycoon.medicalBudget ?? 0) * 5
+    + medicalOwned * 1_500_000 * economyIndex;
+  return {
+    medicalRating,
+    medicalOwned,
+    travelAverage,
+    travelRating,
+    stadiumLevel,
+    trainingLevel,
+    academyLevel,
+    academyBudget,
+    stadiumCapacity,
+    trainingRating,
+    trainingOwned,
+    academyRating,
+    arenaRating,
+    analyticsRating,
+    maintenance,
+    facilityValue,
+    overallRating: Math.round(ratings.reduce((sum, value) => sum + value, 0) / ratings.length),
+  };
+}
+
+const FacilityHeaderMetric: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: string;
+  rank: string;
+  progress?: number;
+  suffix?: string;
+}> = ({ icon, label, value, rank, progress, suffix }) => (
+  <div className="flex min-w-0 items-center gap-4 rounded-2xl border border-slate-700 bg-gradient-to-br from-slate-900 to-slate-950 p-5 sm:p-6">
+    <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full border border-amber-400/45 bg-amber-400/[0.06] text-amber-300">
+      {icon}
+    </div>
+    <div className="min-w-0 flex-1">
+      <div className="text-[10px] font-black uppercase tracking-[0.22em] text-slate-400">{label}</div>
+      <div className="mt-2 break-words text-3xl font-black text-white">{value}</div>
+      {progress == null ? (
+        <div className="mt-2 text-sm font-bold text-blue-400">{rank}</div>
+      ) : (
+        <div className="mt-3 flex flex-wrap items-center gap-3">
+          <span className="text-sm font-bold text-blue-400">{rank}</span>
+          <div className="h-2 min-w-24 flex-1 overflow-hidden rounded-full bg-slate-800">
+            <div className="h-full rounded-full bg-gradient-to-r from-amber-500 to-amber-300" style={{ width: `${Math.max(0, Math.min(100, progress))}%` }} />
+          </div>
+          <span className="text-xs font-bold tabular-nums text-slate-300">{progress} {suffix}</span>
+        </div>
+      )}
+    </div>
+  </div>
+);

@@ -14,6 +14,8 @@ import { getDisplayOverall } from '../../../../../utils/playerRatings';
 import { saveCoachSystem, getCoachSystem } from '../../../../../store/coachSystemStore';
 import { resolveAnyTeam, isOnRoster, getActiveLeagueTeams } from '../../../../../utils/teamLookup';
 import { computeSystemFit } from '../../../../../utils/coachSliders';
+import { getTeamFullName } from '../../../../../utils/teamNames';
+import { resolveActiveOrActingHeadCoach } from '../../../../../services/staff/activeStaffContracts';
 
 interface CoachingPageProps {
   teamId: number;
@@ -37,7 +39,9 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
 
   // Process all teams into the format CoachingView expects
   const { processedTeams, staffData } = useMemo(() => {
-    if (!state.players?.length || !state.teams?.length) return { processedTeams: [], staffData: null };
+    if (!state.players?.length || (!state.teams?.length && !state.nonNBATeams?.length)) {
+      return { processedTeams: [], staffData: null };
+    }
 
     const allRosters: PlayerK2[][] = [];
 
@@ -84,14 +88,28 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
       // Shared util — same answer as Training Center / SystemProficiencyView.
       // Pass through System Familiarity so the star renderer reflects the team's
       // earned familiarity (Training Center daily paradigms feed it).
-      const { sortedProfs, bestSystem, coachSliders, avgK2 } = computeTeamProficiency(roster, allRosters, t.systemFamiliarity);
+      const { sortedProfs, bestSystem, coachSliders, avgK2 } = computeTeamProficiency(roster, allRosters, t.systemFamiliarity, state.leagueStats);
 
       const getFullName = (p: PlayerK2) => p.name || 'Unknown Player';
+      const displayHeadCoach = resolveActiveOrActingHeadCoach(t, currentYear);
+      const actingHeadCoach = displayHeadCoach && 'actingHeadCoach' in displayHeadCoach
+        ? displayHeadCoach
+        : null;
+      const displayTycoon = actingHeadCoach
+        ? {
+            ...((t as any).tycoon ?? {}),
+            staffMembers: [
+              actingHeadCoach,
+              ...(((t as any).tycoon?.staffMembers ?? []) as any[]),
+            ],
+          }
+        : (t as any).tycoon;
 
       return {
         tid: String(t.id),
-        teamName: `${t.region} ${t.name}`,
+        teamName: getTeamFullName(t),
         imgURL: t.logoUrl,
+        tycoon: displayTycoon,
         bestSystem,
         avgK2,
         sortedProfs,
@@ -103,7 +121,7 @@ export function CoachingPage({ teamId }: CoachingPageProps) {
     });
 
     return { processedTeams: processed, staffData: state.staff };
-  }, [state.players, state.teams, currentYear, state.staff]);
+  }, [state.players, state.teams, state.nonNBATeams, state.userTeamId, currentYear, state.staff, state.leagueStats]);
 
   // Re-sync proficiency scores whenever the roster changes (trades, cuts, FA signings).
   // Only re-saves teams that the user already has a stored system for, so the

@@ -12,10 +12,10 @@ import { sendChatMessage } from '../../services/llm/llm';
 import { SettingsManager } from '../../services/SettingsManager';
 import { initImageCache } from '../../services/imageCache';
 import { normalizeDate } from '../../utils/helpers';
+import { shouldAdvanceAfterAllStarEventDay } from '../../services/allStar/allStarSaturdayCompletion';
 import { ensureEuroUserAcademyProspects } from '../../services/externalLeagueSustainer';
 import { generateAIBids, isPlausibleActiveMarket } from '../../services/freeAgencyBidding';
 import { tickTransferMarket } from '../../services/transfer/transferMarketTicker';
-import { isTransferMarketEligibleTid } from '../../services/transfer/marketEligibility';
 import { setAssistantGMActive } from '../../services/assistantGMFlag';
 import {
   getCurrentOffseasonEffectiveFAStart,
@@ -26,6 +26,8 @@ import {
 } from '../../utils/dateUtils';
 import { clearWaiverMarkers } from '../../utils/contractCleanup';
 import { resolveAnyTeam } from '../../utils/teamLookup';
+import { coerceInsiderPostToEra } from '../../data/social/handles';
+import { isTwitterAvailable } from '../../utils/mediaTimeline';
 import {
   defaultOffseasonChecklist,
   initialEuroOffseasonChecklist,
@@ -33,7 +35,6 @@ import {
   initialPbaInterConferenceChecklist,
   initialPbaEndOfSeasonChecklist,
   setRowStatus,
-  OFFSEASON_ROW_TAB,
   computeUpcomingSeasonYear,
 } from '../../services/offseason/offseasonState';
 import { EURO_ISOLATED_DEFAULTS, PBA_ISOLATED_DEFAULTS } from '../../constants';
@@ -54,8 +55,13 @@ import { handleExpansionDispatchAction } from './expansionDispatchActions';
 import { handleTransferMarketDispatchAction } from './transferMarketDispatchActions';
 import { handleFaBiddingDispatchAction } from './faBiddingDispatchActions';
 import { handleDirectDispatchAction } from './directDispatchActions';
+import { handleEuroScoutingDispatchAction } from './euroScoutingDispatchActions';
 import { handleSpecialCareerDispatchAction } from './specialCareerDispatchActions';
 import { handleCommunicationDispatchAction } from './communicationDispatchActions';
+import { validateExecutiveTradeAssets } from '../../services/trade/tradeAssetValidation';
+import { getBlockingCommissionerTask } from '../../services/commissionerTasks/taskRegistry';
+import { isLotteryBoundaryOwnedByTargetPlan } from '../../services/lifecycle/calendarEventDisposition';
+import { getNativeEffectActionLabel, isNativeEffectAction } from '../../services/nativeActionEffects';
 
 type SetGameState = Dispatch<SetStateAction<GameState>>;
 
@@ -84,6 +90,7 @@ export const useGameDispatchAction = ({
   const dispatchAction = useCallback(async (action: UserAction) => {
     const portalBlockedActions = new Set<string>([
       'SIGN_FREE_AGENT',
+      'ASSISTANT_RESIGN_EXPIRING_CONTRACTS',
       'SUBMIT_FA_BID',
       'MATCH_RFA_OFFER',
       'DECLINE_RFA_OFFER',
@@ -102,6 +109,55 @@ export const useGameDispatchAction = ({
       && Object.keys(action.payload as Record<string, unknown>).every(key => key === 'portalTarget');
     if (stateRef.current.portalTarget != null && !portalAllowsUpdateState && portalBlockedActions.has(action.type)) {
       setState(prev => ({ ...prev, lastOutcome: 'Close the Portal to make changes.' }));
+      return;
+    }
+
+    let commissionerBoundaryReached = false;
+    if (action.type === 'ADVANCE_DAY' || action.type === 'SIMULATE_TO_DATE') {
+      const currentDate = normalizeDate(stateRef.current.date);
+      const targetDate = action.type === 'SIMULATE_TO_DATE'
+        ? normalizeDate(action.payload.targetDate)
+        : (() => {
+            const next = new Date(`${currentDate}T00:00:00Z`);
+            next.setUTCDate(next.getUTCDate() + 1);
+            return next.toISOString().slice(0, 10);
+          })();
+      const completingAllStarSaturday = action.type === 'ADVANCE_DAY'
+        && shouldAdvanceAfterAllStarEventDay(stateRef.current);
+      const centralFreeAgencySimulation = action.payload?.freeAgencyDayStart !== undefined;
+      const autoResolvingOffseason = action.type === 'SIMULATE_TO_DATE'
+        && action.payload?.autoResolveOffseasonTasks === true;
+      const blocker = completingAllStarSaturday || centralFreeAgencySimulation || autoResolvingOffseason
+        ? null
+        : getBlockingCommissionerTask(stateRef.current, targetDate);
+      const targetPlanOwnsBlocker = blocker?.taskId === 'draft_lottery'
+        && isLotteryBoundaryOwnedByTargetPlan(action.payload?.targetPlan);
+      if (blocker && !targetPlanOwnsBlocker) {
+        if (blocker.openDate <= currentDate) {
+          setCurrentView('Commissioner Tasks');
+          return;
+        }
+        action = {
+          type: 'SIMULATE_TO_DATE',
+          payload: {
+            ...action.payload,
+            targetDate: blocker.openDate,
+            stopBefore: true,
+          },
+        };
+        commissionerBoundaryReached = true;
+      }
+    }
+
+    if (action.type === 'EXECUTIVE_TRADE') {
+      const assetError = validateExecutiveTradeAssets(stateRef.current, action.payload);
+      if (assetError) {
+        setState(prev => ({ ...prev, isProcessing: false, lastOutcome: assetError }));
+        return;
+      }
+    }
+
+    if (action.type === 'HYPNOTIZE' && stateRef.current.godModeEnabled !== true) {
       return;
     }
 
@@ -124,6 +180,10 @@ export const useGameDispatchAction = ({
       return;
     }
 
+    if (handleEuroScoutingDispatchAction({ action, setState, stateRef })) {
+      return;
+    }
+
     if (handleExpansionDispatchAction({ action, setState })) {
       return;
     }
@@ -138,14 +198,19 @@ export const useGameDispatchAction = ({
 
     const isClubbing = action.type === 'GO_TO_CLUB';
     const isWatchingGame = action.payload?.isWatchingGame === true;
+    const processingAction = isNativeEffectAction(action.type)
+      ? { type: action.type, label: getNativeEffectActionLabel(action.type, action.payload) }
+      : undefined;
     setState(prev => ({
       ...prev,
       isProcessing: true,
+      processingAction,
       isClubbing,
       isWatchingGame,
       pendingStartPayload: action.type === 'START_GAME' ? action.payload : prev.pendingStartPayload,
       lastActionType: action.type,
       lastActionPayload: action.payload,
+      lastActionEffect: null,
       lastSimResults: [],
       simCurrentDate: undefined,
       prevTeams: prev.teams,
@@ -218,25 +283,38 @@ export const useGameDispatchAction = ({
         });
       }
 
-      setState(prev => {
-        const merged = {
-          ...prev,
-          ...newStatePatch,
-          stats: newStatePatch.stats || prev.stats,
-          leagueStats: newStatePatch.leagueStats || prev.leagueStats,
-          lastOutcome: newStatePatch.lastOutcome !== undefined ? newStatePatch.lastOutcome : prev.lastOutcome,
-          lastConsequence: newStatePatch.lastConsequence || prev.lastConsequence,
-          date: newStatePatch.date || prev.date,
-          day: newStatePatch.day || prev.day,
-          teams: newStatePatch.teams || prev.teams,
-          players: newStatePatch.players || prev.players,
-          schedule: newStatePatch.schedule || prev.schedule,
-          lastSimResults: newStatePatch.lastSimResults || [],
-          isProcessing: false,
-        };
-        stateRef.current = merged as any;
-        return merged;
-      });
+      const commitState = () => {
+        setState(prev => {
+          const merged = {
+            ...prev,
+            ...newStatePatch,
+            stats: newStatePatch.stats || prev.stats,
+            leagueStats: newStatePatch.leagueStats || prev.leagueStats,
+            lastOutcome: newStatePatch.lastOutcome !== undefined ? newStatePatch.lastOutcome : prev.lastOutcome,
+            lastConsequence: newStatePatch.lastConsequence || prev.lastConsequence,
+            lastActionEffect: newStatePatch.lastActionEffect !== undefined ? newStatePatch.lastActionEffect : prev.lastActionEffect,
+            actionAffinities: newStatePatch.actionAffinities || prev.actionAffinities,
+            date: newStatePatch.date || prev.date,
+            day: newStatePatch.day || prev.day,
+            teams: newStatePatch.teams || prev.teams,
+            players: newStatePatch.players || prev.players,
+            schedule: newStatePatch.schedule || prev.schedule,
+            lastSimResults: newStatePatch.lastSimResults || [],
+            isProcessing: false,
+            processingAction: undefined,
+          };
+          stateRef.current = merged as any;
+          return merged;
+        });
+      };
+      if (action.type === 'START_GAME') {
+        flushSync(commitState);
+      } else {
+        commitState();
+      }
+      if (commissionerBoundaryReached) {
+        setCurrentView('Commissioner Tasks');
+      }
 
       setTimeout(() => {
         setState(prev => {
@@ -266,9 +344,16 @@ export const useGameDispatchAction = ({
                 const existingPostIds = new Set(prev.socialFeed.map((p: any) => p.id));
                 const existingNewsIds = new Set(prev.news.map((n: any) => n.id));
                 const existingEmailIds = new Set(prev.inbox.map((e: any) => e.id));
-                const newPosts = (pulse.newSocialPosts || [])
-                  .filter((p: any) => !existingPostIds.has(p.id))
-                  .map((p: any, i: number) => ({ ...p, id: p.id || `pulse-${Date.now()}-${i}`, isNew: true }));
+                const socialAvailable = isTwitterAvailable(prev.date, prev.leagueStats?.year);
+                const newPosts = socialAvailable
+                  ? (pulse.newSocialPosts || [])
+                    .filter((p: any) => !existingPostIds.has(p.id))
+                    .map((p: any, i: number) => ({
+                      ...coerceInsiderPostToEra(p, prev.leagueType, prev.date, prev.leagueStats?.year, prev.leagueStats?.uiMode),
+                      id: p.id || `pulse-${Date.now()}-${i}`,
+                      isNew: true,
+                    }))
+                  : [];
                 const newNews = (pulse.newNews || [])
                   .filter((n: any) => !existingNewsIds.has(n.id))
                   .map((n: any, i: number) => ({ ...n, id: n.id || `pulse-news-${Date.now()}-${i}`, isNew: true }));
@@ -287,12 +372,17 @@ export const useGameDispatchAction = ({
       }
     } catch (error) {
       console.error('Failed to process action:', error);
+      const message = error instanceof Error ? error.message : 'The simulation could not complete this action.';
       setState(prev => ({
         ...prev,
         isProcessing: false,
+        processingAction: undefined,
         lazySimProgress: undefined,
-        lastOutcome: 'An error occurred while processing your action. The simulation glitched.',
+        lastOutcome: action.type === 'START_GAME'
+          ? `Could not start the league. ${message}`
+          : 'An error occurred while processing your action. The simulation glitched.',
       }));
+      if (action.type === 'START_GAME' || action.type === 'LOAD_GAME') throw error;
     }
   }, [actions, generationIdRef, setCurrentView, setState, state, stateRef]);
 

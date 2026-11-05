@@ -2,13 +2,16 @@ import { useState, useEffect, useRef, useMemo } from 'react';
 import { NBATeam, NBAPlayer, Game } from '../types';
 import { GameResult } from '../services/simulation/types';
 import { GameSimulator } from '../services/simulation/GameSimulator';
-import { genPlays } from '../services/simulation/live/playback/simulationService';
+import { auditLivePlayback, genPlays } from '../services/simulation/live/playback/simulationService';
 import { loadBadges } from '../services/simulation/live/playback/badgeService';
 import { getGameTimingConfig, getPeriodDurationSeconds, getPeriodStartClock, getPeriodStartSeconds } from '../utils/gameClock';
+import { getPlayersOnCourt } from '../services/simulation/courtSize';
 
 declare global {
   interface Window {
     __finalResult: any;
+    __livePlaybackAudit: ReturnType<typeof auditLivePlayback> | undefined;
+    __livePlaybackPlays: Awaited<ReturnType<typeof genPlays>> | undefined;
   }
 }
 
@@ -31,6 +34,7 @@ export function useLiveGame(
   const [isPlaying, setIsPlaying] = useState(false);
   const [speed, setSpeed] = useState(160);
   const simulatedRef = useRef(false);
+  const playbackTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Freeze players/overrides/precomputedResult at init time so ADVANCE_DAY
   // state updates don't restart the live game mid-playback. Only game
@@ -54,7 +58,8 @@ export function useLiveGame(
     leagueStats?.overtimeDuration,
   ]);
 
-  const gameKey = `${game.gid}-${homeTeam?.id}-${awayTeam?.id}-${riggedForTid ?? ''}-${game.gameFormat ?? 'timed'}-${game.targetScore ?? ''}-${timingConfig.numQuarters}-${timingConfig.quarterLengthSeconds}-${timingConfig.overtimeLengthSeconds}`;
+  const playersOnCourt = getPlayersOnCourt(leagueStats);
+  const gameKey = `${game.gid}-${homeTeam?.id}-${awayTeam?.id}-${riggedForTid ?? ''}-${game.gameFormat ?? 'timed'}-${game.targetScore ?? ''}-${timingConfig.numQuarters}-${timingConfig.quarterLengthSeconds}-${timingConfig.overtimeLengthSeconds}-${playersOnCourt}`;
 
   useEffect(() => {
     playersRef.current = players;
@@ -67,6 +72,8 @@ export function useLiveGame(
     setIsPlaying(false);
     setFinalResult(null);
     setBadgesLoaded(false);
+    window.__livePlaybackAudit = undefined;
+    window.__livePlaybackPlays = undefined;
 
     const frozenPlayers = playersRef.current;
     const frozenHome = homeOverrideRef.current;
@@ -80,8 +87,24 @@ export function useLiveGame(
         // Read via ref so a parent re-render with a fresh precomputedResult
         // identity doesn't reset playback mid-game (gameKey is the only reset).
         const snapshotPrecomputed = precomputedRef.current;
-        const usedPrecomputed = !!snapshotPrecomputed;
-        const result = snapshotPrecomputed ?? GameSimulator.simulateGame(homeTeam, awayTeam, frozenPlayers, game.gid, game.date, 50, frozenHome, frozenAway, undefined, undefined, undefined, riggedForTid);
+        const rawResult = snapshotPrecomputed ?? GameSimulator.simulatePreparedDayGames(
+          GameSimulator.prepareDayGames(
+            [homeTeam, awayTeam],
+            frozenPlayers,
+            [game],
+            game.date,
+            50,
+            undefined,
+            frozenHome,
+            frozenAway,
+            riggedForTid,
+            leagueStats,
+          ),
+        )[0];
+        if (!rawResult) throw new Error(`Unable to prepare live game ${game.gid}`);
+        const result = rawResult.playersOnCourt == null
+          ? { ...rawResult, playersOnCourt }
+          : rawResult;
         setFinalResult(result);
         window.__finalResult = result;
         const qs = result.quarterScores;
@@ -92,15 +115,21 @@ export function useLiveGame(
           setPlays([]);
         } else {
           const generatedPlays = await genPlays(
-            result.homeStats, result.awayStats, frozenPlayers,
+            result.homeStats, result.awayStats, [...(frozenHome ?? []), ...(frozenAway ?? []), ...frozenPlayers],
             qs,
             otCount,
             result.gameWinner,
-            homeTeam.abbrev,
-            awayTeam.abbrev,
+            homeTeam.name,
+            awayTeam.name,
             timingConfig,
             result,
           );
+          const playbackAudit = auditLivePlayback(generatedPlays, result);
+          window.__livePlaybackPlays = generatedPlays;
+          window.__livePlaybackAudit = playbackAudit;
+          if (!playbackAudit.finalMatches || playbackAudit.scoringDivergences.length > 0 || playbackAudit.missingActors.length > 0 || playbackAudit.offCourtActors.length > 0) {
+            console.error('[LIVESIMAUDIT] playback integrity failure', playbackAudit);
+          }
           setPlays(generatedPlays);
         }
       } catch (e) {
@@ -116,9 +145,8 @@ export function useLiveGame(
   }, [gameKey, timingConfig]);
 
   useEffect(() => {
-    let timer: any;
     if (isPlaying && currentIndex < plays.length - 1) {
-      timer = setInterval(() => {
+      playbackTimerRef.current = setInterval(() => {
         setCurrentIndex(prev => {
           if (prev >= plays.length - 2) {
             setIsPlaying(false);
@@ -128,20 +156,37 @@ export function useLiveGame(
         });
       }, speed);
     }
-    return () => clearInterval(timer);
+    return () => {
+      if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
+      playbackTimerRef.current = null;
+    };
   }, [isPlaying, speed, plays.length, currentIndex, finalResult]);
 
   const startSimulation = () => setIsPlaying(true);
-  const pauseSimulation = () => setIsPlaying(false);
+  const pauseSimulation = () => {
+    if (playbackTimerRef.current) clearInterval(playbackTimerRef.current);
+    playbackTimerRef.current = null;
+    setIsPlaying(false);
+  };
   const skipToEndOfQuarter = () => {
     if (currentIndex < 0) return;
+    pauseSimulation();
     const currentQ = plays[currentIndex].q;
-    let nextIdx = currentIndex;
-    while (nextIdx < plays.length - 1 && plays[nextIdx].q === currentQ) {
-      nextIdx++;
-    }
+    const nextQuarter = currentQ + 1;
+    const startClock = getPeriodStartClock(nextQuarter, timingConfig);
+    const markerIndex = plays.findIndex((play, index) => (
+      index > currentIndex
+      && play.q === nextQuarter
+      && play.clock === startClock
+      && play.pts === 0
+    ));
+    const firstNextPeriodIndex = plays.findIndex((play, index) => index > currentIndex && play.q > currentQ);
+    const nextIdx = markerIndex >= 0
+      ? markerIndex
+      : firstNextPeriodIndex >= 0
+        ? firstNextPeriodIndex
+        : plays.length - 1;
     setCurrentIndex(nextIdx);
-    setIsPlaying(false);
   };
   const skip3Minutes = () => {
     if (currentIndex < 0) return;
@@ -154,7 +199,7 @@ export function useLiveGame(
       nextIdx++;
     }
     setCurrentIndex(nextIdx);
-    setIsPlaying(false);
+    pauseSimulation();
   };
   const skipToLast2Minutes = () => {
     if (!finalResult) return;
@@ -170,7 +215,7 @@ export function useLiveGame(
       nextIdx++;
     }
     setCurrentIndex(nextIdx);
-    setIsPlaying(false);
+    pauseSimulation();
   };
   const togglePlay = () => {
     if (currentIndex >= plays.length - 1) {
@@ -199,11 +244,11 @@ export function useLiveGame(
     if (isGameComplete) {
       const fillStats = (statList: any[], side: 'HOME' | 'AWAY', overridePlayers?: any[]) => {
         statList.forEach(stat => {
-          const p = players.find(pl => pl.internalId?.toString() === stat.playerId)
-            ?? overridePlayers?.find(pl => pl.internalId?.toString() === stat.playerId);
+          const p = overridePlayers?.find(pl => pl.internalId?.toString() === stat.playerId)
+            ?? players.find(pl => pl.internalId?.toString() === stat.playerId);
           if (p) {
             stats[side][stat.playerId] = {
-              ...p, n: stat.name,
+              ...p, id: stat.playerId, n: stat.name,
               fgm: stat.fgm, fga: stat.fga,
               tp: stat.threePm ?? 0, tpa: stat.threePa ?? 0,
               fp: stat.fourPm ?? 0, fpa: stat.fourPa ?? 0,
@@ -227,21 +272,34 @@ export function useLiveGame(
       return stats;
     }
 
-    // Pre-game: initialize with zeros for players that will appear
-    finalResult.homeStats.forEach(stat => {
-      const p = players.find(p => p.internalId?.toString() === stat.playerId)
-        ?? homeOverridePlayers?.find(p => p.internalId?.toString() === stat.playerId);
-      if (p) stats.HOME[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, fp: 0, fpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
-    });
-    finalResult.awayStats.forEach(stat => {
-      const p = players.find(p => p.internalId?.toString() === stat.playerId)
-        ?? awayOverridePlayers?.find(p => p.internalId?.toString() === stat.playerId);
-      if (p) stats.AWAY[stat.playerId] = { ...p, n: stat.name, fgm: 0, fga: 0, tp: 0, tpa: 0, fp: 0, fpa: 0, ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0, stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0 };
-    });
+    const ensurePlayer = (side: 'HOME' | 'AWAY', lineupPlayer: any) => {
+      const playerId = String(lineupPlayer?.id ?? lineupPlayer?.internalId ?? '');
+      if (!playerId || stats[side][playerId]) return;
+      const overrides = side === 'HOME' ? homeOverridePlayers : awayOverridePlayers;
+      const player = overrides?.find(candidate => String(candidate.internalId) === playerId)
+        ?? players.find(candidate => String(candidate.internalId) === playerId);
+      if (!player) return;
+      stats[side][playerId] = {
+        ...player,
+        id: playerId,
+        n: lineupPlayer.n ?? player.name,
+        fgm: 0, fga: 0, tp: 0, tpa: 0, fp: 0, fpa: 0,
+        ftm: 0, fta: 0, ast: 0, orb: 0, drb: 0,
+        stl: 0, blk: 0, tov: 0, pf: 0, pts: 0, pm: 0, sec: 0,
+      };
+    };
+
+    plays[0]?.lineupHOME?.forEach((player: any) => ensurePlayer('HOME', player));
+    plays[0]?.lineupAWAY?.forEach((player: any) => ensurePlayer('AWAY', player));
 
     for (let i = 0; i <= currentIndex; i++) {
       const play = plays[i];
-      if (!play || play.type === 'sub') continue;
+      if (!play) continue;
+
+      play.lineupHOME?.forEach((player: any) => ensurePlayer('HOME', player));
+      play.lineupAWAY?.forEach((player: any) => ensurePlayer('AWAY', player));
+
+      if (play.type === 'sub') continue;
 
       // Skip foul attempt lines — they are 
       // narrative only and not real shot attempts
@@ -282,9 +340,11 @@ export function useLiveGame(
             if (play.is4) { pStat.fp++; pStat.fpa++; }
             else if (play.is3) { pStat.tp++; pStat.tpa++; }
           } else if (play.type === 'miss') {
-            pStat.fga++;
-            if (play.is4) pStat.fpa++;
-            else if (play.is3) pStat.tpa++;
+            if (!(play.isHeave && play.heaveProtected)) {
+              pStat.fga++;
+              if (play.is4) pStat.fpa++;
+              else if (play.is3) pStat.tpa++;
+            }
           } else if (play.type === 'ft') {
             pStat.fta++;
             if (play.isMake) { pStat.ftm++; pStat.pts++; }
@@ -356,8 +416,8 @@ export function useLiveGame(
 
   const teamStats = useMemo(() => {
     const ts: any = {
-      HOME: { fgm:0,fga:0,tp:0,tpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0 },
-      AWAY: { fgm:0,fga:0,tp:0,tpa:0,fp:0,fpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0 },
+      HOME: { fgm:0,fga:0,tp:0,tpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0,pointsInPaint:0 },
+      AWAY: { fgm:0,fga:0,tp:0,tpa:0,fp:0,fpa:0,ftm:0,fta:0,ast:0,reb:0,orb:0,drb:0,stl:0,blk:0,tov:0,pts:0,pf:0,pointsInPaint:0 },
     };
     ts.HOME.fp = 0; ts.HOME.fpa = 0;
 
@@ -376,7 +436,14 @@ export function useLiveGame(
         ts.HOME.stl += s.stl; ts.HOME.blk += s.blk;
         ts.HOME.tov += s.tov; ts.HOME.pf  += s.pf;
       });
+      const homeProtectedHeaves = (finalResult.heaves ?? []).filter(
+        event => event.teamId === finalResult.homeTeamId && !event.made && event.protectedFromIndividualStats,
+      ).length;
+      ts.HOME.fga += homeProtectedHeaves;
+      ts.HOME.tpa += homeProtectedHeaves;
       ts.HOME.pts = finalResult.homeScore;
+      ts.HOME.pointsInPaint = finalResult.teamShotStats?.home.pointsInPaint
+        ?? finalResult.homeStats.reduce((sum, stat) => sum + ((stat.fgAtRim ?? 0) + (stat.fgLowPost ?? 0)) * 2, 0);
       finalResult.awayStats.forEach((s: any) => {
         ts.AWAY.fgm += s.fgm; ts.AWAY.fga += s.fga;
         ts.AWAY.tp  += s.threePm ?? 0; ts.AWAY.tpa += s.threePa ?? 0;
@@ -388,7 +455,14 @@ export function useLiveGame(
         ts.AWAY.stl += s.stl; ts.AWAY.blk += s.blk;
         ts.AWAY.tov += s.tov; ts.AWAY.pf  += s.pf;
       });
+      const awayProtectedHeaves = (finalResult.heaves ?? []).filter(
+        event => event.teamId === finalResult.awayTeamId && !event.made && event.protectedFromIndividualStats,
+      ).length;
+      ts.AWAY.fga += awayProtectedHeaves;
+      ts.AWAY.tpa += awayProtectedHeaves;
       ts.AWAY.pts = finalResult.awayScore;
+      ts.AWAY.pointsInPaint = finalResult.teamShotStats?.away.pointsInPaint
+        ?? finalResult.awayStats.reduce((sum, stat) => sum + ((stat.fgAtRim ?? 0) + (stat.fgLowPost ?? 0)) * 2, 0);
       return ts;
     }
 
@@ -407,8 +481,17 @@ export function useLiveGame(
         ts[tm].pf  += p.pf;
       });
     });
+    for (let index = 0; index <= currentIndex; index++) {
+      const play = plays[index];
+      if (play?.type === 'made' && play.shotLocation === 'paint' && play.shotValue === 2) {
+        ts[play.tm].pointsInPaint += 2;
+      }
+      if (!play?.isHeave || !play.heaveProtected || play.type !== 'miss') continue;
+      ts[play.tm].fga++;
+      ts[play.tm].tpa++;
+    }
     return ts;
-  }, [liveStats, finalResult, currentIndex, plays.length]);
+  }, [liveStats, finalResult, currentIndex, plays]);
 
   return {
     isSimulating: isPlaying,

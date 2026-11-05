@@ -8,11 +8,18 @@ import { getPlayerImage } from '../central/view/bioCache';
 import { MyFace, isRealFaceConfig } from '../shared/MyFace';
 import SigningModal from './SigningModal';
 import { pushToast } from '../shared/ToastNotifier';
-import { getCurrentOffseasonFAMoratoriumEnd, parseGameDate } from '../../utils/dateUtils';
 import { classifyResignIntent } from '../central/view/PlayerBioMoraleTab';
 import { computeMoodScore, normalizeMoodTraits } from '../../utils/mood/moodScore';
 import { getActiveLeagueTeams, resolveAnyTeam } from '../../utils/teamLookup';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../utils/uiMode';
+import { isEuroFreeAgentAvailable } from '../../services/euro/historicalNbaMarket';
+import { isExternalLeaguePlayer } from '../../utils/playerLeagueScope';
+import { isExternalLeagueStatus } from '../../constants';
+import { getTeamFullName } from '../../utils/teamNames';
+import { getEurostashRightsTid } from '../../services/freeAgency/eurostashRights';
+import type { SponsorSigningPerkGrant } from '../../types/tycoon';
+import type { AspireSideDeal } from '../../services/aspireSideDeals';
+import { isUnavailableInternationalTournamentPlayer } from '../../utils/prospectUtils';
 
 interface SigningDetails {
   playerId: string;
@@ -25,6 +32,11 @@ interface SigningDetails {
   twoWay: boolean;
   nonGuaranteed: boolean;
   mleType: 'room' | 'non_taxpayer' | 'taxpayer' | null;
+  useBiannualException: boolean;
+  teamBuyoutContribUSD?: number;
+  signingBonusEUR?: number;
+  sponsorSigningPerk?: SponsorSigningPerkGrant;
+  aspireSideDeal?: AspireSideDeal;
 }
 
 interface SignFreeAgentModalProps {
@@ -36,11 +48,14 @@ interface SignFreeAgentModalProps {
   initialTeam?: NBATeam;
   /** Force the SigningModal's initial contract-type tab (e.g. 'GUARANTEED' for the 2W → Guaranteed promotion flow). */
   forceContractType?: 'GUARANTEED' | 'TWO_WAY';
+  /** Expiring-contract review: a willing player accepts immediately instead of entering the FA bid market. */
+  directSigning?: boolean;
 }
 
-export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose, onConfirm, initialPlayer, initialTeam, forceContractType }) => {
+export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose, onConfirm, initialPlayer, initialTeam, forceContractType, directSigning = false }) => {
   const { state, dispatchAction } = useGame();
   const isGM = state.gameMode === 'gm';
+  const isFictional = state.leagueType === 'fictional';
   const euroIsolated = isEuroIsolatedMode(state);
   const pbaIsolated = isPbaIsolatedMode(state);
   const userTeam = useMemo(
@@ -65,14 +80,20 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
 
   const freeAgents = useMemo(() => {
     return state.players.filter(p => {
-      if (p.status === 'Retired' || p.status === 'WNBA' || p.tid === -100) return false;
+      if (isUnavailableInternationalTournamentPlayer(p)) return false;
+      if (p.status === 'Retired' || String(p.status) === 'WNBA' || p.tid === -100) return false;
       if (p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect') return false;
-      if (euroIsolated && (p.tid ?? -1) >= 0) return false;
-      const isInternational = ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(p.status || '');
+      if (euroIsolated) return isEuroFreeAgentAvailable(state, p);
+      const isInternational = isExternalLeagueStatus(p.status) && String(p.status) !== 'WNBA';
       const isNBAFreeAgent = p.tid === -1 || p.status === 'Free Agent';
+      if (isFictional) return isNBAFreeAgent && !isExternalLeaguePlayer(p);
+      if (isGM && !pbaIsolated && state.userTeamId != null) {
+        const rightsTid = getEurostashRightsTid(p, new Set(state.teams.map(team => Number(team.id))));
+        if (rightsTid != null && rightsTid !== state.userTeamId) return false;
+      }
       return isInternational || isNBAFreeAgent;
     });
-  }, [state.players, euroIsolated]);
+  }, [state, euroIsolated, pbaIsolated, isFictional, isGM]);
 
   const filteredPlayers = useMemo(() => {
     return freeAgents.filter(p =>
@@ -87,6 +108,12 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
       t.abbrev.toLowerCase().includes(searchTerm.toLowerCase())
     ).sort((a, b) => a.name.localeCompare(b.name));
   }, [state, euroIsolated, pbaIsolated, searchTerm]);
+  const eligibleTeams = useMemo(() => {
+    if (!selectedPlayer || euroIsolated || pbaIsolated) return filteredTeams;
+    const nbaTeamIds = new Set(state.teams.map(team => Number(team.id)));
+    const rightsTid = getEurostashRightsTid(selectedPlayer, nbaTeamIds);
+    return rightsTid == null ? filteredTeams : filteredTeams.filter(team => team.id === rightsTid);
+  }, [euroIsolated, filteredTeams, pbaIsolated, selectedPlayer, state.teams]);
 
   // In negotiation step, SigningModal is the source of truth.
   // Commissioner mode auto-accepts the offer (executive authority); GM must win the interest check.
@@ -129,60 +156,54 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
         player={selectedPlayer}
         team={selectedTeam}
         leagueStats={state.leagueStats}
-        autoAccept={!isGM}
+        autoAccept={directSigning || !isGM}
         preflightMessage={preflightMessage}
         initialContractType={forceContractType}
         onClose={onClose}
-        onSign={({ salary, years, option, twoWay, nonGuaranteed, mleType }) => {
+        onSign={({ salary, years, option, twoWay, nonGuaranteed, mleType, useBiannualException, teamBuyoutContribUSD, signingBonusEUR, sponsorSigningPerk, aspireSideDeal }) => {
           onConfirm({
             playerId: selectedPlayer.internalId,
             teamId: selectedTeam.id,
             playerName: selectedPlayer.name,
-            teamName: selectedTeam.name,
+            teamName: getTeamFullName(selectedTeam),
             salary,
             years,
             option,
             twoWay,
             nonGuaranteed,
             mleType,
+            useBiannualException,
+            teamBuyoutContribUSD,
+            signingBonusEUR,
+            sponsorSigningPerk,
+            aspireSideDeal,
           });
         }}
-        onSubmitBid={!euroIsolated && !pbaIsolated ? ({ salary, years, option }) => {
-          // Bidding-war path — post a competing offer into state.faBidding.markets
-          // instead of signing right away. The ticker resolves it alongside AI bids
-          // 3-5 days later. No tid/contract mutation happens here.
+        onSubmitBid={!euroIsolated && !directSigning ? ({ salary, years, option, fundingSource, mleType, aspireSideDeal }) => {
           dispatchAction({
             type: 'SUBMIT_FA_BID',
             payload: {
               playerId: selectedPlayer.internalId,
               playerName: selectedPlayer.name,
               teamId: selectedTeam.id,
-              teamName: selectedTeam.name,
+              teamName: getTeamFullName(selectedTeam),
               teamLogoUrl: (selectedTeam as any).logoUrl,
               salaryUSD: salary,
               years,
               option,
+              fundingSource,
+              mleType,
+              aspireSideDeal,
             },
           } as any);
-          // Confirmation toast — mirrors the moratorium-aware decision day in the reducer
-          // so the user sees the same window the ticker will resolve on.
-          const resolvesInDays = (() => {
-            if (!state.date) return 4;
-            const today = parseGameDate(state.date);
-            const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(today, state.leagueStats as any, state.schedule as any);
-            const moratoriumDays = isNaN(today.getTime()) || isNaN(moratoriumEnd.getTime())
-              ? 0
-              : Math.max(0, Math.ceil((moratoriumEnd.getTime() - today.getTime()) / 86_400_000));
-            return Math.max(4, moratoriumDays + 4);
-          })();
           pushToast({
             type: 'fa-bid-submitted',
             playerName: selectedPlayer.name,
-            teamName: selectedTeam.name,
+            teamName: getTeamFullName(selectedTeam),
             annualM: Math.round(salary / 100_000) / 10,
             salaryUSD: salary,
+            salaryLeague: pbaIsolated ? 'PBA' : undefined,
             years,
-            resolvesInDays,
           });
         } : undefined}
       />
@@ -269,7 +290,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                                 <div className="text-sm font-bold truncate text-white">{player.name}</div>
                                 <div className="text-xs text-slate-500">
                                     {player.pos} • OVR: {getScoutedDisplayOverall(state as any, player, state.leagueStats?.year)}
-                                    {!euroIsolated && ['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '') && (
+                                    {!euroIsolated && isExternalLeagueStatus(player.status) && player.status !== 'WNBA' && (
                                         <span className="ml-1 text-indigo-400 font-bold tracking-tighter">• {player.status}</span>
                                     )}
                                 </div>
@@ -280,7 +301,7 @@ export const SignFreeAgentModal: React.FC<SignFreeAgentModalProps> = ({ onClose,
                 </div>
             ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {filteredTeams.map(team => (
+                    {eligibleTeams.map(team => (
                         <button
                             key={team.id}
                             onClick={() => setSelectedTeam(team)}

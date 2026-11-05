@@ -5,13 +5,16 @@
 
 import React, { useMemo } from 'react';
 import { useGame } from '../../../store/GameContext';
-import { calcOvr2K, calcPot2K, type TeamMode } from '../../../services/trade/tradeValueEngine';
-import { getTradeOutlook, effectiveRecord, getCapThresholds, topNAvgK2, resolveManualOutlook } from '../../../utils/salaryUtils';
+import { calcOvr2K } from '../../../services/trade/tradeValueEngine';
 import { getLsYear } from '../../../utils/leagueYear';
 import { fuzzDraftRatingValue } from '../../../utils/scoutingFuzz';
 import { isOnRoster, resolveAnyTeam } from '../../../utils/teamLookup';
 import { isPbaIsolatedMode } from '../../../utils/uiMode';
 import { getPbaDraftPool, tunePbaDraftProspects } from '../../../services/pba/draftRules';
+import { getProspectDisplayPotential } from '../../../utils/playerRatings';
+import { isEligibleHistoricalNbaProspect } from '../../../services/draft/historicalProspectEligibility';
+import { isExternalLeaguePlayer } from '../../../utils/playerLeagueScope';
+import { resolveTeamStrategyProfile } from '../../../utils/teamStrategy';
 
 interface CompactAdvisorBoardProps {
   teamId: number;
@@ -23,35 +26,16 @@ export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ t
   const pbaMode = isPbaIsolatedMode(state);
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const currentYear = getLsYear(state);
-  const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
-
-  const teamMode: TeamMode = useMemo(() => {
-    if (!team) return 'rebuild';
-    const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId);
-    if (manual) {
-      if (manual.role === 'heavy_buyer' || manual.role === 'buyer') return 'contend';
-      if (manual.role === 'rebuilding') return 'presti';
-      return 'rebuild';
-    }
-    const payroll = state.players.filter(p => p.tid === teamId)
-      .reduce((s, p) => s + ((p.contract?.amount ?? 0) * 1_000), 0);
-    const rec = effectiveRecord(team, currentYear);
-    const confTeams = state.teams.filter(t => t.conference === team.conference)
-      .map(t => ({ t, rec: effectiveRecord(t, currentYear) }))
-      .sort((a, b) => (b.rec.wins - b.rec.losses) - (a.rec.wins - a.rec.losses));
-    const idx = confTeams.findIndex(c => c.t.id === teamId);
-    const confRank = idx >= 0 ? idx + 1 : 15;
-    const leader = confTeams[0];
-    const gb = Math.max(0, ((leader?.rec.wins ?? 0) - rec.wins + rec.losses - (leader?.rec.losses ?? 0)) / 2);
-    const starAvg = topNAvgK2(state.players, teamId, 3);
-    const expiringCount = state.players.filter(p =>
-      p.tid === teamId && (p.contract?.exp ?? 0) <= currentYear).length;
-    const outlook = getTradeOutlook(payroll, rec.wins, rec.losses, expiringCount,
-      thresholds, confRank, gb, starAvg);
-    if (outlook.role === 'heavy_buyer' || outlook.role === 'buyer') return 'contend';
-    if (outlook.role === 'rebuilding') return 'presti';
-    return 'rebuild';
-  }, [team, state.players, state.teams, teamId, currentYear, thresholds, state.gameMode, state.userTeamId]);
+  const strategy = useMemo(() => team ? resolveTeamStrategyProfile({
+    team,
+    players: state.players,
+    teams: state.teams,
+    leagueStats: state.leagueStats,
+    currentYear,
+    gameMode: state.gameMode,
+    userTeamId: state.userTeamId,
+  }) : null, [team, state.players, state.teams, state.leagueStats, currentYear, state.gameMode, state.userTeamId]);
+  const teamMode = strategy?.teamMode ?? 'rebuild';
 
   const weakPositions = useMemo(() => {
     const roster = state.players.filter(p => p.tid === teamId && isOnRoster(p));
@@ -79,6 +63,8 @@ export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ t
       ? getPbaDraftPool(tunedPlayers, currentYear, state.leagueStats)
       : tunedPlayers
         .filter(p => p.tid === -2 || p.status === 'Draft Prospect' || p.status === 'Prospect')
+        .filter(isEligibleHistoricalNbaProspect)
+        .filter(p => !isExternalLeaguePlayer(p))
         .filter(p => {
           const draftYear = (p as any).draft?.year;
           return draftYear == null || Number(draftYear) === currentYear;
@@ -86,7 +72,7 @@ export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ t
     return pool
       .map(p => {
         const baseOvr = calcOvr2K(p);
-        const basePot = calcPot2K(p, currentYear);
+        const basePot = getProspectDisplayPotential(p, currentYear, undefined, { pbaMode });
         const ovr = fuzzDraftRatingValue(baseOvr, state, p, 'ovr');
         const pot = fuzzDraftRatingValue(basePot, state, p, 'pot');
         const pos = p.pos ?? 'F';
@@ -105,13 +91,13 @@ export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ t
       .slice(0, 12);
   }, [currentYear, pbaMode, state.leagueStats, state.players, teamMode, weakPositions, state]);
 
-  const modeLabel = teamMode === 'contend' ? 'Win-Now' : teamMode === 'presti' ? 'Future' : 'Balanced';
+  const modeLabel = strategy?.label ?? 'Balanced';
   const modeColor = teamMode === 'contend' ? 'text-emerald-400' : teamMode === 'presti' ? 'text-purple-400' : 'text-amber-400';
 
   return (
     <div className="space-y-2">
       <div className="flex items-center justify-between text-[9px] pb-2 border-b border-[#333]">
-        <span className="text-white/40 font-black uppercase tracking-widest">Mode</span>
+        <span className="text-white/40 font-black uppercase tracking-widest">Strategy</span>
         <span className={`font-black uppercase ${modeColor}`}>{modeLabel}</span>
       </div>
       {weakPositions.length > 0 && (
@@ -132,9 +118,6 @@ export const CompactAdvisorBoardPanel: React.FC<CompactAdvisorBoardProps> = ({ t
                 {i + 1}
               </span>
               <span className="flex-1 truncate font-bold text-white">{p.player.name}</span>
-              {p.fitBonus && !isDrafted && (
-                <span className="text-[8px] font-black text-sky-400 bg-sky-400/10 rounded px-1">FIT</span>
-              )}
               <span className="text-indigo-300 font-black w-6 text-right">{p.ovr}</span>
               <span className="text-emerald-400/80 font-black w-6 text-right">{p.pot}</span>
             </div>

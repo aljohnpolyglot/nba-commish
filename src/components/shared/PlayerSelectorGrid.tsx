@@ -16,6 +16,8 @@ import React, { useState, useMemo } from 'react';
 import { Search } from 'lucide-react';
 import { PlayerPortrait } from './PlayerPortrait';
 import type { NBAPlayer, NBATeam } from '../../types';
+import { getPlayerImage } from '../../utils/playerImage';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
 
 export interface PlayerSelectorItem {
   player: NBAPlayer;
@@ -23,6 +25,8 @@ export interface PlayerSelectorItem {
   subtitle?: string;
   /** Optional numeric score for default sorting (higher = first) */
   score?: number;
+  /** Optional visible OVR badge label when caller already resolved scouting/display rules. */
+  ovrLabel?: string;
 }
 
 interface PlayerSelectorGridProps {
@@ -36,6 +40,7 @@ interface PlayerSelectorGridProps {
   onToggle: (playerId: string) => void;
   /** Maximum number of selections allowed */
   maxSelections: number;
+  replaceSelectionAtLimit?: boolean;
   /** Accent color class for selected state (default: sky) */
   accentColor?: 'sky' | 'indigo' | 'emerald' | 'amber' | 'red';
   /** How many to show before "search to find more" (default: 30) */
@@ -60,6 +65,7 @@ export const PlayerSelectorGrid: React.FC<PlayerSelectorGridProps> = ({
   selectedIds,
   onToggle,
   maxSelections,
+  replaceSelectionAtLimit = false,
   accentColor = 'sky',
   defaultVisible = 30,
   searchPlaceholder = 'Search all players...',
@@ -103,7 +109,7 @@ export const PlayerSelectorGrid: React.FC<PlayerSelectorGridProps> = ({
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 sm:gap-3 md:grid-cols-5">
         {visible.map(x => {
           const isSelected = selectedIds.has(x.player.internalId);
-          const canSelect = isSelected || selectedIds.size < maxSelections;
+          const canSelect = isSelected || selectedIds.size < maxSelections || replaceSelectionAtLimit;
           const team = teams.find(t => t.id === x.player.tid);
           return (
             <button
@@ -120,11 +126,12 @@ export const PlayerSelectorGrid: React.FC<PlayerSelectorGridProps> = ({
             >
               <div className="relative">
                 <PlayerPortrait
-                  imgUrl={x.player.imgURL}
+                  imgUrl={getPlayerImage(x.player)}
                   face={(x.player as any).face}
                   playerName={x.player.name}
-                  teamLogoUrl={team?.logoUrl}
+                  teamLogoUrl={team ? getResolvedTeamLogoUrl(team) : undefined}
                   overallRating={x.player.overallRating}
+                  ovrLabel={x.ovrLabel}
                   size={56}
                 />
                 {isSelected && (

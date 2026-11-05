@@ -1,7 +1,11 @@
 import React, { useMemo, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { NBAPlayer } from '../../../types';
-import { convertTo2KRating } from '../../../utils/helpers';
+import { computeAge, getTimelineK2Rating } from '../../../utils/helpers';
+import { normalizePositionLabel } from '../../../utils/positionUtils';
+import { useGame } from '../../../store/GameContext';
+import { fuzzRatingValue, getScoutedDisplayOverall } from '../../../utils/scoutingFuzz';
+import { alignCurrentDisplayOverall, buildRatingProgressionSeries } from '../../../services/playerDevelopment/progressionTimeline';
 
 const MON_ABB = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -17,6 +21,7 @@ interface RosterProgressionViewProps {
 }
 
 export const RosterProgressionView: React.FC<RosterProgressionViewProps> = ({ players }) => {
+  const { state } = useGame();
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
 
   const { chartData, playerMeta } = useMemo(() => {
@@ -27,8 +32,8 @@ export const RosterProgressionView: React.FC<RosterProgressionViewProps> = ({ pl
       return {
         key: `p${p.internalId}`,
         name: p.name,
-        pos: p.pos,
-        age: (p as any).born?.year ? new Date().getFullYear() - (p as any).born.year : (p.age ?? 25),
+        pos: normalizePositionLabel(p.pos, p.hgt),
+        age: computeAge(p, state.leagueStats.year),
         color: PALETTE[i % PALETTE.length],
         hgt: latest?.hgt ?? 50,
         tp: latest?.tp ?? 50,
@@ -37,23 +42,40 @@ export const RosterProgressionView: React.FC<RosterProgressionViewProps> = ({ pl
     });
 
     const dateSet = new Set<string>();
-    withData.forEach(p => p.ovrTimeline!.forEach(s => dateSet.add(s.date)));
+    const displaySeries = new Map<string, Array<{ date: string; ovr: number }>>();
+    meta.forEach(m => {
+      const converted = buildRatingProgressionSeries(m.player, state.date).map(snapshot => ({
+        date: snapshot.date,
+        ovr: fuzzRatingValue(
+          getTimelineK2Rating(snapshot, m.hgt, m.tp),
+          state,
+          m.player,
+          'ovr',
+        ),
+      }));
+      const aligned = alignCurrentDisplayOverall(
+        converted,
+        getScoutedDisplayOverall(state, m.player, state.leagueStats.year),
+      );
+      displaySeries.set(m.key, aligned);
+      aligned.forEach(snapshot => dateSet.add(snapshot.date));
+    });
     const sortedDates = Array.from(dateSet).sort();
 
     const data = sortedDates.map(date => {
       const [, mm, dd] = date.split('-');
       const row: any = { label: `${MON_ABB[parseInt(mm)]} ${parseInt(dd)}` };
       meta.forEach(m => {
-        const snap = m.player.ovrTimeline!.find(s => s.date === date);
+        const snap = displaySeries.get(m.key)?.find(s => s.date === date);
         if (snap != null) {
-          row[m.key] = convertTo2KRating(snap.ovr, m.hgt, m.tp);
+          row[m.key] = snap.ovr;
         }
       });
       return row;
     });
 
     return { chartData: data, playerMeta: meta };
-  }, [players]);
+  }, [players, state]);
 
   const rookies = useMemo(
     () => players.filter(p => (p.ovrTimeline?.length ?? 0) === 0),
@@ -71,7 +93,7 @@ export const RosterProgressionView: React.FC<RosterProgressionViewProps> = ({ pl
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-4 md:p-6 space-y-3">
       <div className="flex items-center justify-between">
-        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Past 1 Year · K2</span>
+        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">Past 1 Year · OVR</span>
         <span className="text-[10px] font-bold text-slate-600">{playerMeta.length} players</span>
       </div>
       <ResponsiveContainer width="100%" height={340}>
@@ -102,7 +124,7 @@ export const RosterProgressionView: React.FC<RosterProgressionViewProps> = ({ pl
                   <div className="text-slate-400 font-bold mb-0.5">{props.label}</div>
                   <div className="flex items-center gap-2 font-black" style={{ color: item.color }}>
                     <span>{item.name}</span>
-                    <span className="text-white">{Math.round(item.value)} K2</span>
+                    <span className="text-white">{Math.round(item.value)} OVR</span>
                   </div>
                 </div>
               );
@@ -131,7 +153,7 @@ export const RosterProgressionView: React.FC<RosterProgressionViewProps> = ({ pl
         </LineChart>
       </ResponsiveContainer>
 
-      <div className="flex flex-wrap gap-1.5 pt-1">
+      <div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto pr-1 pt-1">
         {playerMeta.map(m => {
           const dimmed = hoveredKey != null && hoveredKey !== m.key;
           return (
@@ -155,7 +177,7 @@ export const RosterProgressionView: React.FC<RosterProgressionViewProps> = ({ pl
           >
             <span className="w-2 h-2 rounded-full bg-slate-600" />
             {r.name}
-            <span className="text-slate-600">· rookie · no history</span>
+            <span className="text-slate-600">· {normalizePositionLabel(r.pos, r.hgt)} · no history</span>
           </span>
         ))}
       </div>

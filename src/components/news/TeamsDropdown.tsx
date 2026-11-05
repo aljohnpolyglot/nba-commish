@@ -3,6 +3,7 @@ import { ChevronDown } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { TEAM_COLORS } from '../../constants/teamColors';
 import { NBATeam } from '../../types';
+import { getTeamFullName } from '../../utils/teamNames';
 
 interface TeamsDropdownProps {
   selectedTeam: string | null;
@@ -12,18 +13,28 @@ interface TeamsDropdownProps {
 
 export default function TeamsDropdown({ selectedTeam, onSelectTeam, gameTeams = [] }: TeamsDropdownProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const teamColor = selectedTeam ? TEAM_COLORS[selectedTeam] : null;
+  const selectedTeamData = selectedTeam ? gameTeams.find(team => team.name === selectedTeam) : null;
+  const teamColor = selectedTeam
+    ? TEAM_COLORS[selectedTeam] ?? (selectedTeamData?.colors?.[0]
+      ? {
+          primary: selectedTeamData.colors[0],
+          secondary: selectedTeamData.colors[1] ?? selectedTeamData.colors[0],
+          text: '#FFFFFF',
+          logo: selectedTeamData.logoUrl ?? '',
+        }
+      : null)
+    : null;
   const selectableTeams = gameTeams
-    .filter(t => t.id > 0)
+    .filter(t => t.id >= 0)
     .slice()
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => getTeamFullName(a).localeCompare(getTeamFullName(b)));
 
   // Build a logo lookup from live game state (fallback to TEAM_COLORS)
   const logoLookup: Record<string, string> = {};
   gameTeams.forEach(t => {
     if (t.logoUrl) logoLookup[t.name] = t.logoUrl;
   });
-  const getLogoUrl = (name: string) => logoLookup[name] || TEAM_COLORS[name]?.logo || '';
+  const getLogoUrl = (team: NBATeam) => logoLookup[team.name] || TEAM_COLORS[team.name]?.logo || '';
   const groupedTeams = selectableTeams.reduce<Array<{ name: string; teams: NBATeam[] }>>((groups, team) => {
     const groupName = team.conference || 'League';
     const existing = groups.find(group => group.name === groupName);
@@ -52,13 +63,13 @@ export default function TeamsDropdown({ selectedTeam, onSelectTeam, gameTeams = 
       >
         {teamColor && (
           <img
-            src={getLogoUrl(selectedTeam!)}
+            src={selectedTeamData ? getLogoUrl(selectedTeamData) : teamColor.logo}
             alt={selectedTeam || ''}
             className="w-5 h-5 object-contain"
             referrerPolicy="no-referrer"
           />
         )}
-        <span>{selectedTeam || 'Teams'}</span>
+        <span>{selectedTeamData ? getTeamFullName(selectedTeamData) : 'Teams'}</span>
         <ChevronDown size={14} className={`transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
@@ -80,7 +91,7 @@ export default function TeamsDropdown({ selectedTeam, onSelectTeam, gameTeams = 
                     </h4>
                     <div className="space-y-1">
                       {group.teams.map((team) => {
-                        const logo = getLogoUrl(team.name);
+                        const logo = getLogoUrl(team);
                         return (
                           <button
                             key={team.id}
@@ -98,7 +109,7 @@ export default function TeamsDropdown({ selectedTeam, onSelectTeam, gameTeams = 
                               </figure>
                             )}
                             <span className={`text-sm font-medium text-left ${selectedTeam === team.name ? 'text-[#0078ff]' : 'text-gray-700'} group-hover:text-[#0078ff]`}>
-                              {team.name}
+                              {getTeamFullName(team)}
                             </span>
                           </button>
                         );

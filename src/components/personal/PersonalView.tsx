@@ -3,6 +3,10 @@ import { useGame } from '../../store/GameContext';
 import { FileText, Download, DollarSign, ArrowRightLeft, User, TrendingUp, Calendar } from 'lucide-react';
 import { Payslip } from '../../types';
 import { formatCurrencyWithCode, getLeagueCurrencyCode } from '../../utils/helpers';
+import { getTeamFullName } from '../../utils/teamNames';
+import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getTeamCountry } from '../../utils/teamCountry';
+import { getPaycheckContext } from '../../services/logic/financialService';
 
 export const PersonalView: React.FC = () => {
   const { state, markPayslipsRead } = useGame();
@@ -19,6 +23,22 @@ export const PersonalView: React.FC = () => {
   };
 
   const totalEarnings = (state.payslips || []).reduce((acc, p) => acc + p.netPay, 0);
+  const isFictional = state.leagueType === 'fictional';
+  const isEuroCareer = state.leagueStats.uiMode === 'euro_isolated';
+  const userTeam = state.userTeamId != null ? resolveAnyTeam(state.userTeamId, state.teams, state.nonNBATeams ?? []) : null;
+  const euroCompetition = state.activeCompetitions?.find(competition => competition.id === state.euroPrimaryCompetitionId);
+  const leagueName = isFictional
+    ? state.leagueStats.leagueName || 'Association'
+    : isEuroCareer
+      ? euroCompetition?.displayName ?? userTeam?.conference ?? 'European Basketball'
+      : 'National Basketball Association';
+  const leagueMark = isFictional
+    ? leagueName.split(/\s+/).map(word => word[0]).join('').slice(0, 4).toUpperCase()
+    : isEuroCareer ? userTeam?.abbrev ?? 'GM' : 'NBA';
+  const paycheckContext = getPaycheckContext(state);
+  const taxJurisdiction = paycheckContext.jurisdiction
+    ?? (isEuroCareer ? getTeamCountry(userTeam, state) || 'Club jurisdiction' : isFictional ? 'League Headquarters' : 'NY / NYC');
+  const employmentActive = paycheckContext.active !== false;
 
   return (
     <div className="flex-1 overflow-y-auto p-4 md:p-10 space-y-8 md:space-y-12 custom-scrollbar bg-slate-950 md:rounded-[2.5rem] border-x border-b md:border border-slate-800 shadow-2xl">
@@ -30,7 +50,7 @@ export const PersonalView: React.FC = () => {
               Personal <span className="text-emerald-500">Wealth</span>
             </h1>
             <p className="text-slate-500 font-medium mt-2 max-w-xl">
-              Manage your private earnings, view detailed payslips, and monitor your financial legacy outside of the NBA's official books.
+              Manage your private earnings, view detailed payslips, and monitor your financial legacy outside of the league's official books.
             </p>
           </div>
           <div className="flex items-center gap-4 bg-slate-900/50 p-4 rounded-3xl border border-slate-800">
@@ -76,8 +96,12 @@ export const PersonalView: React.FC = () => {
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Next Payday Date</p>
               <p className="text-xl font-bold text-white font-mono">
                 {(() => {
+                  if (!employmentActive) return 'No active contract';
                   const d = new Date(state.date);
-                  if (d.getDate() < 15) {
+                  if (state.gameMode === 'gm') {
+                    d.setMonth(d.getMonth() + 1);
+                    d.setDate(1);
+                  } else if (d.getDate() < 15) {
                     d.setDate(15);
                   } else {
                     d.setMonth(d.getMonth() + 1);
@@ -119,7 +143,7 @@ export const PersonalView: React.FC = () => {
                       <span className={`text-[10px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
                         selectedPayslip?.id === payslip.id ? 'bg-emerald-500 text-white' : 'bg-slate-800 text-slate-400 group-hover:text-slate-200'
                       }`}>
-                        {new Date(payslip.date).getDate() === 1 ? 'Monthly' : 'Mid-Month'}
+                        {payslip.paySchedule === 'monthly' || new Date(payslip.date).getDate() === 1 ? 'Monthly' : 'Mid-Month'}
                       </span>
                       <span className="text-xs font-mono text-slate-500">#{payslip.id.split('-')[1].slice(-4)}</span>
                     </div>
@@ -155,8 +179,8 @@ export const PersonalView: React.FC = () => {
                         Earnings <br /> Statement
                       </h2>
                       <div className="flex items-center gap-2 mt-4">
-                        <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center text-white font-bold text-xs">NBA</div>
-                        <p className="text-sm font-bold text-slate-900 uppercase tracking-widest">National Basketball Association</p>
+                        <div className="w-8 h-8 bg-slate-900 rounded flex items-center justify-center text-white font-bold text-xs">{leagueMark}</div>
+                        <p className="text-sm font-bold text-slate-900 uppercase tracking-widest">{leagueName}</p>
                       </div>
                     </div>
                     <div className="text-right space-y-4">
@@ -177,17 +201,17 @@ export const PersonalView: React.FC = () => {
                       <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Employee Information</p>
                       <p className="font-black text-2xl text-slate-900">{state.commissionerName}</p>
                       {state.gameMode === 'gm' ? (() => {
-                        const userTeam = state.userTeamId != null ? state.teams.find(t => t.id === state.userTeamId) : null;
+                        const userTeamName = userTeam ? getTeamFullName(userTeam) : null;
                         return (
                           <>
-                            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">General Manager{userTeam ? ` • ${userTeam.name}` : ''}</p>
-                            <p className="text-xs text-slate-400 mt-1">{userTeam ? `${userTeam.region ?? ''} ${userTeam.name}`.trim() + ' Front Office' : 'Team Front Office'}</p>
+                            <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">General Manager{userTeamName ? ` • ${userTeamName}` : ''}</p>
+                            <p className="text-xs text-slate-400 mt-1">{userTeamName ? `${userTeamName} Front Office` : 'Team Front Office'}</p>
                           </>
                         );
                       })() : (
                         <>
-                          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">NBA Commissioner • Office of the Commissioner</p>
-                          <p className="text-xs text-slate-400 mt-1">Olympic Tower, 645 5th Ave, New York, NY 10022</p>
+                          <p className="text-sm font-bold text-slate-500 uppercase tracking-widest">{isFictional ? 'League Commissioner' : 'NBA Commissioner'} • Office of the Commissioner</p>
+                          <p className="text-xs text-slate-400 mt-1">{isFictional ? `${leagueName} Headquarters` : 'Olympic Tower, 645 5th Ave, New York, NY 10022'}</p>
                         </>
                       )}
                     </div>
@@ -200,7 +224,7 @@ export const PersonalView: React.FC = () => {
                         </div>
                         <div className="flex justify-end gap-4">
                           <span className="text-xs font-bold text-slate-500">Tax Jurisdiction:</span>
-                          <span className="text-xs font-bold">NY / NYC</span>
+                          <span className="text-xs font-bold">{selectedPayslip.jurisdiction ?? taxJurisdiction}</span>
                         </div>
                         <div className="flex justify-end gap-4">
                           <span className="text-xs font-bold text-slate-500">Filing Status:</span>
@@ -234,8 +258,8 @@ export const PersonalView: React.FC = () => {
                           </tr>
                           <tr>
                             <td className="py-4 px-6">
-                              <p className="text-sm font-bold text-slate-700">Federal Income Tax</p>
-                              <p className="text-[10px] text-slate-400">IRS Statutory Rate (37.0%)</p>
+                              <p className="text-sm font-bold text-slate-700">{isEuroCareer ? 'National Income Tax' : 'Federal Income Tax'}</p>
+                              <p className="text-[10px] text-slate-400">Payroll withholding ({((selectedPayslip.federalTaxRate ?? 0.37) * 100).toFixed(1)}%)</p>
                             </td>
                             <td className="py-4 px-6 text-right font-mono text-slate-300">—</td>
                             <td className="py-4 px-6 text-right font-mono text-rose-600 font-bold">
@@ -244,8 +268,8 @@ export const PersonalView: React.FC = () => {
                           </tr>
                           <tr>
                             <td className="py-4 px-6">
-                              <p className="text-sm font-bold text-slate-700">NY State Income Tax</p>
-                              <p className="text-[10px] text-slate-400">NYS Department of Finance (10.9%)</p>
+                              <p className="text-sm font-bold text-slate-700">{isEuroCareer ? 'Regional Income Tax' : `${selectedPayslip.jurisdiction ?? taxJurisdiction} Income Tax`}</p>
+                              <p className="text-[10px] text-slate-400">Regional withholding ({((selectedPayslip.stateTaxRate ?? 0.109) * 100).toFixed(2)}%)</p>
                             </td>
                             <td className="py-4 px-6 text-right font-mono text-slate-300">—</td>
                             <td className="py-4 px-6 text-right font-mono text-rose-600 font-bold">
@@ -254,8 +278,8 @@ export const PersonalView: React.FC = () => {
                           </tr>
                           <tr>
                             <td className="py-4 px-6">
-                              <p className="text-sm font-bold text-slate-700">NYC Resident Tax</p>
-                              <p className="text-[10px] text-slate-400">Local Municipality Surcharge (3.876%)</p>
+                              <p className="text-sm font-bold text-slate-700">Municipal Income Tax</p>
+                              <p className="text-[10px] text-slate-400">Local withholding ({((selectedPayslip.cityTaxRate ?? 0.03876) * 100).toFixed(3)}%)</p>
                             </td>
                             <td className="py-4 px-6 text-right font-mono text-slate-300">—</td>
                             <td className="py-4 px-6 text-right font-mono text-rose-600 font-bold">
@@ -289,7 +313,7 @@ export const PersonalView: React.FC = () => {
                           </div>
                         ))}
                       </div>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Authorized by NBA Finance Committee</p>
+                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Authorized by {selectedPayslip.employer ?? (isFictional || isEuroCareer ? leagueName : 'NBA')} Finance Committee</p>
                     </div>
                     <button className="flex items-center gap-2 px-6 py-3 bg-slate-900 hover:bg-slate-800 text-white rounded-2xl font-black uppercase tracking-widest text-xs transition-all hover:scale-105 active:scale-95 shadow-xl">
                       <Download size={16} />

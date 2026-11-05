@@ -1,6 +1,7 @@
 import type { GameState } from '../../types';
 import { formatExternalSalary } from '../../constants';
 import { seasonLabelToYear } from '../../utils/salaryUtils';
+import { mergePlayerSalaries } from '../../utils/playerCareerMerge';
 import { getTeamFullName } from '../../utils/teamNames';
 import {
   buildPbaImportContractMetadata,
@@ -10,12 +11,10 @@ import {
   getPbaImportContractLabel,
   getPbaImportK2,
   getPbaImportOfferRange,
-  hasNbaExperience,
-  isActiveExternalRosterPlayer,
-  isPbaImportRatingEligible,
-  isPbaRosterLocal,
+  isPbaImportPoolCandidate,
   type PbaConference,
 } from './importManager';
+import { PBA_PLAYER_ECONOMY_VERSION } from './historicalEconomy';
 
 type ImportAutomationOptions = {
   allowInjuryReplacements?: boolean;
@@ -80,6 +79,27 @@ export function autoManagePbaImports(
       return score + Math.max(24, 80 - agePenalty * 8) + confBonus + sameSeasonBonus + lastTeamBonus;
     }, 0);
   };
+  const sourceTeamScore = (player: any, teamId: number) => {
+    const rows = ((player as any).stats ?? [])
+      .filter((row: any) =>
+        Number(row?.tid) === teamId
+        && Number(row?.season) <= Number(season)
+        && row?.playoffs !== true
+        && (String(row?.competitionId ?? '').startsWith('pba') || (teamId >= 2000 && teamId < 3000)),
+      )
+      .sort((left: any, right: any) => Number(left.season) - Number(right.season));
+    if (rows.length === 0) return 0;
+    const distinctSeasons = new Set(rows.map((row: any) => Number(row.season))).size;
+    const latestPbaSeason = Math.max(
+      ...((player as any).stats ?? [])
+        .filter((row: any) => Number(row?.tid) >= 2000 && Number(row?.tid) < 3000 && Number(row?.season) <= Number(season))
+        .map((row: any) => Number(row.season)),
+      0,
+    );
+    const latestTeamBonus = rows.some((row: any) => Number(row.season) === latestPbaSeason) ? 45 : 0;
+    const games = rows.reduce((sum: number, row: any) => sum + Math.max(0, Number(row.gp ?? 0)), 0);
+    return distinctSeasons * 38 + Math.min(55, games * 0.65) + latestTeamBonus;
+  };
   const importSalaryForTeam = (player: any, team: any) => {
     const range = getPbaImportOfferRange(player, state.leagueStats as any, conference);
     const marketMult = resolvePbaMarketMultiplier(team);
@@ -97,28 +117,23 @@ export function autoManagePbaImports(
     const jitter = ((seed >>> 0) % 1000) / 1000;
     return pbaPowerOf(player) * 2.2
       + repeatScore(player, Number(team.tid))
+      + sourceTeamScore(player, Number(team.tid))
       + teamWinPct(team) * 12
       + (importSalaryForTeam(player, team) / Math.max(1, Number(state.leagueStats?.salaryCap ?? 800_000))) * 18
       + jitter;
   };
-  const isHealthyCandidate = (player: any) =>
-    Number(player?.injury?.gamesRemaining ?? 0) <= 0 &&
-    Number(player?.suspension?.gamesRemaining ?? 0) <= 0;
-  const isImportCandidate = (player: any) =>
-    String(player?.status ?? '') === 'Free Agent' &&
-    isHealthyCandidate(player) &&
-    !isActiveExternalRosterPlayer(player) &&
-    !isPbaRosterLocal(player, state.leagueStats as any) &&
-    hasNbaExperience(player) &&
-    isPbaImportRatingEligible(player) &&
-    canSignInPba(player, -1, conference, state.players as any, state.leagueStats as any).allowed;
-
   const currentImportsByTeam = new Map<number, any>();
   for (const player of state.players ?? []) {
     const teamId = Number((player as any)?.tid);
     if (!Number.isFinite(teamId)) continue;
-    if (!(player as any)?.isImport || (player as any)?.importConference !== conference) continue;
     if (teamId < 2000 || teamId >= 2100) continue;
+    const meta = (player as any)?.pbaImportContract;
+    const contract = (player as any)?.contract;
+    const activeMeta = meta?.status === 'active' && meta?.conference === conference;
+    const activeFlag = (player as any)?.isImport && (player as any)?.importConference === conference;
+    const activeContract = String(contract?.type ?? '').toUpperCase() === 'PBA_IMPORT'
+      && (!(player as any)?.importConference || (player as any)?.importConference === conference);
+    if (!activeMeta && !activeFlag && !activeContract) continue;
     currentImportsByTeam.set(teamId, player);
   }
 
@@ -134,7 +149,12 @@ export function autoManagePbaImports(
   if (teamsNeedingImports.length === 0) return state;
 
   const candidates = [...(state.players ?? [])]
-    .filter(isImportCandidate)
+    .filter(player => isPbaImportPoolCandidate(
+      player,
+      conference,
+      state.players,
+      state.leagueStats,
+    ))
     .sort((a: any, b: any) => pbaPowerOf(b) - pbaPowerOf(a) || ratingOf(b) - ratingOf(a));
   if (candidates.length === 0) return state;
 
@@ -236,7 +256,12 @@ export function autoManagePbaImports(
     if (!assignment) return player;
     const teamId = Number(assignment.team?.tid ?? assignment.team?.id);
     const previousYears = ((player as any).contractYears ?? []).filter((cy: any) =>
-      cy?.season && seasonLabelToYear(cy.season) < season,
+      cy?.season && !(
+        seasonLabelToYear(cy.season) === season
+        && cy.type === 'pba_import'
+        && cy.conference === conference
+        && Number(cy.teamId ?? teamId) === teamId
+      ),
     );
     const replacementCount = replacedImportIds.get(assignment.replacedImport?.internalId ?? '')?.replacementCount ?? 0;
     return {
@@ -248,6 +273,8 @@ export function autoManagePbaImports(
         exp: season,
         rookie: false,
         type: 'PBA_IMPORT',
+        pbaEconomyVersion: PBA_PLAYER_ECONOMY_VERSION,
+        pbaSalarySource: 'import',
       },
       contractYears: [
         ...previousYears,
@@ -257,8 +284,18 @@ export function autoManagePbaImports(
           option: '',
           type: 'pba_import',
           conference,
+          teamId,
         },
       ],
+      salaries: mergePlayerSalaries((player as any).salaries, [{
+        season,
+        amount: Math.round(assignment.salaryUSD / 1_000),
+        tid: teamId,
+        teamAbbrev: String(assignment.team?.abbrev ?? '').trim() || undefined,
+        league: 'PBA',
+        conference,
+        type: 'pba_import',
+      }]),
       isImport: true,
       importConference: conference,
       importTeamId: teamId,

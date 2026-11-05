@@ -1,0 +1,3421 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "eurocup-league-file.1428911242298453",
+  "competitionKey": "eurocup",
+  "competitionName": "EuroCup",
+  "leagueKey": "eurocup",
+  "generatedAt": "2026-07-20T02:02:23.532Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "eurocup-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/2/Eurocup/stats/2026/Averages/Qualified/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/eurocup/eurocup-2026-bbgm.json",
+        "sourceHash": "1cfeb9b0fe6221183d2474c55e4e4a5afe40c0f3cdb2da7d065a78b71047ee9d",
+        "fetchedAt": "2026-07-20T02:02:23.532Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2003,
+      "seasonLabel": "2003",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Krka Novo Mesto",
+        "canonicalKey": "eurocup:krka-novo-mesto"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Valencia Basket",
+          "canonicalKey": "eurocup:valencia-basket"
+        },
+        "won": 14,
+        "lost": 4
+      }
+    },
+    {
+      "season": 2004,
+      "seasonLabel": "2004",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Real Madrid",
+        "canonicalKey": "eurocup:real-madrid"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "FMP Beograd",
+          "canonicalKey": "eurocup:fmp-beograd"
+        },
+        "won": 13,
+        "lost": 3
+      }
+    },
+    {
+      "season": 2005,
+      "seasonLabel": "2005",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Makedonikos BC",
+        "canonicalKey": "eurocup:makedonikos-bc"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Valencia Basket",
+          "canonicalKey": "eurocup:valencia-basket"
+        },
+        "won": 12,
+        "lost": 3
+      }
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Aris Midea Thessaloniki",
+        "canonicalKey": "eurocup:aris-midea-thessaloniki"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Dynamo Moscow",
+          "canonicalKey": "eurocup:dynamo-moscow"
+        },
+        "won": 15,
+        "lost": 2
+      }
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "eurocup:lietuvos-rytas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Real Madrid",
+          "canonicalKey": "eurocup:real-madrid"
+        },
+        "won": 13,
+        "lost": 4
+      }
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "CB Girona",
+        "canonicalKey": "eurocup:cb-girona"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Joventut Badalona",
+          "canonicalKey": "eurocup:joventut-badalona"
+        },
+        "won": 16,
+        "lost": 1
+      }
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Khimki",
+        "canonicalKey": "eurocup:khimki"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Bilbao Basket",
+          "canonicalKey": "eurocup:bilbao-basket"
+        },
+        "won": 11,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chuck Eidson",
+                "canonicalKey": "person:chuck-eidson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "eurocup:lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milan Macvan",
+                "canonicalKey": "person:milan-macvan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Vrsac Swisslion",
+                "canonicalKey": "eurocup:kk-vrsac-swisslion"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milan Macvan",
+                "canonicalKey": "person:milan-macvan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Vrsac Swisslion",
+                "canonicalKey": "eurocup:kk-vrsac-swisslion"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Alba Berlin",
+        "canonicalKey": "eurocup:alba-berlin"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Valencia Basket",
+          "canonicalKey": "eurocup:valencia-basket"
+        },
+        "won": 14,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marko Banic",
+                "canonicalKey": "person:marko-banic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bilbao Basket",
+                "canonicalKey": "eurocup:bilbao-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Claver",
+                "canonicalKey": "person:victor-claver"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Claver",
+                "canonicalKey": "person:victor-claver"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Real Betis Baloncesto",
+        "canonicalKey": "eurocup:real-betis-baloncesto"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "UNICS Kazan",
+          "canonicalKey": "eurocup:unics-kazan"
+        },
+        "won": 13,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dontaye Draper",
+                "canonicalKey": "person:dontaye-draper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cedevita",
+                "canonicalKey": "eurocup:cedevita"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Donatas Motiejunas",
+                "canonicalKey": "person:donatas-motiejunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Universo De",
+                "canonicalKey": "eurocup:universo-de"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Donatas Motiejunas",
+                "canonicalKey": "person:donatas-motiejunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Universo De",
+                "canonicalKey": "eurocup:universo-de"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Dreamland Gran Canaria",
+          "canonicalKey": "eurocup:dreamland-gran-canaria"
+        },
+        "won": 2,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Patrick Beverley",
+                "canonicalKey": "person:patrick-beverley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Spartak Saint Petersburg",
+                "canonicalKey": "eurocup:spartak-saint-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jonas Valanciunas",
+                "canonicalKey": "person:jonas-valanciunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "eurocup:lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Renaldas Seibutis",
+                "canonicalKey": "person:renaldas-seibutis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "eurocup:lietuvos-rytas"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zoran Planinic",
+                "canonicalKey": "person:zoran-planinic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "eurocup:khimki"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Patrick Beverley",
+                "canonicalKey": "person:patrick-beverley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Spartak Saint Petersburg",
+                "canonicalKey": "eurocup:spartak-saint-petersburg"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nik Caner-Medley",
+                "canonicalKey": "person:nik-caner-medley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jonas Valanciunas",
+                "canonicalKey": "person:jonas-valanciunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "eurocup:lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yotam Halperin",
+                "canonicalKey": "person:yotam-halperin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Spartak Saint Petersburg",
+                "canonicalKey": "eurocup:spartak-saint-petersburg"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jeremiah Massey",
+                "canonicalKey": "person:jeremiah-massey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "eurocup:lokomotiv-kuban"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ramel Curry",
+                "canonicalKey": "person:ramel-curry"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BC Donetsk",
+                "canonicalKey": "eurocup:bc-donetsk"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljevic",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Buducnost Voli Podgorica",
+                "canonicalKey": "eurocup:buducnost-voli-podgorica"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Pavel Pumprla",
+                "canonicalKey": "person:pavel-pumprla"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CEZ Nymburk",
+                "canonicalKey": "eurocup:cez-nymburk"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jonas Valanciunas",
+                "canonicalKey": "person:jonas-valanciunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "eurocup:lietuvos-rytas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Bilbao Basket",
+        "canonicalKey": "eurocup:bilbao-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Bilbao Basket",
+          "canonicalKey": "eurocup:bilbao-basket"
+        },
+        "won": 13,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "eurocup:lokomotiv-kuban"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljevic",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "eurocup:lokomotiv-kuban"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Bryant",
+                "canonicalKey": "person:john-bryant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "eurocup:ratiopharm-ulm"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Malcolm Delaney",
+                "canonicalKey": "person:malcolm-delaney"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BC Budivelnik",
+                "canonicalKey": "eurocup:bc-budivelnik"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Vasiliadis",
+                "canonicalKey": "person:kostas-vasiliadis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bilbao Basket",
+                "canonicalKey": "eurocup:bilbao-basket"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Doellman",
+                "canonicalKey": "person:justin-doellman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Loukas Mavrokefalidis",
+                "canonicalKey": "person:loukas-mavrokefalidis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Spartak Saint Petersburg",
+                "canonicalKey": "eurocup:spartak-saint-petersburg"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Derrick Brown",
+                "canonicalKey": "person:derrick-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "eurocup:lokomotiv-kuban"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chuck Eidson",
+                "canonicalKey": "person:chuck-eidson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "eurocup:unics-kazan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Walter Hodge",
+                "canonicalKey": "person:walter-hodge"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zastal Zielona Gora",
+                "canonicalKey": "eurocup:zastal-zielona-gora"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lamont Hamilton",
+                "canonicalKey": "person:lamont-hamilton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bilbao Basket",
+                "canonicalKey": "eurocup:bilbao-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljevic",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "UNICS Kazan",
+        "canonicalKey": "eurocup:unics-kazan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Khimki",
+          "canonicalKey": "eurocup:khimki"
+        },
+        "won": 16,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Goudelock",
+                "canonicalKey": "person:andrew-goudelock"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "eurocup:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Doellman",
+                "canonicalKey": "person:justin-doellman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljevic",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dijon Thompson",
+                "canonicalKey": "person:dijon-thompson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nizhny Novgorod",
+                "canonicalKey": "eurocup:nizhny-novgorod"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeMarcus Nelson",
+                "canonicalKey": "person:demarcus-nelson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "eurocup:crvena-zvezda-belgrade"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vladimir Golubovic",
+                "canonicalKey": "person:vladimir-golubovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aykon TED Kolejliler Ankara",
+                "canonicalKey": "eurocup:aykon-ted-kolejliler-ankara"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Goudelock",
+                "canonicalKey": "person:andrew-goudelock"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "eurocup:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yotam Halperin",
+                "canonicalKey": "person:yotam-halperin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "eurocup:hapoel-bank-yahav-jerusalem"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Caleb Green",
+                "canonicalKey": "person:caleb-green"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Banco di Sardegna Sassari",
+                "canonicalKey": "eurocup:banco-di-sardegna-sassari"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Darius Lavrinovic",
+                "canonicalKey": "person:darius-lavrinovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BC Budivelnik",
+                "canonicalKey": "eurocup:bc-budivelnik"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Reggie Redding",
+                "canonicalKey": "person:reggie-redding"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "eurocup:alba-berlin"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljevic",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljevic",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Dreamland Gran Canaria",
+        "canonicalKey": "eurocup:dreamland-gran-canaria"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Lokomotiv Kuban",
+          "canonicalKey": "eurocup:lokomotiv-kuban"
+        },
+        "won": 19,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyrese Rice",
+                "canonicalKey": "person:tyrese-rice"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "eurocup:khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyrese Rice",
+                "canonicalKey": "person:tyrese-rice"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "eurocup:khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kristaps Porzingis",
+                "canonicalKey": "person:kristaps-porzingis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Betis Baloncesto",
+                "canonicalKey": "eurocup:real-betis-baloncesto"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kristaps Porzingis",
+                "canonicalKey": "person:kristaps-porzingis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Betis Baloncesto",
+                "canonicalKey": "eurocup:real-betis-baloncesto"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Aris Midea Thessaloniki",
+        "canonicalKey": "eurocup:aris-midea-thessaloniki"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Valencia Basket",
+          "canonicalKey": "eurocup:valencia-basket"
+        },
+        "won": 13,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Errick McCollum",
+                "canonicalKey": "person:errick-mccollum"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Galatasaray",
+                "canonicalKey": "eurocup:galatasaray"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Galatasaray",
+                "canonicalKey": "eurocup:galatasaray"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mateusz Ponitka",
+                "canonicalKey": "person:mateusz-ponitka"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zastal Zielona Gora",
+                "canonicalKey": "eurocup:zastal-zielona-gora"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mardy Collins",
+                "canonicalKey": "person:mardy-collins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Strasbourg IG",
+                "canonicalKey": "eurocup:strasbourg-ig"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alen Omic",
+                "canonicalKey": "person:alen-omic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Davide Pascolo",
+                "canonicalKey": "person:davide-pascolo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dolomiti Energia Trento",
+                "canonicalKey": "eurocup:dolomiti-energia-trento"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vladimir Micov",
+                "canonicalKey": "person:vladimir-micov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Galatasaray",
+                "canonicalKey": "eurocup:galatasaray"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Errick McCollum",
+                "canonicalKey": "person:errick-mccollum"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Galatasaray",
+                "canonicalKey": "eurocup:galatasaray"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Julian Wright",
+                "canonicalKey": "person:julian-wright"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dolomiti Energia Trento",
+                "canonicalKey": "eurocup:dolomiti-energia-trento"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Galatasaray",
+                "canonicalKey": "eurocup:galatasaray"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Rudd",
+                "canonicalKey": "person:victor-rudd"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nizhny Novgorod",
+                "canonicalKey": "eurocup:nizhny-novgorod"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mateusz Ponitka",
+                "canonicalKey": "person:mateusz-ponitka"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zastal Zielona Gora",
+                "canonicalKey": "eurocup:zastal-zielona-gora"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Pangos",
+                "canonicalKey": "person:kevin-pangos"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mateusz Ponitka",
+                "canonicalKey": "person:mateusz-ponitka"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zastal Zielona Gora",
+                "canonicalKey": "eurocup:zastal-zielona-gora"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Valencia Basket",
+        "canonicalKey": "eurocup:valencia-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Valencia Basket",
+          "canonicalKey": "eurocup:valencia-basket"
+        },
+        "won": 18,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alexey Shved",
+                "canonicalKey": "person:alexey-shved"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "eurocup:khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alberto Diaz",
+                "canonicalKey": "person:alberto-diaz"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Unicaja Malaga",
+                "canonicalKey": "eurocup:unicaja-malaga"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mardy Collins",
+                "canonicalKey": "person:mardy-collins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "eurocup:lokomotiv-kuban"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Curtis Jerrells",
+                "canonicalKey": "person:curtis-jerrells"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "eurocup:hapoel-bank-yahav-jerusalem"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alexey Shved",
+                "canonicalKey": "person:alexey-shved"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "eurocup:khimki"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dejan Musli",
+                "canonicalKey": "person:dejan-musli"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Unicaja Malaga",
+                "canonicalKey": "eurocup:unicaja-malaga"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljevic",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Amar'e Stoudemire",
+                "canonicalKey": "person:amar-e-stoudemire"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "eurocup:hapoel-bank-yahav-jerusalem"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Kuric",
+                "canonicalKey": "person:kyle-kuric"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Fogg",
+                "canonicalKey": "person:kyle-fogg"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Unicaja Malaga",
+                "canonicalKey": "eurocup:unicaja-malaga"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Fernando San Emeterio",
+                "canonicalKey": "person:fernando-san-emeterio"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maxi Kleber",
+                "canonicalKey": "person:maxi-kleber"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "eurocup:fc-bayern-munich"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lokomotiv Kuban",
+        "canonicalKey": "eurocup:lokomotiv-kuban"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Lokomotiv Kuban",
+          "canonicalKey": "eurocup:lokomotiv-kuban"
+        },
+        "won": 20,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Kuric",
+                "canonicalKey": "person:kyle-kuric"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "eurocup:zenit-st-petersburg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Scottie Wilbekin",
+                "canonicalKey": "person:scottie-wilbekin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Darussafaka Basketbol Istanbul",
+                "canonicalKey": "eurocup:darussafaka-basketbol-istanbul"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dzanan Musa",
+                "canonicalKey": "person:dzanan-musa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cedevita",
+                "canonicalKey": "eurocup:cedevita"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devin Booker",
+                "canonicalKey": "person:devin-booker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "eurocup:fc-bayern-munich"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ryan Broekhoff",
+                "canonicalKey": "person:ryan-broekhoff"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "eurocup:lokomotiv-kuban"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Scottie Wilbekin",
+                "canonicalKey": "person:scottie-wilbekin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Darussafaka Basketbol Istanbul",
+                "canonicalKey": "eurocup:darussafaka-basketbol-istanbul"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Quim Colom",
+                "canonicalKey": "person:quim-colom"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "eurocup:unics-kazan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Amedeo Della Valle",
+                "canonicalKey": "person:amedeo-della-valle"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Grissin Bon Reggio Emilia",
+                "canonicalKey": "eurocup:grissin-bon-reggio-emilia"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "JaJuan Johnson",
+                "canonicalKey": "person:jajuan-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Darussafaka Basketbol Istanbul",
+                "canonicalKey": "eurocup:darussafaka-basketbol-istanbul"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Kuric",
+                "canonicalKey": "person:kyle-kuric"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "eurocup:zenit-st-petersburg"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dmitry Kulagin",
+                "canonicalKey": "person:dmitry-kulagin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "eurocup:lokomotiv-kuban"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Ivanovic",
+                "canonicalKey": "person:nikola-ivanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Buducnost Voli Podgorica",
+                "canonicalKey": "eurocup:buducnost-voli-podgorica"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ondrej Balvin",
+                "canonicalKey": "person:ondrej-balvin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dzanan Musa",
+                "canonicalKey": "person:dzanan-musa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cedevita",
+                "canonicalKey": "eurocup:cedevita"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "KK Mornar",
+        "canonicalKey": "eurocup:kk-mornar"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Valencia Basket",
+          "canonicalKey": "eurocup:valencia-basket"
+        },
+        "won": 20,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Thomas",
+                "canonicalKey": "person:will-thomas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Peyton Siva",
+                "canonicalKey": "person:peyton-siva"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "eurocup:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Martynas Echodas",
+                "canonicalKey": "person:martynas-echodas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "eurocup:lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luke Sikma",
+                "canonicalKey": "person:luke-sikma"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "eurocup:alba-berlin"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Albicy",
+                "canonicalKey": "person:andrew-albicy"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "MoraBanc Andorra",
+                "canonicalKey": "eurocup:morabanc-andorra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rokas Giedraitis",
+                "canonicalKey": "person:rokas-giedraitis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "eurocup:alba-berlin"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bojan Dubljevic",
+                "canonicalKey": "person:bojan-dubljevic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Errick McCollum",
+                "canonicalKey": "person:errick-mccollum"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "eurocup:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sam Van Rossom",
+                "canonicalKey": "person:sam-van-rossom"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Pierria Henry",
+                "canonicalKey": "person:pierria-henry"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "eurocup:unics-kazan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dylan Ennis",
+                "canonicalKey": "person:dylan-ennis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "MoraBanc Andorra",
+                "canonicalKey": "eurocup:morabanc-andorra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mathias Lessort",
+                "canonicalKey": "person:mathias-lessort"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Unicaja Malaga",
+                "canonicalKey": "eurocup:unicaja-malaga"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Martynas Echodas",
+                "canonicalKey": "person:martynas-echodas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "eurocup:lietuvos-rytas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Umana Venezia",
+          "canonicalKey": "eurocup:umana-venezia"
+        },
+        "won": 12,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "eurocup:virtus-segafredo-bologna"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "UNICS Kazan",
+        "canonicalKey": "eurocup:unics-kazan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Virtus Segafredo Bologna",
+          "canonicalKey": "eurocup:virtus-segafredo-bologna"
+        },
+        "won": 19,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jamar Smith",
+                "canonicalKey": "person:jamar-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "eurocup:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rob Gray",
+                "canonicalKey": "person:rob-gray"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "eurocup:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Olek Balcerowski",
+                "canonicalKey": "person:olek-balcerowski"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jamar Smith",
+                "canonicalKey": "person:jamar-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "eurocup:unics-kazan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Willie Reed",
+                "canonicalKey": "person:willie-reed"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Buducnost Voli Podgorica",
+                "canonicalKey": "eurocup:buducnost-voli-podgorica"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "eurocup:virtus-segafredo-bologna"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mathias Lessort",
+                "canonicalKey": "person:mathias-lessort"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "eurocup:as-monaco"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaia Cordinier",
+                "canonicalKey": "person:isaia-cordinier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nanterre 92",
+                "canonicalKey": "eurocup:nanterre-92"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mantas Kalnietis",
+                "canonicalKey": "person:mantas-kalnietis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "eurocup:lokomotiv-kuban"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Brown",
+                "canonicalKey": "person:anthony-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "eurocup:boulogne-levallois"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jaka Blazic",
+                "canonicalKey": "person:jaka-blazic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Cedevita Olimpija Ljubljana",
+                "canonicalKey": "eurocup:kk-cedevita-olimpija-ljubljana"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Brown",
+                "canonicalKey": "person:john-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "eurocup:unics-kazan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vince Hunter",
+                "canonicalKey": "person:vince-hunter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "eurocup:virtus-segafredo-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Olek Balcerowski",
+                "canonicalKey": "person:olek-balcerowski"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Bursaspor",
+        "canonicalKey": "eurocup:bursaspor"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Joventut Badalona",
+          "canonicalKey": "eurocup:joventut-badalona"
+        },
+        "won": 13,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mouhammadou Jaiteh",
+                "canonicalKey": "person:mouhammadou-jaiteh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "eurocup:virtus-segafredo-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "eurocup:virtus-segafredo-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Khalifa Diop",
+                "canonicalKey": "person:khalifa-diop"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Derek Needham",
+                "canonicalKey": "person:derek-needham"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bursaspor",
+                "canonicalKey": "eurocup:bursaspor"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "eurocup:virtus-segafredo-bologna"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mouhammadou Jaiteh",
+                "canonicalKey": "person:mouhammadou-jaiteh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "eurocup:virtus-segafredo-bologna"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Cummings",
+                "canonicalKey": "person:will-cummings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "eurocup:boulogne-levallois"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jaron Blossomgame",
+                "canonicalKey": "person:jaron-blossomgame"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "eurocup:ratiopharm-ulm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Khalifa Diop",
+                "canonicalKey": "person:khalifa-diop"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Turk Telekom",
+        "canonicalKey": "eurocup:turk-telekom"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Dreamland Gran Canaria",
+          "canonicalKey": "eurocup:dreamland-gran-canaria"
+        },
+        "won": 19,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jerian Grant",
+                "canonicalKey": "person:jerian-grant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Turk Telekom",
+                "canonicalKey": "eurocup:turk-telekom"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Shurna",
+                "canonicalKey": "person:john-shurna"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Olek Balcerowski",
+                "canonicalKey": "person:olek-balcerowski"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ante Tomic",
+                "canonicalKey": "person:ante-tomic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Joventut Badalona",
+                "canonicalKey": "eurocup:joventut-badalona"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Shurna",
+                "canonicalKey": "person:john-shurna"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Stephens",
+                "canonicalKey": "person:d-j-stephens"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "SC Prometey Kamianske",
+                "canonicalKey": "eurocup:sc-prometey-kamianske"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jerian Grant",
+                "canonicalKey": "person:jerian-grant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Turk Telekom",
+                "canonicalKey": "eurocup:turk-telekom"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Axel Bouteille",
+                "canonicalKey": "person:axel-bouteille"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Turk Telekom",
+                "canonicalKey": "eurocup:turk-telekom"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "J'Covan Brown",
+                "canonicalKey": "person:j-covan-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Tel Aviv",
+                "canonicalKey": "eurocup:hapoel-tel-aviv"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sam Dekker",
+                "canonicalKey": "person:sam-dekker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "London Lions",
+                "canonicalKey": "eurocup:london-lions"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bruno Caboclo",
+                "canonicalKey": "person:bruno-caboclo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "eurocup:ratiopharm-ulm"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Onuralp Bitim",
+                "canonicalKey": "person:onuralp-bitim"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bursaspor",
+                "canonicalKey": "eurocup:bursaspor"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyrique Jones",
+                "canonicalKey": "person:tyrique-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Turk Telekom",
+                "canonicalKey": "eurocup:turk-telekom"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Olek Balcerowski",
+                "canonicalKey": "person:olek-balcerowski"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dreamland Gran Canaria",
+                "canonicalKey": "eurocup:dreamland-gran-canaria"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "JL Bourg-en-Bresse",
+        "canonicalKey": "eurocup:jl-bourg-en-bresse"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Paris",
+          "canonicalKey": "eurocup:paris"
+        },
+        "won": 22,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "eurocup:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "eurocup:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zaccharie Risacher",
+                "canonicalKey": "person:zaccharie-risacher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg-en-Bresse",
+                "canonicalKey": "eurocup:jl-bourg-en-bresse"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gabriel Olaseni",
+                "canonicalKey": "person:gabriel-olaseni"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "London Lions",
+                "canonicalKey": "eurocup:london-lions"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Matt Morgan",
+                "canonicalKey": "person:matt-morgan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "London Lions",
+                "canonicalKey": "eurocup:london-lions"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isiaha Mike",
+                "canonicalKey": "person:isiaha-mike"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg-en-Bresse",
+                "canonicalKey": "eurocup:jl-bourg-en-bresse"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "eurocup:paris"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Trevion Williams",
+                "canonicalKey": "person:trevion-williams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "eurocup:ratiopharm-ulm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Patrick Richard",
+                "canonicalKey": "person:patrick-richard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "U-Banca Transilvania Cluj Napoca",
+                "canonicalKey": "eurocup:u-banca-transilvania-cluj-napoca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Emanuel Cate",
+                "canonicalKey": "person:emanuel-cate"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "U-Banca Transilvania Cluj Napoca",
+                "canonicalKey": "eurocup:u-banca-transilvania-cluj-napoca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andres Feliz",
+                "canonicalKey": "person:andres-feliz"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Joventut Badalona",
+                "canonicalKey": "eurocup:joventut-badalona"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Deividas Sirvydis",
+                "canonicalKey": "person:deividas-sirvydis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "7Bet-Lietkabelis Panevezys",
+                "canonicalKey": "eurocup:7bet-lietkabelis-panevezys"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nadir Hifi",
+                "canonicalKey": "person:nadir-hifi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "eurocup:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zaccharie Risacher",
+                "canonicalKey": "person:zaccharie-risacher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg-en-Bresse",
+                "canonicalKey": "eurocup:jl-bourg-en-bresse"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Dreamland Gran Canaria",
+        "canonicalKey": "eurocup:dreamland-gran-canaria"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Valencia Basket",
+          "canonicalKey": "eurocup:valencia-basket"
+        },
+        "won": 18,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jared Harper",
+                "canonicalKey": "person:jared-harper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "eurocup:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devin Robinson",
+                "canonicalKey": "person:devin-robinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Cedevita Olimpija Ljubljana",
+                "canonicalKey": "eurocup:kk-cedevita-olimpija-ljubljana"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jean Montero",
+                "canonicalKey": "person:jean-montero"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Johnathan Motley",
+                "canonicalKey": "person:johnathan-motley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Tel Aviv",
+                "canonicalKey": "eurocup:hapoel-tel-aviv"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jaleen Smith",
+                "canonicalKey": "person:jaleen-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bahcesehir Koleji",
+                "canonicalKey": "eurocup:bahcesehir-koleji"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jared Harper",
+                "canonicalKey": "person:jared-harper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "eurocup:hapoel-bank-yahav-jerusalem"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mfiondu Kabengele",
+                "canonicalKey": "person:mfiondu-kabengele"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Umana Venezia",
+                "canonicalKey": "eurocup:umana-venezia"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jean Montero",
+                "canonicalKey": "person:jean-montero"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Brown",
+                "canonicalKey": "person:anthony-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Turk Telekom",
+                "canonicalKey": "eurocup:turk-telekom"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Semi Ojeleye",
+                "canonicalKey": "person:semi-ojeleye"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devin Robinson",
+                "canonicalKey": "person:devin-robinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Cedevita Olimpija Ljubljana",
+                "canonicalKey": "eurocup:kk-cedevita-olimpija-ljubljana"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Xabier Lopez-Arostegui",
+                "canonicalKey": "person:xabier-lopez-arostegui"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zavier Simpson",
+                "canonicalKey": "person:zavier-simpson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "U-Banca Transilvania Cluj Napoca",
+                "canonicalKey": "eurocup:u-banca-transilvania-cluj-napoca"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jean Montero",
+                "canonicalKey": "person:jean-montero"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "eurocup:valencia-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Besiktas Icrypex",
+        "canonicalKey": "eurocup:besiktas-icrypex"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "JL Bourg-en-Bresse",
+          "canonicalKey": "eurocup:jl-bourg-en-bresse"
+        },
+        "won": 18,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jared Harper",
+                "canonicalKey": "person:jared-harper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "eurocup:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Allman, Jr.",
+                "canonicalKey": "person:kyle-allman-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Turk Telekom",
+                "canonicalKey": "eurocup:turk-telekom"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tobias Jensen",
+                "canonicalKey": "person:tobias-jensen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "eurocup:ratiopharm-ulm"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ante Zizic",
+                "canonicalKey": "person:ante-zizic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Besiktas Icrypex",
+                "canonicalKey": "eurocup:besiktas-icrypex"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jared Harper",
+                "canonicalKey": "person:jared-harper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "eurocup:hapoel-bank-yahav-jerusalem"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Malachi Flynn",
+                "canonicalKey": "person:malachi-flynn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bahcesehir Koleji",
+                "canonicalKey": "eurocup:bahcesehir-koleji"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Allman, Jr.",
+                "canonicalKey": "person:kyle-allman-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Turk Telekom",
+                "canonicalKey": "eurocup:turk-telekom"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devante' Jones",
+                "canonicalKey": "person:devante-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dolomiti Energia Trento",
+                "canonicalKey": "eurocup:dolomiti-energia-trento"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Brown",
+                "canonicalKey": "person:anthony-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Besiktas Icrypex",
+                "canonicalKey": "eurocup:besiktas-icrypex"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mitchell Creek",
+                "canonicalKey": "person:mitchell-creek"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "U-Banca Transilvania Cluj Napoca",
+                "canonicalKey": "eurocup:u-banca-transilvania-cluj-napoca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Fatts Russell",
+                "canonicalKey": "person:fatts-russell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "U-Banca Transilvania Cluj Napoca",
+                "canonicalKey": "eurocup:u-banca-transilvania-cluj-napoca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Both Gach",
+                "canonicalKey": "person:both-gach"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg-en-Bresse",
+                "canonicalKey": "eurocup:jl-bourg-en-bresse"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Darius McGhee",
+                "canonicalKey": "person:darius-mcghee"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg-en-Bresse",
+                "canonicalKey": "eurocup:jl-bourg-en-bresse"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tobias Jensen",
+                "canonicalKey": "person:tobias-jensen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Ratiopharm Ulm",
+                "canonicalKey": "eurocup:ratiopharm-ulm"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

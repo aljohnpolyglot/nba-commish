@@ -1,7 +1,8 @@
 /**
  * hofChecker.ts
  *
- * Hall of Fame induction logic — called at season rollover AFTER retirement checks.
+ * Hall of Fame induction logic — retirement establishes eligibility; the dated
+ * daily lifecycle publishes each class independently of offseason review UI.
  *
  * Philosophy (real-world inspired classification):
  *  - First-ballot means the first year a retiree is eligible, after a five-season wait
@@ -12,13 +13,16 @@
  */
 
 import type { NBAPlayer } from '../../types';
-import { resolveSeasonDate, toISODateString } from '../../utils/dateUtils';
+import { parseGameDate, resolveSeasonDate, toISODateString } from '../../utils/dateUtils';
+import { resolveHistoricalStatWinShares } from './historicalCareerMetrics';
+import { simDebug } from '../../utils/simDebug';
 
 export type HOFTier = 'first_ballot' | 'regular' | 'borderline';
 
 export const HOF_FIRST_BALLOT_WAIT_YEARS = 5;
 export const HOF_REGULAR_WAIT_YEARS = 7;
 export const HOF_BORDERLINE_WAIT_YEARS = 15;
+export const PBA_HOF_FIRST_CLASS_YEAR = 2005;
 
 /**
  * Real-world Naismith HOF enshrinement ceremony falls on the first Saturday of
@@ -35,12 +39,43 @@ export function getHOFCeremonyDateString(year: number): string {
   return toISODateString(getHOFCeremonyDate(year));
 }
 
+export function getHOFClassYearsReached(startDateLike: string | Date, endDateLike: string | Date): number[] {
+  const start = startDateLike instanceof Date ? startDateLike : parseGameDate(startDateLike);
+  const end = endDateLike instanceof Date ? endDateLike : parseGameDate(endDateLike);
+  const startIso = toISODateString(start);
+  const endIso = toISODateString(end);
+  const years: number[] = [];
+  for (let year = start.getUTCFullYear(); year <= end.getUTCFullYear(); year += 1) {
+    const ceremony = getHOFCeremonyDateString(year);
+    if (ceremony >= startIso && ceremony <= endIso) years.push(year);
+  }
+  return years;
+}
+
+export function getHOFClassYearForDate(dateLike: string | Date): number {
+  const date = dateLike instanceof Date ? dateLike : parseGameDate(dateLike);
+  const year = date.getUTCFullYear();
+  return toISODateString(date) >= getHOFCeremonyDateString(year) ? year : year - 1;
+}
+
+export function getHOFReviewClassYear(
+  dateLike: string | Date,
+  inductedYears: readonly number[] = [],
+): number {
+  const currentYear = (dateLike instanceof Date ? dateLike : parseGameDate(dateLike)).getUTCFullYear();
+  const latestPersisted = inductedYears
+    .map(Number)
+    .filter(year => Number.isFinite(year) && year <= currentYear)
+    .sort((left, right) => right - left)[0];
+  return latestPersisted ?? getHOFClassYearForDate(dateLike);
+}
+
 export interface HOFInduction {
   playerId: string;
   name: string;
   age: number;
   inductionYear: number;
-  league?: 'NBA' | 'PBA';
+  league?: 'NBA' | 'WNBA' | 'PBA';
   careerWS: number;
   allStarAppearances: number;
   championships: number;
@@ -60,16 +95,17 @@ export interface HOFTierInfo {
 // ─── Career Win Shares ────────────────────────────────────────────────────────
 /**
  * Sum regular-season win shares across the player's career.
- * Skips playoff rows. Missing ws values count as 0.
+ * Skips playoff rows and resolves completed source-history fallbacks consistently.
  *
  * @public — exported for UI preview (retirement watch, HOF eligibility indicator).
  */
-export function careerWinShares(player: NBAPlayer): number {
+export function careerWinShares(player: NBAPlayer, eligibleTeamIds?: ReadonlySet<number>): number {
   const stats = player.stats ?? [];
   let ws = 0;
   for (const s of stats) {
     if ((s as any).playoffs) continue;
-    ws += (s as any).ws ?? 0;
+    if (eligibleTeamIds && !eligibleTeamIds.has(Number(s.tid))) continue;
+    ws += resolveHistoricalStatWinShares(s) ?? 0;
   }
   return ws;
 }
@@ -78,12 +114,63 @@ function countAward(player: NBAPlayer, type: string): number {
   return (player.awards ?? []).filter(a => a.type === type).length;
 }
 
+function countChampionships(player: NBAPlayer): number {
+  return countAward(player, 'Won Championship') + countAward(player, 'Champion') + countAward(player, 'NBA Champion');
+}
+
 function countAwardIncludes(player: NBAPlayer, needle: string): number {
   return (player.awards ?? []).filter(a => a.type.includes(needle)).length;
 }
 
+type PlayerAward = NonNullable<NBAPlayer['awards']>[number];
+
+const isPbaCompetitionId = (value: unknown): boolean => {
+  const competitionId = String(value ?? '').trim().toLowerCase();
+  return competitionId === 'pba' || competitionId.startsWith('pba-');
+};
+
+const isPbaAward = (award: PlayerAward): boolean =>
+  award.uiMode === 'pba_isolated'
+  || isPbaCompetitionId(award.competitionId)
+  || String(award.source ?? '').toLowerCase().includes('pba');
+
 function isPbaRetiree(player: NBAPlayer): boolean {
-  return (player as any).retiredFromLeague === 'PBA' || (player as any).hofLeague === 'PBA';
+  const leagueTagged = player as NBAPlayer & { retiredFromLeague?: string; hofLeague?: string };
+  return leagueTagged.retiredFromLeague === 'PBA'
+    || leagueTagged.hofLeague === 'PBA'
+    || player.status === 'PBA'
+    || !!player.historicalPbaSource
+    || (Number(player.tid) >= 2000 && Number(player.tid) < 3000)
+    || (player.stats ?? []).some(entry =>
+      (Number(entry.tid) >= 2000 && Number(entry.tid) < 3000)
+      || isPbaCompetitionId(entry.competitionId)
+      || String((entry as any).league ?? '').toUpperCase() === 'PBA'
+      || String((entry as any).source ?? (entry as any)._source ?? '').toLowerCase().includes('pba'),
+    )
+    || (player.awards ?? []).some(isPbaAward);
+}
+
+type NaismithLeague = 'NBA' | 'WNBA';
+
+function isWnbaCareer(player: NBAPlayer): boolean {
+  const tagged = player as NBAPlayer & {
+    retiredFromLeague?: string;
+    hofLeague?: string;
+  };
+  return tagged.retiredFromLeague === 'WNBA'
+    || tagged.hofLeague === 'WNBA'
+    || player.status === 'WNBA'
+    || (player.stats ?? []).some(entry =>
+      String((entry as any).league ?? '').toUpperCase() === 'WNBA'
+      || String(entry.competitionId ?? '').toLowerCase().startsWith('wnba')
+      || (Number(entry.tid) >= 3000 && Number(entry.tid) < 4000),
+    );
+}
+
+export function isHOFLeagueCareer(player: NBAPlayer, league: NaismithLeague): boolean {
+  if (isPbaRetiree(player)) return false;
+  const wnbaCareer = isWnbaCareer(player);
+  return league === 'WNBA' ? wnbaCareer : !wnbaCareer;
 }
 
 function pbaCareerGames(player: NBAPlayer): number {
@@ -91,13 +178,16 @@ function pbaCareerGames(player: NBAPlayer): number {
     .filter((entry: any) =>
       !entry.playoffs &&
       (entry.gp ?? 0) > 0 &&
-      (Number(entry.tid) >= 2000 || String(entry.league ?? '').toUpperCase() === 'PBA' || String(entry.source ?? entry._source ?? '').toLowerCase().includes('pba')),
+      ((Number(entry.tid) >= 2000 && Number(entry.tid) < 3000)
+        || isPbaCompetitionId(entry.competitionId)
+        || String(entry.league ?? '').toUpperCase() === 'PBA'
+        || String(entry.source ?? entry._source ?? '').toLowerCase().includes('pba')),
     )
     .reduce((sum: number, entry: any) => sum + Number(entry.gp ?? 0), 0);
 }
 
 function countPbaAward(player: NBAPlayer, pattern: RegExp): number {
-  return (player.awards ?? []).filter(award => pattern.test(award.type)).length;
+  return (player.awards ?? []).filter(award => isPbaAward(award) && pattern.test(award.type)).length;
 }
 
 function isPbaHOFWorthy(player: NBAPlayer): boolean {
@@ -143,7 +233,7 @@ export function isHOFWorthy(player: NBAPlayer, wsThreshold: number): boolean {
   const allStars = countAward(player, 'All-Star');
   const mvps = countAward(player, 'Most Valuable Player');
   const fmvps = countAward(player, 'Finals MVP');
-  const champs = countAward(player, 'Won Championship') + countAward(player, 'Champion');
+  const champs = countChampionships(player);
   const dpoys = countAward(player, 'Defensive Player of the Year');
 
   // Auto-induct accolade paths
@@ -171,7 +261,7 @@ export function isFirstBallot(player: NBAPlayer, wsThreshold: number): boolean {
   const allStars = countAward(player, 'All-Star');
   const mvps = countAward(player, 'Most Valuable Player');
   const fmvps = countAward(player, 'Finals MVP');
-  const champs = countAward(player, 'Won Championship') + countAward(player, 'Champion');
+  const champs = countChampionships(player);
 
   if (mvps >= 2) return true;
   if (fmvps >= 2) return true;
@@ -185,7 +275,7 @@ function isBorderlineWorthy(player: NBAPlayer, wsThreshold: number): boolean {
   const allStars = countAward(player, 'All-Star');
   const mvps = countAward(player, 'Most Valuable Player');
   const fmvps = countAward(player, 'Finals MVP');
-  const champs = countAward(player, 'Won Championship') + countAward(player, 'Champion');
+  const champs = countChampionships(player);
   const dpoys = countAward(player, 'Defensive Player of the Year');
 
   if (isFirstBallot(player, wsThreshold)) return false;
@@ -249,13 +339,15 @@ export function runHOFChecks(
   players: NBAPlayer[],
   year: number,
   wsThreshold: number,
+  league: NaismithLeague = 'NBA',
 ): { players: NBAPlayer[]; newInductees: HOFInduction[] } {
   const newInductees: HOFInduction[] = [];
 
   const updated = players.map(p => {
     if (p.hof) return p; // already inducted
     if ((p as any).status !== 'Retired') return p;
-    if (isPbaRetiree(p) || ((p as any).retiredFromLeague && (p as any).retiredFromLeague !== 'NBA')) return p;
+    if (!isHOFLeagueCareer(p, league)) return p;
+    if ((p as any).retiredFromLeague && (p as any).retiredFromLeague !== league) return p;
     const tierInfo = getHOFTierInfo(p, wsThreshold);
     if (!tierInfo) return p;
     if (year < tierInfo.eligibleYear) return p;
@@ -263,7 +355,7 @@ export function runHOFChecks(
     const ws = careerWinShares(p);
     const allStars = countAward(p, 'All-Star');
     const mvps = countAward(p, 'Most Valuable Player');
-    const champs = countAward(p, 'Won Championship') + countAward(p, 'Champion');
+    const champs = countChampionships(p);
     const age = p.born?.year ? (year - p.born.year) : 0;
 
     newInductees.push({
@@ -271,7 +363,7 @@ export function runHOFChecks(
       name:               p.name,
       age,
       inductionYear:      year,
-      league: 'NBA',
+      league,
       careerWS:           ws,
       allStarAppearances: allStars,
       championships:      champs,
@@ -280,19 +372,21 @@ export function runHOFChecks(
       tier: tierInfo.tier,
     });
 
-    console.log(
+    simDebug('development', () => (
       `[HOF] ${p.name} inducted (class of ${year}) — ${tierInfo.label}, WS ${ws.toFixed(1)}, ${allStars}× All-Star, ${champs}× Champion${tierInfo.firstBallot ? ' [FIRST BALLOT]' : ''}`
-    );
+    ), { playerId: p.internalId, event: 'hof-induction', year });
 
     return {
       ...p,
       hof: true,
       hofInductionYear: year,
-      hofLeague: 'NBA',
+      hofLeague: league,
     } as NBAPlayer;
   });
 
-  console.log(`[HOF] Class of ${year}: ${newInductees.length} inductee${newInductees.length === 1 ? '' : 's'} (WS threshold: ${wsThreshold})`);
+  simDebug('development', () => (
+    `[HOF] Class of ${year}: ${newInductees.length} inductee${newInductees.length === 1 ? '' : 's'} (WS threshold: ${wsThreshold})`
+  ), { event: 'hof-class-summary', year, inductees: newInductees.length });
   return { players: updated, newInductees };
 }
 
@@ -301,6 +395,7 @@ export function runPbaHOFChecks(
   year: number,
 ): { players: NBAPlayer[]; newInductees: HOFInduction[] } {
   const newInductees: HOFInduction[] = [];
+  if (year < PBA_HOF_FIRST_CLASS_YEAR) return { players, newInductees };
   const updated = players.map(player => {
     if (player.hof) return player;
     if ((player as any).status !== 'Retired') return player;

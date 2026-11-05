@@ -1,30 +1,66 @@
-import React, { useState, useEffect } from 'react';
+import React, { useDeferredValue, useState, useEffect, useMemo, useRef } from 'react';
 import { motion } from 'motion/react';
-import { User, ArrowRight, Crown, ArrowLeft, Settings, ChevronDown, ChevronUp, Bot, BarChart2, Banknote, CalendarDays, Dumbbell, Brain, Activity, Crosshair, Search, BarChart, Gem, Hourglass, Eye, Landmark, Shield, Building2, Users, Shirt, Star } from 'lucide-react';
+import { User, ArrowRight, Crown, ArrowLeft, BarChart2, Banknote, CalendarDays, Dumbbell, Brain, Activity, Crosshair, Search, BarChart, Building2, Users, Shirt, Star } from 'lucide-react';
 import { SettingsManager } from '../services/SettingsManager';
-import { INITIAL_LEAGUE_STATS, PBA_ISOLATED_DEFAULTS } from '../constants';
-import { getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
-import { prewarmRoster } from '../services/rosterService';
-import { generateFictionalLeague } from '../services/fictionalLeagueGenerator';
-import { fetchEndesaRoster, fetchPBARoster, getPBARosterEconomyConfig } from '../services/externalRosterService';
-import { getLeagueLabels } from '../utils/leagueLabels';
+import { INITIAL_LEAGUE_STATS } from '../constants';
+import { getCommissionerBootstrapDate, getSeasonSimStartDate, toISODateString } from '../utils/dateUtils';
 import type { LeagueType, ModdedLeagueBase, EuropeMarket } from './setup/LeagueTypeSelector';
 import { Home as FranchisePicker } from './central/view/TeamOffice/pages/Home';
 import { seedEuroCareer, type EuroCareerSeed } from '../services/euro/careerSeed';
-import type { NBAPlayer, NBATeam, NonNBATeam } from '../types';
+import type { NonNBATeam } from '../types';
 import { MyFace, isRealFaceConfig } from './shared/MyFace';
-import { getCountryFlag } from '../utils/countryFlags';
-import { isInitialSpanishEuroleagueWildcard, isLicensedSpanishEuroleagueClub } from '../utils/euroleagueQualification';
-import { getStaffImageUrl } from '../utils/staffPortrait';
-import { getResolvedTeamLogoUrl } from '../utils/teamAssets';
+import { getTeamFullName } from '../utils/teamNames';
+import { getStaffImageUrl, resolveStaffImageId } from '../utils/staffPortrait';
+import { CountryFlag } from './shared/CountryFlag';
+import { displayStaffRole } from '../services/staff/staffCareerRows';
+import { getOwnerPhoto } from '../data/photos/owners';
+import { SponsorLogo } from './tycoon/SponsorLogo';
+import { getBrandMeta, resolveSponsorLeagueKey } from '../data/sponsorCatalogFetcher';
 
-const SIM_START_DATE = toISODateString(getSeasonSimStartDate(INITIAL_LEAGUE_STATS.year)); // e.g. '2025-08-06'
-// Euro saves open on July 1 — the real ACB transfer window opens then. Any
-// later Euro start date is lazy-simmed after INIT_EURO_CAREER, not through the
-// NBA setup jump, so Euro offseason tasks and competitions use Euro wiring.
+// Euro saves always open on July 1 so every Year-0 task starts from one checkpoint.
 const EURO_SIM_START_DATE = `${INITIAL_LEAGUE_STATS.year - 1}-07-01`;
 import { StartDateTimeline } from './setup/StartDateTimeline';
 import { JumpReviewScreen } from './setup/JumpReviewScreen';
+import { HistoricalSeasonPicker } from './setup/HistoricalSeasonPicker';
+import { NbaGmStartModePicker } from './setup/NbaGmStartModePicker';
+import { HistoricalEndesaSeasonPicker } from './setup/HistoricalEndesaSeasonPicker';
+import { FictionalLeagueBuilder, type FictionalLeagueStartupConfig } from './setup/FictionalLeagueBuilder';
+import { FictionalRosterSetupScreen } from './setup/FictionalSetupScreens';
+import { useSetupRosterLoader } from './setup/useSetupRosterLoader';
+import { ModdedProfileSetup, ModdedRoleSelector } from './setup/ModdedSetupScreens';
+import { FictionalProfileSetup } from './setup/FictionalProfileSetup';
+import { shouldPrepareSetupRoster, type SetupStep } from './setup/setupRosterLoadingPolicy';
+import { DEFAULT_HISTORICAL_NBA_START_YEAR } from '../data/historicalNbaSeasons';
+import { resolveSetupFranchiseIdentityOptions } from './setup/franchisePickerIdentity';
+import { ENDESA_HISTORICAL_CATALOG, endesaStartYearToSourceSeason } from '../services/historicalEndesa/catalog';
+import {
+  getHistoricalPbaRuleOverrides,
+} from '../services/pba/historicalCatalog';
+import {
+  PBA_HISTORY,
+  getPlayablePbaSeasons,
+  type PlayablePbaSeason,
+} from '../services/pba/historyConfig';
+import { loadHistoricalPbaSource } from '../services/pba/historicalLoader';
+import { getEuroDomesticSourceForMarket } from '../data/euroBasketballSources';
+import { buildEuropeanSourceSeasonOptions } from '../data/europeHistoricalBackfill';
+import { getEuroHistoricalEconomyFactor } from '../services/euro/historicalEconomy';
+import { getConferenceStartIso } from '../services/pba/conferenceTransition';
+import { getPbaKeyDates } from './setup/keyDates';
+import { isPbaRosterLocal } from '../services/pba/importManager';
+import { getCachedEuropeanCoachSource, mergeEuropeanCoachStaffForTeam } from '../services/euro/historicalCoachSource';
+import type {
+  FictionalHistoryMode,
+  FictionalNationalityFrequency,
+  FictionalPlayerPool,
+  FictionalRosterMode,
+  OpeningRosterMode,
+  FictionalStartupTeamDef,
+  LeagueStats,
+  NbaGmStartMode,
+} from '../types';
+import { resolveOpeningRosterMode } from '../services/fantasyDraft/openingFantasyDraft';
+import { buildPersistedStartModePolicy, type SeasonStartModePolicy } from '../services/lifecycle/startModePolicy';
 
 interface CommissionerSetupProps {
   leagueType: LeagueType;
@@ -45,108 +81,210 @@ interface CommissionerSetupProps {
     fictionalLeagueSeed?: number;
     euroCareerSeed?: EuroCareerSeed;
     euroCareerLeagueId?: string;
+    nbaStartYear?: number;
+    nbaGmStartMode?: NbaGmStartMode;
+    endesaStartYear?: number;
+    euroStartSeason?: number;
+    pbaStartYear?: number;
+    pbaSeasonKey?: number;
+    fictionalLeagueName?: string;
+    fictionalSeasonYear?: number;
+    fictionalHistoryMode?: FictionalHistoryMode;
+    fictionalTeams?: FictionalStartupTeamDef[];
+    fictionalPlayerPool?: FictionalPlayerPool;
+    fictionalRosterMode?: FictionalRosterMode;
+    openingRosterMode?: OpeningRosterMode;
+    fictionalNationalityFrequencies?: FictionalNationalityFrequency[];
+    fictionalLeagueRules?: Partial<LeagueStats>;
+    startModePolicy?: SeasonStartModePolicy;
+    firstActionDate?: string;
   }) => void;
   onBack: () => void;
 }
 
-type Step = 'mode' | 'name' | 'franchise' | 'euroReview' | 'timeline' | 'review';
-
 export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType, moddedLeagueBase, europeMarket, onStart, onBack }) => {
-  const [step, setStep] = useState<Step>('mode');
+  const [step, setStep] = useState<SetupStep>('mode');
   const [gameMode, setGameMode] = useState<'commissioner' | 'gm'>(
-    moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines' ? 'gm' : 'commissioner'
+    moddedLeagueBase === 'europe' || moddedLeagueBase === 'nba' ? 'gm' : 'commissioner'
   );
   // Keep undefined for GM mode — the user picks a team post-init via TeamOffice. No more "everyone is Atlanta".
   const [userTeamId, setUserTeamId] = useState<number | undefined>(undefined);
-  const [name, setName] = useState('');
+  const nameRef = useRef('');
   const isEuroSetup = leagueType === 'modded' && moddedLeagueBase === 'europe';
   const isPbaSetup = leagueType === 'modded' && moddedLeagueBase === 'philippines';
-  const PBA_SIM_START_DATE = `${INITIAL_LEAGUE_STATS.year - 1}-10-05`;
-  const defaultStartDate = isEuroSetup ? EURO_SIM_START_DATE : isPbaSetup ? PBA_SIM_START_DATE : SIM_START_DATE;
+  const isWnbaSetup = leagueType === 'modded' && moddedLeagueBase === 'wnba';
+  const isNbaSetup = leagueType === 'modded' && moddedLeagueBase === 'nba';
+  const isSpainEuropeSetup = leagueType === 'modded' && moddedLeagueBase === 'europe' && europeMarket === 'spain';
+  const primaryEuroSource = getEuroDomesticSourceForMarket(europeMarket);
+  const primaryEuroLeagueId = isSpainEuropeSetup ? 'endesa' : primaryEuroSource?.leagueId ?? 'endesa';
+  const primaryEuroLeagueStatus = isSpainEuropeSetup ? 'Endesa' : primaryEuroSource?.leagueStatus ?? 'Endesa';
+  const primaryEuroLeagueName = isSpainEuropeSetup ? 'Liga Endesa' : primaryEuroSource?.displayName ?? 'Domestic League';
+  const primaryEuroCountry = isSpainEuropeSetup ? 'Spain' : europeMarket
+    ? europeMarket.charAt(0).toUpperCase() + europeMarket.slice(1)
+    : 'Europe';
+  const isHistoricalNbaSetup = isNbaSetup;
+  const isHistoricalEuroSetup = isEuroSetup && gameMode === 'gm';
+  const isHistoricalEndesaSetup = isSpainEuropeSetup && gameMode === 'gm';
+  const isHistoricalPbaSetup = isPbaSetup;
+  const [selectedNbaStartYear, setSelectedNbaStartYear] = useState(DEFAULT_HISTORICAL_NBA_START_YEAR);
+  const [selectedEndesaStartYear, setSelectedEndesaStartYear] = useState(ENDESA_HISTORICAL_CATALOG.latestStartYear);
+  const [selectedEuroSourceSeason, setSelectedEuroSourceSeason] = useState(primaryEuroSource?.coverageThrough ?? INITIAL_LEAGUE_STATS.year);
+  const [selectedPbaSeasonKey, setSelectedPbaSeasonKey] = useState<number>(PBA_HISTORY.playableStartYear);
+  const [pbaHistoricalSeasons, setPbaHistoricalSeasons] = useState<PlayablePbaSeason[]>([]);
+  const activeEuroSourceSeason = isSpainEuropeSetup
+    ? endesaStartYearToSourceSeason(selectedEndesaStartYear)
+    : selectedEuroSourceSeason;
+  const euroHistoricalSeasons = useMemo(() => buildEuropeanSourceSeasonOptions(
+    europeMarket,
+    primaryEuroSource,
+    isSpainEuropeSetup ? {
+      start: endesaStartYearToSourceSeason(ENDESA_HISTORICAL_CATALOG.firstStartYear),
+      through: endesaStartYearToSourceSeason(ENDESA_HISTORICAL_CATALOG.latestStartYear),
+    } : undefined,
+  ), [europeMarket, isSpainEuropeSetup, primaryEuroSource]);
+  const activeNbaStartYear = selectedNbaStartYear;
+  const activePbaSourceSeason = selectedPbaSeasonKey;
+  const deferredNbaStartYear = useDeferredValue(activeNbaStartYear);
+  const deferredEndesaStartYear = useDeferredValue(selectedEndesaStartYear);
+  const deferredEuroSourceSeason = useDeferredValue(selectedEuroSourceSeason);
+  const deferredPbaSourceSeason = useDeferredValue(activePbaSourceSeason);
+  const pbaSeasonOptions = pbaHistoricalSeasons.length > 0
+    ? pbaHistoricalSeasons
+    : [{
+        season: PBA_HISTORY.playableStartYear,
+        sourceSeason: PBA_HISTORY.playableStartYear,
+        startYear: PBA_HISTORY.playableStartYear,
+        label: String(PBA_HISTORY.playableStartYear),
+        dataStatus: 'COMPLETE' as const,
+        teamCount: 0,
+      }];
+  const nbaSeasonEndYear = activeNbaStartYear + 1;
+  const nbaDefaultStartDate = toISODateString(getSeasonSimStartDate(nbaSeasonEndYear));
+  const commissionerNbaStartDate = toISODateString(getCommissionerBootstrapDate(activeNbaStartYear));
+  const pbaOffseasonDate = getPbaKeyDates(activePbaSourceSeason)
+    .find(item => item.zone === 'offseason')?.date
+    ?? getConferenceStartIso('philippine', activePbaSourceSeason);
+  const pbaCommissionerStartDate = (() => {
+    const date = new Date(`${pbaOffseasonDate}T00:00:00Z`);
+    date.setUTCDate(date.getUTCDate() + 1);
+    return date.toISOString().slice(0, 10);
+  })();
+  const defaultStartDate = isHistoricalEuroSetup
+    ? `${activeEuroSourceSeason - 1}-07-01`
+    : isEuroSetup
+      ? EURO_SIM_START_DATE
+      : isPbaSetup
+        ? gameMode === 'commissioner'
+          ? pbaCommissionerStartDate
+          : getConferenceStartIso('philippine', activePbaSourceSeason)
+        : nbaDefaultStartDate;
   const [chosenDate, setChosenDate] = useState<string>(defaultStartDate);
-  const [showSettings, setShowSettings] = useState(true);
   const [settings, setSettings] = useState(() => SettingsManager.getSettings());
   const [fictionalLeagueSeed] = useState(() => Math.floor(Math.random() * 2_147_483_647));
+  const [fictionalStartupConfig, setFictionalStartupConfig] = useState<FictionalLeagueStartupConfig | null>(null);
+  const [pendingStartRequest, setPendingStartRequest] = useState<{
+    overrideDate?: string;
+    assistantGM?: boolean;
+    overrideTeamId?: number;
+    overrideEuroSeed?: EuroCareerSeed | null;
+    overrideFictionalConfig?: FictionalLeagueStartupConfig;
+    overrideNbaGmStartMode?: NbaGmStartMode;
+    returnStep: SetupStep;
+  } | null>(null);
   const [euroCareerSeed, setEuroCareerSeed] = useState<EuroCareerSeed | null>(null);
-  const labels = getLeagueLabels(leagueType);
   const isFictional = leagueType === 'fictional';
-  const isSpainEuropeSetup = leagueType === 'modded' && moddedLeagueBase === 'europe' && europeMarket === 'spain';
-
-  // Roster source depends on leagueType: modded fetches the community gist (real NBA),
-  // fictional builds the 30 generated teams locally without any network call.
-  const [rosterTeams, setRosterTeams] = useState<NBATeam[]>([]);
-  const [rosterPlayers, setRosterPlayers] = useState<NBAPlayer[]>([]);
-  const [rosterLoading, setRosterLoading] = useState(true);
-  const highlightedSpainTeamIds = React.useMemo(() => {
-    if (!isSpainEuropeSetup) return [];
-    return rosterTeams
-      .filter((team: any) => isLicensedSpanishEuroleagueClub(team) || isInitialSpanishEuroleagueWildcard(team))
-      .map((team: any) => team.id);
-  }, [isSpainEuropeSetup, rosterTeams]);
+  const franchiseIdentityOptions = resolveSetupFranchiseIdentityOptions({
+    leagueType,
+    moddedLeagueBase,
+    nbaStartYear: activeNbaStartYear,
+    euroSourceSeason: activeEuroSourceSeason,
+    pbaSourceSeason: activePbaSourceSeason,
+    wnbaSourceSeason: INITIAL_LEAGUE_STATS.year,
+  });
+  const {
+    teams: rosterTeams,
+    players: rosterPlayers,
+    loading: rosterLoading,
+    slow: rosterSlow,
+    supported: rosterSupported,
+    error: rosterError,
+    retry: retryRosterLoad,
+  } = useSetupRosterLoader({
+    enabled: shouldPrepareSetupRoster(step),
+    leagueType,
+    moddedLeagueBase,
+    europeMarket,
+    activeNbaStartYear: deferredNbaStartYear,
+    activeEndesaStartYear: deferredEndesaStartYear,
+    activeEuroSourceSeason: isSpainEuropeSetup
+      ? endesaStartYearToSourceSeason(deferredEndesaStartYear)
+      : deferredEuroSourceSeason,
+    activePbaStartYear: deferredPbaSourceSeason,
+    fictionalLeagueSeed,
+    fictionalSeasonYear: fictionalStartupConfig?.seasonYear,
+    fictionalTeams: fictionalStartupConfig?.teams,
+    fictionalHistoryMode: fictionalStartupConfig?.historyMode,
+    fictionalPlayerPool: fictionalStartupConfig?.playerPool,
+    fictionalNationalityFrequencies: fictionalStartupConfig?.nationalities,
+    fictionalLeagueRules: fictionalStartupConfig?.leagueRules,
+  });
+  const rosterSelectionPending = isNbaSetup
+    ? deferredNbaStartYear !== activeNbaStartYear
+    : isPbaSetup
+      ? deferredPbaSourceSeason !== activePbaSourceSeason
+      : isSpainEuropeSetup
+        ? deferredEndesaStartYear !== selectedEndesaStartYear
+        : isEuroSetup
+          ? deferredEuroSourceSeason !== selectedEuroSourceSeason
+          : false;
+  const seasonRosterTeams = rosterSelectionPending ? [] : rosterTeams;
+  const seasonRosterPlayers = rosterSelectionPending ? [] : rosterPlayers;
+  const seasonRosterLoading = rosterLoading || rosterSelectionPending;
   useEffect(() => {
+    if (isNbaSetup || isHistoricalEuroSetup || isHistoricalPbaSetup) setChosenDate(defaultStartDate);
+  }, [defaultStartDate, isHistoricalEuroSetup, isHistoricalPbaSetup, isNbaSetup]);
+
+  useEffect(() => {
+    if (isNbaSetup) setSelectedNbaStartYear(DEFAULT_HISTORICAL_NBA_START_YEAR);
+  }, [isNbaSetup]);
+
+  useEffect(() => {
+    if (!isHistoricalPbaSetup) return;
     let cancelled = false;
-    if (leagueType === 'fictional') {
-      const { teams, players } = generateFictionalLeague(INITIAL_LEAGUE_STATS.year, fictionalLeagueSeed);
-      setRosterTeams(teams);
-      setRosterPlayers(players);
-      setRosterLoading(false);
-      return;
-    }
-    if (isPbaSetup) {
-      fetchPBARoster(getPBARosterEconomyConfig({
-        ...INITIAL_LEAGUE_STATS,
-        ...PBA_ISOLATED_DEFAULTS,
-      }, 'pba_isolated')).then(({ teams, players }) => {
-        if (cancelled) return;
-        const mappedTeams = teams.map((team: NonNBATeam) => ({
-          id: team.tid,
-          tid: team.tid,
-          region: team.region,
-          name: team.name,
-          abbrev: team.abbrev,
-          colors: team.colors,
-          logoUrl: getResolvedTeamLogoUrl(team),
-          pop: team.pop,
-          stadiumCapacity: team.stadiumCapacity,
-          wins: 0,
-          losses: 0,
-        })) as unknown as NBATeam[];
-        setRosterTeams(mappedTeams);
-        setRosterPlayers(players);
-        setRosterLoading(false);
-      }).catch(() => { if (!cancelled) setRosterLoading(false); });
-      return;
-    }
-    if (isSpainEuropeSetup) {
-      fetchEndesaRoster().then(({ teams, players }) => {
-        if (cancelled) return;
-        const mappedTeams = teams.map((team: NonNBATeam) => ({
-          id: team.tid,
-          tid: team.tid,
-          region: team.region,
-          name: team.name,
-          abbrev: team.abbrev,
-          colors: team.colors,
-          logoUrl: team.imgURL,
-          pop: team.pop,
-          stadiumCapacity: team.stadiumCapacity,
-          wins: 0,
-          losses: 0,
-        })) as unknown as NBATeam[];
-        setRosterTeams(mappedTeams);
-        setRosterPlayers(players);
-        setRosterLoading(false);
-      }).catch(() => { if (!cancelled) setRosterLoading(false); });
-      return;
-    }
-    prewarmRoster().then(data => {
+    loadHistoricalPbaSource().then(source => {
       if (cancelled) return;
-      setRosterTeams(data.teams);
-      setRosterPlayers(data.players);
-      setRosterLoading(false);
-    }).catch(() => { if (!cancelled) setRosterLoading(false); });
-    return () => { cancelled = true; };
-  }, [fictionalLeagueSeed, isSpainEuropeSetup, isPbaSetup, leagueType]);
+      const seasons = getPlayablePbaSeasons(source);
+      setPbaHistoricalSeasons(seasons);
+      setSelectedPbaSeasonKey(seasons.at(-1)?.season ?? PBA_HISTORY.playableStartYear);
+    }).catch(() => {
+      if (!cancelled) setPbaHistoricalSeasons([]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [isHistoricalPbaSetup]);
+
+  const handleHistoricalSeasonChange = (startYear: number) => {
+    setSelectedNbaStartYear(startYear);
+    setUserTeamId(undefined);
+  };
+
+  const handleHistoricalEndesaSeasonChange = (startYear: number) => {
+    setSelectedEndesaStartYear(startYear);
+    setUserTeamId(undefined);
+    setEuroCareerSeed(null);
+  };
+
+  const handleHistoricalEuroSeasonChange = (startYear: number) => {
+    setSelectedEuroSourceSeason(startYear + 1);
+    setUserTeamId(undefined);
+    setEuroCareerSeed(null);
+  };
+
+  const handleHistoricalPbaSeasonChange = (seasonKey: number) => {
+    setSelectedPbaSeasonKey(seasonKey);
+    setUserTeamId(undefined);
+  };
 
   const updateSetting = <K extends keyof typeof settings>(key: K, value: typeof settings[K]) => {
     const updated = { ...settings, [key]: value };
@@ -154,9 +292,17 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
     SettingsManager.saveSettings(updated);
   };
 
-  const handleNameSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!name.trim()) return;
+  const handleNameContinue = (profileName: string) => {
+    if (!profileName.trim()) return;
+    nameRef.current = profileName;
+    if (isHistoricalNbaSetup || isHistoricalEuroSetup || isHistoricalPbaSetup) {
+      setStep('season');
+      return;
+    }
+    if (isFictional) {
+      setStep('fictionalStartup');
+      return;
+    }
     if (gameMode === 'gm') {
       setStep('franchise');
       return;
@@ -165,7 +311,11 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       handleStart(defaultStartDate);
       return;
     }
-    setStep('timeline');
+    if (isNbaSetup) {
+      setStep('nbaStart');
+      return;
+    }
+    handleStart(defaultStartDate);
   };
 
   const buildEuroCareerSeed = (teamId: number): EuroCareerSeed | null => {
@@ -178,30 +328,96 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       abbrev: t.abbrev,
       imgURL: t.logoUrl,
       colors: t.colors,
-      league: 'Endesa',
+      league: primaryEuroLeagueStatus,
     })) as NonNBATeam[];
     const masterSeed = ((fictionalLeagueSeed ^ Math.imul(teamId || 1, 2654435761)) >>> 0) || 1;
-    return seedEuroCareer(team, { players: rosterPlayers, nonNBATeams }, 'endesa', masterSeed);
+    const economyScale = getEuroHistoricalEconomyFactor(activeEuroSourceSeason);
+    const careerSeed = seedEuroCareer(
+      team,
+      { players: rosterPlayers, nonNBATeams },
+      primaryEuroLeagueId,
+      masterSeed,
+      economyScale,
+      activeEuroSourceSeason,
+    );
+    const coachSource = getCachedEuropeanCoachSource();
+    return coachSource
+      ? {
+          ...careerSeed,
+          staff: mergeEuropeanCoachStaffForTeam(
+            team,
+            careerSeed.staff,
+            activeEuroSourceSeason,
+            primaryEuroLeagueId,
+            coachSource,
+          ),
+        }
+      : careerSeed;
   };
 
-  const handleStart = (overrideDate?: string, assistantGM?: boolean, overrideTeamId?: number, overrideEuroSeed?: EuroCareerSeed | null) => {
+  const handleStart = (
+    overrideDate?: string,
+    assistantGM?: boolean,
+    overrideTeamId?: number,
+    overrideEuroSeed?: EuroCareerSeed | null,
+    overrideFictionalConfig?: FictionalLeagueStartupConfig,
+    overrideNbaGmStartMode?: NbaGmStartMode,
+    openingRosterMode?: OpeningRosterMode,
+  ) => {
     // Always reset to Fast mode when starting a new game
     SettingsManager.updateSettings({ llmPerformance: 1 });
-    const nameCase = name.trim()
+    const nameCase = nameRef.current.trim()
       .split(' ')
       .map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase())
       .join(' ');
-    const date = overrideDate ?? chosenDate;
+    const activeFictionalConfig = overrideFictionalConfig ?? fictionalStartupConfig;
+    if (gameMode === 'gm' && !activeFictionalConfig && !openingRosterMode) {
+      setPendingStartRequest({
+        overrideDate,
+        assistantGM,
+        overrideTeamId,
+        overrideEuroSeed,
+        overrideFictionalConfig,
+        overrideNbaGmStartMode,
+        returnStep: step,
+      });
+      setStep('rosterSetup');
+      return;
+    }
+    const fictionalStartPolicy = activeFictionalConfig
+      ? buildPersistedStartModePolicy(
+          activeFictionalConfig.seasonYear,
+          { ...INITIAL_LEAGUE_STATS, ...activeFictionalConfig.leagueRules },
+          'opening_rosters',
+        )
+      : undefined;
+    const fictionalStartDate = fictionalStartPolicy?.firstActionDate;
+    const commissionerStartDate = activeFictionalConfig
+      ? fictionalStartDate!
+      : isNbaSetup
+        ? overrideDate ?? commissionerNbaStartDate
+        : overrideDate ?? fictionalStartDate ?? chosenDate;
+    const requestedDate = gameMode === 'commissioner'
+      ? commissionerStartDate
+      : overrideDate ?? fictionalStartDate ?? chosenDate;
+    const date = isEuroSetup ? defaultStartDate : requestedDate;
     const fallbackPbaTeamId = isPbaSetup ? rosterTeams[0]?.id : undefined;
     const selectedTeamId = overrideTeamId ?? userTeamId ?? fallbackPbaTeamId;
     const selectedEuroSeed = overrideEuroSeed ?? (isEuroSetup ? euroCareerSeed : null);
+    const resolvedRosterMode = resolveOpeningRosterMode(
+      gameMode,
+      activeFictionalConfig?.rosterMode ?? openingRosterMode,
+    );
     onStart({
       name: nameCase,
       startScenario: 'regular_season',
       skipLLM: !settings.enableLLM,
       startDate: date,
       // Isolated leagues initialize their own calendar after START_GAME.
-      jumpRequired: (isEuroSetup || isPbaSetup) ? false : date > SIM_START_DATE,
+      jumpRequired: gameMode === 'gm'
+        && !(isEuroSetup || isPbaSetup || activeFictionalConfig)
+        && !overrideNbaGmStartMode
+        && date > defaultStartDate,
       gameMode,
       userTeamId: gameMode === 'gm' ? selectedTeamId : undefined,
       assistantGM: gameMode === 'gm' ? (assistantGM ?? false) : false,
@@ -209,12 +425,37 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
       moddedLeagueBase: leagueType === 'modded' ? moddedLeagueBase : undefined,
       europeMarket: leagueType === 'modded' ? europeMarket : undefined,
       fictionalLeagueSeed: isFictional ? fictionalLeagueSeed : undefined,
+      fictionalLeagueName: activeFictionalConfig?.leagueName,
+      fictionalSeasonYear: activeFictionalConfig?.seasonYear,
+      fictionalHistoryMode: activeFictionalConfig?.historyMode,
+      fictionalTeams: activeFictionalConfig?.teams,
+      fictionalPlayerPool: activeFictionalConfig?.playerPool,
+      fictionalRosterMode: activeFictionalConfig ? resolvedRosterMode : undefined,
+      openingRosterMode: resolvedRosterMode,
+      fictionalNationalityFrequencies: activeFictionalConfig?.nationalities,
+      fictionalLeagueRules: activeFictionalConfig?.leagueRules,
+      startModePolicy: fictionalStartPolicy,
+      firstActionDate: fictionalStartPolicy?.firstActionDate,
       euroCareerSeed: selectedEuroSeed ?? undefined,
-      euroCareerLeagueId: selectedEuroSeed ? 'endesa' : undefined,
+      euroCareerLeagueId: selectedEuroSeed ? primaryEuroLeagueId : undefined,
+      nbaStartYear: isNbaSetup ? selectedNbaStartYear : undefined,
+      nbaGmStartMode: isNbaSetup ? overrideNbaGmStartMode : undefined,
+      endesaStartYear: isHistoricalEndesaSetup ? selectedEndesaStartYear : undefined,
+      euroStartSeason: isEuroSetup ? activeEuroSourceSeason : undefined,
+      pbaStartYear: isHistoricalPbaSetup ? selectedPbaSeasonKey - 1 : undefined,
+      pbaSeasonKey: isHistoricalPbaSetup ? selectedPbaSeasonKey : undefined,
     });
   };
 
   const handleDateSelected = (date: string) => {
+    if (isEuroSetup) {
+      handleStart(defaultStartDate, false, userTeamId, euroCareerSeed);
+      return;
+    }
+    if (isPbaSetup) {
+      handleStart(date, false, userTeamId, euroCareerSeed);
+      return;
+    }
     setChosenDate(date);
     if (date === defaultStartDate) {
       handleStart(date, false, userTeamId, euroCareerSeed);
@@ -224,18 +465,27 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
   };
 
   const handleBack = () => {
-    if (step === 'review') {
+    if (step === 'rosterSetup' && pendingStartRequest) {
+      setStep(pendingStartRequest.returnStep);
+      setPendingStartRequest(null);
+    } else if (step === 'review') {
       setStep('timeline');
     } else if (step === 'euroReview') {
+      setStep('franchise');
+    } else if (step === 'fictionalStartup') {
+      setStep('name');
+    } else if (step === 'nbaStart') {
       setStep('franchise');
     } else if (step === 'timeline') {
       if (isEuroSetup && euroCareerSeed) {
         setStep('euroReview');
         return;
       }
-      setStep(gameMode === 'gm' ? 'franchise' : 'name');
-    } else if (step === 'franchise') {
+      setStep(isHistoricalNbaSetup ? 'season' : gameMode === 'gm' ? 'franchise' : 'name');
+    } else if (step === 'season') {
       setStep('name');
+    } else if (step === 'franchise') {
+      setStep(isHistoricalNbaSetup || isHistoricalEuroSetup || isHistoricalPbaSetup ? 'season' : fictionalStartupConfig ? 'fictionalStartup' : 'name');
     } else if (step === 'name') {
       setStep('mode');
     } else {
@@ -243,8 +493,56 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
     }
   };
 
+  if (step === 'rosterSetup' && pendingStartRequest) {
+    return (
+      <FictionalRosterSetupScreen
+        onSelect={(mode) => {
+          const request = pendingStartRequest;
+          setPendingStartRequest(null);
+          handleStart(
+            request.overrideDate,
+            request.assistantGM,
+            request.overrideTeamId,
+            request.overrideEuroSeed,
+            request.overrideFictionalConfig,
+            request.overrideNbaGmStartMode,
+            mode,
+          );
+        }}
+      />
+    );
+  }
+
+  if (step === 'fictionalStartup' && isFictional) {
+    return (
+      <FictionalLeagueBuilder
+        onBack={() => setStep('name')}
+        onContinue={(config) => {
+          setFictionalStartupConfig(config);
+          setUserTeamId(undefined);
+          if (gameMode === 'gm') {
+            setStep('franchise');
+          } else {
+            handleStart(undefined, false, undefined, null, config);
+          }
+        }}
+      />
+    );
+  }
+
   // ── Mode Picker (first screen) ────────────────────────────────────────────
   if (step === 'mode') {
+    if (!isFictional) {
+      return (
+        <ModdedRoleSelector
+          leagueBase={moddedLeagueBase}
+          selectedRole={gameMode}
+          onSelect={setGameMode}
+          onContinue={() => setStep('name')}
+          onBack={onBack}
+        />
+      );
+    }
     return (
       <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950" />
@@ -260,15 +558,15 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
             <p className="text-slate-400 text-sm">How do you want to experience the {isFictional ? 'league' : moddedLeagueBase === 'europe' ? 'European game' : moddedLeagueBase === 'philippines' ? 'PBA' : 'NBA'}?</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Commissioner Card — disabled for Europe modded saves (commissioner tooling not built yet for that mode) */}
+            {/* Commissioner Card — Europe remains GM-only until its assembly flow is complete. */}
             <button
               onClick={() => {
-                if (moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines') return;
+                if (moddedLeagueBase === 'europe') return;
                 setGameMode('commissioner'); setStep('name');
               }}
-              disabled={moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines'}
+              disabled={moddedLeagueBase === 'europe'}
               className={`group relative p-6 rounded-2xl border-2 transition-all text-left ${
-                moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines'
+                moddedLeagueBase === 'europe'
                   ? 'border-slate-900 bg-slate-900/30 opacity-50 cursor-not-allowed'
                   : gameMode === 'commissioner'
                     ? 'border-indigo-500 bg-indigo-500/10'
@@ -278,15 +576,17 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
               <div className="flex items-center gap-3 mb-3">
                 <Crown size={24} className="text-indigo-400" />
                 <h3 className="text-xl font-black text-white uppercase tracking-tight">Commissioner</h3>
-                {(moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines') && (
+                {moddedLeagueBase === 'europe' && (
                   <span className="ml-auto text-[9px] font-black uppercase tracking-widest px-2 py-0.5 bg-amber-500/10 text-amber-300 border border-amber-500/30 rounded">
                     Coming Soon
                   </span>
                 )}
               </div>
               <p className="text-sm text-slate-400 leading-relaxed">
-                {moddedLeagueBase === 'europe' || moddedLeagueBase === 'philippines'
-                  ? <>{moddedLeagueBase === 'philippines' ? 'PBA' : 'European'} commissioner mode is in development. For now, {moddedLeagueBase === 'philippines' ? 'PBA' : 'European'} saves are <span className="text-white font-bold">GM-only</span>.</>
+                {moddedLeagueBase === 'europe'
+                  ? <>European commissioner mode is in development. For now, European saves are <span className="text-white font-bold">GM-only</span>.</>
+                  : moddedLeagueBase === 'philippines'
+                    ? <>Run the <span className="font-bold text-white">entire PBA</span>. Review league proposals, tune competition rules and finances, manage events, and guide every franchise from the offseason calendar.</>
                   : <>Control the <span className="text-white font-bold">entire league</span>. Set rules, suspend players, force trades, manage finances, and shape the narrative.</>
                 }
               </p>
@@ -317,7 +617,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                 {(moddedLeagueBase === 'europe'
                   ? ['Trades', 'Free Agency', 'No Draft', 'Roster', 'Your Team']
                   : moddedLeagueBase === 'philippines'
-                    ? ['3 Cups', 'Imports', '4-Point Line', 'Draft', 'Your Team']
+                    ? ['3 Cups', 'Imports', getHistoricalPbaRuleOverrides(activePbaSourceSeason).fourPointLine ? '4-Point Line' : 'Historical Rules', 'Draft', 'Your Team']
                     : ['Trades', 'Free Agency', 'Draft', 'Roster', 'Your Team']
                 ).map(tag => (
                   <span key={tag} className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 bg-emerald-500/10 text-emerald-400 rounded">{tag}</span>
@@ -330,21 +630,141 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
     );
   }
 
+  if (step === 'season' && isHistoricalNbaSetup) {
+    return (
+      <HistoricalSeasonPicker
+        selectedStartYear={selectedNbaStartYear}
+        onChange={handleHistoricalSeasonChange}
+        onContinue={() => {
+          if (!seasonRosterLoading && rosterSupported && seasonRosterTeams.length > 0) {
+            if (gameMode === 'gm') setStep('franchise');
+            else setStep('nbaStart');
+          }
+        }}
+        onBack={() => setStep('name')}
+        teams={seasonRosterTeams}
+        players={seasonRosterPlayers}
+        loading={seasonRosterLoading}
+        loadSlow={rosterSlow}
+        sourceReady={rosterSupported}
+        errorMessage={rosterError}
+        onRetry={retryRosterLoad}
+        continueLabel={gameMode === 'gm' ? 'Choose Team' : 'Choose Starting Point'}
+      />
+    );
+  }
+
+  if (step === 'season' && isHistoricalPbaSetup) {
+    return (
+      <HistoricalEndesaSeasonPicker
+        selectedStartYear={selectedPbaSeasonKey}
+        onChange={handleHistoricalPbaSeasonChange}
+        onContinue={() => {
+          if (seasonRosterLoading || !rosterSupported || seasonRosterTeams.length < 2) return;
+          if (gameMode === 'gm') setStep('franchise');
+          else handleStart(pbaCommissionerStartDate);
+        }}
+        onBack={() => setStep('name')}
+        teams={seasonRosterTeams}
+        players={seasonRosterPlayers}
+        loading={seasonRosterLoading}
+        loadSlow={rosterSlow}
+        sourceReady={rosterSupported}
+        errorMessage={rosterError}
+        onRetry={retryRosterLoad}
+        leagueName="PBA"
+        countryName="Philippine"
+        seasons={pbaSeasonOptions}
+        requiredTeamCount={2}
+        featuredPlayerFilter={player => isPbaRosterLocal(player)}
+        earliestPlayableNote="Earliest complete playable PBA season in this database."
+        seasonNote=""
+      />
+    );
+  }
+
+  if (step === 'season' && isHistoricalEndesaSetup) {
+    return (
+      <HistoricalEndesaSeasonPicker
+        selectedStartYear={selectedEndesaStartYear}
+        onChange={handleHistoricalEndesaSeasonChange}
+        onContinue={() => {
+          if (!seasonRosterLoading && rosterSupported && seasonRosterTeams.length >= 2) setStep('franchise');
+        }}
+        onBack={() => setStep('name')}
+        teams={seasonRosterTeams}
+        players={seasonRosterPlayers}
+        loading={seasonRosterLoading}
+        loadSlow={rosterSlow}
+        sourceReady={rosterSupported}
+        errorMessage={rosterError}
+        onRetry={retryRosterLoad}
+        seasons={euroHistoricalSeasons}
+        requiredTeamCount={2}
+        earliestPlayableNote="Earliest complete playable Liga ACB season in this database."
+      />
+    );
+  }
+
+  if (step === 'season' && isHistoricalEuroSetup && primaryEuroSource) {
+    return (
+      <HistoricalEndesaSeasonPicker
+        selectedStartYear={selectedEuroSourceSeason - 1}
+        onChange={handleHistoricalEuroSeasonChange}
+        onContinue={() => {
+          if (!seasonRosterLoading && rosterSupported && seasonRosterTeams.length >= 2) setStep('franchise');
+        }}
+        onBack={() => setStep('name')}
+        teams={seasonRosterTeams}
+        players={seasonRosterPlayers}
+        loading={seasonRosterLoading}
+        loadSlow={rosterSlow}
+        sourceReady={rosterSupported}
+        errorMessage={rosterError}
+        onRetry={retryRosterLoad}
+        leagueName={primaryEuroLeagueName}
+        countryName={primaryEuroCountry}
+        seasons={euroHistoricalSeasons}
+        requiredTeamCount={2}
+      />
+    );
+  }
+
   // Fullscreen franchise picker — GM mode only, between name and timeline.
   // Recycles the TeamOffice Home grid so the visual language matches the in-game Team Office.
   if (step === 'franchise') {
     return (
       <div className="min-h-screen w-full bg-[#0d1117] overflow-y-auto">
         <button
-          onClick={() => setStep('name')}
+          onClick={() => setStep(isHistoricalNbaSetup || isHistoricalEuroSetup || isHistoricalPbaSetup ? 'season' : fictionalStartupConfig ? 'fictionalStartup' : 'name')}
           className="absolute top-6 left-6 text-[#8b949e] hover:text-white flex items-center gap-2 transition-colors z-20 text-sm font-bold uppercase tracking-widest"
         >
           <ArrowLeft size={18} /> Back
         </button>
         <div className="px-4 md:px-10 py-10">
           {rosterLoading ? (
-            <div className="min-h-[60vh] flex items-center justify-center text-[#8b949e] font-bold uppercase tracking-widest animate-pulse">
-              Loading franchises…
+            <div className="min-h-[60vh] flex flex-col items-center justify-center gap-3 text-center text-[#8b949e] font-bold uppercase tracking-widest">
+              <div className="animate-pulse">{rosterSlow ? 'Still preparing franchises…' : 'Loading franchises…'}</div>
+              {rosterSlow && (
+                <div className="max-w-md text-xs normal-case leading-6 tracking-normal text-[#8b949e]/80">
+                  This can take longer on a weak connection. You can wait here or go back and choose another season.
+                </div>
+              )}
+            </div>
+          ) : !rosterSupported ? (
+            <div className="min-h-[60vh] flex items-center justify-center px-4">
+              <div className="max-w-md rounded-2xl border border-amber-500/30 bg-amber-500/10 p-6 text-center">
+                <div className="text-sm font-black uppercase tracking-widest text-amber-300">Franchises Unavailable</div>
+                <p className="mt-3 text-sm leading-6 text-slate-300">
+                  {rosterError ?? 'Teams could not be prepared. Check your connection and try again.'}
+                </p>
+                <button
+                  onClick={retryRosterLoad}
+                  className="mt-5 h-11 rounded-xl bg-amber-500 px-5 text-xs font-black uppercase tracking-widest text-slate-950 transition-colors hover:bg-amber-400"
+                >
+                  Try Again
+                </button>
+              </div>
             </div>
           ) : (
             <FranchisePicker
@@ -352,14 +772,34 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
               selectedTid={userTeamId ?? null}
               teams={rosterTeams}
               players={rosterPlayers}
-              title={isSpainEuropeSetup ? 'Pick Your Endesa Club' : isPbaSetup ? 'Pick Your PBA Team' : undefined}
-              subtitle={isSpainEuropeSetup ? 'Spain setup path. Real Madrid, Barcelona and Baskonia are EuroLeague regulars; every other Endesa club is chasing the single Spanish wildcard.' : isPbaSetup ? 'Three conferences per season. Philippine Cup, Commissioner\'s Cup, Governors\' Cup.' : undefined}
-              highlightedTeamIds={isSpainEuropeSetup ? highlightedSpainTeamIds : undefined}
-              highlightedLabel={isSpainEuropeSetup ? 'EuroLeague' : undefined}
+              seasonYear={franchiseIdentityOptions.seasonYear}
+              preserveProvidedBranding={franchiseIdentityOptions.preserveProvidedBranding}
+              title={isEuroSetup
+                ? `Pick Your ${primaryEuroLeagueName} Club`
+                : isPbaSetup
+                  ? 'Pick Your PBA Team'
+                  : isWnbaSetup
+                    ? 'Pick Your WNBA Team'
+                    : undefined}
+              subtitle={isEuroSetup
+                ? `Choose a ${primaryEuroCountry} club for the ${primaryEuroLeagueName} season.`
+                : isPbaSetup
+                  ? 'Three conferences per season. Philippine Cup, Commissioner\'s Cup, Governors\' Cup.'
+                  : isWnbaSetup
+                    ? 'Choose the franchise you will lead.'
+                    : undefined}
               onSelectTeam={(teamId) => {
                 setUserTeamId(teamId);
+                if (isFictional && fictionalStartupConfig) {
+                  handleStart(undefined, false, teamId);
+                  return;
+                }
                 if (isPbaSetup) {
                   setStep('timeline');
+                  return;
+                }
+                if (isWnbaSetup) {
+                  handleStart(undefined, false, teamId);
                   return;
                 }
                 if (isEuroSetup) {
@@ -372,7 +812,7 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                   }
                   return;
                 }
-                setStep('timeline');
+                setStep(isNbaSetup ? 'nbaStart' : 'timeline');
               }}
             />
           )}
@@ -381,78 +821,115 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
     );
   }
 
+  if (step === 'nbaStart' && isNbaSetup) {
+    return (
+      <NbaGmStartModePicker
+        startYear={selectedNbaStartYear}
+        gameMode={gameMode}
+        onSelect={(mode, date) => handleStart(date, false, userTeamId, null, undefined, mode)}
+        onBack={() => setStep(gameMode === 'gm'
+          ? 'franchise'
+          : isHistoricalNbaSetup
+            ? 'season'
+            : 'name')}
+      />
+    );
+  }
+
   if (step === 'euroReview' && euroCareerSeed && userTeamId != null) {
     const staff = euroCareerSeed.staff;
     const teamObj = euroCareerSeed.team;
-    const teamColors = teamObj.colors ?? ['#10b981', '#1e293b'];
+    const teamColors = (teamObj.colors ?? []).filter(color => /^#[0-9a-f]{6}$/i.test(color)).slice(0, 3);
+    while (teamColors.length < 3) teamColors.push(['#2563EB', '#F8FAFC', '#0F172A'][teamColors.length]);
+    const neutralClubColors = new Set(['#000000', '#0B0B0B', '#111111', '#111827', '#0F172A', '#1F2937', '#FFFFFF', '#F8FAFC', '#F9FAFB', '#9CA3AF', '#C8C9C7']);
+    const accentColors = teamColors.filter(color => !neutralClubColors.has(color.toUpperCase()));
+    const teamAccent = accentColors[0] ?? teamColors[0];
+    const teamAccentAlt = accentColors[1] ?? teamAccent;
+    const accentRgb = teamAccent.slice(1).match(/.{2}/g)?.map(channel => Number.parseInt(channel, 16)) ?? [255, 255, 255];
+    const accentText = (accentRgb[0] * 299 + accentRgb[1] * 587 + accentRgb[2] * 114) / 1000 > 156 ? '#020617' : '#FFFFFF';
+    const panelStyle = {
+      borderColor: `${teamAccent}35`,
+      background: `linear-gradient(145deg, ${teamAccent}10 0%, rgba(15, 23, 42, 0.86) 48%, ${teamAccentAlt}0D 100%)`,
+      boxShadow: `inset 0 1px 0 ${teamAccent}12`,
+    };
     const stadiumCap = (teamObj as any).stadiumCapacity as number | undefined;
     const academyLevel = euroCareerSeed.tier === 'Powerhouse' ? 5 : euroCareerSeed.tier === 'Established' ? 4 : euroCareerSeed.tier === 'MidTier' ? 3 : 2;
-    const isLicensedEuroleagueClub = isLicensedSpanishEuroleagueClub(teamObj as any);
-    const isCurrentWildcardClub = isInitialSpanishEuroleagueWildcard(teamObj as any);
-    const euroleagueGoal = isLicensedEuroleagueClub
-      ? 'Your club starts every season on the EuroLeague stage. The board expects a playoff push while you keep the domestic title race alive.'
-      : isCurrentWildcardClub
-        ? 'You open with Spain\'s current EuroLeague invitation. Keep your Endesa finish ahead of every other non-licensed Spanish club to hold that place next year.'
-        : 'Your route to Europe is domestic form. Finish as the highest non-licensed Spanish club in Liga Endesa and the next EuroLeague invitation is yours.';
+    const domesticGoal = `Build a sustainable contender in ${primaryEuroLeagueName} while earning a place among Europe’s best clubs.`;
+    const sponsorLeague = resolveSponsorLeagueKey(europeMarket, euroCareerSeed.leagueId, primaryEuroCountry, primaryEuroLeagueName);
 
     const STAFF_ROLE_ICONS: Record<string, React.ReactNode> = {
-      'Head Coach': <Dumbbell size={18} className="text-emerald-400" />,
-      'Assistant Coach': <Users size={18} className="text-emerald-400" />,
-      'Assistant Coach 2': <Users size={18} className="text-emerald-400" />,
-      'Assistant Coach 3': <Users size={18} className="text-emerald-400" />,
-      'Head of Sports Science': <Activity size={18} className="text-emerald-400" />,
-      'Head Physio': <Activity size={18} className="text-emerald-400" />,
-      'Player Development Coach': <Dumbbell size={18} className="text-emerald-400" />,
-      'Chief Scout': <Search size={18} className="text-emerald-400" />,
-      'Head of Analytics': <BarChart size={18} className="text-emerald-400" />,
+      'Head Coach': <Dumbbell size={18} style={{ color: teamAccent }} />,
+      'Assistant Coach': <Users size={18} style={{ color: teamAccent }} />,
+      'Assistant Coach 2': <Users size={18} style={{ color: teamAccent }} />,
+      'Assistant Coach 3': <Users size={18} style={{ color: teamAccent }} />,
+      'Head of Sports Science': <Activity size={18} style={{ color: teamAccent }} />,
+      'Head Physio': <Activity size={18} style={{ color: teamAccent }} />,
+      'Player Development Coach': <Dumbbell size={18} style={{ color: teamAccent }} />,
+      'Chief Scout': <Search size={18} style={{ color: teamAccent }} />,
+      'Head of Analytics': <BarChart size={18} style={{ color: teamAccent }} />,
     };
 
-    const SPONSOR_SLOT_ICONS: Record<string, React.ReactNode> = {
-      main: <Landmark size={22} className="text-emerald-400" />,
-      jersey: <Shield size={22} className="text-sky-400" />,
-      arena: <Building2 size={22} className="text-amber-400" />,
-    };
     const SPONSOR_SLOT_LABELS: Record<string, string> = {
       main: 'Main Sponsor',
       jersey: 'Jersey Sponsor',
       arena: 'Arena Sponsor',
     };
-    const OWNER_ATTR_ICONS: Record<string, React.ReactNode> = {
-      wealth: <Gem size={16} className="text-emerald-400" />,
-      patience: <Hourglass size={16} className="text-emerald-400" />,
-      vision: <Eye size={16} className="text-emerald-400" />,
-    };
-
     return (
-      <div className="min-h-screen bg-slate-950 text-slate-100 overflow-y-auto">
+      <div
+        className="relative isolate min-h-screen bg-slate-950 text-slate-100 overflow-y-auto"
+        style={{
+          background: `
+            radial-gradient(circle at 10% -5%, ${teamAccent}38 0%, transparent 34%),
+            radial-gradient(circle at 94% 12%, ${teamAccentAlt}24 0%, transparent 30%),
+            linear-gradient(145deg, #020617 0%, #070D1B 46%, #020617 100%)
+          `,
+        }}
+      >
+        <div
+          className="pointer-events-none fixed inset-x-0 top-0 h-1 z-30"
+          style={{ background: `linear-gradient(90deg, ${teamAccent}, ${teamAccentAlt}, ${teamColors[2]})` }}
+        />
+        <div
+          className="pointer-events-none fixed -left-32 top-40 h-72 w-72 rounded-full blur-3xl opacity-20"
+          style={{ backgroundColor: teamAccent }}
+        />
         <button
           onClick={() => setStep('franchise')}
-          className="fixed top-6 left-6 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20 text-sm font-bold uppercase tracking-widest"
+          className="fixed top-6 left-4 sm:left-6 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20 text-sm font-bold uppercase tracking-widest"
         >
           <ArrowLeft size={18} /> Back
         </button>
-        <div className="max-w-[1280px] mx-auto px-5 py-12 md:py-16">
+        <div className="relative z-10 max-w-[1280px] mx-auto px-4 sm:px-5 py-16 md:py-20">
           {/* ── Header: Logo + Team Name + Chips ── */}
           <div className="mb-8 flex flex-col md:flex-row md:items-start gap-5">
             {teamObj.logoUrl && (
-              <img src={teamObj.logoUrl} alt="" className="w-20 h-20 md:w-28 md:h-28 object-contain shrink-0" />
+              <div
+                className="w-24 h-24 md:w-32 md:h-32 rounded-3xl border p-3 flex items-center justify-center shrink-0"
+                style={{
+                  borderColor: `${teamAccent}55`,
+                  background: `radial-gradient(circle at 35% 25%, ${teamAccent}2E 0%, rgba(15, 23, 42, 0.88) 68%)`,
+                  boxShadow: `0 18px 50px ${teamAccent}24`,
+                }}
+              >
+                <img src={teamObj.logoUrl} alt="" className="w-full h-full object-contain" />
+              </div>
             )}
             <div className="flex-1 min-w-0">
-              <div className="text-[11px] font-black uppercase tracking-[0.2em] text-emerald-400 mb-2">Euro Career Setup</div>
-              <h1 className="text-3xl md:text-5xl font-black text-white leading-tight truncate">{teamObj.region} {teamObj.name}</h1>
+              <div className="text-[11px] font-black uppercase tracking-[0.2em] mb-2" style={{ color: teamAccent }}>{primaryEuroLeagueName} Career</div>
+              <h1 className="text-3xl md:text-5xl font-black text-white leading-tight break-words">{getTeamFullName(teamObj)}</h1>
               <p className="mt-2 text-sm text-slate-400 max-w-2xl">Review the starting club profile before the save is created.</p>
               <div className="mt-4 flex flex-wrap gap-3">
-                <div className="flex items-center gap-2 rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-2">
+                <div className="flex items-center gap-2 rounded-xl border px-4 py-2" style={panelStyle}>
                   <BarChart2 size={16} className="text-slate-400" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Tier</span>
                   <span className="text-sm font-black text-white">{euroCareerSeed.tier}</span>
                 </div>
-                <div className="flex items-center gap-2 rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-2">
-                  <Banknote size={16} className="text-emerald-400" />
+                <div className="flex items-center gap-2 rounded-xl border px-4 py-2" style={panelStyle}>
+                  <Banknote size={16} style={{ color: teamAccent }} />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Starting Budget</span>
-                  <span className="text-sm font-black text-emerald-400">{'€'}{(euroCareerSeed.budget / 1_000_000).toFixed(1)}M</span>
+                  <span className="text-sm font-black" style={{ color: teamAccent }}>{'€'}{(euroCareerSeed.budget / 1_000_000).toFixed(1)}M</span>
                 </div>
-                <div className="flex items-center gap-2 rounded-xl bg-slate-900/80 border border-slate-800 px-4 py-2">
+                <div className="flex items-center gap-2 rounded-xl border px-4 py-2" style={panelStyle}>
                   <CalendarDays size={16} className="text-slate-400" />
                   <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Start Date</span>
                   <span className="text-sm font-black text-white">July 1</span>
@@ -465,20 +942,24 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
             {/* ── Left Column ── */}
             <div className="space-y-6">
               {/* Technical Staff */}
-              <section className="rounded-2xl border border-slate-800 bg-slate-900/70 overflow-hidden">
+              <section className="rounded-2xl border overflow-hidden" style={panelStyle}>
                 <div className="px-5 pt-5 pb-3">
                   <div className="text-xs font-black uppercase tracking-widest text-slate-400">
                     Technical Staff
-                    <div className="mt-1 h-0.5 w-10 bg-emerald-500 rounded-full" />
+                    <div className="mt-1 h-0.5 w-10 rounded-full" style={{ background: `linear-gradient(90deg, ${teamAccent}, ${teamAccentAlt})` }} />
                   </div>
                 </div>
                 <div className="px-5 pb-4 grid md:grid-cols-2 gap-3">
                   {staff.map(member => (
-                    <div key={member.position} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
+                    <div
+                      key={member.position}
+                      className="flex items-center gap-3 rounded-xl border bg-slate-950/60 p-3"
+                      style={{ borderColor: `${teamAccent}24`, background: `linear-gradient(110deg, ${teamAccent}0D, rgba(2, 6, 23, 0.7) 42%)` }}
+                    >
                       {/* Portrait */}
-                      <div className="w-14 h-14 shrink-0 rounded-lg bg-slate-800/60 overflow-hidden">
+                      <div className="w-14 h-14 shrink-0 rounded-lg bg-slate-800/60 overflow-hidden border" style={{ borderColor: `${teamAccent}35` }}>
                         {(() => {
-                          const staffImg = getStaffImageUrl((member as any).staffImageId);
+                          const staffImg = member.playerPortraitUrl ?? getStaffImageUrl((member as any).staffImageId);
                           if (staffImg) return <img src={staffImg} alt={member.name} className="w-full h-full object-cover" loading="lazy" />;
                           if (isRealFaceConfig(member.face)) return <MyFace face={member.face} lazy style={{ width: '100%', height: '100%' }} />;
                           return <div className="w-full h-full flex items-center justify-center text-slate-600"><User size={24} /></div>;
@@ -487,12 +968,11 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                       {/* Info */}
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-bold text-white truncate">{member.name}</div>
-                        <div className="text-[10px] font-black uppercase tracking-widest text-emerald-400">{member.jobTitle ?? member.position}</div>
+                        <div className="text-[10px] font-black uppercase tracking-widest" style={{ color: teamAccent }}>{displayStaffRole(member.jobTitle ?? member.position ?? '')}</div>
                         <div className="mt-1 flex items-center gap-1.5 text-xs text-slate-400">
-                          <span>{getCountryFlag(member.nationality)}</span>
+                          <CountryFlag country={member.nationality ?? ''} />
                           <span>{member.nationality ?? 'Unknown'}</span>
                         </div>
-                        <div className="text-[11px] text-slate-500">{(member as any).reputation ?? 65}/100 fit</div>
                       </div>
                       {/* Role Icon */}
                       <div className="shrink-0 opacity-60">
@@ -502,21 +982,21 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                   ))}
                 </div>
                 {/* Staff Overview footer */}
-                <div className="border-t border-slate-800 px-5 py-3 flex items-center justify-between text-xs text-slate-500">
+                <div className="border-t px-5 py-3 flex items-center justify-between text-xs text-slate-500" style={{ borderColor: `${teamAccent}24` }}>
                   <span className="font-bold uppercase tracking-widest">Staff Overview</span>
                   <span className="flex items-center gap-1.5"><Users size={14} /> {staff.length} Staff Members</span>
                 </div>
               </section>
 
               {/* ── Bottom Bar: Club details ── */}
-              <div className="rounded-2xl border border-slate-800 bg-slate-900/70 px-5 py-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs">
+              <div className="rounded-2xl border px-5 py-4 grid grid-cols-1 min-[390px]:grid-cols-2 sm:grid-cols-4 gap-4 text-xs" style={panelStyle}>
                 <div className="flex items-center gap-2">
-                  <Shirt size={16} className="text-emerald-400" />
+                  <Shirt size={16} style={{ color: teamAccent }} />
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Club Colors</div>
                     <div className="mt-1 flex items-center gap-1">
                       {teamColors.slice(0, 3).map((c, i) => (
-                        <span key={i} className="w-3.5 h-3.5 rounded-full border border-slate-700" style={{ background: c }} />
+                        <span key={i} className="w-3.5 h-3.5 rounded-full border border-white/20" style={{ background: c, boxShadow: `0 0 10px ${c}55` }} />
                       ))}
                     </div>
                   </div>
@@ -537,12 +1017,17 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Star size={16} className="text-amber-400" />
+                  <Star size={16} style={{ color: teamAccent }} />
                   <div>
                     <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">Youth Facility</div>
                     <div className="flex gap-0.5 mt-0.5">
                       {[1,2,3,4,5].map(i => (
-                        <Star key={i} size={12} className={i <= academyLevel ? 'text-amber-400 fill-amber-400' : 'text-slate-700'} />
+                        <Star
+                          key={i}
+                          size={12}
+                          className={i <= academyLevel ? 'fill-current' : 'text-slate-700'}
+                          style={i <= academyLevel ? { color: teamAccent } : undefined}
+                        />
                       ))}
                     </div>
                   </div>
@@ -553,12 +1038,13 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
             {/* ── Right Sidebar ── */}
             <aside className="space-y-6">
               {/* Owner */}
-              <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+              <section className="rounded-2xl border p-5" style={panelStyle}>
                 <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Owner</div>
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-xl bg-slate-800/60 overflow-hidden shrink-0">
+                  <div className="w-16 h-16 rounded-xl bg-slate-800/60 overflow-hidden shrink-0 border" style={{ borderColor: `${teamAccent}35` }}>
                     {(() => {
-                      const ownerImg = getStaffImageUrl(euroCareerSeed.owner.staffImageId);
+                      const ownerImg = getOwnerPhoto(euroCareerSeed.owner.name)
+                        ?? getStaffImageUrl(resolveStaffImageId(euroCareerSeed.owner));
                       if (ownerImg) return <img src={ownerImg} alt={euroCareerSeed.owner.name} className="w-full h-full object-cover" loading="lazy" />;
                       if (isRealFaceConfig(euroCareerSeed.owner.face)) return <MyFace face={euroCareerSeed.owner.face} lazy style={{ width: '100%', height: '100%' }} />;
                       return <div className="w-full h-full flex items-center justify-center text-slate-600"><User size={28} /></div>;
@@ -567,61 +1053,60 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
                   <div>
                     <div className="text-lg font-black text-white">{euroCareerSeed.owner.name}</div>
                     <div className="text-sm text-slate-400 flex items-center gap-1.5">
-                      <span>{getCountryFlag(euroCareerSeed.owner.nationality)}</span>
+                      <CountryFlag country={euroCareerSeed.owner.nationality} />
                       {euroCareerSeed.owner.nationality}
                     </div>
-                  </div>
-                </div>
-                <div className="space-y-2.5 text-sm">
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-slate-500">{OWNER_ATTR_ICONS.wealth} Wealth</span>
-                    <span className="font-bold text-white">{euroCareerSeed.owner.wealthTier}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-slate-500">{OWNER_ATTR_ICONS.patience} Patience</span>
-                    <span className="font-bold text-white">{euroCareerSeed.owner.patience}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2 text-slate-500">{OWNER_ATTR_ICONS.vision} Vision</span>
-                    <span className="font-bold text-white">{euroCareerSeed.owner.vision}</span>
                   </div>
                 </div>
               </section>
 
               {/* Sponsors */}
-              <section className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
+              <section className="rounded-2xl border p-5" style={panelStyle}>
                 <div className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">Sponsors</div>
                 <div className="space-y-3">
                   {euroCareerSeed.sponsors.length === 0 ? (
                     <div className="text-sm text-slate-400">Sponsor catalog pending. Slots will be filled by the tycoon layer.</div>
                   ) : euroCareerSeed.sponsors.map(slot => (
-                    <div key={slot.slotId} className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-950/60 p-3">
-                      <div className="w-10 h-10 rounded-lg bg-slate-800/60 flex items-center justify-center shrink-0">
-                        {SPONSOR_SLOT_ICONS[slot.slotId] ?? <Landmark size={22} className="text-slate-500" />}
-                      </div>
+                    <div
+                      key={slot.slotId}
+                      className="flex flex-wrap sm:flex-nowrap items-center gap-3 rounded-xl border bg-slate-950/60 p-3"
+                      style={{ borderColor: `${teamAccent}24`, background: `linear-gradient(110deg, ${teamAccent}0D, rgba(2, 6, 23, 0.7) 42%)` }}
+                    >
+                      <SponsorLogo name={slot.brand} meta={getBrandMeta(sponsorLeague, slot.brand)} size={40} />
                       <div className="flex-1 min-w-0">
                         <div className="text-[10px] font-bold uppercase tracking-widest text-slate-500">{SPONSOR_SLOT_LABELS[slot.slotId] ?? slot.slotId}</div>
                         <div className="font-bold text-white truncate">{slot.brand}</div>
                       </div>
-                      <div className="text-sm font-bold text-emerald-400 shrink-0 whitespace-nowrap">{'€'}{(slot.amountEUR / 1_000_000).toFixed(1)}M / year</div>
+                      <div className="w-full sm:w-auto pl-[52px] sm:pl-0 text-sm font-bold shrink-0 whitespace-nowrap" style={{ color: teamAccent }}>{'€'}{(slot.amountEUR / 1_000_000).toFixed(1)}M / year</div>
                     </div>
                   ))}
                 </div>
               </section>
 
-              <section className="rounded-2xl border border-amber-500/25 bg-amber-500/[0.06] p-5">
-                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-amber-300 mb-3">
-                  <Crosshair size={16} /> EuroLeague Goal
+              <section
+                className="rounded-2xl border p-5"
+                style={{
+                  borderColor: `${teamAccent}48`,
+                  background: `linear-gradient(135deg, ${teamAccent}18 0%, ${teamAccentAlt}0C 100%)`,
+                }}
+              >
+                <div className="flex items-center gap-2 text-xs font-black uppercase tracking-widest mb-3" style={{ color: teamAccent }}>
+                  <Crosshair size={16} /> Domestic Objectives
                 </div>
-                <p className="text-sm leading-relaxed text-slate-200">{euroleagueGoal}</p>
+                <p className="text-sm leading-relaxed text-slate-200">{domesticGoal}</p>
               </section>
 
               {/* Start Career */}
               <button
-                onClick={() => setStep('timeline')}
-                className="w-full h-14 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-black uppercase tracking-widest transition-colors flex items-center justify-center gap-3 text-base"
+                onClick={() => handleStart(defaultStartDate, false, userTeamId, euroCareerSeed)}
+                className="w-full min-h-14 rounded-2xl font-black uppercase tracking-widest transition-transform hover:-translate-y-0.5 active:translate-y-0 flex items-center justify-center gap-3 text-base px-4"
+                style={{
+                  color: accentText,
+                  background: `linear-gradient(110deg, ${teamAccent} 0%, ${teamAccentAlt} 100%)`,
+                  boxShadow: `0 18px 42px ${teamAccent}32`,
+                }}
               >
-                Choose Start Date <ArrowRight size={20} />
+                Start Career <ArrowRight size={20} />
               </button>
             </aside>
           </div>
@@ -631,151 +1116,61 @@ export const CommissionerSetup: React.FC<CommissionerSetupProps> = ({ leagueType
   }
 
   // Timeline and review are full-screen, handled separately
-  if (step === 'timeline') {
+  if (step === 'timeline' && gameMode === 'gm' && !isEuroSetup && !isWnbaSetup) {
     return (
       <StartDateTimeline
         onSelect={handleDateSelected}
-        onBack={() => setStep(isEuroSetup && euroCareerSeed ? 'euroReview' : gameMode === 'gm' ? 'franchise' : 'name')}
+        onBack={() => setStep(isEuroSetup && euroCareerSeed ? 'euroReview' : isHistoricalNbaSetup ? (gameMode === 'gm' ? 'franchise' : 'season') : gameMode === 'gm' ? 'franchise' : 'name')}
         leagueType={leagueType}
         moddedLeagueBase={moddedLeagueBase}
+        seasonEndYear={isHistoricalNbaSetup ? nbaSeasonEndYear : isHistoricalPbaSetup ? activePbaSourceSeason : undefined}
       />
     );
   }
 
-  if (step === 'review') {
+  if (step === 'review' && gameMode === 'gm' && !isEuroSetup && !isWnbaSetup) {
     return (
       <JumpReviewScreen
         chosenDate={chosenDate}
         gameMode={gameMode}
         leagueType={leagueType}
         moddedLeagueBase={moddedLeagueBase}
+        seasonEndYear={isHistoricalNbaSetup ? nbaSeasonEndYear : isHistoricalPbaSetup ? activePbaSourceSeason : undefined}
         onContinue={(assistantGM) => handleStart(undefined, assistantGM, userTeamId, euroCareerSeed)}
         onBack={() => setStep('timeline')}
       />
     );
   }
 
+  if (!isFictional) {
+    const continueLabel = gameMode === 'gm'
+      ? (isNbaSetup ? 'Choose Season & Start' : 'Choose Team')
+      : isNbaSetup
+        ? 'Choose Season & Start'
+        : isWnbaSetup
+          ? 'Start WNBA'
+          : 'Choose Start Date';
+    return (
+      <ModdedProfileSetup
+        gameMode={gameMode}
+        initialName={nameRef.current}
+        enableLLM={settings.enableLLM}
+        continueLabel={continueLabel}
+        onToggleLLM={() => updateSetting('enableLLM', !settings.enableLLM)}
+        onContinue={handleNameContinue}
+        onBack={handleBack}
+      />
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Ambience */}
-      <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950" />
-      <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-indigo-500 to-transparent opacity-20" />
-
-      <button
-        onClick={handleBack}
-        className="absolute top-8 left-8 text-slate-400 hover:text-white flex items-center gap-2 transition-colors z-20"
-      >
-        <ArrowLeft size={20} />
-        Back to Menu
-      </button>
-
-      <motion.div
-        key={step}
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        className="relative z-10 max-w-xl w-full"
-      >
-        <div className="max-w-md mx-auto">
-          <div className="text-center mb-10">
-            <motion.div
-              initial={{ scale: 0 }}
-              animate={{ scale: 1 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 20, delay: 0.2 }}
-              className="w-20 h-20 bg-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center shadow-2xl shadow-indigo-500/30"
-            >
-              {gameMode === 'gm' ? <User size={40} className="text-white" /> : <Crown size={40} className="text-white" />}
-            </motion.div>
-            <h1 className="text-4xl font-black text-white tracking-tight mb-2">
-              {gameMode === 'gm' ? 'Welcome, GM' : 'Welcome, Commissioner'}
-            </h1>
-            <p className="text-slate-400 text-lg">
-              {gameMode === 'gm'
-                ? isSpainEuropeSetup ? 'A Spanish club is about to bet five years on you.' : 'A franchise is about to bet five years on you.'
-                : isFictional ? 'A new league is waiting for your blueprint.' : 'The league is waiting for your leadership.'}
-            </p>
-          </div>
-
-          <form onSubmit={handleNameSubmit} className="space-y-6">
-            <div className="space-y-3">
-              <label htmlFor="name" className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">
-                Enter Your Name
-              </label>
-              <div className="relative group">
-                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                  <User className="h-5 w-5 text-slate-500 group-focus-within:text-indigo-400 transition-colors" />
-                </div>
-                <input
-                  type="text"
-                  id="name"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  maxLength={20}
-                  className="block w-full pl-12 pr-4 py-4 bg-slate-900/50 border border-slate-800 rounded-2xl text-white placeholder-slate-600 focus:ring-2 focus:ring-indigo-500/50 focus:border-indigo-500 focus:bg-slate-900 transition-all outline-none font-medium text-lg"
-                  placeholder={isFictional ? 'e.g. Avery Stone' : isSpainEuropeSetup ? 'e.g. Juan Navarro' : 'e.g. Adam Silver'}
-                  autoFocus
-                  autoComplete="off"
-                />
-              </div>
-            </div>
-
-            {/* Game Settings — always visible */}
-            <div className="border border-slate-800 rounded-2xl overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setShowSettings(s => !s)}
-                className="w-full flex items-center justify-between px-4 py-3 bg-slate-900/50 hover:bg-slate-800/50 transition-colors text-left"
-              >
-                <div className="flex items-center gap-2 text-slate-400 text-sm font-medium">
-                  <Settings size={15} />
-                  Game Settings
-                </div>
-                {showSettings ? <ChevronUp size={15} className="text-slate-500" /> : <ChevronDown size={15} className="text-slate-500" />}
-              </button>
-
-              {showSettings && (
-                <div className="px-4 pb-4 pt-2 space-y-4 bg-slate-900/30">
-                  {/* AI toggle — top of settings */}
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-1.5 text-white text-sm font-semibold">
-                        <Bot size={14} className="text-violet-400" />
-                        AI Commentary &amp; Narratives
-                      </div>
-                      <p className="text-xs text-slate-500 mt-0.5">
-                        Powers news, social posts, DMs &amp; reactions. Off = fast offline play.
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => updateSetting('enableLLM', !settings.enableLLM)}
-                      className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-colors duration-200 focus:outline-none ${settings.enableLLM ? 'bg-violet-600' : 'bg-slate-700'}`}
-                    >
-                      <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200 ${settings.enableLLM ? 'translate-x-5' : 'translate-x-0'}`} />
-                    </button>
-                  </div>
-
-                </div>
-              )}
-            </div>
-
-            <button
-              type="submit"
-              disabled={!name.trim()}
-              className="w-full group relative flex items-center justify-center gap-3 py-4 px-6 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-800 disabled:text-slate-600 text-white font-bold rounded-2xl transition-all duration-200 shadow-lg shadow-indigo-500/25 hover:shadow-indigo-500/40 disabled:shadow-none overflow-hidden"
-            >
-              <span className="relative z-10">{gameMode === 'gm' ? 'Choose Team' : 'Choose Start Date'}</span>
-              <ArrowRight className="w-5 h-5 relative z-10 group-hover:translate-x-1 transition-transform" />
-              <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 to-violet-600 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-            </button>
-          </form>
-        </div>
-
-        <p className="mt-10 text-center text-xs text-slate-600 font-medium max-w-md mx-auto">
-          {gameMode === 'gm'
-            ? 'By signing the contract, you agree to deliver wins, stay under the cap, and absorb every loss as if it were "growth".'
-            : `By taking office, you agree to handle all ${labels.central.toLowerCase()} crises, scandals, and draft lotteries with "integrity".`}
-        </p>
-      </motion.div>
-    </div>
+    <FictionalProfileSetup
+      gameMode={gameMode}
+      initialName={nameRef.current}
+      enableLLM={settings.enableLLM}
+      onToggleLLM={() => updateSetting('enableLLM', !settings.enableLLM)}
+      onContinue={handleNameContinue}
+      onBack={handleBack}
+    />
   );
 };

@@ -1,14 +1,27 @@
 import { NBATeam as Team, NBAPlayer as Player } from '../../../types';
-import { calculateTeamStrength, calculateTeamStrengthWithMinutes, getTrainingFatigueRatingMultiplier } from '../../../utils/playerRatings';
-import { getGameplan } from '../../../store/gameplanStore';
-import { MinutesPlayedService } from '../MinutesPlayedService';
-import { getLockedStrategy } from '../../../store/coachStrategyLockStore';
-import { getSystemProficiencyBoost } from '../../../store/coachSystemStore';
-import { getDefenseGameplan, TEMPLATE_TO_SYSTEM } from '../../../store/defenseGameplanStore';
+import { calculateTeamStrengthWithMinutes, getTrainingFatigueRatingMultiplier } from '../../../utils/playerRatings';
+import { TEMPLATE_TO_SYSTEM } from '../../../store/defenseGameplanStore';
+import {
+  getSimulationDefenseGameplan as getDefenseGameplan,
+  getSimulationLockedStrategy as getLockedStrategy,
+  getSimulationSystemProficiencyBoost as getSystemProficiencyBoost,
+} from '../simulationRealmContext';
 import { getTeamCoachingGameplayEffects } from '../../staff/staffGameplayEffects';
-import { isEuroClubTeamId } from '../SimulatorKnobs';
+import { getKnobs, isEuroClubTeamId, type SimulatorKnobs } from '../SimulatorKnobs';
+import { resolveRotationPlan } from '../rotationPlan';
+import { NEUTRAL_ERA_COACHING_BIAS, type EraCoachingBias } from '../eraCoachingBias';
 
-export function computePaceFactor(roster: Player[]): number {
+export function resolveTeamEraCoachingBias(teamId: number, bias?: EraCoachingBias): EraCoachingBias {
+  return getLockedStrategy(teamId) ? NEUTRAL_ERA_COACHING_BIAS : bias ?? NEUTRAL_ERA_COACHING_BIAS;
+}
+
+export function computePaceFactor(teamId: number, roster: Player[]): number {
+  const locked = getLockedStrategy(teamId);
+  if (locked) {
+    const { tempo, earlyOffense, fastBreak } = locked.sliders;
+    const combined = tempo * 0.5 + earlyOffense * 0.3 + fastBreak * 0.2;
+    return Math.max(0.80, Math.min(1.20, 1 + (combined - 50) / 250));
+  }
   if (!roster.length) return 1.0;
   const sorted = [...roster].sort((a: any, b: any) =>
     (b.rating2K || b.bbgmOvr || 50) - (a.rating2K || a.bbgmOvr || 50)
@@ -176,28 +189,38 @@ export function getDefenseSliders(teamId: number, roster: Player[]): {
 
 export function defensiveStackOnOpponent(d: ReturnType<typeof getDefenseSliders>): {
   tovMult: number; ftRateMult: number; interiorEffMult: number;
-  rimRateMult: number; threePointRateMult: number;
+  rimRateMult: number; threePointRateMult: number; stealRateMult: number;
 } {
   const pressureN = (d.defensivePressure - 50) / 50;
   const helpN = (d.helpDefense - 50) / 50;
   const zoneN = d.zoneUsage / 100;
+  const doubleN = d.doubleTeam / 100;
   return {
-    tovMult: 1 + pressureN * 0.15,
+    tovMult: 1 + pressureN * 0.15 + doubleN * 0.10,
     ftRateMult: 1 + pressureN * 0.10,
     interiorEffMult: 1 - helpN * 0.08,
     rimRateMult: 1 - zoneN * 0.15,
-    threePointRateMult: (1 + helpN * 0.10) * (1 + zoneN * 0.12),
+    threePointRateMult: (1 + helpN * 0.10) * (1 + zoneN * 0.12) * (1 + doubleN * 0.08),
+    stealRateMult: 1 + pressureN * 0.08 + doubleN * 0.06,
   };
 }
 
-export function buildBaselineOrder(roster: Player[]): string[] {
+export function buildBaselineOrder(
+  roster: Player[],
+  dribbleRule: 'none' | 'single_bounce_no_shot' | 'continuous' = 'continuous',
+): string[] {
   return [...roster]
     .sort((a: any, b: any) => {
       const getUsage = (p: any) => {
         if (!p.ratings || !p.ratings[0]) return 0;
         const r = p.ratings[0];
+        const ballSkill = dribbleRule === 'continuous'
+          ? r.drb * 0.08
+          : dribbleRule === 'single_bounce_no_shot'
+            ? r.drb * 0.02 + r.pss * 0.06
+            : r.pss * 0.08;
         const usage = r.ins * 0.23 + r.dnk * 0.15 + r.fg * 0.15 + r.tp * 0.15
-          + r.spd * 0.08 + r.hgt * 0.08 + r.drb * 0.08 + r.oiq * 0.08;
+          + r.spd * 0.08 + r.hgt * 0.08 + ballSkill + r.oiq * 0.08;
         const ovr = p.rating2K || p.bbgmOvr || r.ovr || 50;
         return usage * 0.5 + ovr * 0.5;
       };
@@ -215,44 +238,32 @@ export function resolveTeamStrength(
   team: Team,
   players: Player[],
   currentSeason: number,
-  override?: Player[]
+  override?: Player[],
+  knobs?: SimulatorKnobs,
 ): number {
-  if (override) return calculateTeamStrength(team.id, players, override);
-  const plan = getGameplan(team.id);
-  if (plan && Object.keys(plan.minuteOverrides).length > 0) {
-    const roster = players.filter(p => p.tid === team.id && (!p.injury || p.injury.gamesRemaining <= 0));
-    return calculateTeamStrengthWithMinutes(roster, plan.minuteOverrides, currentSeason, getSystemProficiencyBoost(team.id));
+  if (override && knobs?.strengthCorrectionWithOverrideRosters && Number.isFinite(team.strength)) {
+    return Number(team.strength);
   }
   const gp = (team.wins ?? 0) + (team.losses ?? 0);
   const winPct = gp > 0 ? (team.wins ?? 0) / gp : 0.5;
   const rank = winPct >= 0.62 ? 2 : winPct >= 0.55 ? 4 : winPct >= 0.48 ? 7 : winPct >= 0.40 ? 10 : 13;
-  const minuteProfile = isEuroClubTeamId(team.id) ? 'euro_club' : 'default';
-  const quarterLength = isEuroClubTeamId(team.id) ? 10 : 12;
-  const rot = MinutesPlayedService.getRotation(
-    team,
-    players,
-    0,
-    currentSeason,
-    undefined,
-    rank,
-    Math.max(0, (rank - 2) * 2.5),
-    Math.max(0, 82 - gp),
-  );
-  const { minutes: minsArr } = MinutesPlayedService.allocateMinutes(
-    rot.players,
-    currentSeason,
-    0,
-    0,
-    rot.starMpgTarget,
-    false,
+  const quarterLength = knobs?.quarterLength ?? (isEuroClubTeamId(team.id) ? 10 : 12);
+  const plan = resolveRotationPlan(team, players, currentSeason, getKnobs({
+    ...knobs,
+    conferenceRank: rank,
+    gbFromLeader: Math.max(0, (rank - 2) * 2.5),
+    gamesRemaining: Math.max(0, 82 - gp),
     quarterLength,
-    5,
-    4,
-    minuteProfile,
-  );
+  }), 0, override);
   const minuteMap: Record<string, number> = {};
-  rot.players.forEach((player, index) => {
-    minuteMap[player.internalId] = minsArr[index] ?? 0;
+  plan.rotation.forEach((player, index) => {
+    minuteMap[player.internalId] = plan.minuteTargets[index] ?? 0;
   });
-  return calculateTeamStrengthWithMinutes(rot.players, minuteMap, currentSeason, getSystemProficiencyBoost(team.id));
+  return calculateTeamStrengthWithMinutes(
+    plan.rotation,
+    minuteMap,
+    currentSeason,
+    getSystemProficiencyBoost(team.id),
+    knobs?.playersOnCourt ?? 5,
+  );
 }

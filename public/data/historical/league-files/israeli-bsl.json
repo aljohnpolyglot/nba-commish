@@ -1,0 +1,1569 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "israeli-bsl-league-file.1986257263302359",
+  "competitionKey": "israeli-bsl",
+  "competitionName": "Israeli Basketball Premier League",
+  "leagueKey": "israeli-bsl",
+  "generatedAt": "2026-07-19T12:49:25.256Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "israeli-bsl-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/11/Israeli-BSL/stats/2026/Averages/Qualified/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/israeli-bsl/israeli-bsl-2026-bbgm.json",
+        "sourceHash": "e0c854dd04cbbb7c8919abaaf1f4b14eb3f73cc64b4c3eb78861b2e18d554815",
+        "fetchedAt": "2026-07-19T12:49:25.256Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 28,
+        "lost": 2
+      }
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi Bazan Haifa",
+        "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 28,
+        "lost": 6
+      }
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi Bazan Haifa",
+        "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 29,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Donta Smith",
+                "canonicalKey": "person:donta-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Bazan Haifa",
+                "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brian Randle",
+                "canonicalKey": "person:brian-randle"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Bazan Haifa",
+                "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aviram Zelkovits",
+                "canonicalKey": "person:aviram-zelkovits"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bnei Herzelia",
+                "canonicalKey": "israeli-bsl:bnei-herzelia"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brian Randle",
+                "canonicalKey": "person:brian-randle"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Bazan Haifa",
+                "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aviram Zelkovits",
+                "canonicalKey": "person:aviram-zelkovits"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bnei Herzelia",
+                "canonicalKey": "israeli-bsl:bnei-herzelia"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Hapoel Bank Yahav Jerusalem",
+        "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Hapoel Eilat",
+        "canonicalKey": "israeli-bsl:hapoel-eilat"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Hapoel Bank Yahav Jerusalem",
+          "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+        },
+        "won": 33,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lior Eliyahu",
+                "canonicalKey": "person:lior-eliyahu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brian Randle",
+                "canonicalKey": "person:brian-randle"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shawn Dawson",
+                "canonicalKey": "person:shawn-dawson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Rishon Lezion",
+                "canonicalKey": "israeli-bsl:maccabi-rishon-lezion"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brian Randle",
+                "canonicalKey": "person:brian-randle"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shawn Dawson",
+                "canonicalKey": "person:shawn-dawson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Rishon Lezion",
+                "canonicalKey": "israeli-bsl:maccabi-rishon-lezion"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi Rishon Lezion",
+        "canonicalKey": "israeli-bsl:maccabi-rishon-lezion"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Hapoel Bank Yahav Jerusalem",
+        "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Hapoel Bank Yahav Jerusalem",
+          "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+        },
+        "won": 31,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Darryl Monroe",
+                "canonicalKey": "person:darryl-monroe"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Rishon Lezion",
+                "canonicalKey": "israeli-bsl:maccabi-rishon-lezion"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Darryl Monroe",
+                "canonicalKey": "person:darryl-monroe"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Rishon Lezion",
+                "canonicalKey": "israeli-bsl:maccabi-rishon-lezion"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gregory Vargas",
+                "canonicalKey": "person:gregory-vargas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Bazan Haifa",
+                "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gregory Vargas",
+                "canonicalKey": "person:gregory-vargas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Bazan Haifa",
+                "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Hapoel Bank Yahav Jerusalem",
+        "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Maccabi Bazan Haifa",
+        "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Hapoel Unet Holon",
+          "canonicalKey": "israeli-bsl:hapoel-unet-holon"
+        },
+        "won": 23,
+        "lost": 14
+      },
+      "awards": [
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gregory Vargas",
+                "canonicalKey": "person:gregory-vargas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Bazan Haifa",
+                "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tomer Ginat",
+                "canonicalKey": "person:tomer-ginat"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Tel Aviv",
+                "canonicalKey": "israeli-bsl:hapoel-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gregory Vargas",
+                "canonicalKey": "person:gregory-vargas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Bazan Haifa",
+                "canonicalKey": "israeli-bsl:maccabi-bazan-haifa"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tomer Ginat",
+                "canonicalKey": "person:tomer-ginat"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Tel Aviv",
+                "canonicalKey": "israeli-bsl:hapoel-tel-aviv"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Hapoel Unet Holon",
+        "canonicalKey": "israeli-bsl:hapoel-unet-holon"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 28,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sek Henry",
+                "canonicalKey": "person:sek-henry"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi Ashdod",
+                "canonicalKey": "israeli-bsl:maccabi-ashdod"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alex Tyus",
+                "canonicalKey": "person:alex-tyus"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Joaquin Szuchman",
+                "canonicalKey": "person:joaquin-szuchman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Galil Gilboa",
+                "canonicalKey": "israeli-bsl:hapoel-galil-gilboa"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yovel Zoosman",
+                "canonicalKey": "person:yovel-zoosman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Joaquin Szuchman",
+                "canonicalKey": "person:joaquin-szuchman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Galil Gilboa",
+                "canonicalKey": "israeli-bsl:hapoel-galil-gilboa"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yovel Zoosman",
+                "canonicalKey": "person:yovel-zoosman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Maccabi Rishon Lezion",
+        "canonicalKey": "israeli-bsl:maccabi-rishon-lezion"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 32,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Corey Walden",
+                "canonicalKey": "person:corey-walden"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Unet Holon",
+                "canonicalKey": "israeli-bsl:hapoel-unet-holon"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John DiBartolomeo",
+                "canonicalKey": "person:john-dibartolomeo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "TaShawn Thomas",
+                "canonicalKey": "person:tashawn-thomas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Amit Gershon",
+                "canonicalKey": "person:amit-gershon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Beer Sheva",
+                "canonicalKey": "israeli-bsl:hapoel-beer-sheva"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "TaShawn Thomas",
+                "canonicalKey": "person:tashawn-thomas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Amit Gershon",
+                "canonicalKey": "person:amit-gershon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Beer Sheva",
+                "canonicalKey": "israeli-bsl:hapoel-beer-sheva"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Maccabi Rishon Lezion",
+        "canonicalKey": "israeli-bsl:maccabi-rishon-lezion"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 28,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Deni Avdija",
+                "canonicalKey": "person:deni-avdija"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Hapoel Galil Gilboa",
+        "canonicalKey": "israeli-bsl:hapoel-galil-gilboa"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 29,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Casey Prather",
+                "canonicalKey": "person:casey-prather"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Eilat",
+                "canonicalKey": "israeli-bsl:hapoel-eilat"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Scottie Wilbekin",
+                "canonicalKey": "person:scottie-wilbekin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Johnson",
+                "canonicalKey": "person:chris-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Unet Holon",
+                "canonicalKey": "israeli-bsl:hapoel-unet-holon"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yair Kravits",
+                "canonicalKey": "person:yair-kravits"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bnei Herzelia",
+                "canonicalKey": "israeli-bsl:bnei-herzelia"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Johnson",
+                "canonicalKey": "person:chris-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Unet Holon",
+                "canonicalKey": "israeli-bsl:hapoel-unet-holon"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yair Kravits",
+                "canonicalKey": "person:yair-kravits"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bnei Herzelia",
+                "canonicalKey": "israeli-bsl:bnei-herzelia"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Hapoel Unet Holon",
+        "canonicalKey": "israeli-bsl:hapoel-unet-holon"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Bnei Herzelia",
+        "canonicalKey": "israeli-bsl:bnei-herzelia"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Hapoel Bank Yahav Jerusalem",
+          "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+        },
+        "won": 23,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nimrod Levi",
+                "canonicalKey": "person:nimrod-levi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Upper Galilee Safed",
+                "canonicalKey": "israeli-bsl:hapoel-upper-galilee-safed"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Joe Ragland",
+                "canonicalKey": "person:joe-ragland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Unet Holon",
+                "canonicalKey": "israeli-bsl:hapoel-unet-holon"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Johnson",
+                "canonicalKey": "person:chris-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Unet Holon",
+                "canonicalKey": "israeli-bsl:hapoel-unet-holon"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gabriel Chachashvili",
+                "canonicalKey": "person:gabriel-chachashvili"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Upper Galilee Safed",
+                "canonicalKey": "israeli-bsl:hapoel-upper-galilee-safed"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Johnson",
+                "canonicalKey": "person:chris-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Unet Holon",
+                "canonicalKey": "israeli-bsl:hapoel-unet-holon"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gabriel Chachashvili",
+                "canonicalKey": "person:gabriel-chachashvili"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Upper Galilee Safed",
+                "canonicalKey": "israeli-bsl:hapoel-upper-galilee-safed"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Hapoel Tel Aviv",
+        "canonicalKey": "israeli-bsl:hapoel-tel-aviv"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 29,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Or Cornelius",
+                "canonicalKey": "person:or-cornelius"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Roy Paretsky",
+                "canonicalKey": "person:roy-paretsky"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Beer Sheva",
+                "canonicalKey": "israeli-bsl:hapoel-beer-sheva"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Or Cornelius",
+                "canonicalKey": "person:or-cornelius"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Roy Paretsky",
+                "canonicalKey": "person:roy-paretsky"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Beer Sheva",
+                "canonicalKey": "israeli-bsl:hapoel-beer-sheva"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Hapoel Tel Aviv",
+        "canonicalKey": "israeli-bsl:hapoel-tel-aviv"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 32,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Roman Sorkin",
+                "canonicalKey": "person:roman-sorkin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Hapoel Tel Aviv",
+          "canonicalKey": "israeli-bsl:hapoel-tel-aviv"
+        },
+        "won": 27,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jared Harper",
+                "canonicalKey": "person:jared-harper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yovel Zoosman",
+                "canonicalKey": "person:yovel-zoosman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuval Levin",
+                "canonicalKey": "person:yuval-levin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Elitzur Kiryat Ata",
+                "canonicalKey": "israeli-bsl:elitzur-kiryat-ata"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yovel Zoosman",
+                "canonicalKey": "person:yovel-zoosman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Bank Yahav Jerusalem",
+                "canonicalKey": "israeli-bsl:hapoel-bank-yahav-jerusalem"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuval Levin",
+                "canonicalKey": "person:yuval-levin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Elitzur Kiryat Ata",
+                "canonicalKey": "israeli-bsl:elitzur-kiryat-ata"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Hapoel Tel Aviv",
+        "canonicalKey": "israeli-bsl:hapoel-tel-aviv"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+        },
+        "won": 33,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Roman Sorkin",
+                "canonicalKey": "person:roman-sorkin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gabriel Lundberg",
+                "canonicalKey": "person:gabriel-lundberg"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "israeli-bsl:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daeshon Francis",
+                "canonicalKey": "person:daeshon-francis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bnei Herzelia",
+                "canonicalKey": "israeli-bsl:bnei-herzelia"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuval Hochstadter",
+                "canonicalKey": "person:yuval-hochstadter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Elitzur Kiryat Ata",
+                "canonicalKey": "israeli-bsl:elitzur-kiryat-ata"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daeshon Francis",
+                "canonicalKey": "person:daeshon-francis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Bnei Herzelia",
+                "canonicalKey": "israeli-bsl:bnei-herzelia"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuval Hochstadter",
+                "canonicalKey": "person:yuval-hochstadter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Elitzur Kiryat Ata",
+                "canonicalKey": "israeli-bsl:elitzur-kiryat-ata"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

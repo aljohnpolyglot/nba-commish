@@ -2,18 +2,28 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, LayoutDashboard, Trophy, Users } from 'lucide-react';
 import { NBACupState, NBAPlayer } from '../../../types';
+import type { CupCompetitionState, CupSeasonHistory } from '../../../services/competition/cup';
 import { useGame } from '../../../store/GameContext';
 import { extractNbaId, hdPortrait } from '../../../utils/helpers';
 import { useLeagueLabels } from '../../../utils/leagueLabels';
+import { getLeagueCalendarDates } from '../../../services/leagueCalendar';
 import { isNbaCupEnabled } from '../../../utils/ruleFlags';
+import { isWnbaIsolatedMode } from '../../../utils/uiMode';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { PlayerBioView } from './PlayerBioView';
 import { CupContent } from './NBACupContent';
 import { CupNotStarted } from './NBACupSections';
-import { cupStateToViewData, GIST_URL, transformWikiData } from './NBACupData';
+import { resolveCanonicalPersonId, resolvePlayerByCanonicalPersonId } from '../../../utils/playerIdentity';
+import {
+  cupStateToViewData,
+  genericCupHistoryToViewData,
+  genericCupStateToViewData,
+  GIST_URL,
+  transformWikiData,
+} from './NBACupData';
 
 export default function NBACupView() {
-  const { state } = useGame();
+  const { state, navigateToPlayer } = useGame();
   const labels = useLeagueLabels();
   const year = state.leagueStats.year;
   const [gistData, setGistData] = useState<any[]>([]);
@@ -22,16 +32,45 @@ export default function NBACupView() {
   const [view, setView] = useState<'groups' | 'bracket'>('groups');
   const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
   const [cupBoxScore, setCupBoxScore] = useState<{ game: any; result: any; homeTeam: any; awayTeam: any } | null>(null);
+  const wnbaMode = isWnbaIsolatedMode(state);
+  const activeGenericCup = useMemo<CupCompetitionState | null>(() => {
+    const matchingSeason = Object.values(state.cupCompetitions ?? {})
+      .filter(cup => cup.season === year);
+    if (matchingSeason.length === 0) return null;
+    const leagueIds = new Set([
+      state.moddedLeagueBase,
+      state.leagueStats.uiMode?.replace(/_isolated$/, ''),
+      String(state.leagueStats.leagueName ?? '').toLowerCase().replace(/[^a-z0-9]+/g, '-'),
+    ].filter((value): value is string => Boolean(value)));
+    const exact = matchingSeason.find(cup => leagueIds.has(cup.leagueId));
+    return exact ?? (matchingSeason.length === 1 ? matchingSeason[0] : null);
+  }, [state.cupCompetitions, state.leagueStats.leagueName, state.leagueStats.uiMode, state.moddedLeagueBase, year]);
+  const genericHistory = useMemo<CupSeasonHistory[]>(() => {
+    const bySeason = new Map<number, CupSeasonHistory>();
+    for (const entry of state.historicalWnba?.commissionersCupHistory ?? []) {
+      if (!activeGenericCup || entry.competitionId === activeGenericCup.competitionId) bySeason.set(entry.season, entry);
+    }
+    for (const entry of activeGenericCup?.history ?? []) bySeason.set(entry.season, entry);
+    return [...bySeason.values()].sort((left, right) => left.season - right.season);
+  }, [activeGenericCup, state.historicalWnba?.commissionersCupHistory]);
+  const usesGenericCupView = Boolean(activeGenericCup) || (wnbaMode && genericHistory.length > 0);
+  const seasonLabel = (season: number) => {
+    const calendar = getLeagueCalendarDates(season, state.leagueStats);
+    const firstYear = calendar.regularSeasonStart.getUTCFullYear();
+    const lastYear = calendar.regularSeasonEnd.getUTCFullYear();
+    return firstYear === lastYear ? String(lastYear) : `${firstYear}–${String(lastYear).slice(-2)}`;
+  };
+  const minimumViewYear = usesGenericCupView && genericHistory.length > 0
+    ? Math.min(...genericHistory.map(entry => entry.season), year)
+    : 2024;
 
   const handlePlayerClick = (name: string, livePlayer?: any) => {
     if (livePlayer?.internalId) {
-      setViewingPlayer(livePlayer as NBAPlayer);
-      return;
-    }
-    const match = state.players.find(player => player.name === name);
-    if (match) {
-      setViewingPlayer(match as NBAPlayer);
-      return;
+      const canonical = resolvePlayerByCanonicalPersonId(state.players, resolveCanonicalPersonId(livePlayer));
+      if (canonical) {
+        navigateToPlayer(canonical);
+        return;
+      }
     }
     const nbaId = extractNbaId('', name);
     setViewingPlayer({
@@ -50,10 +89,11 @@ export default function NBACupView() {
   };
 
   useEffect(() => {
-    if (state.leagueType === 'fictional') {
+    if (state.leagueType === 'fictional' || usesGenericCupView || wnbaMode) {
       setLoading(false);
       return;
     }
+    setLoading(true);
     const fetchData = async () => {
       try {
         const response = await fetch(GIST_URL);
@@ -66,13 +106,16 @@ export default function NBACupView() {
       }
     };
     fetchData();
-  }, [state.leagueType]);
+  }, [state.leagueType, usesGenericCupView, wnbaMode]);
 
   const inSeasonTournamentEnabled = isNbaCupEnabled(state.leagueStats);
   const viewYear = Number(selectedYear);
   const isHistorical = viewYear !== year;
-  const currentCup = state.nbaCup ?? null;
-  const pastSimCup = (state.nbaCupHistory ?? {})[viewYear] ?? null;
+  const currentCup: NBACupState | null = usesGenericCupView ? null : state.nbaCup ?? null;
+  const pastSimCup: NBACupState | null = usesGenericCupView
+    ? null
+    : (state.nbaCupHistory ?? {})[viewYear] ?? null;
+  const historicalGenericCup = genericHistory.find(entry => entry.season === viewYear) ?? null;
 
   const handleGameClick = (gameId: number) => {
     const result = (state.boxScores as any[])?.find((box: any) => box.gameId === gameId);
@@ -86,7 +129,11 @@ export default function NBACupView() {
       awayScore: result.awayScore,
       played: true,
       date: result.date ?? '',
-      isNBACup: true,
+      ...(activeGenericCup ? {
+        isCupGame: true,
+        cupLeagueId: activeGenericCup.leagueId,
+        cupCompetitionId: activeGenericCup.competitionId,
+      } : { isNBACup: true }),
     };
     const homeTeam = (state.teams as any[]).find((team: any) => team.id === (game.homeTid ?? result.homeTeamId));
     const awayTeam = (state.teams as any[]).find((team: any) => team.id === (game.awayTid ?? result.awayTeamId));
@@ -95,19 +142,33 @@ export default function NBACupView() {
   };
 
   const liveData = useMemo(
-    () =>
-      currentCup && !isHistorical
-        ? cupStateToViewData(currentCup, state.teams, state.players, state.schedule as any, state.boxScores as any)
-        : null,
-    [currentCup, isHistorical, state.teams, state.players, state.schedule, state.boxScores],
+    () => !isHistorical
+      ? activeGenericCup
+        ? genericCupStateToViewData(activeGenericCup, state.teams, state.players, state.schedule as any, state.boxScores as any)
+        : currentCup
+          ? cupStateToViewData(currentCup, state.teams, state.players, state.schedule as any, state.boxScores as any)
+          : null
+      : null,
+    [activeGenericCup, currentCup, isHistorical, state.teams, state.players, state.schedule, state.boxScores],
   );
 
   const pastData = useMemo(
-    () =>
-      pastSimCup
+    () => historicalGenericCup && activeGenericCup
+      ? genericCupHistoryToViewData(
+          historicalGenericCup,
+          activeGenericCup.format,
+          state.teams,
+          state.players,
+          state.historicalAwards.find(award => (
+            award.season === viewYear
+            && award.competitionId === activeGenericCup.competitionId
+            && award.type.toLowerCase().includes('mvp')
+          ))?.name,
+        )
+      : pastSimCup
         ? cupStateToViewData(pastSimCup, state.teams, state.players, state.schedule as any, state.boxScores as any)
         : null,
-    [pastSimCup, state.teams, state.players, state.schedule, state.boxScores],
+    [activeGenericCup, historicalGenericCup, pastSimCup, state.historicalAwards, state.teams, state.players, state.schedule, state.boxScores, viewYear],
   );
 
   const gistYearData = useMemo(() => gistData.find(data => data.year === String(viewYear)), [gistData, viewYear]);
@@ -129,13 +190,16 @@ export default function NBACupView() {
   }
 
   const statusLabel =
-    currentCup?.status === 'complete'
+    (activeGenericCup?.status ?? currentCup?.status) === 'complete'
       ? 'Complete'
-      : currentCup?.status === 'knockout'
+      : (activeGenericCup?.status ?? currentCup?.status) === 'knockout'
         ? 'Knockout Stage'
-        : currentCup?.status === 'group'
+        : (activeGenericCup?.status === 'group-stage' || currentCup?.status === 'group')
           ? 'Group Stage'
           : 'Not Started';
+  const activeCupComplete = (activeGenericCup?.status ?? currentCup?.status) === 'complete';
+  const hasCurrentCup = Boolean(activeGenericCup || currentCup);
+  const activeCupLive = hasCurrentCup && !activeCupComplete && activeGenericCup?.status !== 'scheduled';
 
   return (
     <div className="min-h-screen bg-[#050505] text-slate-200 font-sans selection:bg-amber-500/30">
@@ -151,9 +215,9 @@ export default function NBACupView() {
             <div>
               <h1 className="text-xl font-bold tracking-tight text-white uppercase italic">{labels.cupShort}</h1>
               <p className="text-[10px] font-medium text-slate-500 uppercase tracking-[0.2em]">
-                {`${viewYear - 1}–${String(viewYear).slice(-2)}`}
-                {!isHistorical && currentCup && <span className="ml-2 text-amber-400/80">{statusLabel}</span>}
-                {!isHistorical && currentCup?.status !== 'complete' && <span className="ml-2 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-amber-400 text-[8px] font-black uppercase tracking-widest">LIVE</span>}
+                {seasonLabel(viewYear)}
+                {!isHistorical && hasCurrentCup && <span className="ml-2 text-amber-400/80">{statusLabel}</span>}
+                {!isHistorical && activeCupLive && <span className="ml-2 px-1.5 py-0.5 bg-amber-500/20 border border-amber-500/30 rounded text-amber-400 text-[8px] font-black uppercase tracking-widest">LIVE</span>}
               </p>
             </div>
             <div className="flex items-center bg-white/5 p-0.5 rounded-lg border border-white/10 ml-2">
@@ -167,10 +231,10 @@ export default function NBACupView() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button onClick={() => setSelectedYear(String(Math.max(2024, Number(selectedYear) - 1)))} className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors">
+            <button onClick={() => setSelectedYear(String(Math.max(minimumViewYear, Number(selectedYear) - 1)))} className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors" disabled={viewYear <= minimumViewYear}>
               <ChevronLeft size={16} className="text-slate-400" />
             </button>
-            <span className="text-sm font-bold text-white px-3">{viewYear - 1}–{String(viewYear).slice(-2)}</span>
+            <span className="text-sm font-bold text-white px-3">{seasonLabel(viewYear)}</span>
             <button onClick={() => setSelectedYear(value => String(Math.min(year, Number(value) + 1)))} className="w-8 h-8 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-colors disabled:opacity-30" disabled={viewYear >= year}>
               <ChevronRight size={16} className="text-slate-400" />
             </button>
@@ -179,11 +243,11 @@ export default function NBACupView() {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {!isHistorical && liveData && <CupContent data={liveData} liveCup={currentCup ?? undefined} teams={state.teams} players={state.players} boxScores={state.boxScores as any} schedule={state.schedule as any} view={view} onPlayerClick={handlePlayerClick} onGameClick={handleGameClick} />}
-        {!isHistorical && !currentCup && <CupNotStarted cupShort={labels.cupShort} year={year} />}
-        {isHistorical && pastData && <CupContent data={pastData} liveCup={pastSimCup ?? undefined} teams={state.teams} players={state.players} boxScores={state.boxScores as any} schedule={state.schedule as any} view={view} onPlayerClick={handlePlayerClick} onGameClick={handleGameClick} />}
-        {isHistorical && !pastSimCup && (
-          state.leagueType === 'fictional' ? (
+        {!isHistorical && liveData && <CupContent data={liveData} liveCup={currentCup ?? undefined} genericCup={activeGenericCup ?? undefined} leagueWideGroups={Boolean(activeGenericCup)} teams={state.teams} players={state.players} boxScores={state.boxScores as any} schedule={state.schedule as any} view={view} onPlayerClick={handlePlayerClick} onGameClick={handleGameClick} />}
+        {!isHistorical && !hasCurrentCup && <CupNotStarted cupShort={labels.cupShort} seasonLabel={seasonLabel(year)} />}
+        {isHistorical && pastData && <CupContent data={pastData} liveCup={pastSimCup ?? undefined} leagueWideGroups={usesGenericCupView} teams={state.teams} players={state.players} boxScores={state.boxScores as any} schedule={state.schedule as any} view={view} onPlayerClick={handlePlayerClick} onGameClick={handleGameClick} />}
+        {isHistorical && !pastData && (
+          state.leagueType === 'fictional' || usesGenericCupView ? (
             <div className="flex flex-col items-center justify-center py-20 text-center">
               <Trophy size={48} className="text-slate-700 mb-4" />
               <p className="text-slate-500">No historical {labels.cupShort} data for seasons before your league started.</p>
@@ -199,7 +263,7 @@ export default function NBACupView() {
               {!loading && !gistYearData && (
                 <div className="flex flex-col items-center justify-center py-20 text-center">
                   <Trophy size={48} className="text-slate-700 mb-4" />
-                  <p className="text-slate-500">No data available for {viewYear - 1}–{String(viewYear).slice(-2)}.</p>
+                  <p className="text-slate-500">No data available for {seasonLabel(viewYear)}.</p>
                 </div>
               )}
             </>

@@ -1,6 +1,6 @@
 const SPAIN_TEAM_POPULATIONS = [
   { region: 'Madrid', name: 'Real Madrid', pop: 6.7, aliases: ['real madrid'] },
-  { region: 'Barcelona', name: 'FC Barcelona', pop: 5.6, aliases: ['barcelona', 'fc barcelona'] },
+  { region: 'Barcelona', name: 'FC Barcelona', pop: 5.6, aliases: ['barca', 'barcelona', 'fc barcelona'] },
   { region: 'Valencia', name: 'Valencia Basket', pop: 1.8, aliases: ['valencia', 'valencia basket'] },
   { region: 'Vitoria-Gasteiz', name: 'Baskonia', pop: 0.25, aliases: ['baskonia', 'saski baskonia'] },
   { region: 'Malaga', name: 'Unicaja', pop: 1.7, aliases: ['unicaja', 'unicaja malaga'] },
@@ -30,11 +30,15 @@ const normalizeSpainClubText = (value: string) =>
     .trim();
 
 const SPAIN_TEAM_POPULATION_MAP = new Map<string, number>();
+const SPAIN_CLUB_IDENTITY_MAP = new Map<string, string>();
 
 for (const club of SPAIN_TEAM_POPULATIONS) {
-  const keys = [club.region, club.name, ...club.aliases];
+  const keys = [club.region, club.name, `${club.region} ${club.name}`, ...club.aliases];
+  const identity = `spain:${normalizeSpainClubText(club.name || club.region)}`;
   for (const key of keys) {
-    SPAIN_TEAM_POPULATION_MAP.set(normalizeSpainClubText(key), club.pop);
+    const normalized = normalizeSpainClubText(key);
+    SPAIN_TEAM_POPULATION_MAP.set(normalized, club.pop);
+    SPAIN_CLUB_IDENTITY_MAP.set(normalized, identity);
   }
 }
 
@@ -47,6 +51,32 @@ export const getSpainTeamPopulationOverride = (region?: string | null, name?: st
     ?? SPAIN_TEAM_POPULATION_MAP.get(nameKey)
     ?? SPAIN_TEAM_POPULATION_MAP.get(regionKey)
     ?? null;
+};
+
+export const getSpainClubIdentityKey = (region?: string | null, name?: string | null): string | null => {
+  const regionKey = region ? normalizeSpainClubText(region) : '';
+  const nameKey = name ? normalizeSpainClubText(name) : '';
+  const combinedKey = `${regionKey} ${nameKey}`.trim();
+
+  return SPAIN_CLUB_IDENTITY_MAP.get(combinedKey)
+    ?? SPAIN_CLUB_IDENTITY_MAP.get(nameKey)
+    ?? SPAIN_CLUB_IDENTITY_MAP.get(regionKey)
+    ?? null;
+};
+
+export const getSpainClubMatchKeys = (team: {
+  region?: string | null;
+  name?: string | null;
+  abbrev?: string | null;
+}): string[] => {
+  const identity = getSpainClubIdentityKey(team.region, team.name);
+  const fullName = normalizeSpainClubText(`${team.region ?? ''} ${team.name ?? ''}`);
+  const abbrev = normalizeSpainClubText(team.abbrev ?? '');
+  return [
+    identity,
+    fullName ? `name:${fullName}` : null,
+    abbrev ? `abbrev:${abbrev}` : null,
+  ].filter((key): key is string => !!key);
 };
 
 export { SPAIN_TEAM_POPULATIONS };

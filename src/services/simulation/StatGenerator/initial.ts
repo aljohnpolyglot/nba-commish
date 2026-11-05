@@ -1,6 +1,5 @@
 import { NBAPlayer as Player, NBATeam as Team } from '../../../types';
 import { PlayerGameStats } from '../types';
-import { MinutesPlayedService } from '../MinutesPlayedService';
 import { getScaledRating, R } from './helpers';
 import { getVariance } from '../utils';
 import { getNightProfile } from './nightProfile';
@@ -25,31 +24,32 @@ export function generateStatsForTeam(
 ): PlayerGameStats[] {
   // ── Apply pace multiplier to scoring target ────────────────────────────────
   const adjustedScore = Math.round(totalScore * knobs.paceMultiplier);
+  const fieldGoalValue = knobs.gameRules?.fieldGoalValue ?? 2;
+  const freeThrowsEnabled = knobs.gameRules?.freeThrowsEnabled ?? true;
+  const dribbleRule = knobs.gameRules?.dribbleRule ?? 'continuous';
   const isEuroClubGame = isEuroClubCompetitionGame(team, knobs);
+  const numericTeamId = Number((team as any)?.id);
+  const isPbaClubGame =
+    String((team as any)?.league ?? '').toUpperCase() === 'PBA'
+    || (Number.isFinite(numericTeamId) && numericTeamId >= 2000 && numericTeamId < 2100);
 
   // ── Rotation (WHO plays) + Minutes (HOW MANY) — both from MinutesPlayedService ──
   // Pass rotationDepthOverride into getRotation directly so exhibition games (All-Star: 12,
   // Rising Stars: 10) bypass the standings-based depth cap before the list is truncated.
   const resolvedPlan = resolveRotationPlan(team, players, season, knobs, lead, overridePlayers);
-  const rotResult  = MinutesPlayedService.getRotation(
-    team, players, lead, season, overridePlayers,
-    knobs.conferenceRank, knobs.gbFromLeader, knobs.gamesRemaining,
-    knobs.rotationDepthOverride,
-    knobs.playThroughInjuries ?? 0,
-  );
-
   let rotation = resolvedPlan.rotation;
 
   if (rotation.length === 0) return [];
 
-  const starters = rotation.slice(0, 5);
+  const playersOnCourt = Math.max(1, Math.round(knobs.playersOnCourt ?? 5));
+  const starters = rotation.slice(0, playersOnCourt);
 
   // ── Minute allocation ──────────────────────────────────────────────────────
   let playerMinutes: number[];
   const overtimeDuration = knobs.overtimeDuration ?? 5;
   const numQuarters = knobs.numQuarters ?? 4;
   const regulationLength = knobs.quarterLength * numQuarters;
-  const totalMinuteBudget = (regulationLength + otCount * overtimeDuration) * 5;
+  const totalMinuteBudget = (regulationLength + otCount * overtimeDuration) * playersOnCourt;
 
   if (knobs.flatMinutes) {
     // Rating-weighted flat distribution: athletes play more, personalities play less.
@@ -81,6 +81,7 @@ export function generateStatsForTeam(
   // Apply minutes multiplier now, re-normalize to keep team total exact.
   // Also apply injury minutes restriction: day-to-day players lose ~12%, significant injuries ~40%.
   const ptiLevel = knobs.playThroughInjuries ?? 0;
+  const preserveMinutePlan = !knobs.flatMinutes && resolvedPlan.source !== 'auto';
   playerMinutes = playerMinutes.map((m, i) => {
     const injGames = rotation[i]?.injury?.gamesRemaining ?? 0;
     const minRestriction = injGames > 0 && ptiLevel > 0
@@ -88,7 +89,7 @@ export function generateStatsForTeam(
       : 1.0;
     // Skip minutesMult for flat-minute games (All-Star, Celebrity, Rising Stars) —
     // the point is even distribution; variance would skew KAT to 40 min.
-    const minMult = knobs.flatMinutes ? 1.0 : gamePlan.minutesMult[i];
+    const minMult = knobs.flatMinutes || preserveMinutePlan ? 1.0 : gamePlan.minutesMult[i];
     return Math.max(1, m * minMult * minRestriction);
   });
   const actualMinTotal = playerMinutes.reduce((a, b) => a + b, 0) || 1;
@@ -115,11 +116,16 @@ export function generateStatsForTeam(
 
   // ── Scoring Potential ──────────────────────────────────────────────────
   const scoringPotentials = rotation.map((p, i) => {
-    const oiq = rHelper(p, 'oiq'), drb = rHelper(p, 'drb'), ins = rHelper(p, 'ins');
+    const oiq = rHelper(p, 'oiq'), drb = rHelper(p, 'drb'), pss = rHelper(p, 'pss'), ins = rHelper(p, 'ins');
     const fg  = rHelper(p, 'fg'),  tp  = rHelper(p, 'tp'),  dnk = rHelper(p, 'dnk');
     const spd = rHelper(p, 'spd'), hgt = rHelper(p, 'hgt');
 
-    const usage = (ins * 0.23 + dnk * 0.15 + fg * 0.15 + tp * 0.15 + spd * 0.08 + hgt * 0.08 + drb * 0.08 + oiq * 0.08) * playerMinutes[i];
+    const ballSkill = dribbleRule === 'continuous'
+      ? drb * 0.08
+      : dribbleRule === 'single_bounce_no_shot'
+        ? drb * 0.02 + pss * 0.06
+        : pss * 0.08;
+    const usage = (ins * 0.23 + dnk * 0.15 + fg * 0.15 + tp * 0.15 + spd * 0.08 + hgt * 0.08 + ballSkill + oiq * 0.08) * playerMinutes[i];
     const inside  = ins * 0.6 + dnk * 0.4;
     const outside = fg  * 0.5 + tp  * 0.5;
     const skill   = (Math.max(inside, outside) * 1.5 + Math.min(inside, outside) * 0.5) / 2;
@@ -143,6 +149,16 @@ export function generateStatsForTeam(
 
   // ── Points Distribution ────────────────────────────────────────────────
   let teamBonusBucket = 0;
+  const isStrategyBoostedScorer = (userPtsBias: number) =>
+    userPtsBias >= (isPbaClubGame ? 1.12 : 1.18);
+  const getPointsCap = (ptsTargetMult: number, userPtsBias: number) => {
+    if (isEuroClubGame) return isStrategyBoostedScorer(userPtsBias) && ptsTargetMult >= 1.45 ? 42 : 34;
+    if (isPbaClubGame && isStrategyBoostedScorer(userPtsBias) && ptsTargetMult >= 1.35) return 52;
+    if (isPbaClubGame) return ptsTargetMult >= 1.45 ? 46 : 42;
+    if (isStrategyBoostedScorer(userPtsBias) && ptsTargetMult >= 1.45) return 92;
+    if (ptsTargetMult >= 1.45) return 78;
+    return isStrategyBoostedScorer(userPtsBias) ? 72 : 65;
+  };
   const initialTargets = rotation.map((p, i) => {
     const share    = scoringPotentials[i] / totalScoringPotential;
     // GamePlan ptsMult shifts tonight's distribution (bench eruption, 2nd-option takeover, etc.)
@@ -150,15 +166,24 @@ export function generateStatsForTeam(
     // promoted players get +pts, demoted −pts, by slot-distance delta.
     const userPtsBias = scoringBiases?.get(p.internalId)?.ptsMult ?? 1;
     let rawTarget  = adjustedScore * share * gamePlan.ptsMult[i] * userPtsBias;
-    const starThreshold = isEuroClubGame ? 22 : 27;
-    const shaveRate = isEuroClubGame ? 0.82 : 0.60;
+    const boostedScorer = isStrategyBoostedScorer(userPtsBias);
+    const starThreshold = isEuroClubGame
+      ? (boostedScorer ? 26 : 22)
+      : isPbaClubGame
+        ? (boostedScorer ? 30 : 22)
+        : (boostedScorer ? 34 : 27);
+    const shaveRate = isEuroClubGame
+      ? (boostedScorer ? 0.68 : 0.82)
+      : isPbaClubGame
+        ? (boostedScorer ? 0.55 : 0.82)
+        : (boostedScorer ? 0.42 : 0.60);
     if (rawTarget > starThreshold) {
       const excess      = rawTarget - starThreshold;
       const shavedPoints = excess * shaveRate;
       teamBonusBucket  += shavedPoints;
       rawTarget          = starThreshold + (excess - shavedPoints);
     }
-    return { rawTarget, share };
+    return { rawTarget, share, userPtsBias };
   });
 
   // ── Pass 1: compute ptsTargets with nightProfile, then normalize to adjustedScore ──
@@ -178,8 +203,9 @@ export function generateStatsForTeam(
     const gpElev = gamePlan.ptsMult[i];
     const dampF  = gpElev > 1.55 ? Math.max(0.50, 1.55 / gpElev) : 1.0;
     const nightM = 1.0 + (np.ptsTargetMult - 1.0) * dampF;
-    const ptsCap  = isEuroClubGame ? 34 : (np.ptsTargetMult >= 1.45 ? 78 : 65);
-    return { rawPts: Math.min(ptsCap, Math.max(0, Math.round(pts * nightM))), np, share };
+    const userPtsBias = initialTargets[i].userPtsBias;
+    const ptsCap = getPointsCap(np.ptsTargetMult, userPtsBias);
+    return { rawPts: Math.min(ptsCap, Math.max(0, Math.round(pts * nightM))), np, share, userPtsBias };
   });
   const rawPtsSum   = pass1.reduce((s, r) => s + r.rawPts, 0) || 1;
   const normScale   = adjustedScore / rawPtsSum;
@@ -187,14 +213,16 @@ export function generateStatsForTeam(
   // in a 170-pt raw sum gets clipped to 51 when team scores 130. Redistribute the
   // deficit across non-explosion players instead, letting the hot star keep his pts.
   const isExp = (np: { ptsTargetMult: number }) => np.ptsTargetMult >= 1.45;
-  const protectedSum = pass1.filter(r => isExp(r.np)).reduce((s, r) => s + r.rawPts, 0);
+  const isProtectedScorer = (r: typeof pass1[number]) =>
+    isExp(r.np) || (isPbaClubGame && isStrategyBoostedScorer(r.userPtsBias) && r.np.ptsTargetMult >= 1.35);
+  const protectedSum = pass1.filter(isProtectedScorer).reduce((s, r) => s + r.rawPts, 0);
   const needsProtection = protectedSum > 0 && normScale < 1;
   const othersSum      = rawPtsSum - protectedSum;
   const othersTarget   = Math.max(1, adjustedScore - protectedSum);
   const othersScale    = othersSum > 0 ? Math.min(1.0, othersTarget / othersSum) : 1;
   const finalPtsTargets = pass1.map(r => {
-    const ptsCap = isEuroClubGame ? 34 : (isExp(r.np) ? 78 : 65);
-    if (needsProtection && isExp(r.np)) {
+    const ptsCap = getPointsCap(r.np.ptsTargetMult, r.userPtsBias);
+    if (needsProtection && isProtectedScorer(r)) {
       return Math.min(ptsCap, Math.max(0, Math.round(r.rawPts)));
     }
     const scale = needsProtection ? othersScale : normScale;
@@ -217,6 +245,10 @@ export function generateStatsForTeam(
     const hgt  = rHelper(p, 'hgt'),  stre = rHelper(p, 'stre'), spd  = rHelper(p, 'spd');
     const drb  = rHelper(p, 'drb');
     const isStandAndDunkBig = tp < 20 && fg < 45 && dnk > 65 && hgt > 65;
+    const pos = String(p.pos ?? '').toUpperCase();
+    const isBigLike = hgt >= 66 || pos.includes('C');
+    const isRimOnlyBig = isBigLike && tp < 32 && fg < 48 && Math.max(ins, dnk) >= 60;
+    const isNonShootingBig = isBigLike && tp < 42 && fg < 54;
     const usageProxy = totalScoringPotential > 0
       ? (scoringPotentials[i] / totalScoringPotential) * 100
       : 5;
@@ -238,7 +270,9 @@ export function generateStatsForTeam(
 
     // Hard caps: elite shooters (TP > 85) at 0.14; everyone else at 0.40
     const maxFtRate = tp > 85 ? 0.14 : 0.40;
-    baseFtRate = Math.min(baseFtRate, maxFtRate) * knobs.ftRateMult;
+    const whistleDelta = Math.max(0, knobs.ftRateMult - 1);
+    const leagueWhistleFloor = isEuroClubGame ? 0 : whistleDelta * 0.30 + whistleDelta * whistleDelta * 1.78;
+    baseFtRate = Math.min(0.75, Math.min(baseFtRate, maxFtRate) * knobs.ftRateMult + leagueWhistleFloor);
 
     // Volume-sticky FGA — anchor to BASELINE pts (pre-night-modifier) so a brickfest
     // doesn't shrink shot volume. Real NBA: a 12-pt cold game = ~20 FGA at 20% FG,
@@ -249,8 +283,13 @@ export function generateStatsForTeam(
     const baselinePts = ptsTarget / ptm;
     // Minutes-scaled FGA floor — kills the "Brunson 2-of-6 brickfest" pathology.
     // Even a star's worst real cold game is ~4-of-20 over 35 mins (~0.57 FGA/min).
-    // Floor at 0.36 FGA/min: starter 35 mins → 12.6 FGA min, bench 15 mins → 5.4 FGA.
-    const fgaFloor = Math.floor(playerMinutes[i] * 0.38);
+    // Floor at 0.38 FGA/min: starter 35 mins → 13.3 FGA min, bench 15 mins → 5.7 FGA.
+    // Historical NBA already owns FGA volume through its dated attempt adapter;
+    // applying tempo here as well would double-count era transitions.
+    const fastPace = knobs.eraCoachingBias
+      ? 1
+      : Math.max(0.25, Math.min(2, knobs.paceMultiplier ?? 1));
+    const fgaFloor = Math.floor(playerMinutes[i] * 0.38 * fastPace);
 
     // Volume-anchored FGA estimation: NBA-real volume tracks MINUTES/USAGE more than
     // pts target. Old formula (estimatedFga = baselinePts/1.1 * fgaMult) pumped FGA
@@ -261,15 +300,15 @@ export function generateStatsForTeam(
     // back partially. Surgical 80/20 bumps FGA league-mean toward NBA 89.1 — pts-anchored
     // dominance preserves star usage signal, min-anchor still prevents pure-pts pump.
     // Stars at 35min/30pts get ~25 FGA (NBA Doncic 22.8 — slightly above, then capped).
-    const minBased = playerMinutes[i] * 0.42 * nightProfile.fgaMult;
+    const minBased = playerMinutes[i] * 0.42 * fastPace * nightProfile.fgaMult;
     const ptsBased = (baselinePts / 1.1) * nightProfile.fgaMult;
     const blendedEstimate = ptsBased * 0.78 + minBased * 0.22;
 
     // Hard cap: no player exceeds 0.72 FGA/min (Westbrook all-time peak ~0.71). Caps
     // the "Curry 30 FGA in 29 min" pathology (1.03 FGA/min) without choking realistic
     // star usage (Mitchell/Brunson 0.62, hot nights 0.65-0.70).
-    const fgaCap = playerMinutes[i] * 0.72;
-    const estimatedFga = Math.min(fgaCap, Math.max(fgaFloor, blendedEstimate));
+    const fgaCap = playerMinutes[i] * 0.72 * fastPace;
+    const estimatedFga = Math.min(fgaCap, Math.max(fgaFloor, blendedEstimate)) * (knobs.fieldGoalAttemptMult ?? 1);
     const isBenchWarmerScoringProfile =
       playerMinutes[i] < 10 &&
       ptsTarget <= 4 &&
@@ -325,11 +364,14 @@ export function generateStatsForTeam(
 
     // TRUE BELL CURVE FT%: An 80% shooter should occasionally shoot 60% or 100% in a single game.
     // ftSkill nudges % up on hot nights (Torch: +12%) and down on cold nights (Brickfest: -18%).
-    // Constant tuned 0.42 → 0.38 → 0.35: first cut brought league FT% 82.5 → 81.0 (still 3pp
-    // over NBA 78.3). Second surgical cut targets exactly that gap. Top1 should land at ~93%
-    // (NBA Curry .921) instead of 99% outliers.
-    const ftpBase = (ft / 100) * 0.50 + 0.36;
-    let gameFtp = ftpBase * nightProfile.ftSkill * getVariance(1.0, 0.15) * (1.0 + (nightProfile.efficiencyMult - 1.0) * 0.2) * (knobs.ftEfficiencyMult ?? 1.0);
+    // Fast-sim rounding inflates tiny FT lines but depressed full-season league
+    // accuracy with the historical rating scale. 0.40 keeps those rows near the
+    // saved era target without changing FTA volume or the Realistic engine.
+    const ftpBase = (ft / 100) * 0.50 + 0.40;
+    const fastFtEfficiency = knobs.eraCoachingBias
+      ? Math.pow(knobs.ftEfficiencyMult ?? 1, 3)
+      : knobs.ftEfficiencyMult ?? 1;
+    let gameFtp = ftpBase * nightProfile.ftSkill * getVariance(1.0, 0.15) * (1.0 + (nightProfile.efficiencyMult - 1.0) * 0.2) * fastFtEfficiency;
 
     // Bell curve cap — naturally creates authentic 6-for-6 or 8-for-8 nights
     gameFtp = Math.max(0.20, Math.min(1.0, gameFtp));
@@ -365,7 +407,10 @@ export function generateStatsForTeam(
     const tpComposite = (tp * 1.4 + oiq * 0.02) / 1.1;
 
     // 1. Base Curve: flattened to 1.7 to let role players breathe
-    let threePointRate = Math.pow(Math.max(0, tpComposite / 100), 2.4);
+    let threePointRate = Math.pow(
+      Math.max(0, tpComposite / 100),
+      2.4 * (knobs.threePointSkillExponentMult ?? 1),
+    );
 
     // 2. Hub Bonus: full bonus restored for stars
     if (share > 0.14 && drb > 45) {
@@ -374,19 +419,19 @@ export function generateStatsForTeam(
 
     // 3. League Volume Boost: 1.38 — middle class keeps volume, team totals pulled to ~38-42
     // 🔥 Smarter League Volume (targets 20–60 instead of global inflation)
-if (tpComposite >= 20 && tpComposite <= 60) {
-  const t = (tpComposite - 20) / 40;
-  threePointRate *= 1.20 + (t * 0.30);
-} else {
-  threePointRate *= 1.08; // light global baseline
-}
+    if (tpComposite >= 20 && tpComposite <= 60) {
+      const t = (tpComposite - 20) / 40;
+      threePointRate *= 1.20 + (t * 0.30);
+    } else {
+      threePointRate *= 1.08; // light global baseline
+    }
     // Wemby Effect: high interior D chases them out to the 3PT line
     // Jrue Effect: high perimeter D smothers the 3PT line
     threePointRate += intDelta  * 0.003;
     threePointRate -= perimDelta * 0.003;
 
     // Realism caps: Curry (>85) at 0.39 → ~12 3PA; good shooters capped at 0.40 (was 0.45)
-    const personalCap =
+    const basePersonalCap =
       tpComposite > 92 ? 0.40 :   // 🔒 HARD CAP Curry (~11–12 3PA max)
       tpComposite > 85 ? 0.30 :   // elite shooters
       tpComposite > 78 ? 0.30 :
@@ -398,6 +443,12 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       tpComposite > 20 ? 0.20 :   // Giannis zone (slightly up for league avg)
       tpComposite > 10 ? 0.15 :
       0.04;
+    const personalCap = Math.min(
+      0.70,
+      basePersonalCap
+        * (knobs.threePointAttemptCapMult ?? 1)
+        * (tpComposite > 92 ? knobs.threePointPersonalCapMult ?? 1 : 1),
+    );
 
     // Apply night profile diet shift — pure shooters (tp>75) already live on the arc.
     // Their torch expression should be better makes, not more attempts.
@@ -465,13 +516,41 @@ if (tpComposite >= 20 && tpComposite <= 60) {
 
     // 🎲 Attributes-Based Volume (calculated from rate, not makes)
     // league3PAMult applied HERE — after the cap — so it actually scales attempts instead of being swallowed
-    let threePa = Math.round((Math.max(0, estimatedFga - fourPa) * threePointRate) * (weights.league3PAMult || 1.5) * getVariance(1.0, 0.22));
+    let threePa = Math.round(
+      (Math.max(0, estimatedFga - fourPa) * threePointRate)
+        * (weights.league3PAMult || 1.5)
+        * (knobs.threePointAttemptVolumeMult ?? 1)
+        * getVariance(1.0, 0.22),
+    );
 
     // Integer Wobble: -2 to +2 to break robot cycles (only when already taking attempts)
     if (threePa > 0) {
       threePa += Math.floor(Math.random() * 5) - 2;
     }
     threePa = Math.max(0, threePa);
+    if (
+      isPbaClubGame &&
+      knobs.threePointAvailable &&
+      !isStandAndDunkBig &&
+      !isRimOnlyBig &&
+      estimatedFga >= 3
+    ) {
+      const attemptFloorRate = isBigLike
+        ? knobs.bigThreePointAttemptFloorRate ?? 0.08
+        : knobs.threePointAttemptFloorRate ?? 0.18;
+      threePa = Math.max(threePa, Math.round(estimatedFga * attemptFloorRate));
+    }
+    const lowThreePointAttemptCap =
+      isStandAndDunkBig ? 0 :
+      isRimOnlyBig ? 1 :
+      isNonShootingBig ? 2 :
+      isBigLike && tp < 45 ? 3 :
+      tp < 28 ? 2 :
+      tp < 38 ? 3 :
+      undefined;
+    if (lowThreePointAttemptCap !== undefined) {
+      threePa = Math.min(threePa, Math.ceil(lowThreePointAttemptCap * (knobs.lowThreePointAttemptCapMult ?? 1)));
+    }
 
     // Soft cap: no hard ceiling but each attempt above 16 has only 30% survival.
     // Allows Klay/Curry torch nights at 18-20+ but makes it very rare.
@@ -535,6 +614,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
           * gamePlan.effMult[i]
           * userEffBias
           * knobs.efficiencyMultiplier
+          * (knobs.twoPointEfficiencyMult ?? 1.0)
           * (knobs.interiorEffMult ?? 1.0)
           * getVariance(1.0, pct2Sigma)
           * playerLuck
@@ -553,8 +633,12 @@ if (tpComposite >= 20 && tpComposite <= 60) {
     }
 
     // Two Pointers
+    if (!freeThrowsEnabled) {
+      ftm = 0;
+      fta = 0;
+    }
     const twoPts = Math.max(0, fgPts - (threePm * 3));
-    let twoPm = Math.floor(twoPts / 2);
+    let twoPm = Math.floor(twoPts / fieldGoalValue);
 
     // Bench-line 0-pt allowance: NBA real ~15-25% of sub-14-min lines score 0 pts.
     // Our auto-balance paths (odd-pts FT pump, FTA floor) always gave marginal lines
@@ -567,7 +651,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
       fourPm = 0;
       ftm = 0;
       fta = Math.max(fta, ftm);
-    } else if (twoPts % 2 !== 0 && ptsTarget >= 14) {
+    } else if (freeThrowsEnabled && twoPts % fieldGoalValue !== 0 && ptsTarget >= 14) {
       // Odd-pts FT pump: ONLY apply for genuine scorers (ptsTarget ≥ 14). For
       // bench/role players the missing point gets donated to the team's top scorer
       // via reconcileToScore (NBA real: technicals go to the best FT shooter, not
@@ -646,7 +730,7 @@ if (tpComposite >= 20 && tpComposite <= 60) {
 
     const ba = Math.round((fgaAtRim + fgaLowPost) * getVariance(0.06, 0.02));
 
-    const pts = twoPm * 2 + threePm * 3 + fourPm * 4 + ftm;
+    const pts = twoPm * fieldGoalValue + threePm * 3 + fourPm * 4 + ftm;
 
     return {
       playerId: p.internalId,

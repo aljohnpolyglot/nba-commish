@@ -1,5 +1,6 @@
 import React from 'react';
 import { Player } from '../types/throne';
+import { PlayerPortrait } from '../../components/shared/PlayerPortrait';
 
 interface PlayerSelectorGridProps {
   items: Array<{ player: Player; score: number }>;
@@ -49,11 +50,10 @@ export const PlayerSelectorGrid: React.FC<PlayerSelectorGridProps> = ({
                 : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
             }`}
           >
-            <img
-              src={player.imgURL}
-              alt={player.name}
-              className="w-16 h-16 rounded-lg bg-zinc-800 object-cover"
-              onError={(e) => (e.currentTarget.src = 'https://www.nba.com/assets/img/default-headshot.png')}
+            <PlayerPortrait
+              imgUrl={player.imgURL}
+              playerName={player.name}
+              size={64}
             />
             <div className="text-center min-w-0">
               <div className="font-black text-xs uppercase italic truncate">{player.name}</div>

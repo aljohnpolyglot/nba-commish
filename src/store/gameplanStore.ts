@@ -11,7 +11,7 @@
  */
 
 export interface Gameplan {
-  /** internalIds of the 5 starters, in position order (PG→SG→SF→PF→C). */
+  /** internalIds of the configured starting unit, in display order. */
   starterIds: string[];
   /**
    * Optional explicit bench ordering. When present, the Gameplan tab renders
@@ -89,14 +89,14 @@ export function clearGameplan(teamId: number) {
 }
 
 /**
- * Signed delta between the configured minutes total and the 240-min team budget.
+ * Signed delta between the configured minutes total and the team-minute budget.
  * Positive → under-allocated (need to add minutes); negative → over-allocated.
  * Returns 0 when no plan exists (nothing to fix).
  */
-export function getMinutesDiff(teamId: number): number {
+export function getMinutesDiff(teamId: number, targetMinutes: number): number {
   hydrate();
   const plan = cache.get(teamId);
   if (!plan) return 0;
   const total = Object.values(plan.minuteOverrides).reduce((a, b) => a + b, 0);
-  return 240 - total;
+  return targetMinutes - total;
 }

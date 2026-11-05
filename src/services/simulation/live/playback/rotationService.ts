@@ -1,4 +1,4 @@
-const scheduleCache = new WeakMap<object, { n: string; start: number; end: number }[]>();
+const scheduleCache = new WeakMap<object, Map<number, { n: string; start: number; end: number }[]>>();
 
 export const parseMin = (s: string | number): number => {
   if (!s) return 0;
@@ -9,11 +9,18 @@ export const parseMin = (s: string | number): number => {
 
 export class RotationService {
 
-  static getLineupAtTime(roster: any[], timeInSeconds: number, scoreDiff: number): any[] {
-    if (!scheduleCache.has(roster)) {
-      scheduleCache.set(roster, RotationService._buildSchedule(roster));
+  static getLineupAtTime(
+    roster: any[],
+    timeInSeconds: number,
+    scoreDiff: number,
+    playersOnCourt: number = 5,
+  ): any[] {
+    const cache = scheduleCache.get(roster) ?? new Map();
+    if (!scheduleCache.has(roster)) scheduleCache.set(roster, cache);
+    if (!cache.has(playersOnCourt)) {
+      cache.set(playersOnCourt, RotationService._buildSchedule(roster, playersOnCourt));
     }
-    const schedule = scheduleCache.get(roster)!;
+    const schedule = cache.get(playersOnCourt)!;
     const rosterMap = new Map(roster.map((p: any) => [p.n, p]));
     // Allow up to 3 OT periods (2880 + 3×300 = 3780)
     const t = Math.min(Math.max(Math.floor(timeInSeconds), 0), 3779);
@@ -23,7 +30,7 @@ export class RotationService {
       .map(w => rosterMap.get(w.n))
       .filter(Boolean) as any[];
 
-    if (active.length >= 5) {
+    if (active.length >= playersOnCourt) {
       return [...active]
         .sort((a: any, b: any) => {
           // Prefer players whose window is tightly centered on this time
@@ -34,16 +41,16 @@ export class RotationService {
           const midB = Math.abs(t - (scheduleB.start + scheduleB.end) / 2);
           return midA - midB;
         })
-        .slice(0, 5);
+        .slice(0, playersOnCourt);
     }
 
     // Only pad with players whose window covers this time
     const activeNames = new Set(active.map((p: any) => p.n));
     const lineup = [...active];
-    const sched = scheduleCache.get(roster)!;
+    const sched = schedule;
     
     for (const p of [...roster].sort((a, b) => parseMin(b.min) - parseMin(a.min))) {
-      if (lineup.length >= 5) break;
+      if (lineup.length >= playersOnCourt) break;
       if (activeNames.has(p.n)) continue;
       const w = sched.find((w: any) => w.n === p.n);
       if (!w) continue;
@@ -54,10 +61,9 @@ export class RotationService {
       }
     }
 
-    // Last resort — if still under 5, pull from starters only
-    if (lineup.length < 5) {
+    if (lineup.length < playersOnCourt) {
       for (const p of [...roster].sort((a, b) => parseMin(b.min) - parseMin(a.min))) {
-        if (lineup.length >= 5) break;
+        if (lineup.length >= playersOnCourt) break;
         if (!activeNames.has(p.n)) {
           lineup.push(p);
           activeNames.add(p.n);
@@ -67,7 +73,10 @@ export class RotationService {
     return lineup.filter(p => !p.fouledOut);
   }
 
-  private static _buildSchedule(roster: any[]): { n: string; start: number; end: number }[] {
+  private static _buildSchedule(
+    roster: any[],
+    playersOnCourt: number,
+  ): { n: string; start: number; end: number }[] {
     const SEG = 60, TOTAL = 2880; // base game only — OT players recycle starters
     const NSEGS = 48; // rotation schedule covers regulation only
 
@@ -83,7 +92,7 @@ export class RotationService {
       p.ovr ?? p.ratings?.[p.ratings.length - 1]?.ovr ?? (80 - players.indexOf(p));
 
     const byOvr = [...players].sort((a, b) => getOvr(b) - getOvr(a));
-    const starters = new Set(byOvr.slice(0, 5).map(p => p.n));
+    const starters = new Set(byOvr.slice(0, playersOnCourt).map(p => p.n));
     const bench = byOvr.filter(p => !starters.has(p.n));
     const benchByLowOvr = [...bench].sort((a, b) => getOvr(a) - getOvr(b));
 
@@ -104,16 +113,16 @@ export class RotationService {
       if (r > 0) remaining.set(name, r - SEG);
     };
 
-    // ── Phase 1: Lock Q1 open with top 5 OVR ─────────────────────────────────
+    // ── Phase 1: Lock Q1 open with the strongest configured unit ──────────────
     for (let seg = 0; seg < 6; seg++) {
-      byOvr.slice(0, 5).forEach(p => { onFloor[seg].add(p.n); consume(p.n); });
+      byOvr.slice(0, playersOnCourt).forEach(p => { onFloor[seg].add(p.n); consume(p.n); });
     }
 
     // ── Phase 2: Lock Q4 close ────────────────────────────────────────────────
     if (!isBlowout) {
-      // Close game: top 5 OVR close it out
+      // Close game: the strongest configured unit closes it out.
       for (let seg = 43; seg < NSEGS; seg++) {
-        byOvr.slice(0, 5).forEach(p => {
+        byOvr.slice(0, playersOnCourt).forEach(p => {
           if (!onFloor[seg].has(p.n)) { onFloor[seg].add(p.n); consume(p.n); }
         });
       }
@@ -121,11 +130,12 @@ export class RotationService {
       // Blowout: bench owns Q4 entirely, recycle if needed
       for (let seg = GARBAGE_START; seg < NSEGS; seg++) {
         let bi = 0;
-        while (onFloor[seg].size < 5) {
-          const p = benchByLowOvr[bi % benchByLowOvr.length];
+        const garbagePool = benchByLowOvr.length > 0 ? benchByLowOvr : [...byOvr].reverse();
+        while (onFloor[seg].size < playersOnCourt && garbagePool.length > 0) {
+          const p = garbagePool[bi % garbagePool.length];
           onFloor[seg].add(p.n);
           bi++;
-          if (bi > benchByLowOvr.length * 3) break;
+          if (bi > garbagePool.length * 3) break;
         }
       }
     }
@@ -133,9 +143,9 @@ export class RotationService {
     // ── Phase 3: Q3 close / Q4 transition (non-garbage) ──────────────────────
     if (!isBlowout) {
       for (let seg = 36; seg < 43; seg++) {
-        if (onFloor[seg].size >= 5) continue;
+        if (onFloor[seg].size >= playersOnCourt) continue;
         for (const p of byOvr) {
-          if (onFloor[seg].size >= 5) break;
+          if (onFloor[seg].size >= playersOnCourt) break;
           if (!onFloor[seg].has(p.n) && (remaining.get(p.n) ?? 0) > 0) {
             onFloor[seg].add(p.n); consume(p.n);
           }
@@ -145,7 +155,7 @@ export class RotationService {
 
     // ── Phase 4: Fill middle segments inward ──────────────────────────────────
     for (let seg = 0; seg < NSEGS; seg++) {
-      if (onFloor[seg].size >= 5) continue;
+      if (onFloor[seg].size >= playersOnCourt) continue;
       if (isBlowout && seg >= GARBAGE_START) continue;
 
       const isQ2Open = seg >= 12 && seg <= 16;
@@ -166,20 +176,20 @@ export class RotationService {
         .sort((a, b) => b.score - a.score);
 
       for (const { p } of scored) {
-        if (onFloor[seg].size >= 5) break;
+        if (onFloor[seg].size >= playersOnCourt) break;
         onFloor[seg].add(p.n); consume(p.n);
       }
 
       // Fallback: anyone with budget
       for (const p of players) {
-        if (onFloor[seg].size >= 5) break;
+        if (onFloor[seg].size >= playersOnCourt) break;
         if (!onFloor[seg].has(p.n) && (remaining.get(p.n) ?? 0) > 0) {
           onFloor[seg].add(p.n); consume(p.n);
         }
       }
       // Last resort: recycle
       for (const p of players) {
-        if (onFloor[seg].size >= 5) break;
+        if (onFloor[seg].size >= playersOnCourt) break;
         if (!onFloor[seg].has(p.n)) onFloor[seg].add(p.n);
       }
     }
@@ -206,9 +216,9 @@ export class RotationService {
       }
     }
 
-    // OT extension: top 5 OVR players always play OT
+    // OT extension: the strongest configured unit always plays OT.
     // Add extra windows for OT periods (up to 3 OT = 900 extra seconds)
-    const otvr = byOvr.slice(0, 5);
+    const otvr = byOvr.slice(0, playersOnCourt);
     for (const p of otvr) {
       windows.push({ n: p.n, start: TOTAL, end: TOTAL + 900 });
     }
@@ -224,12 +234,12 @@ export class RotationService {
 
   // ── Convenience helpers ──────────────────────────────────────────────────
 
-  static getStarters(roster: any[]): any[] {
-    return [...roster].sort((a, b) => parseMin(b.min) - parseMin(a.min)).slice(0, 5);
+  static getStarters(roster: any[], playersOnCourt: number = 5): any[] {
+    return [...roster].sort((a, b) => parseMin(b.min) - parseMin(a.min)).slice(0, playersOnCourt);
   }
 
-  static getRotation(roster: any[]): any[] {
-    const s = this.getStarters(roster);
+  static getRotation(roster: any[], playersOnCourt: number = 5): any[] {
+    const s = this.getStarters(roster, playersOnCourt);
     return [
       ...s,
       ...[...roster]
@@ -238,11 +248,17 @@ export class RotationService {
     ];
   }
 
-  static getPlayerWindow(roster: any[], playerName: string): { start: number; end: number } {
-    if (!scheduleCache.has(roster)) {
-      scheduleCache.set(roster, RotationService._buildSchedule(roster));
+  static getPlayerWindow(
+    roster: any[],
+    playerName: string,
+    playersOnCourt: number = 5,
+  ): { start: number; end: number } {
+    const cache = scheduleCache.get(roster) ?? new Map();
+    if (!scheduleCache.has(roster)) scheduleCache.set(roster, cache);
+    if (!cache.has(playersOnCourt)) {
+      cache.set(playersOnCourt, RotationService._buildSchedule(roster, playersOnCourt));
     }
-    const sched = scheduleCache.get(roster)!;
+    const sched = cache.get(playersOnCourt)!;
     // Return the span covering ALL stints (first start to last end)
     const entries = sched.filter((w: any) => w.n === playerName && w.end > w.start);
     if (entries.length === 0) return { start: 0, end: 2880 };

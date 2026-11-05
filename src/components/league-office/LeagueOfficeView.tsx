@@ -2,33 +2,34 @@ import React, { useState } from 'react';
 import { LeagueOfficeSearcher, Personnel } from '../central/view/LeagueOfficeSearcher';
 import { PersonnelActionsModal, PersonnelActionType } from '../central/view/PersonnelActionsModal';
 import { PersonnelBioView } from '../central/view/PersonnelBioView';
+import { PersonnelRatingsView } from '../central/view/PersonnelRatingsView';
 import { useActionModals } from '../actions/hooks/useActionModals';
 import { motion, AnimatePresence } from 'motion/react';
 import { Building2 } from 'lucide-react';
 import { ActionModalsRenderer } from '../actions/view/ActionModalsRenderer';
 import { useGame } from '../../store/GameContext';
 import { PersonSelectorModal } from '../modals/PersonSelectorModal';
-import ContactModal from '../ContactModal';
 export const LeagueOfficeView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const modals = useActionModals();
   // Personnel-specific state
   const [selectedPersonnel, setSelectedPersonnel] = useState<Personnel | null>(null);
   const [viewingBio,        setViewingBio]        = useState<Personnel | null>(null);
-  const [contactModalPerson, setContactModalPerson] = useState<any>(null);
+  const [viewingRatings,    setViewingRatings]    = useState<Personnel | null>(null);
   const [directAction, setDirectAction] = useState<{
-    type: 'contact' | 'bribe' | 'fine' | 'dinner' | 'movie' | 'suspension';
+    type: 'fine' | 'dinner' | 'movie' | 'suspension' | 'drug_test' | 'sabotage' | 'fire' | 'retire_now';
     person: Personnel;
   } | null>(null);
 
   const ACTION_TYPE_MAP: Record<string, string> = {
-    contact:    'SEND_MESSAGE',
-    bribe:      'BRIBE_PERSON',
     fine:       'FINE_PERSON',
     dinner:     'INVITE_DINNER',
     movie:      'INVITE_DINNER',
     suspension: 'SUSPEND_PLAYER',
+    drug_test:  'DRUG_TEST_PERSON',
+    sabotage:   'SABOTAGE_PLAYER',
     fire:       'FIRE_PERSONNEL',
+    retire_now: 'RETIRE_PERSONNEL',
   };
 
   // Stub kept for ActionModalsRenderer prop compatibility (not used in LeagueOffice flow)
@@ -42,16 +43,8 @@ export const LeagueOfficeView: React.FC = () => {
       setSelectedPersonnel(null);
       return;
     }
-
-    if (actionType === 'contact') {
-      setContactModalPerson({
-        id: `personnel-${selectedPersonnel.id}`,
-        name: selectedPersonnel.name,
-        title: selectedPersonnel.jobTitle || selectedPersonnel.type,
-        organization: selectedPersonnel.team || 'League Office',
-        type: selectedPersonnel.type,
-        playerPortraitUrl: selectedPersonnel.playerPortraitUrl,
-      });
+    if (actionType === 'view_ratings') {
+      setViewingRatings(selectedPersonnel);
       setSelectedPersonnel(null);
       return;
     }
@@ -99,7 +92,7 @@ export const LeagueOfficeView: React.FC = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center p-4 md:p-8"
+            className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4"
           >
             {/* Backdrop */}
             <motion.div
@@ -115,7 +108,7 @@ export const LeagueOfficeView: React.FC = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1,    y: 0  }}
               exit={{   opacity: 0, scale: 0.95, y: 20  }}
-              className="relative w-full max-w-4xl h-[88vh] bg-slate-900 border border-slate-800 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col"
+              className="relative flex h-[94vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[2rem] border border-blue-400/30 bg-slate-900 shadow-2xl"
             >
               <PersonnelBioView
                 person={viewingBio}
@@ -126,15 +119,44 @@ export const LeagueOfficeView: React.FC = () => {
         )}
       </AnimatePresence>
 
+      <AnimatePresence>
+        {viewingRatings && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center p-2 sm:p-4"
+          >
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setViewingRatings(null)}
+              className="absolute inset-0 bg-slate-950/90 backdrop-blur-xl"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative flex h-[94vh] w-full max-w-[1400px] flex-col overflow-hidden rounded-[2rem] border border-blue-400/30 bg-slate-900 shadow-2xl"
+            >
+              <PersonnelRatingsView person={viewingRatings} onBack={() => setViewingRatings(null)} />
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Direct action modal — pre-selects the chosen personnel */}
       {directAction && (
         <PersonSelectorModal
           title={
-            directAction.type === 'contact'    ? 'Contact Person'    :
-            directAction.type === 'bribe'      ? 'Offer Bribe'       :
             directAction.type === 'fine'       ? 'Levy Fine'         :
             directAction.type === 'dinner'     ? 'Invite to Dinner'  :
             directAction.type === 'movie'      ? 'Invite to Movie'   :
+            directAction.type === 'drug_test'  ? 'Mandatory Drug Test' :
+            directAction.type === 'sabotage'   ? 'Sabotage Personnel' :
+            directAction.type === 'fire'       ? 'Fire Personnel' :
+            directAction.type === 'retire_now' ? 'Retire Coach' :
             'Suspend Personnel'
           }
           actionType={directAction.type}
@@ -147,8 +169,9 @@ export const LeagueOfficeView: React.FC = () => {
             playerPortraitUrl: directAction.person.playerPortraitUrl,
           }}
           skipPersonSelection={true}
+          showInviteMorePrompt={directAction.type === 'dinner' || directAction.type === 'movie'}
           onClose={() => setDirectAction(null)}
-          onSelect={async (contacts, reason, amount, location, duration) => {
+          onSelect={async (contacts, reason, amount, location, duration, disciplineTemplate) => {
             const actionType = directAction!.type;
             setDirectAction(null);
             const dispatchType = ACTION_TYPE_MAP[actionType];
@@ -171,36 +194,11 @@ export const LeagueOfficeView: React.FC = () => {
                 subType:  actionType,
                 location,
                 contacts,
+                disciplineTemplateId: disciplineTemplate?.templateId,
+                disciplineTemplateName: disciplineTemplate?.templateName,
               },
             });
           }}
-        />
-      )}
-
-      {contactModalPerson && (
-        <ContactModal
-          contact={contactModalPerson}
-          onClose={() => setContactModalPerson(null)}
-          onSend={async ({ message }: { message: string }) => {
-            const chat = state.chats.find(c =>
-              c.participants.includes(contactModalPerson.id) &&
-              c.participants.includes('commissioner')
-            );
-            await dispatchAction({
-              type: 'SEND_CHAT_MESSAGE',
-              payload: {
-                chatId: chat?.id,
-                text: message,
-                targetId: contactModalPerson.id,
-                targetName: contactModalPerson.name,
-                targetRole: contactModalPerson.title,
-                targetOrg: contactModalPerson.organization || 'League Office',
-                avatarUrl: contactModalPerson.playerPortraitUrl,
-              }
-            });
-            setContactModalPerson(null);
-          }}
-          isLoading={state.isProcessing}
         />
       )}
 
@@ -212,7 +210,6 @@ export const LeagueOfficeView: React.FC = () => {
         handleCelebrityRosterConfirm={() => {}}
         handleAction={async () => {}}
         handleSendMessage={async () => {}}
-        handleAnnouncementSubmit={async () => {}}
         executeConfirmedAction={async () => {}}
       />
     </div>

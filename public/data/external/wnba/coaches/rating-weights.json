@@ -1,0 +1,33 @@
+{
+  "explanation": "WNBA championships and Coach of the Year awards lead the raw score. Coach of the Month, regular-season wins, playoff wins, win percentages, and coaching experience add smaller capped components. Raw scores are percentile-ranked within the scraped WNBA coach pool and mapped to a 20-70 rating; the 99th percentile and above is capped at 70.",
+  "ratingRange": {
+    "minimum": 20,
+    "maximum": 70,
+    "ceilingPercentile": 99
+  },
+  "weights": {
+    "wnbaChampionship": 16,
+    "wnbaFinalsAppearance": 4,
+    "coachOfTheYear": 10,
+    "coachOfTheMonth": 1,
+    "otherCoachingAward": 0.5,
+    "regularSeasonWin": 0.035,
+    "maxRegularSeasonWinPoints": 14,
+    "playoffWin": 0.16,
+    "maxPlayoffWinPoints": 12,
+    "headCoachSeason": 0.3,
+    "maxHeadCoachSeasonPoints": 7,
+    "assistantCoachSeason": 0.06,
+    "maxAssistantCoachSeasonPoints": 2,
+    "otherStaffSeason": 0.03,
+    "maxOtherStaffSeasonPoints": 1,
+    "regularWinPctBaseline": 0.45,
+    "regularWinPctMultiplier": 20,
+    "maxRegularWinPctPoints": 5,
+    "regularWinPctFullSampleGames": 100,
+    "playoffWinPctBaseline": 0.4,
+    "playoffWinPctMultiplier": 15,
+    "maxPlayoffWinPctPoints": 4.5,
+    "playoffWinPctFullSampleGames": 20
+  }
+}

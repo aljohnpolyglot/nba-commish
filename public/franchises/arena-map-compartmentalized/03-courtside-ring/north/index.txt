@@ -1,0 +1,13 @@
+Courtside Ring — north
+======================
+
+C3	sections/c3-north.svg
+C4	sections/c4-north.svg
+C5	sections/c5-north.svg
+C6	sections/c6-north.svg
+C7	sections/c7-north.svg
+C8	sections/c8-north.svg
+C9	sections/c9-north.svg
+C10	sections/c10-north.svg
+C11	sections/c11-north.svg
+C12	sections/c12-north.svg

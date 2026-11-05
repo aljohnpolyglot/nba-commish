@@ -1,5 +1,6 @@
 import { NBACupState, NBACupGroup, NBACupKnockoutGame, Game, NBATeam } from '../../types';
 import { seededRandom } from './seededRandom';
+import { didHomeTeamWin } from '../../utils/gameOutcome';
 
 interface GroupEntry {
   tid: number;
@@ -26,7 +27,7 @@ export function rebuildCupGroupStandingsFromSchedule(cup: NBACupState, schedule:
 
       const homeScore = game.homeScore ?? 0;
       const awayScore = game.awayScore ?? 0;
-      const homeWon = homeScore > awayScore;
+      const homeWon = didHomeTeamWin(game);
       home.gp += 1;
       home.w += homeWon ? 1 : 0;
       home.l += homeWon ? 0 : 1;
@@ -85,7 +86,7 @@ function groupWinner(group: NBACupGroup, schedule: Game[], year: number, saveId:
       );
       if (h2hGame?.played) {
         const aWon = h2hGame.homeScore !== undefined && h2hGame.awayScore !== undefined
-          ? (h2hGame.homeTid === a.tid ? h2hGame.homeScore > h2hGame.awayScore : h2hGame.awayScore > h2hGame.homeScore)
+          ? (h2hGame.homeTid === a.tid ? didHomeTeamWin(h2hGame) : !didHomeTeamWin(h2hGame))
           : null;
         if (aWon === true) return -1;
         if (aWon === false) return 1;

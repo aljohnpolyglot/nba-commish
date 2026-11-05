@@ -13,8 +13,9 @@ import { computeTradeEligibleDate } from '../../../utils/signingMoratorium';
 import { getFreeAgencyStartDate, parseGameDate } from '../../../utils/dateUtils';
 import { clearWaiverMarkers, stripLiveContractAfterWaive } from '../../../utils/contractCleanup';
 import { getTeamFullName } from '../../../utils/teamNames';
-import { buildGeneratedNBAStaffForRole } from '../../../services/staff/nbaRealStaffSeed';
 import { ensureStaffPoolDepth, inferEuroStaffLeagueId, normalizeStaffPoolRole, toStaffFreeAgent } from '../../../services/euro/staffPool';
+import { finalizeStaffStint, stampStaffHireCareer } from '../../../services/staff/staffCareerRows';
+import { buildImmediateStaffRetirement, staffRetirementHistory } from '../../../services/staff/staffRetirement';
 
 function normalizePersonnelKey(value: string | undefined | null): string {
     return String(value ?? '').trim().toLowerCase();
@@ -27,7 +28,7 @@ function teamOrganizationKeys(team: any): string[] {
     return [
         name,
         fullName,
-        region && name ? `${region} ${name}` : '',
+        region,
         team?.abbrev,
         team?.teamName,
     ]
@@ -60,6 +61,12 @@ export const handleFirePersonnel = async (stateWithSim: GameState, action: UserA
             gms: markUnemployed(staff.gms || []),
             coaches: markUnemployed(staff.coaches || []),
             owners: markUnemployed(staff.owners || []),
+            leagueOffice: person.type === 'league_office'
+                ? (staff.leagueOffice || []).filter((member: any) => member.name !== person.name)
+                : (staff.leagueOffice || []),
+            referees: person.type === 'referee'
+                ? (staff.referees || []).filter((member: any) => member.name !== person.name)
+                : (staff.referees || []),
         };
     }
 
@@ -72,7 +79,7 @@ export const handleFirePersonnel = async (stateWithSim: GameState, action: UserA
 
     if (targetTeam?.tycoon?.staffMembers?.length) {
         const targetTid = targetTeam.id ?? targetTeam.tid;
-        const leagueId = inferEuroStaffLeagueId(targetTid);
+        const leagueId = inferEuroStaffLeagueId(targetTid, stateWithSim.leagueType);
         const normalizedRole = normalizeStaffPoolRole(person.title);
         const isNBA = targetTid >= 0 && targetTid < 100;
         let updatedTeams = [...(result.teams || stateWithSim.teams || [])];
@@ -93,10 +100,12 @@ export const handleFirePersonnel = async (stateWithSim: GameState, action: UserA
             if (staffIndex >= 0) {
                 const firedMember = staffMembers[staffIndex];
                 const firedRole = String(firedMember.role ?? person.title ?? normalizedRole).trim();
+                const teamName = getTeamFullName(team);
+                const finalizedFiredMember = finalizeStaffStint(firedMember, firedRole, teamName, currentYear);
                 staffMembers.splice(staffIndex, 1);
                 updatedStaffFreeAgents.push(
                     toStaffFreeAgent(
-                        firedMember,
+                        finalizedFiredMember,
                         leagueId,
                         `staff-fired-${targetTid}-${firedRole.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${String(firedMember.name ?? 'staff').replace(/[^a-z0-9]+/gi, '-')}-${Date.now()}`,
                     ),
@@ -132,19 +141,23 @@ export const handleFirePersonnel = async (stateWithSim: GameState, action: UserA
 
                     if (replacementIndex >= 0) {
                         const [replacement] = updatedStaffFreeAgents.splice(replacementIndex, 1);
-                        hiredReplacement = {
-                            ...replacement,
-                            role: firedRole,
-                            team: getTeamFullName(team),
-                            teamLogoUrl: team.logoUrl ?? team.imgURL,
-                            position: replacement.position ?? replacement.jobTitle ?? normalizeStaffPoolRole(firedRole),
-                            jobTitle: replacement.jobTitle ?? replacement.position ?? normalizeStaffPoolRole(firedRole),
-                            contractYears: Math.max(1, Number(replacement.contractYears ?? (firedRole === 'Head Coach' ? 3 : 2))),
-                            hiredYear: currentYear,
-                            yearsWithTeam: 0,
-                        };
-                    } else if (isNBA) {
-                        hiredReplacement = buildGeneratedNBAStaffForRole(team as any, firedRole, currentYear, 'commissioner-fire');
+                        hiredReplacement = stampStaffHireCareer(
+                            {
+                                ...replacement,
+                                role: firedRole,
+                                team: teamName,
+                                teamLogoUrl: team.logoUrl ?? team.imgURL,
+                                position: replacement.position ?? replacement.jobTitle ?? normalizeStaffPoolRole(firedRole),
+                                jobTitle: replacement.jobTitle ?? replacement.position ?? normalizeStaffPoolRole(firedRole),
+                                contractYears: Math.max(1, Number(replacement.contractYears ?? (firedRole === 'Head Coach' ? 3 : 2))),
+                                hiredYear: currentYear,
+                                yearsWithTeam: 0,
+                                isPlaceholder: false,
+                            },
+                            firedRole,
+                            teamName,
+                            currentYear,
+                        );
                     }
                 }
 
@@ -158,7 +171,7 @@ export const handleFirePersonnel = async (stateWithSim: GameState, action: UserA
                                     ? {
                                         ...coach,
                                         name: hiredReplacement.name,
-                                        team: getTeamFullName(team),
+                                        team: teamName,
                                         position: 'Head Coach',
                                         jobTitle: 'Head Coach',
                                         playerPortraitUrl: hiredReplacement.playerPortraitUrl ?? coach.playerPortraitUrl,
@@ -171,7 +184,7 @@ export const handleFirePersonnel = async (stateWithSim: GameState, action: UserA
                     result.history = [
                         ...(result.history || stateWithSim.history || []),
                         {
-                            text: `${getTeamFullName(team)} hired ${hiredReplacement.name} as ${firedRole}.`,
+                            text: `${teamName} hired ${hiredReplacement.name} as ${firedRole}.`,
                             date: stateWithSim.date,
                             type: 'Personnel',
                             tid: targetTid,
@@ -199,6 +212,17 @@ export const handleFirePersonnel = async (stateWithSim: GameState, action: UserA
 
     result.statChanges = result.statChanges || {};
     result.statChanges.ownerApproval = (result.statChanges.ownerApproval || 0) - 3;
+    result.history = [
+        ...(result.history || stateWithSim.history || []),
+        {
+            text: `${person.name} was dismissed from the league as ${person.title}.`,
+            date: stateWithSim.date,
+            type: 'Personnel',
+            personnelAction: 'dismissed',
+            personId: person.id,
+            personName: person.name,
+        },
+    ];
 
     // Always add a League News item for the firing (fires even when LLM is off)
     const fireNewsItem = {
@@ -210,6 +234,122 @@ export const handleFirePersonnel = async (stateWithSim: GameState, action: UserA
         newsType: 'daily' as const,
     };
     result.newNews = [fireNewsItem, ...(result.newNews || [])];
+
+    return result;
+};
+
+export const handleRetirePersonnel = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
+    const person = action.payload?.contacts?.[0];
+    if (!person) return { isProcessing: false };
+    const orgKey = normalizePersonnelKey(person.organization);
+    const requestedTeam = [...(stateWithSim.teams ?? []), ...(stateWithSim.nonNBATeams ?? [])]
+        .find((team: any) => teamOrganizationKeys(team).includes(orgKey));
+    const requestedTid = requestedTeam == null
+        ? null
+        : Number((requestedTeam as any).id ?? (requestedTeam as any).tid);
+    if (stateWithSim.gameMode === 'gm' && requestedTid !== stateWithSim.userTeamId) {
+        return { isProcessing: false };
+    }
+
+    const outcomeText = `${person.name} has announced an immediate retirement from coaching.`;
+    const result = await advanceDay(stateWithSim, {
+        type: 'RETIRE_PERSONNEL',
+        payload: { outcomeText, contacts: [person] },
+    } as any, [
+        `${person.name}, ${person.title} for ${person.organization}, has retired. The club begins its search for a successor.`,
+    ], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
+
+    const updatedTeams = [...(result.teams || stateWithSim.teams || [])];
+    const updatedNonNBATeams = [...((result as any).nonNBATeams || stateWithSim.nonNBATeams || [])];
+    const targetTeam = [...updatedTeams, ...updatedNonNBATeams]
+        .find((team: any) => teamOrganizationKeys(team).includes(orgKey));
+    const targetTid = targetTeam ? Number(targetTeam.id ?? targetTeam.tid) : null;
+    const collection = targetTid != null && targetTid >= 0 && targetTid < 100 ? updatedTeams : updatedNonNBATeams;
+    const teamIndex = targetTid == null
+        ? -1
+        : collection.findIndex((team: any) => Number(team.id ?? team.tid) === targetTid);
+    let retirementRecord: ReturnType<typeof buildImmediateStaffRetirement> | null = null;
+
+    if (teamIndex >= 0) {
+        const team = collection[teamIndex] as any;
+        const staffMembers = [...(team.tycoon?.staffMembers ?? [])];
+        const memberIndex = staffMembers.findIndex((member: any) =>
+            normalizePersonnelKey(member.name) === normalizePersonnelKey(person.name),
+        );
+        const savedCoach = stateWithSim.staff?.coaches?.find((member: any) =>
+            normalizePersonnelKey(member.name) === normalizePersonnelKey(person.name)
+            && teamOrganizationKeys(team).includes(normalizePersonnelKey(member.team)),
+        );
+        const member = memberIndex >= 0 ? staffMembers[memberIndex] : savedCoach;
+        if (member) {
+            const role = String(member.role ?? member.position ?? member.jobTitle ?? person.title ?? 'Head Coach');
+            retirementRecord = buildImmediateStaffRetirement({
+                member: { ...member, role },
+                team,
+                currentYear: stateWithSim.leagueStats?.year ?? new Date().getFullYear(),
+                date: stateWithSim.date,
+            });
+            if (memberIndex >= 0) staffMembers.splice(memberIndex, 1);
+            const vacantRoles = [...(team.tycoon?.firedStaffRoles ?? [])];
+            if (!vacantRoles.includes(role)) vacantRoles.push(role);
+            collection[teamIndex] = {
+                ...team,
+                tycoon: {
+                    ...(team.tycoon ?? {}),
+                    staffMembers,
+                    firedStaffRoles: vacantRoles,
+                },
+            };
+        }
+    }
+
+    if (targetTid != null && targetTid >= 0 && targetTid < 100) result.teams = updatedTeams;
+    else (result as any).nonNBATeams = updatedNonNBATeams;
+
+    const staff = result.staff ?? stateWithSim.staff;
+    if (staff) {
+        const targetTeamKeys = targetTeam ? teamOrganizationKeys(targetTeam) : [orgKey];
+        result.staff = {
+            ...staff,
+            coaches: (staff.coaches ?? []).filter((member: any) =>
+                normalizePersonnelKey(member.name) !== normalizePersonnelKey(person.name)
+                || !targetTeamKeys.includes(normalizePersonnelKey(member.team)),
+            ),
+        };
+    }
+
+    if (retirementRecord) {
+        result.staffRetirementAnnouncements = [
+            ...(result.staffRetirementAnnouncements ?? stateWithSim.staffRetirementAnnouncements ?? [])
+                .filter((record: any) => record.id !== retirementRecord!.id),
+            retirementRecord,
+        ];
+        if (retirementRecord.hallOfFameEligible) {
+            result.staffHallOfFame = [
+                ...(result.staffHallOfFame ?? stateWithSim.staffHallOfFame ?? [])
+                    .filter((record: any) => record.id !== retirementRecord!.id),
+                retirementRecord,
+            ];
+        }
+        result.history = [
+            ...(result.history || stateWithSim.history || []),
+            {
+                ...staffRetirementHistory(retirementRecord),
+                personnelAction: 'retired',
+                personId: person.id,
+                personName: person.name,
+            },
+        ];
+    }
+
+    result.newNews = [{
+        id: `staff-retirement-news-${Date.now()}`,
+        headline: `${person.name} Retires`,
+        content: `${person.name} has retired from the ${person.organization} coaching staff. The club will now begin its search for a replacement.`,
+        date: stateWithSim.date,
+        isNew: true,
+        newsType: 'daily' as const,
+    }, ...(result.newNews || [])];
 
     return result;
 };

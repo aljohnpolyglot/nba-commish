@@ -1,0 +1,111 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "competition-sources.7710134092751201637",
+  "generatedAt": "2026-08-01T22:42:50.796Z",
+  "entries": [
+    {
+      "key": "euroleague",
+      "filename": "euroleague.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/euroleaguehistoryfull",
+      "sourceHash": "026af04aada5864ea4e43bbfaee4cbc4cb284499b71f09973e5a45d8177e1269",
+      "fetchedAt": "2026-08-01T22:42:47.106Z"
+    },
+    {
+      "key": "eurocup",
+      "filename": "eurocup.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/eurocup-history",
+      "sourceHash": "497c2c7d8ac0249c629970f535f5e5745b642f74159bc50ce495b3f5a521d074",
+      "fetchedAt": "2026-08-01T22:42:47.437Z"
+    },
+    {
+      "key": "endesa",
+      "filename": "endesa.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/endesa-history.json",
+      "sourceHash": "f07aa10b13e4c759d7e44703545bb79b62f966602a060a895a91f7fd470499b8",
+      "fetchedAt": "2026-08-01T22:42:47.756Z"
+    },
+    {
+      "key": "french-jeep-elite",
+      "filename": "french-jeep-elite.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/lnb_elite_awards.json",
+      "sourceHash": "9b7e3baddfc41fac38e6f4c4fa1b00efa8cf751adfc4a885eb481442b131df4c",
+      "fetchedAt": "2026-08-01T22:42:48.063Z"
+    },
+    {
+      "key": "greek-heba-a1",
+      "filename": "greek-heba-a1.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/greek-league-history",
+      "sourceHash": "3176190709c96f5e22ba3dea3b99ada84c528f9857f5adb75ef33aa40905cf5e",
+      "fetchedAt": "2026-08-01T22:42:48.395Z"
+    },
+    {
+      "key": "german-bbl",
+      "filename": "german-bbl.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/german-bbl-history",
+      "sourceHash": "8cf79f68fe4561018c52e9a2f4dee38d303dd7f361537e2d3212e216ba67d7ef",
+      "fetchedAt": "2026-08-01T22:42:48.656Z"
+    },
+    {
+      "key": "lithuanian-lkl",
+      "filename": "lithuanian-lkl.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/Lithunian-LKL-History",
+      "sourceHash": "8cb924727fb55bdd0ea3cb1d2e26f9d8b0e284d684ec604f7c036f6e92ac4da3",
+      "fetchedAt": "2026-08-01T22:42:48.962Z"
+    },
+    {
+      "key": "italian-serie-a",
+      "filename": "italian-serie-a.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/italialegahistory",
+      "sourceHash": "186aea76116a6150543199a454ede96ba84c54e661effb6d3c0c378a177d5b77",
+      "fetchedAt": "2026-08-01T22:42:49.288Z"
+    },
+    {
+      "key": "italian-champions",
+      "filename": "italian-champions.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/italian-lega-champions",
+      "sourceHash": "629a41f7d3dfe108d8c40194d31a8394bd948ff3fcb86d6064565460d2c3c74d",
+      "fetchedAt": "2026-08-01T22:42:49.619Z"
+    },
+    {
+      "key": "turkish-bsl",
+      "filename": "turkish-bsl.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/turkish-league-history.json",
+      "sourceHash": "fc6864778ae2ca7c6e8ee041a0f311855adb4104dd84687ef5f46ea94f0870eb",
+      "fetchedAt": "2026-08-01T22:42:49.870Z"
+    },
+    {
+      "key": "vtb-united-league",
+      "filename": "vtb-united-league.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/vtb-league-history",
+      "sourceHash": "97ff07df51d9b35620ad785e682a8fe8590f904a622284c6d7b38ecc1e8a1790",
+      "fetchedAt": "2026-08-01T22:42:50.217Z"
+    },
+    {
+      "key": "adriatic-league",
+      "filename": "adriatic-league.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/adriatic-league-history",
+      "sourceHash": "23f0b910417f4bb2361451b2401d653c3e8527c22f8470a9e71b6de11c5bb541",
+      "fetchedAt": "2026-08-01T22:42:50.472Z"
+    },
+    {
+      "key": "european-cups",
+      "filename": "european-cups.json",
+      "provider": "repository-snapshot",
+      "sourceUrl": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/europe_cups_data.json",
+      "sourceHash": "4b1da7a8ba65cb2a74902403a28a365227615a5522da6ba210ac9f81a0b2fbf0",
+      "fetchedAt": "2026-08-01T22:42:50.796Z"
+    }
+  ]
+}

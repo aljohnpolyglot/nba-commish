@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Play, Pause, FastForward } from 'lucide-react';
-import { Game, NBATeam, NBAPlayer } from '../../types';
+import { Game, LeagueStats, NBAPlayer, ResolvedGamePresentation } from '../../types';
 import { useLiveGame } from '../../hooks/useLiveGame';
 import { SettingsManager } from '../../services/SettingsManager';
-import { getTeamForGame, getPlayersForExhibitionTeam } from '../../utils/helpers';
-import { resolveAnyTeam } from '../../utils/teamLookup';
+import { formatGameDateShort } from '../../utils/dateUtils';
 import { PlayerRatingsModal } from '../modals/PlayerRatingsModal';
 import { useGame } from '../../store/GameContext';
 import {
@@ -17,24 +16,23 @@ import {
   getPeriodStartSeconds,
 } from '../../utils/gameClock';
 import { isFourPointEnabled } from '../../utils/ruleFlags';
+import { getPlayersOnCourt } from '../../services/simulation/courtSize';
+import { getPlayerImage } from '../../utils/playerImage';
+import { PlayerPortrait } from './PlayerPortrait';
+import { PlayerNameWithHover } from './PlayerNameWithHover';
 
 interface GameSimulatorScreenProps {
   game: Game;
-  teams: NBATeam[];
+  presentation: ResolvedGamePresentation;
   players: NBAPlayer[];
   isProcessing: boolean;
   onClose: () => void;
   onComplete: (result: any) => void;
-  allStar?: any;
   otherGamesToday?: number;
   riggedForTid?: number;
   precomputedResult?: any;
-}
-
-function isBoxScoreRosterPlayer(player: NBAPlayer, teamId: number): boolean {
-  if (player.tid !== teamId) return false;
-  const status = player.status ?? 'Active';
-  return status !== 'Retired' && status !== 'Free Agent' && status !== 'Draft Prospect' && status !== 'Prospect';
+  leagueStatsOverride?: Partial<LeagueStats>;
+  hideFourPoint?: boolean;
 }
 
 function fmtMin(totalSeconds: number) {
@@ -45,38 +43,33 @@ function fmtMin(totalSeconds: number) {
 
 export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
   game,
-  teams,
+  presentation,
   players,
   isProcessing,
   onClose,
   onComplete,
-  allStar,
   otherGamesToday = 0,
   riggedForTid,
   precomputedResult,
+  leagueStatsOverride,
+  hideFourPoint = false,
 }) => {
   const { state } = useGame();
-  const isExhibition = game.homeTid < 0;
   const isTargetScoreGame = game.gameFormat === 'target_score';
   const isElamGame = game.gameFormat === 'elam_ending';
-  const timingConfig = useMemo(() => getGameTimingConfig(state.leagueStats), [state.leagueStats]);
-  const fourPointEnabled = isFourPointEnabled(state.leagueStats);
-
-  const homeTeam = useMemo(() => resolveAnyTeam(game.homeTid, teams, state.nonNBATeams ?? []) ?? getTeamForGame(game.homeTid, teams), [game.homeTid, teams, state.nonNBATeams]);
-  const awayTeam = useMemo(() => resolveAnyTeam(game.awayTid, teams, state.nonNBATeams ?? []) ?? getTeamForGame(game.awayTid, teams), [game.awayTid, teams, state.nonNBATeams]);
-
-  const homeOverridePlayers = useMemo(
-    () => isExhibition ? getPlayersForExhibitionTeam(game, true, allStar, players) : undefined,
-    [game, isExhibition, allStar, players]
+  const effectiveLeagueStats = useMemo(
+    () => leagueStatsOverride ? { ...state.leagueStats, ...leagueStatsOverride } : state.leagueStats,
+    [leagueStatsOverride, state.leagueStats],
   );
-  const awayOverridePlayers = useMemo(
-    () => isExhibition ? getPlayersForExhibitionTeam(game, false, allStar, players) : undefined,
-    [game, isExhibition, allStar, players]
-  );
+  const timingConfig = useMemo(() => getGameTimingConfig(effectiveLeagueStats), [effectiveLeagueStats]);
+  const fourPointEnabled = !hideFourPoint && isFourPointEnabled(effectiveLeagueStats);
+  const configuredPlayersOnCourt = getPlayersOnCourt(effectiveLeagueStats);
 
-  if (!homeTeam || !awayTeam) {
-    return <div className="text-white p-4">Error: Teams not found for this game ({game.homeTid} vs {game.awayTid}).</div>;
-  }
+  const homeTeam = presentation.home.team;
+  const awayTeam = presentation.away.team;
+  const homeOverridePlayers = presentation.home.roster;
+  const awayOverridePlayers = presentation.away.roster;
+  const presentationPlayers = [...awayOverridePlayers, ...homeOverridePlayers, ...players];
 
   const {
     homeScore,
@@ -102,7 +95,9 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     badgesLoaded,
     currentPlay,
     finalResult
-  } = useLiveGame(game, homeTeam, awayTeam, players, onComplete, homeOverridePlayers, awayOverridePlayers, riggedForTid, precomputedResult, state.leagueStats);
+  } = useLiveGame(game, homeTeam, awayTeam, players, onComplete, homeOverridePlayers, awayOverridePlayers, riggedForTid, precomputedResult, effectiveLeagueStats);
+  const playersOnCourt = finalResult?.playersOnCourt ?? configuredPlayersOnCourt;
+  const gameRules = finalResult?.gameRules;
 
   const [activeTab, setActiveTab] = useState('boxscore');
   const [loadingMessage, setLoadingMessage] = useState("Players taking the court...");
@@ -131,8 +126,8 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     if (feedRef.current) feedRef.current.scrollTop = feedRef.current.scrollHeight;
   }, [currentIndex]);
 
-  const currentPossession = currentPlay ? currentPlay.possession : null;
   const isFinal = isFinished;
+  const currentPossession = currentPlay ? currentPlay.possession : null;
 
   // When the game is finished, snap to the precomputed final score so the
   // watch-game display always matches what gets committed on Leave Game.
@@ -140,6 +135,9 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
   const displayAwayScore = isFinal && finalResult ? finalResult.awayScore : awayScore;
 
   const getClockDisplay = () => {
+    if (isFinal && finalResult?.tiebreaker?.type === 'shootout') {
+      return `SO ${finalResult.tiebreaker.awayScore}-${finalResult.tiebreaker.homeScore}`;
+    }
     if (isTargetScoreGame) return `FIRST TO ${game.targetScore ?? finalResult?.targetScore ?? 100}`;
     if (isElamGame) return isFinal ? '0:00' : `TARGET ${finalResult?.targetScore ?? game.targetScore ?? 'TBD'}`;
     if (isFinal) return '0:00';
@@ -154,7 +152,11 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
 
   const clockDisplay = getClockDisplay();
   const periodDisplay = isFinal 
-    ? (isElamGame ? 'FINAL/ELAM' : getFinalStatusLabel(finalResult?.otCount ?? 0))
+    ? finalResult?.tiebreaker?.type === 'shootout'
+      ? 'FINAL/SHOOTOUT'
+      : finalResult?.tiebreaker
+        ? 'FINAL/TIEBREAK'
+        : (isElamGame ? 'FINAL/ELAM' : getFinalStatusLabel(finalResult?.otCount ?? 0))
     : isTargetScoreGame
       ? 'TARGET SCORE'
       : isElamGame
@@ -162,9 +164,22 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
         : (currentPlay ? getPeriodLabel(currentPlay.q, timingConfig.numQuarters) : getPeriodLabel(1, timingConfig.numQuarters));
 
   const qScores = quarterScores;
+  const substitutionUsage = useMemo(() => {
+    const visiblePlays = plays.slice(0, Math.max(0, currentIndex + 1));
+    return visiblePlays.reduce(
+      (counts, play) => {
+        if (play?.type !== 'sub') return counts;
+        counts[play.tm] += Math.max(1, play.comingIn?.length ?? 1);
+        return counts;
+      },
+      { HOME: 0, AWAY: 0 },
+    );
+  }, [currentIndex, plays]);
 
-  const awayLogo = awayTeam.logoUrl;
-  const homeLogo = homeTeam.logoUrl;
+  const awayLogo = awayTeam.logoUrl ?? '';
+  const homeLogo = homeTeam.logoUrl ?? '';
+  const awayLabel = awayTeam.name;
+  const homeLabel = homeTeam.name;
 
   const playColor = (type: string) => {
     if (type === 'made')  return 'text-white';
@@ -176,6 +191,9 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     if (type === 'ft')    return 'text-gray-200';
     if (type === 'injury') return 'text-rose-300';
     if (type === 'fight') return 'text-orange-300';
+    if (type === 'rule') return 'text-cyan-300';
+    if (type === 'ejection') return 'text-red-300';
+    if (type === 'tiebreaker') return 'text-violet-300';
     if (type === 'jumpball') return 'text-indigo-400';
     if (type === 'ghost') return 'text-gray-400';
     return 'text-gray-400';
@@ -194,22 +212,22 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
         <div className="flex items-center justify-center gap-8 md:gap-16 mb-12">
           <div className="flex flex-col items-center gap-3 md:gap-4">
             <img
-              src={awayTeam.logoUrl}
-              alt={awayTeam.abbrev}
+              src={awayLogo}
+              alt={awayLabel}
               className="w-20 h-20 md:w-32 md:h-32 object-contain drop-shadow-2xl animate-pulse"
               referrerPolicy="no-referrer"
             />
-            <span className="text-slate-400 font-black tracking-widest text-xs md:text-base uppercase">{awayTeam.abbrev}</span>
+            <span className="text-slate-400 font-black tracking-widest text-xs md:text-base uppercase">{awayLabel}</span>
           </div>
           <div className="text-3xl md:text-6xl font-black text-slate-700 italic tracking-tighter">VS</div>
           <div className="flex flex-col items-center gap-3 md:gap-4">
             <img
-              src={homeTeam.logoUrl}
-              alt={homeTeam.abbrev}
+              src={homeLogo}
+              alt={homeLabel}
               className="w-20 h-20 md:w-32 md:h-32 object-contain drop-shadow-2xl animate-pulse"
               referrerPolicy="no-referrer"
             />
-            <span className="text-slate-400 font-black tracking-widest text-xs md:text-base uppercase">{homeTeam.abbrev}</span>
+            <span className="text-slate-400 font-black tracking-widest text-xs md:text-base uppercase">{homeLabel}</span>
           </div>
         </div>
         
@@ -236,6 +254,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     <>
     <motion.div
       key="watching"
+      data-testid="game-simulator-screen"
       initial={{ opacity: 0, scale: 1.1 }}
       animate={{ opacity: 1, scale: 1 }}
       exit={{ opacity: 0, scale: 0.9 }}
@@ -244,9 +263,10 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
     >
       {/* ── top bar: date + close ── */}
       <div className="w-full max-w-5xl flex items-center justify-between px-4 pt-4 pb-2 sticky top-0 z-50 bg-[#0a0a0c]/90 backdrop-blur-sm">
-        <div className="text-gray-300 font-bold tracking-[0.2em] text-xs md:text-sm">{game.date}</div>
+        <div className="text-gray-300 font-bold tracking-[0.2em] text-xs md:text-sm">{formatGameDateShort(game.date)}</div>
         <button
           onClick={handleLeaveGame}
+          aria-label="Close game"
           className="p-2.5 md:p-4 bg-white/5 hover:bg-white/10 rounded-full text-white transition-all"
         >
           <X size={20} />
@@ -272,9 +292,12 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
               />
 
               {/* scores */}
-              <div className="flex justify-between items-center px-5 sm:px-10 md:px-16 py-5 sm:py-8 md:py-12 z-10">
+              <div className="flex flex-1 justify-between items-center px-5 sm:px-10 md:px-16 py-5 sm:py-8 md:py-12 z-10">
                 <div className="text-center flex flex-col items-center">
                   <div className="text-gray-400 font-bold tracking-[0.2em] mb-1 md:mb-4 text-[10px] md:text-sm">AWAY</div>
+                  <div className={`mb-2 flex h-10 w-10 items-center justify-center rounded-full border bg-black/20 p-1 transition-all sm:h-14 sm:w-14 md:h-20 md:w-20 ${currentPossession === 'AWAY' ? 'scale-110 border-white shadow-[0_0_24px_rgba(255,255,255,0.85)]' : 'border-white/35 opacity-70'}`}>
+                    <img src={awayLogo} className="h-full w-full object-contain" alt={awayLabel} referrerPolicy="no-referrer" />
+                  </div>
                   <div className="text-4xl sm:text-5xl md:text-7xl font-black font-mono text-white tracking-tighter">{displayAwayScore}</div>
                 </div>
                 <div className="text-center flex flex-col items-center justify-center mt-1 md:mt-4">
@@ -285,37 +308,28 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                   >
                     {clockDisplay}
                   </div>
+                  {playersOnCourt !== 5 && (
+                    <div className="mt-1 text-[9px] font-black uppercase tracking-[0.18em] text-slate-500">
+                      {playersOnCourt}-on-{playersOnCourt}
+                    </div>
+                  )}
+                  {gameRules?.substitutionLimitEnabled && (
+                    <div className="mt-1 text-center text-[8px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:text-[9px]">
+                      {awayLabel} subs {substitutionUsage.AWAY}/{gameRules.maxSubstitutions}
+                      <span className="mx-1 text-slate-700">·</span>
+                      {homeLabel} {substitutionUsage.HOME}/{gameRules.maxSubstitutions}
+                    </div>
+                  )}
                 </div>
                 <div className="text-center flex flex-col items-center">
                   <div className="text-gray-400 font-bold tracking-[0.2em] mb-1 md:mb-4 text-[10px] md:text-sm">HOME</div>
+                  <div className={`mb-2 flex h-10 w-10 items-center justify-center rounded-full border bg-black/20 p-1 transition-all sm:h-14 sm:w-14 md:h-20 md:w-20 ${currentPossession === 'HOME' ? 'scale-110 border-white shadow-[0_0_24px_rgba(255,255,255,0.85)]' : 'border-white/35 opacity-70'}`}>
+                    <img src={homeLogo} className="h-full w-full object-contain" alt={homeLabel} referrerPolicy="no-referrer" />
+                  </div>
                   <div className="text-4xl sm:text-5xl md:text-7xl font-black font-mono text-yellow-500 tracking-tighter">{displayHomeScore}</div>
                 </div>
               </div>
 
-              {/* court + logos */}
-              <div className="absolute bottom-0 left-0 w-full h-20 sm:h-24 md:h-32 flex justify-between items-end px-4 md:px-12 pb-3 md:pb-4 z-10 bg-gradient-to-t from-black/80 to-transparent">
-                <img
-                  src={awayLogo}
-                  className={`h-14 sm:h-16 md:h-24 object-contain z-20 transition-all duration-300 ${currentPossession === 'AWAY' ? 'scale-110 drop-shadow-[0_0_20px_rgba(255,255,255,0.8)]' : 'opacity-50 drop-shadow-2xl'}`}
-                  alt="AWAY"
-                />
-                <div
-                  className="flex-1 h-10 sm:h-14 md:h-20 border-2 border-gray-600 mx-3 md:mx-8 relative opacity-50 bg-[#1a1a1a]"
-                  style={{ transform: 'perspective(500px) rotateX(20deg)' }}
-                >
-                  <div className="absolute top-0 left-1/2 w-0 h-full border-l-2 border-gray-600"></div>
-                  <div className="absolute top-1/2 left-1/2 w-8 h-8 md:w-12 md:h-12 rounded-full border-2 border-gray-600 -translate-x-1/2 -translate-y-1/2"></div>
-                  <div className="absolute top-0 left-0  w-10 sm:w-12 md:w-20 h-full border-r-2 border-gray-600 bg-gray-800/50"></div>
-                  <div className="absolute top-0 right-0 w-10 sm:w-12 md:w-20 h-full border-l-2 border-gray-600 bg-gray-800/50"></div>
-                  <div className="absolute top-0 left-0  w-20 sm:w-24 md:w-40 h-full border-r-2 border-gray-600 rounded-r-full"></div>
-                  <div className="absolute top-0 right-0 w-20 sm:w-24 md:w-40 h-full border-l-2 border-gray-600 rounded-l-full"></div>
-                </div>
-                <img
-                  src={homeLogo}
-                  className={`h-14 sm:h-16 md:h-24 object-contain z-20 transition-all duration-300 ${currentPossession === 'HOME' ? 'scale-110 drop-shadow-[0_0_20px_rgba(255,255,255,0.8)]' : 'opacity-50 drop-shadow-2xl'}`}
-                  alt="HOME"
-                />
-              </div>
             </div>
 
             {/* play-by-play — shown SECOND on mobile */}
@@ -351,10 +365,11 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                         )}
                         <div className="relative shrink-0 w-8 h-8 md:w-10 md:h-10">
                           {play.player ? (
-                            <img
-                              src={play.player.imgURL || `https://picsum.photos/seed/${play.player.n}/100/100`}
-                              className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#111] object-cover border ${isGameWinner ? 'border-yellow-400 ring-2 ring-yellow-400/20' : 'border-gray-700'}`}
-                              referrerPolicy="no-referrer"
+                            <PlayerPortrait
+                              imgUrl={getPlayerImage(play.player)}
+                              face={play.player.face}
+                              playerName={play.player.n}
+                              size={40}
                             />
                           ) : (
                             <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full bg-[#111] border flex items-center justify-center ${isGameWinner ? 'border-yellow-400' : 'border-gray-700'}`}>
@@ -478,7 +493,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                   {(['AWAY','HOME'] as const).map(tm => (
                     <div key={tm} className="flex-1 min-w-0">
                       <div className={`text-[10px] sm:text-xs font-bold tracking-widest mb-1.5 md:mb-2 ${tm === 'AWAY' ? 'text-white' : 'text-blue-400'}`}>
-                        {tm === 'AWAY' ? awayTeam.abbrev : homeTeam.abbrev} — {teamStats[tm].pts} PTS
+                        {tm === 'AWAY' ? awayLabel : homeLabel} — {teamStats[tm].pts} PTS
                       </div>
                       <div className="overflow-x-auto custom-scrollbar">
                         <table className="w-full text-right text-[9px] sm:text-[10px] text-gray-400 whitespace-nowrap">
@@ -501,46 +516,88 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                             </tr>
                           </thead>
                           <tbody>
-                            {Object.values(liveStats[tm])
-                              .sort((a: any, b: any) => (b?.pts || 0) - (a?.pts || 0))
-                              .map((p: any, idx: number) => {
+                            {(() => {
+                              const currentLineup = tm === 'AWAY'
+                                ? (plays[currentIndex]?.lineupAWAY || plays[0]?.lineupAWAY || [])
+                                : (plays[currentIndex]?.lineupHOME || plays[0]?.lineupHOME || []);
+                              const isPlayerOnFloor = (player: any) => currentLineup.some(
+                                (lineupPlayer: any) => String(lineupPlayer.id) === String(player.id),
+                              );
+                              const completeRoster = tm === 'AWAY' ? awayOverridePlayers : homeOverridePlayers;
+                              const statRows = (completeRoster?.length
+                                ? completeRoster.map(player => liveStats[tm][player.internalId] ?? {
+                                    id: player.internalId, n: player.name, sec: 0, pts: 0, orb: 0, drb: 0,
+                                    ast: 0, stl: 0, blk: 0, tov: 0, pf: 0, pm: 0,
+                                    fgm: 0, fga: 0, tp: 0, tpa: 0, fp: 0, fpa: 0, ftm: 0, fta: 0,
+                                  })
+                                : Object.values(liveStats[tm]))
+                                .filter(Boolean)
+                                .sort((a: any, b: any) => {
+                                  const lineupOrder = Number(isPlayerOnFloor(b)) - Number(isPlayerOnFloor(a));
+                                  return lineupOrder || (b?.pts || 0) - (a?.pts || 0);
+                                });
+
+                              return statRows.map((p: any, idx: number) => {
                                 if (!p) return null;
                                 const displayMin = fmtMin(p.sec || 0);
                                 const reb = (p.orb || 0) + (p.drb || 0);
-                                const currentLineup = tm === 'AWAY' ? (plays[currentIndex]?.lineupAWAY || []) : (plays[currentIndex]?.lineupHOME || []);
-                                const isOnFloor = currentLineup.some((lp: any) => String(lp.id) === String(p.id));
+                                const isOnFloor = isPlayerOnFloor(p);
+                                const startsBench = !isOnFloor && idx > 0 && isPlayerOnFloor(statRows[idx - 1]);
                                 return (
-                                  <tr key={p.id || `player-${tm}-${idx}`} className={`border-b border-gray-800/30 transition-colors ${isOnFloor ? 'bg-emerald-500/20 hover:bg-emerald-500/25' : 'hover:bg-white/5'}`}>
-                                    <td className="text-left py-1 pr-2 text-gray-200 font-medium">
-                                      <div className="flex items-center gap-1.5">
-                                        {isOnFloor && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
-                                        <button
-                                          onClick={() => {
-                                            const nbaPlayer = players.find(pl => pl.internalId === p.id || String(pl.internalId) === String(p.id));
-                                            if (nbaPlayer) setClickedLivePlayer(nbaPlayer);
-                                          }}
-                                          className="truncate max-w-[70px] sm:max-w-none hover:text-sky-400 hover:underline transition-colors text-left"
-                                        >
-                                          {p.n}
-                                        </button>
-                                      </div>
-                                    </td>
-                                    <td className="py-1 px-1 text-gray-400 font-mono">{displayMin}</td>
-                                    <td className="py-1 px-1 text-white font-bold">{p.pts}</td>
-                                    <td className="py-1 px-1">{reb}</td>
-                                    <td className="py-1 px-1">{p.ast}</td>
-                                    <td className="py-1 px-1">{p.stl}</td>
-                                    <td className="py-1 px-1">{p.blk}</td>
-                                    <td className="py-1 px-1 text-red-400">{p.tov}</td>
-                                    <td className={`py-1 px-1 ${p.pf >= 5 ? 'text-red-500 font-bold' : p.pf >= 4 ? 'text-orange-400' : ''}`}>{p.pf}</td>
-                                    <td className={`py-1 px-1 font-mono ${p.pm > 0 ? 'text-green-400' : p.pm < 0 ? 'text-red-400' : 'text-gray-400'}`}>{p.pm > 0 ? `+${p.pm}` : p.pm}</td>
-                                    <td className="py-1 px-1">{p.fgm}-{p.fga}</td>
-                                    <td className="py-1 px-1">{p.tp}-{p.tpa}</td>
-                                    {fourPointEnabled && <td className="py-1 px-1">{p.fp || 0}-{p.fpa || 0}</td>}
-                                    <td className="py-1 px-1">{p.ftm}-{p.fta}</td>
-                                  </tr>
+                                  <React.Fragment key={p.id || `player-${tm}-${idx}`}>
+                                    {startsBench && (
+                                      <tr>
+                                        <td colSpan={fourPointEnabled ? 14 : 13} className="py-1">
+                                          <div className="flex items-center gap-2 text-[8px] font-bold tracking-[0.18em] text-gray-500">
+                                            <div className="h-px flex-1 bg-gray-700" />
+                                            BENCH
+                                            <div className="h-px flex-1 bg-gray-700" />
+                                          </div>
+                                        </td>
+                                      </tr>
+                                    )}
+                                    <tr className={`border-b border-gray-800/30 transition-colors ${isOnFloor ? 'bg-emerald-500/20 hover:bg-emerald-500/25' : 'hover:bg-white/5'}`}>
+                                      <td className="text-left py-1 pr-2 text-gray-200 font-medium">
+                                        <div className="flex items-center gap-1.5">
+                                          {isOnFloor && <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />}
+                                          {(() => {
+                                            const nbaPlayer = presentationPlayers.find(pl => pl.internalId === p.id || String(pl.internalId) === String(p.id));
+                                            return nbaPlayer ? (
+                                              <PlayerNameWithHover
+                                                player={nbaPlayer}
+                                                onClick={() => setClickedLivePlayer(nbaPlayer)}
+                                                className="block max-w-[70px] cursor-pointer truncate text-left transition-colors hover:text-sky-400 hover:underline sm:max-w-none"
+                                              >
+                                                {p.n}
+                                              </PlayerNameWithHover>
+                                            ) : <span className="block max-w-[70px] truncate sm:max-w-none">{p.n}</span>;
+                                          })()}
+                                        </div>
+                                      </td>
+                                      <td className="py-1 px-1 text-gray-400 font-mono">{displayMin}</td>
+                                      <td className="py-1 px-1 text-white font-bold">{p.pts}</td>
+                                      <td className="py-1 px-1">{reb}</td>
+                                      <td className="py-1 px-1">{p.ast}</td>
+                                      <td className="py-1 px-1">{p.stl}</td>
+                                      <td className="py-1 px-1">{p.blk}</td>
+                                      <td className="py-1 px-1 text-red-400">{p.tov}</td>
+                                      <td className={`py-1 px-1 ${
+                                        p.pf >= Math.max(1, (gameRules?.foulOutLimit ?? 6) - 1)
+                                          ? 'text-red-500 font-bold'
+                                          : p.pf >= Math.max(1, (gameRules?.foulOutLimit ?? 6) - 2)
+                                            ? 'text-orange-400'
+                                            : ''
+                                      }`}>{p.pf}</td>
+                                      <td className={`py-1 px-1 font-mono ${p.pm > 0 ? 'text-green-400' : p.pm < 0 ? 'text-red-400' : 'text-gray-400'}`}>{p.pm > 0 ? `+${p.pm}` : p.pm}</td>
+                                      <td className="py-1 px-1">{p.fgm}-{p.fga}</td>
+                                      <td className="py-1 px-1">{p.tp}-{p.tpa}</td>
+                                      {fourPointEnabled && <td className="py-1 px-1">{p.fp || 0}-{p.fpa || 0}</td>}
+                                      <td className="py-1 px-1">{p.ftm}-{p.fta}</td>
+                                    </tr>
+                                  </React.Fragment>
                                 );
-                              })}
+                              });
+                            })()}
                           </tbody>
                           <tfoot>
                             <tr className="border-t border-gray-600 text-gray-300">
@@ -562,34 +619,6 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                           </tfoot>
                         </table>
                       </div>
-                      {/* DNP players — before final result, only reveal injured players (hide coach decisions as spoilers) */}
-                      {(() => {
-                        const teamId = tm === 'HOME' ? game.homeTid : game.awayTid;
-                        const allDnp = players.filter(p =>
-                          isBoxScoreRosterPlayer(p, teamId) &&
-                          !liveStats[tm][p.internalId]
-                        );
-                        // Pre-sim: filter to injured only so we don't spoil coach rotations
-                        const dnpPlayers = finalResult
-                          ? allDnp
-                          : allDnp.filter(p => (p.injury?.gamesRemaining ?? 0) > 0);
-                        if (dnpPlayers.length === 0) return null;
-                        return (
-                          <div className="mt-1 border-t border-gray-800/50">
-                            {dnpPlayers.map(p => (
-                              <div key={p.internalId} className="flex items-center justify-between py-0.5 px-1 opacity-40 text-[9px] sm:text-[10px]">
-                                <span className="text-gray-400 truncate max-w-[70px] sm:max-w-none">{p.name}</span>
-                                <span className="text-gray-600 italic ml-2 shrink-0">
-                                  {finalResult?.playerDNPs?.[p.internalId] ??
-                                    ((p.injury?.gamesRemaining ?? 0) > 0
-                                      ? `DNP — Injury (${p.injury!.type})`
-                                      : 'DNP — CD')}
-                                </span>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()}
                     </div>
                   ))}
                 </div>
@@ -609,10 +638,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                 };
 
                 const getPip = (tm: 'HOME' | 'AWAY') => {
-                  const list = tm === 'HOME' ? finalResult?.homeStats : finalResult?.awayStats;
-                  if (!list) return 0;
-                  return list.reduce((sum: number, s: any) =>
-                    sum + (s.fgAtRim || 0) * 2 + (s.fgLowPost || 0) * 2, 0);
+                  return teamStats[tm].pointsInPaint ?? 0;
                 };
                 const awayPip = getPip('AWAY');
                 const homePip = getPip('HOME');
@@ -635,14 +661,14 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                         </thead>
                         <tbody className="divide-y divide-gray-800/50">
                           <tr>
-                            <td className="py-2 text-left font-bold text-white text-[10px] sticky left-0 bg-[#0f1117] pr-2">{awayTeam.abbrev}</td>
+                            <td className="py-2 text-left font-bold text-white text-[10px] sticky left-0 bg-[#0f1117] pr-2">{awayLabel}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.eFG.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.tovPct.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.orbPct.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{awayAdv.ftFga.toFixed(3)}</td>
                           </tr>
                           <tr>
-                            <td className="py-2 text-left font-bold text-blue-400 text-[10px] sticky left-0 bg-[#0f1117] pr-2">{homeTeam.abbrev}</td>
+                            <td className="py-2 text-left font-bold text-blue-400 text-[10px] sticky left-0 bg-[#0f1117] pr-2">{homeLabel}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{homeAdv.eFG.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{homeAdv.tovPct.toFixed(1)}</td>
                             <td className="py-2 font-mono text-gray-300 text-[10px]">{homeAdv.orbPct.toFixed(1)}</td>
@@ -654,9 +680,9 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
 
                     <div className="flex flex-col gap-1.5 mt-1">
                       <div className="flex justify-between text-[9px] sm:text-xs font-bold tracking-widest text-gray-500 mb-1">
-                        <span className="text-white">{awayTeam.abbrev}</span>
+                        <span className="text-white">{awayLabel}</span>
                         <span>TEAM STATS</span>
-                        <span className="text-blue-400">{homeTeam.abbrev}</span>
+                        <span className="text-blue-400">{homeLabel}</span>
                       </div>
                       {[
                         { label:'FIELD GOALS',
@@ -713,8 +739,8 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
                     </thead>
                     <tbody className="font-mono text-sm sm:text-base">
                       {[
-                        { label: awayTeam.abbrev, logo: awayLogo, qs: qScores.away, final: displayAwayScore, color: 'text-gray-300', finalColor: 'text-white' },
-                        { label: homeTeam.abbrev, logo: homeLogo, qs: qScores.home, final: displayHomeScore, color: 'text-yellow-600', finalColor: 'text-yellow-500' },
+                        { label: awayLabel, logo: awayLogo, qs: qScores.away, final: displayAwayScore, color: 'text-gray-300', finalColor: 'text-white' },
+                        { label: homeLabel, logo: homeLogo, qs: qScores.home, final: displayHomeScore, color: 'text-yellow-600', finalColor: 'text-yellow-500' },
                       ].map(row => (
                         <tr key={row.label} className="border-b border-gray-800/30">
                           <td className="py-2">
@@ -744,6 +770,7 @@ export const GameSimulatorScreen: React.FC<GameSimulatorScreenProps> = ({
             <span className="text-[9px] text-gray-500 shrink-0">SLOW</span>
             <input
               type="range"
+              aria-label="Simulation speed"
               min="10"
               max="2000"
               step="10"

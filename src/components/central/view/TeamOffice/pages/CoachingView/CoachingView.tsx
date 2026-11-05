@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { AlertTriangle, Lock } from 'lucide-react';
 import type { CoachData } from '../lib/staffService';
-import { getCoachPhoto, getCoachBio, getNBA2KCoach } from '../lib/staffService';
+import { getCoachBio, getNBA2KCoach } from '../lib/staffService';
 import { fetchCoachData, getCoachContractSnapshot, getStaffCareerSnapshot, type NBA2KCoachData, type CoachData as CoachBioData } from '../../../../../../services/staffService';
 import { GameplanTab } from './GameplanTab';
 import { IdealRotationTab } from './IdealRotationTab';
@@ -11,7 +11,14 @@ import { CoachingPreferencesTab, CoachingStaffTab, CoachingStrategyTab } from '.
 import { getMinutesDiff } from '../../../../../../store/gameplanStore';
 import { getScoringOptions, saveScoringOptions } from '../../../../../../store/scoringOptionsStore';
 import { getLockedStrategy, lockStrategy, unlockStrategy } from '../../../../../../store/coachStrategyLockStore';
-import { getCoachSystem } from '../../../../../../store/coachSystemStore';
+import {
+  AUTO_COACH_SYSTEM_VALUE,
+  getCoachSystem,
+  resolveAutoCoachSystem,
+  saveAutoCoachSystem,
+  saveManualCoachSystem,
+} from '../../../../../../store/coachSystemStore';
+import { computeSystemFit } from '../../../../../../utils/coachSliders';
 import { getGameplan } from '../../../../../../store/gameplanStore';
 import { getIdealRotation } from '../../../../../../store/idealRotationStore';
 import { getDisplayOverall } from '../../../../../../utils/playerRatings';
@@ -23,6 +30,9 @@ import { useCoachingTabWelcome } from './useCoachingTabWelcome';
 import { isOnRoster, resolveAnyTeam } from '../../../../../../utils/teamLookup';
 import { PBA_TEAM_DATA } from '../../../../../../data/templates/philippines/teamPopulations';
 import { buildStarterOrder, getHealthyRoster } from './gameplanTabShared';
+import { getPlayersOnCourt } from '../../../../../../services/simulation/courtSize';
+import { hasPersistedStaffRoster, resolveActiveOrActingHeadCoach } from '../../../../../../services/staff/activeStaffContracts';
+import { resolveCoachPortrait } from '../../../../../../store/staffPhotoStore';
 
 interface CoachingViewProps {
   team: any;
@@ -78,6 +88,16 @@ function findPbaCoachMeta(team: any) {
   );
 }
 
+function isStrictCoachSource(record: any): boolean {
+  const source = String(record?.source ?? '');
+  return source === 'historical-nba-coaches' || (source.startsWith('pba') && record?.isPlaceholder !== true);
+}
+
+function resolveStrictCoachImage(record: any, coachName: string): string | null {
+  void coachName;
+  return record?.playerPortraitUrl ?? null;
+}
+
 function findLatestHeadCoachFromHistory(history: any[] | undefined, teamName: string) {
   if (!history?.length || !teamName) return null;
   const escapedTeam = teamName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -104,19 +124,12 @@ function findLatestHeadCoachFromHistory(history: any[] | undefined, teamName: st
 }
 
 function compactCareerRange(career: string, fallback: string) {
-  const years = Array.from(String(career ?? '').matchAll(/(\d{4})\s*[-\u2010-\u2015]\s*(\d{4}|Present|present)/g));
-  if (years.length === 0) return fallback;
-  const start = years
-    .map(match => Number(match[1]))
+  const rangeYears = Array.from(String(career ?? '').matchAll(/(\d{4})\s*[-\u2010-\u2015]\s*(\d{4}|\d{2}|Present|present)/g));
+  const start = (rangeYears.length > 0 ? rangeYears.map(match => Number(match[1])) : Array.from(String(career ?? '').matchAll(/\d{4}/g)).map(match => Number(match[0])))
     .filter(year => Number.isFinite(year))
     .sort((a, b) => a - b)[0];
   if (!start) return fallback;
-  const hasPresent = years.some(match => /^present$/i.test(match[2]));
-  const endYears = years
-    .map(match => /^present$/i.test(match[2]) ? null : Number(match[2]))
-    .filter((year): year is number => Number.isFinite(year));
-  const end = hasPresent ? 'present' : Math.max(...endYears);
-  return `${start}-${end}`;
+  return `${start}-present`;
 }
 
 export default function CoachingView({ team: inputTeam, allCoaches, staffData, onSaveSystem }: CoachingViewProps) {
@@ -133,7 +146,9 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
   const canEdit = state.gameMode !== 'gm' || Number(team.tid) === state.userTeamId;
   const [activeTab, setActiveTab] = useState<ActiveTab>('GAMEPLAN');
   const [isMobile, setIsMobile] = useState(false);
-  const [selectedSystem, setSelectedSystem] = useState(() => getCoachSystem(Number(team.tid))?.selectedSystem ?? team.bestSystem);
+  const initialCoachSystem = getCoachSystem(Number(team.tid));
+  const [selectedSystem, setSelectedSystem] = useState(() => initialCoachSystem?.selectedSystem ?? team.bestSystem);
+  const [autoSystemEnabled, setAutoSystemEnabled] = useState(() => initialCoachSystem?.selectionMode === 'auto');
   const [pendingTab, setPendingTab] = useState<ActiveTab | null>(null);
   const [pendingMinutesDiff, setPendingMinutesDiff] = useState(0);
   const usageSortedPlayers = useMemo(() => {
@@ -154,10 +169,15 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
   const lockedStrategy = useMemo(() => getLockedStrategy(Number(team.tid)), [team.tid, lockTick]);
   const effectiveSliders = lockedStrategy?.sliders ?? team.coachSliders;
   const coachingTabWelcome = useCoachingTabWelcome(state.saveId, activeTab);
+  const playersOnCourt = getPlayersOnCourt(state.leagueStats);
+  const teamMinuteBudget =
+    (state.leagueStats?.quarterLength ?? 12)
+    * (state.leagueStats?.numQuarters ?? 4)
+    * playersOnCourt;
 
   const requestTabChange = (next: ActiveTab) => {
     if (state.leagueStats?.uiMode !== 'euro_isolated' && activeTab === 'GAMEPLAN' && next !== 'GAMEPLAN') {
-      const diff = getMinutesDiff(Number(team.tid));
+      const diff = getMinutesDiff(Number(team.tid), teamMinuteBudget);
       if (diff !== 0) {
         setPendingMinutesDiff(diff);
         setPendingTab(next);
@@ -232,8 +252,19 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
   const handleSystemChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
     if (!canEdit) return;
     const next = e.target.value;
+    if (next === AUTO_COACH_SYSTEM_VALUE) {
+      const resolved = resolveAutoCoachSystem(team.sortedProfs);
+      const { selectedProfScore, bestProfScore } = computeSystemFit(resolved, team.sortedProfs);
+      saveAutoCoachSystem(Number(team.tid), resolved, selectedProfScore, bestProfScore);
+      setSelectedSystem(resolved);
+      setAutoSystemEnabled(true);
+      return;
+    }
     setSelectedSystem(next);
+    setAutoSystemEnabled(false);
     onSaveSystem?.(team.tid, next);
+    const { selectedProfScore, bestProfScore } = computeSystemFit(next, team.sortedProfs);
+    saveManualCoachSystem(Number(team.tid), next, selectedProfScore, bestProfScore);
   };
 
   useEffect(() => {
@@ -254,8 +285,24 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
   }, []);
 
   useEffect(() => {
-    setSelectedSystem(getCoachSystem(Number(team.tid))?.selectedSystem ?? team.bestSystem);
-  }, [team.tid, team.bestSystem]);
+    const stored = getCoachSystem(Number(team.tid));
+    if (stored?.selectionMode === 'auto') {
+      const resolved = resolveAutoCoachSystem(team.sortedProfs);
+      const { selectedProfScore, bestProfScore } = computeSystemFit(resolved, team.sortedProfs);
+      if (
+        stored.selectedSystem !== resolved
+        || stored.selectedProfScore !== selectedProfScore
+        || stored.bestProfScore !== bestProfScore
+      ) {
+        saveAutoCoachSystem(Number(team.tid), resolved, selectedProfScore, bestProfScore);
+      }
+      setSelectedSystem(resolved);
+      setAutoSystemEnabled(true);
+      return;
+    }
+    setSelectedSystem(stored?.selectedSystem ?? team.bestSystem);
+    setAutoSystemEnabled(false);
+  }, [team.tid, team.bestSystem, team.sortedProfs]);
 
   const starters = useMemo(() => {
     const teamId = Number(team?.tid ?? team?.id);
@@ -277,12 +324,13 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
       healthyRoster,
       healthyIds,
       forceSort: false,
+      playersOnCourt,
     });
     const playersById = new Map(state.players.map(player => [player.internalId, player] as const));
     return starterIds
       .map(id => playersById.get(id))
       .filter((player): player is any => !!player);
-  }, [team, state.players, state.leagueStats?.year]);
+  }, [team, state.players, state.leagueStats?.year, playersOnCourt]);
 
   let coachName = 'Unknown Coach';
   let coachImg = 'https://via.placeholder.com/150';
@@ -296,41 +344,12 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
   const pbaCoachMeta = isPbaMode ? findPbaCoachMeta(team) : undefined;
   const teamFullName = String(team.teamName ?? team.name ?? '').trim();
   const historyHeadCoachName = findLatestHeadCoachFromHistory(state.history as any[], teamFullName);
-  const persistedHeadCoach = (team?.tycoon?.staffMembers ?? []).find((member: any) => {
-    const role = String(member?.role ?? member?.position ?? member?.jobTitle ?? '').replace(/ \d+$/, '');
-    return role === 'Head Coach';
-  }) ?? null;
-  React.useEffect(() => {
-    if (!historyHeadCoachName || normalizeNameKey(historyHeadCoachName) === normalizeNameKey(persistedHeadCoach?.name)) return;
-    const teamId = Number(team.id ?? team.tid);
-    if (!Number.isFinite(teamId)) return;
-    const patchedTeams = (state.teams ?? []).map((stateTeam: any) => {
-      if (Number(stateTeam.id ?? stateTeam.tid) !== teamId) return stateTeam;
-      const members = [...(stateTeam.tycoon?.staffMembers ?? [])];
-      const existingIndex = members.findIndex((member: any) => String(member?.role ?? member?.position ?? member?.jobTitle ?? '').replace(/ \d+$/, '') === 'Head Coach');
-      const replacement = {
-        ...(existingIndex >= 0 ? members[existingIndex] : {}),
-        name: historyHeadCoachName,
-        role: 'Head Coach',
-        position: 'Head Coach',
-        jobTitle: 'Head Coach',
-      };
-      if (existingIndex >= 0) members[existingIndex] = replacement;
-      else members.push(replacement);
-      return {
-        ...stateTeam,
-        tycoon: {
-          ...(stateTeam.tycoon ?? {}),
-          staffMembers: members,
-        },
-      };
-    });
-    void dispatchAction({ type: 'UPDATE_STATE', payload: { teams: patchedTeams } } as any);
-  }, [historyHeadCoachName, persistedHeadCoach?.name, team.id, team.tid, dispatchAction]);
-  const effectiveHeadCoach = historyHeadCoachName && normalizeNameKey(historyHeadCoachName) !== normalizeNameKey(persistedHeadCoach?.name)
-    ? { ...(persistedHeadCoach ?? {}), name: historyHeadCoachName, role: 'Head Coach', position: 'Head Coach', jobTitle: 'Head Coach' }
-    : persistedHeadCoach;
-  if (staffData?.coaches) {
+  const persistedStaffRosterExists = hasPersistedStaffRoster(team);
+  const persistedHeadCoach = resolveActiveOrActingHeadCoach(team, staffDisplayYear) ?? null;
+  const effectiveHeadCoach = persistedHeadCoach ?? (!persistedStaffRosterExists && historyHeadCoachName
+    ? { name: historyHeadCoachName, role: 'Head Coach', position: 'Head Coach', jobTitle: 'Head Coach' }
+    : null);
+  if (staffData?.coaches && (!persistedStaffRosterExists || effectiveHeadCoach)) {
     const teamLabel = team.teamName.toLowerCase().trim();
     const teamShortName = team.teamName.toLowerCase().split(' ').pop() || '';
     const teamCoach = staffData.coaches.find((coach: any) => {
@@ -341,27 +360,43 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
     if (teamCoach) {
       teamCoachRecord = teamCoach;
       coachName = teamCoach.name;
-      coachBio = getCoachBio(coachName);
-      nba2kCoach = getNBA2KCoach(coachName);
-      coachImg = getCoachPhoto(coachName) || teamCoach.playerPortraitUrl || nba2kCoach?.image || getStaffImageUrl(teamCoach.staffImageId) || `https://ui-avatars.com/api/?name=${encodeURIComponent(teamCoach.name)}&background=1a1a2e&color=FDB927&size=512&bold=true`;
+      const strictTeamCoach = isStrictCoachSource(teamCoach);
+      coachBio = strictTeamCoach ? undefined : getCoachBio(coachName);
+      nba2kCoach = strictTeamCoach ? undefined : getNBA2KCoach(coachName);
+      coachImg = strictTeamCoach
+        ? resolveStrictCoachImage(teamCoach, coachName) ?? ''
+        : resolveCoachPortrait(coachName, teamCoach.playerPortraitUrl) || nba2kCoach?.image || getStaffImageUrl(teamCoach.staffImageId) || `https://ui-avatars.com/api/?name=${encodeURIComponent(teamCoach.name)}&background=1a1a2e&color=FDB927&size=512&bold=true`;
     }
   }
   if (effectiveHeadCoach) {
-    teamCoachRecord = { ...teamCoachRecord, ...effectiveHeadCoach };
+    const matchingDirectoryRecord = normalizeNameKey(teamCoachRecord?.name) === normalizeNameKey(effectiveHeadCoach.name)
+      ? teamCoachRecord
+      : {};
+    teamCoachRecord = { ...matchingDirectoryRecord, ...effectiveHeadCoach };
     coachName = teamCoachRecord.name ?? coachName;
-    coachBio = getCoachBio(coachName) ?? coachBio;
-    nba2kCoach = getNBA2KCoach(coachName) ?? nba2kCoach;
-    coachImg = getCoachPhoto(coachName) || teamCoachRecord.playerPortraitUrl || nba2kCoach?.image || getStaffImageUrl(teamCoachRecord.staffImageId) || coachImg;
+    const strictCoach = isStrictCoachSource(teamCoachRecord);
+    coachBio = strictCoach ? undefined : getCoachBio(coachName) ?? coachBio;
+    nba2kCoach = strictCoach ? undefined : getNBA2KCoach(coachName) ?? nba2kCoach;
+    coachImg = strictCoach
+      ? resolveStrictCoachImage(teamCoachRecord, coachName) ?? ''
+      : resolveCoachPortrait(coachName, teamCoachRecord.playerPortraitUrl) || nba2kCoach?.image || getStaffImageUrl(teamCoachRecord.staffImageId) || coachImg;
   }
 
   if (pbaCoachMeta) {
-    coachName = pbaCoachMeta.coach || coachName;
-    const pbaPortrait = teamCoachRecord?.playerPortraitUrl || getStaffImageUrl(teamCoachRecord?.staffImageId);
-    const safePbaRecord = teamCoachRecord?.leagueId === 'pba' || String(teamCoachRecord?.source ?? '').startsWith('pba')
+    const persistedPbaHeadCoach = effectiveHeadCoach && teamCoachRecord?.name ? teamCoachRecord : null;
+    coachName = persistedPbaHeadCoach?.name ?? pbaCoachMeta.coach ?? coachName;
+    const safePbaRecord = persistedPbaHeadCoach
+      ?? (teamCoachRecord?.leagueId === 'pba' || String(teamCoachRecord?.source ?? '').startsWith('pba')
       ? teamCoachRecord
+      : {});
+    const pbaPortrait = isStrictCoachSource(safePbaRecord)
+      ? resolveStrictCoachImage(safePbaRecord, coachName)
+      : safePbaRecord?.playerPortraitUrl ?? getStaffImageUrl(safePbaRecord?.staffImageId);
+    const pbaRecordPayload = safePbaRecord && typeof safePbaRecord === 'object'
+      ? safePbaRecord
       : {};
     teamCoachRecord = {
-      ...safePbaRecord,
+      ...pbaRecordPayload,
       name: coachName,
       team: teamFullName,
       role: 'Head Coach',
@@ -374,16 +409,17 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
       contractYears: safePbaRecord?.contractYears ?? 3,
       salary: safePbaRecord?.salary,
       playerPortraitUrl: pbaPortrait,
+      staffImageId: safePbaRecord?.staffImageId,
     };
     coachBio = undefined;
     nba2kCoach = undefined;
-    coachImg = pbaPortrait || getCoachPhoto(coachName) || `https://ui-avatars.com/api/?name=${encodeURIComponent(coachName)}&background=1a1a2e&color=FDB927&size=512&bold=true`;
+    coachImg = pbaPortrait || '';
   }
 
   const coachCareer = getStaffCareerSnapshot({
     ...teamCoachRecord,
     startSeason: teamCoachRecord?.startSeason ?? coachBio?.startSeason,
-    coaching_career: teamCoachRecord?.career_history ?? teamCoachRecord?.coaching_career ?? (!pbaCoachMeta ? nba2kCoach?.coaching_career : undefined),
+    coaching_career: teamCoachRecord?.coaching_career ?? teamCoachRecord?.career_history ?? (!pbaCoachMeta ? nba2kCoach?.coaching_career : undefined),
     born: teamCoachRecord?.born ?? coachBio?.birthDate ?? nba2kCoach?.born,
     age: teamCoachRecord?.age ?? (!pbaCoachMeta ? nba2kCoach?.age : undefined),
   }, staffDisplayYear);
@@ -409,8 +445,8 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
 
   const nationality = normalizeNationality(teamCoachRecord?.nationality || (pbaCoachMeta ? 'Philippines' : nba2kCoach?.nationality) || coachBio?.nationality || teamCoachRecord?.born?.loc || 'Unknown');
   const matchedPlayer = (state.players ?? []).find((player: any) => normalizePersonKey(player?.name) === normalizePersonKey(coachName));
-  const savedCareerRows = String(teamCoachRecord?.career_history ?? teamCoachRecord?.coaching_career ?? '').trim();
-  const externalCoachRows = pbaCoachMeta ? '' : String(nba2kCoach?.career_history ?? nba2kCoach?.coaching_career ?? '').trim();
+  const savedCareerRows = String(teamCoachRecord?.coaching_career ?? teamCoachRecord?.career_history ?? '').trim();
+  const externalCoachRows = pbaCoachMeta ? '' : String(nba2kCoach?.coaching_career ?? '').trim();
   const isPlayerToStaff = !!matchedPlayer && Number(teamCoachRecord?.coachingYears ?? 0) <= 0 && Number(teamCoachRecord?.playingYears ?? 0) > 0;
   let coachingCareer = isPlayerToStaff
     ? savedCareerRows
@@ -428,17 +464,20 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
   if (!born || born === 'Unknown') {
     born = coachBio?.birthDate || (teamCoachRecord?.born?.year ? `${teamCoachRecord.born.year}` : coachCareer.bornYear != null ? `${coachCareer.bornYear}` : teamCoachRecord?.bornYear ? `${teamCoachRecord.bornYear}` : 'Unknown');
   }
-  const coachAge = Number(teamCoachRecord?.age)
+  // Source-directory ages describe the present-day person. Historical saves
+  // must derive age from the saved season whenever a birth year is known.
+  const coachAge = calculateAge(born, staffDisplayYear)
+    || (teamCoachRecord?.bornYear ? staffDisplayYear - Number(teamCoachRecord.bornYear) : null)
+    || Number(teamCoachRecord?.age)
     || (!pbaCoachMeta ? Number(nba2kCoach?.age) : 0)
-    || calculateAge(born, staffDisplayYear)
     || coachCareer.age
-    || (teamCoachRecord?.bornYear ? staffDisplayYear - Number(teamCoachRecord.bornYear) : null);
+    || null;
 
   const renderTabContent = () => {
     if (activeTab === 'IDEAL') return <IdealRotationTab teamId={Number(team.tid)} />;
     if (activeTab === 'GAMEPLAN') return <GameplanTab teamId={Number(team.tid)} />;
     if (activeTab === 'SYSTEM') {
-      return <CoachingSystemTab team={team} selectedSystem={selectedSystem} canEdit={canEdit} isMobile={isMobile} starters={starters} onSystemChange={handleSystemChange} />;
+      return <CoachingSystemTab team={team} selectedSystem={selectedSystem} autoSystemEnabled={autoSystemEnabled} canEdit={canEdit} isMobile={isMobile} starters={starters} onSystemChange={handleSystemChange} />;
     }
     if (activeTab === 'COACHING') {
       return <CoachingStrategyTab canEdit={canEdit} lockedStrategy={lockedStrategy} effectiveSliders={effectiveSliders} toggleStrategyLock={toggleStrategyLock} updateLockedSlider={updateLockedSlider} />;
@@ -473,6 +512,7 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
         <CoachingSidebar
           coachName={coachName}
           coachImg={coachImg}
+          strictPortrait={isStrictCoachSource(teamCoachRecord)}
           nba2kCoach={nba2kCoach}
           coachBio={coachBio}
           teamCoachRecord={{ ...teamCoachRecord, yearsWithTeam: coachCareer.yearsWithTeam }}
@@ -482,6 +522,7 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
           nationality={nationality}
           coachingCareer={coachingCareer}
           selectedSystem={selectedSystem}
+          autoSystemEnabled={autoSystemEnabled}
           bestSystem={team.bestSystem}
         />
         <div className="w-full lg:w-2/3 flex flex-col">
@@ -509,11 +550,11 @@ export default function CoachingView({ team: inputTeam, allCoaches, staffData, o
               </div>
               <div>
                 <div className="font-black uppercase tracking-widest text-amber-300 text-sm">Rotation Not Finished</div>
-                <div className="text-[11px] text-slate-400 mt-0.5">Gameplan minutes don't total 240.</div>
+                <div className="text-[11px] text-slate-400 mt-0.5">Gameplan minutes don't total {teamMinuteBudget}.</div>
               </div>
             </div>
             <div className="text-sm text-slate-300 mb-5 leading-relaxed">
-              Your rotation is currently <span className={`font-black ${pendingMinutesDiff > 0 ? 'text-amber-300' : 'text-rose-300'}`}>{pendingMinutesDiff > 0 ? `${pendingMinutesDiff} min under` : `${Math.abs(pendingMinutesDiff)} min over`}</span> the 48-minute team budget. Finish distributing minutes before switching tabs so next game's rotation isn't broken.
+              Your rotation is currently <span className={`font-black ${pendingMinutesDiff > 0 ? 'text-amber-300' : 'text-rose-300'}`}>{pendingMinutesDiff > 0 ? `${pendingMinutesDiff} min under` : `${Math.abs(pendingMinutesDiff)} min over`}</span> the configured team-minute budget. Finish distributing minutes before switching tabs so next game's rotation isn't broken.
             </div>
             <div className="flex flex-col sm:flex-row gap-2 justify-end">
               <button onClick={() => { setPendingTab(null); setPendingMinutesDiff(0); }} className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-400 text-black font-black uppercase text-xs tracking-widest">Keep Editing</button>

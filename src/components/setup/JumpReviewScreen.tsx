@@ -1,12 +1,18 @@
 import React, { useState } from 'react';
 import { getLeagueLabels } from '../../utils/leagueLabels';
-import { getPbaDateContext } from './keyDates';
+import { getPbaDateContext, getPbaKeyDates } from './keyDates';
+import { isNbaCupEra, isPlayInEra } from '../../data/historicalNbaSeasons';
+import { getAllStarWeekendStartDate, toISODateString } from '../../utils/dateUtils';
+import { getPlayableInternationalWindowForSeason } from '../../services/fiba/tournamentWindows';
+import { getConferenceStartIso } from '../../services/pba/conferenceTransition';
+import { playModdedSetupSound } from './moddedSetupAudio';
 
 interface JumpReviewScreenProps {
   chosenDate: string;
   gameMode?: 'commissioner' | 'gm';
   leagueType?: 'fictional' | 'modded';
   moddedLeagueBase?: string;
+  seasonEndYear?: number;
   onContinue: (assistantGM: boolean) => void;
   onBack: () => void;
 }
@@ -36,39 +42,11 @@ const AUTO_RESOLVED_ITEMS: ReviewItem[] = [
   { date: '2026-02-08', label: '🎯 3-Point Contest Field',      how: 'Best shooters auto-selected',                      status: 'live' },
   { date: '2026-02-13', label: '✨ All-Star Weekend',           how: 'All events fully simulated',                       status: 'live' },
   { date: '2026-02-15', label: '🔄 Trade Deadline',             how: 'Passed with no trades — rosters unchanged',        status: 'live' },
-  { date: '2025-08-06', label: '📺 Broadcasting Deal',          how: 'Default ESPN/ABC + NBC/Peacock + Amazon applied; edit in Broadcasting before Oct 24', status: 'live' },
+  { date: '2025-08-06', label: '📺 Broadcasting Deal',          how: 'Default ESPN/ABC + NBC/Peacock + Amazon applied; edit in Broadcasting before the season begins', status: 'live' },
   { date: '2025-08-14', label: '📅 Schedule Generated',        how: 'Full 82-game schedule generated on Aug 14 — Christmas + Global Games embedded', status: 'live' },
   { date: '2026-01-29', label: '🩺 All-Star Replacements',      how: 'Not yet available — auto-handled',                 status: 'placeholder' },
   { date: '2026-01-29', label: '🎯 Skills Challenge',           how: 'Auto-selected and resolved on All-Star Saturday',  status: 'live' },
   { date: '2026-01-29', label: '🌟 Shooting Stars',             how: 'Auto-selected and resolved on All-Star Saturday',  status: 'live' },
-];
-
-const PBA_AUTO_RESOLVED_ITEMS: ReviewItem[] = [
-  { date: '2025-10-05', label: '📅 2025-26 Phil. Cup Schedule',  how: '11-game round-robin generated for 12 PBA teams',     status: 'live' },
-  { date: '2025-10-05', label: '🏀 2025-26 Philippine Cup',      how: 'All-Filipino conference — no imports',               status: 'live' },
-  { date: '2025-12-15', label: '🏆 Phil. Cup Playoffs',          how: 'Twice-to-Beat QF → Best-of-7 SF/Finals',           status: 'live' },
-  { date: '2026-02-15', label: '🏅 Phil. Cup Finals',            how: 'Conference champion crowned',                       status: 'live' },
-  { date: '2026-03-06', label: '⭐ All-Star Weekend',            how: 'PBA All-Star Game auto-simulated',                  status: 'live' },
-  { date: '2026-03-11', label: "📅 Comm. Cup Schedule",          how: '11-game compact window + import search',            status: 'live' },
-  { date: '2026-06-03', label: "🏆 Comm. Cup Playoffs",          how: 'Twice-to-Beat QF → Best-of-7 SF/Finals',           status: 'live' },
-  { date: '2026-07-07', label: "🏅 Comm. Cup Finals",            how: 'Conference champion crowned',                       status: 'live' },
-  { date: '2026-07-10', label: "📅 Gov. Cup Schedule",           how: "10-game compact window + import search (≤6'5\")",   status: 'live' },
-  { date: '2026-08-28', label: "🏆 Gov. Cup Playoffs",           how: 'Twice-to-Beat QF → Best-of-7 SF/Finals',           status: 'live' },
-  { date: '2026-10-01', label: '🏅 Season Awards',               how: 'MVP, ROY, Grand Slam check',                        status: 'live' },
-];
-
-const PBA_UPCOMING_ITEMS: UpcomingItem[] = [
-  { date: '2025-10-05', label: '🏀 2025-26 Philippine Cup',       sublabel: 'All-Filipino conference begins' },
-  { date: '2025-12-15', label: '🏆 Phil. Cup Playoffs',           sublabel: 'Top 8 qualify — Twice-to-Beat QF' },
-  { date: '2026-01-28', label: '🏅 Phil. Cup Finals',             sublabel: 'Best-of-7 championship series' },
-  { date: '2026-03-06', label: '⭐ All-Star Weekend',             sublabel: 'Captain draft format' },
-  { date: '2026-03-11', label: "🔍 Import Search",                sublabel: "Commissioner's Cup — 1 import, no height limit" },
-  { date: '2026-03-11', label: "🏀 Comm. Cup Opening",            sublabel: "Commissioner's Cup begins" },
-  { date: '2026-06-03', label: "🏆 Comm. Cup Playoffs",           sublabel: 'Twice-to-Beat QF' },
-  { date: '2026-07-10', label: "🔍 Import Search (≤6'5\")",       sublabel: "Governors' Cup — height-limited import" },
-  { date: '2026-07-10', label: "🏀 Gov. Cup Opening",             sublabel: "Governors' Cup begins" },
-  { date: '2026-08-28', label: "🏆 Gov. Cup Playoffs",            sublabel: 'Twice-to-Beat QF' },
-  { date: '2026-10-01', label: '🏅 Season Awards',                sublabel: 'MVP, ROY, Grand Slam' },
 ];
 
 const EURO_AUTO_RESOLVED_ITEMS: ReviewItem[] = [
@@ -118,6 +96,28 @@ const UPCOMING_ITEMS: UpcomingItem[] = [
   { date: '2026-04-16', label: '🏆 Play-In Begins',                sublabel: 'Postseason starts' },
 ];
 
+const shiftSeasonDate = (date: string, seasonEndYear: number): string => {
+  if (date.startsWith('2025-')) return `${seasonEndYear - 1}${date.slice(4)}`;
+  if (date.startsWith('2026-')) return `${seasonEndYear}${date.slice(4)}`;
+  return date;
+};
+
+const shiftReviewItem = <T extends { date: string; label: string }>(item: T, seasonEndYear: number): T => ({
+  ...item,
+  label: item.label.replace('2025-26', `${seasonEndYear - 1}-${String(seasonEndYear).slice(-2)}`),
+  date: item.label.includes('All-Star Weekend')
+    ? toISODateString(getAllStarWeekendStartDate(seasonEndYear))
+    : shiftSeasonDate(item.date, seasonEndYear),
+});
+
+const keepForNbaEra = (item: Pick<ReviewItem, 'label'> & { sublabel?: string }, seasonEndYear: number): boolean => {
+  const startYear = seasonEndYear - 1;
+  const text = `${item.label} ${item.sublabel ?? ''}`;
+  if (!isNbaCupEra(startYear) && /cup|tournament/i.test(text)) return false;
+  if (!isPlayInEra(startYear) && /play-in/i.test(text)) return false;
+  return true;
+};
+
 const daysBetween = (a: string, b: string) =>
   Math.round((new Date(`${b}T00:00:00Z`).getTime() - new Date(`${a}T00:00:00Z`).getTime()) / 86400000);
 
@@ -127,19 +127,58 @@ const formatDate = (iso: string) => {
   return `${months[m - 1]} ${d}, ${y}`;
 };
 
-export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, gameMode, leagueType, moddedLeagueBase, onContinue, onBack }) => {
+export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, gameMode, leagueType, moddedLeagueBase, seasonEndYear = 2026, onContinue, onBack }) => {
   const [assistantGM, setAssistantGM] = useState(true);
+  const isModded = leagueType === 'modded';
   const labels = getLeagueLabels(leagueType);
   const isPba = moddedLeagueBase === 'philippines';
   const isEuro = moddedLeagueBase === 'europe';
-  const baseDate = isEuro ? '2025-07-01' : isPba ? '2025-10-05' : '2025-08-06';
+  const internationalWindow = !isPba && !isEuro && leagueType === 'modded'
+    ? getPlayableInternationalWindowForSeason(seasonEndYear - 1)
+    : undefined;
+  const nbaBaseDate = `${seasonEndYear - 1}-08-06`;
+  const baseDate = isEuro
+    ? '2025-07-01'
+    : isPba
+      ? getConferenceStartIso('philippine', seasonEndYear)
+      : internationalWindow?.markerDate && internationalWindow.markerDate < nbaBaseDate
+        ? internationalWindow.markerDate
+        : nbaBaseDate;
   const daysSkipped = daysBetween(baseDate, chosenDate);
   const estSeconds = Math.max(1, Math.ceil(daysSkipped / 25));
   const estGames = Math.round(daysSkipped * 1.2);
   const pbaContext = isPba ? getPbaDateContext(chosenDate) : null;
-
-  const autoItems = isEuro ? EURO_AUTO_RESOLVED_ITEMS : isPba ? PBA_AUTO_RESOLVED_ITEMS : AUTO_RESOLVED_ITEMS;
-  const upcomingItems = isEuro ? EURO_UPCOMING_ITEMS : isPba ? PBA_UPCOMING_ITEMS : UPCOMING_ITEMS;
+  const pbaItems = isPba ? getPbaKeyDates(seasonEndYear) : [];
+  const autoItems = isEuro
+    ? EURO_AUTO_RESOLVED_ITEMS
+    : isPba
+      ? pbaItems.map(item => ({
+          date: item.date,
+          label: `${item.icon} ${item.label}`,
+          how: item.sublabel ?? 'Completed during the jump',
+          status: item.placeholder ? 'placeholder' as const : 'live' as const,
+        }))
+      : AUTO_RESOLVED_ITEMS
+          .filter(item => keepForNbaEra(item, seasonEndYear))
+          .map(item => shiftReviewItem(item, seasonEndYear));
+  const upcomingItems = isEuro
+    ? EURO_UPCOMING_ITEMS
+    : isPba
+      ? pbaItems.map(item => ({
+          date: item.date,
+          label: `${item.icon} ${item.label}`,
+          sublabel: item.sublabel ?? '',
+        }))
+      : [
+          ...UPCOMING_ITEMS
+            .filter(item => keepForNbaEra(item, seasonEndYear))
+            .map(item => shiftReviewItem(item, seasonEndYear)),
+          ...(internationalWindow ? [{
+            date: internationalWindow.markerDate,
+            label: `🌍 ${internationalWindow.label}`,
+            sublabel: 'National-team tournament available in International',
+          }] : []),
+        ];
 
   const resolved = autoItems
     .filter(item => item.date < chosenDate)
@@ -156,13 +195,13 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
   }));
 
   return (
-    <div className="min-h-screen bg-slate-950 flex items-center justify-center p-6 relative overflow-hidden">
+    <div className={`${isModded ? 'modded-setup modded-scanlines bg-[#07090e]' : 'bg-slate-950'} min-h-screen flex items-center justify-center p-6 relative overflow-hidden`}>
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950 pointer-events-none" />
 
       <div className="relative z-10 w-full max-w-4xl">
 
         <div className="text-center mb-8">
-          <h2 className="text-3xl font-black text-white tracking-tight mb-2">Before You Jump</h2>
+          <h2 className={`${isModded ? 'modded-font-sport text-yellow-400 italic uppercase' : 'text-white'} text-3xl font-black tracking-tight mb-2`}>Before You Jump</h2>
           <p className="text-slate-400 text-sm">
             Starting on <span className="text-indigo-400 font-bold">{formatDate(chosenDate)}</span> —
             {pbaContext && <span> <span className="text-amber-300 font-bold">{pbaContext}</span> —</span>}
@@ -173,7 +212,7 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
 
           {/* Auto-resolved */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+          <div className={`${isModded ? 'rounded-xl border-2 border-blue-600/70 bg-[#0b1021]' : 'rounded-2xl border border-slate-800 bg-slate-900/60'} p-5`}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">
               Auto-Resolved Before {formatDate(chosenDate)}
             </h3>
@@ -202,7 +241,7 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
           </div>
 
           {/* Upcoming */}
-          <div className="bg-slate-900/60 border border-slate-800 rounded-2xl p-5">
+          <div className={`${isModded ? 'rounded-xl border border-blue-500/45 bg-[#050814]' : 'rounded-2xl border border-slate-800 bg-slate-900/60'} p-5`}>
             <h3 className="text-xs font-black uppercase tracking-widest text-slate-500 mb-4">
               Awaiting You
             </h3>
@@ -272,7 +311,10 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
         {/* Bottom bar */}
         <div className="flex items-center justify-between gap-4 px-2">
           <button
-            onClick={onBack}
+            onClick={() => {
+              if (isModded) playModdedSetupSound('back');
+              onBack();
+            }}
             className="text-slate-400 hover:text-white text-sm font-bold transition-colors px-4 py-2"
           >
             ← Back
@@ -293,8 +335,11 @@ export const JumpReviewScreen: React.FC<JumpReviewScreenProps> = ({ chosenDate, 
           </div>
 
           <button
-            onClick={() => onContinue(gameMode === 'gm' ? assistantGM : false)}
-            className="px-6 py-2.5 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-black rounded-xl transition-all flex items-center gap-2 shadow-lg shadow-indigo-500/20"
+            onClick={() => {
+              if (isModded) playModdedSetupSound('success');
+              onContinue(gameMode === 'gm' ? assistantGM : false);
+            }}
+            className={`${isModded ? 'modded-font-sport rounded-lg border border-blue-400/50 bg-gradient-to-r from-blue-700 to-indigo-900 italic shadow-[0_0_24px_rgba(37,99,235,0.28)] hover:from-blue-600 hover:to-indigo-800' : 'rounded-xl bg-indigo-600 shadow-lg shadow-indigo-500/20 hover:bg-indigo-500'} px-6 py-2.5 text-white text-sm font-black transition-all flex items-center gap-2`}
           >
             Let's Go →
           </button>

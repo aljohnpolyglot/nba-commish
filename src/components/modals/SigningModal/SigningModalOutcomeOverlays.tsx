@@ -2,6 +2,8 @@ import type { ReactElement } from 'react';
 import type { NBAPlayer } from '../../../types';
 import { formatContractTotalUSD } from '../../../utils/salaryUtils';
 import { LEAGUE_LOGOS, OverlayShell, PlayerThumb } from './SigningModalOverlayShared';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { formatExternalSalary } from '../../../constants';
 
 interface BidSubmittedOverlayProps {
   bidSubmitted: {
@@ -10,6 +12,7 @@ interface BidSubmittedOverlayProps {
     years: number;
   };
   onDone: () => void;
+  pbaIsolated: boolean;
   player: NBAPlayer;
   playerFace: unknown;
   portraitFallback?: string | null;
@@ -19,12 +22,15 @@ interface BidSubmittedOverlayProps {
 export function SigningModalBidSubmittedOverlay({
   bidSubmitted,
   onDone,
+  pbaIsolated,
   player,
   playerFace,
   portraitFallback,
   teamColors,
 }: BidSubmittedOverlayProps): ReactElement {
-  const totalValue = formatContractTotalUSD(bidSubmitted.salary, bidSubmitted.years);
+  const totalValue = pbaIsolated
+    ? formatExternalSalary(bidSubmitted.salary * bidSubmitted.years, 'PBA')
+    : formatContractTotalUSD(bidSubmitted.salary, bidSubmitted.years);
   const optTag = bidSubmitted.option === 'PLAYER'
     ? ' with a player option'
     : bidSubmitted.option === 'TEAM'
@@ -43,7 +49,7 @@ export function SigningModalBidSubmittedOverlay({
           Offer on the Table
         </h2>
         <p className="text-white/80 italic mb-6 leading-relaxed text-sm">
-          You've offered {player.name} <span className="text-[#FDB927] font-bold">{totalValue} / {bidSubmitted.years}yr</span>{optTag}. Track the live market in Team Intel for the exact decision date.
+          You've offered {player.name} <span className="text-[#FDB927] font-bold">{totalValue} / {bidSubmitted.years}yr</span>{optTag}. The result will appear in a daily free agency summary.
         </p>
         <p className="text-[10px] text-white/40 mb-6 leading-relaxed">
           Resubmit anytime to adjust your terms — only your most recent bid stands.
@@ -85,7 +91,7 @@ export function SigningModalBuyoutRefusedOverlay({
 }: BuyoutRefusedOverlayProps): ReactElement {
   const motherTeamLogo = motherTeam?.imgURL || LEAGUE_LOGOS[buyout.league];
   const motherTeamName = motherTeam
-    ? (motherTeam.region ? `${motherTeam.region} ${motherTeam.name}`.trim() : motherTeam.name)
+    ? getTeamFullName(motherTeam)
     : buyout.league;
 
   return (

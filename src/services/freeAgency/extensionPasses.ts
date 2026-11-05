@@ -14,6 +14,12 @@ import {
   playerAge,
 } from './aiFreeAgencyHelpers';
 import type { ExtensionResult } from './passTypes';
+import {
+  isReSignDecision,
+  resolveOffseasonContractDecision,
+} from './offseasonContractDecision';
+import { evaluateRetirementDecision } from '../playerDevelopment/retirementChecker';
+import { isFranchiseCareerLoyaltyActive } from '../../utils/franchiseCareerLoyalty';
 
 function getUserTeamId(state: GameState): number {
   return state.gameMode === 'gm' ? ((state as any).userTeamId ?? state.teams[0]?.id) : -999;
@@ -25,6 +31,7 @@ function shouldDeclineForTeamDirection(
   state: GameState,
   currentYear: number,
 ): boolean {
+  if (isFranchiseCareerLoyaltyActive(player)) return false;
   const strategy = resolveTeamStrategyProfile({
     team,
     players: state.players,
@@ -60,7 +67,7 @@ function buildDeclinedResult(
   };
 }
 
-function getEligibleExpiringPlayers(
+export function getEligibleAIReSignPlayers(
   state: GameState,
   currentYear: number,
   userTeamId: number,
@@ -68,12 +75,16 @@ function getEligibleExpiringPlayers(
 ): NBAPlayer[] {
   return state.players.filter(player => {
     if (!player.contract) return false;
-    if (player.contract.exp !== currentYear) return false;
-    if (player.tid <= 0 || player.tid === userTeamId) return false;
+    const decision = resolveOffseasonContractDecision(player, state, currentYear);
+    if (!isReSignDecision(decision.kind)) return false;
+    if (evaluateRetirementDecision(player, currentYear).willRetire) return false;
+    if (player.tid < 0 || player.tid === userTeamId) return false;
     if ((player as any).status === 'Retired') return false;
+    if (player.twoWay || player.contract.type === 'TWO_WAY') return false;
     if ((player as any).midSeasonExtensionDeclined) return false;
-    if (((player as any).yearsWithTeam ?? 0) < 1) return false;
-    if (minimumOverall !== undefined && (player.overallRating ?? 0) < minimumOverall) return false;
+    const protectedCareer = isFranchiseCareerLoyaltyActive(player);
+    if (!protectedCareer && ((player as any).yearsWithTeam ?? 0) < 1) return false;
+    if (!protectedCareer && minimumOverall !== undefined && (player.overallRating ?? 0) < minimumOverall) return false;
     return true;
   });
 }
@@ -160,7 +171,7 @@ export function runAIMidSeasonExtensionsPass(state: GameState): ExtensionResult[
 
   const currentYear = state.leagueStats.year;
   const userTeamId = getUserTeamId(state);
-  const expiringPlayers = getEligibleExpiringPlayers(state, currentYear, userTeamId);
+  const expiringPlayers = getEligibleAIReSignPlayers(state, currentYear, userTeamId);
   if (expiringPlayers.length === 0) return [];
 
   const results: ExtensionResult[] = [];
@@ -191,7 +202,8 @@ export function runAIMidSeasonExtensionsPass(state: GameState): ExtensionResult[
       basePct = Math.min(basePct, 0.10);
     }
 
-    const accepted = rollMidSeasonAcceptance(player.internalId, currentYear) < basePct;
+    const accepted = isFranchiseCareerLoyaltyActive(player)
+      || rollMidSeasonAcceptance(player.internalId, currentYear) < basePct;
     if (!accepted) {
       const declined = buildDeclinedResult(player, team.name, currentYear);
       declined.contractLabel = undefined;
@@ -210,7 +222,7 @@ export function runAISeasonEndExtensionsPass(state: GameState): ExtensionResult[
 
   const currentYear = state.leagueStats.year;
   const userTeamId = getUserTeamId(state);
-  const expiringPlayers = getEligibleExpiringPlayers(state, currentYear, userTeamId, 47);
+  const expiringPlayers = getEligibleAIReSignPlayers(state, currentYear, userTeamId, 47);
   if (expiringPlayers.length === 0) return [];
 
   const results: ExtensionResult[] = [];
@@ -243,7 +255,8 @@ export function runAISeasonEndExtensionsPass(state: GameState): ExtensionResult[
       }
     }
 
-    const accepted = rollSeasonEndAcceptance(player.internalId, currentYear) < basePct;
+    const accepted = isFranchiseCareerLoyaltyActive(player)
+      || rollSeasonEndAcceptance(player.internalId, currentYear) < basePct;
     if (!accepted) {
       const declined = buildDeclinedResult(player, team.name, currentYear);
       declined.contractLabel = undefined;

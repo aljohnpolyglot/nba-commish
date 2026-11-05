@@ -4,6 +4,7 @@ import { BookOpen, Calendar, Gift, Utensils, Plane, Music, Star, Zap, AlertTrian
 import { motion } from 'motion/react';
 import { HistoryEntry } from '../../../types';
 import { normalizePersonnelRoleText } from './TransactionsShared';
+import { normalizeDate } from '../../../utils/helpers';
 
 /**
  * Strip redundant "Commissioner [Name] has " / "The Commissioner has " prefixes
@@ -105,6 +106,7 @@ export const LeagueEvent: React.FC = () => {
       .reverse()
       .map(raw => resolveEntry(raw, state.date))
       .filter((entry): entry is HistoryEntry => entry != null && entry.text.trim().length > 0)
+      .filter(entry => normalizeDate(entry.date) <= normalizeDate(state.date))
       .filter(isDiaryOwned)
       .filter(entry => {
         if (!searchQuery) return true;

@@ -259,10 +259,10 @@ export const CORE_NEWS_TEMPLATES: NewsTemplate[] = [
   {
     category: 'trade_confirmed',
     headlines: [
-      'TRADE ALERT: {teamAName}–{teamBName} Deal Official',
-      'League Wire: {teamAName} and {teamBName} Swap Assets',
-      'Breaking: Major Trade Shakes Up the League',
-      'Commissioner Confirms Trade Between {teamAName} and {teamBName}',
+      '{teamAName}, {teamBName} Complete Trade',
+      '{teamAName} and {teamBName} Swap Assets',
+      'Major Trade Shakes Up the League',
+      '{teamAName}–{teamBName} Deal Is Official',
     ],
     contents: [
       'It is now confirmed: the {teamAName} and {teamBName} have completed a trade. {assetsToB} head to {teamBName}, while {assetsToA} go the other way.',

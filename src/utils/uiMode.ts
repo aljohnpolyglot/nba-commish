@@ -1,13 +1,25 @@
 export function isEuroIsolatedMode(state: {
   leagueStats?: { uiMode?: string | null };
+  moddedLeagueBase?: string | null;
 }): boolean {
-  return state.leagueStats?.uiMode === 'euro_isolated';
+  return state.leagueStats?.uiMode === 'euro_isolated'
+    || state.moddedLeagueBase === 'europe';
 }
 
 export function isPbaIsolatedMode(state: {
   leagueStats?: { uiMode?: string | null };
+  moddedLeagueBase?: string | null;
 }): boolean {
-  return state.leagueStats?.uiMode === 'pba_isolated';
+  return state.leagueStats?.uiMode === 'pba_isolated'
+    || state.moddedLeagueBase === 'philippines';
+}
+
+export function isWnbaIsolatedMode(state: {
+  leagueStats?: { uiMode?: string | null };
+  moddedLeagueBase?: string | null;
+}): boolean {
+  return state.leagueStats?.uiMode === 'wnba_isolated'
+    || state.moddedLeagueBase === 'wnba';
 }
 
 export type PbaConferencePhase = 'regularSeason' | 'playoffs' | 'offseason' | 'complete';
@@ -52,7 +64,7 @@ export function isPbaOffseasonMode(state: {
 
 export function isNonNbaIsolatedMode(state: {
   leagueStats?: { uiMode?: string | null };
+  moddedLeagueBase?: string | null;
 }): boolean {
-  return state.leagueStats?.uiMode === 'euro_isolated'
-    || state.leagueStats?.uiMode === 'pba_isolated';
+  return isEuroIsolatedMode(state) || isPbaIsolatedMode(state) || isWnbaIsolatedMode(state);
 }

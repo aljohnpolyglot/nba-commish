@@ -1,4 +1,9 @@
 import type { NBAConf, NBADiv } from './team';
+import type { FictionalHistoryMode, FictionalNationalityFrequency, FictionalPlayerPool, FictionalRosterMode, OpeningRosterMode } from './fictionalLeague';
+
+export type LeagueType = 'fictional' | 'modded';
+export type ModdedLeagueBase = 'nba' | 'europe' | 'wnba' | 'philippines';
+export type EuropeMarket = 'spain' | 'france' | 'italy' | 'germany' | 'greece' | 'turkey' | 'serbia' | 'lithuania' | 'israel' | 'russia';
 
 export interface Morale {
   fans: number;
@@ -24,11 +29,79 @@ export interface MediaRights {
   phaseAssignments?: Record<string, string[]>;
   scheduleAssignments?: Record<string, string[]>;
   isLocked: boolean;
+  contractStartSeason?: number;
+  contractEndSeason?: number;
+  agreementName?: string;
+  historicalDefault?: boolean;
+  reach?: number;
+  production?: number;
+  security?: number;
+  growth?: number;
+  approval?: number;
+}
+
+export type TeamHardCapLevel = 'first' | 'second';
+
+export interface TeamCapExceptionUsage {
+  season: number;
+  baeUsedUSD?: number;
+  baeLastUsedSeason?: number;
+  baeUsedBeforeProrationUSD?: number;
+  baeUsedAfterProrationUSD?: number;
+  usedCapRoom?: boolean;
+  hardCapLevel?: TeamHardCapLevel;
+}
+
+export interface LeagueCalendarDate {
+  month: number;
+  day: number;
+  yearOffset: number;
+}
+
+export interface LeagueCalendarBreak {
+  id: string;
+  name: string;
+  start: LeagueCalendarDate;
+  end: LeagueCalendarDate;
+  seasonYears?: number[];
+}
+
+export interface LeagueCalendar {
+  scheduleRelease?: LeagueCalendarDate;
+  freeAgencyStart?: LeagueCalendarDate;
+  draftDate?: LeagueCalendarDate;
+  nonGuaranteedGuaranteeDate?: LeagueCalendarDate | null;
+  playoffEligibilityDeadline?: LeagueCalendarDate | null;
+  draftBeforeFreeAgency?: boolean;
+  trainingCampStart?: LeagueCalendarDate;
+  preseasonStart?: LeagueCalendarDate;
+  preseasonEnd?: LeagueCalendarDate;
+  regularSeasonStart: LeagueCalendarDate;
+  cupStart?: LeagueCalendarDate;
+  cupFinal?: LeagueCalendarDate;
+  allStarStart?: LeagueCalendarDate;
+  allStarGame?: LeagueCalendarDate;
+  allStarEnd?: LeagueCalendarDate;
+  summerLeagueStart?: LeagueCalendarDate;
+  summerLeagueEnd?: LeagueCalendarDate;
+  seasonBreaks?: LeagueCalendarBreak[];
+  regularSeasonEnd: LeagueCalendarDate;
+  playInStart: LeagueCalendarDate;
+  playoffStart: LeagueCalendarDate;
+  rollover: LeagueCalendarDate;
+  rolloverGraceDays?: number;
+  preseasonGamesPerTeam?: number;
+  minimumRestDaysBetweenGames?: number;
+  eventBufferDays?: number;
 }
 
 export interface LeagueStats {
   revenue: number;
+  leagueOperatingSurplusRate?: number;
   mediaRights?: MediaRights;
+  historicalBroadcastsEnabled?: boolean;
+  alternateBroadcastHistory?: boolean;
+  leaguePassPriceSetYear?: number;
   viewership: number;
   viewershipHistory?: { date: string; viewers: number }[];
   revenueHistory?: { date: string; revenue: number }[];
@@ -39,8 +112,16 @@ export interface LeagueStats {
   minContract: number;
   maxContract: number;
   numGamesPlayoffSeries: number[];
+  numPlayoffTeams?: number;
+  numPlayoffByes?: number;
+  playoffEntryRounds?: number[];
+  playoffsEnabled?: boolean;
   playIn: boolean;
   inSeasonTournament: boolean;
+  nbaCupEnabled?: boolean;
+  leagueCalendar?: LeagueCalendar;
+  summerLeagueEnabled?: boolean;
+  summerLeagueTournamentEnabled?: boolean;
   cupPrizePoolEnabled?: boolean;
   cupPrizePoolAutoInflate?: boolean;
   cupPrizeWinner?: number;
@@ -51,7 +132,21 @@ export interface LeagueStats {
   rules: Rule[];
   morale: Morale;
   year: number;
-  uiMode?: 'nba' | 'euro_isolated' | 'pba_isolated';
+  playerDevelopmentPreparedSeason?: number;
+  leagueName?: string;
+  fictionalHistoryMode?: FictionalHistoryMode;
+  fictionalPlayerPool?: FictionalPlayerPool;
+  fictionalRosterMode?: FictionalRosterMode;
+  fictionalFantasyDraftCompleted?: boolean;
+  openingRosterMode?: OpeningRosterMode;
+  openingFantasyDraftCompleted?: boolean;
+  openingFantasyDraftFormat?: 'ORDINARY' | 'BLIND_PACK' | 'BRIEFCASE' | 'WHEEL_OF_TEAMS' | 'BUDGET';
+  openingFantasyDraftOrderType?: 'FIXED' | 'SNAKE' | 'RANDOM';
+  fictionalNationalityFrequencies?: FictionalNationalityFrequency[];
+  uiMode?: 'nba' | 'euro_isolated' | 'pba_isolated' | 'wnba_isolated' | 'fictional';
+  historicalEndesaEnabled?: boolean;
+  historicalEconomyScale?: number;
+  pbaPlayerEconomyVersion?: number;
   currency?: 'USD' | 'EUR' | 'GBP' | 'JPY' | 'CNY' | 'AUD' | 'PHP';
   tradesAllowed?: boolean;
   euroMinSalaryUSD?: number;
@@ -68,8 +163,35 @@ export interface LeagueStats {
     bidderPool: 'euro' | 'plus_nba' | 'all';
     releaseClauseDefaultMult: number;
   };
+  loanMarket?: {
+    enabled: boolean;
+    summerStart: string;
+    summerEnd: string;
+    winterStart: string;
+    winterEnd: string;
+    maxActiveLoansPerClub: number;
+  };
   hofClassesInducted?: number[];
   draftType: string;
+  /** Saved league-season rules snapshot. Era defaults are applied only at creation/rollover. */
+  eraRulesProfile?: EraRulesProfile;
+  enableDraft?: boolean;
+  draftLotteryEnabled?: boolean;
+  draftLotteryMethod?: 'none' | 'inverse_standings' | 'weighted_custom' | 'modern_2019';
+  draftLotteryAuthority?: 'manual' | 'automatic' | 'delegated';
+  rfaEnabled?: boolean;
+  rfaMatchWindowDays?: number;
+  autoDeclineRfaAboveSecondApron?: boolean;
+  tradeDeadlineEnabled?: boolean;
+  allowTies?: boolean;
+  overtimePolicy?: 'none' | 'fixed_period' | 'sudden_death' | 'modern';
+  postseasonTiebreakPolicy?: 'fixed_period' | 'sudden_death' | 'modern';
+  standingsMode?: 'win_pct' | 'points';
+  pointsForWin?: number;
+  pointsForDraw?: number;
+  pointsForLoss?: number;
+  simulationEnginePolicy?: 'fast' | 'realistic' | 'hybrid';
+  playoffReseeding?: boolean;
   allStarEnding?: string;
   allStarBreakStart?: string;
   allStarBreakEnd?: string;
@@ -77,23 +199,41 @@ export interface LeagueStats {
   awards?: Rule[];
   trophies?: Rule[];
   awardSettings?: import('../services/awards/types').AwardSettings;
+  awardSettingsEraVersion?: number;
+  awardSettingsCommissionerOverrides?: Record<string, boolean>;
   celebrityGame?: boolean;
   globalGames?: boolean;
   hasScheduledGlobalGames?: boolean;
+  globalGamesScheduledYear?: number;
   hasSetCelebrityRoster?: boolean;
   celebrityRosterAutoSelected?: boolean;
   celebrityRoster?: string[];
   hasExpanded?: boolean;
+  pbaExpansionCompletedYears?: number[];
+  wnbaExpansionCompletedYears?: number[];
+  wnbaSourceSeason?: number;
   auto2029ExpansionSeeded?: boolean;
+  historicalExpansionAutoSeededSeason?: number;
+  historicalExpansionSkippedSeasons?: number[];
   autoOwnerSeeded?: boolean;
   euroPayrollScaleHealed?: boolean;
   staffPoolSeeded?: boolean;
+  europeanCoachSourceVersion?: string;
+  europeanCoachSourceSeason?: number;
+  europeanCoachAssignedCount?: number;
+  historicalCoachPoolJoinedKeys?: string[];
   historyIdentityMigrationVersion?: number;
+  pbaBiographyIntegrityVersion?: number;
   pbaConference?: 'philippine' | 'commissioners' | 'governors';
   pbaConferencePhase?: 'setup' | 'regularSeason' | 'playoffs' | 'complete' | 'offseason';
   pbaYearEndRolloverPreparedSeason?: number;
+  euroRolloverPreparedSeason?: number;
   pbaLocalEligibilityMode?: 'registered_roster' | 'filipino_only';
+  pbaLocalFreeAgencyDays?: number;
+  pbaLocalFreeAgencyPreparedSeason?: number;
+  pbaLocalFreeAgencyResolvedSeason?: number;
   pbaDraftComplete?: boolean;
+  pbaDraftCompleteSeason?: number;
   pbaOpeningWatched?: boolean;
   pbaMuseSelected?: boolean;
   pbaConferenceChampions?: Array<{
@@ -102,8 +242,15 @@ export interface LeagueStats {
     teamId: number;
     teamName: string;
     finalsMvpId?: string;
+    finalsMvpName?: string;
     bestPlayerId?: string;
     bestImportId?: string;
+    record?: {
+      won: number;
+      lost: number;
+      wins: number;
+      losses: number;
+    };
   }>;
   pbaGrandSlam?: Array<{
     season: number;
@@ -122,8 +269,10 @@ export interface LeagueStats {
   };
   hasFinalsHalftime?: boolean;
   hasAllStarHalftime?: boolean;
+  hasAllStarSaturdayPerformance?: boolean;
   hasRingCeremony?: boolean;
   hasInvitedPerformance?: boolean;
+  performanceInvitationYear?: number;
   draftEligibilityRule?: string;
   fourPointLine?: boolean;
   foulOutLimit?: number;
@@ -176,9 +325,20 @@ export interface LeagueStats {
   threePointLineDistance?: number;
   fourPointLineDistance?: number;
   dunkValue?: number;
-  midrangeValue?: number;
+  fieldGoalValue?: 1 | 2;
+  freeThrowsEnabled?: boolean;
+  dribbleRule?: 'none' | 'single_bounce_no_shot' | 'continuous';
+  madeBasketRestart?: 'center_jump' | 'inbound';
+  teamFoulPenaltyMode?: 'free_throws' | 'award_goal';
+  teamFoulPenaltyPoints?: number;
+  temporaryDisqualificationFoulLimit?: number;
+  temporaryDisqualificationUntilNextScore?: boolean;
+  temporaryDisqualificationAllowsSubstitute?: boolean;
+  homeCourtAdvantage?: number;
+  historicalGameRulesVersion?: number;
+  historicalGameRulesAutoProgression?: boolean;
+  gameRulesCustomized?: boolean;
   heaveRuleEnabled?: boolean;
-  halfCourtShotValue?: number;
   salaryCapEnabled?: boolean;
   salaryCapType?: 'soft' | 'hard' | 'none';
   minimumPayrollEnabled?: boolean;
@@ -189,6 +349,8 @@ export interface LeagueStats {
   numberOfAprons?: number;
   firstApronPercentage?: number;
   secondApronPercentage?: number;
+  firstApronAmount?: number;
+  secondApronAmount?: number;
   tradeMatchingRatioUnder?: number;
   tradeMatchingRatioOver1st?: number;
   tradeMatchingRatioOver2nd?: number;
@@ -199,6 +361,12 @@ export interface LeagueStats {
   restrictTPEProvenanceOver2ndApron?: boolean;
   postSigningMoratoriumEnabled?: boolean;
   twoWayContractsEnabled?: boolean;
+  developmentalContractsEnabled?: boolean;
+  maxDevelopmentalPlayersPerTeam?: number;
+  developmentalMaxServiceYears?: number;
+  developmentalMaxGames?: number;
+  developmentalWeeklyStipendUSD?: number;
+  developmentalActiveGameBonusUSD?: number;
   nonGuaranteedContractsEnabled?: boolean;
   r2ContractsNonGuaranteed?: boolean;
   minPlayersPerTeam?: number;
@@ -206,9 +374,11 @@ export interface LeagueStats {
   maxStandardPlayersPerTeam?: number;
   maxTwoWayPlayersPerTeam?: number;
   maxTrainingCampRoster?: number;
-  minContractType?: 'static' | 'dynamic';
+  historicalContractScaleCap?: number;
+  governorsBoardMeetingEnabled?: boolean;
+  minContractType?: 'static' | 'dynamic' | 'none';
   minContractStaticAmount?: number;
-  maxContractType?: 'static' | 'service_tiered';
+  maxContractType?: 'static' | 'service_tiered' | 'none';
   maxContractStaticPercentage?: number;
   supermaxEnabled?: boolean;
   supermaxPercentage?: number;
@@ -242,12 +412,17 @@ export interface LeagueStats {
   taxpayerMleAmount?: number;
   biannualEnabled?: boolean;
   biannualAmount?: number;
+  biannualTradeWaiverEnabled?: boolean;
+  biannualFirstApronHardCapEnabled?: boolean;
+  biannualProrationEnabled?: boolean;
   roomMlePercentage?: number;
   nonTaxpayerMlePercentage?: number;
   taxpayerMlePercentage?: number;
   biannualPercentage?: number;
   mleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
   backgroundNbaMleUsage?: Record<number, { type: 'room' | 'non_taxpayer' | 'taxpayer'; usedUSD: number }>;
+  capExceptionUsage?: Record<number, TeamCapExceptionUsage>;
+  backgroundNbaCapExceptionUsage?: Record<number, TeamCapExceptionUsage>;
   deadMoneyEnabled?: boolean;
   ngGuaranteeDeadlineMonth?: number;
   ngGuaranteeDeadlineDay?: number;
@@ -274,6 +449,12 @@ export interface LeagueStats {
     arena?: string;
     teamIds: number[];
   }>;
+  nbaCupHosts?: Array<{
+    year: number;
+    city: string;
+    arena?: string;
+    teamId: number;
+  }>;
   allNbaTeams?: number;
   allNbaPlayersPerTeam?: number;
   allDefenseTeams?: number;
@@ -287,15 +468,42 @@ export interface LeagueStats {
   numGamesDiv?: number | null;
   numGamesConf?: number | null;
   customScheduleEnabled?: boolean;
+  jerseyPatchProgramEnabled?: boolean;
   confs?: NBAConf[];
   divs?: NBADiv[];
+  playoffsByConf?: boolean;
+  bbgmSchemaVersion?: number | string;
+  bbgmGameAttributes?: unknown;
+  bbgmImportMeta?: unknown;
+  bbgmImportVersion?: number;
+  bbgmResolvedGameAttributes?: Record<string, unknown>;
+  bbgmUnsupportedGameAttributes?: Record<string, unknown>;
+  pace?: number;
+  threePointTendencyFactor?: number;
+  threePointAccuracyFactor?: number;
+  twoPointAccuracyFactor?: number;
+  ftAccuracyFactor?: number;
+  blockFactor?: number;
+  stealFactor?: number;
+  turnoverFactor?: number;
+  orbFactor?: number;
+  foulRateFactor?: number;
+  tragicDeathRateFactor?: number;
+  injuryFrequencyFactor?: number;
   tiebreakers?: string[];
   otl?: boolean;
   allStarGameEnabled?: boolean;
+  playInFormat?: 'modern_7_10' | 'bubble_8_9';
   allStarFormat?: string;
   allStarTeams?: number;
+  allStarTeamNames?: string[];
+  allStarCaptainType?: 'player' | 'legend';
+  allStarPlayerCaptainNameStyle?: 'first_name' | 'last_name';
+  allStarLegendCaptainIds?: string[];
   allStarDunkContest?: boolean;
   allStarDunkContestPlayers?: number;
+  allStarDanceContestEnabled?: boolean;
+  pbaAllStarDanceContestEnabled?: boolean;
   allStarThreePointContest?: boolean;
   allStarThreePointContestPlayers?: number;
   allStarShootingStars?: boolean;
@@ -338,8 +546,12 @@ export interface LeagueStats {
   allStarOvertimeTieBreaker?: string;
   risingStarsEnabled?: boolean;
   risingStarsFormat?: string;
+  risingStarsCaptainType?: 'player' | 'legend';
+  risingStarsLegendCaptainIds?: string[];
   risingStarsMirrorLeagueRules?: boolean;
   risingStarsQuarterLength?: number;
+  risingStarsNumQuarters?: number;
+  risingStarsOvertimeDuration?: number;
   risingStarsEliminationEndings?: boolean;
   celebrityGameEnabled?: boolean;
   celebrityGameMirrorLeagueRules?: boolean;
@@ -364,6 +576,69 @@ export interface LeagueStats {
   fightingInstantEjection?: boolean;
   useYellowRedCards?: boolean;
   shotClockResetOffensiveRebound?: number;
+  historicalEraKey?: string;
+  historicalEraStartYear?: number;
+  historicalPaceMultiplier?: number;
+  historicalFieldGoalAttemptMultiplier?: number;
+  historicalThreePointRateMultiplier?: number;
+  historicalMidRangeRateMultiplier?: number;
+  historicalLowPostRateMultiplier?: number;
+  historicalFreeThrowRateMultiplier?: number;
+  historicalTurnoverMultiplier?: number;
+  historicalEfficiencyMultiplier?: number;
+  historicalAssistRateMultiplier?: number;
+  historicalAssistDistributionExponent?: number;
+  historicalReboundOpportunityMultiplier?: number;
+  historicalFreeThrowAccuracyMultiplier?: number;
+  historicalReboundDistributionExponent?: number;
+  historicalOrbRateMultiplier?: number;
+  historicalBlockRateMultiplier?: number;
+  wnbaRuleDefaultsVersion?: number;
+  wnbaStaffSeedVersion?: number;
+  calendarRulesCustomized?: boolean;
+  transactionCalendarRulesCustomized?: boolean;
+  draftRulesCustomized?: boolean;
+  allStarRulesCustomized?: boolean;
+  competitionRulesCustomized?: boolean;
+}
+
+export interface EraRulesProfile {
+  version: 1;
+  id: string;
+  season: number;
+  source: 'fictional-era-default' | 'commissioner-custom';
+  periodStructure: 'halves' | 'quarters';
+  periodCount: number;
+  periodLengthMinutes: number;
+  halftimeMinutes: number;
+  overtimePolicy: 'none' | 'fixed_period' | 'sudden_death' | 'modern';
+  allowTies: boolean;
+  postseasonTiebreakPolicy: 'fixed_period' | 'sudden_death' | 'modern';
+  shotClockSeconds: number | null;
+  threePointLine: boolean;
+  foulOutLimit: number;
+  rosterSize: number;
+  substitutionLimit: number | null;
+  draftEnabled: boolean;
+  lotteryEnabled: boolean;
+  lotteryMethod: 'none' | 'inverse_standings' | 'weighted_custom' | 'modern_2019';
+  freeAgencyType: 'open_market' | 'reserve_clause' | 'modern';
+  rfaEnabled: boolean;
+  salaryCapEnabled: boolean;
+  luxuryTaxEnabled: boolean;
+  apronsEnabled: boolean;
+  tradeDeadlineEnabled: boolean;
+  tradeDeadlineMonth: number | null;
+  moratoriumDays: number;
+  minContractYears: number;
+  maxContractYears: number;
+  enabledAwards: string[];
+  standingsMode: 'win_pct' | 'points';
+  pointsForWin: number;
+  pointsForDraw: number;
+  pointsForLoss: number;
+  financialScale: number;
+  commissionerOverrides: Partial<Omit<EraRulesProfile, 'version' | 'id' | 'season' | 'source' | 'commissionerOverrides'>>;
 }
 
 export interface GameStats {
@@ -371,6 +646,8 @@ export interface GameStats {
   ownerApproval: number;
   playerApproval: number;
   leagueFunds: number;
+  leagueReserve: number;
+  availableBudget: number;
   personalWealth: number;
   legacy: number;
 }

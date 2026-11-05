@@ -30,28 +30,39 @@ export const computeClinchStatus = <T extends NBATeam>(
   schedule: Game[],
   seasonYear?: number
 ): T[] => {
-  const gamesRemaining = (tid: number) =>
-    schedule.filter(g => {
-      if (g.played || g.isPreseason || g.isPlayoff || g.isPlayIn) return false;
-      if ((g as any).isAllStar || (g as any).isRisingStars || (g as any).isCelebrityGame || (g as any).isExhibition || (g as any).isCupTBD) return false;
-      if (seasonYear != null && (g as any).season != null && Number((g as any).season) !== Number(seasonYear)) return false;
-      return g.homeTid === tid || g.awayTid === tid;
-    }).length;
+  const teamIds = new Set(teams.map(team => team.id));
+  const remainingByTid = new Map(teams.map(team => [team.id, 0]));
+  for (const game of schedule) {
+    if (game.played || game.isPreseason || game.isPlayoff || game.isPlayIn) continue;
+    if ((game as any).isAllStar || (game as any).isRisingStars || (game as any).isCelebrityGame || (game as any).isExhibition || (game as any).isCupTBD) continue;
+    if (seasonYear != null && (game as any).season != null && Number((game as any).season) !== Number(seasonYear)) continue;
+    if (teamIds.has(game.homeTid)) remainingByTid.set(game.homeTid, (remainingByTid.get(game.homeTid) ?? 0) + 1);
+    if (game.awayTid !== game.homeTid && teamIds.has(game.awayTid)) {
+      remainingByTid.set(game.awayTid, (remainingByTid.get(game.awayTid) ?? 0) + 1);
+    }
+  }
 
-  const maxWinsByTid = new Map(teams.map(team => [team.id, team.wins + gamesRemaining(team.id)]));
+  const maxWinsByTid = new Map(teams.map(team => [team.id, team.wins + (remainingByTid.get(team.id) ?? 0)]));
+  const conferenceTeams = new Map<NBATeam['conference'], T[]>();
+  for (const team of teams) {
+    const group = conferenceTeams.get(team.conference);
+    if (group) group.push(team);
+    else conferenceTeams.set(team.conference, [team]);
+  }
+  for (const group of conferenceTeams.values()) {
+    group.sort((a, b) => {
+      const aPct = a.wins / Math.max(1, a.wins + a.losses);
+      const bPct = b.wins / Math.max(1, b.wins + b.losses);
+      return bPct - aPct;
+    });
+  }
 
   return teams.map(team => {
-    const confTeams = [...teams]
-      .filter(t => t.conference === team.conference)
-      .sort((a, b) => {
-        const aPct = a.wins / Math.max(1, a.wins + a.losses);
-        const bPct = b.wins / Math.max(1, b.wins + b.losses);
-        return bPct - aPct;
-      });
+    const confTeams = conferenceTeams.get(team.conference) ?? [];
 
     const teamRank = confTeams.findIndex(t => t.id === team.id) + 1;
     const maxWins = maxWinsByTid.get(team.id) ?? team.wins;
-    const confRemaining = confTeams.reduce((sum, confTeam) => sum + gamesRemaining(confTeam.id), 0);
+    const confRemaining = confTeams.reduce((sum, confTeam) => sum + (remainingByTid.get(confTeam.id) ?? 0), 0);
     const regularSeasonComplete = confRemaining === 0 && confTeams.some(confTeam => confTeam.wins + confTeam.losses > 0);
 
     const eliminated = confTeams
@@ -87,12 +98,24 @@ export const computeClinchStatus = <T extends NBATeam>(
 /**
  * Sorts teams by standings with optional tiebreaker chain.
  */
-export const sortByStandings = (
-  teams: NBATeam[],
+export const sortByStandings = <T extends NBATeam>(
+  teams: T[],
   tiebreakers: string[] = ['head-to-head', 'point-differential'],
-  headToHead?: HeadToHead
-): NBATeam[] => {
+  headToHead?: HeadToHead,
+  rules?: { standingsMode?: 'win_pct' | 'points'; pointsForWin?: number; pointsForDraw?: number; pointsForLoss?: number },
+): T[] => {
   return [...teams].sort((a, b) => {
+    if (rules?.standingsMode === 'points') {
+      const points = (team: T) => team.standingsPoints ?? (
+        team.wins * (rules.pointsForWin ?? 2)
+        + (team.tied ?? 0) * (rules.pointsForDraw ?? 1)
+        + team.losses * (rules.pointsForLoss ?? 0)
+      );
+      const pointGap = points(b) - points(a);
+      if (pointGap !== 0) return pointGap;
+      const differentialGap = Number(b.pointDifferential ?? 0) - Number(a.pointDifferential ?? 0);
+      if (differentialGap !== 0) return differentialGap;
+    }
     const aWinPct = a.wins / Math.max(1, a.wins + a.losses);
     const bWinPct = b.wins / Math.max(1, b.wins + b.losses);
     if (Math.abs(aWinPct - bWinPct) > 0.001) return bWinPct - aWinPct;

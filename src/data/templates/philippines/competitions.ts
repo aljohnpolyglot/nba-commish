@@ -1,13 +1,18 @@
 import type { CompetitionSpec } from '../../../services/competition/types';
+import { getPbaConferenceCalendar } from '../../../services/pba/calendar';
+
+const philippineCalendar = getPbaConferenceCalendar('pba-philippine-cup');
+const commissionersCalendar = getPbaConferenceCalendar('pba-commissioners-cup');
+const governorsCalendar = getPbaConferenceCalendar('pba-governors-cup');
 
 export const PBA_COMPETITIONS: CompetitionSpec[] = [
   {
     id: 'pba-philippine-cup',
-    displayName: 'PBA Philippine Cup',
+    displayName: philippineCalendar.displayName,
     shortName: 'Phil. Cup',
     format: 'regular-league',
-    seasonStart: { month: 10, day: 5 },
-    seasonEnd: { month: 2, day: 1 },
+    seasonStart: philippineCalendar.seasonStart,
+    seasonEnd: philippineCalendar.seasonEnd,
     teamSelector: 'allPBA',
     teamCount: 12,
     gamesPerTeam: 11,
@@ -18,9 +23,9 @@ export const PBA_COMPETITIONS: CompetitionSpec[] = [
       finalBest: 7,
       finalFormat: 'best-of',
       rounds: [
-        { phase: 'qf', start: { month: 12, day: 15 }, end: { month: 1, day: 5 } },
-        { phase: 'sf', bestOf: 7, start: { month: 1, day: 8 }, end: { month: 1, day: 25 } },
-        { phase: 'final', bestOf: 7, start: { month: 1, day: 28 }, end: { month: 2, day: 15 } },
+        { phase: 'qf', start: philippineCalendar.playoffs.qf.start, end: philippineCalendar.playoffs.qf.end },
+        { phase: 'sf', bestOf: 7, start: philippineCalendar.playoffs.sf.start, end: philippineCalendar.playoffs.sf.end },
+        { phase: 'final', bestOf: 7, start: philippineCalendar.playoffs.final.start, end: philippineCalendar.playoffs.final.end },
       ],
     },
     prizePool: { currency: 'PHP', winner: 3_000_000, runnerUp: 1_500_000 },
@@ -30,11 +35,11 @@ export const PBA_COMPETITIONS: CompetitionSpec[] = [
   },
   {
     id: 'pba-commissioners-cup',
-    displayName: "PBA Commissioner's Cup",
+    displayName: commissionersCalendar.displayName,
     shortName: "Comm. Cup",
     format: 'regular-league',
-    seasonStart: { month: 3, day: 11 },
-    seasonEnd: { month: 5, day: 31 },
+    seasonStart: commissionersCalendar.seasonStart,
+    seasonEnd: commissionersCalendar.seasonEnd,
     teamSelector: 'allPBA',
     teamCount: 12,
     gamesPerTeam: 11,
@@ -45,9 +50,9 @@ export const PBA_COMPETITIONS: CompetitionSpec[] = [
       finalBest: 7,
       finalFormat: 'best-of',
       rounds: [
-        { phase: 'qf', start: { month: 6, day: 3 }, end: { month: 6, day: 8 } },
-        { phase: 'sf', bestOf: 7, start: { month: 6, day: 10 }, end: { month: 6, day: 22 } },
-        { phase: 'final', bestOf: 7, start: { month: 6, day: 25 }, end: { month: 7, day: 7 } },
+        { phase: 'qf', start: commissionersCalendar.playoffs.qf.start, end: commissionersCalendar.playoffs.qf.end },
+        { phase: 'sf', bestOf: 7, start: commissionersCalendar.playoffs.sf.start, end: commissionersCalendar.playoffs.sf.end },
+        { phase: 'final', bestOf: 7, start: commissionersCalendar.playoffs.final.start, end: commissionersCalendar.playoffs.final.end },
       ],
     },
     prizePool: { currency: 'PHP', winner: 3_000_000, runnerUp: 1_500_000 },
@@ -57,11 +62,11 @@ export const PBA_COMPETITIONS: CompetitionSpec[] = [
   },
   {
     id: 'pba-governors-cup',
-    displayName: "PBA Governors' Cup",
+    displayName: governorsCalendar.displayName,
     shortName: "Gov. Cup",
     format: 'regular-league',
-    seasonStart: { month: 7, day: 10 },
-    seasonEnd: { month: 8, day: 25 },
+    seasonStart: governorsCalendar.seasonStart,
+    seasonEnd: governorsCalendar.seasonEnd,
     teamSelector: 'allPBA',
     teamCount: 12,
     gamesPerTeam: 10,
@@ -72,14 +77,14 @@ export const PBA_COMPETITIONS: CompetitionSpec[] = [
       finalBest: 7,
       finalFormat: 'best-of',
       rounds: [
-        { phase: 'qf', start: { month: 8, day: 28 }, end: { month: 9, day: 1 } },
-        { phase: 'sf', bestOf: 7, start: { month: 9, day: 3 }, end: { month: 9, day: 15 } },
-        { phase: 'final', bestOf: 7, start: { month: 9, day: 18 }, end: { month: 9, day: 30 } },
+        { phase: 'qf', start: governorsCalendar.playoffs.qf.start, end: governorsCalendar.playoffs.qf.end },
+        { phase: 'sf', bestOf: 7, start: governorsCalendar.playoffs.sf.start, end: governorsCalendar.playoffs.sf.end },
+        { phase: 'final', bestOf: 7, start: governorsCalendar.playoffs.final.start, end: governorsCalendar.playoffs.final.end },
       ],
     },
     prizePool: { currency: 'PHP', winner: 3_000_000, runnerUp: 1_500_000 },
     accentColor: '#FFD700',
     icon: 'cup',
-    importRule: 'one_max_6ft5',
+    importRule: 'one_max_6ft6',
   },
 ];

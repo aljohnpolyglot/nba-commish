@@ -1,5 +1,6 @@
 import { NBAPlayer, NBATeam } from '../../types';
 import { computeAge } from '../../utils/helpers';
+import { isCurrentNbaPlayer } from './allStarSelectionHelpers';
 
 export type HorseStat = 'ins' | 'dnk' | 'ft' | 'fg' | 'tp' | 'drb';
 
@@ -150,8 +151,7 @@ export class AllStarHorseSim {
   static selectContestants(players: NBAPlayer[], season: number, n: number, teams: NBATeam[] = []): NBAPlayer[] {
     const count = Math.min(10, Math.max(3, Math.round(n || 3)));
     const nbaPlayers = players
-      .filter(p => p.tid >= 0 && p.tid < 100 && !p.retiredYear)
-      .filter(p => !p.status || p.status === 'Active');
+      .filter(isCurrentNbaPlayer);
     const qualified = nbaPlayers
       .map(player => ({ player, score: qualificationScore(player, season, teams) }))
       .filter((entry): entry is { player: NBAPlayer; score: number } => entry.score !== null);

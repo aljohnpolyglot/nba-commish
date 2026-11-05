@@ -1,3 +1,5 @@
+import { getPrimaryInsiderKey } from '../../utils/mediaTimeline';
+
 export interface SocialHandle {
     id: string;
     name: string;
@@ -214,10 +216,10 @@ export const FICTIONAL_SOCIAL_HANDLES: Record<string, SocialHandle> = {
     'Woj': {
         id: 'woj',
         name: 'Brent Kowalski',
-        handle: 'KowalskiESPN',
-        description: 'League Insider for ESPN.',
+        handle: 'KowalskiWire',
+        description: 'League insider.',
         verified: true,
-        avatarUrl: `${DICE}/personas/svg?seed=KowalskiESPN`,
+        avatarUrl: `${DICE}/personas/svg?seed=KowalskiWire`,
     },
 
     // --- AGGREGATORS ---
@@ -376,7 +378,96 @@ export const FICTIONAL_SOCIAL_HANDLES: Record<string, SocialHandle> = {
     },
 };
 
-export function getSocialHandles(leagueType?: string): Record<string, SocialHandle> {
+export const PBA_SOCIAL_HANDLES: Record<string, SocialHandle> = {
+    ...FICTIONAL_SOCIAL_HANDLES,
+    NBA: {
+        id: 'pba_official',
+        name: 'PBA',
+        handle: 'PBAOfficial',
+        description: 'Official account of the PBA.',
+        verified: true,
+        avatarUrl: `${DICE}/thumbs/svg?seed=PBAOfficial`,
+    },
+    NBAPR: {
+        id: 'pba_communications',
+        name: 'PBA Communications',
+        handle: 'PBAComms',
+        description: 'Official PBA communications.',
+        verified: true,
+        avatarUrl: `${DICE}/thumbs/svg?seed=PBAComms`,
+    },
+    Shams: {
+        id: 'pba_insider_modern',
+        name: 'Manila Hoops Wire',
+        handle: 'ManilaHoopsWire',
+        description: 'PBA transactions and league news.',
+        verified: true,
+        avatarUrl: `${DICE}/personas/svg?seed=ManilaHoopsWire`,
+    },
+    Woj: {
+        id: 'pba_insider_classic',
+        name: 'Courtside Desk',
+        handle: 'CourtsideDeskPH',
+        description: 'Philippine basketball news desk.',
+        verified: true,
+        avatarUrl: `${DICE}/personas/svg?seed=CourtsideDeskPH`,
+    },
+    NBACentral: {
+        id: 'pba_central',
+        name: 'PBA Central',
+        handle: 'PBACentral',
+        description: 'PBA news, transactions and results.',
+        verified: true,
+        avatarUrl: `${DICE}/thumbs/svg?seed=PBACentral`,
+    },
+    StatMuse: {
+        id: 'pba_stats',
+        name: 'PBA Stats',
+        handle: 'PBAStatsPH',
+        description: 'PBA statistics and records.',
+        verified: true,
+        avatarUrl: `${DICE}/thumbs/svg?seed=PBAStatsPH`,
+    },
+};
+
+const modeHandle = (
+    id: string,
+    name: string,
+    handle: string,
+    description: string,
+): SocialHandle => ({
+    id,
+    name,
+    handle,
+    description,
+    verified: true,
+    avatarUrl: `${DICE}/thumbs/svg?seed=${handle}`,
+});
+
+export const WNBA_SOCIAL_HANDLES: Record<string, SocialHandle> = {
+    ...FICTIONAL_SOCIAL_HANDLES,
+    NBA: modeHandle('wnba_official', 'WNBA', 'WNBA', 'Official account of the WNBA.'),
+    NBAPR: modeHandle('wnba_communications', 'WNBA Communications', 'WNBAComms', 'Official WNBA communications.'),
+    Shams: modeHandle('wnba_insider', 'Women’s Hoops Wire', 'WomensHoopsWire', 'WNBA transactions and league news.'),
+    Woj: modeHandle('wnba_newsdesk', 'Women’s Basketball Desk', 'WomensBasketballDesk', 'Women’s basketball news desk.'),
+    NBACentral: modeHandle('wnba_central', 'WNBA Central', 'WNBACentral', 'WNBA news, injuries and transactions.'),
+    NBAonESPN: modeHandle('wnba_broadcast', 'Women’s Hoops Network', 'WomensHoopsNet', 'Scores, highlights and analysis.'),
+};
+
+export const EURO_SOCIAL_HANDLES: Record<string, SocialHandle> = {
+    ...FICTIONAL_SOCIAL_HANDLES,
+    NBA: modeHandle('euro_official', 'European Basketball', 'EuroBasketball', 'Official league basketball account.'),
+    NBAPR: modeHandle('euro_communications', 'League Communications', 'EuroBasketballComms', 'Official league communications.'),
+    Shams: modeHandle('euro_insider', 'Euro Hoops Wire', 'EuroHoopsWire', 'European basketball transactions and news.'),
+    Woj: modeHandle('euro_newsdesk', 'European Basketball Desk', 'EuroBasketballDesk', 'European basketball news desk.'),
+    NBACentral: modeHandle('euro_central', 'Euro Hoops Central', 'EuroHoopsCentral', 'European basketball news and results.'),
+    NBAonESPN: modeHandle('euro_broadcast', 'Euro Hoops Network', 'EuroHoopsNetwork', 'Scores, highlights and analysis.'),
+};
+
+export function getSocialHandles(leagueType?: string, uiMode?: string | null): Record<string, SocialHandle> {
+    if (uiMode === 'pba_isolated') return PBA_SOCIAL_HANDLES;
+    if (uiMode === 'wnba_isolated') return WNBA_SOCIAL_HANDLES;
+    if (uiMode === 'euro_isolated') return EURO_SOCIAL_HANDLES;
     return leagueType === 'fictional' ? FICTIONAL_SOCIAL_HANDLES : SOCIAL_HANDLES;
 }
 
@@ -386,12 +477,75 @@ export interface InsiderHandle {
     atHandle: string;  // with @
 }
 
-export function getInsiderHandle(leagueType?: string): InsiderHandle {
-    const h = getSocialHandles(leagueType)['Shams'];
+export function getPrimaryInsiderHandle(leagueType?: string, date?: string | null, seasonYear?: number | null, uiMode?: string | null): InsiderHandle {
+    const key = getPrimaryInsiderKey(date, seasonYear) === 'woj' ? 'Woj' : 'Shams';
+    const h = getSocialHandles(leagueType, uiMode)[key];
     return { name: h.name, handle: h.handle, atHandle: `@${h.handle}` };
 }
 
-export function getInsiderWoj(leagueType?: string): InsiderHandle {
-    const h = getSocialHandles(leagueType)['Woj'];
-    return { name: h.name, handle: h.handle, atHandle: `@${h.handle}` };
+export function getInsiderHandle(leagueType?: string, date?: string | null, seasonYear?: number | null, uiMode?: string | null): InsiderHandle {
+    return getPrimaryInsiderHandle(leagueType, date, seasonYear, uiMode);
+}
+
+export function getDefaultFollowedHandles(leagueType?: string, date?: string | null, seasonYear?: number | null, uiMode?: string | null): string[] {
+    const handles = getSocialHandles(leagueType, uiMode);
+    return [
+        handles.NBA.handle,
+        getPrimaryInsiderHandle(leagueType, date, seasonYear, uiMode).handle,
+        handles.StatMuse.handle,
+    ];
+}
+
+function escapeRegExp(value: string): string {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+function replaceAllNames(content: string, from: string, to: string): string {
+    if (!content || !from || from === to) return content;
+    return content.replace(new RegExp(escapeRegExp(from), 'gi'), to);
+}
+
+export function coerceInsiderPostToEra<T extends { author?: string; handle?: string; content?: string }>(
+    post: T,
+    leagueType?: string,
+    date?: string | null,
+    seasonYear?: number | null,
+    uiMode?: string | null,
+): T {
+    const primary = getPrimaryInsiderHandle(leagueType, date, seasonYear, uiMode);
+    const postHandle = String(post.handle ?? '').replace(/^@/, '').toLowerCase();
+    const author = String(post.author ?? '').toLowerCase();
+    const candidates = [
+        SOCIAL_HANDLES.Shams,
+        SOCIAL_HANDLES.Woj,
+        FICTIONAL_SOCIAL_HANDLES.Shams,
+        FICTIONAL_SOCIAL_HANDLES.Woj,
+        PBA_SOCIAL_HANDLES.Shams,
+        PBA_SOCIAL_HANDLES.Woj,
+    ];
+    const matched = candidates.find(candidate =>
+        postHandle === candidate.handle.toLowerCase()
+        || author === candidate.name.toLowerCase(),
+    );
+    if (!matched) return post;
+
+    let nextContent = String(post.content ?? '');
+    for (const candidate of candidates) {
+        nextContent = replaceAllNames(nextContent, `@${candidate.handle}`, primary.atHandle);
+        nextContent = replaceAllNames(nextContent, candidate.name, primary.name);
+    }
+    if (uiMode === 'pba_isolated' || leagueType === 'fictional') {
+        nextContent = nextContent
+            .replace(/sources tell ESPN(?:\s+and\s+@Stadium)?\s*:\s*/gi, 'league sources confirm: ')
+            .replace(/sources tell ESPN(?:\s+and\s+@Stadium)?\.?/gi, 'league sources confirm.')
+            .replace(/according to ESPN/gi, 'according to league sources')
+            .replace(/per ESPN/gi, 'per league sources')
+            .replace(/@Stadium/gi, primary.atHandle);
+    }
+    return {
+        ...post,
+        author: primary.name,
+        handle: primary.atHandle,
+        content: nextContent,
+    };
 }

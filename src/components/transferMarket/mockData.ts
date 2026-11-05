@@ -18,6 +18,8 @@ export interface MockClub {
   shortName: string;
   league: string;
   flag: string;
+  country?: string;
+  countryIso2?: string;
   colorHex: string;
   /** Team logo URL — preferred over the colored-circle abbrev when present. */
   logoUrl?: string;

@@ -1,0 +1,3783 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "nbl-australia-league-file.3200293897387859",
+  "competitionKey": "nbl-australia",
+  "competitionName": "National Basketball League Australia",
+  "leagueKey": "nbl-australia",
+  "generatedAt": "2026-07-24T08:18:46.820Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "australian-nbl-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/5/Australian-NBL/stats/2026/Averages/All/All",
+        "sourcePath": "public/data/external/nbl-australia/australian-nbl-2026-bbgm.json",
+        "sourceHash": "0fdf351f46b309c672a4f9752f2cbf64dd65d4182f653a7416514d82367d028e",
+        "fetchedAt": "2026-07-24T08:18:46.820Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "New Zealand",
+          "canonicalKey": "nbl-australia:new-zealand"
+        },
+        "won": 25,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "C.J. Bruton",
+                "canonicalKey": "person:c-j-bruton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anatoly Bose",
+                "canonicalKey": "person:anatoly-bose"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mark Worthington",
+                "canonicalKey": "person:mark-worthington"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Gold Coast",
+                "canonicalKey": "nbl-australia:gold-coast"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cedric Jackson",
+                "canonicalKey": "person:cedric-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tom Abercrombie",
+                "canonicalKey": "person:tom-abercrombie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Lisch",
+                "canonicalKey": "person:kevin-lisch"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Julian Khazzouh",
+                "canonicalKey": "person:julian-khazzouh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adam Gibson",
+                "canonicalKey": "person:adam-gibson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Gold Coast",
+                "canonicalKey": "nbl-australia:gold-coast"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gary Wilkinson",
+                "canonicalKey": "person:gary-wilkinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cameron Tragardh",
+                "canonicalKey": "person:cameron-tragardh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jamar Wilson",
+                "canonicalKey": "person:jamar-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Peter Crawford",
+                "canonicalKey": "person:peter-crawford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Townsville",
+                "canonicalKey": "nbl-australia:townsville"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-third-team",
+          "awardName": "Third Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Eddie Gill",
+                "canonicalKey": "person:eddie-gill"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Townsville",
+                "canonicalKey": "nbl-australia:townsville"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Johnson",
+                "canonicalKey": "person:daniel-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adris DeLeon",
+                "canonicalKey": "person:adris-deleon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Gold Coast",
+                "canonicalKey": "nbl-australia:gold-coast"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jesse Wagstaff",
+                "canonicalKey": "person:jesse-wagstaff"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anatoly Bose",
+                "canonicalKey": "person:anatoly-bose"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "New Zealand",
+        "canonicalKey": "nbl-australia:new-zealand"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Perth",
+        "canonicalKey": "nbl-australia:perth"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "New Zealand",
+          "canonicalKey": "nbl-australia:new-zealand"
+        },
+        "won": 29,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cedric Jackson",
+                "canonicalKey": "person:cedric-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cameron Gliddon",
+                "canonicalKey": "person:cameron-gliddon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cedric Jackson",
+                "canonicalKey": "person:cedric-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Matthew Knight",
+                "canonicalKey": "person:matthew-knight"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Lisch",
+                "canonicalKey": "person:kevin-lisch"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Seth Scott",
+                "canonicalKey": "person:seth-scott"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ben Madgen",
+                "canonicalKey": "person:ben-madgen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jonny Flynn",
+                "canonicalKey": "person:jonny-flynn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gary Ervin",
+                "canonicalKey": "person:gary-ervin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Townsville",
+                "canonicalKey": "nbl-australia:townsville"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mika Vukona",
+                "canonicalKey": "person:mika-vukona"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Johnson",
+                "canonicalKey": "person:daniel-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-third-team",
+          "awardName": "Third Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adam Gibson",
+                "canonicalKey": "person:adam-gibson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shawn Redhage",
+                "canonicalKey": "person:shawn-redhage"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ian Crosswhite",
+                "canonicalKey": "person:ian-crosswhite"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tom Abercrombie",
+                "canonicalKey": "person:tom-abercrombie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jamar Wilson",
+                "canonicalKey": "person:jamar-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cameron Gliddon",
+                "canonicalKey": "person:cameron-gliddon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Perth",
+        "canonicalKey": "nbl-australia:perth"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Adelaide",
+        "canonicalKey": "nbl-australia:adelaide"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Perth",
+          "canonicalKey": "nbl-australia:perth"
+        },
+        "won": 25,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jermaine Beal",
+                "canonicalKey": "person:jermaine-beal"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tom Jervis",
+                "canonicalKey": "person:tom-jervis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jermaine Beal",
+                "canonicalKey": "person:jermaine-beal"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Johnson",
+                "canonicalKey": "person:daniel-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gary Wilkinson",
+                "canonicalKey": "person:gary-wilkinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Goulding",
+                "canonicalKey": "person:chris-goulding"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "James Ennis",
+                "canonicalKey": "person:james-ennis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A.J. Ogilvy",
+                "canonicalKey": "person:a-j-ogilvy"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gary Ervin",
+                "canonicalKey": "person:gary-ervin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rotnei Clarke",
+                "canonicalKey": "person:rotnei-clarke"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Petrie",
+                "canonicalKey": "person:anthony-petrie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tom Jervis",
+                "canonicalKey": "person:tom-jervis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "New Zealand",
+        "canonicalKey": "nbl-australia:new-zealand"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Cairns",
+        "canonicalKey": "nbl-australia:cairns"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Cairns",
+          "canonicalKey": "nbl-australia:cairns"
+        },
+        "won": 23,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cedric Jackson",
+                "canonicalKey": "person:cedric-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Angus Brandt",
+                "canonicalKey": "person:angus-brandt"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Angus Brandt",
+                "canonicalKey": "person:angus-brandt"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Perth",
+        "canonicalKey": "nbl-australia:perth"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "New Zealand",
+        "canonicalKey": "nbl-australia:new-zealand"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Perth",
+          "canonicalKey": "nbl-australia:perth"
+        },
+        "won": 22,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Lisch",
+                "canonicalKey": "person:kevin-lisch"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Kay",
+                "canonicalKey": "person:nick-kay"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Townsville",
+                "canonicalKey": "nbl-australia:townsville"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A.J. Ogilvy",
+                "canonicalKey": "person:a-j-ogilvy"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Kickert",
+                "canonicalKey": "person:daniel-kickert"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dzherom Rendl",
+                "canonicalKey": "person:dzherom-rendl"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Lisch",
+                "canonicalKey": "person:kevin-lisch"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Goulding",
+                "canonicalKey": "person:chris-goulding"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kirk Penney",
+                "canonicalKey": "person:kirk-penney"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Matthew Knight",
+                "canonicalKey": "person:matthew-knight"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Johnson",
+                "canonicalKey": "person:daniel-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Stephen Holt",
+                "canonicalKey": "person:stephen-holt"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Corey Webster",
+                "canonicalKey": "person:corey-webster"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Lisch",
+                "canonicalKey": "person:kevin-lisch"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Kay",
+                "canonicalKey": "person:nick-kay"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Townsville",
+                "canonicalKey": "nbl-australia:townsville"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Perth",
+        "canonicalKey": "nbl-australia:perth"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Illawarra",
+        "canonicalKey": "nbl-australia:illawarra"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Perth",
+          "canonicalKey": "nbl-australia:perth"
+        },
+        "won": 20,
+        "lost": 13
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Torrey Craig",
+                "canonicalKey": "person:torrey-craig"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brisbane",
+                "canonicalKey": "nbl-australia:brisbane"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Drmic",
+                "canonicalKey": "person:anthony-drmic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "A.J. Ogilvy",
+                "canonicalKey": "person:a-j-ogilvy"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dzherom Rendl",
+                "canonicalKey": "person:dzherom-rendl"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Johnson",
+                "canonicalKey": "person:daniel-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Casey Prather",
+                "canonicalKey": "person:casey-prather"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Casper Ware",
+                "canonicalKey": "person:casper-ware"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brad Newley",
+                "canonicalKey": "person:brad-newley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Kickert",
+                "canonicalKey": "person:daniel-kickert"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brisbane",
+                "canonicalKey": "nbl-australia:brisbane"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Lisch",
+                "canonicalKey": "person:kevin-lisch"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Torrey Craig",
+                "canonicalKey": "person:torrey-craig"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brisbane",
+                "canonicalKey": "nbl-australia:brisbane"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nathan Sobey",
+                "canonicalKey": "person:nathan-sobey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Torrey Craig",
+                "canonicalKey": "person:torrey-craig"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brisbane",
+                "canonicalKey": "nbl-australia:brisbane"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Drmic",
+                "canonicalKey": "person:anthony-drmic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Melbourne",
+        "canonicalKey": "nbl-australia:melbourne"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Adelaide",
+        "canonicalKey": "nbl-australia:adelaide"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Melbourne",
+          "canonicalKey": "nbl-australia:melbourne"
+        },
+        "won": 25,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Goulding",
+                "canonicalKey": "person:chris-goulding"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaac Humphries",
+                "canonicalKey": "person:isaac-humphries"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Boone",
+                "canonicalKey": "person:josh-boone"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Johnson",
+                "canonicalKey": "person:daniel-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Demetrius Conger",
+                "canonicalKey": "person:demetrius-conger"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Casper Ware",
+                "canonicalKey": "person:casper-ware"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edgar Sosa",
+                "canonicalKey": "person:edgar-sosa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dzherom Rendl",
+                "canonicalKey": "person:dzherom-rendl"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "J.P. Tokoto",
+                "canonicalKey": "person:j-p-tokoto"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mitchell Creek",
+                "canonicalKey": "person:mitchell-creek"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Damian Martin",
+                "canonicalKey": "person:damian-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaac Humphries",
+                "canonicalKey": "person:isaac-humphries"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Perth",
+        "canonicalKey": "nbl-australia:perth"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Melbourne",
+        "canonicalKey": "nbl-australia:melbourne"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Perth",
+          "canonicalKey": "nbl-australia:perth"
+        },
+        "won": 23,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Terrico White",
+                "canonicalKey": "person:terrico-white"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Bogut",
+                "canonicalKey": "person:andrew-bogut"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Harry Froling",
+                "canonicalKey": "person:harry-froling"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Bogut",
+                "canonicalKey": "person:andrew-bogut"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lamar Patterson",
+                "canonicalKey": "person:lamar-patterson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brisbane",
+                "canonicalKey": "nbl-australia:brisbane"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Casper Ware",
+                "canonicalKey": "person:casper-ware"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Kay",
+                "canonicalKey": "person:nick-kay"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dzherom Rendl",
+                "canonicalKey": "person:dzherom-rendl"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Johnson",
+                "canonicalKey": "person:daniel-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shawn Long",
+                "canonicalKey": "person:shawn-long"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Melo Trimble",
+                "canonicalKey": "person:melo-trimble"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nathan Sobey",
+                "canonicalKey": "person:nathan-sobey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Bogut",
+                "canonicalKey": "person:andrew-bogut"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Harry Froling",
+                "canonicalKey": "person:harry-froling"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Perth",
+        "canonicalKey": "nbl-australia:perth"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Sydney",
+        "canonicalKey": "nbl-australia:sydney"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Perth",
+          "canonicalKey": "nbl-australia:perth"
+        },
+        "won": 23,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Newbill",
+                "canonicalKey": "person:d-j-newbill"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "LaMelo Ball",
+                "canonicalKey": "person:lamelo-ball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lamar Patterson",
+                "canonicalKey": "person:lamar-patterson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brisbane",
+                "canonicalKey": "nbl-australia:brisbane"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Scott Machado",
+                "canonicalKey": "person:scott-machado"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jae'sean Tate",
+                "canonicalKey": "person:jae-sean-tate"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Kay",
+                "canonicalKey": "person:nick-kay"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Bogut",
+                "canonicalKey": "person:andrew-bogut"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Scotty Hopson",
+                "canonicalKey": "person:scotty-hopson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Casper Ware",
+                "canonicalKey": "person:casper-ware"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Newbill",
+                "canonicalKey": "person:d-j-newbill"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cameron Oliver",
+                "canonicalKey": "person:cameron-oliver"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Newbill",
+                "canonicalKey": "person:d-j-newbill"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "LaMelo Ball",
+                "canonicalKey": "person:lamelo-ball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Melbourne",
+        "canonicalKey": "nbl-australia:melbourne"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Perth",
+        "canonicalKey": "nbl-australia:perth"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Melbourne",
+          "canonicalKey": "nbl-australia:melbourne"
+        },
+        "won": 33,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jock Landale",
+                "canonicalKey": "person:jock-landale"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Simon",
+                "canonicalKey": "person:justin-simon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Giddey",
+                "canonicalKey": "person:josh-giddey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Simon",
+                "canonicalKey": "person:justin-simon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Giddey",
+                "canonicalKey": "person:josh-giddey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Sydney",
+        "canonicalKey": "nbl-australia:sydney"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Tasmania",
+        "canonicalKey": "nbl-australia:tasmania"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Sydney",
+          "canonicalKey": "nbl-australia:sydney"
+        },
+        "won": 24,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Xavier Cooks",
+                "canonicalKey": "person:xavier-cooks"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonius Cleveland",
+                "canonicalKey": "person:antonius-cleveland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bul Kuol",
+                "canonicalKey": "person:bul-kuol"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vic Law",
+                "canonicalKey": "person:vic-law"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonius Cleveland",
+                "canonicalKey": "person:antonius-cleveland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jaylen Adams",
+                "canonicalKey": "person:jaylen-adams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jo Acuil",
+                "canonicalKey": "person:jo-acuil"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Matt Dellavedova",
+                "canonicalKey": "person:matt-dellavedova"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mitchell Creek",
+                "canonicalKey": "person:mitchell-creek"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South East Melbourne",
+                "canonicalKey": "nbl-australia:south-east-melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Goulding",
+                "canonicalKey": "person:chris-goulding"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Adams",
+                "canonicalKey": "person:josh-adams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Tasmania",
+                "canonicalKey": "nbl-australia:tasmania"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Xavier Cooks",
+                "canonicalKey": "person:xavier-cooks"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonius Cleveland",
+                "canonicalKey": "person:antonius-cleveland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bul Kuol",
+                "canonicalKey": "person:bul-kuol"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Sydney",
+        "canonicalKey": "nbl-australia:sydney"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "New Zealand",
+        "canonicalKey": "nbl-australia:new-zealand"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Sydney",
+          "canonicalKey": "nbl-australia:sydney"
+        },
+        "won": 24,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Derrick Walton, Jr.",
+                "canonicalKey": "person:derrick-walton-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonius Cleveland",
+                "canonicalKey": "person:antonius-cleveland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sam Waardenburg",
+                "canonicalKey": "person:sam-waardenburg"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mitchell Creek",
+                "canonicalKey": "person:mitchell-creek"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South East Melbourne",
+                "canonicalKey": "nbl-australia:south-east-melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Derrick Walton, Jr.",
+                "canonicalKey": "person:derrick-walton-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milton Doyle",
+                "canonicalKey": "person:milton-doyle"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Tasmania",
+                "canonicalKey": "nbl-australia:tasmania"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Xavier Cooks",
+                "canonicalKey": "person:xavier-cooks"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Goulding",
+                "canonicalKey": "person:chris-goulding"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Keanu Pinder",
+                "canonicalKey": "person:keanu-pinder"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Hogg",
+                "canonicalKey": "person:d-j-hogg"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dererk Pardon",
+                "canonicalKey": "person:dererk-pardon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Barry Brown, Jr.",
+                "canonicalKey": "person:barry-brown-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antonius Cleveland",
+                "canonicalKey": "person:antonius-cleveland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sam Waardenburg",
+                "canonicalKey": "person:sam-waardenburg"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Tasmania",
+        "canonicalKey": "nbl-australia:tasmania"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Melbourne",
+        "canonicalKey": "nbl-australia:melbourne"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Melbourne",
+          "canonicalKey": "nbl-australia:melbourne"
+        },
+        "won": 24,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jack McVeigh",
+                "canonicalKey": "person:jack-mcveigh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Tasmania",
+                "canonicalKey": "nbl-australia:tasmania"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shea Ili",
+                "canonicalKey": "person:shea-ili"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Samson Froling",
+                "canonicalKey": "person:samson-froling"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Goulding",
+                "canonicalKey": "person:chris-goulding"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Parker Jackson-Cartwright",
+                "canonicalKey": "person:parker-jackson-cartwright"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gary Clark",
+                "canonicalKey": "person:gary-clark"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Lamb",
+                "canonicalKey": "person:anthony-lamb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mitchell Creek",
+                "canonicalKey": "person:mitchell-creek"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South East Melbourne",
+                "canonicalKey": "nbl-australia:south-east-melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jack McVeigh",
+                "canonicalKey": "person:jack-mcveigh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Tasmania",
+                "canonicalKey": "nbl-australia:tasmania"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nathan Sobey",
+                "canonicalKey": "person:nathan-sobey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brisbane",
+                "canonicalKey": "nbl-australia:brisbane"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milton Doyle",
+                "canonicalKey": "person:milton-doyle"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Tasmania",
+                "canonicalKey": "nbl-australia:tasmania"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jo Acuil",
+                "canonicalKey": "person:jo-acuil"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shea Ili",
+                "canonicalKey": "person:shea-ili"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Samson Froling",
+                "canonicalKey": "person:samson-froling"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Illawarra",
+        "canonicalKey": "nbl-australia:illawarra"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Melbourne",
+        "canonicalKey": "nbl-australia:melbourne"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Illawarra",
+          "canonicalKey": "nbl-australia:illawarra"
+        },
+        "won": 25,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Matt Dellavedova",
+                "canonicalKey": "person:matt-dellavedova"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shea Ili",
+                "canonicalKey": "person:shea-ili"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alex Toohey",
+                "canonicalKey": "person:alex-toohey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Trey Kell",
+                "canonicalKey": "person:trey-kell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Matthew Hurt",
+                "canonicalKey": "person:matthew-hurt"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South East Melbourne",
+                "canonicalKey": "nbl-australia:south-east-melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kendric Davis",
+                "canonicalKey": "person:kendric-davis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Casey Prather",
+                "canonicalKey": "person:casey-prather"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brisbane",
+                "canonicalKey": "nbl-australia:brisbane"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Montrezl Harrell",
+                "canonicalKey": "person:montrezl-harrell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Goulding",
+                "canonicalKey": "person:chris-goulding"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Xavier Cooks",
+                "canonicalKey": "person:xavier-cooks"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Samson Froling",
+                "canonicalKey": "person:samson-froling"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shea Ili",
+                "canonicalKey": "person:shea-ili"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Melbourne",
+                "canonicalKey": "nbl-australia:melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alex Toohey",
+                "canonicalKey": "person:alex-toohey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Sydney",
+        "canonicalKey": "nbl-australia:sydney"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Adelaide",
+        "canonicalKey": "nbl-australia:adelaide"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Sydney",
+          "canonicalKey": "nbl-australia:sydney"
+        },
+        "won": 29,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kendric Davis",
+                "canonicalKey": "person:kendric-davis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Brown",
+                "canonicalKey": "person:john-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South East Melbourne",
+                "canonicalKey": "nbl-australia:south-east-melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Samuel Mennenga",
+                "canonicalKey": "person:samuel-mennenga"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Cotton",
+                "canonicalKey": "person:bryce-cotton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyler Harvey",
+                "canonicalKey": "person:tyler-harvey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Illawarra",
+                "canonicalKey": "nbl-australia:illawarra"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Brown",
+                "canonicalKey": "person:john-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South East Melbourne",
+                "canonicalKey": "nbl-australia:south-east-melbourne"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kristian Doolittle",
+                "canonicalKey": "person:kristian-doolittle"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Perth",
+                "canonicalKey": "nbl-australia:perth"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kendric Davis",
+                "canonicalKey": "person:kendric-davis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Parker Jackson-Cartwright",
+                "canonicalKey": "person:parker-jackson-cartwright"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jack McVeigh",
+                "canonicalKey": "person:jack-mcveigh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cairns",
+                "canonicalKey": "nbl-australia:cairns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zylan Cheatham",
+                "canonicalKey": "person:zylan-cheatham"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Adelaide",
+                "canonicalKey": "nbl-australia:adelaide"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Xavier Cooks",
+                "canonicalKey": "person:xavier-cooks"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sydney",
+                "canonicalKey": "nbl-australia:sydney"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryce Hamilton",
+                "canonicalKey": "person:bryce-hamilton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Tasmania",
+                "canonicalKey": "nbl-australia:tasmania"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Brown",
+                "canonicalKey": "person:john-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "South East Melbourne",
+                "canonicalKey": "nbl-australia:south-east-melbourne"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Samuel Mennenga",
+                "canonicalKey": "person:samuel-mennenga"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Zealand",
+                "canonicalKey": "nbl-australia:new-zealand"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

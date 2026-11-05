@@ -4,7 +4,6 @@ export type { AvatarData };
 export const fetchAvatarData = async (): Promise<AvatarData[]> => {
   if (AVATAR_DATA.length === 0) {
     await fetchFromGist();
-    console.log(`${AVATAR_DATA.length} avatars fetched`);
   }
   return AVATAR_DATA;
 };

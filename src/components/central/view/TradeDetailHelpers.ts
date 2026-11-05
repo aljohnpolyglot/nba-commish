@@ -1,6 +1,13 @@
-import { NBAPlayer } from '../../../types';
+import { NBAPlayer, TradeDraftPickSnapshot } from '../../../types';
 import { convertTo2KRating } from '../../../utils/helpers';
+import { estimatePotentialBbgm } from '../../../utils/playerRatings';
 import { ParsedTrade, TradeSide } from './TradeDetailTypes';
+
+export function resolveTradePlayerByPersistedEvidence(name: string, candidates: NBAPlayer[]): NBAPlayer | null {
+  const key = name.trim().toLocaleLowerCase();
+  const matches = candidates.filter(player => player.name.trim().toLocaleLowerCase() === key);
+  return matches.length === 1 ? matches[0] : null;
+}
 
 export function splitPlayersPicks(raw: string): TradeSide {
   const tokens = raw
@@ -128,16 +135,29 @@ export function getHistoricalOvr2K(player: NBAPlayer, tradeDateMs: number): numb
   return convertTo2KRating(bestOvr, height, tendencyProfile);
 }
 
-export function getPostTradeWS(player: NBAPlayer, tradeYear: number): { ws: number; tids: Set<number> } {
+export function getPostTradeWS(player: NBAPlayer, tradeYear: number, sourceTeamId?: number): { ws: number; tids: Set<number> } {
   const tids = new Set<number>();
   let ws = 0;
   for (const seasonStat of (player.stats ?? [])) {
     if ((seasonStat.season ?? 0) < tradeYear) continue;
     if ((seasonStat.gp ?? 0) <= 0) continue;
+    if (seasonStat.season === tradeYear && seasonStat.tid === sourceTeamId) continue;
     ws += (seasonStat as { ws?: number }).ws ?? 0;
     if (typeof seasonStat.tid === 'number' && seasonStat.tid >= 0) tids.add(seasonStat.tid);
   }
   return { ws, tids };
+}
+
+export function resolveTradePickOutcome(
+  pick: Pick<TradeDraftPickSnapshot, 'season' | 'round' | 'originalTid'>,
+  players: NBAPlayer[],
+  pickNumber?: number | null,
+): NBAPlayer | null {
+  return players.find(player => {
+    const draft = player.draft;
+    if (!draft || Number(draft.year) !== pick.season || Number(draft.round) !== pick.round) return false;
+    return pickNumber != null ? Number(draft.pick) === pickNumber : Number(draft.originalTid) === pick.originalTid;
+  }) ?? null;
 }
 
 export function getHistoricalPot2K(player: NBAPlayer, tradeDateMs: number, tradeYear: number): number {
@@ -155,7 +175,7 @@ export function getHistoricalPot2K(player: NBAPlayer, tradeDateMs: number, trade
     }
   }
   const age = player.born?.year ? tradeYear - player.born.year : 26;
-  const potBbgm = age >= 29 ? bbgmOvr : Math.max(bbgmOvr, Math.round(72.314 + (-2.331 * age) + (0.833 * bbgmOvr)));
+  const potBbgm = estimatePotentialBbgm(bbgmOvr, age);
   return convertTo2KRating(Math.min(99, Math.max(40, potBbgm)), height, tendencyProfile);
 }
 

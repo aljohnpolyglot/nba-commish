@@ -6,9 +6,12 @@ import {
 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import type { NBAPlayer, NonNBATeam } from '../../types';
-import { PlayerBioView } from '../central/view/PlayerBioView';
-import { EXTERNAL_SALARY_SCALE, EXTERNAL_CURRENCY, formatExternalSalary, EUROLEAGUE_TEAM_COUNTRIES, ENDESA_TEAM_COUNTRY } from '../../constants';
+import { EXTERNAL_SALARY_SCALE, EXTERNAL_CURRENCY, formatExternalSalary, EUROLEAGUE_TEAM_COUNTRIES, ENDESA_TEAM_COUNTRY, INITIAL_LEAGUE_STATS } from '../../constants';
 import { LeagueFinancesPanel } from '../finances/LeagueFinancesPanel';
+import { getTeamFullName } from '../../utils/teamNames';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
+import { getPlayerImage } from '../../utils/playerImage';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
 
 // ─── League config ────────────────────────────────────────────────────────────
 type LeagueId = 'Euroleague' | 'Endesa' | 'G-League' | 'WNBA' | 'B-League' | 'China CBA' | 'NBL Australia' | 'PBA';
@@ -351,16 +354,11 @@ const StandingsTable: React.FC<{ rows: StandingRow[]; config: LeagueConfig }> = 
                   </td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
-                      {r.team.imgURL && (
-                        <div className="w-7 h-7 rounded-md bg-black/30 p-0.5 border border-white/5">
-                          <img src={r.team.imgURL} alt={r.team.name}
-                            className="w-full h-full object-contain"
-                            referrerPolicy="no-referrer"
-                            onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                        </div>
-                      )}
+                      <div className="w-7 h-7 rounded-md bg-black/30 p-0.5 border border-white/5">
+                        <TeamMark team={r.team} />
+                      </div>
                       <span className="font-bold text-slate-200 group-hover:text-white text-xs">
-                        {r.team.region} {r.team.name}
+                        {getTeamFullName(r.team)}
                       </span>
                     </div>
                   </td>
@@ -410,18 +408,11 @@ const TeamGrid: React.FC<{ rows: StandingRow[]; config: LeagueConfig; onPick?: (
         >
           <div className="flex items-center gap-3 mb-3">
             <div className="w-12 h-12 rounded-lg bg-white/95 p-1.5 shrink-0">
-              {r.team.imgURL
-                ? <img src={r.team.imgURL} alt={r.team.name}
-                    className="w-full h-full object-contain"
-                    referrerPolicy="no-referrer"
-                    onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                : <div className="w-full h-full flex items-center justify-center text-slate-700 text-sm font-black">
-                    {r.team.abbrev}
-                  </div>}
+              <TeamMark team={r.team} />
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-xs font-black text-white truncate uppercase italic">
-                {r.team.region} {r.team.name}
+                {getTeamFullName(r.team)}
               </div>
               <div className="text-[10px] text-slate-500 uppercase tracking-widest">{r.team.abbrev} · {country}</div>
             </div>
@@ -444,6 +435,23 @@ const Stat: React.FC<{ label: string; value: string; accent?: string }> = ({ lab
     <div className="text-sm font-black tabular-nums" style={{ color: accent ?? '#fff' }}>{value}</div>
   </div>
 );
+
+const TeamMark: React.FC<{ team: NonNBATeam; className?: string }> = ({ team, className = 'w-full h-full' }) => {
+  const logoUrl = getResolvedTeamLogoUrl(team);
+  return logoUrl ? (
+    <img
+      src={logoUrl}
+      alt={getTeamFullName(team)}
+      className={`${className} object-contain`}
+      referrerPolicy="no-referrer"
+      onError={event => { event.currentTarget.style.display = 'none'; }}
+    />
+  ) : (
+    <span className="flex h-full w-full items-center justify-center text-xs font-black text-slate-500">
+      {team.abbrev}
+    </span>
+  );
+};
 
 // ─── Player leaders ───────────────────────────────────────────────────────────
 const PlayerLeaders: React.FC<{
@@ -484,17 +492,18 @@ const PlayerLeaders: React.FC<{
                   <td className="px-4 py-2.5 font-mono tabular-nums text-slate-500 font-black">{idx + 1}</td>
                   <td className="px-4 py-2.5">
                     <div className="flex items-center gap-2.5">
-                      {p.imgURL && (
-                        <img src={p.imgURL} alt={p.name}
-                          className="w-8 h-8 rounded-md object-cover bg-slate-800"
-                          referrerPolicy="no-referrer"
-                          onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-                      )}
+                      <PlayerPortrait
+                        imgUrl={getPlayerImage(p)}
+                        playerName={p.name}
+                        face={(p as NBAPlayer & { face?: unknown }).face}
+                        teamLogoUrl={team ? getResolvedTeamLogoUrl(team) : undefined}
+                        size={32}
+                      />
                       <span className="font-bold text-slate-200 group-hover:text-white text-xs">{p.name}</span>
                     </div>
                   </td>
                   <td className="px-3 py-2.5 text-slate-400 text-[11px]">
-                    {team ? `${team.region} ${team.name}` : '—'}
+                    {team ? getTeamFullName(team) : '—'}
                   </td>
                   <td className="px-2 py-2.5 text-center text-slate-500 text-[11px] font-bold">{p.pos ?? '—'}</td>
                   <td className="px-2 py-2.5 text-center text-slate-500 font-mono tabular-nums">
@@ -662,15 +671,10 @@ const SeedCard: React.FC<{ row: StandingRow; seed: number; accent: string }> = (
       </span>
     </div>
     <div className="flex items-center gap-2">
-      {row.team.imgURL && (
-        <div className="w-8 h-8 rounded bg-white/95 p-0.5">
-          <img src={row.team.imgURL} alt={row.team.name}
-            className="w-full h-full object-contain"
-            referrerPolicy="no-referrer"
-            onError={e => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
-        </div>
-      )}
-      <span className="text-xs font-bold text-white truncate">{row.team.name}</span>
+      <div className="w-8 h-8 rounded bg-white/95 p-0.5">
+        <TeamMark team={row.team} />
+      </div>
+      <span className="text-xs font-bold text-white truncate">{getTeamFullName(row.team)}</span>
     </div>
   </div>
 );
@@ -681,9 +685,8 @@ interface Props {
 }
 
 export const InternationalLeagueHub: React.FC<Props> = ({ league }) => {
-  const { state } = useGame();
+  const { state, navigateToPlayer } = useGame();
   const [view, setView] = useState<SubView>('standings');
-  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
   const config = LEAGUE_CONFIG[league];
   const teams = useMemo(
@@ -695,10 +698,6 @@ export const InternationalLeagueHub: React.FC<Props> = ({ league }) => {
     [state.players, league],
   );
   const standings = useMemo(() => buildStandings(teams, players, config), [teams, players, config]);
-
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
-  }
 
   return (
     <div className="min-h-full bg-[#050505] text-slate-200 px-4 md:px-8 py-6 space-y-6">
@@ -727,11 +726,11 @@ export const InternationalLeagueHub: React.FC<Props> = ({ league }) => {
               players={players}
               teams={teams}
               config={config}
-              onPick={setViewingPlayer}
+              onPick={navigateToPlayer}
             />
           )}
           {view === 'economy' && (
-            <EconomyPanel config={config} nbaSalaryCap={state.leagueStats.salaryCap ?? 154_647_000} />
+            <EconomyPanel config={config} nbaSalaryCap={state.leagueStats.salaryCap ?? INITIAL_LEAGUE_STATS.salaryCap} />
           )}
           {view === 'finances' && (
             <LeagueFinancesPanel
@@ -740,7 +739,9 @@ export const InternationalLeagueHub: React.FC<Props> = ({ league }) => {
               displayName={config.fullName}
               shortName={config.shortName}
               currencySymbol={EXTERNAL_CURRENCY[config.id]?.symbol ?? '$'}
+              contractCurrencyRate={EXTERNAL_CURRENCY[config.id]?.rate ?? 1}
               seasonYear={state.leagueStats?.year ?? new Date().getFullYear()}
+              state={state}
             />
           )}
           {view === 'playoffs' && <PlayoffPlaceholder rows={standings} config={config} />}

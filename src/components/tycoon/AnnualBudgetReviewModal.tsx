@@ -1,11 +1,17 @@
 import React from 'react';
-import { CheckCircle2, HeartPulse, Info, Lock, Plane, Search, SlidersHorizontal, Ticket, Trophy, X } from 'lucide-react';
+import { CheckCircle2, HeartPulse, Info, Lock, Minus, Plane, Plus, Search, Settings2, Ticket, Trophy, X } from 'lucide-react';
 import type { NBATeam } from '../../types';
 import type { TravelPreferences } from '../../types/tycoon';
-import { computeAnnualBudget } from '../../services/tycoon/budgetEngine';
-import { ACADEMY_COST_BY_TIER, defaultAcademyBudgetForTier } from '../../services/tycoon/economyScale';
+import { computeAnnualBudget, type BudgetContext } from '../../services/tycoon/budgetEngine';
+import {
+  ACADEMY_BUDGET_MAX_EUR,
+  ACADEMY_BUDGET_MIN_EUR,
+  ACADEMY_BUDGET_STEP_EUR,
+  normalizeAcademyBudgetEUR,
+} from '../../services/tycoon/economyScale';
 import { MEDICAL_BUDGET_MAX_EUR, MEDICAL_BUDGET_MIN_EUR } from '../../services/tycoon/medicalEngine';
 import { formatCurrencyWithCode } from '../../utils/helpers';
+import { RevenueLedgerBreakdown } from './RevenueLedgerBreakdown';
 
 export interface AnnualBudgetReviewValues {
   ticketPriceMultiplier: number;
@@ -20,6 +26,7 @@ interface AnnualBudgetReviewModalProps {
   team: NBATeam | null;
   players: any[];
   currentYear: number;
+  budgetContext: BudgetContext;
   currency: string;
   onClose: () => void;
   onFinalize: (values: AnnualBudgetReviewValues) => void;
@@ -43,19 +50,20 @@ const TRAVEL_DEFAULTS: Record<string, TravelPreferences> = {
   D: { hotel: 3.0, flight: 2.5, bus: 2.5 },
 };
 
-function clamp(value: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, value));
+function clamp(value: number, min: number, max?: number): number {
+  return Math.max(min, max === undefined ? value : Math.min(max, value));
 }
 
 function initialValues(team: NBATeam | null): AnnualBudgetReviewValues {
   const tycoon = team?.tycoon;
+  const economyIndex = tycoon?.currentEconomyIndex ?? 1;
   const travelDefaults = TRAVEL_DEFAULTS[tycoon?.tier ?? 'D'] ?? TRAVEL_DEFAULTS.D;
   return {
     ticketPriceMultiplier: tycoon?.ticketPriceMultiplier ?? 1,
     travelPreferences: tycoon?.travelPreferences ?? travelDefaults,
     medicalBudget: tycoon?.medicalBudget ?? MEDICAL_BUDGET_MIN_EUR,
-    scoutingInvestment: tycoon?.scoutingInvestment ?? 250_000,
-    academyBudget: tycoon?.academyBudget ?? defaultAcademyBudgetForTier(tycoon?.tier),
+    scoutingInvestment: tycoon?.scoutingInvestment ?? Math.round(250_000 * economyIndex),
+    academyBudget: normalizeAcademyBudgetEUR(tycoon?.academyBudget, tycoon?.tier, economyIndex),
   };
 }
 
@@ -64,6 +72,7 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
   team,
   players,
   currentYear,
+  budgetContext,
   currency,
   onClose,
   onFinalize,
@@ -73,7 +82,7 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
   finalizeLabel = 'Finalize',
   closeLabel = null,
   onEdit,
-  editLabel = 'Open Sliders',
+  editLabel = 'Edit Budget',
   footerLeft,
 }) => {
   const [values, setValues] = React.useState<AnnualBudgetReviewValues>(() => initialValues(team));
@@ -85,6 +94,13 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
   if (!open || !team?.tycoon) return null;
 
   const fmt = (value: number) => formatCurrencyWithCode(value, currency, false);
+  const economyIndex = team.tycoon.currentEconomyIndex ?? 1;
+  const academyMin = Math.round(ACADEMY_BUDGET_MIN_EUR * economyIndex);
+  const academyMax = Math.round(ACADEMY_BUDGET_MAX_EUR * economyIndex);
+  const academyStep = Math.max(1, Math.round(ACADEMY_BUDGET_STEP_EUR * economyIndex));
+  const scoutingMin = Math.round(50_000 * economyIndex);
+  const scoutingMax = Math.max(scoutingMin, Math.round(2_500_000 * economyIndex));
+  const scoutingStep = Math.max(5_000, Math.round(25_000 * economyIndex / 5_000) * 5_000);
   const draftTeam = {
     ...team,
     tycoon: {
@@ -96,16 +112,8 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
       academyBudget: values.academyBudget,
     },
   } as NBATeam;
-  const ledger = computeAnnualBudget(draftTeam, {
-    year: currentYear,
-    endesaFinishPosition: (team as any).lastEndesaFinish ?? 9,
-    euroleagueStage: (team as any).lastEuroleagueStage ?? 'none',
-    euroleagueAwayGames: (team as any).lastEuroAwayGames ?? 0,
-    endesaPrizeEUR: 0,
-    euroleaguePrizeEUR: 0,
-  }, players);
+  const ledger = computeAnnualBudget(draftTeam, { ...budgetContext, year: currentYear }, players);
   const previousLedger = team.tycoon.ledgerHistory?.[team.tycoon.ledgerHistory.length - 1] ?? null;
-  const totalRevenue = Object.values(ledger.revenue).reduce((sum, value) => sum + value, 0);
   const totalExpenses = Object.values(ledger.expenses).reduce((sum, value) => sum + (value ?? 0), 0);
   const healthy = ledger.cashOnHandEnd >= 0;
 
@@ -118,6 +126,11 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
       },
     }));
   };
+  const travelAverage = (
+    values.travelPreferences.hotel
+    + values.travelPreferences.flight
+    + values.travelPreferences.bus
+  ) / 3;
 
   return (
     <div className="fixed inset-0 z-[130] flex items-center justify-center p-4">
@@ -147,18 +160,17 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
             ) : (
               <>
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <BudgetSlider
+                  <BudgetStepper
                     icon={<Ticket size={18} />}
                     label="Ticket Price"
                     value={`${values.ticketPriceMultiplier.toFixed(2)}x`}
-                    min={0.5}
-                    max={2}
-                    step={0.05}
+                    min={0}
+                    step={0.25}
                     numericValue={values.ticketPriceMultiplier}
-                    onChange={value => setValues(prev => ({ ...prev, ticketPriceMultiplier: clamp(value, 0.5, 2) }))}
-                    helper="Matchday revenue reacts immediately in the ledger."
+                    onChange={value => setValues(prev => ({ ...prev, ticketPriceMultiplier: clamp(value, 0) }))}
+                    helper="Set 0.00x for free admission or raise pricing without an artificial maximum."
                   />
-                  <BudgetSlider
+                  <BudgetStepper
                     icon={<HeartPulse size={18} />}
                     label="Medical Budget"
                     value={fmt(values.medicalBudget)}
@@ -169,36 +181,39 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
                     onChange={value => setValues(prev => ({ ...prev, medicalBudget: clamp(value, MEDICAL_BUDGET_MIN_EUR, MEDICAL_BUDGET_MAX_EUR) }))}
                     helper="Covers recovery staff, diagnostics, rehab, and prevention."
                   />
-                  <BudgetSlider
+                  <BudgetStepper
                     icon={<Search size={18} />}
-                    label="Scouting & Analytics"
+                    label="Annual Scouting Budget"
                     value={fmt(values.scoutingInvestment)}
-                    min={50_000}
-                    max={2_500_000}
-                    step={25_000}
+                    min={scoutingMin}
+                    max={scoutingMax}
+                    step={scoutingStep}
                     numericValue={values.scoutingInvestment}
-                    onChange={value => setValues(prev => ({ ...prev, scoutingInvestment: clamp(value, 50_000, 2_500_000) }))}
-                    helper="Narrows ratings uncertainty and improves market coverage."
+                    onChange={value => setValues(prev => ({ ...prev, scoutingInvestment: clamp(value, scoutingMin, scoutingMax) }))}
+                    helper="This saved amount funds regional scouting for the season."
                   />
-                  <BudgetSlider
+                  <BudgetStepper
                     icon={<Trophy size={18} />}
                     label="Youth Academy"
-                    value={fmt(ACADEMY_COST_BY_TIER[values.academyBudget] ?? 0)}
-                    min={0}
-                    max={5}
-                    step={1}
+                    value={fmt(values.academyBudget)}
+                    min={academyMin}
+                    max={academyMax}
+                    step={academyStep}
                     numericValue={values.academyBudget}
-                    onChange={value => setValues(prev => ({ ...prev, academyBudget: Math.round(clamp(value, 0, 5)) }))}
-                    helper={`Tier ${values.academyBudget}/5 annual youth pipeline spend.`}
+                    onChange={value => setValues(prev => ({ ...prev, academyBudget: Math.round(clamp(value, academyMin, academyMax)) }))}
+                    helper="Annual youth coaching, recruitment, and development spend."
                   />
                 </div>
 
-                <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-                  <div className="mb-4 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
-                    <Plane size={16} className="text-amber-300" /> Travel Standards
-                  </div>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <BudgetSlider
+                <details className="rounded-2xl border border-slate-800 bg-slate-900/70">
+                  <summary className="flex cursor-pointer list-none items-center justify-between gap-4 p-4 sm:p-5">
+                    <span className="flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-300">
+                      <Plane size={16} className="text-amber-300" /> Travel Standards
+                    </span>
+                    <span className="text-sm font-black text-amber-300">{travelAverage.toFixed(1)} / 5</span>
+                  </summary>
+                  <div className="grid gap-4 border-t border-slate-800 p-4 md:grid-cols-3 sm:p-5">
+                    <BudgetStepper
                       label="Hotel"
                       value={`${values.travelPreferences.hotel.toFixed(1)} stars`}
                       min={0.5}
@@ -207,7 +222,7 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
                       numericValue={values.travelPreferences.hotel}
                       onChange={value => setTravel('hotel', value)}
                     />
-                    <BudgetSlider
+                    <BudgetStepper
                       label="Flight"
                       value={`${values.travelPreferences.flight.toFixed(1)} stars`}
                       min={0.5}
@@ -216,7 +231,7 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
                       numericValue={values.travelPreferences.flight}
                       onChange={value => setTravel('flight', value)}
                     />
-                    <BudgetSlider
+                    <BudgetStepper
                       label="Bus"
                       value={`${values.travelPreferences.bus.toFixed(1)} stars`}
                       min={0.5}
@@ -226,7 +241,7 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
                       onChange={value => setTravel('bus', value)}
                     />
                   </div>
-                </div>
+                </details>
               </>
             )}
 
@@ -249,17 +264,7 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
                 <div className="mt-1 text-xs text-slate-400">{healthy ? 'Healthy projection' : 'Negative cash projection'}</div>
               </div>
 
-              <LedgerBlock
-                title="Revenue"
-                rows={[
-                  ['Matchday', ledger.revenue.matchday],
-                  ['Sponsorships', ledger.revenue.sponsorship],
-                  ['TV / Prize', ledger.revenue.tv + ledger.revenue.prize],
-                ]}
-                total={totalRevenue}
-                fmt={fmt}
-                tone="emerald"
-              />
+              <RevenueLedgerBreakdown ledger={ledger} fmt={fmt} />
               <LedgerBlock
                 title="Expenses"
                 rows={[
@@ -270,6 +275,8 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
                   ['Medical', ledger.expenses.medical ?? 0],
                   ['Scouting', ledger.expenses.scouting ?? 0],
                   ['Academy', ledger.expenses.academy ?? 0],
+                  ['Transfer Fees', ledger.expenses.transfer ?? 0],
+                  ['Finance Costs', ledger.expenses.financeCosts ?? 0],
                 ]}
                 total={totalExpenses}
                 fmt={fmt}
@@ -295,7 +302,7 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
                 onClick={onEdit}
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-emerald-400/40 bg-emerald-400/5 px-4 py-2.5 text-xs font-black uppercase tracking-widest text-emerald-200 hover:bg-emerald-400/10 sm:w-auto"
               >
-                <SlidersHorizontal size={14} /> {editLabel}
+                <Settings2 size={14} /> {editLabel}
               </button>
             )}
             {closeLabel && (
@@ -319,12 +326,12 @@ export const AnnualBudgetReviewModal: React.FC<AnnualBudgetReviewModalProps> = (
   );
 };
 
-const BudgetSlider: React.FC<{
+const BudgetStepper: React.FC<{
   icon?: React.ReactNode;
   label: string;
   value: string;
   min: number;
-  max: number;
+  max?: number;
   step: number;
   numericValue: number;
   onChange: (value: number) => void;
@@ -338,15 +345,11 @@ const BudgetSlider: React.FC<{
       </div>
       <div className="shrink-0 text-sm font-black text-white tabular-nums">{value}</div>
     </div>
-    <input
-      type="range"
-      min={min}
-      max={max}
-      step={step}
-      value={numericValue}
-      onChange={event => onChange(Number(event.target.value))}
-      className="w-full accent-amber-400"
-    />
+    <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] items-center overflow-hidden rounded-xl border border-slate-700 bg-slate-950/70">
+      <button type="button" onClick={() => onChange(clamp(numericValue - step, min, max))} disabled={numericValue <= min} aria-label={`Decrease ${label}`} className="flex h-11 items-center justify-center border-r border-slate-700 text-slate-200 hover:bg-white/5 disabled:text-slate-700"><Minus size={16} /></button>
+      <div className="px-3 text-center text-sm font-black tabular-nums text-white">{value}</div>
+      <button type="button" onClick={() => onChange(clamp(numericValue + step, min, max))} disabled={max !== undefined && numericValue >= max} aria-label={`Increase ${label}`} className="flex h-11 items-center justify-center border-l border-slate-700 text-slate-200 hover:bg-white/5 disabled:text-slate-700"><Plus size={16} /></button>
+    </div>
     {helper && <p className="mt-2 text-xs leading-5 text-slate-500">{helper}</p>}
   </div>
 );
@@ -365,13 +368,6 @@ const BudgetSummary: React.FC<{
   values: AnnualBudgetReviewValues;
   fmt: (value: number) => string;
 }> = ({ values, fmt }) => {
-  const academySpend = ACADEMY_COST_BY_TIER[values.academyBudget] ?? 0;
-  const academyLabel = values.academyBudget >= 5 ? 'World Class'
-    : values.academyBudget >= 4 ? 'Elite'
-    : values.academyBudget >= 3 ? 'Elevated'
-    : values.academyBudget >= 2 ? 'Standard'
-    : values.academyBudget >= 1 ? 'Minimal'
-    : 'None';
   const travelAvg = (values.travelPreferences.hotel + values.travelPreferences.flight + values.travelPreferences.bus) / 3;
 
   const cards: Array<{
@@ -398,8 +394,8 @@ const BudgetSummary: React.FC<{
     },
     {
       icon: <Trophy size={22} />, tone: 'amber', label: 'Youth Academy',
-      value: fmt(academySpend),
-      sub: `Investment tier ${values.academyBudget}/5`,
+      value: fmt(values.academyBudget),
+      sub: 'Annual youth development budget',
     },
     {
       icon: <Plane size={22} />, tone: 'cyan', label: 'Travel Standards',
@@ -446,7 +442,7 @@ const LedgerBlock: React.FC<{
         <div className={`text-sm font-black tabular-nums ${color}`}>{fmt(total)}</div>
       </div>
       <div className="divide-y divide-slate-800 rounded-xl border border-slate-800 bg-slate-950/70">
-        {rows.filter(([, value]) => value > 0).map(([label, value]) => (
+        {rows.map(([label, value]) => (
           <div key={label} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
             <span className="text-slate-400">{label}</span>
             <span className="font-black text-slate-200 tabular-nums">{fmt(value)}</span>

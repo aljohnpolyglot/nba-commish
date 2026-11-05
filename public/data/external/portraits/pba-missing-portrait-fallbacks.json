@@ -1,0 +1,2054 @@
+{
+  "source": "pba-missing-portraits-source.json + canonical legacy portrait files",
+  "playerCount": 241,
+  "players": [
+    {
+      "name": "Aaron Black",
+      "aliases": [
+        "aaronblack",
+        "ablack"
+      ],
+      "sourceFile": "aaronblack.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/aaronblack.png"
+    },
+    {
+      "name": "Abe King",
+      "sourceFile": "abeking.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/abeking.png"
+    },
+    {
+      "name": "Abet Gutierrez",
+      "sourceFile": "abetgutierrez.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/abetgutierrez.jpg"
+    },
+    {
+      "name": "Abu Tratter",
+      "aliases": [
+        "abutratter",
+        "atratter"
+      ],
+      "sourceFile": "abutratter.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/abutratter.png"
+    },
+    {
+      "name": "Adrian Wong",
+      "aliases": [
+        "adrianwong",
+        "awong"
+      ],
+      "sourceFile": "adrianwong.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/adrianwong.png"
+    },
+    {
+      "name": "Aldrech Ramos",
+      "aliases": [
+        "aldrechramos",
+        "aramos"
+      ],
+      "sourceFile": "aldrechramos.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/aldrechramos.png"
+    },
+    {
+      "name": "Alex Cabagnot",
+      "aliases": [
+        "alexcabagnot",
+        "acabagnot"
+      ],
+      "sourceFile": "alexcabagnot.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/alexcabagnot.png"
+    },
+    {
+      "name": "Alfonso Gotladera",
+      "aliases": [
+        "alfonsogotladera",
+        "agotladera"
+      ],
+      "sourceFile": "alfonsogotladera.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/alfonsogotladera.png"
+    },
+    {
+      "name": "Alfrancis Tamsi",
+      "aliases": [
+        "alfrancistamsi",
+        "atamsi"
+      ],
+      "sourceFile": "alfrancistamsi.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/alfrancistamsi.png"
+    },
+    {
+      "name": "Aljun Melecio",
+      "aliases": [
+        "aljunmelecio",
+        "amelecio"
+      ],
+      "sourceFile": "aljunmelecio.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/aljunmelecio.png"
+    },
+    {
+      "name": "Allein Maliksi",
+      "aliases": [
+        "alleinmaliksi",
+        "amaliksi"
+      ],
+      "sourceFile": "alleinmaliksi.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/alleinmaliksi.png"
+    },
+    {
+      "name": "Al Solis",
+      "sourceFile": "alsolis.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/alsolis.jpg"
+    },
+    {
+      "name": "Alvin Capobres",
+      "aliases": [
+        "alvincapobres",
+        "acapobres"
+      ],
+      "sourceFile": "alvincapobres.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/alvincapobres.png"
+    },
+    {
+      "name": "Alvin Pasaol",
+      "aliases": [
+        "alvinpasaol",
+        "apasaol"
+      ],
+      "sourceFile": "alvinpasaol.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/alvinpasaol.png"
+    },
+    {
+      "name": "Alvin Patrimonio",
+      "sourceFile": "alvinpatrimonio.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/alvinpatrimonio.jpg"
+    },
+    {
+      "name": "Alvin Teng",
+      "sourceFile": "alvinteng.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/alvinteng.jpg"
+    },
+    {
+      "name": "Andrei Caracut",
+      "aliases": [
+        "andreicaracut",
+        "acaracut"
+      ],
+      "sourceFile": "andreicaracut.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/andreicaracut.png"
+    },
+    {
+      "name": "Andre Paras",
+      "aliases": [
+        "andreparas",
+        "aparas"
+      ],
+      "sourceFile": "andreparas.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/andreparas.png"
+    },
+    {
+      "name": "Andy Mark Barroca",
+      "aliases": [
+        "andymarkbarroca",
+        "andybarroca",
+        "abarroca",
+        "markbarroca",
+        "ambarroca"
+      ],
+      "sourceFile": "andymarkbarroca.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/andymarkbarroca.png"
+    },
+    {
+      "name": "Anthony Paul Semerad",
+      "aliases": [
+        "anthonypaulsemerad",
+        "anthonysemerad",
+        "asemerad",
+        "paulsemerad",
+        "apsemerad"
+      ],
+      "sourceFile": "anthonypaulsemerad.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/anthonypaulsemerad.png"
+    },
+    {
+      "name": "Anton Asistio",
+      "aliases": [
+        "antonasistio",
+        "aasistio"
+      ],
+      "sourceFile": "antonasistio.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/antonasistio.png"
+    },
+    {
+      "name": "Antonio Jose Caram",
+      "aliases": [
+        "antoniojosecaram",
+        "antoniocaram",
+        "acaram",
+        "josecaram",
+        "ajcaram",
+        "anjocaram"
+      ],
+      "sourceFile": "antoniojosecaram.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/antoniojosecaram.png"
+    },
+    {
+      "name": "Aris Dionisio",
+      "aliases": [
+        "arisdionisio",
+        "adionisio"
+      ],
+      "sourceFile": "arisdionisio.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/arisdionisio.png"
+    },
+    {
+      "name": "Art dela Cruz",
+      "sourceFile": "artdelacruz.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/artdelacruz.jpg"
+    },
+    {
+      "name": "Arvin Tolentino",
+      "aliases": [
+        "arvintolentino",
+        "atolentino"
+      ],
+      "sourceFile": "arvintolentino.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/arvintolentino.png"
+    },
+    {
+      "name": "Arwind Santos",
+      "aliases": [
+        "arwindsantos",
+        "asantos"
+      ],
+      "sourceFile": "arwindsantos.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/arwindsantos.png"
+    },
+    {
+      "name": "Asi Taulava",
+      "aliases": [
+        "asitaulava",
+        "ataulava"
+      ],
+      "sourceFile": "asitaulava.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/asitaulava.png"
+    },
+    {
+      "name": "Ato Agustin",
+      "sourceFile": "atoagustin.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/atoagustin.jpg"
+    },
+    {
+      "name": "Atoy Co",
+      "sourceFile": "atoyco.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/atoyco.jpg"
+    },
+    {
+      "name": "Bal David",
+      "sourceFile": "baldavid.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/baldavid.jpg"
+    },
+    {
+      "name": "Baser Amer",
+      "aliases": [
+        "baseramer",
+        "bamer"
+      ],
+      "sourceFile": "baseramer.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/baseramer.png"
+    },
+    {
+      "name": "Beau Belga",
+      "aliases": [
+        "beaubelga",
+        "bbelga"
+      ],
+      "sourceFile": "beaubelga.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/beaubelga.png"
+    },
+    {
+      "name": "Benedict Adamos",
+      "aliases": [
+        "benedictadamos",
+        "badamos"
+      ],
+      "sourceFile": "benedictadamos.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/benedictadamos.png"
+    },
+    {
+      "name": "Benjie Paras",
+      "sourceFile": "benjieparas.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/benjieparas.jpg"
+    },
+    {
+      "name": "Benny Cheng",
+      "sourceFile": "bennycheng.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/bennycheng.jpg"
+    },
+    {
+      "name": "Bon Bon Batiller",
+      "aliases": [
+        "bonbonbatiller",
+        "bonbatiller",
+        "bbatiller",
+        "bbbatiller"
+      ],
+      "sourceFile": "bonbonbatiller.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/bonbonbatiller.png"
+    },
+    {
+      "name": "Bong Ravena",
+      "sourceFile": "bongravena.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/bongravena.jpg"
+    },
+    {
+      "name": "Boybits Victoria",
+      "sourceFile": "boybitsvictoria.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/boybitsvictoria.jpg"
+    },
+    {
+      "name": "Bradwyn Guinto",
+      "aliases": [
+        "bradwynguinto",
+        "bguinto"
+      ],
+      "sourceFile": "bradwynguinto.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/bradwynguinto.png"
+    },
+    {
+      "name": "Brian Enriquez",
+      "aliases": [
+        "brianenriquez",
+        "benriquez"
+      ],
+      "sourceFile": "brianenriquez.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/brianenriquez.png"
+    },
+    {
+      "name": "Brian Heruela",
+      "aliases": [
+        "brianheruela",
+        "bheruela"
+      ],
+      "sourceFile": "brianheruela.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/brianheruela.png"
+    },
+    {
+      "name": "Bryan Faundo",
+      "aliases": [
+        "bryanfaundo",
+        "bfaundo"
+      ],
+      "sourceFile": "bryanfaundo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/bryanfaundo.png"
+    },
+    {
+      "name": "Calvin Abueva",
+      "aliases": [
+        "calvinabueva",
+        "cabueva"
+      ],
+      "sourceFile": "calvinabueva.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/calvinabueva.png"
+    },
+    {
+      "name": "Calvin Oftana",
+      "aliases": [
+        "calvinoftana",
+        "coftana"
+      ],
+      "sourceFile": "calvinoftana.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/calvinoftana.png"
+    },
+    {
+      "name": "Chris Exciminiano",
+      "aliases": [
+        "chrisexciminiano",
+        "cexciminiano"
+      ],
+      "sourceFile": "chrisexciminiano.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/chrisexciminiano.png"
+    },
+    {
+      "name": "Chris Javier",
+      "aliases": [
+        "chrisjavier",
+        "cjavier"
+      ],
+      "sourceFile": "chrisjavier.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/chrisjavier.png"
+    },
+    {
+      "name": "Chris Newsome",
+      "aliases": [
+        "chrisnewsome",
+        "cnewsome"
+      ],
+      "sourceFile": "chrisnewsome.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/chrisnewsome.png"
+    },
+    {
+      "name": "Chris Ross",
+      "aliases": [
+        "chrisross",
+        "cross"
+      ],
+      "sourceFile": "chrisross.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/chrisross.png"
+    },
+    {
+      "name": "Christian Balagasay",
+      "aliases": [
+        "christianbalagasay",
+        "cbalagasay"
+      ],
+      "sourceFile": "christianbalagasay.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/christianbalagasay.png"
+    },
+    {
+      "name": "Christian Standhardinger",
+      "aliases": [
+        "christianstandhardinger",
+        "cstandhardinger"
+      ],
+      "sourceFile": "christianstandhardinger.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/christianstandhardinger.png"
+    },
+    {
+      "name": "Christopher Banchero",
+      "aliases": [
+        "christopherbanchero",
+        "cbanchero",
+        "chrisbanchero"
+      ],
+      "sourceFile": "christopherbanchero.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/christopherbanchero.png"
+    },
+    {
+      "name": "Cliff Hodge",
+      "aliases": [
+        "cliffhodge",
+        "chodge"
+      ],
+      "sourceFile": "cliffhodge.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/cliffhodge.png"
+    },
+    {
+      "name": "Clint Doliguez",
+      "aliases": [
+        "clintdoliguez",
+        "cdoliguez"
+      ],
+      "sourceFile": "clintdoliguez.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/clintdoliguez.png"
+    },
+    {
+      "name": "Danny Ildefonso",
+      "sourceFile": "dannyilldefonso.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/dannyilldefonso.jpg"
+    },
+    {
+      "name": "Dave Marcelo",
+      "aliases": [
+        "davemarcelo",
+        "dmarcelo"
+      ],
+      "sourceFile": "davemarcelo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/davemarcelo.png"
+    },
+    {
+      "name": "David Semerad",
+      "aliases": [
+        "davidsemerad",
+        "dsemerad"
+      ],
+      "sourceFile": "davidsemerad.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/davidsemerad.png"
+    },
+    {
+      "name": "Dindo Pumaren",
+      "sourceFile": "dindopumaren.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/dindopumaren.jpg"
+    },
+    {
+      "name": "Don Allado",
+      "sourceFile": "donallado.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/donallado.jpg"
+    },
+    {
+      "name": "Dondon Hontiveros",
+      "sourceFile": "dondonhontiveros.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/dondonhontiveros.jpg"
+    },
+    {
+      "name": "Don Trollano",
+      "aliases": [
+        "dontrollano",
+        "dtrollano",
+        "celedoniotrollano"
+      ],
+      "sourceFile": "dontrollano.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/dontrollano.png"
+    },
+    {
+      "name": "Dorian Pena",
+      "sourceFile": "dorianpena.jpeg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/dorianpena.jpeg"
+    },
+    {
+      "name": "Ed Daquioag",
+      "aliases": [
+        "eddaquioag",
+        "edaquioag"
+      ],
+      "sourceFile": "eddaquioag.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/eddaquioag.png"
+    },
+    {
+      "name": "Edward Poch Juinio",
+      "sourceFile": "edwardpochjuinio.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/edwardpochjuinio.jpg"
+    },
+    {
+      "name": "Elmer Cabahug",
+      "sourceFile": "elmercabahug.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/elmercabahug.jpg"
+    },
+    {
+      "name": "Eric James Camson",
+      "aliases": [
+        "ericjamescamson",
+        "ericcamson",
+        "ecamson",
+        "jamescamson",
+        "ejcamson"
+      ],
+      "sourceFile": "ericjamescamson.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/ericjamescamson.png"
+    },
+    {
+      "name": "Estong Ballesteros",
+      "sourceFile": "estongballesteros.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/estongballesteros.jpg"
+    },
+    {
+      "name": "Frank Golla",
+      "aliases": [
+        "frankgolla",
+        "fgolla"
+      ],
+      "sourceFile": "frankgolla.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/frankgolla.png"
+    },
+    {
+      "name": "Franky Johnson",
+      "aliases": [
+        "frankyjohnson",
+        "fjohnson"
+      ],
+      "sourceFile": "frankyjohnson.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/frankyjohnson.png"
+    },
+    {
+      "name": "Franz Pumaren",
+      "sourceFile": "franzpumaren.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/franzpumaren.jpg"
+    },
+    {
+      "name": "Gabe Norwood",
+      "aliases": [
+        "gabenorwood",
+        "gnorwood"
+      ],
+      "sourceFile": "gabenorwood.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/gabenorwood.png"
+    },
+    {
+      "name": "Gabriel Banal",
+      "aliases": [
+        "gabrielbanal",
+        "gbanal"
+      ],
+      "sourceFile": "gabrielbanal.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/gabrielbanal.png"
+    },
+    {
+      "name": "Garvo Lanete",
+      "aliases": [
+        "garvolanete",
+        "glanete"
+      ],
+      "sourceFile": "garvolanete.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/garvolanete.png"
+    },
+    {
+      "name": "Gelo Alolino",
+      "aliases": [
+        "geloalolino",
+        "galolino"
+      ],
+      "sourceFile": "geloalolino.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/geloalolino.png"
+    },
+    {
+      "name": "Gerry Esplana",
+      "sourceFile": "gerryesplana.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/gerryesplana.jpg"
+    },
+    {
+      "name": "Glenn Khobuntin",
+      "aliases": [
+        "glennkhobuntin",
+        "gkhobuntin"
+      ],
+      "sourceFile": "glennkhobuntin.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/glennkhobuntin.png"
+    },
+    {
+      "name": "Gregory Slaughter",
+      "aliases": [
+        "gregoryslaughter",
+        "gslaughter"
+      ],
+      "sourceFile": "gregoryslaughter.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/gregoryslaughter.png"
+    },
+    {
+      "name": "Gryann Mendoza",
+      "aliases": [
+        "gryannmendoza",
+        "gmendoza"
+      ],
+      "sourceFile": "gryannmendoza.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/gryannmendoza.png"
+    },
+    {
+      "name": "Ian Sangalang",
+      "aliases": [
+        "iansangalang",
+        "isangalang"
+      ],
+      "sourceFile": "iansangalang.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/iansangalang.png"
+    },
+    {
+      "name": "Jackson Corpuz",
+      "aliases": [
+        "jacksoncorpuz",
+        "jcorpuz"
+      ],
+      "sourceFile": "jacksoncorpuz.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jacksoncorpuz.png"
+    },
+    {
+      "name": "Jake Pascual",
+      "aliases": [
+        "jakepascual",
+        "jpascual"
+      ],
+      "sourceFile": "jakepascual.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jakepascual.png"
+    },
+    {
+      "name": "James Laput",
+      "aliases": [
+        "jameslaput",
+        "jlaput"
+      ],
+      "sourceFile": "jameslaput.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jameslaput.png"
+    },
+    {
+      "name": "James Ryan Sena",
+      "aliases": [
+        "jamesryansena",
+        "jamessena",
+        "jsena",
+        "ryansena",
+        "jrsena"
+      ],
+      "sourceFile": "jamesryansena.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jamesryansena.png"
+    },
+    {
+      "name": "James Yap",
+      "aliases": [
+        "jamesyap",
+        "jyap"
+      ],
+      "sourceFile": "jamesyap.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jamesyap.png"
+    },
+    {
+      "name": "Jamie Malonzo",
+      "aliases": [
+        "jamiemalonzo",
+        "jmalonzo"
+      ],
+      "sourceFile": "jamiemalonzo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jamiemalonzo.png"
+    },
+    {
+      "name": "Jansen Rios",
+      "aliases": [
+        "jansenrios",
+        "jrios"
+      ],
+      "sourceFile": "jansenrios.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jansenrios.png"
+    },
+    {
+      "name": "Japeth Aguilar",
+      "aliases": [
+        "japethaguilar",
+        "jaguilar"
+      ],
+      "sourceFile": "japethaguilar.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/japethaguilar.png"
+    },
+    {
+      "name": "Jared Dillinger",
+      "aliases": [
+        "jareddillinger",
+        "jdillinger"
+      ],
+      "sourceFile": "jareddillinger.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jareddillinger.png"
+    },
+    {
+      "name": "Jason Perkins",
+      "aliases": [
+        "jasonperkins",
+        "jperkins"
+      ],
+      "sourceFile": "jasonperkins.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jasonperkins.png"
+    },
+    {
+      "name": "Javee Mocon",
+      "aliases": [
+        "javeemocon",
+        "jmocon"
+      ],
+      "sourceFile": "javeemocon.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/javeemocon.png"
+    },
+    {
+      "name": "Jaycee Marcelino",
+      "aliases": [
+        "jayceemarcelino",
+        "jmarcelino"
+      ],
+      "sourceFile": "jayceemarcelino.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jayceemarcelino.png"
+    },
+    {
+      "name": "Jayjay Alejandro",
+      "aliases": [
+        "jayjayalejandro",
+        "jalejandro"
+      ],
+      "sourceFile": "jayjayalejandro.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jayjayalejandro.png"
+    },
+    {
+      "name": "Jaymar Perez",
+      "aliases": [
+        "jaymarperez",
+        "jperez",
+        "cjperez"
+      ],
+      "sourceFile": "jaymarperez.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jaymarperez.png"
+    },
+    {
+      "name": "Jay Washington",
+      "aliases": [
+        "jaywashington",
+        "jwashington"
+      ],
+      "sourceFile": "jaywashington.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jaywashington.png"
+    },
+    {
+      "name": "Jeepy Faundo",
+      "aliases": [
+        "jeepyfaundo",
+        "jfaundo"
+      ],
+      "sourceFile": "jeepyfaundo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jeepyfaundo.png"
+    },
+    {
+      "name": "Jeff Chan",
+      "aliases": [
+        "jeffchan",
+        "jchan"
+      ],
+      "sourceFile": "jeffchan.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jeffchan.png"
+    },
+    {
+      "name": "Jeffrey Cariaso",
+      "sourceFile": "jeffreycariaso.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jeffreycariaso.jpg"
+    },
+    {
+      "name": "Jericho Cruz",
+      "aliases": [
+        "jerichocruz",
+        "jcruz"
+      ],
+      "sourceFile": "jerichocruz.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jerichocruz.png"
+    },
+    {
+      "name": "Jeron Teng",
+      "aliases": [
+        "jeronteng",
+        "jteng"
+      ],
+      "sourceFile": "jeronteng.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jeronteng.png"
+    },
+    {
+      "name": "Jerrick Ahanmisi",
+      "aliases": [
+        "jerrickahanmisi",
+        "jahanmisi"
+      ],
+      "sourceFile": "jerrickahanmisi.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jerrickahanmisi.png"
+    },
+    {
+      "name": "Jerrick Balanza",
+      "aliases": [
+        "jerrickbalanza",
+        "jbalanza"
+      ],
+      "sourceFile": "jerrickbalanza.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jerrickbalanza.png"
+    },
+    {
+      "name": "Jervis Cole",
+      "sourceFile": "jerviscole.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jerviscole.jpg"
+    },
+    {
+      "name": "Jessie Cabanayan",
+      "sourceFile": "jessiecabanayan.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jessiecabanayan.jpg"
+    },
+    {
+      "name": "Jeth Troy Rosario",
+      "aliases": [
+        "jethtroyrosario",
+        "jethrosario",
+        "jrosario",
+        "troyrosario",
+        "jtrosario"
+      ],
+      "sourceFile": "jethtroyrosario.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jethtroyrosario.png"
+    },
+    {
+      "name": "Jewel Ponferada",
+      "aliases": [
+        "jewelponferada",
+        "jponferada"
+      ],
+      "sourceFile": "jewelponferada.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jewelponferada.png"
+    },
+    {
+      "name": "Jio Jalalon",
+      "aliases": [
+        "jiojalalon",
+        "jjalalon",
+        "jiovanijalalon"
+      ],
+      "sourceFile": "jiojalalon.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jiojalalon.png"
+    },
+    {
+      "name": "Joe Devance",
+      "aliases": [
+        "joedevance",
+        "jdevance"
+      ],
+      "sourceFile": "joedevance.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/joedevance.png"
+    },
+    {
+      "name": "Joey Loyzaga",
+      "sourceFile": "joeyloyzaga.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/joeyloyzaga.png"
+    },
+    {
+      "name": "Joey Valdez",
+      "sourceFile": "joeyvaldez.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/joeyvaldez.jpg"
+    },
+    {
+      "name": "John Arigo",
+      "sourceFile": "johnarigo.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/johnarigo.jpg"
+    },
+    {
+      "name": "John Paul Calvo",
+      "aliases": [
+        "johnpaulcalvo",
+        "johncalvo",
+        "jcalvo",
+        "paulcalvo",
+        "jpcalvo"
+      ],
+      "sourceFile": "johnpaulcalvo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/johnpaulcalvo.png"
+    },
+    {
+      "name": "John Paul Erram",
+      "aliases": [
+        "johnpaulerram",
+        "johnerram",
+        "jerram",
+        "paulerram",
+        "jperram"
+      ],
+      "sourceFile": "johnpaulerram.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/johnpaulerram.png"
+    },
+    {
+      "name": "Jojo Lastimosa",
+      "sourceFile": "jojolastimosa.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jojolastimosa.jpg"
+    },
+    {
+      "name": "Jojo Martin",
+      "sourceFile": "jojomartin.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jojomartin.jpg"
+    },
+    {
+      "name": "Jonathan Grey",
+      "aliases": [
+        "jonathangrey",
+        "jgrey"
+      ],
+      "sourceFile": "jonathangrey.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jonathangrey.png"
+    },
+    {
+      "name": "Jon Jon Gabriel",
+      "aliases": [
+        "jonjongabriel",
+        "jongabriel",
+        "jgabriel",
+        "jjgabriel"
+      ],
+      "sourceFile": "jonjongabriel.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jonjongabriel.png"
+    },
+    {
+      "name": "Jorey Napoles",
+      "aliases": [
+        "joreynapoles",
+        "jnapoles"
+      ],
+      "sourceFile": "joreynapoles.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/joreynapoles.png"
+    },
+    {
+      "name": "Jose Francisco",
+      "sourceFile": "josefrancisco.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/josefrancisco.jpg"
+    },
+    {
+      "name": "Joseph Gabayni",
+      "aliases": [
+        "josephgabayni",
+        "jgabayni"
+      ],
+      "sourceFile": "josephgabayni.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/josephgabayni.png"
+    },
+    {
+      "name": "Joshua Munzon",
+      "aliases": [
+        "joshuamunzon",
+        "jmunzon"
+      ],
+      "sourceFile": "joshuamunzon.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/joshuamunzon.png"
+    },
+    {
+      "name": "Joshua Torralba",
+      "aliases": [
+        "joshuatorralba",
+        "jtorralba"
+      ],
+      "sourceFile": "joshuatorralba.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/joshuatorralba.png"
+    },
+    {
+      "name": "Joy Carpio",
+      "sourceFile": "joycarpio.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/joycarpio.jpg"
+    },
+    {
+      "name": "JR Quinahan",
+      "aliases": [
+        "jrquinahan",
+        "jquinahan"
+      ],
+      "sourceFile": "jrquinahan.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jrquinahan.png"
+    },
+    {
+      "name": "Juan Miguel Tiongson",
+      "aliases": [
+        "juanmigueltiongson",
+        "juantiongson",
+        "jtiongson",
+        "migueltiongson",
+        "jmtiongson",
+        "juamitiongson"
+      ],
+      "sourceFile": "juanmigueltiongson.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/juanmigueltiongson.png"
+    },
+    {
+      "name": "Juan Nicholas Elorde",
+      "aliases": [
+        "juannicholaselorde",
+        "juanelorde",
+        "jelorde",
+        "nicholaselorde",
+        "jnelorde",
+        "nicoelorde"
+      ],
+      "sourceFile": "juannicholaselorde.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/juannicholaselorde.png"
+    },
+    {
+      "name": "June Mar Fajardo",
+      "aliases": [
+        "junemarfajardo",
+        "junefajardo",
+        "jfajardo",
+        "marfajardo",
+        "jmfajardo"
+      ],
+      "sourceFile": "junemarfajardo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/junemarfajardo.png"
+    },
+    {
+      "name": "Justin Chua",
+      "aliases": [
+        "justinchua",
+        "jchua"
+      ],
+      "sourceFile": "justinchua.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/justinchua.png"
+    },
+    {
+      "name": "Justin Melton",
+      "aliases": [
+        "justinmelton",
+        "jmelton"
+      ],
+      "sourceFile": "justinmelton.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/justinmelton.png"
+    },
+    {
+      "name": "JVee Casio",
+      "aliases": [
+        "jveecasio",
+        "jcasio"
+      ],
+      "sourceFile": "jveecasio.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/jveecasio.png"
+    },
+    {
+      "name": "Kelly Nabong",
+      "aliases": [
+        "kellynabong",
+        "knabong"
+      ],
+      "sourceFile": "kellynabong.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kellynabong.png"
+    },
+    {
+      "name": "Kelly Williams",
+      "aliases": [
+        "kellywilliams",
+        "kwilliams"
+      ],
+      "sourceFile": "kellywilliams.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kellywilliams.png"
+    },
+    {
+      "name": "Ken Holmqvist",
+      "aliases": [
+        "kenholmqvist",
+        "kholmqvist"
+      ],
+      "sourceFile": "kenholmqvist.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kenholmqvist.png"
+    },
+    {
+      "name": "Kenneth Duremdes",
+      "sourceFile": "kennethduremdes.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kennethduremdes.jpg"
+    },
+    {
+      "name": "Kenneth Ighalo",
+      "aliases": [
+        "kennethighalo",
+        "kighalo"
+      ],
+      "sourceFile": "kennethighalo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kennethighalo.png"
+    },
+    {
+      "name": "Kent Salado",
+      "aliases": [
+        "kentsalado",
+        "ksalado"
+      ],
+      "sourceFile": "kentsalado.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kentsalado.png"
+    },
+    {
+      "name": "Kevin Barkley Ebona",
+      "aliases": [
+        "kevinbarkleyebona",
+        "kevinebona",
+        "kebona",
+        "barkleyebona",
+        "kbebona"
+      ],
+      "sourceFile": "kevinbarkleyebona.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kevinbarkleyebona.png"
+    },
+    {
+      "name": "Kevin Ferrer",
+      "aliases": [
+        "kevinferrer",
+        "kferrer"
+      ],
+      "sourceFile": "kevinferrer.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kevinferrer.png"
+    },
+    {
+      "name": "Kevin Louie Alas",
+      "aliases": [
+        "kevinlouiealas",
+        "kevinalas",
+        "kalas",
+        "louiealas",
+        "klalas"
+      ],
+      "sourceFile": "kevinlouiealas.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kevinlouiealas.png"
+    },
+    {
+      "name": "Kib Montalbo",
+      "aliases": [
+        "kibmontalbo",
+        "kmontalbo"
+      ],
+      "sourceFile": "kibmontalbo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kibmontalbo.png"
+    },
+    {
+      "name": "Kier John Quinto",
+      "aliases": [
+        "kierjohnquinto",
+        "kierquinto",
+        "kquinto",
+        "johnquinto",
+        "kjquinto"
+      ],
+      "sourceFile": "kierjohnquinto.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kierjohnquinto.png"
+    },
+    {
+      "name": "Kristoffer Porter",
+      "aliases": [
+        "kristofferporter",
+        "kporter"
+      ],
+      "sourceFile": "kristofferporter.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kristofferporter.png"
+    },
+    {
+      "name": "Kyle Pascual",
+      "aliases": [
+        "kylepascual",
+        "kpascual"
+      ],
+      "sourceFile": "kylepascual.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/kylepascual.png"
+    },
+    {
+      "name": "Larry Muyang",
+      "aliases": [
+        "larrymuyang",
+        "lmuyang"
+      ],
+      "sourceFile": "larrymuyang.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/larrymuyang.png"
+    },
+    {
+      "name": "Larry Rodriguez",
+      "sourceFile": "larryrodriguez.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/larryrodriguez.jpg"
+    },
+    {
+      "name": "Leonard Santillan",
+      "aliases": [
+        "leonardsantillan",
+        "lsantillan"
+      ],
+      "sourceFile": "leonardsantillan.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/leonardsantillan.png"
+    },
+    {
+      "name": "Lewis Alfred Tenorio",
+      "aliases": [
+        "lewisalfredtenorio",
+        "lewistenorio",
+        "ltenorio",
+        "alfredtenorio",
+        "latenorio"
+      ],
+      "sourceFile": "lewisalfredtenorio.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/lewisalfredtenorio.png"
+    },
+    {
+      "name": "Loren Brill",
+      "aliases": [
+        "lorenbrill",
+        "lbrill"
+      ],
+      "sourceFile": "lorenbrill.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/lorenbrill.png"
+    },
+    {
+      "name": "Mac Belo",
+      "aliases": [
+        "macbelo",
+        "mbelo"
+      ],
+      "sourceFile": "macbelo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/macbelo.png"
+    },
+    {
+      "name": "Marcio Lassiter",
+      "aliases": [
+        "marciolassiter",
+        "mlassiter"
+      ],
+      "sourceFile": "marciolassiter.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/marciolassiter.png"
+    },
+    {
+      "name": "Marion Magat",
+      "aliases": [
+        "marionmagat",
+        "mmagat"
+      ],
+      "sourceFile": "marionmagat.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/marionmagat.png"
+    },
+    {
+      "name": "Mark Anthony Borboran",
+      "aliases": [
+        "markanthonyborboran",
+        "markborboran",
+        "mborboran",
+        "anthonyborboran",
+        "maborboran"
+      ],
+      "sourceFile": "markanthonyborboran.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/markanthonyborboran.png"
+    },
+    {
+      "name": "Mark Caguioa",
+      "aliases": [
+        "markcaguioa",
+        "mcaguioa"
+      ],
+      "sourceFile": "markcaguioa.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/markcaguioa.png"
+    },
+    {
+      "name": "Mark Telan",
+      "sourceFile": "marktelan.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/marktelan.jpg"
+    },
+    {
+      "name": "Matt Ganuelas-Rosser",
+      "aliases": [
+        "mattganuelasrosser",
+        "mattrosser",
+        "mrosser",
+        "ganuelasrosser",
+        "mgrosser"
+      ],
+      "sourceFile": "mattganuelasrosser.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/mattganuelasrosser.png"
+    },
+    {
+      "name": "Matthew Wright",
+      "aliases": [
+        "matthewwright",
+        "mwright"
+      ],
+      "sourceFile": "matthewwright.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/matthewwright.png"
+    },
+    {
+      "name": "Maverick Ahanmisi",
+      "aliases": [
+        "maverickahanmisi",
+        "mahanmisi"
+      ],
+      "sourceFile": "maverickahanmisi.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/maverickahanmisi.png"
+    },
+    {
+      "name": "Mer Jesper Ayaay",
+      "aliases": [
+        "merjesperayaay",
+        "merayaay",
+        "mayaay",
+        "jesperayaay",
+        "mjayaay"
+      ],
+      "sourceFile": "merjesperayaay.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/merjesperayaay.png"
+    },
+    {
+      "name": "Michael Calisaan",
+      "aliases": [
+        "michaelcalisaan",
+        "mcalisaan"
+      ],
+      "sourceFile": "michaelcalisaan.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/michaelcalisaan.png"
+    },
+    {
+      "name": "Michael Digregorio",
+      "aliases": [
+        "michaeldigregorio",
+        "mdigregorio",
+        "mikedigregorio",
+        "michaelvincentdigregorio"
+      ],
+      "sourceFile": "michaeldigregorio.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/michaeldigregorio.png"
+    },
+    {
+      "name": "Michael Miranda",
+      "aliases": [
+        "michaelmiranda",
+        "mmiranda"
+      ],
+      "sourceFile": "michaelmiranda.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/michaelmiranda.png"
+    },
+    {
+      "name": "Michael Williams",
+      "aliases": [
+        "michaelwilliams",
+        "mwilliams",
+        "mikewilliams",
+        "mikeywilliams"
+      ],
+      "sourceFile": "michaelwilliams.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/michaelwilliams.png"
+    },
+    {
+      "name": "Michael Hrabak",
+      "sourceFile": "mikehrabak.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/mikehrabak.jpg"
+    },
+    {
+      "name": "Mike Tolomia",
+      "aliases": [
+        "miketolomia",
+        "mtolomia"
+      ],
+      "sourceFile": "miketolomia.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/miketolomia.png"
+    },
+    {
+      "name": "Moala Tautuaa",
+      "aliases": [
+        "moalatautuaa",
+        "mtautuaa"
+      ],
+      "sourceFile": "moalatautuaa.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/moalatautuaa.png"
+    },
+    {
+      "name": "Myke Ayonayon",
+      "aliases": [
+        "mykeayonayon",
+        "mayonayon"
+      ],
+      "sourceFile": "mykeayonayon.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/mykeayonayon.png"
+    },
+    {
+      "name": "Nard John Pinto",
+      "aliases": [
+        "nardjohnpinto",
+        "nardpinto",
+        "npinto",
+        "johnpinto",
+        "njpinto"
+      ],
+      "sourceFile": "nardjohnpinto.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/nardjohnpinto.png"
+    },
+    {
+      "name": "Nelson Asaytono",
+      "sourceFile": "nelsonasaytono.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/nelsonasaytono.jpg"
+    },
+    {
+      "name": "Nic Belasco",
+      "sourceFile": "nicbelasco.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/nicbelasco.jpg"
+    },
+    {
+      "name": "Nick Demusis",
+      "aliases": [
+        "nickdemusis",
+        "ndemusis"
+      ],
+      "sourceFile": "nickdemusis.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/nickdemusis.png"
+    },
+    {
+      "name": "Nino Canaleta",
+      "aliases": [
+        "ninocanaleta",
+        "ncanaleta"
+      ],
+      "sourceFile": "ninocanaleta.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/ninocanaleta.png"
+    },
+    {
+      "name": "Nonoy Baclao",
+      "aliases": [
+        "nonoybaclao",
+        "nbaclao"
+      ],
+      "sourceFile": "nonoybaclao.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/nonoybaclao.png"
+    },
+    {
+      "name": "Norbert Torres",
+      "aliases": [
+        "norberttorres",
+        "ntorres",
+        "norbertobriantorres"
+      ],
+      "sourceFile": "norberttorres.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/norberttorres.png"
+    },
+    {
+      "name": "Norman Black (Import)",
+      "aliases": [
+        "Norman Black"
+      ],
+      "sourceFile": "normanblack.jpeg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/normanblack.jpeg"
+    },
+    {
+      "name": "Olsen Racela",
+      "sourceFile": "olsenracela.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/olsenracela.jpg"
+    },
+    {
+      "name": "Paolo Taha",
+      "aliases": [
+        "paolotaha",
+        "ptaha",
+        "juanpaolotaha"
+      ],
+      "sourceFile": "paolotaha.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/paolotaha.png"
+    },
+    {
+      "name": "Paul Alvarez",
+      "sourceFile": "paulalvarez.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/paulalvarez.jpg"
+    },
+    {
+      "name": "Paul Christian Zamar",
+      "aliases": [
+        "paulchristianzamar",
+        "paulzamar",
+        "pzamar",
+        "christianzamar",
+        "pczamar"
+      ],
+      "sourceFile": "paulchristianzamar.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/paulchristianzamar.png"
+    },
+    {
+      "name": "Paul Desiderio",
+      "aliases": [
+        "pauldesiderio",
+        "pdesiderio"
+      ],
+      "sourceFile": "pauldesiderio.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/pauldesiderio.png"
+    },
+    {
+      "name": "Paul Lee",
+      "aliases": [
+        "paullee",
+        "plee"
+      ],
+      "sourceFile": "paullee.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/paullee.png"
+    },
+    {
+      "name": "Pedrito Galanza",
+      "aliases": [
+        "pedritogalanza",
+        "pgalanza"
+      ],
+      "sourceFile": "pedritogalanza.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/pedritogalanza.png"
+    },
+    {
+      "name": "Perry McDonald",
+      "sourceFile": "perrymcdonald.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/perrymcdonald.jpg"
+    },
+    {
+      "name": "Philip Andreas Cahilig",
+      "aliases": [
+        "philipandreascahilig",
+        "philipcahilig",
+        "pcahilig",
+        "andreascahilig",
+        "pacahilig"
+      ],
+      "sourceFile": "philipandreascahilig.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/philipandreascahilig.png"
+    },
+    {
+      "name": "Philip Paniamogan",
+      "aliases": [
+        "philippaniamogan",
+        "ppaniamogan"
+      ],
+      "sourceFile": "philippaniamogan.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/philippaniamogan.png"
+    },
+    {
+      "name": "Prince Caperal",
+      "aliases": [
+        "princecaperal",
+        "pcaperal"
+      ],
+      "sourceFile": "princecaperal.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/princecaperal.png"
+    },
+    {
+      "name": "Rafi Reavis",
+      "aliases": [
+        "rafireavis",
+        "rreavis"
+      ],
+      "sourceFile": "rafireavis.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/rafireavis.png"
+    },
+    {
+      "name": "Ramon Fernandez",
+      "sourceFile": "ramonfernandez.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/ramonfernandez.jpg"
+    },
+    {
+      "name": "Rashawn McCarthy",
+      "aliases": [
+        "rashawnmccarthy",
+        "rmccarthy"
+      ],
+      "sourceFile": "rashawnmccarthy.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/rashawnmccarthy.png"
+    },
+    {
+      "name": "Raul Soyud",
+      "aliases": [
+        "raulsoyud",
+        "rsoyud"
+      ],
+      "sourceFile": "raulsoyud.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/raulsoyud.png"
+    },
+    {
+      "name": "Raymar Jose",
+      "aliases": [
+        "raymarjose",
+        "rjose"
+      ],
+      "sourceFile": "raymarjose.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/raymarjose.png"
+    },
+    {
+      "name": "Raymond Aguilar",
+      "aliases": [
+        "raymondaguilar",
+        "raguilar"
+      ],
+      "sourceFile": "raymondaguilar.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/raymondaguilar.png"
+    },
+    {
+      "name": "Raymond Almazan",
+      "aliases": [
+        "raymondalmazan",
+        "ralmazan"
+      ],
+      "sourceFile": "raymondalmazan.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/raymondalmazan.png"
+    },
+    {
+      "name": "Raymon Jamito",
+      "aliases": [
+        "raymonjamito",
+        "rjamito"
+      ],
+      "sourceFile": "raymonjamito.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/raymonjamito.png"
+    },
+    {
+      "name": "Reden Celda",
+      "aliases": [
+        "redencelda",
+        "rcelda"
+      ],
+      "sourceFile": "redencelda.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/redencelda.png"
+    },
+    {
+      "name": "Regile Kent Ilagan",
+      "aliases": [
+        "regilekentilagan",
+        "regileilagan",
+        "rilagan",
+        "kentilagan",
+        "rkilagan"
+      ],
+      "sourceFile": "regilekentilagan.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/regilekentilagan.png"
+    },
+    {
+      "name": "Renzo Subido",
+      "aliases": [
+        "renzosubido",
+        "rsubido"
+      ],
+      "sourceFile": "renzosubido.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/renzosubido.png"
+    },
+    {
+      "name": "Rey Marc Acuno",
+      "aliases": [
+        "reymarcacuno",
+        "reyacuno",
+        "racuno",
+        "marcacuno",
+        "rmacuno"
+      ],
+      "sourceFile": "reymarcacuno.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/reymarcacuno.png"
+    },
+    {
+      "name": "Reynaldo Publico",
+      "aliases": [
+        "reynaldopublico",
+        "rpublico"
+      ],
+      "sourceFile": "reynaldopublico.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/reynaldopublico.png"
+    },
+    {
+      "name": "Rey Nambatac",
+      "aliases": [
+        "reynambatac",
+        "rnambatac",
+        "reybenedictnambatac"
+      ],
+      "sourceFile": "reynambatac.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/reynambatac.png"
+    },
+    {
+      "name": "Reynel Hugnatan",
+      "aliases": [
+        "reynelhugnatan",
+        "rhugnatan"
+      ],
+      "sourceFile": "reynelhugnatan.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/reynelhugnatan.png"
+    },
+    {
+      "name": "Richard Escoto",
+      "aliases": [
+        "richardescoto",
+        "rescoto"
+      ],
+      "sourceFile": "richardescoto.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/richardescoto.png"
+    },
+    {
+      "name": "Ric Ric Marata",
+      "sourceFile": "ricricmarata.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/ricricmarata.jpg"
+    },
+    {
+      "name": "Riego Gamalinda",
+      "aliases": [
+        "riegogamalinda",
+        "rgamalinda"
+      ],
+      "sourceFile": "riegogamalinda.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/riegogamalinda.png"
+    },
+    {
+      "name": "RJ Jazul",
+      "aliases": [
+        "rjjazul",
+        "rjazul"
+      ],
+      "sourceFile": "rjjazul.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/rjjazul.png"
+    },
+    {
+      "name": "Robert Herndon",
+      "aliases": [
+        "robertherndon",
+        "rherndon"
+      ],
+      "sourceFile": "robertherndon.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/robertherndon.png"
+    },
+    {
+      "name": "Robert Jr. Bolick",
+      "aliases": [
+        "robertjrbolick",
+        "robertbolick",
+        "rbolick",
+        "jrbolick",
+        "rjbolick",
+        "robertleebolick"
+      ],
+      "sourceFile": "robertjrbolick.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/robertjrbolick.png"
+    },
+    {
+      "name": "Rodney Brondial",
+      "aliases": [
+        "rodneybrondial",
+        "rbrondial"
+      ],
+      "sourceFile": "rodneybrondial.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/rodneybrondial.png"
+    },
+    {
+      "name": "Rodney Santos",
+      "sourceFile": "rodneysantos.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/rodneysantos.jpg"
+    },
+    {
+      "name": "Roehl Gomez",
+      "sourceFile": "roehlgomez.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/roehlgomez.jpg"
+    },
+    {
+      "name": "Roger Pogoy",
+      "aliases": [
+        "rogerpogoy",
+        "rpogoy",
+        "rogerraypogoy",
+        "rrpogoy"
+      ],
+      "sourceFile": "rogerpogoy.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/rogerpogoy.png"
+    },
+    {
+      "name": "Rome dela Rosa",
+      "aliases": [
+        "romedelarosa",
+        "romerosa",
+        "rrosa",
+        "delarosa",
+        "rdrosa"
+      ],
+      "sourceFile": "romedelarosa.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/romedelarosa.png"
+    },
+    {
+      "name": "Romy dela Rosa",
+      "sourceFile": "romydelarosa.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/romydelarosa.jpg"
+    },
+    {
+      "name": "Ronilo Padilla",
+      "sourceFile": "ronilopadilla.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/ronilopadilla.jpg"
+    },
+    {
+      "name": "Ron Marvis Dennison",
+      "aliases": [
+        "ronmarvisdennison",
+        "rondennison",
+        "rdennison",
+        "marvisdennison",
+        "rmdennison"
+      ],
+      "sourceFile": "ronmarvisdennison.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/ronmarvisdennison.png"
+    },
+    {
+      "name": "Ronnie De Leon",
+      "aliases": [
+        "ronniedeleon",
+        "ronnieleon",
+        "rleon",
+        "deleon",
+        "rdleon"
+      ],
+      "sourceFile": "ronniedeleon.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/ronniedeleon.png"
+    },
+    {
+      "name": "Ronnie Magsanoc",
+      "sourceFile": "ronniemagsanoc.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/ronniemagsanoc.jpg"
+    },
+    {
+      "name": "Roosevelt Adams",
+      "aliases": [
+        "rooseveltadams",
+        "radams"
+      ],
+      "sourceFile": "rooseveltadams.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/rooseveltadams.png"
+    },
+    {
+      "name": "RR Garcia",
+      "aliases": [
+        "rrgarcia",
+        "rgarcia"
+      ],
+      "sourceFile": "rrgarcia.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/rrgarcia.png"
+    },
+    {
+      "name": "Rudy Distrito",
+      "sourceFile": "rudydistrito.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/rudydistrito.jpg"
+    },
+    {
+      "name": "Ryan Reyes",
+      "aliases": [
+        "ryanreyes",
+        "rreyes"
+      ],
+      "sourceFile": "ryanreyes.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/ryanreyes.png"
+    },
+    {
+      "name": "Scottie Thompson",
+      "aliases": [
+        "scottiethompson",
+        "sthompson",
+        "earlscottiethompson"
+      ],
+      "sourceFile": "scottiethompson.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/scottiethompson.png"
+    },
+    {
+      "name": "Sean Anthony",
+      "aliases": [
+        "seananthony",
+        "santhony"
+      ],
+      "sourceFile": "seananthony.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/seananthony.png"
+    },
+    {
+      "name": "Sean Chambers (Import)",
+      "aliases": [
+        "Sean Chambers"
+      ],
+      "sourceFile": "seanchambers.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/seanchambers.jpg"
+    },
+    {
+      "name": "Sidney Onwubere",
+      "aliases": [
+        "sidneyonwubere",
+        "sonwubere"
+      ],
+      "sourceFile": "sidneyonwubere.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/sidneyonwubere.png"
+    },
+    {
+      "name": "Simon Enciso",
+      "aliases": [
+        "simonenciso",
+        "senciso"
+      ],
+      "sourceFile": "simonenciso.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/simonenciso.png"
+    },
+    {
+      "name": "Stanley Jr. Pringle",
+      "aliases": [
+        "stanleyjrpringle",
+        "stanleypringle",
+        "springle",
+        "jrpringle",
+        "sjpringle"
+      ],
+      "sourceFile": "stanleyjrpringle.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/stanleyjrpringle.png"
+    },
+    {
+      "name": "Terrence Romeo",
+      "aliases": [
+        "terrenceromeo",
+        "tromeo"
+      ],
+      "sourceFile": "terrenceromeo.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/terrenceromeo.png"
+    },
+    {
+      "name": "Trevis Jackson",
+      "aliases": [
+        "trevisjackson",
+        "tjackson"
+      ],
+      "sourceFile": "trevisjackson.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/trevisjackson.png"
+    },
+    {
+      "name": "Troy Rike",
+      "aliases": [
+        "troyrike",
+        "trike"
+      ],
+      "sourceFile": "troyrike.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/troyrike.png"
+    },
+    {
+      "name": "Vergel Meneses",
+      "sourceFile": "vergelmeneses.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/vergelmeneses.jpg"
+    },
+    {
+      "name": "Vic Manuel",
+      "aliases": [
+        "vicmanuel",
+        "vmanuel"
+      ],
+      "sourceFile": "vicmanuel.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/vicmanuel.png"
+    },
+    {
+      "name": "Vince Hizon",
+      "sourceFile": "vincehizon.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/vincehizon.jpg"
+    },
+    {
+      "name": "Vince Tolentino",
+      "aliases": [
+        "vincetolentino",
+        "vtolentino"
+      ],
+      "sourceFile": "vincetolentino.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/vincetolentino.png"
+    },
+    {
+      "name": "Von Pessumal",
+      "aliases": [
+        "vonpessumal",
+        "vpessumal"
+      ],
+      "sourceFile": "vonpessumal.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/vonpessumal.png"
+    },
+    {
+      "name": "Wendell Comboy",
+      "aliases": [
+        "wendellcomboy",
+        "wcomboy"
+      ],
+      "sourceFile": "wendellcomboy.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/wendellcomboy.png"
+    },
+    {
+      "name": "William Jayson Castro",
+      "aliases": [
+        "williamjaysoncastro",
+        "williamcastro",
+        "wcastro",
+        "jaysoncastro",
+        "wjcastro"
+      ],
+      "sourceFile": "williamjaysoncastro.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/williamjaysoncastro.png"
+    },
+    {
+      "name": "William McAloney",
+      "aliases": [
+        "williammcaloney",
+        "wmcaloney"
+      ],
+      "sourceFile": "williammcaloney.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/williammcaloney.png"
+    },
+    {
+      "name": "Willie Miller, Jr.",
+      "sourceFile": "williemiller.jpeg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/williemiller.jpeg"
+    },
+    {
+      "name": "Wynne Arboleda",
+      "sourceFile": "wynnearboleda.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/wynnearboleda.jpg"
+    },
+    {
+      "name": "Yousef Taha",
+      "aliases": [
+        "youseftaha",
+        "ytaha"
+      ],
+      "sourceFile": "youseftaha.png",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/youseftaha.png"
+    },
+    {
+      "name": "Yoyoy Villamin",
+      "sourceFile": "yoyovillamin.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/yoyovillamin.jpg"
+    },
+    {
+      "name": "Yves Dignadice",
+      "sourceFile": "yvesdignadice.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/yvesdignadice.jpg"
+    },
+    {
+      "name": "Zaldy Realubit",
+      "sourceFile": "zaldyrealubit.jpg",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/pbamissingportraits/zaldyrealubit.jpg"
+    }
+  ]
+}

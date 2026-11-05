@@ -10,7 +10,7 @@ import type { NBAPlayer, NBATeam, DraftPick, LeagueStats } from '../../types';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, getPickTV, type PickValueContext,
   calcCashTV, CASH_TRADE_CAP_USD,
-  isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, isWalkingExpiring, isRecentlySignedLocked, type TeamMode,
+  isUntouchable, isContenderChampionshipCore, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, isWalkingExpiring, isRecentlySignedLocked, type TeamMode,
   getTradeGapTolerance, getTradeOvershootMargin, getTradeRatioThreshold, getTradeValueFloor, type TVContext,
 } from './tradeValueEngine';
 import { DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
@@ -20,11 +20,14 @@ import { formatPickLabel } from '../draft/draftClassStrength';
 import { wouldStepienViolateForTid } from './stepienRule';
 import { generateCounterOffers } from './tradeFinderCore';
 import { isTradeExcludedPlayer, roleToMode, type TradeOfferItem } from './tradeFinderShared';
+import type { TradeComputationMemo } from './tradeComputationMemo';
+import { getTradeAssetsForTeam } from '../freeAgency/eurostashRights';
 
 export function generateAITradeProposal(input: {
   buyerTid: number;
   sellerTid: number;
   players: NBAPlayer[];
+  playersByTeam?: Map<number, NBAPlayer[]>;
   teams: NBATeam[];
   draftPicks: DraftPick[];
   currentYear: number;
@@ -40,7 +43,7 @@ export function generateAITradeProposal(input: {
   recentlySignedLockMs?: { currentDate: string; leagueStats?: LeagueStats };
   allowPbaRoster?: boolean;
 }): { buyerGives: TradeOfferItem[]; sellerGives: TradeOfferItem[] } | null {
-  const { buyerTid, sellerTid, players, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid, stepienEnabled, tradablePickWindow, isPostDeadlinePreFA, recentlySignedLockMs, allowPbaRoster = false } = input;
+  const { buyerTid, sellerTid, players, playersByTeam, teams, draftPicks, currentYear, minTradableSeason, powerRanks, teamOutlooks, tvContext, classStrengthByYear, lotterySlotByTid, stepienEnabled, tradablePickWindow, isPostDeadlinePreFA, recentlySignedLockMs, allowPbaRoster = false } = input;
 
   const sellerOutlook = teamOutlooks.get(sellerTid) ?? { role: 'neutral' };
   const buyerOutlook = teamOutlooks.get(buyerTid) ?? { role: 'neutral' };
@@ -49,13 +52,16 @@ export function generateAITradeProposal(input: {
 
   // Find a target player on the seller's team (non-untouchable, best TV).
   // Walking expirings and recently-signed players are excluded from proposals.
-  const sellerRoster = players
-    .filter(p => p.tid === sellerTid && !isTradeExcludedPlayer(p, allowPbaRoster)
-              && !isWalkingExpiring(p, currentYear, isPostDeadlinePreFA ?? false)
-              && !(recentlySignedLockMs && isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)))
+  const sellerRoster = getTradeAssetsForTeam(players, sellerTid, playersByTeam)
+    .filter(p => !isTradeExcludedPlayer(p, allowPbaRoster)
+              && !isWalkingExpiring(p, currentYear, isPostDeadlinePreFA ?? false, tvContext?.credibleResignExpiringIds, tvContext?.memo)
+              && !(recentlySignedLockMs && isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats, tvContext?.memo)))
     .sort((a, b) => calcPlayerTV(b, sellerMode, currentYear, tvContext) - calcPlayerTV(a, sellerMode, currentYear, tvContext));
 
-  const target = sellerRoster.find(p => !isUntouchable(p, sellerMode, currentYear, tvContext?.mvpRank));
+  const target = sellerRoster.find(p =>
+    !isUntouchable(p, sellerMode, currentYear, tvContext?.mvpRank, tvContext?.memo)
+    && !isContenderChampionshipCore(p, sellerRoster, sellerMode, currentYear, tvContext?.mvpRank, tvContext?.memo)
+  );
   if (!target) return null;
 
   const targetTV = calcPlayerTV(target, sellerMode, currentYear, tvContext);
@@ -67,6 +73,7 @@ export function generateAITradeProposal(input: {
     offerValue: targetTV,
     usedIds: new Set([target.internalId]),
     players,
+    playersByTeam,
     teams,
     draftPicks,
     currentYear,
@@ -80,6 +87,7 @@ export function generateAITradeProposal(input: {
     stepienEnabled,
     tradablePickWindow,
     isPostDeadlinePreFA,
+    recentlySignedLockMs,
     allowPbaRoster,
   });
 
@@ -116,6 +124,7 @@ export function generatePickOnlyProposal(input: {
   sellerCashAvailableUSD?: number;
   stepienEnabled?: boolean;
   tradablePickWindow?: number;
+  memo?: TradeComputationMemo;
 }): {
   buyerGives: TradeOfferItem[];
   sellerGives: TradeOfferItem[];
@@ -126,7 +135,7 @@ export function generatePickOnlyProposal(input: {
     buyerTid, sellerTid, teams, draftPicks, currentYear, minTradableSeason,
     powerRanks, teamOutlooks, classStrengthByYear, lotterySlotByTid,
     buyerCashAvailableUSD = 0,
-    stepienEnabled = false, tradablePickWindow = DEFAULT_TRADABLE_PICK_SEASONS,
+    stepienEnabled = false, tradablePickWindow = DEFAULT_TRADABLE_PICK_SEASONS, memo,
   } = input;
   const minLivePickSeason = Math.max(minTradableSeason, currentYear);
   const liveDraftPicks = draftPicks.filter(pk => pk.season >= currentYear);
@@ -152,6 +161,7 @@ export function generatePickOnlyProposal(input: {
     powerRanks,
     classStrengthByYear,
     lotterySlotByTid,
+    memo,
   };
   const tvOf = (pk: DraftPick): number => getPickTV(pk, swapPickCtx);
 

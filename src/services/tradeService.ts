@@ -3,7 +3,12 @@ import { selectRandom, calculateSocialEngagement } from '../utils/helpers';
 import { PlayerService } from './data/PlayerService';
 import { TeamService } from './data/TeamService';
 import { formatPickLabel } from './draft/draftClassStrength';
-import { getInsiderHandle, getInsiderWoj } from '../data/social/handles';
+import { getInsiderHandle } from '../data/social/handles';
+import { isTwitterAvailable } from '../utils/mediaTimeline';
+import { hasExplicitPbaImportProvenance } from './pba/importManager';
+import { isPbaTradeTeam } from './pba/tradeWindow';
+import { getTeamFullName } from '../utils/teamNames';
+import { getTradeAssetOwnerTid } from './freeAgency/eurostashRights';
 
 export const isTradeAllowed = (phase: GamePhase): boolean => {
   const isPlayoffs = phase.includes('Playoffs') || phase === 'NBA Finals' || phase === 'Conference Finals' || phase === 'Play-In Tournament';
@@ -21,6 +26,7 @@ export const generateTradeOffer = (
   
   const offeringTeam = teamService.getTeamById(playerToTrade.tid);
   if (!offeringTeam) return null;
+  if (isPbaTradeTeam(offeringTeam) && hasExplicitPbaImportProvenance(playerToTrade)) return null;
 
   // Find a partner team that needs this player's position or is a contender
   const potentialPartners = teams.filter(t => t.id !== offeringTeam.id && t.strength > 40);
@@ -29,7 +35,10 @@ export const generateTradeOffer = (
   const partnerTeam = selectRandom(potentialPartners, 1)[0];
   
   // Simple trade logic: partner sends a player of similar value or picks
-  const partnerAssets = playerService.getPlayersByTeam(partnerTeam.id).filter(p => p.overallRating >= playerToTrade.overallRating - 5);
+  const partnerAssets = playerService.getPlayersByTeam(partnerTeam.id).filter(p =>
+    p.overallRating >= playerToTrade.overallRating - 5
+    && (!isPbaTradeTeam(partnerTeam) || !hasExplicitPbaImportProvenance(p))
+  );
   const assetToSend = partnerAssets.length > 0 ? selectRandom(partnerAssets, 1)[0] : null;
   
   let description = "";
@@ -41,14 +50,14 @@ export const generateTradeOffer = (
   };
 
   if (assetToSend) {
-    description = `${offeringTeam.name} sends ${playerToTrade.name} to ${partnerTeam.name} for ${assetToSend.name}.`;
+    description = `${getTeamFullName(offeringTeam)} sends ${playerToTrade.name} to ${getTeamFullName(partnerTeam)} for ${assetToSend.name}.`;
     transaction.teams[partnerTeam.id].playersSent.push(assetToSend);
   } else {
     // Send a pick if no player match
     const partnerPicks = allPicks.filter(p => p.tid === partnerTeam.id);
     if (partnerPicks.length > 0) {
       const pick = partnerPicks[0];
-      description = `${offeringTeam.name} sends ${playerToTrade.name} to ${partnerTeam.name} for a ${pick.season} Round ${pick.round} pick.`;
+      description = `${getTeamFullName(offeringTeam)} sends ${playerToTrade.name} to ${getTeamFullName(partnerTeam)} for a ${pick.season} Round ${pick.round} pick.`;
       transaction.teams[partnerTeam.id].picksSent.push(pick);
     } else {
       return null; // No trade possible
@@ -63,7 +72,10 @@ export const executeForcedTrade = async (
   players: Player[],
   teams: Team[],
   draftPicks: DraftPick[],
-  leagueType?: string
+  leagueType?: string,
+  gameDate?: string,
+  seasonYear?: number,
+  uiMode?: string | null,
 ): Promise<{ transaction: TransactionDto | null; announcements: SocialPost[] }> => {
   const playerService = new PlayerService(players);
   const teamService = new TeamService(teams);
@@ -77,6 +89,9 @@ export const executeForcedTrade = async (
 
   const sourceTeam = teamService.getTeamById(player.tid);
   if (!sourceTeam) return { transaction: null, announcements: [] };
+  if (isPbaTradeTeam(sourceTeam) && hasExplicitPbaImportProvenance(player)) {
+    return { transaction: null, announcements: [] };
+  }
 
   const transaction: TransactionDto = {
     teams: {
@@ -85,32 +100,23 @@ export const executeForcedTrade = async (
     }
   };
 
-  const woj = getInsiderWoj(leagueType);
-  const insider = getInsiderHandle(leagueType);
-  const wojEngagement = calculateSocialEngagement(woj.atHandle, 'trade', player.overallRating);
-  const shamsEngagement = calculateSocialEngagement(insider.atHandle, 'trade', player.overallRating);
+  if (!isTwitterAvailable(gameDate, seasonYear)) return { transaction, announcements: [] };
+
+  const insider = getInsiderHandle(leagueType, gameDate, seasonYear, uiMode);
+  const engagement = calculateSocialEngagement(insider.atHandle, 'trade', player.overallRating);
+  const sourceTeamName = getTeamFullName(sourceTeam);
+  const destinationTeamName = getTeamFullName(destTeam);
 
   const announcements: SocialPost[] = [
     {
       id: crypto.randomUUID(),
       source: 'TwitterX',
-      author: woj.name,
-      handle: woj.atHandle,
-      content: `Reporting with ${insider.atHandle}: The ${sourceTeam.name} and ${destTeam.name} have finalized a trade sending ${player.name} to the ${destTeam.abbrev}. League sources indicate the deal is official and has been processed by the league office.`,
-      date: new Date().toISOString(),
-      likes: wojEngagement.likes,
-      retweets: wojEngagement.retweets,
-      isNew: true
-    },
-    {
-      id: crypto.randomUUID(),
-      source: 'TwitterX',
       author: insider.name,
       handle: insider.atHandle,
-      content: `Official: The ${destTeam.name} have acquired ${player.name} from the ${sourceTeam.name}. Transaction is finalized per league sources.`,
-      date: new Date().toISOString(),
-      likes: shamsEngagement.likes,
-      retweets: shamsEngagement.retweets,
+      content: `The ${sourceTeamName} and ${destinationTeamName} have finalized a trade sending ${player.name} to ${destTeam.abbrev}. League sources indicate the deal is official and has been processed by the league office.`,
+      date: gameDate ? new Date(gameDate).toISOString() : new Date().toISOString(),
+      likes: engagement.likes,
+      retweets: engagement.retweets,
       isNew: true
     }
   ];
@@ -135,6 +141,8 @@ export const executeExecutiveTrade = (
   currentYear?: number,
   lotterySlotByTid?: Map<number, number>,
   leagueType?: string,
+  gameDate?: string,
+  uiMode?: string | null,
 ): { transaction: TransactionDto, announcements: SocialPost[] } => {
   const teamService = new TeamService(teams);
   const playerService = new PlayerService(players);
@@ -142,10 +150,26 @@ export const executeExecutiveTrade = (
   const teamA = teamService.getTeamById(payload.teamAId)!;
   const teamB = teamService.getTeamById(payload.teamBId)!;
 
-  const playersA = players.filter(p => payload.teamAPlayers.includes(p.internalId));
-  const playersB = players.filter(p => payload.teamBPlayers.includes(p.internalId));
-  const picksA = draftPicks.filter(p => payload.teamAPicks.includes(p.dpid));
-  const picksB = draftPicks.filter(p => payload.teamBPicks.includes(p.dpid));
+  if (!teamA || !teamB) throw new Error('Trade team is no longer available.');
+
+  const playersA = players.filter(p => payload.teamAPlayers.includes(p.internalId) && getTradeAssetOwnerTid(p) === payload.teamAId);
+  const playersB = players.filter(p => payload.teamBPlayers.includes(p.internalId) && getTradeAssetOwnerTid(p) === payload.teamBId);
+  const picksA = draftPicks.filter(p => payload.teamAPicks.includes(p.dpid) && p.tid === payload.teamAId);
+  const picksB = draftPicks.filter(p => payload.teamBPicks.includes(p.dpid) && p.tid === payload.teamBId);
+  if (
+    playersA.length !== new Set(payload.teamAPlayers).size ||
+    playersB.length !== new Set(payload.teamBPlayers).size ||
+    picksA.length !== new Set(payload.teamAPicks).size ||
+    picksB.length !== new Set(payload.teamBPicks).size
+  ) {
+    throw new Error('A trade asset changed teams before the deal was completed.');
+  }
+  if (
+    (isPbaTradeTeam(teamA) || isPbaTradeTeam(teamB))
+    && [...playersA, ...playersB].some(hasExplicitPbaImportProvenance)
+  ) {
+    throw new Error('PBA imports are not trade eligible.');
+  }
 
   const transaction: TransactionDto = {
     teams: {
@@ -167,32 +191,23 @@ export const executeExecutiveTrade = (
       0
   );
 
-  const woj = getInsiderWoj(leagueType);
-  const insider = getInsiderHandle(leagueType);
-  const wojEngagement = calculateSocialEngagement(woj.atHandle, 'trade', maxRating);
-  const shamsEngagement = calculateSocialEngagement(insider.atHandle, 'trade', maxRating);
+  if (!isTwitterAvailable(gameDate, currentYear)) return { transaction, announcements: [] };
+
+  const insider = getInsiderHandle(leagueType, gameDate, currentYear, uiMode);
+  const engagement = calculateSocialEngagement(insider.atHandle, 'trade', maxRating);
+  const teamAName = getTeamFullName(teamA);
+  const teamBName = getTeamFullName(teamB);
 
   const announcements: SocialPost[] = [
     {
       id: crypto.randomUUID(),
       source: 'TwitterX',
-      author: woj.name,
-      handle: woj.atHandle,
-      content: `Reporting with ${insider.atHandle}: A significant trade has been finalized between the ${teamA.name} and ${teamB.name}. ${assetsA} are headed to ${teamB.abbrev}, while ${assetsB} return to ${teamA.abbrev}. League sources describe the deal as a 'strategic realignment' for both franchises.`,
-      date: new Date().toISOString(),
-      likes: wojEngagement.likes,
-      retweets: wojEngagement.retweets,
-      isNew: true
-    },
-    {
-      id: crypto.randomUUID(),
-      source: 'TwitterX',
       author: insider.name,
       handle: insider.atHandle,
-      content: `Official: The ${teamA.name} and ${teamB.name} have completed a multi-asset trade. ${assetsA} to ${teamB.abbrev}, ${assetsB} to ${teamA.abbrev}. Transaction is official.`,
-      date: new Date().toISOString(),
-      likes: shamsEngagement.likes,
-      retweets: shamsEngagement.retweets,
+      content: `A significant trade has been finalized between the ${teamAName} and ${teamBName}. ${assetsA} are headed to ${teamB.abbrev}, while ${assetsB} return to ${teamA.abbrev}. League sources describe the deal as a strategic realignment for both franchises.`,
+      date: gameDate ? new Date(gameDate).toISOString() : new Date().toISOString(),
+      likes: engagement.likes,
+      retweets: engagement.retweets,
       isNew: true
     }
   ];

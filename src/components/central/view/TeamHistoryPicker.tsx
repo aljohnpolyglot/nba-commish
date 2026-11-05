@@ -4,6 +4,7 @@ import { ChevronRight, Search, Trophy } from 'lucide-react';
 import { Tab } from '../../../types';
 import { getTeamMascot } from '../../../utils/helpers';
 import { getBestAccentColor, NBA_HUB_ID } from './TeamHistoryShared';
+import { getHistoricalTeamSnapshot } from '../../../utils/teamAssets';
 
 type TeamLike = {
   id: number;
@@ -16,20 +17,24 @@ type TeamLike = {
 
 type TeamHistoryPickerProps = {
   euroIsolated: boolean;
-  isFictional: boolean;
+  leagueName: string;
+  showNbaBranding: boolean;
+  leagueLogoUrl?: string;
   searchTerm: string;
   setSearchTerm: React.Dispatch<React.SetStateAction<string>>;
   filteredTeams: TeamLike[];
   setSelectedTeamId: React.Dispatch<React.SetStateAction<number | null>>;
-  setActiveTab: React.Dispatch<React.SetStateAction<'overview' | 'records' | 'leaders' | 'history'>>;
+  setActiveTab: React.Dispatch<React.SetStateAction<'overview' | 'records' | 'leaders' | 'awards' | 'history' | 'trophies'>>;
   setExpandedLeaders: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   setExpandedRecords: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  quickPortals: React.ReactNode;
+  seasonYear: number;
 };
 
 export const TeamHistoryPicker: React.FC<TeamHistoryPickerProps> = ({
   euroIsolated,
-  isFictional,
+  leagueName,
+  showNbaBranding,
+  leagueLogoUrl,
   searchTerm,
   setSearchTerm,
   filteredTeams,
@@ -37,7 +42,7 @@ export const TeamHistoryPicker: React.FC<TeamHistoryPickerProps> = ({
   setActiveTab,
   setExpandedLeaders,
   setExpandedRecords,
-  quickPortals,
+  seasonYear,
 }) => (
   <>
     <div className="h-full overflow-y-auto custom-scrollbar bg-[#09090b] text-zinc-100">
@@ -71,17 +76,18 @@ export const TeamHistoryPicker: React.FC<TeamHistoryPickerProps> = ({
             className="w-full mb-6 bg-gradient-to-r from-[#1D428A]/20 to-[#C8102E]/20 border border-[#1D428A]/40 rounded-2xl p-5 text-left overflow-hidden relative group"
           >
             <div className="flex items-center gap-4">
-              {isFictional ? (
+              {leagueLogoUrl ? (
+                <img src={leagueLogoUrl} alt={leagueName} className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
+              ) : !showNbaBranding ? (
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#1D428A]/30 to-[#C8102E]/30 border border-zinc-700 flex items-center justify-center">
                   <Trophy className="w-6 h-6 text-zinc-200" />
                 </div>
               ) : (
-                <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" alt="NBA" className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
+                <img src="https://upload.wikimedia.org/wikipedia/en/0/03/National_Basketball_Association_logo.svg" alt={leagueName} className="w-12 h-12 object-contain" referrerPolicy="no-referrer" />
               )}
               <div>
                 <div className="text-xs font-black uppercase tracking-tight">
-                  <span className="text-zinc-400">{isFictional ? 'Fictional Basketball ' : 'National Basketball '}</span>
-                  <span className="text-[#C8102E]">Association</span>
+                  <span className="text-zinc-400">{leagueName}</span>
                 </div>
                 <div className="text-[10px] text-zinc-500 font-mono uppercase mt-0.5">League-Wide Records & All-Time Leaders</div>
               </div>
@@ -91,7 +97,9 @@ export const TeamHistoryPicker: React.FC<TeamHistoryPickerProps> = ({
         )}
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
           {filteredTeams.map(team => {
-            const accent = getBestAccentColor(team.colors, team.name);
+            const displayTeam = getHistoricalTeamSnapshot(team, seasonYear);
+            const accent = getBestAccentColor(displayTeam.colors, displayTeam.name);
+            const logoUrl = displayTeam.logoUrl;
             return (
               <motion.button
                 key={team.id}
@@ -107,16 +115,16 @@ export const TeamHistoryPicker: React.FC<TeamHistoryPickerProps> = ({
                 style={{ borderColor: `${accent}44` }}
               >
                 <div className="absolute inset-0 opacity-0 group-hover:opacity-10 transition-opacity" style={{ backgroundColor: accent }} />
-                {team.logoUrl ? (
-                  <img src={team.logoUrl} alt={team.name} className="w-14 h-14 object-contain mb-3 group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
+                {logoUrl ? (
+                  <img src={logoUrl} alt={displayTeam.name} className="w-14 h-14 object-contain mb-3 group-hover:scale-110 transition-transform" referrerPolicy="no-referrer" />
                 ) : (
-                  <div className="w-14 h-14 rounded-xl bg-zinc-800 mb-3 flex items-center justify-center text-xl font-black" style={{ color: accent }}>{team.abbrev}</div>
+                  <div className="w-14 h-14 rounded-xl bg-zinc-800 mb-3 flex items-center justify-center text-xl font-black" style={{ color: accent }}>{displayTeam.abbrev}</div>
                 )}
                 <div className="text-xs font-black uppercase tracking-tight leading-tight">
-                  {team.region && <span className="text-zinc-400">{team.region} </span>}
-                  <span style={{ color: accent }}>{getTeamMascot(team.name, team.region)}</span>
+                  {displayTeam.region && <span className="text-zinc-400">{displayTeam.region} </span>}
+                  <span style={{ color: accent }}>{getTeamMascot(displayTeam.name, displayTeam.region)}</span>
                 </div>
-                <div className="text-[10px] text-zinc-600 font-mono uppercase mt-0.5">{team.abbrev}</div>
+                <div className="text-[10px] text-zinc-600 font-mono uppercase mt-0.5">{displayTeam.abbrev}</div>
                 <ChevronRight className="absolute right-3 bottom-3 w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" style={{ color: accent }} />
               </motion.button>
             );
@@ -124,6 +132,5 @@ export const TeamHistoryPicker: React.FC<TeamHistoryPickerProps> = ({
         </div>
       </div>
     </div>
-    {quickPortals}
   </>
 );

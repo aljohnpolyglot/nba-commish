@@ -1,18 +1,30 @@
 import React from 'react';
-import { generateBasketballFace, ARCHETYPE_PROFILES } from '../../../services/genDraftPlayers';
+import { generateBasketballFace } from '../../../services/genDraftPlayers';
 import { getNameData } from '../../../data/nameDataFetcher';
-import { calculateCreatorOverall, archetypeToRatings, clampRating, defaultWingspanForHeight, expectedWeightForHeight, heightToRating, type CreatorRatingKey, type PlayerCreatorForm } from '../../../services/playerCreator';
+import {
+  CREATOR_REALISTIC_FACE_OPTIONS,
+  calculateCreatorOverall,
+  archetypeToRatings,
+  clampRating,
+  defaultWingspanForHeight,
+  expectedWeightForHeight,
+  heightToRating,
+  type CreatorRatingKey,
+  type PlayerCreatorForm,
+} from '../../../services/playerCreator';
 import type { MoodTrait } from '../../../utils/mood';
 
-export type CreatorPhase = 'identity' | 'build' | 'ratings' | 'contract' | 'position' | 'review';
+export type CreatorPhase = 'identity' | 'build' | 'ratings' | 'contract' | 'appearance' | 'traits' | 'position' | 'review';
 
 export type SetCreatorField = <K extends keyof PlayerCreatorForm>(key: K, value: PlayerCreatorForm[K]) => void;
 
 export const PHASES: Array<{ id: CreatorPhase; label: string }> = [
   { id: 'identity', label: 'Identity' },
   { id: 'build', label: 'Build' },
-  { id: 'ratings', label: 'K2 Ratings' },
+  { id: 'ratings', label: 'Ratings' },
   { id: 'contract', label: 'Contract' },
+  { id: 'appearance', label: 'Appearance' },
+  { id: 'traits', label: 'Traits' },
   { id: 'position', label: 'Position' },
   { id: 'review', label: 'Review' },
 ];
@@ -51,47 +63,9 @@ export const ARCHETYPES_BY_POSITION: Record<string, string[]> = {
   C: ['Traditional Center', 'The Unicorn', 'Defensive Anchor', 'Stretch Big', 'Two-Way Big', 'Offensive Hub', 'Athletic Rim-Runner', 'Undersized Big', 'Post Specialist', 'High-Energy Finisher'],
 };
 
-export const K2_DRIVERS: { catKey: string; subIdx: number; bbgmKey: CreatorRatingKey; multiplier: number; hgtLimited?: boolean }[] = [
-  { catKey: 'OS', subIdx: 0, bbgmKey: 'ins', multiplier: 0.30 },
-  { catKey: 'OS', subIdx: 1, bbgmKey: 'fg', multiplier: 0.48 },
-  { catKey: 'OS', subIdx: 2, bbgmKey: 'tp', multiplier: 0.48 },
-  { catKey: 'OS', subIdx: 3, bbgmKey: 'ft', multiplier: 0.60 },
-  { catKey: 'OS', subIdx: 4, bbgmKey: 'oiq', multiplier: 0.60 },
-  { catKey: 'OS', subIdx: 5, bbgmKey: 'oiq', multiplier: 0.24 },
-  { catKey: 'AT', subIdx: 0, bbgmKey: 'spd', multiplier: 0.60 },
-  { catKey: 'AT', subIdx: 1, bbgmKey: 'spd', multiplier: 0.42 },
-  { catKey: 'AT', subIdx: 2, bbgmKey: 'stre', multiplier: 0.48 },
-  { catKey: 'AT', subIdx: 3, bbgmKey: 'jmp', multiplier: 0.60 },
-  { catKey: 'AT', subIdx: 4, bbgmKey: 'endu', multiplier: 0.60 },
-  { catKey: 'AT', subIdx: 5, bbgmKey: 'endu', multiplier: 0.36 },
-  { catKey: 'AT', subIdx: 6, bbgmKey: 'endu', multiplier: 0.60 },
-  { catKey: 'IS', subIdx: 0, bbgmKey: 'ins', multiplier: 0.48 },
-  { catKey: 'IS', subIdx: 1, bbgmKey: 'dnk', multiplier: 0.24, hgtLimited: true },
-  { catKey: 'IS', subIdx: 2, bbgmKey: 'dnk', multiplier: 0.54 },
-  { catKey: 'IS', subIdx: 3, bbgmKey: 'ins', multiplier: 0.48 },
-  { catKey: 'IS', subIdx: 4, bbgmKey: 'fg', multiplier: 0.36 },
-  { catKey: 'IS', subIdx: 5, bbgmKey: 'stre', multiplier: 0.36 },
-  { catKey: 'IS', subIdx: 6, bbgmKey: 'ins', multiplier: 0.18 },
-  { catKey: 'IS', subIdx: 7, bbgmKey: 'oiq', multiplier: 0.42 },
-  { catKey: 'PL', subIdx: 0, bbgmKey: 'pss', multiplier: 0.60 },
-  { catKey: 'PL', subIdx: 1, bbgmKey: 'drb', multiplier: 0.60 },
-  { catKey: 'PL', subIdx: 2, bbgmKey: 'drb', multiplier: 0.36 },
-  { catKey: 'PL', subIdx: 3, bbgmKey: 'pss', multiplier: 0.30 },
-  { catKey: 'PL', subIdx: 4, bbgmKey: 'oiq', multiplier: 0.42 },
-  { catKey: 'DF', subIdx: 0, bbgmKey: 'diq', multiplier: 0.135, hgtLimited: true },
-  { catKey: 'DF', subIdx: 1, bbgmKey: 'diq', multiplier: 0.72 },
-  { catKey: 'DF', subIdx: 2, bbgmKey: 'diq', multiplier: 0.54 },
-  { catKey: 'DF', subIdx: 3, bbgmKey: 'jmp', multiplier: 0.24, hgtLimited: true },
-  { catKey: 'DF', subIdx: 4, bbgmKey: 'diq', multiplier: 0.90 },
-  { catKey: 'DF', subIdx: 5, bbgmKey: 'diq', multiplier: 0.54 },
-  { catKey: 'DF', subIdx: 6, bbgmKey: 'diq', multiplier: 0.36, hgtLimited: true },
-  { catKey: 'RB', subIdx: 0, bbgmKey: 'reb', multiplier: 0.18, hgtLimited: true },
-  { catKey: 'RB', subIdx: 1, bbgmKey: 'reb', multiplier: 0.18, hgtLimited: true },
-];
-
-export const inputClass = 'w-full bg-slate-950/70 border border-slate-800 rounded-xl px-3 py-2 text-sm text-white focus:outline-none focus:border-sky-500';
+export const inputClass = 'w-full rounded border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition-colors focus:border-cyan-500 focus:outline-none';
 export const selectClass = `${inputClass} appearance-none`;
-export const diceBtn = 'px-2 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white shrink-0 flex items-center justify-center';
+export const diceBtn = 'flex h-11 w-11 shrink-0 items-center justify-center rounded border border-zinc-700 bg-zinc-900 text-zinc-500 transition-colors hover:border-cyan-500 hover:text-cyan-400';
 
 export const TRAIT_LABELS: Record<MoodTrait, { short: string; desc: string }> = {
   COMPETITOR: { short: 'Competitor', desc: 'Winning obsessed — win-delta 2×' },
@@ -160,7 +134,10 @@ export function makeInitialForm(year: number): PlayerCreatorForm {
   return {
     firstName: 'Created',
     lastName: 'Player',
-    age: 20,
+    age: 19,
+    birthYear: year - 19,
+    birthMonth: 1 + Math.floor(Math.random() * 12),
+    birthDay: 1 + Math.floor(Math.random() * 28),
     country: 'USA',
     college: 'Custom Academy',
     pos: 'SF',
@@ -173,11 +150,14 @@ export function makeInitialForm(year: number): PlayerCreatorForm {
     handedness: 'Right',
     race: 'black',
     gender: 'male',
+    appearanceMode: 'off',
+    faceStyle: 'Realistic',
+    realisticFaceIndex: Math.floor(Math.random() * CREATOR_REALISTIC_FACE_OPTIONS),
+    realisticFaceSeed: Math.random().toString(36).slice(2),
     face: generateBasketballFace({ race: 'black', gender: 'male' }),
     ratings,
+    k2DetailOffsets: {},
     potential: Math.min(99, ovr + 8),
-    drivingDunk: 65,
-    standingDunk: 30,
     durability: 75,
     composure: 65,
     clutch: 65,
@@ -208,7 +188,7 @@ export function ratingColor(value: number): string {
 export function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <label className="block">
-      <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">{label}</span>
+      <span className="mb-1.5 ml-1 block text-xs font-bold uppercase tracking-wider text-zinc-400">{label}</span>
       {children}
     </label>
   );
@@ -269,6 +249,8 @@ export function randomizeFormPlayer(
   const ovr = calculateCreatorOverall(ratings);
   const race = form.race || 'black';
   const gender = form.gender || 'male';
+  const leagueYear = form.birthYear + form.age;
+  const age = 18 + Math.floor(Math.random() * 18);
 
   return {
     ...form,
@@ -278,17 +260,21 @@ export function randomizeFormPlayer(
     college,
     pos,
     archetype,
-    age: 18 + Math.floor(Math.random() * 18),
+    age,
+    birthYear: leagueYear - age,
+    birthMonth: 1 + Math.floor(Math.random() * 12),
+    birthDay: 1 + Math.floor(Math.random() * 28),
     heightIn,
     weightLbs: Math.max(140, Math.min(340, Math.round(expectedWeightForHeight(heightIn) + (Math.random() * 58 - 20)))),
     wingspanIn: defaultWingspanForHeight(heightIn) + Math.floor(Math.random() * 3),
     jerseyNumber: String(Math.floor(Math.random() * 99)),
     ratings,
+    k2DetailOffsets: {},
     potential: Math.min(99, ovr + 4 + Math.floor(Math.random() * 11)),
-    drivingDunk: clampRating((ARCHETYPE_PROFILES[archetype]?.drivingDunk ?? 55) + (Math.random() * 10 - 5)),
-    standingDunk: clampRating((ARCHETYPE_PROFILES[archetype]?.standingDunk ?? 25) + (Math.random() * 10 - 5)),
     face: generateBasketballFace({ race, gender }),
     imgURL: '',
+    realisticFaceIndex: Math.floor(Math.random() * CREATOR_REALISTIC_FACE_OPTIONS),
+    realisticFaceSeed: Math.random().toString(36).slice(2),
   };
 }
 

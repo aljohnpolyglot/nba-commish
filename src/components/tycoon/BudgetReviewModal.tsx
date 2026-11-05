@@ -1,11 +1,12 @@
 import React from 'react';
 import { CheckCircle2, X } from 'lucide-react';
-import type { NBATeam } from '../../types';
+import type { GameState, NBATeam } from '../../types';
 import type { TravelPreferences } from '../../types/tycoon';
-import { computeAnnualBudget } from '../../services/tycoon/budgetEngine';
-import { defaultAcademyBudgetForTier } from '../../services/tycoon/economyScale';
+import { buildBudgetContext, computeAnnualBudget } from '../../services/tycoon/budgetEngine';
+import { normalizeAcademyBudgetEUR } from '../../services/tycoon/economyScale';
 import { MEDICAL_BUDGET_MIN_EUR } from '../../services/tycoon/medicalEngine';
 import { formatCurrencyWithCode } from '../../utils/helpers';
+import { RevenueLedgerBreakdown } from './RevenueLedgerBreakdown';
 
 /**
  * BudgetReviewModal — final read-only ledger view. No facility cards, no
@@ -18,6 +19,7 @@ interface BudgetReviewModalProps {
   open: boolean;
   team: NBATeam | null;
   players: any[];
+  state: GameState;
   currentYear: number;
   currency: string;
   onClose: () => void;
@@ -37,6 +39,7 @@ export const BudgetReviewModal: React.FC<BudgetReviewModalProps> = ({
   open,
   team,
   players,
+  state,
   currentYear,
   currency,
   onClose,
@@ -56,19 +59,15 @@ export const BudgetReviewModal: React.FC<BudgetReviewModalProps> = ({
       ticketPriceMultiplier: tycoon.ticketPriceMultiplier ?? 1,
       travelPreferences: tycoon.travelPreferences ?? travelDefaults,
       medicalBudget: tycoon.medicalBudget ?? MEDICAL_BUDGET_MIN_EUR,
-      scoutingInvestment: tycoon.scoutingInvestment ?? 250_000,
-      academyBudget: tycoon.academyBudget ?? defaultAcademyBudgetForTier(tycoon.tier),
+      scoutingInvestment: tycoon.scoutingInvestment ?? Math.round(250_000 * (tycoon.currentEconomyIndex ?? 1)),
+      academyBudget: normalizeAcademyBudgetEUR(tycoon.academyBudget, tycoon.tier, tycoon.currentEconomyIndex ?? 1),
     },
   } as NBATeam;
-  const ledger = computeAnnualBudget(draftTeam, {
-    year: currentYear,
-    endesaFinishPosition: (team as any).lastEndesaFinish ?? 9,
-    euroleagueStage: (team as any).lastEuroleagueStage ?? 'none',
-    euroleagueAwayGames: (team as any).lastEuroAwayGames ?? 0,
-    endesaPrizeEUR: 0,
-    euroleaguePrizeEUR: 0,
-  }, players);
-  const totalRevenue = Object.values(ledger.revenue).reduce((sum, value) => sum + value, 0);
+  const ledger = computeAnnualBudget(
+    draftTeam,
+    buildBudgetContext(state, Number((team as any).id ?? (team as any).tid), { year: currentYear }),
+    players,
+  );
   const totalExpenses = Object.values(ledger.expenses).reduce((sum, value) => sum + (value ?? 0), 0);
   const previousLedger = tycoon.ledgerHistory?.[tycoon.ledgerHistory.length - 1] ?? null;
   const healthy = ledger.cashOnHandEnd >= 0;
@@ -99,17 +98,7 @@ export const BudgetReviewModal: React.FC<BudgetReviewModalProps> = ({
               <div className="mt-1 text-xs text-slate-400">{healthy ? 'Healthy projection' : 'Negative cash projection'}</div>
             </div>
 
-            <LedgerBlock
-              title="Revenue"
-              rows={[
-                ['Matchday', ledger.revenue.matchday],
-                ['Sponsorships', ledger.revenue.sponsorship],
-                ['TV / Prize', ledger.revenue.tv + ledger.revenue.prize],
-              ]}
-              total={totalRevenue}
-              fmt={fmt}
-              tone="emerald"
-            />
+            <RevenueLedgerBreakdown ledger={ledger} fmt={fmt} />
             <LedgerBlock
               title="Expenses"
               rows={[
@@ -120,6 +109,8 @@ export const BudgetReviewModal: React.FC<BudgetReviewModalProps> = ({
                 ['Medical', ledger.expenses.medical ?? 0],
                 ['Scouting', ledger.expenses.scouting ?? 0],
                 ['Academy', ledger.expenses.academy ?? 0],
+                ['Transfer Fees', ledger.expenses.transfer ?? 0],
+                ['Finance Costs', ledger.expenses.financeCosts ?? 0],
               ]}
               total={totalExpenses}
               fmt={fmt}
@@ -163,7 +154,7 @@ const LedgerBlock: React.FC<{
         <div className={`text-sm font-black tabular-nums ${color}`}>{fmt(total)}</div>
       </div>
       <div className="divide-y divide-slate-800 rounded-xl border border-slate-800 bg-slate-950/70">
-        {rows.filter(([, value]) => value > 0).map(([label, value]) => (
+        {rows.map(([label, value]) => (
           <div key={label} className="flex items-center justify-between gap-3 px-3 py-2 text-sm">
             <span className="text-slate-400">{label}</span>
             <span className="font-black text-slate-200 tabular-nums">{fmt(value)}</span>

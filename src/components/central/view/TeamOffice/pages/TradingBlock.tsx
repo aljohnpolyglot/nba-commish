@@ -3,8 +3,9 @@ import { Trash2 } from 'lucide-react';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
+import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import { PlayerSelectorGrid, type PlayerSelectorItem } from '../../../../shared/PlayerSelectorGrid';
-import { calcOvr2K, calcPot2K, calcPlayerTV, computeLeagueAvg, getPotColor, isYoungContenderCore, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
+import { calcPlayerTV, getPotColor, isYoungContenderCore, type TeamMode } from '../../../../../services/trade/tradeValueEngine';
 import { generateInboundProposalsForUser } from '../../../../../services/trade/inboundProposalGenerator';
 import { AwardService } from '../../../../../services/logic/AwardService';
 import { getMinTradableSeason, getTradablePicks, getMaxTradableSeason } from '../../../../../services/draft/DraftPickGenerator';
@@ -16,12 +17,12 @@ import { getFamilyOnRoster } from '../../../../../utils/familyTies';
 import { getCurrentTeamRegularSeasonYears } from '../../../../../utils/playerTenure';
 import { compareGameDates, getDraftDate, getTradeDeadlineDate, isInPostDeadlinePreFAWindow, toISODateString } from '../../../../../utils/dateUtils';
 import { NBAPlayer, NBATeam } from '../../../../../types';
-import { PlayerBioView } from '../../PlayerBioView';
 import { isNoDraftLeague } from '../../../../../services/offseason/offseasonState';
 import { getDisplayAge } from '../../../../../store/playerRatingStore';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 import { isPbaIsolatedMode } from '../../../../../utils/uiMode';
 import { getPbaTradeTeams, isPbaTradeWindowOpen } from '../../../../../services/pba/tradeWindow';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../../../utils/scoutingFuzz';
 
 interface TradingBlockProps {
   teamId: number;
@@ -37,37 +38,50 @@ function ovrText(v: number): string {
 }
 
 export function TradingBlock({ teamId }: TradingBlockProps) {
-  const { state, dispatchAction } = useGame();
+  const { state, dispatchAction, navigateToPlayer } = useGame();
   if (state.leagueStats?.tradesAllowed === false) return null;
   const { players, teams, draftPicks } = state;
   const noDraft = isNoDraftLeague(state.leagueStats as any);
   const pbaMode = isPbaIsolatedMode(state);
   if (pbaMode && !isPbaTradeWindowOpen(state)) return null;
-  const tradeTeams = pbaMode ? getPbaTradeTeams(state) : teams;
-  const tradeTeamIds = new Set(tradeTeams.map(team => team.id));
+  const tradeTeams = useMemo(
+    () => pbaMode ? getPbaTradeTeams(state) : teams,
+    [pbaMode, state.nonNBATeams, state.teams, teams],
+  );
+  const tradeTeamIds = useMemo(
+    () => new Set(tradeTeams.map(team => team.id)),
+    [tradeTeams],
+  );
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
   const lotterySlotByTid = useMemo(
     () => buildFullDraftSlotMap((state as any).draftLotteryResult, tradeTeams),
     [(state as any).draftLotteryResult, tradeTeams],
   );
-  const allActive = players.filter(p => p.tid >= 0 && isOnRoster(p) && p.status !== 'Draft Prospect');
-  const leagueActive = pbaMode
-    ? allActive.filter(p => tradeTeamIds.has(Number(p.tid)))
-    : allActive;
-  const teamPlayers = allActive.filter(p => p.tid === teamId);
+  const allActive = useMemo(
+    () => players.filter(p => p.tid >= 0 && isOnRoster(p) && p.status !== 'Draft Prospect'),
+    [players],
+  );
+  const leagueActive = useMemo(
+    () => allActive.filter(p => tradeTeamIds.has(Number(p.tid))),
+    [allActive, tradeTeamIds],
+  );
+  const teamPlayers = useMemo(
+    () => allActive.filter(p => p.tid === teamId),
+    [allActive, teamId],
+  );
   const team = resolveAnyTeam(teamId, teams, state.nonNBATeams ?? []);
   const thresholds = useMemo(() => getCapThresholds(state.leagueStats as any), [state.leagueStats]);
 
   // Determine team mode using real trade outlook
   const teamMode: TeamMode = useMemo(() => {
     if (!team) return 'rebuild';
-    const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId);
+    const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId, state.leagueStats?.playIn !== false);
     if (manual) {
       if (manual.role === 'heavy_buyer' || manual.role === 'buyer') return 'contend';
       if (manual.role === 'rebuilding') return 'presti';
       return 'rebuild';
     }
-    const payroll = getTeamPayrollUSD(players, teamId, team, currentYear);
+    const payroll = getTeamPayrollUSD(players, teamId, team, currentYear, state.leagueStats as any);
     const rec = effectiveRecord(team, currentYear);
     const confTeams = tradeTeams.filter(t => t.conference === team.conference).map(t => ({
       t, rec: effectiveRecord(t, currentYear),
@@ -90,12 +104,15 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     return <div className="text-red-400 font-bold uppercase tracking-widest">Team not found</div>;
   }
 
-  const rosterWithTV = teamPlayers.map(p => ({
-    player: p,
-    tv: calcPlayerTV(p, teamMode, currentYear),
-    ovr: calcOvr2K(p),
-    pot: calcPot2K(p, currentYear),
-  }));
+  const rosterWithTV = useMemo(
+    () => teamPlayers.map(p => ({
+      player: p,
+      tv: calcPlayerTV(p, teamMode, currentYear),
+      ovr: getScoutedDisplayOverall(state, p, currentYear),
+      pot: getScoutedDisplayPotential(state, p, currentYear, currentYear),
+    })),
+    [teamPlayers, teamMode, currentYear, state],
+  );
 
   // ── Editable lists with state ─────────────────────────────────────────────
   // Commissioner can edit any team. GM can only edit their own. Other teams are read-only.
@@ -136,7 +153,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     // (Thanasis/Alex Antetokounmpo shouldn't appear as trade fodder while Giannis is protected).
     for (const r of rosterWithTV) {
       if (coreIds.has(r.player.internalId)) {
-        for (const rel of getFamilyOnRoster(r.player, rosterPlayers)) {
+        for (const rel of getFamilyOnRoster(r.player, rosterPlayers, currentYear)) {
           coreIds.add(rel.internalId);
         }
       }
@@ -180,6 +197,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       block: new Set(saved.blockIds.filter(id => onTeamIds.has(id))),
       target: new Set(saved.targetIds.filter(id => otherIds.has(id))),
       picks: new Set(saved.blockPickIds.filter(id => validPickIds.has(id))),
+      targetDefaultsApplied: Number(saved.targetDefaultsVersion ?? 0) >= 1,
     };
     // Run once per team/save — roster diffs after a trade are reconciled by the
     // sync effect below, not by re-hydrating from localStorage.
@@ -198,6 +216,9 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
   // Pick IDs (dpid) that contending teams are willing to trade — hydrated from their draftPicks inventory.
   const [blockPickIds, setBlockPickIds] = useState<Set<number>>(
     () => initialHydrate?.picks ?? new Set(),
+  );
+  const targetDefaultsSeededRef = useRef(
+    initialHydrate?.targetDefaultsApplied === true || (initialHydrate?.target.size ?? 0) > 0,
   );
 
   // Reconcile selections against the current roster whenever players or picks
@@ -246,23 +267,31 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       blockIds: Array.from(blockIds),
       targetIds: Array.from(targetIds),
       blockPickIds: Array.from(blockPickIds),
+      targetDefaultsVersion: targetDefaultsSeededRef.current ? 1 : 0,
     });
   }, [teamId, canEdit, untouchableIds, blockIds, targetIds, blockPickIds]);
 
   const [editingColumn, setEditingColumn] = useState<'untouchable' | 'block' | 'targets' | null>(null);
-  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
+  const [proposalRefreshRevision, setProposalRefreshRevision] = useState(0);
 
   const untouchablesList = rosterWithTV.filter(r => untouchableIds.has(r.player.internalId));
   const tradingBlockList = rosterWithTV.filter(r => blockIds.has(r.player.internalId));
 
   // Target List: user-selected from other teams, or AI-suggested
-  const otherPlayers = leagueActive.filter(p => p.tid !== teamId);
-  const otherWithTV = useMemo(() => otherPlayers.map(p => ({
-    player: p,
-    tv: calcPlayerTV(p, teamMode, currentYear),
-    ovr: calcOvr2K(p),
-    pot: calcPot2K(p, currentYear),
-  })), [otherPlayers, teamMode, currentYear]);
+  const otherPlayers = useMemo(
+    () => leagueActive.filter(p => p.tid !== teamId),
+    [leagueActive, teamId],
+  );
+  const needsOtherPlayerRatings = canEdit || !isOwnTeam || editingColumn === 'targets' || targetIds.size > 0;
+  const otherWithTV = useMemo(() => {
+    if (!needsOtherPlayerRatings) return [];
+    return otherPlayers.map(p => ({
+      player: p,
+      tv: calcPlayerTV(p, teamMode, currentYear),
+      ovr: getScoutedDisplayOverall(state, p, currentYear),
+      pot: getScoutedDisplayPotential(state, p, currentYear, currentYear),
+    }));
+  }, [needsOtherPlayerRatings, otherPlayers, teamMode, currentYear, state]);
 
   // ── Team needs: which positions are thin? Targets skew toward filling gaps ────
   // A balanced roster is roughly 3 per position (15 players / 5 slots). Below 2 = critical need.
@@ -323,13 +352,19 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       .slice(0, MAX_SLOTS);
   }, [otherWithTV, targetIds, teamMode, posNeeds]);
 
+  useEffect(() => {
+    if (targetDefaultsSeededRef.current || !canEdit || targetList.length === 0) return;
+    targetDefaultsSeededRef.current = true;
+    setTargetIds(new Set(targetList.map(item => item.player.internalId)));
+  }, [canEdit, targetList]);
+
   // Selector items
   const ownRosterItems: PlayerSelectorItem[] = useMemo(() =>
-    rosterWithTV.map(r => ({ player: r.player, score: r.ovr, subtitle: `${r.ovr} · ${r.pot} · ${playerAge(r.player)}y` })),
+    rosterWithTV.map(r => ({ player: r.player, score: r.ovr, ovrLabel: String(r.ovr), subtitle: `${r.ovr} · ${r.pot} · ${playerAge(r.player)}y` })),
   [rosterWithTV]);
 
   const leagueItems: PlayerSelectorItem[] = useMemo(() =>
-    otherWithTV.map(r => ({ player: r.player, score: r.ovr, subtitle: `${r.ovr} · ${r.pot} · ${playerAge(r.player)}y` })),
+    otherWithTV.map(r => ({ player: r.player, score: r.ovr, ovrLabel: String(r.ovr), subtitle: `${r.ovr} · ${r.pot} · ${playerAge(r.player)}y` })),
   [otherWithTV]);
 
   const toggle = (list: 'untouchable' | 'block' | 'targets', id: string) => {
@@ -380,6 +415,11 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       return n;
     });
   };
+  const closeEditor = () => {
+    const shouldRefreshProposals = editingColumn === 'block';
+    setEditingColumn(null);
+    if (shouldRefreshProposals) setProposalRefreshRevision(value => value + 1);
+  };
 
   // Build the trade-outlook map once for the inbound proposal generator.
   const buildOutlookMap = () => {
@@ -402,10 +442,10 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
       const confRank = idx >= 0 ? idx + 1 : 15;
       const rec = effectiveRecord(t, currentYear);
       const gb = Math.max(0, ((lw - rec.wins) + (rec.losses - ll)) / 2);
-      const payroll = getTeamPayrollUSD(players, t.id, t, currentYear);
+      const payroll = getTeamPayrollUSD(players, t.id, t, currentYear, state.leagueStats as any);
       const expiring = players.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYear).length;
       const starAvg = topNAvgK2(players, t.id, 3);
-      const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId);
+      const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId, state.leagueStats?.playIn !== false);
       const outlook = manual ?? getTradeOutlook(payroll, rec.wins, rec.losses, expiring, thresholds, confRank, gb, starAvg);
       map.set(t.id, { role: outlook.role });
     }
@@ -424,47 +464,45 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
     const deadline = toISODateString(getTradeDeadlineDate(currentYear, state.leagueStats));
     const draftDate = toISODateString(getDraftDate(currentYear, state.leagueStats));
     if (state.date && compareGameDates(state.date, deadline) > 0 && compareGameDates(state.date, draftDate) < 0) return;
-    const outlookMap = buildOutlookMap();
-    const minTradableSeason = getMinTradableSeason(state);
-    const classStrengthByYear = buildClassStrengthMap(players, currentYear, currentYear, getMaxTradableSeason(state));
-    const lotterySlotByTid = buildFullDraftSlotMap((state as any).draftLotteryResult, tradeTeams);
-    const powerRanks = teamPowerRanks(tradeTeams, currentYear);
-    const mvpTop = AwardService.calculateMVPRankings(players, tradeTeams, currentYear, 30);
-    const mvpRank = new Map<string, number>();
-    mvpTop.forEach((c, i) => mvpRank.set(c.player.internalId, i + 1));
-    const proposals = generateInboundProposalsForUser({
-      userTid: teamId,
-      userGMName: `${team?.name ?? 'Team'} GM`,
-      blockPlayerIds: Array.from(blockIds),
-      blockPickIds: Array.from(blockPickIds),
-      players,
-      teams: tradeTeams,
-      draftPicks: getTradablePicks(state),
-      currentYear,
-      minTradableSeason,
-      teamOutlooks: outlookMap,
-      proposedDate: state.date ?? '',
-      classStrengthByYear,
-      lotterySlotByTid,
-      powerRanks,
-      isPostDeadlinePreFA: isInPostDeadlinePreFAWindow(state.date ?? '', currentYear, state.leagueStats as any),
-      recentlySignedLockMs: {
-        currentDate: state.date ?? '',
-        leagueStats: state.leagueStats as any,
-      },
-      allowPbaRoster: pbaMode,
-      mvpRank,
-      leagueStats: state.leagueStats,
-    });
-    // Replace this team's inbound-pending slot; leave other teams / resolved proposals alone.
-    const existing = (state.tradeProposals ?? []).filter(p => p.receivingTeamId !== teamId || p.status !== 'pending');
-    dispatchAction({ type: 'UPDATE_STATE', payload: { tradeProposals: [...existing, ...proposals] } } as any);
+    const timer = window.setTimeout(() => {
+      const outlookMap = buildOutlookMap();
+      const minTradableSeason = getMinTradableSeason(state);
+      const classStrengthByYear = buildClassStrengthMap(players, currentYear, currentYear, getMaxTradableSeason(state));
+      const lotterySlotByTid = buildFullDraftSlotMap((state as any).draftLotteryResult, tradeTeams);
+      const powerRanks = teamPowerRanks(tradeTeams, currentYear);
+      const mvpTop = AwardService.calculateMVPRankings(players, tradeTeams, currentYear, 30);
+      const mvpRank = new Map<string, number>();
+      mvpTop.forEach((c, i) => mvpRank.set(c.player.internalId, i + 1));
+      const proposals = generateInboundProposalsForUser({
+        userTid: teamId,
+        userGMName: `${team?.name ?? 'Team'} GM`,
+        blockPlayerIds: Array.from(blockIds),
+        blockPickIds: Array.from(blockPickIds),
+        players,
+        teams: tradeTeams,
+        draftPicks: getTradablePicks(state),
+        currentYear,
+        minTradableSeason,
+        teamOutlooks: outlookMap,
+        proposedDate: state.date ?? '',
+        classStrengthByYear,
+        lotterySlotByTid,
+        powerRanks,
+        isPostDeadlinePreFA: isInPostDeadlinePreFAWindow(state.date ?? '', currentYear, state.leagueStats as any),
+        recentlySignedLockMs: {
+          currentDate: state.date ?? '',
+          leagueStats: state.leagueStats as any,
+        },
+        allowPbaRoster: pbaMode,
+        mvpRank,
+        leagueStats: state.leagueStats,
+      });
+      const existing = (state.tradeProposals ?? []).filter(p => p.receivingTeamId !== teamId || p.status !== 'pending');
+      dispatchAction({ type: 'UPDATE_STATE', payload: { tradeProposals: [...existing, ...proposals] } } as any);
+    }, 120);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state.date, blockIds, blockPickIds, teamId, canEdit]);
-
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
-  }
+  }, [state.date, proposalRefreshRevision, teamId, canEdit]);
 
   return (
     <div className="h-full flex flex-col">
@@ -473,20 +511,17 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
           Read-only — GM mode only edits your own team
         </p>
       )}
-      {canEdit && (blockIds.size > 0 || blockPickIds.size > 0) && (
-        <p className="mb-4 text-[10px] text-slate-500 italic">
-          Inbound offers auto-refresh in Trade Proposals whenever the day advances.
-        </p>
-      )}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 flex-1">
         <EditableColumn title="Target List" items={targetList} teams={tradeTeams}
           onAdd={canEdit ? () => setEditingColumn('targets') : undefined}
-          accentColor="#818cf8" onPlayerClick={setViewingPlayer}
-          onRemovePlayer={canEdit && targetIds.size > 0 ? (id) => removeFromList('targets', id) : undefined} />
+          accentColor="#818cf8" onPlayerClick={navigateToPlayer}
+          onRemovePlayer={canEdit && targetIds.size > 0 ? (id) => removeFromList('targets', id) : undefined}
+          currentYear={currentYear}
+        />
         <EditableColumn
           title="Trading Block" items={tradingBlockList} teams={tradeTeams}
           onAdd={canEdit ? () => setEditingColumn('block') : undefined}
-          accentColor="#f87171" onPlayerClick={setViewingPlayer}
+          accentColor="#f87171" onPlayerClick={navigateToPlayer}
           onRemovePlayer={canEdit ? (id) => removeFromList('block', id) : undefined}
           onRemovePick={canEdit ? removePick : undefined}
           picks={teamMode === 'contend' ? blockPicks : undefined}
@@ -499,8 +534,9 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
         />
         <EditableColumn title="Untouchables" items={untouchablesList} teams={tradeTeams}
           onAdd={canEdit ? () => setEditingColumn('untouchable') : undefined}
-          accentColor="#34d399" onPlayerClick={setViewingPlayer}
-          onRemovePlayer={canEdit ? (id) => removeFromList('untouchable', id) : undefined} />
+          accentColor="#34d399" onPlayerClick={navigateToPlayer}
+          onRemovePlayer={canEdit ? (id) => removeFromList('untouchable', id) : undefined}
+          currentYear={currentYear} />
       </div>
 
       {/* ── Player Selector Modal ──────────────────────────────────── */}
@@ -511,7 +547,7 @@ export function TradingBlock({ teamId }: TradingBlockProps) {
               <h3 className="text-sm sm:text-lg font-black text-white uppercase tracking-widest">
                 {editingColumn === 'untouchable' ? 'Untouchables (Max 10)' : editingColumn === 'block' ? 'Trading Block (Max 10)' : 'Target List (Max 10)'}
               </h3>
-              <button onClick={() => setEditingColumn(null)} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold uppercase text-xs rounded-xl">Done</button>
+              <button onClick={closeEditor} className="px-3 py-1.5 sm:px-4 sm:py-2 bg-slate-800 hover:bg-slate-700 text-white font-bold uppercase text-xs rounded-xl">Done</button>
             </div>
             <div className="flex-1 overflow-y-auto p-4 sm:p-6">
               <PlayerSelectorGrid
@@ -576,6 +612,7 @@ interface TVItem {
 function EditableColumn({
   title, items, teams, onAdd, accentColor, onPlayerClick,
   picks, blockPickIds, onRemovePlayer, onRemovePick, currentYear, lotterySlotByTid,
+  emptyLabel,
 }: {
   title: string;
   items: TVItem[];
@@ -590,10 +627,11 @@ function EditableColumn({
   allTeamPicks?: Array<{ dpid: number; season: number; round: number; originalTid: number; tid: number }>;
   onOpenPickEditor?: () => void;
   onRemovePick?: (dpid: number) => void;
-  currentYear?: number;
+  currentYear: number;
   allTeams?: NBATeam[];
   blockPickIds?: Set<number>;
   lotterySlotByTid?: Map<number, number>;
+  emptyLabel?: string;
 }) {
   return (
     <div className="flex flex-col gap-4">
@@ -602,7 +640,7 @@ function EditableColumn({
       </h2>
       <div className="flex flex-col gap-2">
         {items.length === 0 && (!picks || picks.length === 0) && (
-          <p className="text-[#8b949e] text-xs italic py-4 text-center">No players set</p>
+          <p className="text-[#8b949e] text-xs italic py-4 text-center">{emptyLabel ?? 'No players set'}</p>
         )}
         {items.map((item, i) => {
           const team = teams.find(t => t.id === item.player.tid);
@@ -611,7 +649,7 @@ function EditableColumn({
               key={i}
               item={item}
               teamLogoUrl={team?.logoUrl}
-              currentYear={currentYear ?? new Date().getFullYear()}
+               currentYear={currentYear}
               onClick={() => onPlayerClick?.(item.player)}
               onRemove={onRemovePlayer ? () => onRemovePlayer(item.player.internalId) : undefined}
             />
@@ -628,7 +666,7 @@ function EditableColumn({
                   pick={pick}
                   origTeam={origTeam}
                   onRemove={onRemovePick ? () => onRemovePick(pick.dpid) : undefined}
-                  currentYear={currentYear ?? new Date().getFullYear()}
+                   currentYear={currentYear}
                   lotterySlotByTid={lotterySlotByTid ?? new Map()}
                 />
               );
@@ -748,7 +786,13 @@ function PlayerCard({ item, teamLogoUrl, currentYear, onClick, onRemove }: { ite
       />
 
       <div className="flex-1 min-w-0 flex flex-col justify-center">
-        <span className="font-bold text-[#e6edf3] uppercase text-sm truncate group-hover:text-[#FDB927] transition-colors">{player.name}</span>
+        <PlayerNameWithHover
+          player={player}
+          className="font-bold text-[#e6edf3] uppercase text-sm truncate group-hover:text-[#FDB927] transition-colors"
+          onClick={(event) => { event.stopPropagation(); onClick?.(); }}
+        >
+          {player.name}
+        </PlayerNameWithHover>
         <span className="text-[#8b949e] text-[10px] font-bold uppercase tracking-wider">{player.pos} | {getDisplayAge(player, currentYear)}y</span>
       </div>
 

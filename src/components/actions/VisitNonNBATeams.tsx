@@ -1,266 +1,328 @@
-import React, { useState } from 'react';
+import { useMemo, useState } from 'react';
+import {
+  Binoculars,
+  CalendarDays,
+  Check,
+  Dumbbell,
+  Handshake,
+  Plane,
+  Search,
+  SlidersHorizontal,
+  Trophy,
+  Users,
+} from 'lucide-react';
+import type { NonNBATeam } from '../../types';
+import { EXTERNAL_LEAGUE_PRESENTATION } from '../../data/externalLeaguePresentation';
 import { useGame } from '../../store/GameContext';
-import { Plane, X, Calendar, Search } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { NonNBATeam } from '../../types';
+import { getTeamFullName } from '../../utils/teamNames';
+import { ActionInfoPanel } from '../shared/actions/ActionInfoPanel';
+import { ActionModalShell } from '../shared/actions/ActionModalShell';
+
+type VisitStep = 'league' | 'team' | 'agenda';
+type TeamSort = 'name-asc' | 'name-desc' | 'pop-desc';
 
 interface VisitNonNBAModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: (details: any) => void;
+  onConfirm: (details: { team: NonNBATeam; agenda: string }) => void;
 }
 
-export const VisitNonNBAModal: React.FC<VisitNonNBAModalProps> = ({ isOpen, onClose, onConfirm }) => {
+const agendaOptions = [
+  {
+    id: 'Game',
+    title: 'Game',
+    copy: 'Watch a live game to evaluate team performance and identify key players.',
+    duration: '1 Day',
+    cost: 'Low Cost',
+    icon: Trophy,
+    accent: 'emerald',
+  },
+  {
+    id: 'Tuneup',
+    title: 'Tuneup',
+    copy: 'Attend a tune-up game to test strategies and assess player readiness.',
+    duration: '1–2 Days',
+    cost: 'Medium Cost',
+    icon: Users,
+    accent: 'violet',
+  },
+  {
+    id: 'Practice',
+    title: 'Practice',
+    copy: 'Observe a practice session to analyze drills, chemistry, and player development.',
+    duration: '1 Day',
+    cost: 'Low Cost',
+    icon: Dumbbell,
+    accent: 'amber',
+  },
+  {
+    id: 'Scouting Trip',
+    title: 'Scouting Trip',
+    copy: 'Gather in-depth information on players and future prospects.',
+    duration: '2–4 Days',
+    cost: 'High Cost',
+    icon: Binoculars,
+    accent: 'sky',
+  },
+  {
+    id: 'Diplomatic Meeting',
+    title: 'Diplomatic Meeting',
+    copy: 'Strengthen relationships with team management for future opportunities.',
+    duration: '1 Day',
+    cost: 'Medium Cost',
+    icon: Handshake,
+    accent: 'amber',
+  },
+] as const;
+
+const agendaAccentClasses = {
+  emerald: 'border-emerald-400/70 bg-emerald-500/[0.06] text-emerald-300',
+  violet: 'border-violet-400/70 bg-violet-500/[0.06] text-violet-300',
+  amber: 'border-amber-400/70 bg-amber-500/[0.06] text-amber-300',
+  sky: 'border-sky-400/70 bg-sky-500/[0.06] text-sky-300',
+} as const;
+
+export function VisitNonNBAModal({ isOpen, onClose, onConfirm }: VisitNonNBAModalProps) {
   const { state } = useGame();
-  const [step, setStep] = useState<'LEAGUE' | 'TEAM' | 'AGENDA'>('LEAGUE');
-  const [selectedLeague, setSelectedLeague] = useState<'Euroleague' | 'PBA' | 'WNBA' | 'B-League' | 'G-League' | 'Endesa' | 'China CBA' | 'NBL Australia' | null>(null);
+  const [step, setStep] = useState<VisitStep>('league');
+  const [selectedLeague, setSelectedLeague] = useState<string | null>(null);
   const [selectedTeam, setSelectedTeam] = useState<NonNBATeam | null>(null);
+  const [selectedAgenda, setSelectedAgenda] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [sortBy, setSortBy] = useState<'name-asc' | 'name-desc' | 'pop-desc'>('pop-desc');
+  const [sortBy, setSortBy] = useState<TeamSort>('pop-desc');
 
-  const leagues = [
-    { name: 'Euroleague', logo: 'https://r2.thesportsdb.com/images/media/league/badge/7xjtuy1554397263.png' },
-    { name: 'PBA', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/d/dd/Philippine_Basketball_Association_%28logo%29.svg/1280px-Philippine_Basketball_Association_%28logo%29.svg.png' },
-    { name: 'WNBA', logo: 'https://content.sportslogos.net/logos/16/1152/full/6613__wnba-alternate-2020.png' },
-    { name: 'B-League', logo: 'https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/B.LEAGUE_Logo.svg/1280px-B.LEAGUE_Logo.svg.png' },
-    { name: 'G-League', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/2/2e/NBA_G_League_logo.svg/1280px-NBA_G_League_logo.svg.png' },
-    { name: 'Endesa', logo: 'https://r2.thesportsdb.com/images/media/league/badge/9i99ii1549879285.png' },
-    { name: 'China CBA', logo: 'https://upload.wikimedia.org/wikipedia/en/b/b9/CBAlogo.svg' },
-    { name: 'NBL Australia', logo: 'https://upload.wikimedia.org/wikipedia/en/thumb/c/c9/NBL_logo.svg/1280px-NBL_logo.svg.png' },
-  ];
-  const agendas = ['Game', 'Tuneup', 'Practice', 'Scouting Trip', 'Diplomatic Meeting'];
+  const presentedLeagues = useMemo(
+    () => new Set(EXTERNAL_LEAGUE_PRESENTATION.map(league => league.name)),
+    [],
+  );
+  const availableTeams = useMemo(
+    () => (state.nonNBATeams ?? []).filter(team => presentedLeagues.has(team.league)),
+    [presentedLeagues, state.nonNBATeams],
+  );
+  const leagues = useMemo(() => {
+    const available = new Set(availableTeams.map(team => team.league));
+    return EXTERNAL_LEAGUE_PRESENTATION.filter(league => available.has(league.name));
+  }, [availableTeams]);
+  const selectedLeagueInfo = leagues.find(league => league.name === selectedLeague);
+  const leagueTeams = useMemo(() => {
+    const query = searchTerm.trim().toLowerCase();
+    return availableTeams
+      .filter(team => team.league === selectedLeague)
+      .filter(team => !query || `${team.name} ${team.region ?? ''} ${team.abbrev ?? ''}`.toLowerCase().includes(query))
+      .map(team => ({ ...team, pop: team.pop || 1 }))
+      .sort((left, right) => {
+        if (sortBy === 'name-asc') return getTeamFullName(left).localeCompare(getTeamFullName(right));
+        if (sortBy === 'name-desc') return getTeamFullName(right).localeCompare(getTeamFullName(left));
+        return (right.pop || 0) - (left.pop || 0);
+      });
+  }, [availableTeams, searchTerm, selectedLeague, sortBy]);
 
-  const handleClose = () => {
+  const close = () => {
     onClose();
-    setStep('LEAGUE');
+    setStep('league');
     setSelectedLeague(null);
     setSelectedTeam(null);
+    setSelectedAgenda(null);
     setSearchTerm('');
     setSortBy('pop-desc');
   };
 
-  const handleLeagueSelect = (league: string) => {
-    setSelectedLeague(league as any);
-    setStep('TEAM');
+  const back = () => {
+    if (step === 'team') {
+      setStep('league');
+      setSelectedTeam(null);
+      setSearchTerm('');
+    }
+    if (step === 'agenda') {
+      setStep('team');
+      setSelectedAgenda(null);
+    }
   };
 
-  const handleTeamSelect = (team: NonNBATeam) => {
-    setSelectedTeam(team);
-    setStep('AGENDA');
-  };
+  if (step === 'league') {
+    return (
+      <ActionModalShell
+        open={isOpen}
+        title="Visit Non-NBA Team"
+        description="Choose a league to explore."
+        icon={<Plane size={30} />}
+        accent="sky"
+        wide
+        onClose={close}
+      >
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          {leagues.map(league => {
+            const count = availableTeams.filter(team => team.league === league.name).length;
+            return (
+              <button
+                type="button"
+                key={league.name}
+                onClick={() => {
+                  setSelectedLeague(league.name);
+                  setStep('team');
+                }}
+                className="group relative flex min-h-64 flex-col overflow-hidden rounded-2xl border border-slate-600/70 bg-[linear-gradient(145deg,rgba(18,35,60,0.82),rgba(7,16,34,0.95))] text-left transition hover:border-sky-400/70 hover:shadow-[0_0_28px_rgba(14,165,233,0.12)]"
+              >
+                <div className="flex flex-1 flex-col items-center justify-center px-6 py-7 text-center">
+                  <div className="flex h-24 w-24 items-center justify-center">
+                    <img src={league.logo} alt="" className="max-h-full max-w-full object-contain drop-shadow-xl" referrerPolicy="no-referrer" />
+                  </div>
+                  <h3 className="mt-5 text-2xl font-black uppercase tracking-wide text-white">{league.longName}</h3>
+                  <p className="mt-2 text-sm text-slate-400">{league.description}</p>
+                </div>
+                <div className="flex h-12 items-center justify-center gap-2 border-t border-slate-700/70 bg-slate-950/25 text-xs font-bold text-slate-400">
+                  <Users size={16} /> {count} Teams
+                </div>
+              </button>
+            );
+          })}
+          {leagues.length === 0 && (
+            <p className="col-span-full rounded-2xl border border-dashed border-slate-700 p-10 text-center text-sm text-slate-500">
+              No external league currently has a playable roster.
+            </p>
+          )}
+        </div>
+        <div className="mt-5">
+          <ActionInfoPanel icon={<Binoculars size={24} />} title="International Basketball" accent="sky">
+            Visit and scout talent from active basketball leagues around the world.
+          </ActionInfoPanel>
+        </div>
+      </ActionModalShell>
+    );
+  }
 
-  const handleAgendaSelect = (agenda: string) => {
-    onConfirm({
-      team: selectedTeam,
-      agenda: agenda
-    });
-    handleClose();
-  };
-
-  const getFilteredAndSortedTeams = () => {
-    if (!state.nonNBATeams) {
-        console.log("VisitNonNBAModal: No nonNBATeams in state");
-        return [];
-    }
-    
-    // Filter by league
-    let teams = state.nonNBATeams.filter(t => t.league === selectedLeague);
-    console.log(`VisitNonNBAModal: Found ${teams.length} teams for league ${selectedLeague}`);
-
-    // User Request: Euroleague teams MUST have images to be shown (removes unpopulated teams)
-    if (selectedLeague === 'Euroleague') {
-        const beforeCount = teams.length;
-        teams = teams.filter(t => t.imgURL && t.imgURL.trim() !== '');
-        console.log(`VisitNonNBAModal: Euroleague filter removed ${beforeCount - teams.length} teams without logos`);
-    }
-
-    // Apply PBA Population Overrides (Estimated Popularity)
-    if (selectedLeague === 'PBA') {
-      const pbaOverrides: Record<string, number> = {
-        'BGSM': 15.0, // Barangay Ginebra (Most Popular)
-        'SMB': 12.0,  // San Miguel Beermen
-        'MAG': 10.0,  // Magnolia Hotshots
-        'TNT': 8.5,   // Talk N Text
-        'MER': 5.0,   // Meralco Bolts
-        'NLEX': 4.0,  // NLEX Road Warriors
-        'ROS': 3.5,   // Rain or Shine
-        'PHX': 3.0,   // Phoenix
-        'CON': 2.5,   // Converge
-        'BLB': 2.0,   // Blackwater
-        'TER': 1.5,   // Terrafirma
-        'TIT': 1.0    // Giant Risers
-      };
-      teams = teams.map(t => ({
-        ...t,
-        pop: pbaOverrides[t.abbrev] || t.pop || 1.0
-      }));
-    } else {
-      teams = teams.map(t => ({
-        ...t,
-        pop: t.pop || 1.0
-      }));
-    }
-
-    // Search filter
-    if (searchTerm) {
-      const term = searchTerm.toLowerCase();
-      teams = teams.filter(t => 
-        (t.name && t.name.toLowerCase().includes(term)) || 
-        (t.region && t.region.toLowerCase().includes(term)) ||
-        (t.abbrev && t.abbrev.toLowerCase().includes(term))
-      );
-    }
-
-    // Sort
-    teams.sort((a, b) => {
-      const nameA = (a.region || '') + (a.name || '');
-      const nameB = (b.region || '') + (b.name || '');
-      if (sortBy === 'name-asc') return nameA.localeCompare(nameB);
-      if (sortBy === 'name-desc') return nameB.localeCompare(nameA);
-      if (sortBy === 'pop-desc') return (b.pop || 0) - (a.pop || 0);
-      return 0;
-    });
-
-    return teams;
-  };
-
-  const filteredTeams = getFilteredAndSortedTeams();
+  if (step === 'team') {
+    const countries = new Set(leagueTeams.map(team => (team as any).country).filter(Boolean)).size;
+    return (
+      <ActionModalShell
+        open={isOpen}
+        title="Visit Non-NBA Team"
+        description={`Select a team from ${selectedLeagueInfo?.longName ?? selectedLeague}.`}
+        icon={selectedLeagueInfo?.logo
+          ? <img src={selectedLeagueInfo.logo} alt="" className="h-9 w-9 object-contain" referrerPolicy="no-referrer" />
+          : <Plane size={28} />}
+        accent="emerald"
+        wide
+        onClose={close}
+        onBack={back}
+      >
+        <div className="grid gap-5 lg:grid-cols-[10rem_minmax(0,1fr)]">
+          <aside className="flex flex-row items-center justify-around rounded-2xl border border-emerald-500/20 bg-emerald-500/[0.045] p-4 lg:flex-col">
+            <div className="text-center">
+              <p className="text-3xl font-black text-white">{leagueTeams.length}</p>
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">Total teams</p>
+            </div>
+            <div className="h-10 w-px bg-slate-700 lg:h-px lg:w-16" />
+            <div className="text-center">
+              <p className="text-3xl font-black text-white">{countries || 1}</p>
+              <p className="text-[10px] uppercase tracking-wide text-slate-500">Countries</p>
+            </div>
+          </aside>
+          <div className="min-w-0">
+            <div className="mb-4 grid grid-cols-1 gap-3 sm:grid-cols-[minmax(0,1fr)_10rem]">
+              <div className="relative">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={17} />
+                <input
+                  value={searchTerm}
+                  onChange={event => setSearchTerm(event.target.value)}
+                  placeholder="Search teams..."
+                  className="h-11 w-full rounded-xl border border-slate-700 bg-slate-950/50 pl-11 pr-4 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/70"
+                />
+              </div>
+              <label className="relative">
+                <SlidersHorizontal className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" size={16} />
+                <select
+                  value={sortBy}
+                  onChange={event => setSortBy(event.target.value as TeamSort)}
+                  className="h-11 w-full appearance-none rounded-xl border border-slate-700 bg-slate-950/50 pl-10 pr-3 text-sm font-bold text-white outline-none"
+                >
+                  <option value="pop-desc">Population</option>
+                  <option value="name-asc">Name A–Z</option>
+                  <option value="name-desc">Name Z–A</option>
+                </select>
+              </label>
+            </div>
+            <div className="custom-scrollbar grid max-h-[48vh] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+              {leagueTeams.map(team => (
+                <button
+                  type="button"
+                  key={team.tid}
+                  onClick={() => {
+                    setSelectedTeam(team);
+                    setStep('agenda');
+                  }}
+                  className="flex min-w-0 items-center gap-3 rounded-2xl border border-slate-700/80 bg-slate-950/25 p-3 text-left transition hover:border-emerald-400/65 hover:bg-emerald-500/[0.045]"
+                >
+                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full border border-slate-700 bg-slate-950/40">
+                    {team.imgURL
+                      ? <img src={team.imgURL} alt="" className="h-10 w-10 object-contain" referrerPolicy="no-referrer" />
+                      : <span className="text-xs font-black text-slate-500">{team.abbrev}</span>}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-white">{getTeamFullName(team)}</p>
+                    <p className="truncate text-xs text-slate-500">{team.abbrev} · Pop: {(team.pop || 1).toFixed(1)}M</p>
+                  </div>
+                </button>
+              ))}
+              {leagueTeams.length === 0 && (
+                <p className="col-span-full rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-500">No matching teams found.</p>
+              )}
+            </div>
+          </div>
+        </div>
+      </ActionModalShell>
+    );
+  }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <motion.div 
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.95 }}
-            className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden flex flex-col shadow-2xl"
-          >
-            <div className="p-4 border-b border-zinc-800 flex items-center justify-between bg-zinc-950/50">
-              <h3 className="text-xl font-bold text-white flex items-center gap-2">
-                <Plane className="text-sky-500" />
-                Visit Non-NBA Team
-              </h3>
-              <button onClick={handleClose} className="text-zinc-400 hover:text-white">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-6">
-              {step === 'LEAGUE' && (
-                <div className="space-y-4">
-                  <h4 className="text-lg font-medium text-zinc-300 mb-4">Select League</h4>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    {leagues.map(league => (
-                      <button
-                        key={league.name}
-                        onClick={() => handleLeagueSelect(league.name)}
-                        className="flex flex-col items-center justify-center p-6 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 hover:border-sky-500 rounded-xl transition-all group"
-                      >
-                        <div className="w-16 h-16 mb-4 flex items-center justify-center">
-                          <img 
-                            src={league.logo} 
-                            alt={league.name} 
-                            className="max-w-full max-h-full object-contain"
-                            referrerPolicy="no-referrer"
-                          />
-                        </div>
-                        <span className="text-xl font-bold text-white group-hover:text-sky-400">{league.name}</span>
-                        <span className="text-xs text-zinc-500 mt-2">
-                          {state.nonNBATeams?.filter(t => t.league === league.name).length || 0} Teams
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {step === 'TEAM' && (
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-                    <div className="flex items-center gap-2">
-                      <button onClick={() => setStep('LEAGUE')} className="text-sm text-zinc-500 hover:text-white">
-                        &larr; Back
-                      </button>
-                      <h4 className="text-lg font-medium text-zinc-300">Select {selectedLeague} Team</h4>
-                    </div>
-                    
-                    <div className="flex items-center gap-2">
-                      <div className="relative">
-                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={14} />
-                        <input 
-                          type="text"
-                          placeholder="Search teams..."
-                          value={searchTerm}
-                          onChange={(e) => setSearchTerm(e.target.value)}
-                          className="bg-zinc-950 border border-zinc-800 rounded-lg pl-9 pr-3 py-1.5 text-sm text-white focus:outline-none focus:border-sky-500 w-full sm:w-48"
-                        />
-                      </div>
-                      <select
-                        value={sortBy}
-                        onChange={(e) => setSortBy(e.target.value as any)}
-                        className="bg-zinc-950 border border-zinc-800 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-sky-500"
-                      >
-                        <option value="name-asc">A-Z</option>
-                        <option value="name-desc">Z-A</option>
-                        <option value="pop-desc">Population</option>
-                      </select>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {filteredTeams.map(team => (
-                      <button
-                        key={team.tid}
-                        onClick={() => handleTeamSelect(team)}
-                        className="flex items-center gap-3 p-3 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 hover:border-sky-500 rounded-lg transition-all text-left"
-                      >
-                        {team.imgURL && (
-                          <img src={team.imgURL} alt={team.name} className="w-10 h-10 object-contain rounded-full bg-black/20" referrerPolicy="no-referrer" />
-                        )}
-                        <div>
-                          <div className="font-bold text-white">{team.region} {team.name}</div>
-                          <div className="text-xs text-zinc-500">{team.abbrev} • Pop: {team.pop.toFixed(1)}M</div>
-                        </div>
-                      </button>
-                    ))}
-                    {filteredTeams.length === 0 && (
-                      <div className="col-span-2 text-center py-8 text-zinc-500">
-                        No teams found matching your criteria.
-                      </div>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {step === 'AGENDA' && (
-                <div className="space-y-4">
-                  <div className="flex items-center gap-2 mb-4">
-                    <button onClick={() => setStep('TEAM')} className="text-sm text-zinc-500 hover:text-white">
-                      &larr; Back
-                    </button>
-                    <h4 className="text-lg font-medium text-zinc-300">Select Agenda for {selectedTeam?.name}</h4>
-                  </div>
-
-                  <div className="grid grid-cols-1 gap-3">
-                    {agendas.map(agenda => (
-                      <button
-                        key={agenda}
-                        onClick={() => handleAgendaSelect(agenda)}
-                        className="flex items-center justify-between p-4 bg-zinc-800/50 hover:bg-zinc-800 border border-zinc-700 hover:border-sky-500 rounded-lg transition-all group"
-                      >
-                        <span className="font-bold text-white group-hover:text-sky-400">{agenda}</span>
-                        <Calendar size={16} className="text-zinc-600 group-hover:text-sky-500" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+    <ActionModalShell
+      open={isOpen}
+      title="Visit Non-NBA Team"
+      description={`Select an agenda for your visit with ${selectedTeam ? getTeamFullName(selectedTeam) : 'the team'}.`}
+      icon={<Plane size={28} />}
+      accent="emerald"
+      wide
+      onClose={close}
+      onBack={back}
+      selectedCount={selectedAgenda ? 1 : 0}
+      primaryLabel="Confirm Agenda"
+      primaryDisabled={!selectedAgenda || !selectedTeam}
+      primaryIcon={<CalendarDays size={17} />}
+      onPrimary={() => {
+        if (!selectedTeam || !selectedAgenda) return;
+        onConfirm({ team: selectedTeam, agenda: selectedAgenda });
+        close();
+      }}
+    >
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-5">
+        {agendaOptions.map(option => {
+          const selected = selectedAgenda === option.id;
+          const Icon = option.icon;
+          return (
+            <button
+              type="button"
+              key={option.id}
+              onClick={() => setSelectedAgenda(option.id)}
+              className={`relative flex min-h-64 flex-col rounded-2xl border p-5 text-center transition ${
+                selected
+                  ? agendaAccentClasses[option.accent]
+                  : 'border-slate-700/80 bg-slate-950/20 text-slate-400 hover:border-slate-500'
+              }`}
+            >
+              {selected && <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white"><Check size={17} /></span>}
+              <span className="mx-auto flex h-16 w-16 items-center justify-center rounded-full border border-current/40 bg-slate-950/30">
+                <Icon size={31} />
+              </span>
+              <h3 className="mt-4 text-lg font-black text-white">{option.title}</h3>
+              <p className="mt-2 flex-1 text-xs leading-relaxed text-slate-400">{option.copy}</p>
+              <div className="mt-4 flex items-center justify-between gap-3 border-t border-slate-700/70 pt-3 text-[10px] font-bold">
+                <span className="inline-flex items-center gap-1.5 text-slate-400"><CalendarDays size={13} />{option.duration}</span>
+                <span>{option.cost}</span>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </ActionModalShell>
   );
-};
-
+}

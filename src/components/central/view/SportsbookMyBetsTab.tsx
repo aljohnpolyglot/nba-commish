@@ -1,8 +1,11 @@
 import React from 'react';
-import { TrendingDown, Trophy } from 'lucide-react';
+import { BarChart2, CheckCircle, TrendingDown, Trophy } from 'lucide-react';
 import { formatCurrency } from '../../../utils/helpers';
-import { EmptyState, StatusBadge } from './sportsbook/SportsbookShared';
+import { StatusBadge } from './sportsbook/SportsbookShared';
 import { decimalToAmerican } from './sportsbook/sportsbookTypes';
+import { getPlayerImage } from '../../../utils/playerImage';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
 
 export const SportsbookMyBetsTab: React.FC<{
   state: any;
@@ -10,24 +13,49 @@ export const SportsbookMyBetsTab: React.FC<{
   myBetsPage: number;
   onPageChange: React.Dispatch<React.SetStateAction<number>>;
   onSelectBoxScore: (boxScore: any) => void;
-}> = ({ state, betStats, myBetsPage, onPageChange, onSelectBoxScore }) => {
+  onExplore: () => void;
+}> = ({ state, betStats, myBetsPage, onPageChange, onSelectBoxScore, onExplore }) => {
+  const summaryStats = [
+    { label: 'Pending', value: betStats.pending, frame: 'border-amber-500/20', valueClass: 'text-amber-400' },
+    { label: 'Won', value: betStats.won, frame: 'border-emerald-500/20', valueClass: 'text-emerald-400' },
+    { label: 'Lost', value: betStats.lost, frame: 'border-rose-500/20', valueClass: 'text-rose-400' },
+    { label: 'Win Rate', value: `${betStats.winRate}%`, frame: 'border-indigo-500/20', valueClass: 'text-indigo-400' },
+  ];
+
   if ((state.bets?.length ?? 0) === 0) {
     return (
       <>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-          {[
-            { label: 'Pending', value: betStats.pending, color: 'amber' },
-            { label: 'Won', value: betStats.won, color: 'emerald' },
-            { label: 'Lost', value: betStats.lost, color: 'rose' },
-            { label: 'Win Rate', value: `${betStats.winRate}%`, color: 'indigo' },
-          ].map(stat => (
-            <div key={stat.label} className={`bg-[#1e232c] border rounded-xl p-3 text-center border-${stat.color}-500/20`}>
-              <p className={`text-xl sm:text-2xl font-black text-${stat.color}-400 font-mono`}>{stat.value}</p>
+          {summaryStats.map(stat => (
+            <div key={stat.label} className={`bg-[#121e2d] border rounded-xl p-3 text-center ${stat.frame}`}>
+              <p className={`text-xl sm:text-2xl font-black font-mono ${stat.valueClass}`}>{stat.value}</p>
               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{stat.label}</p>
             </div>
           ))}
         </div>
-        <EmptyState icon={<Trophy className="w-8 h-8" />} title="No bets yet" body="Place your first bet from the Lines or Props tabs." />
+        <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-slate-800/70 bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08),transparent_45%)] px-5 py-12 text-center">
+          <div className="flex h-20 w-20 items-center justify-center rounded-2xl border border-emerald-500/25 bg-emerald-500/10 shadow-[0_0_40px_rgba(16,185,129,0.12)]">
+            <Trophy className="h-9 w-9 text-emerald-300" />
+          </div>
+          <h3 className="mt-6 text-2xl font-black text-white">No bets yet</h3>
+          <p className="mt-2 max-w-md text-sm text-slate-500">Build a slip from today's matchups or player markets, then track every result here.</p>
+          <div className="mt-9 grid w-full max-w-3xl gap-3 sm:grid-cols-3">
+            {[
+              { Icon: BarChart2, title: 'Build your slip', body: 'Browse odds and add selections.' },
+              { Icon: CheckCircle, title: 'Place your bet', body: 'Confirm your wager with confidence.' },
+              { Icon: Trophy, title: 'Track your action', body: 'Follow pending and settled results.' },
+            ].map(({ Icon, title, body }) => (
+              <div key={title} className="rounded-xl border border-slate-800 bg-slate-950/35 p-4">
+                <Icon className="mx-auto h-5 w-5 text-emerald-300" />
+                <p className="mt-3 text-sm font-black text-slate-200">{title}</p>
+                <p className="mt-1 text-xs leading-relaxed text-slate-500">{body}</p>
+              </div>
+            ))}
+          </div>
+          <button type="button" onClick={onExplore} className="mt-8 min-h-11 w-full max-w-sm rounded-xl border border-emerald-400/60 px-5 text-xs font-black uppercase tracking-[0.16em] text-emerald-300 transition hover:bg-emerald-500/10 hover:text-white">
+            Explore Today's Lines
+          </button>
+        </div>
       </>
     );
   }
@@ -55,20 +83,16 @@ export const SportsbookMyBetsTab: React.FC<{
     const awayTid = schedGame?.awayTid ?? boxScore?.awayTeamId;
     const tid = isHomeBet ? homeTid : awayTid;
     if (!tid) return null;
-    return (state.teams as any[]).find((team: any) => team.id === tid)?.logoUrl ?? null;
+    const team = (state.teams as any[]).find((entry: any) => entry.id === tid);
+    return team ? getResolvedTeamLogoUrl(team, state.leagueStats?.year) : null;
   };
 
   return (
     <>
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
-        {[
-          { label: 'Pending', value: betStats.pending, color: 'amber' },
-          { label: 'Won', value: betStats.won, color: 'emerald' },
-          { label: 'Lost', value: betStats.lost, color: 'rose' },
-          { label: 'Win Rate', value: `${betStats.winRate}%`, color: 'indigo' },
-        ].map(stat => (
-          <div key={stat.label} className={`bg-[#1e232c] border rounded-xl p-3 text-center border-${stat.color}-500/20`}>
-            <p className={`text-xl sm:text-2xl font-black text-${stat.color}-400 font-mono`}>{stat.value}</p>
+        {summaryStats.map(stat => (
+          <div key={stat.label} className={`bg-[#1e232c] border rounded-xl p-3 text-center ${stat.frame}`}>
+            <p className={`text-xl sm:text-2xl font-black font-mono ${stat.valueClass}`}>{stat.value}</p>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{stat.label}</p>
           </div>
         ))}
@@ -76,14 +100,14 @@ export const SportsbookMyBetsTab: React.FC<{
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         {[
-          { label: 'Biggest Win', value: betStats.biggestWin !== null ? `+${formatCurrency(betStats.biggestWin, false)}` : '--', color: 'emerald' },
-          { label: 'Biggest Loss', value: betStats.biggestLoss !== null ? `-${formatCurrency(betStats.biggestLoss, false)}` : '--', color: 'rose' },
-          { label: 'Best Parlay', value: betStats.bestParlay !== null ? decimalToAmerican(betStats.bestParlay) : '--', color: 'indigo' },
-          { label: 'Total Wagered', value: formatCurrency(betStats.totalWagered, false), color: 'white' },
-          { label: 'Best Streak', value: betStats.longestStreak > 0 ? `${betStats.longestStreak}W` : '--', color: 'amber' },
+          { label: 'Biggest Win', value: betStats.biggestWin !== null ? `+${formatCurrency(betStats.biggestWin, false)}` : '--', valueClass: 'text-emerald-400' },
+          { label: 'Biggest Loss', value: betStats.biggestLoss !== null ? `-${formatCurrency(betStats.biggestLoss, false)}` : '--', valueClass: 'text-rose-400' },
+          { label: 'Best Parlay', value: betStats.bestParlay !== null ? decimalToAmerican(betStats.bestParlay) : '--', valueClass: 'text-indigo-400' },
+          { label: 'Total Wagered', value: formatCurrency(betStats.totalWagered, false), valueClass: 'text-white' },
+          { label: 'Best Streak', value: betStats.longestStreak > 0 ? `${betStats.longestStreak}W` : '--', valueClass: 'text-amber-400' },
         ].map(stat => (
           <div key={stat.label} className="bg-[#1e232c] border border-slate-700/30 rounded-xl p-3 text-center">
-            <p className={`text-base sm:text-lg font-black text-${stat.color}-400 font-mono`}>{stat.value}</p>
+            <p className={`text-base sm:text-lg font-black font-mono ${stat.valueClass}`}>{stat.value}</p>
             <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{stat.label}</p>
           </div>
         ))}
@@ -121,7 +145,7 @@ export const SportsbookMyBetsTab: React.FC<{
                 const propPid = biggestLossBet.legs?.length === 1 ? biggestLossBet.legs[0].playerId : null;
                 const player = propPid ? (state.players as any[]).find((p: any) => p.internalId === propPid) : null;
                 const teamLogo = getBetTeamLogo(biggestLossBet);
-                if (player) return <div className="w-10 h-10 rounded-full bg-slate-700 border border-rose-500/30 overflow-hidden flex-shrink-0 flex items-center justify-center">{player.imgURL ? <img src={player.imgURL} alt={player.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-[10px] font-bold text-slate-300">{(player.name ?? '??').split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>}</div>;
+                if (player) return <PlayerPortrait imgUrl={getPlayerImage(player)} face={player.face} playerName={player.name} size={40} />;
                 if (teamLogo) return <div className="w-10 h-10 rounded-lg bg-slate-800/60 border border-rose-500/30 overflow-hidden flex-shrink-0 flex items-center justify-center p-1"><img src={teamLogo} alt="team" className="w-full h-full object-contain" referrerPolicy="no-referrer" /></div>;
                 return null;
               })()}
@@ -157,9 +181,7 @@ export const SportsbookMyBetsTab: React.FC<{
             >
               <div className="flex items-start gap-2 sm:gap-3">
                 {propPlayer ? (
-                  <div className="w-9 h-9 rounded-full bg-slate-700 border border-slate-600/60 overflow-hidden flex-shrink-0 flex items-center justify-center">
-                    {propPlayer.imgURL ? <img src={propPlayer.imgURL} alt={propPlayer.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span className="text-[10px] font-bold text-slate-300">{(propPlayer.name ?? '??').split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>}
-                  </div>
+                  <PlayerPortrait imgUrl={getPlayerImage(propPlayer)} face={propPlayer.face} playerName={propPlayer.name} size={36} />
                 ) : teamLogo ? (
                   <div className="w-9 h-9 rounded-lg bg-slate-800/60 border border-slate-600/40 overflow-hidden flex-shrink-0 flex items-center justify-center p-1">
                     <img src={teamLogo} alt="team" className="w-full h-full object-contain" referrerPolicy="no-referrer" />

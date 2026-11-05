@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Chat, ChatMessage } from '../../types';
+import { Chat, NBAPlayer } from '../../types';
 import { useGame } from '../../store/GameContext';
 import { Send, Image as ImageIcon, MoreVertical, ArrowLeft, Eye } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -8,14 +8,30 @@ import { ContactAvatar } from '../common/ContactAvatar';
 import { AVATAR_DATA } from '../../data/avatars';
 import { getAvatarByName } from '../../services/avatarService';
 import { getAllReferees, getRefereePhoto } from '../../data/photos';
+import { resolveChatStaffContact } from '../../utils/chatStaffContact';
+import type { NewChatContact } from '../../services/messages/newChatContacts';
+import { sanitizeChatReply } from '../../services/llm/prompts/chat';
+import { displayStaffRole } from '../../services/staff/staffCareerRows';
+import { resolveChatPlayerIdentity } from '../../services/messages/chatPlayerIdentity';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { getPlayerChatAffiliation } from '../../services/llm/playerChatContext';
+import { formatGameDateSeparator } from '../../utils/helpers';
 
 interface ChatWindowProps {
   chat?: Chat;
   draftContactId?: string;
+  draftContact?: NewChatContact;
   onBack: () => void;
+  onViewPlayerBio?: (player: NBAPlayer) => void;
 }
 
-export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, onBack }) => {
+export const ChatWindow: React.FC<ChatWindowProps> = ({
+  chat,
+  draftContactId,
+  draftContact,
+  onBack,
+  onViewPlayerBio,
+}) => {
   const { state, dispatchAction } = useGame();
   const [messageText, setMessageText] = useState('');
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -24,40 +40,14 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastMessageCount = useRef(chat?.messages.length || 0);
   
-  // Helper to find participant if draft
-  const findParticipant = (id: string) => {
-    const player = state.players.find(p => p.internalId === id);
-    if (player) {
-        let org = 'Free Agent';
-        if (['PBA', 'WNBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
-             const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
-             if (team) org = team.name;
-        } else {
-             const team = state.teams.find(t => t.id === player.tid);
-             if (team) org = team.name;
-        }
-        return { id: player.internalId, name: player.name, role: 'Player', avatarUrl: player.imgURL, org };
-    }
-    
-    // Check staff
-    if (state.staff) {
-        const owner = state.staff.owners.find(o => o.name === id); // ID might be name for staff currently? No, staff doesn't have ID in interface.
-        // Assuming ID is name for staff for now or we need to fix staff IDs.
-        // The previous code used name as ID for staff in some places.
-        // Let's assume draftContactId is the name for staff if not found in players.
-        
-        // Actually, PersonSelectorModal returns Contact objects which have IDs.
-        // For players it's `player-${internalId}`.
-        // For staff it's likely just name or similar.
-    }
-    return null;
-  };
-
   const nonCommParticipant = chat?.participantDetails.find(p => p.id !== 'commissioner');
   let participant = nonCommParticipant ? { ...nonCommParticipant } : null;
 
-  let teamLogoUrl = undefined;
-  let org = 'Unknown';
+  let teamLogoUrl = participant?.teamLogoUrl;
+  let org = participant?.organization ?? 'Unknown';
+  let bioPlayer: NBAPlayer | null = null;
+  let portraitPlayer: NBAPlayer | null = null;
+  let playerRoleLabel: string | null = null;
 
   // Fallback lookup if avatar is missing in chat participant details
   if (participant) {
@@ -67,46 +57,33 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
     const isNBA = participant.name.toUpperCase().startsWith('NBA') || (org && org.toUpperCase().startsWith('NBA'));
     const nbaLogo = "https://upload.wikimedia.org/wikipedia/en/thumb/0/03/National_Basketball_Association_logo.svg/250px-National_Basketball_Association_logo.svg.png";
 
-    const player = state.players.find(p => p.internalId === participant!.id || (p.name && participant!.name && p.name.toLowerCase() === participant!.name.toLowerCase()));
+    const player = resolveChatPlayerIdentity(state.players, participant);
     if (player) {
-      participant.avatarUrl = generatedAvatar || player.imgURL || participant.avatarUrl;
-      console.log(`ChatWindow Debug: Found player ${player.name}. Avatar: ${participant.avatarUrl}, imgURL: ${player.imgURL}, generated: ${generatedAvatar}`);
-      if (player.tid !== undefined && player.tid >= 0) {
-        const team = state.teams.find(t => t.id === player.tid);
-        if (team) {
-            teamLogoUrl = team.logoUrl;
-            org = team.name;
-            console.log(`ChatWindow Debug: Found team ${team.name}. Logo: ${teamLogoUrl}`);
-        }
-      } else if (['PBA', 'WNBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
-          const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
-          if (team) {
-              org = team.name;
-              teamLogoUrl = team.imgURL;
-          }
+      portraitPlayer = player;
+      if (!String(participant.id).startsWith('fa-agent:')) bioPlayer = player;
+      participant.avatarUrl = participant.avatarUrl || player.imgURL || generatedAvatar;
+      const team = state.teams.find(item => item.id === player.tid)
+        ?? state.nonNBATeams.find(item => item.tid === player.tid);
+      if (team) {
+        org = team.name;
+        teamLogoUrl = 'tid' in team ? team.imgURL : team.logoUrl;
       } else {
-          org = 'Free Agent';
+        org = 'Free Agent';
+        const affiliation = getPlayerChatAffiliation(state, player);
+        if (affiliation.formerTeamName) {
+          playerRoleLabel = `Former ${affiliation.formerTeamName} Player`;
+          const formerTeam = state.teams.find(item => item.id === affiliation.formerTeamId)
+            ?? state.nonNBATeams.find(item => item.tid === affiliation.formerTeamId);
+          teamLogoUrl = formerTeam ? ('tid' in formerTeam ? formerTeam.imgURL : formerTeam.logoUrl) : teamLogoUrl;
+        }
       }
     } else {
-      const allStaff = [
-        ...(state.staff?.owners || []),
-        ...(state.staff?.gms || []),
-        ...(state.staff?.coaches || []),
-        ...(state.staff?.leagueOffice || [])
-      ];
-      const staff = allStaff.find(s => s.name && participant!.name && s.name.toLowerCase() === participant!.name.toLowerCase());
+      const staff = resolveChatStaffContact(state, participant);
       if (staff) {
-        participant.avatarUrl = generatedAvatar || staff.playerPortraitUrl || participant.avatarUrl;
-        console.log(`ChatWindow Debug: Found staff ${staff.name}. Avatar: ${participant.avatarUrl}, portrait: ${staff.playerPortraitUrl}`);
-        if (staff.team) {
-          const team = state.teams.find(t => t.name === staff.team);
-          if (team) {
-              teamLogoUrl = team.logoUrl;
-              org = team.name;
-          } else {
-              org = staff.team;
-          }
-        }
+        participant.avatarUrl = participant.avatarUrl || staff.portraitUrl || generatedAvatar;
+        participant.role = staff.role || participant.role;
+        teamLogoUrl = staff.teamLogoUrl;
+        org = staff.organization || org;
       }
     }
 
@@ -115,7 +92,22 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
       participant.avatarUrl = nbaLogo;
     }
     
-    console.log(`ChatWindow Debug Final: ${participant.name} -> portraitUrl: ${participant.avatarUrl}, teamLogoUrl: ${teamLogoUrl}`);
+  }
+
+  if (!participant && draftContact && draftContact.id === draftContactId) {
+      participant = {
+          id: draftContact.id,
+          name: draftContact.name,
+          role: draftContact.role,
+          avatarUrl: draftContact.avatarUrl,
+          teamLogoUrl: draftContact.teamLogoUrl,
+          organization: draftContact.org,
+      };
+      teamLogoUrl = draftContact.teamLogoUrl;
+      org = draftContact.org;
+      bioPlayer = draftContact.kind === 'agent'
+        ? null
+        : state.players.find(player => player.internalId === draftContact.id) ?? null;
   }
 
   if (!participant && draftContactId) {
@@ -126,48 +118,32 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
       // Try to find in players first
       const player = state.players.find(p => `player-${p.internalId}` === draftContactId || String(p.internalId) === draftContactId);
       if (player) {
+          bioPlayer = player;
           participant = { 
               id: player.internalId, 
               name: player.name, 
               role: 'Player', 
               avatarUrl: generatedAvatar || player.imgURL 
           };
-          if (player.tid !== undefined && player.tid >= 0) {
-            const team = state.teams.find(t => t.id === player.tid);
-            if (team) {
-                teamLogoUrl = team.logoUrl;
-                org = team.name;
-            }
-          } else if (['PBA', 'WNBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
-              const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
-              if (team) org = team.name;
+          const team = state.teams.find(item => item.id === player.tid)
+            ?? state.nonNBATeams.find(item => item.tid === player.tid);
+          if (team) {
+            teamLogoUrl = 'tid' in team ? team.imgURL : team.logoUrl;
+            org = team.name;
           } else {
-              org = 'Free Agent';
+            org = 'Free Agent';
           }
       } else {
-          // Try staff — check each array so we can assign the correct role
-          const staffOwner = state.staff?.owners.find(s => s.name === draftContactId);
-          const staffCoach = state.staff?.coaches.find(s => s.name === draftContactId);
-          const staffGM = state.staff?.gms.find(s => s.name === draftContactId);
-          const staffLeague = state.staff?.leagueOffice?.find(s => s.name === draftContactId);
-          const staff = staffOwner || staffCoach || staffGM || staffLeague;
-          const staffRole = staffOwner ? 'Owner' : staffCoach ? 'Coach' : staffGM ? 'GM' : 'Staff';
+          const staff = resolveChatStaffContact(state, { id: draftContactId, name: draftContactId });
           if (staff) {
               participant = {
-                  id: staff.name,
-                  name: staff.name,
-                  role: staffRole,
-                  avatarUrl: generatedAvatar || staff.playerPortraitUrl
+                  id: staff.staff.id ?? staff.staff.name,
+                  name: staff.staff.name,
+                  role: staff.role,
+                  avatarUrl: staff.portraitUrl || generatedAvatar,
               };
-              if (staff.team) {
-                const team = state.teams.find(t => t.name === staff.team);
-                if (team) {
-                    teamLogoUrl = team.logoUrl;
-                    org = team.name;
-                } else {
-                    org = staff.team;
-                }
-              }
+              teamLogoUrl = staff.teamLogoUrl;
+              org = staff.organization || org;
           }
       }
 
@@ -189,6 +165,10 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
       if (participant && isNBA && !participant.avatarUrl) {
           participant.avatarUrl = nbaLogo;
       }
+  }
+
+  if (participant && !portraitPlayer) {
+    portraitPlayer = resolveChatPlayerIdentity(state.players, participant);
   }
 
   const scrollToBottom = (force = false) => {
@@ -231,25 +211,16 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
     setSelectedImage(null);
 
     // Find org
-    let org = 'Unknown';
+    let targetOrg = org;
     const player = state.players.find(p => p.internalId === participant!.id);
     if (player) {
-        if (['PBA', 'WNBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
-             const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
-             org = team ? team.name : `${player.status} Free Agent`;
-        } else {
-             const team = state.teams.find(t => t.id === player.tid);
-             org = team ? team.name : 'Free Agent';
-        }
+        const team = state.teams.find(item => item.id === player.tid)
+          ?? state.nonNBATeams.find(item => item.tid === player.tid);
+        const affiliation = getPlayerChatAffiliation(state, player);
+        targetOrg = team ? team.name : affiliation.formerTeamName ? `Free Agent; formerly ${affiliation.formerTeamName}` : 'Free Agent';
     } else {
-        // Staff org
-        const allStaff = [
-            ...(state.staff?.owners || []),
-            ...(state.staff?.gms || []),
-            ...(state.staff?.coaches || [])
-        ];
-        const staff = allStaff.find(s => s.name === participant!.name);
-        if (staff) org = staff.team || 'Unknown';
+        const staff = resolveChatStaffContact(state, participant);
+        if (staff) targetOrg = staff.organization || targetOrg;
     }
 
     await dispatchAction({
@@ -261,8 +232,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
         targetId: participant.id,
         targetName: participant.name,
         targetRole: participant.role,
-        targetOrg: org,
-        avatarUrl: participant.avatarUrl
+        targetOrg,
+        avatarUrl: participant.avatarUrl,
+        teamLogoUrl,
       }
     });
   };
@@ -284,6 +256,35 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
       </div>
   );
 
+  const canOpenPlayerBio = !!bioPlayer && !!onViewPlayerBio;
+  const profileHeader = (
+    <>
+      {portraitPlayer ? (
+        <PlayerPortrait
+          imgUrl={portraitPlayer.imgURL || participant.avatarUrl}
+          face={(portraitPlayer as any).face}
+          playerName={portraitPlayer.name}
+          portraitSeason={state.leagueStats?.year}
+          teamLogoUrl={teamLogoUrl}
+          size={40}
+        />
+      ) : (
+        <ContactAvatar
+          name={participant.name}
+          portraitUrl={participant.avatarUrl}
+          teamLogoUrl={teamLogoUrl}
+        />
+      )}
+      <div className="min-w-0">
+        <h3 className="truncate font-bold text-white">{participant.name}</h3>
+        <p className="truncate text-xs text-slate-500">
+          {playerRoleLabel ?? displayStaffRole(participant.role).split('•', 1)[0].trim()}
+          {org !== 'Unknown' && !participant.role.includes(org) ? ` • ${org}` : ''}
+        </p>
+      </div>
+    </>
+  );
+
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -292,18 +293,20 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
           <button onClick={onBack} className="md:hidden text-slate-400 hover:text-white">
             <ArrowLeft size={20} />
           </button>
-          <ContactAvatar 
-            name={participant.name} 
-            portraitUrl={participant.avatarUrl} 
-            teamLogoUrl={teamLogoUrl} 
-          />
-          <div>
-            <h3 className="font-bold text-white">{participant.name}</h3>
-            <p className="text-xs text-slate-500">
-              {participant.role}
-              {org !== 'Unknown' && !participant.role.includes(org) ? ` • ${org}` : ''}
-            </p>
-          </div>
+          {canOpenPlayerBio ? (
+            <button
+              type="button"
+              onClick={() => bioPlayer && onViewPlayerBio?.(bioPlayer)}
+              className="-m-1 flex min-w-0 items-center gap-3 rounded-lg p-1 text-left transition-colors hover:bg-slate-800/60 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+              title={`Open ${participant.name} bio`}
+            >
+              {profileHeader}
+            </button>
+          ) : (
+            <div className="flex min-w-0 items-center gap-3">
+              {profileHeader}
+            </div>
+          )}
         </div>
         <button className="text-slate-400 hover:text-white">
           <MoreVertical size={20} />
@@ -324,7 +327,7 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
               {showDate && (
                 <div className="flex justify-center my-4">
                   <span className="text-xs text-slate-500 bg-slate-900 px-2 py-1 rounded-full">
-                    {format(new Date(msg.timestamp), 'MMM d, yyyy')}
+                    {formatGameDateSeparator(msg.timestamp, state.date)}
                   </span>
                 </div>
               )}
@@ -335,7 +338,9 @@ export const ChatWindow: React.FC<ChatWindowProps> = ({ chat, draftContactId, on
                   {msg.imageUrl && (
                     <img src={msg.imageUrl} alt="Uploaded" className="max-w-full rounded-lg mb-2" />
                   )}
-                  <p className="text-sm">{msg.text.replace('[HYPNOTIC COMMAND]: ', '')}</p>
+                  <p className="text-sm">
+                    {(isMe ? msg.text : sanitizeChatReply(msg.text)).replace('[HYPNOTIC COMMAND]: ', '')}
+                  </p>
                   <div className={`text-[10px] mt-1 ${isMe ? 'text-indigo-200' : 'text-slate-500'} flex items-center justify-end gap-1`}>
                     {format(new Date(msg.timestamp), 'h:mm a')}
                     {isMe && msg.seen && (

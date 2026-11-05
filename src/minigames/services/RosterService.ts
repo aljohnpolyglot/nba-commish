@@ -1,14 +1,16 @@
 import { getRosterData } from '../../services/rosterService';
 import { Player } from '../../throne/types/throne';
 import { convertTo2KRating } from '../../utils/helpers';
+import type { NBAPlayer, NBATeam } from '../../types';
+import { resolveMinigameNbaPlayers } from '../shared/minigameRoster';
 
 export class RosterService {
-  async loadPlayers(): Promise<Player[]> {
+  async loadPlayers(activePlayers: NBAPlayer[] = [], activeTeams: NBATeam[] = []): Promise<Player[]> {
     const { players, teams } = await getRosterData(2025, 'Opening Week');
     const teamMap: Record<number, string> = {};
-    teams.forEach(t => { teamMap[t.id] = t.abbrev; });
+    [...teams, ...activeTeams].forEach(t => { teamMap[t.id] = t.abbrev; });
 
-    return players
+    return resolveMinigameNbaPlayers(activePlayers, players as NBAPlayer[])
       .filter(p => (p as any).tid >= 0 && (p as any).tid < 100 && !(p as any).retiredYear)
       .map((p): Player => {
         const nameParts = (p.name ?? '').split(' ');

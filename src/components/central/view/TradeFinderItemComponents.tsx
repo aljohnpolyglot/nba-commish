@@ -3,19 +3,20 @@ import { ArrowLeftRight, TrendingDown, TrendingUp, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
-import { PlayerHoverCard } from '../../shared/PlayerHoverCard';
 import { PlayerHoverCardK2 } from '../../shared/PlayerHoverCardK2';
-import { SettingsManager } from '../../../services/SettingsManager';
-import { calcOvr2K, calcPot2K, getPotColor, isSalaryLegal } from '../../../services/trade/tradeValueEngine';
+import { getPotColor, isSalaryLegal } from '../../../services/trade/tradeValueEngine';
 import { formatPlayerSalaryDisplay, getPlayerContractExpiryDisplay, sumPlayerCurrentSalariesUSD, type TradeOutlook } from '../../../utils/salaryUtils';
 import { computeMoodScore } from '../../../utils/mood/moodScore';
 import { formatPickLabel } from '../../../services/draft/draftClassStrength';
 import { getDisplayAge } from '../../../store/playerRatingStore';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../utils/scoutingFuzz';
 import { formatCurrencyWithCode, getLeagueCurrencyCode } from '../../../utils/helpers';
 import { getTeamFullName } from '../../../utils/teamNames';
+import { getPlayerImage } from '../../../utils/playerImage';
 import { getPbaRosterPortrait } from '../../../services/pba/portraits';
 import type { DraftPick, NBAPlayer, NBATeam } from '../../../types';
 import { type FoundOffer, type TradeItem } from './TradeFinderTypes';
+import { isEurostashPlayer } from '../../../services/freeAgency/eurostashRights';
 
 const formatTradeSalary = (amount: number, currency: string): string =>
   formatCurrencyWithCode(amount, currency, false)
@@ -119,10 +120,11 @@ export const PlayerRow: React.FC<{
   tradeEligibleDate?: string;
 }> = ({ player, selected, onToggle, team, dateStr, currentYear, walkingExpiring, recentlySigned, pbaImportLocked, tradeEligibleDate }) => {
   const { state } = useGame();
-  const ovr = calcOvr2K(player);
-  const pot = calcPot2K(player, currentYear);
+  const ovr = getScoutedDisplayOverall(state, player, currentYear);
+  const pot = getScoutedDisplayPotential(state, player, currentYear, currentYear);
   const potColor = getPotColor(pot);
   const expiry = getPlayerContractExpiryDisplay(player as any, currentYear);
+  const eurostashed = isEurostashPlayer(player);
   const expClass = expiry.isConferenceDeal ? 'text-amber-300' : expiryTextClass(player.contract?.exp, currentYear);
   const blocked = !!pbaImportLocked || ((!!walkingExpiring || !!recentlySigned) && !selected);
   const blockTitle = pbaImportLocked
@@ -147,13 +149,14 @@ export const PlayerRow: React.FC<{
         blocked ? 'opacity-40 grayscale cursor-not-allowed pointer-events-none' : 'cursor-pointer ' + (selected ? 'bg-indigo-600/20 border-l-4 border-l-indigo-500' : 'hover:bg-slate-800/50')
       }`}
     >
-      <PlayerPortrait imgUrl={player.imgURL} fallbackImgUrl={getTradePortraitFallback(player)} face={(player as any).face} size={36} playerName={player.name} />
+      <PlayerPortrait imgUrl={getPlayerImage(player)} fallbackImgUrl={getTradePortraitFallback(player)} face={(player as any).face} size={36} playerName={player.name} />
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-1.5">
           <span className="text-xs font-bold text-white truncate">{player.name}</span>
           {playerIndicators(player, team, dateStr)}
         </div>
         <div className="text-[10px] text-slate-500 font-medium uppercase tracking-wide truncate">{player.pos} · {getDisplayAge(player, currentYear)}y</div>
+        {eurostashed && <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-sky-300">RIGHTS ONLY</div>}
         {pbaImportLocked && <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-amber-300">Conference import</div>}
         {recentlySigned && tradeEligibleDate && <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-amber-300">Moratorium until {tradeEligibleDate}</div>}
       </div>
@@ -166,7 +169,7 @@ export const PlayerRow: React.FC<{
       {selected && <X size={11} className="text-indigo-400 flex-shrink-0" />}
       {cardPos && (
         <div className="fixed z-[200] pointer-events-none max-h-[calc(100vh-16px)] overflow-y-auto" style={{ top: cardPos.top, left: cardPos.left, width: cardPos.centered ? 'min(256px, calc(100vw - 16px))' : undefined }}>
-          {SettingsManager.getSettings().tooltipStyle === 'simple' ? <PlayerHoverCard player={player} /> : <PlayerHoverCardK2 player={player} />}
+          <PlayerHoverCardK2 player={player} />
         </div>
       )}
     </div>
@@ -184,8 +187,9 @@ export const PickRow: React.FC<{
   lotterySlotByTid?: Map<number, number>;
   stepienBlocked?: boolean;
 }> = ({ pick, selected, onToggle, originalTeam, powerRank, totalTeams, currentYear, lotterySlotByTid, stepienBlocked }) => {
-  const yearsFromNow = Math.max(1, pick.season - currentYear);
-  const isNextYear = yearsFromNow <= 1;
+  const yearsFromNow = Math.max(0, pick.season - currentYear);
+  const isCurrentYear = yearsFromNow === 0;
+  const isNextYear = yearsFromNow === 1;
   const isStale = yearsFromNow >= 3;
   const resolvedSlot = pick.round === 1 && pick.season === currentYear ? lotterySlotByTid?.get(pick.originalTid) : undefined;
   const labelShort = formatPickLabel(pick, currentYear, lotterySlotByTid, true);
@@ -203,26 +207,41 @@ export const PickRow: React.FC<{
         <div className="text-[10px] text-slate-500 truncate">{stepienBlocked ? <span className="text-rose-400 font-black uppercase tracking-wider">Stepien Rule</span> : <>Via {originalTeam?.abbrev ?? '?'}</>}</div>
       </div>
       {pick.round === 1 && resolvedSlot == null && <div className="text-[9px] text-slate-500 font-mono flex-shrink-0 px-1">{(() => { const rankPct = totalTeams > 1 ? (powerRank - 1) / (totalTeams - 1) : 0.5; const mid = Math.round(1 + (1 - rankPct) * 29); return `~#${Math.max(1, mid - 3)}–${Math.min(30, mid + 3)}`; })()}</div>}
-      <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ${isNextYear ? 'bg-indigo-900/50 text-indigo-300' : isStale ? 'bg-slate-800 text-slate-500' : 'bg-slate-800/80 text-slate-400'}`}>
-        {isNextYear ? <TrendingUp size={10} /> : isStale ? null : <TrendingDown size={10} />}
-        {isNextYear ? 'Next' : `+${yearsFromNow}yr`}
+      <div className={`flex items-center gap-1 text-[10px] font-bold px-2 py-1 rounded-lg flex-shrink-0 ${isCurrentYear || isNextYear ? 'bg-indigo-900/50 text-indigo-300' : isStale ? 'bg-slate-800 text-slate-500' : 'bg-slate-800/80 text-slate-400'}`}>
+        {isCurrentYear || isNextYear ? <TrendingUp size={10} /> : isStale ? null : <TrendingDown size={10} />}
+        {isCurrentYear ? 'Current' : isNextYear ? 'Next' : `+${yearsFromNow}yr`}
       </div>
       {selected && <X size={11} className="text-indigo-400 flex-shrink-0" />}
     </div>
   );
 };
 
-const OfferItemRow: React.FC<{ item: TradeItem; teams: NBATeam[]; nonNBATeams: any[]; dateStr: string; currentYear: number; tone?: 'normal' | 'ask' }> = ({ item, teams, nonNBATeams, dateStr, currentYear, tone = 'normal' }) => {
+const OfferItemRow: React.FC<{ item: TradeItem; teams: NBATeam[]; nonNBATeams: any[]; dateStr: string; currentYear: number; tone?: 'normal' | 'ask'; onPlayerClick?: (player: NBAPlayer) => void }> = ({ item, teams, nonNBATeams, dateStr, currentYear, tone = 'normal', onPlayerClick }) => {
+  const { state } = useGame();
   const rowRef = useRef<HTMLDivElement>(null);
   const [cardPos, setCardPos] = useState<{ top: number; left: number; centered: boolean } | null>(null);
   const bg = tone === 'ask' ? 'bg-rose-900/20' : 'bg-slate-800/40';
   const playerExpiry = item.type === 'player' && item.player
     ? getPlayerContractExpiryDisplay(item.player as any, currentYear)
     : null;
+  const displayOvr = item.type === 'player' && item.player
+    ? getScoutedDisplayOverall(state, item.player, currentYear)
+    : item.ovr;
+  const displayPot = item.type === 'player' && item.player
+    ? getScoutedDisplayPotential(state, item.player, currentYear, currentYear)
+    : item.pot;
   return (
     <div
       ref={rowRef}
-      className={`flex items-center gap-2 ${bg} rounded-xl px-2.5 py-1.5`}
+      className={`flex items-center gap-2 ${bg} rounded-xl px-2.5 py-1.5 ${item.player && onPlayerClick ? 'cursor-pointer hover:ring-1 hover:ring-indigo-400/50' : ''}`}
+      onClick={() => item.player && onPlayerClick?.(item.player)}
+      onKeyDown={event => {
+        if (!item.player || !onPlayerClick || (event.key !== 'Enter' && event.key !== ' ')) return;
+        event.preventDefault();
+        onPlayerClick(item.player);
+      }}
+      role={item.player && onPlayerClick ? 'button' : undefined}
+      tabIndex={item.player && onPlayerClick ? 0 : undefined}
       onMouseEnter={() => {
         if (item.type !== 'player' || !item.player || !rowRef.current) return;
         setCardPos(getHoverCardPosition(rowRef.current.getBoundingClientRect()));
@@ -236,13 +255,13 @@ const OfferItemRow: React.FC<{ item: TradeItem; teams: NBATeam[]; nonNBATeams: a
         </>
       ) : item.type === 'player' && item.player ? (
         <>
-          <PlayerPortrait imgUrl={item.player.imgURL} fallbackImgUrl={getTradePortraitFallback(item.player)} face={(item.player as any).face} size={28} playerName={item.player.name} />
+          <PlayerPortrait imgUrl={getPlayerImage(item.player)} fallbackImgUrl={getTradePortraitFallback(item.player)} face={(item.player as any).face} size={28} playerName={item.player.name} />
           <div className="flex-1 min-w-0">
             <div className="text-xs font-bold text-white truncate flex items-center gap-1">{item.player.name}{playerIndicators(item.player, teams.find(t => t.id === item.player!.tid), dateStr)}</div>
-            <div className="text-[10px] text-slate-500">{item.player.pos}{(() => { const age = getDisplayAge(item.player, currentYear); return age ? <span> · {age}Y</span> : null; })()}</div>
+            <div className={`text-[10px] ${isEurostashPlayer(item.player) ? 'font-black uppercase tracking-wider text-sky-300' : 'text-slate-500'}`}>{isEurostashPlayer(item.player) ? 'RIGHTS ONLY' : <>{item.player.pos}{(() => { const age = getDisplayAge(item.player, currentYear); return age ? <span> · {age}Y</span> : null; })()}</>}</div>
           </div>
-          <div className="flex flex-col items-end flex-shrink-0"><div className={`text-xs font-black tabular-nums ${ovrText(item.ovr ?? 70)}`}>{item.ovr ?? '—'}</div><div className={`text-[10px] font-bold tabular-nums ${getPotColor(item.pot ?? 70)}`}>{item.pot ?? '—'}</div></div>
-          <div className="flex flex-col items-end flex-shrink-0 tabular-nums w-14"><div className="text-[11px] font-black text-white">{formatPlayerSalaryDisplay(item.player as any, currentYear, nonNBATeams)}</div>{playerExpiry && <div className={`text-[10px] ${playerExpiry.isConferenceDeal ? 'text-amber-300' : expiryTextClass(item.player.contract?.exp, currentYear)}`}>{playerExpiry.label}</div>}</div>
+          <div className="flex flex-col items-end flex-shrink-0"><div className={`text-xs font-black tabular-nums ${ovrText(displayOvr ?? 70)}`}>{displayOvr ?? '—'}</div><div className={`text-[10px] font-bold tabular-nums ${getPotColor(displayPot ?? 70)}`}>{displayPot ?? '—'}</div></div>
+          <div className="flex flex-col items-end flex-shrink-0 tabular-nums w-14"><div className="text-[11px] font-black text-white">{isEurostashPlayer(item.player) ? 'Rights' : formatPlayerSalaryDisplay(item.player as any, currentYear, nonNBATeams)}</div>{playerExpiry && !isEurostashPlayer(item.player) && <div className={`text-[10px] ${playerExpiry.isConferenceDeal ? 'text-amber-300' : expiryTextClass(item.player.contract?.exp, currentYear)}`}>{playerExpiry.label}</div>}</div>
         </>
       ) : (
         <>
@@ -252,7 +271,7 @@ const OfferItemRow: React.FC<{ item: TradeItem; teams: NBATeam[]; nonNBATeams: a
           <div className="flex-1 min-w-0"><div className="text-xs font-bold text-white">{item.label}</div></div>
         </>
       )}
-      {cardPos && item.player && <div className="fixed z-[200] pointer-events-none max-h-[calc(100vh-16px)] overflow-y-auto" style={{ top: cardPos.top, left: cardPos.left, width: cardPos.centered ? 'min(256px, calc(100vw - 16px))' : undefined }}>{SettingsManager.getSettings().tooltipStyle === 'simple' ? <PlayerHoverCard player={item.player} /> : <PlayerHoverCardK2 player={item.player} />}</div>}
+      {cardPos && item.player && <div className="fixed z-[200] pointer-events-none max-h-[calc(100vh-16px)] overflow-y-auto" style={{ top: cardPos.top, left: cardPos.left, width: cardPos.centered ? 'min(256px, calc(100vw - 16px))' : undefined }}><PlayerHoverCardK2 player={item.player} /></div>}
     </div>
   );
 };
@@ -270,8 +289,10 @@ export const OfferCard: React.FC<{
   onReject?: () => void;
   showAsk?: boolean;
   hideActions?: boolean;
+  onPlayerClick?: (player: NBAPlayer) => void;
   salaryBadgeOverride?: { label: string; tone: 'ok' | 'warn' | 'bad' } | null;
-}> = ({ offer, myItems, team, teams, currentYear, dateStr, nonNBATeams, capSpaceK, onManage, onReject, showAsk, hideActions, salaryBadgeOverride }) => {
+  reversePerspective?: boolean;
+}> = ({ offer, myItems, team, teams, currentYear, dateStr, nonNBATeams, capSpaceK, onManage, onReject, showAsk, hideActions, onPlayerClick, salaryBadgeOverride, reversePerspective = false }) => {
   const { state } = useGame();
   const currency = getLeagueCurrencyCode(state.leagueStats);
   const salaryRulesEnabled = state.leagueStats?.salaryCapEnabled !== false;
@@ -282,7 +303,9 @@ export const OfferCard: React.FC<{
   const bothHavePlayers = myItems.some(i => i.type === 'player') && offer.items.some(i => i.type === 'player');
   const capAbsorbOnly = mySalary > 0 && theirSalary === 0;
   const capAbsorbLegal = capAbsorbOnly && capSpaceK !== undefined && capSpaceK > 0 && mySalary <= capSpaceK + 0.1;
-  const ratioOk = bothHavePlayers ? isSalaryLegal(mySalary, theirSalary) : capAbsorbLegal;
+  const ratioOk = offer.cbaValid !== undefined
+    ? offer.cbaValid
+    : bothHavePlayers ? isSalaryLegal(mySalary, theirSalary) : capAbsorbLegal;
   const cbaBlocked = offer.cbaValid === false;
   const primaryBadge = salaryRulesEnabled ? salaryBadgeOverride ?? (
     capAbsorbOnly
@@ -308,14 +331,14 @@ export const OfferCard: React.FC<{
         <div className="flex-1 min-w-0"><div className="text-xs font-black text-white truncate">{team ? getTeamFullName(team) : ''}</div><div className="text-[10px] text-slate-500">{(team as any)?.wins ?? 0}–{(team as any)?.losses ?? 0}</div></div>
         <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded-lg flex-shrink-0 ${offer.outlook.bgColor} ${offer.outlook.color}`}>{badgeLabel}</span>
       </div>
-      {showAsk && myItems.length > 0 && <div className="px-2 pt-2 pb-1 bg-rose-950/20 border-b border-rose-500/10 space-y-1"><div className="flex items-center gap-1.5 px-1 mb-1"><span className="text-[9px] font-black uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/25 rounded px-1.5 py-0.5">↗ Outgoing{myDisplaySalaryUSD > 0 && ` · ${formatTradeSalary(myDisplaySalaryUSD, currency)}`}</span></div>{myItems.map(item => <OfferItemRow key={item.id} item={item} teams={teams} nonNBATeams={nonNBATeams} dateStr={dateStr} currentYear={currentYear} tone="ask" />)}</div>}
+      {showAsk && myItems.length > 0 && <div className="px-2 pt-2 pb-1 bg-rose-950/20 border-b border-rose-500/10 space-y-1"><div className="flex items-center gap-1.5 px-1 mb-1"><span className="text-[9px] font-black uppercase tracking-widest text-rose-300 bg-rose-500/15 border border-rose-500/25 rounded px-1.5 py-0.5">↗ Outgoing{myDisplaySalaryUSD > 0 && ` · ${formatTradeSalary(myDisplaySalaryUSD, currency)}`}</span></div>{myItems.map(item => <OfferItemRow key={item.id} item={item} teams={teams} nonNBATeams={nonNBATeams} dateStr={dateStr} currentYear={currentYear} tone="ask" onPlayerClick={onPlayerClick} />)}</div>}
       <div className="flex-1 p-2 space-y-1">
-        <div className="flex items-center gap-1.5 px-1 mb-1"><span className="text-[9px] font-black uppercase tracking-widest text-emerald-300 bg-emerald-500/15 border border-emerald-500/25 rounded px-1.5 py-0.5">↙ Incoming{theirDisplaySalaryUSD > 0 && ` · ${formatTradeSalary(theirDisplaySalaryUSD, currency)}`}</span></div>
-        {offer.items.map(item => <OfferItemRow key={item.id} item={item} teams={teams} nonNBATeams={nonNBATeams} dateStr={dateStr} currentYear={currentYear} />)}
+        <div className="flex items-center gap-1.5 px-1 mb-1"><span className={`text-[9px] font-black uppercase tracking-widest border rounded px-1.5 py-0.5 ${reversePerspective ? 'text-rose-300 bg-rose-500/15 border-rose-500/25' : 'text-emerald-300 bg-emerald-500/15 border-emerald-500/25'}`}>{reversePerspective ? '↗ Outgoing' : '↙ Incoming'}{theirDisplaySalaryUSD > 0 && ` · ${formatTradeSalary(theirDisplaySalaryUSD, currency)}`}</span></div>
+        {offer.items.map(item => <OfferItemRow key={item.id} item={item} teams={teams} nonNBATeams={nonNBATeams} dateStr={dateStr} currentYear={currentYear} onPlayerClick={onPlayerClick} />)}
       </div>
       <div className="p-2.5 border-t border-slate-800/50 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 flex-wrap">
-          {isAbsorb ? <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-emerald-900/40 text-emerald-400">✓ Cap Absorbs</span> : primaryBadge ? <span title={cbaBlocked ? (offer.cbaReason ?? 'CBA rule violation') : undefined} className={`text-[9px] font-bold px-2 py-1 rounded-lg ${primaryBadge.tone === 'warn' ? 'bg-sky-900/40 text-sky-300' : primaryBadge.tone === 'ok' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-300'}`}>{primaryBadge.label}</span> : null}
+          {isAbsorb && offer.cbaValid !== false ? <span className="text-[9px] font-bold px-2 py-1 rounded-lg bg-emerald-900/40 text-emerald-400">✓ Cap Absorbs</span> : primaryBadge ? <span title={cbaBlocked ? (offer.cbaReason ?? 'CBA rule violation') : undefined} className={`text-[9px] font-bold px-2 py-1 rounded-lg ${primaryBadge.tone === 'warn' ? 'bg-sky-900/40 text-sky-300' : primaryBadge.tone === 'ok' ? 'bg-emerald-900/40 text-emerald-400' : 'bg-rose-900/40 text-rose-300'}`}>{primaryBadge.label}</span> : null}
         </div>
         {!hideActions && <div className="flex items-center gap-1.5">{onReject && <button onClick={onReject} className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 text-[10px] font-black uppercase tracking-wide transition-all"><X size={11} />Reject</button>}<button onClick={onManage} className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase tracking-wide transition-all"><ArrowLeftRight size={11} />Manage</button></div>}
       </div>

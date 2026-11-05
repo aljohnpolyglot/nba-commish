@@ -19,7 +19,7 @@ export function getFatigueTextColor(fatigue: number): string {
 
 export function getInjuryRisk(fatigue: number): { label: string; color: string } {
   if (fatigue > 85) return { label: 'RED ZONE', color: 'text-red-500 font-bold bg-red-500/10 border-red-500/30' };
-  if (fatigue > 70) return { label: 'HIGH', color: 'text-orange-500 font-bold bg-orange-500/10 border-orange-500/30' };
-  if (fatigue > 50) return { label: 'MODERATE', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30' };
-  return { label: 'LOW', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30' };
+  if (fatigue > 70) return { label: 'HIGH RISK', color: 'text-orange-500 font-bold bg-orange-500/10 border-orange-500/30' };
+  if (fatigue > 50) return { label: 'MODERATE RISK', color: 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30' };
+  return { label: 'LOW RISK', color: 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30' };
 }

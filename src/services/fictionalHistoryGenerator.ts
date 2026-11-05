@@ -49,10 +49,13 @@ export function generateFictionalHistory(
   teams: NBATeam[],
   currentYear: number,
   rng: () => number,
+  format: { gamesPerSeason?: number; playoffsEnabled?: boolean } = {},
 ): HistoryResult {
   const awards: HistoryResult['historicalAwards'] = [];
   const teamSeasons = new Map<number, HistoryResult['teamSeasons'] extends Map<any, infer V> ? V : never>();
   for (const t of teams) teamSeasons.set(t.id, []);
+  const gamesPerSeason = Math.max(1, Math.floor(format.gamesPerSeason ?? 82));
+  const playoffsEnabled = format.playoffsEnabled !== false;
 
   // ── Per-player meta cache ────────────────────────────────────────────────
   type Meta = { draftYear: number; draftAge: number; ovr: number; firstStatYr?: number; lastStatYr?: number };
@@ -84,20 +87,61 @@ export function generateFictionalHistory(
 
   const predOvrAt = (p: NBAPlayer, Y: number): number => {
     const m = meta.get(p.internalId ?? p.name)!;
-    return m.ovr * careerArc(m.draftAge, Y - m.draftYear);
+    const yearIn = Y - (m.firstStatYr ?? (m.draftYear + 1));
+    return m.ovr * careerArc(m.draftAge, yearIn);
+  };
+
+  const awardCounts = new Map<string, Map<string, number>>();
+  const lastAwardWinner = new Map<string, string>();
+  const awardStreak = new Map<string, number>();
+
+  const chooseWinner = <T extends { p: NBAPlayer }>(
+    type: 'MVP' | 'DPOY',
+    candidates: T[],
+    score: (candidate: T) => number,
+    careerLimit: number,
+  ): T | undefined => {
+    const counts = awardCounts.get(type) ?? new Map<string, number>();
+    awardCounts.set(type, counts);
+    const priorPid = lastAwardWinner.get(type);
+    const priorStreak = awardStreak.get(type) ?? 0;
+    const ranked = candidates
+      .filter(candidate => {
+        const pid = candidate.p.internalId ?? candidate.p.name;
+        return (counts.get(pid) ?? 0) < careerLimit && (pid !== priorPid || priorStreak < 3);
+      })
+      .map(candidate => {
+        const pid = candidate.p.internalId ?? candidate.p.name;
+        const repeatPenalty = 1 - Math.min(0.3, (counts.get(pid) ?? 0) * 0.06);
+        return { candidate, score: score(candidate) * repeatPenalty * (0.9 + rng() * 0.2) };
+      })
+      .sort((left, right) => right.score - left.score);
+    const winner = ranked[0]?.candidate;
+    if (!winner) return candidates[0];
+    const pid = winner.p.internalId ?? winner.p.name;
+    counts.set(pid, (counts.get(pid) ?? 0) + 1);
+    awardStreak.set(type, pid === priorPid ? priorStreak + 1 : 1);
+    lastAwardWinner.set(type, pid);
+    return winner;
   };
 
   // ── Per-year award/standings synthesis ───────────────────────────────────
-  for (let offset = 1; offset <= HISTORY_YEARS; offset++) {
+  for (let offset = HISTORY_YEARS; offset >= 1; offset--) {
     const Y = currentYear - offset;
     const active = players
       .filter(p => wasActive(p, Y))
-      .map(p => ({
-        p,
-        m: meta.get(p.internalId ?? p.name)!,
-        pred: predOvrAt(p, Y),
-        yearIn: Y - meta.get(p.internalId ?? p.name)!.draftYear,
-      }));
+      .map(p => {
+        const m = meta.get(p.internalId ?? p.name)!;
+        const stat = (p.stats ?? []).find(row => !row.playoffs && Number(row.season) === Y);
+        return {
+          p,
+          m,
+          stat,
+          tid: Number(stat?.tid ?? p.tid),
+          pred: predOvrAt(p, Y),
+          yearIn: Y - (m.firstStatYr ?? (m.draftYear + 1)),
+        };
+      });
 
     // Empty year (very early history before any current player was drafted) → skip
     if (active.length === 0) continue;
@@ -105,7 +149,7 @@ export function generateFictionalHistory(
     // ── Team strength + champion / runner-up ────────────────────────────
     const strengthByTid = new Map<number, number>();
     for (const a of active) {
-      const tid = a.p.tid;
+      const tid = a.tid;
       if (tid == null || tid < 0) continue;
       strengthByTid.set(tid, (strengthByTid.get(tid) ?? 0) + a.pred);
     }
@@ -116,37 +160,38 @@ export function generateFictionalHistory(
 
     const champTid = ranked[0]?.tid;
     const ruTid = ranked[1]?.tid;
-    const playoffTids = new Set(ranked.slice(0, 16).map(r => r.tid));
+    const playoffTids = new Set(playoffsEnabled ? ranked.slice(0, Math.min(16, teams.length)).map(r => r.tid) : []);
 
     // Per-team season records — champ wins big, RU close, others scaled
     for (const t of teams) {
       const isChamp = t.id === champTid;
       const isRu = t.id === ruTid;
       const inPlayoffs = playoffTids.has(t.id);
-      let won: number, playoffRoundsWon: number;
+      let winPct: number, playoffRoundsWon: number;
       if (isChamp) {
-        won = 56 + Math.floor(rng() * 13);
-        playoffRoundsWon = 4;
+        winPct = 0.72 + rng() * 0.12;
+        playoffRoundsWon = playoffsEnabled ? 4 : -1;
       } else if (isRu) {
-        won = 50 + Math.floor(rng() * 10);
-        playoffRoundsWon = 3;
+        winPct = 0.64 + rng() * 0.06;
+        playoffRoundsWon = playoffsEnabled ? 3 : -1;
       } else if (inPlayoffs) {
-        won = 38 + Math.floor(rng() * 14);
+        winPct = 0.46 + rng() * 0.16;
         playoffRoundsWon = Math.floor(rng() * 3);  // 0-2
       } else {
-        won = 18 + Math.floor(rng() * 22);
+        winPct = 0.22 + rng() * 0.23;
         playoffRoundsWon = -1;
       }
+      const won = Math.min(gamesPerSeason, Math.max(0, Math.round(gamesPerSeason * winPct)));
       teamSeasons.get(t.id)!.push({
         season: Y,
         won,
-        lost: 82 - won,
+        lost: gamesPerSeason - won,
         playoffRoundsWon,
       });
     }
 
     // Champion + Runner Up awards
-    if (champTid != null) {
+    if (playoffsEnabled && champTid != null) {
       const t = teams.find(x => x.id === champTid);
       if (t) awards.push({ season: Y, type: 'Champion', tid: t.id, name: t.name });
     }
@@ -164,24 +209,38 @@ export function generateFictionalHistory(
         type,
         name: entry.p.name,
         pid: entry.p.internalId,
-        tid: tidOverride ?? entry.p.tid,
+        tid: tidOverride ?? entry.tid,
       });
     };
 
-    // MVP — top predicted OVR
-    pushPlayer('MVP', byPred[0]);
+    const perGame = (entry: typeof active[number], key: 'pts' | 'trb' | 'ast' | 'stl' | 'blk') => {
+      const gp = Math.max(1, Number(entry.stat?.gp ?? 0));
+      return Number(entry.stat?.[key] ?? 0) / gp;
+    };
+    const teamWins = new Map(teams.map(team => [team.id, teamSeasons.get(team.id)?.find(row => row.season === Y)?.won ?? 0]));
+    const mvp = chooseWinner('MVP', active, entry =>
+      perGame(entry, 'pts')
+      + perGame(entry, 'trb') * 0.65
+      + perGame(entry, 'ast') * 0.8
+      + perGame(entry, 'stl') * 1.4
+      + perGame(entry, 'blk') * 1.2
+      + entry.pred * 0.12
+      + (teamWins.get(entry.tid) ?? 0) / gamesPerSeason * 5,
+    5);
+    pushPlayer('MVP', mvp);
 
     // DPOY — top by diq + 0.3 × reb (year-scaled)
-    const byDef = [...active].sort((a, b) => {
-      const ar: any = (a.p.ratings as any)?.[(a.p.ratings as any).length - 1] ?? {};
-      const br: any = (b.p.ratings as any)?.[(b.p.ratings as any).length - 1] ?? {};
-      const aArc = careerArc(a.m.draftAge, a.yearIn);
-      const bArc = careerArc(b.m.draftAge, b.yearIn);
-      const aScore = ((ar.diq ?? 50) + 0.3 * (ar.reb ?? 50)) * aArc;
-      const bScore = ((br.diq ?? 50) + 0.3 * (br.reb ?? 50)) * bArc;
-      return bScore - aScore;
-    });
-    pushPlayer('DPOY', byDef[0]);
+    const dpoy = chooseWinner('DPOY', active, entry => {
+      const ratings: any = (entry.p.ratings ?? []).find(row => Number(row.season) === Y)
+        ?? entry.p.ratings?.[entry.p.ratings.length - 1]
+        ?? {};
+      return perGame(entry, 'blk') * 5
+        + perGame(entry, 'stl') * 4
+        + perGame(entry, 'trb') * 0.55
+        + Number(ratings.diq ?? 50) * 0.12
+        + Number(ratings.reb ?? 50) * 0.05;
+    }, 4);
+    pushPlayer('DPOY', dpoy);
 
     // ROY — best rookie (yearIn === 0) that year
     const rookies = active.filter(a => a.yearIn === 0).sort((a, b) => b.pred - a.pred);
@@ -198,7 +257,7 @@ export function generateFictionalHistory(
     // Finals MVP — a star on the championship roster
     if (champTid != null) {
       const champStars = active
-        .filter(a => a.p.tid === champTid)
+        .filter(a => a.tid === champTid)
         .sort((a, b) => b.pred - a.pred);
       pushPlayer('Finals MVP', champStars[0], champTid);
     }

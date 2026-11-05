@@ -27,6 +27,7 @@ import { getNameData } from '../../data/nameDataFetcher';
 import { generateDraftClassForGame, pickWeighted } from '../genDraftPlayers';
 import { EUROLEAGUE_TEAMS, getRaceFrequencies } from '../../genplayersconstants';
 import { getNewgenPortraitUrl } from '../../utils/newgenPortrait';
+import { parsePlayerCountryValue } from '../../utils/playerNationality';
 
 // ── Seeded RNG — same convention as retirementChecker.ts ─────────────────────
 export const GENERATED_EXTERNAL_OVR_NERF = 8;
@@ -86,10 +87,6 @@ const WOMENS_LEAGUES = new Set(['WNBA']);
 export function genderForLeague(league: string): 'male' | 'female' {
   return WOMENS_LEAGUES.has(league) ? 'female' : 'male';
 }
-
-// Newgen face pack is Euro-feature-leaning. Skip Asian-population leagues —
-// those facial features aren't represented in the pack.
-export const NEWGEN_SKIP_LEAGUES = new Set(['B-League', 'China CBA', 'PBA']);
 
 export function getClubCountry(tid: number | undefined): string | undefined {
   if (tid == null) return undefined;
@@ -199,7 +196,11 @@ export function repairGeneratedExternalPlayer(player: NBAPlayer, referenceYear: 
 // G-League is a feeder for grown American pros, not a youth academy system.
 // Spawning 15-18yo "youth" at G-League teams produced nonsense colleges like
 // "Maine Celtics Youth" showing up in the UI. Keep it adult-direct.
-export const WITH_YOUTH_LEAGUES = new Set(['Euroleague', 'Endesa', 'NBL Australia', 'B-League']);
+export const WITH_YOUTH_LEAGUES = new Set([
+  'Euroleague', 'EuroCup', 'Endesa', 'NBL Australia', 'B-League',
+  'France Elite', 'Italy Serie A', 'Germany BBL', 'Greece A1', 'Turkey BSL',
+  'Lithuania LKL', 'Israel BSL', 'VTB', 'ABA',
+]);
 // WNBA: adult-direct (NCAA pipeline, not youth academies). Track B in repopulate.
 const ADULT_DIRECT_LEAGUES = new Set(['PBA', 'China CBA', 'WNBA']);
 
@@ -207,6 +208,7 @@ const ADULT_DIRECT_LEAGUES = new Set(['PBA', 'China CBA', 'WNBA']);
 // Kept in lockstep with constants.ts EXTERNAL_LEAGUE_OVR_CAP.
 export const LEAGUE_OVR_CAP: Record<string, number> = {
   Euroleague:      58,
+  EuroCup:         56,
   Endesa:          55,
   'NBL Australia': 52,
   'China CBA':     50,
@@ -214,6 +216,15 @@ export const LEAGUE_OVR_CAP: Record<string, number> = {
   PBA:             46,
   'G-League':      45,
   WNBA:            54,
+  'France Elite':  54,
+  'Italy Serie A': 55,
+  'Germany BBL':   54,
+  'Greece A1':     55,
+  'Turkey BSL':    55,
+  'Lithuania LKL': 52,
+  'Israel BSL':    52,
+  VTB:             56,
+  ABA:             54,
 };
 
 // Default nationality for adult-direct leagues
@@ -261,7 +272,7 @@ const COUNTRY_NAME_FALLBACK: Record<string, string> = {
 const YOUTH_CLUB_TIDS: Record<string, number[]> = {
   Euroleague:      [1002, 1000, 1006, 1001, 1013, 1014, 1015], // Barcelona, Madrid, Baskonia, Olympiacos, Partizan, Crvena Zvezda, Virtus
   Endesa:          [5006, 5012, 5001],                          // Barcelona, Real Madrid, Baskonia
-  'NBL Australia': [8008, 8000],                               // Sydney Kings, Adelaide 36ers
+  'NBL Australia': [18008, 18000, 8008, 8000],                 // Sydney Kings, Adelaide 36ers
   'B-League':      [4003, 4008, 4002],                         // Chiba Jets, Kawasaki, Alvark Tokyo
   'G-League':      [],                                         // any team (feeder — no formal academy)
 };
@@ -332,6 +343,12 @@ export interface ExternalHistoryEntry {
   date: string;
   type: 'Retirement' | 'Signing' | 'Draft';
   playerIds: string[];
+  eventType?: 'retirement' | 'transaction';
+  personId?: string;
+  sourceIds?: Record<string, string | string[]>;
+  league?: string;
+  tid?: number;
+  teamIds?: number[];
 }
 
 // ── Module-level state ────────────────────────────────────────────────────────
@@ -431,8 +448,8 @@ export function resolveNamePool(country: string, nameData: ReturnType<typeof get
     return null;
   };
 
-  // Split dual-citizenship strings: "Senegal, France" → ["Senegal", "France"]
-  const tokens = country.split(', ').map(t => t.trim()).filter(Boolean);
+  const tokens = parsePlayerCountryValue(country);
+  if (tokens.length === 0 && country.trim()) tokens.push(country.trim());
 
   for (const token of tokens) {
     const r = tryLookup(token);

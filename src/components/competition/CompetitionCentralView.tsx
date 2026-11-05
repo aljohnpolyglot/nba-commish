@@ -1,308 +1,341 @@
 import React, { useMemo, useState } from 'react';
-import { Calendar, Trophy, Info, ChevronDown, ChevronUp, ArrowLeft, History, CalendarClock } from 'lucide-react';
+import { ArrowLeft, CalendarClock, ChevronRight, History, Trophy } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { resolveAnyTeam } from '../../utils/teamLookup';
-import { findBoxScoreForGame } from '../../utils/boxScoreLookup';
-import { getTeamFullName } from '../../utils/teamNames';
+import { findBoxScoreForScheduledGame } from '../../utils/boxScoreLookup';
+import { getHistoricalTeamSnapshot } from '../../utils/teamAssets';
 import { normalizeDate } from '../../utils/helpers';
+import { formatGameDateShort } from '../../utils/dateUtils';
+import { getTeamFullName } from '../../utils/teamNames';
+import { didHomeTeamWin } from '../../utils/gameOutcome';
 import { selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
-import { COMPETITION_EXPLAINERS } from './competitionExplainers';
+import { matchesBoxScoreSeason, matchesScheduleSeason } from '../../services/competition/competitionSeasonState';
+import {
+  competitionBoundaryForSeed,
+  competitionZoneForSeed,
+  getCompetitionQualificationZones,
+  rankCompetitionStandings,
+  type CompetitionStandingInput,
+} from '../../services/competition/competitionStandings';
 import { TeamDetailView } from '../central/view/TeamDetailView';
 import { BoxScoreModal } from '../modals/BoxScoreModal';
-import type { Game, NBAPlayer, Tab } from '../../types';
+import type { Game, GameResult, NBATeam, NBAPlayer, Tab } from '../../types';
 
-interface Props { specId: 'euroleague' | 'endesa'; }
+interface Props {
+  specId: string;
+  onOpenStandings?: () => void;
+}
 
-export const CompetitionCentralView: React.FC<Props> = ({ specId }) => {
+const isRegularPhase = (phase?: string) => (
+  !phase || phase === 'regular' || phase === 'regular-season' || phase === 'group' || phase.startsWith('r')
+);
+
+export const CompetitionCentralView: React.FC<Props> = ({ specId, onOpenStandings }) => {
   const { state, setCurrentView } = useGame();
-  const spec = state.activeCompetitions?.find(c => c.id === specId);
+  const spec = state.activeCompetitions?.find(competition => competition.id === specId);
   const today = normalizeDate(state.date);
-  const season = state.leagueStats?.year ?? new Date().getFullYear();
-  const accent = spec?.accentColor ?? '#fb923c';
-  const explainer = COMPETITION_EXPLAINERS[specId];
-  const [explainerExpanded, setExplainerExpanded] = useState(false);
+  const season = state.leagueStats.year;
   const [selectedClubTid, setSelectedClubTid] = useState<number | null>(null);
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
 
-  // Open box score for a recent comp game — looks up the Game from schedule by gameId.
-  const handleResultClick = (gameId: number) => {
-    const g = state.schedule.find(s => s.gid === gameId);
-    if (g) setSelectedBoxScoreGame(g);
-  };
+  const competitionTids = useMemo(
+    () => spec ? selectCompetitionTeamTids(spec, state) : [],
+    [spec, state],
+  );
+  const competitionResults = useMemo(() => state.boxScores.filter(result => (
+    result.competitionId === specId
+    && matchesBoxScoreSeason(result, season)
+    && ((spec?.format === 'knockout' || spec?.format === 'tournament') || isRegularPhase(result.competitionPhase))
+  )), [season, spec?.format, specId, state.boxScores]);
+  const standings = useMemo(() => {
+    const rows = new Map<number, CompetitionStandingInput>(competitionTids.map(tid => [tid, {
+      tid,
+      wins: 0,
+      losses: 0,
+      pointsFor: 0,
+      pointsAgainst: 0,
+    }]));
+    for (const result of competitionResults) {
+      const home = rows.get(result.homeTeamId);
+      const away = rows.get(result.awayTeamId);
+      if (!home || !away) continue;
+      const homeWon = didHomeTeamWin(result);
+      home.wins += Number(homeWon);
+      home.losses += Number(!homeWon);
+      home.pointsFor += result.homeScore;
+      home.pointsAgainst += result.awayScore;
+      away.wins += Number(!homeWon);
+      away.losses += Number(homeWon);
+      away.pointsFor += result.awayScore;
+      away.pointsAgainst += result.homeScore;
+    }
+    return spec ? rankCompetitionStandings([...rows.values()], competitionResults, spec, season) : [];
+  }, [competitionResults, competitionTids, season, spec]);
+  const todayGames = useMemo(() => state.schedule.filter(game => (
+    game.competitionId === specId && matchesScheduleSeason(game, season) && normalizeDate(game.date) === today
+  )), [season, specId, state.schedule, today]);
+  const upcomingGames = useMemo(() => state.schedule
+    .filter(game => game.competitionId === specId && matchesScheduleSeason(game, season) && !game.played && normalizeDate(game.date) > today)
+    .sort((left, right) => left.date.localeCompare(right.date))
+    .slice(0, 8), [season, specId, state.schedule, today]);
+  const featuredGames = todayGames.length > 0 ? todayGames : upcomingGames;
+  const recentResults = useMemo(() => [...competitionResults]
+    .sort((left, right) => String(right.date).localeCompare(String(left.date)))
+    .slice(0, 6), [competitionResults]);
+  const knockoutOnly = spec?.format === 'knockout' || spec?.format === 'tournament';
+  const standingsSnapshot = useMemo(() => {
+    if (knockoutOnly || standings.length <= 8) return standings.map((row, index) => ({ row, index }));
+    const top = standings.slice(0, 8).map((row, index) => ({ row, index }));
+    const userIndex = standings.findIndex(row => row.tid === state.userTeamId);
+    if (userIndex >= 8) top.push({ row: standings[userIndex], index: userIndex });
+    return top;
+  }, [knockoutOnly, standings, state.userTeamId]);
 
-  // Jump to Schedule view's DayView for a future game. Uses currentView swap +
-  // localStorage hint so ScheduleView lands on the right date on mount.
-  const handleUpcomingClick = (game: Game) => {
+  const resolveTeam = (tid: number): NBATeam | null => (
+    resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? [])
+  );
+  const openGame = (game: Game) => {
+    if (game.played) {
+      setSelectedBoxScoreGame(game);
+      return;
+    }
     try { sessionStorage.setItem('scheduleJumpDate', normalizeDate(game.date)); } catch {}
     setCurrentView('Schedule' as Tab);
   };
 
-  const compTids = useMemo(() => (spec ? selectCompetitionTeamTids(spec, state) : []), [spec, state]);
-  const compTidSet = useMemo(() => new Set(compTids), [compTids]);
+  const qualificationZones = useMemo(() => (
+    knockoutOnly || !spec
+      ? []
+      : getCompetitionQualificationZones(spec, season)
+  ), [knockoutOnly, season, spec]);
 
-  const todaysGames = useMemo(() => state.schedule
-    .filter(g => g.competitionId === specId && normalizeDate(g.date) === today),
-    [state.schedule, specId, today]);
+  if (!spec) return <div className="p-8 text-sm text-slate-500">Competition not active.</div>;
 
-  const upcomingGames = useMemo(() => state.schedule
-    .filter(g => g.competitionId === specId && !g.played && normalizeDate(g.date) > today)
-    .sort((a, b) => a.date.localeCompare(b.date))
-    .slice(0, 8),
-    [state.schedule, specId, today]);
-
-  const currentSeasonResults = useMemo(() => state.boxScores
-    .filter(b => {
-      if (b.competitionId !== specId) return false;
-      if (typeof b.season === 'number') return b.season === season;
-      const m = String(b.date ?? '').match(/(20\d{2})/);
-      if (!m) return false;
-      const y = Number(m[1]);
-      return y === season || y === season - 1;
-    }),
-    [state.boxScores, specId, season]);
-
-  const recentResults = useMemo(() => [...currentSeasonResults]
-    .sort((a, b) => String(b.date).localeCompare(String(a.date)))
-    .slice(0, 8),
-    [currentSeasonResults]);
-
-  const compTeams = useMemo(() => compTids
-    .map(tid => resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []))
-    .filter(Boolean) as any[],
-    [compTids, state.teams, state.nonNBATeams]);
-
-  if (!spec) return <div className="p-8 text-slate-500 text-sm">Competition not active.</div>;
-
-  // Drilldown: clicked a club tile → render its TeamDetailView (NBA-Central style)
-  // so the user can browse rosters / stats / contracts the same way as NBA teams.
   if (selectedClubTid != null) {
-    const club = resolveAnyTeam(selectedClubTid, state.teams, state.nonNBATeams ?? []);
+    const club = resolveTeam(selectedClubTid);
     if (club) {
       return (
         <div className="h-full overflow-y-auto">
-          <div className="p-3 border-b border-slate-800 bg-slate-950 sticky top-0 z-10">
-            <button
-              onClick={() => setSelectedClubTid(null)}
-              className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white"
-            >
-              <ArrowLeft className="w-4 h-4" /> Back to {spec.shortName} Central
+          <div className="sticky top-0 z-10 border-b border-slate-800 bg-slate-950 p-3">
+            <button onClick={() => setSelectedClubTid(null)} className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-400 hover:text-white">
+              <ArrowLeft className="h-4 w-4" /> Back to {spec.shortName} Central
             </button>
           </div>
           <TeamDetailView
             team={club}
             players={state.players}
-            allTeams={[...state.teams, ...((state.nonNBATeams ?? []).map(c => resolveAnyTeam(c.tid, state.teams, state.nonNBATeams ?? [])).filter(Boolean) as any[])]}
+            allTeams={[...state.teams, ...(state.nonNBATeams ?? [])] as NBATeam[]}
             schedule={state.schedule}
             currentDate={state.date}
             onBack={() => setSelectedClubTid(null)}
             onContact={() => {}}
-            onVisit={(t: any) => setSelectedClubTid(t.id ?? t.tid)}
-            onTeamClick={(tid: number) => setSelectedClubTid(tid)}
+            onVisit={team => setSelectedClubTid(team.id)}
+            onTeamClick={setSelectedClubTid}
+            onGameClick={openGame}
+            competitionId={specId}
           />
         </div>
       );
     }
   }
 
-  const TeamCell: React.FC<{ tid: number; right?: boolean }> = ({ tid, right }) => {
-    const t = resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []);
-    const logo = (t as any)?.logoUrl ?? (t as any)?.imgURL;
-    return (
-      <div className={`flex items-center gap-2 ${right ? 'justify-end' : ''}`}>
-        {right && <span className="text-sm font-bold text-white truncate">{(t as any)?.abbrev ?? '—'}</span>}
-        {logo
-          ? <img src={logo} alt="" className="w-7 h-7 object-contain shrink-0" referrerPolicy="no-referrer" />
-          : <div className="w-7 h-7 rounded bg-slate-800 shrink-0" />}
-        {!right && <span className="text-sm font-bold text-white truncate">{(t as any)?.abbrev ?? '—'}</span>}
-      </div>
-    );
-  };
+  const accent = spec.accentColor ?? '#f59e0b';
 
   return (
-    <div className="p-4 md:p-6 space-y-6">
-      <div className="rounded-3xl border border-slate-800 bg-slate-950 p-5"
-        style={{ boxShadow: `inset 0 1px 0 ${accent}55` }}>
-        <div className="text-[10px] font-black uppercase tracking-[0.35em]" style={{ color: accent }}>
-          {spec.shortName}
+    <div className="space-y-5 p-4 md:p-6">
+      <header className="rounded-3xl border border-slate-800 bg-slate-950 px-5 py-4" style={{ boxShadow: `inset 0 1px 0 ${accent}55` }}>
+        <div className="text-[10px] font-black uppercase tracking-[0.35em]" style={{ color: accent }}>{spec.shortName}</div>
+        <h1 className="mt-1 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">{spec.displayName} Central</h1>
+      </header>
+
+      <section>
+        <div className="mb-3 flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-400">
+          <CalendarClock className="h-4 w-4" style={{ color: accent }} />
+          {todayGames.length > 0 ? `Games Today · ${formatGameDateShort(state.date)}` : 'Upcoming Games'}
         </div>
-        <h1 className="text-2xl md:text-3xl font-black uppercase tracking-tight text-white mt-1">
-          {spec.displayName} · Central
-        </h1>
-        <p className="text-slate-500 text-xs mt-2">
-          {compTeams.length} clubs · {currentSeasonResults.length} games played
-        </p>
-        {explainer && (
-          <div className="mt-4 rounded-xl border border-slate-800/80 bg-slate-900/50 px-3 py-2">
-            <button
-              onClick={() => setExplainerExpanded(v => !v)}
-              className="w-full flex items-start gap-2 text-left"
-            >
-              <Info className="w-4 h-4 mt-0.5 shrink-0" style={{ color: accent }} />
-              <div className="flex-1 min-w-0">
-                <div className="text-xs font-bold text-slate-200">{explainer.oneLiner}</div>
-                {!explainerExpanded && (
-                  <div className="text-[11px] text-slate-500 mt-0.5 truncate">
-                    Tap for the NBA-fan explainer · format, schedule, what's at stake.
+        {featuredGames.length === 0 ? (
+          <div className="rounded-2xl border border-slate-800 bg-slate-950/70 p-8 text-center text-sm text-slate-500">No fixtures are currently scheduled.</div>
+        ) : (
+          <div className="flex snap-x gap-3 overflow-x-auto pb-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            {featuredGames.map(game => {
+              const home = resolveTeam(game.homeTid);
+              const away = resolveTeam(game.awayTid);
+              const homeIdentity = getHistoricalTeamSnapshot(home);
+              const awayIdentity = getHistoricalTeamSnapshot(away);
+              return (
+                <button key={game.gid} onClick={() => openGame(game)} className="min-w-[280px] snap-start rounded-2xl border border-slate-800 bg-slate-950/70 p-4 text-left transition-colors hover:border-slate-700 sm:min-w-[340px]">
+                  <div className="mb-4 flex items-center justify-between text-[10px] font-black uppercase tracking-widest text-slate-500">
+                    <span>{formatGameDateShort(game.date)}</span>
+                    <span>{game.competitionPhase ?? 'League'}</span>
                   </div>
-                )}
-              </div>
-              {explainerExpanded
-                ? <ChevronUp className="w-4 h-4 text-slate-500 shrink-0" />
-                : <ChevronDown className="w-4 h-4 text-slate-500 shrink-0" />}
-            </button>
-            {explainerExpanded && (
-              <div className="mt-3 pl-6 space-y-2 text-[12px] leading-relaxed text-slate-300">
-                <p>{explainer.detail}</p>
-                <p>
-                  <span className="text-[10px] font-black uppercase tracking-widest mr-2" style={{ color: accent }}>
-                    NBA fan?
-                  </span>
-                  {explainer.nbaAnalogue}
-                </p>
-              </div>
-            )}
+                  <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+                    <TeamGameCell team={away} logo={awayIdentity.logoUrl} />
+                    <div className="text-center text-sm font-black text-slate-500">
+                      {game.played ? `${game.awayScore}–${game.homeScore}` : 'VS'}
+                    </div>
+                    <TeamGameCell team={home} logo={homeIdentity.logoUrl} right />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         )}
-      </div>
+      </section>
 
-      {/* Recent | Today | Upcoming — 3-column game ribbon */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Recent (clickable → BoxScore) */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden flex flex-col">
-          <div className="px-4 py-3 border-b border-slate-800 text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-            <History className="w-4 h-4" /> Recent
-          </div>
-          {recentResults.length === 0 ? (
-            <div className="p-6 text-center text-slate-600 text-xs">No results yet.</div>
-          ) : (
-            <div className="divide-y divide-slate-900">
-              {recentResults.map(g => {
-                const homeWon = g.homeScore > g.awayScore;
-                return (
-                  <button
-                    key={g.gameId}
-                    onClick={() => handleResultClick(g.gameId)}
-                    className="w-full grid grid-cols-[1fr_auto_1fr_auto] items-center gap-3 px-4 py-2 text-left hover:bg-slate-900/60 transition-colors"
-                  >
-                    <TeamCell tid={g.awayTeamId} right />
-                    <span className={`text-xs font-bold tabular-nums ${homeWon ? 'text-slate-400' : 'text-white'}`}>
-                      {g.awayScore}
-                    </span>
-                    <div className="flex items-center gap-2">
-                      <span className={`text-xs font-bold tabular-nums ${homeWon ? 'text-white' : 'text-slate-400'}`}>{g.homeScore}</span>
-                      <TeamCell tid={g.homeTeamId} />
-                    </div>
-                    <span className="text-[9px] text-slate-600">{String(g.date).slice(5, 10)}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-
-        {/* Today */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden flex flex-col" style={{ borderColor: `${accent}55` }}>
-          <div className="px-4 py-3 border-b border-slate-800 text-xs font-black uppercase tracking-widest flex items-center gap-2" style={{ color: accent }}>
-            <Calendar className="w-4 h-4" /> Today · {today}
-          </div>
-          {todaysGames.length === 0 ? (
-            <div className="p-6 text-center text-slate-600 text-xs">No games today.</div>
-          ) : (
-            <div className="divide-y divide-slate-900">
-              {todaysGames.map(g => (
-                <button
-                  key={g.gid}
-                  onClick={() => (g.played ? handleResultClick(g.gid) : handleUpcomingClick(g))}
-                  className="w-full grid grid-cols-[1fr_auto_1fr] items-center gap-3 px-4 py-3 text-left hover:bg-slate-900/60 transition-colors"
-                >
-                  <TeamCell tid={g.awayTid} right />
-                  <span className="text-[10px] text-slate-500 font-bold">
-                    {g.played ? `${g.awayScore} — ${g.homeScore}` : '@'}
-                  </span>
-                  <TeamCell tid={g.homeTid} />
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Upcoming (clickable → jump to DayView in Schedule) */}
-        <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden flex flex-col">
-          <div className="px-4 py-3 border-b border-slate-800 text-xs font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
-            <CalendarClock className="w-4 h-4" /> Upcoming
-          </div>
-          {upcomingGames.length === 0 ? (
-            <div className="p-6 text-center text-slate-600 text-xs">No upcoming games.</div>
-          ) : (
-            <div className="divide-y divide-slate-900">
-              {upcomingGames.map(g => (
-                <button
-                  key={g.gid}
-                  onClick={() => handleUpcomingClick(g)}
-                  className="w-full grid grid-cols-[1fr_auto_1fr_auto] items-center gap-3 px-4 py-2.5 text-left hover:bg-slate-900/60 transition-colors"
-                >
-                  <TeamCell tid={g.awayTid} right />
-                  <span className="text-[10px] text-slate-500">@</span>
-                  <TeamCell tid={g.homeTid} />
-                  <span className="text-[10px] text-slate-500 tabular-nums">{String(g.date).slice(5, 10)}</span>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Clubs grid */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-800 text-xs font-black uppercase tracking-widest text-slate-400">
-          Clubs · {compTeams.length}
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-px bg-slate-800/40">
-          {compTeams.map((t: any) => {
-            const logo = t.logoUrl ?? t.imgURL;
-            const tid = t.id ?? t.tid;
-            return (
-              <button
-                key={tid}
-                onClick={() => setSelectedClubTid(tid)}
-                className="bg-slate-950/80 p-3 flex items-center gap-2.5 text-left transition-colors hover:bg-slate-900/80 group"
-              >
-                {logo
-                  ? <img src={logo} alt="" className="w-8 h-8 object-contain shrink-0" referrerPolicy="no-referrer" />
-                  : <div className="w-8 h-8 rounded bg-slate-800 shrink-0" />}
-                <div className="min-w-0">
-                  <div className="text-xs font-bold text-white truncate group-hover:text-amber-300">{getTeamFullName(t)}</div>
-                  <div className="text-[10px] text-slate-500">{t.abbrev}</div>
-                </div>
+      <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_340px]">
+        <section className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70">
+          <div className="flex items-center justify-between gap-3 border-b border-slate-800 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-400">
+            <span className="flex items-center gap-2"><Trophy className="h-4 w-4" style={{ color: accent }} /> {knockoutOnly ? 'Tournament Field' : 'Table Snapshot'}</span>
+            {!knockoutOnly && onOpenStandings && (
+              <button type="button" onClick={onOpenStandings} className="inline-flex items-center gap-1 text-[10px] text-slate-500 transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70">
+                Full table <ChevronRight className="h-3.5 w-3.5" />
               </button>
-            );
-          })}
-        </div>
+            )}
+          </div>
+          <div className="divide-y divide-slate-900 sm:hidden">
+            {standingsSnapshot.map(({ row, index }) => {
+              const team = resolveTeam(row.tid);
+              const identity = getHistoricalTeamSnapshot(team);
+              const diff = row.pointsFor - row.pointsAgainst;
+              const zone = competitionZoneForSeed(qualificationZones, index + 1);
+              const boundary = competitionBoundaryForSeed(qualificationZones, index + 1);
+              const boundaryColor = boundary?.kind === 'relegation'
+                ? boundary.color
+                : boundary ? '#facc15' : undefined;
+              return (
+                <button
+                  key={row.tid}
+                  onClick={() => setSelectedClubTid(row.tid)}
+                  className={`flex w-full items-center gap-3 border-l-2 px-4 py-3 text-left ${boundaryColor ? 'border-t-2' : ''} ${row.tid === state.userTeamId ? 'bg-amber-400/10' : ''}`}
+                  style={{
+                    borderLeftColor: zone?.color ?? 'transparent',
+                    borderTopColor: boundaryColor,
+                  }}
+                >
+                  <span className="w-5 text-right text-xs tabular-nums text-slate-600">{index + 1}</span>
+                  {identity.logoUrl ? <img src={identity.logoUrl} alt="" className="h-8 w-8 shrink-0 object-contain" referrerPolicy="no-referrer" /> : <div className="h-8 w-8 shrink-0 rounded bg-slate-800" />}
+                  <span className="min-w-0 flex-1 truncate text-xs font-bold text-white">{team ? getTeamFullName(team) : `Team ${row.tid}`}</span>
+                  <span className="text-right text-xs font-black tabular-nums text-slate-300">{row.wins}–{row.losses}</span>
+                  <span className={`w-10 text-right text-xs tabular-nums ${diff >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>{diff > 0 ? '+' : ''}{diff}</span>
+                </button>
+              );
+            })}
+          </div>
+          <div className="hidden overflow-x-auto sm:block [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
+            <table className="w-full min-w-[560px] text-sm">
+              <thead className="bg-slate-900/60 text-[10px] uppercase tracking-widest text-slate-500">
+                <tr><th className="px-4 py-2 text-left">Club</th><th>W</th><th>L</th><th>Pts</th><th>Diff</th></tr>
+              </thead>
+              <tbody>
+                {standingsSnapshot.map(({ row, index }) => {
+                  const team = resolveTeam(row.tid);
+                  const identity = getHistoricalTeamSnapshot(team);
+                  const zone = competitionZoneForSeed(qualificationZones, index + 1);
+                  const boundary = competitionBoundaryForSeed(qualificationZones, index + 1);
+                  const boundaryColor = boundary?.kind === 'relegation'
+                    ? boundary.color
+                    : boundary ? '#facc15' : undefined;
+                  return (
+                    <tr
+                      key={row.tid}
+                      className={`${boundaryColor ? 'border-t-2' : 'border-t border-slate-900'} ${row.tid === state.userTeamId ? 'bg-amber-400/10' : 'hover:bg-white/[0.03]'}`}
+                      style={{
+                        borderTopColor: boundaryColor,
+                        boxShadow: zone ? `inset 2px 0 0 ${zone.color}` : undefined,
+                      }}
+                    >
+                      <td className="px-4 py-3">
+                        <button onClick={() => setSelectedClubTid(row.tid)} className="flex min-w-0 items-center gap-3 text-left font-bold text-white hover:text-amber-300">
+                          <span className="w-5 text-right tabular-nums text-slate-500">{index + 1}</span>
+                          {identity.logoUrl ? <img src={identity.logoUrl} alt="" className="h-6 w-6 object-contain" referrerPolicy="no-referrer" /> : <div className="h-6 w-6 rounded bg-slate-800" />}
+                          <span className="truncate">{team ? getTeamFullName(team) : `Team ${row.tid}`}</span>
+                        </button>
+                      </td>
+                      <td className="text-center">{row.wins}</td><td className="text-center">{row.losses}</td>
+                      <td className="text-center">{row.wins * 2 + row.losses}</td>
+                      <td className="text-center tabular-nums">{row.pointsFor - row.pointsAgainst > 0 ? '+' : ''}{row.pointsFor - row.pointsAgainst}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+          {qualificationZones.length > 0 && (
+            <div className="flex flex-wrap gap-x-4 gap-y-2 border-t border-slate-800 px-4 py-3">
+              {qualificationZones.map(zone => (
+                <div key={`${zone.kind}-${zone.from}-${zone.to}`} className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: zone.color }} />
+                  {zone.label} · {zone.from}{zone.to !== zone.from ? `–${zone.to}` : ''}
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        <aside className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-950/70">
+          <div className="flex items-center gap-2 border-b border-slate-800 px-4 py-3 text-xs font-black uppercase tracking-widest text-slate-400"><History className="h-4 w-4" /> Recent Results</div>
+          <div className="divide-y divide-slate-900">
+            {recentResults.map(result => <ResultRow key={result.gameId} result={result} resolveTeam={resolveTeam} onOpen={() => {
+              const game = state.schedule.find(item => item.gid === result.gameId);
+              if (game) setSelectedBoxScoreGame(game);
+            }} />)}
+            {recentResults.length === 0 && <div className="p-8 text-center text-sm text-slate-500">No results yet.</div>}
+          </div>
+        </aside>
       </div>
 
-      {/* BoxScore Modal — opened by clicking a recent result tile */}
-      {selectedBoxScoreGame && (() => {
-        const result = findBoxScoreForGame(state.boxScores, selectedBoxScoreGame.gid, selectedBoxScoreGame.date);
-        const homeTeam = resolveAnyTeam(selectedBoxScoreGame.homeTid, state.teams, state.nonNBATeams ?? []) as any;
-        const awayTeam = resolveAnyTeam(selectedBoxScoreGame.awayTid, state.teams, state.nonNBATeams ?? []) as any;
-        return (
-          <BoxScoreModal
-            game={selectedBoxScoreGame}
-            result={result}
-            homeTeam={homeTeam}
-            awayTeam={awayTeam}
-            players={state.players}
-            onClose={() => setSelectedBoxScoreGame(null)}
-            onPlayerClick={(_player: NBAPlayer) => setSelectedBoxScoreGame(null)}
-            onTeamClick={(teamId: number) => {
-              setSelectedBoxScoreGame(null);
-              setSelectedClubTid(teamId);
-            }}
-            playoffs={state.playoffs}
-            schedule={state.schedule}
-          />
-        );
-      })()}
+      {selectedBoxScoreGame && (
+        <BoxScoreModal
+          game={selectedBoxScoreGame}
+          result={findBoxScoreForScheduledGame(state.boxScores, selectedBoxScoreGame)}
+          homeTeam={resolveTeam(selectedBoxScoreGame.homeTid) as NBATeam}
+          awayTeam={resolveTeam(selectedBoxScoreGame.awayTid) as NBATeam}
+          players={state.players}
+          onClose={() => setSelectedBoxScoreGame(null)}
+          onPlayerClick={(_player: NBAPlayer) => setSelectedBoxScoreGame(null)}
+          onTeamClick={teamId => { setSelectedBoxScoreGame(null); setSelectedClubTid(teamId); }}
+          playoffs={state.playoffs}
+          schedule={state.schedule}
+        />
+      )}
     </div>
+  );
+};
+
+const TeamGameCell: React.FC<{ team: NBATeam | null; logo?: string; right?: boolean }> = ({ team, logo, right }) => (
+  <div className={`flex min-w-0 items-center gap-2 ${right ? 'flex-row-reverse text-right' : ''}`}>
+    {logo ? <img src={logo} alt="" className="h-9 w-9 shrink-0 object-contain" referrerPolicy="no-referrer" /> : <div className="h-9 w-9 shrink-0 rounded bg-slate-800" />}
+    <span className="truncate text-xs font-black text-white">{team ? getTeamFullName(team) : 'TBD'}</span>
+  </div>
+);
+
+const ResultRow: React.FC<{
+  result: GameResult;
+  resolveTeam: (tid: number) => NBATeam | null;
+  onOpen: () => void;
+}> = ({ result, resolveTeam, onOpen }) => {
+  const home = resolveTeam(result.homeTeamId);
+  const away = resolveTeam(result.awayTeamId);
+  const homeIdentity = getHistoricalTeamSnapshot(home);
+  const awayIdentity = getHistoricalTeamSnapshot(away);
+  return (
+    <button onClick={onOpen} className="w-full p-4 text-left transition-colors hover:bg-white/[0.03] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/70">
+      <div className="mb-2 text-[10px] font-mono text-slate-600">{formatGameDateShort(result.date)}</div>
+      <div className="flex items-center gap-2 text-xs">
+        {awayIdentity.logoUrl ? <img src={awayIdentity.logoUrl} alt="" className="h-5 w-5 shrink-0 object-contain" referrerPolicy="no-referrer" /> : <div className="h-5 w-5 shrink-0 rounded bg-slate-800" />}
+        <span className="truncate font-bold text-slate-300">{away ? getTeamFullName(away) : 'Away'}</span><span className="ml-auto font-black text-white">{result.awayScore}</span>
+      </div>
+      <div className="mt-1 flex items-center gap-2 text-xs">
+        {homeIdentity.logoUrl ? <img src={homeIdentity.logoUrl} alt="" className="h-5 w-5 shrink-0 object-contain" referrerPolicy="no-referrer" /> : <div className="h-5 w-5 shrink-0 rounded bg-slate-800" />}
+        <span className="truncate font-bold text-slate-300">{home ? getTeamFullName(home) : 'Home'}</span><span className="ml-auto font-black text-white">{result.homeScore}</span>
+      </div>
+      {result.tiebreaker && (
+        <div className="mt-2 text-[9px] font-black uppercase tracking-widest text-violet-300">
+          {result.tiebreaker.type === 'shootout'
+            ? `SO ${result.tiebreaker.awayScore}-${result.tiebreaker.homeScore}`
+            : result.tiebreaker.type === 'target_score' ? 'Target-score tiebreak' : 'Sudden-death tiebreak'}
+        </div>
+      )}
+    </button>
   );
 };

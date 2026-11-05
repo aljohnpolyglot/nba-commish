@@ -10,7 +10,7 @@ import type { NBAPlayer, NBATeam, DraftPick, LeagueStats } from '../../types';
 import {
   calcOvr2K, calcPot2K, calcPlayerTV, getPickTV, type PickValueContext,
   calcCashTV, CASH_TRADE_CAP_USD,
-  isUntouchable, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, isWalkingExpiring, isRecentlySignedLocked, type TeamMode,
+  isUntouchable, isContenderChampionshipCore, isYoungContenderCore, isOnTradingBlock, isSalaryLegal, isWalkingExpiring, isRecentlySignedLocked, type TeamMode,
   getTradeGapTolerance, getTradeOvershootMargin, getTradeRatioThreshold, getTradeValueFloor, type TVContext,
 } from './tradeValueEngine';
 import { DEFAULT_TRADABLE_PICK_SEASONS } from '../draft/DraftPickGenerator';
@@ -23,6 +23,9 @@ import { isFranchiseLifer } from '../../utils/playerTenure';
 import { isInPostDeadlinePreFAWindow } from '../../utils/dateUtils';
 import { projectTrimDeadMoneyUSD } from './tradeAcceptance';
 import { isTradeExcludedPlayer, type FindOffersInput, roleToMode, type TradeOffer, type TradeOfferItem } from './tradeFinderShared';
+import { computeAge } from '../../utils/helpers';
+import { incrementSimulationPerfCounter } from '../simulation/simulationPerfDebug';
+import { getTradeAssetsForTeam } from '../freeAgency/eurostashRights';
 
 // ── Core Engine ──────────────────────────────────────────────────────────────
 
@@ -32,7 +35,7 @@ import { isTradeExcludedPlayer, type FindOffersInput, roleToMode, type TradeOffe
  */
 export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
   const {
-    fromTid, offerValue, usedIds: basketIds, players, teams, draftPicks,
+    fromTid, offerValue, usedIds: basketIds, players, playersByTeam, teams, draftPicks,
     currentYear, minTradableSeason, powerRanks, teamOutlooks, targetTids, tvContext, capSpaces,
     tradeDifficulty, bypassUntouchablesForTid, allowLifers,
     allowPbaRoster = false,
@@ -58,9 +61,9 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
 
   // Post-deadline pre-FA: expiring contracts are walking → filter from every
   // candidate pool so they don't end up in either side's basket.
-  const isWalking = (p: NBAPlayer) => isWalkingExpiring(p, currentYear, isPostDeadlinePreFA);
+  const isWalking = (p: NBAPlayer) => isWalkingExpiring(p, currentYear, isPostDeadlinePreFA, tvContext?.credibleResignExpiringIds, tvContext?.memo);
   const isLocked = recentlySignedLockMs
-    ? (p: NBAPlayer) => isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats)
+    ? (p: NBAPlayer) => isRecentlySignedLocked(p, recentlySignedLockMs.currentDate, recentlySignedLockMs.leagueStats, tvContext?.memo)
     : (_p: NBAPlayer) => false;
 
   // Stepien-aware filter: would shipping `candidate` leave `tid` without a 1st
@@ -78,6 +81,23 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     powerRanks,
     classStrengthByYear,
     lotterySlotByTid,
+    memo: tvContext?.memo,
+  };
+  const offeredBasketPlayers = players.filter(player => basketIds.has(player.internalId));
+  const basketHasFirstRoundPick = liveDraftPicks.some(pick => basketIds.has(String(pick.dpid)) && pick.round === 1);
+  const hasPremiumFirstRoundReturn = basketHasFirstRoundPick || offeredBasketPlayers.some(player =>
+    calcOvr2K(player) >= 75 ||
+    calcPot2K(player, currentYear) >= 82 ||
+    calcPlayerTV(player, roleToMode(teamOutlooks.get(fromTid)?.role ?? 'neutral'), currentYear, tvContext) >= 30
+  );
+  const violatesFirstRoundProtection = (items: TradeOfferItem[]): boolean => {
+    const firsts = items.filter((item): item is TradeOfferItem & { pick: DraftPick } => item.type === 'pick' && item.pick?.round === 1);
+    if (firsts.length >= 2 && !hasPremiumFirstRoundReturn) return true;
+    return firsts.some(item => {
+      const pick = item.pick;
+      const knownSlot = pick.season === currentYear ? lotterySlotByTid?.get(pick.originalTid) : undefined;
+      return !!knownSlot && knownSlot <= 14 && !basketHasFirstRoundPick && offerValue < getPickTV(pick, pickCtx) * 1.2;
+    });
   };
 
   // Difficulty → TV bias on the gap target. Asymmetric so 50 maps to the
@@ -128,8 +148,8 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
 
     // Get their roster sorted by OVR, excluding external/prospects.
     // Walking expirings and recently-signed players are dropped from candidate pools.
-    const theirRoster = players
-      .filter(p => p.tid === team.id && !isTradeExcludedPlayer(p, allowPbaRoster) && p.tid !== -2 && !isWalking(p) && !isLocked(p))
+    const theirRoster = getTradeAssetsForTeam(players, team.id, playersByTeam)
+      .filter(p => !isTradeExcludedPlayer(p, allowPbaRoster) && p.tid !== -2 && !isWalking(p) && !isLocked(p))
       .filter(p => premiumIncoming || calcOvr2K(p) <= 84)
       .sort((a, b) => b.overallRating - a.overallRating);
 
@@ -195,13 +215,13 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
     // is their face — never unlock even if they squeak past the ovr/pot guards.
     const unlockedUntouchableIds = new Set<string>();
     if (offerValue >= 140) {
-      const allUntouchables = theirRoster.filter(p => isUntouchable(p, theirMode, currentYear, tvContext?.mvpRank));
+      const allUntouchables = theirRoster.filter(p => isUntouchable(p, theirMode, currentYear, tvContext?.mvpRank, tvContext?.memo));
       const franchiseFaceProtected = allUntouchables.length <= 1;
       if (!franchiseFaceProtected) {
         const qualifying = allUntouchables
           // Loyalty floor: 10+ year lifers are ABSOLUTELY untradeable, no unlock ever.
           // Saves Curry/Draymond/Duncan-types regardless of how wild the offer gets //lol
-          .filter(p => !isFranchiseLifer(p))
+          .filter(p => !isFranchiseLifer(p) && !isContenderChampionshipCore(p, theirRoster, theirMode, currentYear, tvContext?.mvpRank, tvContext?.memo))
           .map(p => ({ p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext), ovr: calcOvr2K(p), pot: calcPot2K(p, currentYear) }))
           .filter(x =>
                x.tv > 0
@@ -236,7 +256,7 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
 
     const isContender = theirMode === 'contend';
     const avgAge = theirRoster.length > 0
-      ? theirRoster.reduce((s, p) => s + (p.age ?? 25), 0) / theirRoster.length
+      ? theirRoster.reduce((s, p) => s + computeAge(p, currentYear), 0) / theirRoster.length
       : 30;
     const isYoungContender = isContender && avgAge < 27;
 
@@ -247,15 +267,16 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       const bypassUT = bypassUntouchablesForTid === team.id;
       const candidate = theirRoster
         .filter(p => !usedIds.has(p.internalId)
-                  && (bypassUT || unlockedUntouchableIds.has(p.internalId) || !isUntouchable(p, theirMode, currentYear, tvContext?.mvpRank))
-                  && (bypassUT || !isYoungContenderCore(p, theirRoster, theirMode, currentYear)))
+                  && (bypassUT || unlockedUntouchableIds.has(p.internalId) || !isUntouchable(p, theirMode, currentYear, tvContext?.mvpRank, tvContext?.memo))
+                  && (bypassUT || !isContenderChampionshipCore(p, theirRoster, theirMode, currentYear, tvContext?.mvpRank, tvContext?.memo))
+                  && (bypassUT || !isYoungContenderCore(p, theirRoster, theirMode, currentYear, tvContext?.memo)))
         .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext) }))
         .filter(p => p.tv > 0 && p.tv <= gap * maxGapMult)
         .sort((a, b) => {
           const tvDiff = Math.abs(a.tv - gap) - Math.abs(b.tv - gap);
           // Young contenders prefer older/expendable players to protect their core —
           // among similarly-valued candidates, pick the veteran first.
-          if (isYoungContender && Math.abs(tvDiff) < 20) return (b.age ?? 25) - (a.age ?? 25);
+          if (isYoungContender && Math.abs(tvDiff) < 20) return computeAge(b, currentYear) - computeAge(a, currentYear);
           return tvDiff;
         })[0];
 
@@ -308,12 +329,73 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       gap -= pv;
     }
 
+    const buildAbsorbOffer = () => {
+      const ls = recentlySignedLockMs?.leagueStats as LeagueStats | undefined;
+      const capDisabled = ls?.salaryCapEnabled === false;
+      const hintedCapSpace = capSpaces?.get(team.id) ?? -Infinity;
+      if (!capDisabled && !Number.isFinite(hintedCapSpace)) return;
+      const strictCapSpace = (() => {
+        if (!ls || capDisabled) return Number.POSITIVE_INFINITY;
+        incrementSimulationPerfCounter('trade.capSnapshotCalculations');
+        const thresholds = getCapThresholds(ls as any);
+        const profile = getTeamCapProfile(
+          players,
+          team.id,
+          team.wins ?? 0,
+          team.losses ?? 0,
+          thresholds,
+          team,
+          currentYear,
+          ls,
+        );
+        return profile.capSpaceUSD / 1000;
+      })();
+      const verifiedCapSpace = capDisabled ? Number.POSITIVE_INFINITY : Math.min(hintedCapSpace, strictCapSpace);
+      const hasStrictCapRoom = capDisabled || (Number.isFinite(verifiedCapSpace) && verifiedCapSpace > 0);
+      const absorbCbaOk = (() => {
+        const date = recentlySignedLockMs?.currentDate;
+        if (!ls || !date) return true;
+        const outgoingPlayers = players.filter(p => basketIds.has(p.internalId));
+        const check = validateCBATradeRules({
+          teamAId: fromTid,
+          teamBId: team.id,
+          teamAPlayers: outgoingPlayers,
+          teamBPlayers: [],
+          teams,
+          players,
+          leagueStats: ls,
+          currentDate: date,
+          currentYear,
+        });
+        return check.ok;
+      })();
+      const canAbsorb = outgoingSalary > 0
+        && hasStrictCapRoom
+        && outgoingSalary <= (verifiedCapSpace + 100)
+        && absorbCbaOk;
+      if (!canAbsorb) return;
+      offers.push({
+        tid: team.id,
+        variant: 'absorb',
+        items: [{
+          id: `absorb-${team.id}`,
+          type: 'absorb',
+          label: 'Salary Dump',
+          val: 0,
+        }],
+        totalVal: 0,
+      });
+    };
+
+    buildAbsorbOffer();
+
     if (returnItems.length === 0) continue;
+    if (violatesFirstRoundProtection(returnItems)) continue;
 
     // Post-trade trim cost: refuse offers that would force > $25M of dead money to waive throw-ins.
     const incomingPlayers = players.filter(p => basketIds.has(p.internalId));
     const outgoingIds = new Set(returnItems.filter(i => i.type === 'player' && i.player).map(i => i.player!.internalId));
-    const trimDeadUSD = projectTrimDeadMoneyUSD(theirRoster, incomingPlayers, outgoingIds, currentYear);
+    const trimDeadUSD = projectTrimDeadMoneyUSD(theirRoster, incomingPlayers, outgoingIds, currentYear, 15, recentlySignedLockMs?.leagueStats);
     if (trimDeadUSD > 25_000_000) continue;
 
     // Ratio threshold: looser for franchise-tier targets where stacking picks can't close the gap.
@@ -339,9 +421,10 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
       const dumpBypassUT = bypassUntouchablesForTid === team.id;
       const blockCandidates = theirRoster
         .filter(p => !dumpUsedIds.has(p.internalId)
-                  && (dumpBypassUT || !isUntouchable(p, theirMode, currentYear, tvContext?.mvpRank))
-                  && (dumpBypassUT || !isYoungContenderCore(p, theirRoster, theirMode, currentYear))
-                  && (dumpBypassUT || isOnTradingBlock(p, theirMode, currentYear, false, tvContext?.mvpRank)))
+                  && (dumpBypassUT || !isUntouchable(p, theirMode, currentYear, tvContext?.mvpRank, tvContext?.memo))
+                  && (dumpBypassUT || !isContenderChampionshipCore(p, theirRoster, theirMode, currentYear, tvContext?.mvpRank, tvContext?.memo))
+                  && (dumpBypassUT || !isYoungContenderCore(p, theirRoster, theirMode, currentYear, tvContext?.memo))
+                  && (dumpBypassUT || isOnTradingBlock(p, theirMode, currentYear, false, tvContext?.mvpRank, tvContext?.memo)))
         .map(p => ({ ...p, tv: calcPlayerTV(p, theirMode, currentYear, tvContext), sal: p.contract?.amount ?? 0 }))
         .filter(p => p.tv > 0 && p.sal > 0)
         // Higher-salary players first — match outgoing salary faster with fewer bodies.
@@ -410,71 +493,17 @@ export function generateCounterOffers(input: FindOffersInput): TradeOffer[] {
         // projected trim cost is heavy — same gate as the match variant above.
         const dumpIncoming = players.filter(p => basketIds.has(p.internalId));
         const dumpOutgoingIds = new Set(dumpItems.filter(i => i.type === 'player' && i.player).map(i => i.player!.internalId));
-        const dumpTrimDeadUSD = projectTrimDeadMoneyUSD(theirRoster, dumpIncoming, dumpOutgoingIds, currentYear);
+        const dumpTrimDeadUSD = projectTrimDeadMoneyUSD(theirRoster, dumpIncoming, dumpOutgoingIds, currentYear, 15, recentlySignedLockMs?.leagueStats);
         const dumpReturnVal = dumpItems.reduce((s, i) => s + i.val, 0);
         const dumpRatio = Math.max(expectedReturn, dumpReturnVal) / Math.max(1, Math.min(expectedReturn, dumpReturnVal));
         const dumpTotalVal = Math.max(expectedReturn, dumpReturnVal);
         const dumpRatioThreshold = getTradeRatioThreshold(dumpTotalVal);
-        if (dumpRatio <= dumpRatioThreshold && dumpTrimDeadUSD <= 25_000_000) {
+        if (dumpRatio <= dumpRatioThreshold && dumpTrimDeadUSD <= 25_000_000 && !violatesFirstRoundProtection(dumpItems)) {
           offers.push({ tid: team.id, items: dumpItems, totalVal: dumpReturnVal, variant: 'dump' });
         }
       }
     }
 
-    // Absorb variant: cap-space team takes the contract for nothing in return.
-    const hintedCapSpace = capSpaces?.get(team.id) ?? -Infinity;
-    const strictCapSpace = (() => {
-      const ls = recentlySignedLockMs?.leagueStats as LeagueStats | undefined;
-      if (!ls || ls.salaryCapEnabled === false) return Number.POSITIVE_INFINITY;
-      const thresholds = getCapThresholds(ls as any);
-      const profile = getTeamCapProfile(
-        players,
-        team.id,
-        team.wins ?? 0,
-        team.losses ?? 0,
-        thresholds,
-        team,
-        currentYear,
-      );
-      return profile.capSpaceUSD / 1000;
-    })();
-    const verifiedCapSpace = Math.min(hintedCapSpace, strictCapSpace);
-    const hasStrictCapRoom = Number.isFinite(verifiedCapSpace) && verifiedCapSpace > 0;
-    const absorbCbaOk = (() => {
-      const ls = recentlySignedLockMs?.leagueStats as LeagueStats | undefined;
-      const date = recentlySignedLockMs?.currentDate;
-      if (!ls || !date) return true;
-      const outgoingPlayers = players.filter(p => basketIds.has(p.internalId));
-      const check = validateCBATradeRules({
-        teamAId: fromTid,
-        teamBId: team.id,
-        teamAPlayers: outgoingPlayers,
-        teamBPlayers: [],
-        teams,
-        players,
-        leagueStats: ls,
-        currentDate: date,
-        currentYear,
-      });
-      return check.ok;
-    })();
-    const canAbsorb = outgoingSalary > 0
-      && hasStrictCapRoom
-      && outgoingSalary <= (verifiedCapSpace + 100)
-      && absorbCbaOk;
-    if (canAbsorb) {
-      offers.push({
-        tid: team.id,
-        variant: 'absorb',
-        items: [{
-          id: `absorb-${team.id}`,
-          type: 'absorb',
-          label: 'Salary Dump',
-          val: 0,
-        }],
-        totalVal: 0,
-      });
-    }
   }
 
   return offers.sort((a, b) => b.totalVal - a.totalVal);

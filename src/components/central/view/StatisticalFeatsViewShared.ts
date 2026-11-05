@@ -16,8 +16,10 @@ export interface FeatEntry {
   playerName: string;
   teamId: number;
   teamAbbrev: string;
+  teamName: string;
   oppTeamId: number;
   oppAbbrev: string;
+  oppName: string;
   date: string;
   isWin: boolean;
   result: string;

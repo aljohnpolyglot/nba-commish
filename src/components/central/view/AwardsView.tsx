@@ -1,87 +1,67 @@
 import React from 'react';
-import { Trophy, Star, Shield, TrendingUp, Award, Crown } from 'lucide-react';
+import { Trophy } from 'lucide-react';
+import { filterAwardsToVisibleTimeline, isAwardVisibleInTimeline, isValidAwardSeason } from '../../../utils/awardHistory';
+import { mergeNormalizedPlayerAwards } from '../../../utils/playerAwardNormalizer';
+import { CountryFlag } from '../../shared/CountryFlag';
+import { AwardTrophyArtwork, useAwardTrophyCatalog } from '../../shared/AwardTrophyArtwork';
+import { EUROLEAGUE_2026_SOURCE, EURO_BASKETBALL_SOURCE_ARCHIVES } from '../../../data/euroBasketballSources';
+import { getInternationalCompetitionLabel, isInternationalCompetitionId } from '../../../services/fiba/competitionIdentity';
+import { resolveAwardTrophyPhoto, type AwardTrophyNamespace } from '../../../services/awards/awardTrophyPhotos';
+import { playerAwardFallbackTrophy } from '../../view/awardRaceTrophyAssets';
+import { getLeagueDisplayTag } from '../../../utils/leagueLabels';
 
 interface AwardData {
   type: string;
   season: number;
+  competitionId?: string;
+  source?: string;
+  introducedSeason?: number;
+  country?: string;
+  countryIso2?: string;
 }
 
 interface AwardsViewProps {
   awards: AwardData[];
   teamColor?: string;
+  maxSeason?: number;
+  trophyNamespace?: AwardTrophyNamespace;
+  competitions?: Array<{
+    id: string;
+    displayName?: string;
+    shortName?: string;
+    country?: string;
+    countryCode?: string;
+  }>;
+  formatSeasonLabel?: (season: number) => string;
 }
 
-const getAwardIcon = (type: string) => {
-  const lowerType = type.toLowerCase();
-
-  if (lowerType.includes('the throne')) {
-    return (
-      <div className="relative">
-        <Crown size={22} className="text-yellow-400 fill-yellow-400/30 drop-shadow-[0_0_10px_rgba(250,204,21,0.6)]" />
-        <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-300 rounded-full animate-pulse"></div>
-      </div>
-    );
-  }
-
-  if (lowerType.includes('mvp') || lowerType.includes('championship') || lowerType.includes('champion')) {
-    return (
-      <div className="relative">
-        <Trophy size={22} className="text-yellow-500 drop-shadow-[0_0_8px_rgba(234,179,8,0.5)]" />
-        <div className="absolute -top-1 -right-1 w-2 h-2 bg-yellow-400 rounded-full animate-pulse"></div>
-      </div>
-    );
-  }
-  
-  if (lowerType.includes('first team all-league')) {
-    return <Star size={22} className="fill-yellow-500 text-yellow-500 drop-shadow-[0_0_5px_rgba(234,179,8,0.3)]" />;
-  }
-  
-  if (lowerType.includes('second team all-league')) {
-    return <Star size={22} className="fill-slate-300 text-slate-300" />;
-  }
-  
-  if (lowerType.includes('third team all-league')) {
-    return <Star size={22} className="fill-amber-700 text-amber-700" />;
-  }
-  
-  if (lowerType.includes('all-star')) {
-    if (lowerType.includes('mvp')) {
-      return (
-        <div className="relative">
-          <Star size={22} className="text-yellow-400 fill-yellow-400/30" />
-          <Trophy size={10} className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-yellow-500" />
-        </div>
-      );
-    }
-    return <Star size={22} className="text-yellow-400" fill="none" />; // Transparent inside
-  }
-  
-  if (lowerType.includes('defensive') || lowerType.includes('all-defensive')) {
-    return (
-      <div className="relative flex items-center justify-center">
-        <Shield size={22} className="text-blue-500 fill-blue-500/10" />
-        <span className="absolute text-[10px] font-black text-blue-400">D</span>
-      </div>
-    );
-  }
-  
-  if (lowerType.includes('improved')) {
-    return (
-      <div className="bg-emerald-500/20 p-1 rounded-md">
-        <TrendingUp size={18} className="text-emerald-400" />
-      </div>
-    );
-  }
-  
-  return <Award size={20} className="text-indigo-400" />;
+type CompetitionMeta = {
+  label: string;
+  catalogName?: string;
+  country?: string;
+  countryIso2?: string;
 };
 
-const formatSeason = (season: number) => {
-  return `${season - 1}-${String(season).slice(2)}`;
+const formatSeason = (season: number, formatSeasonLabel?: (season: number) => string) => {
+  if (!isValidAwardSeason(season)) return '—';
+  return formatSeasonLabel?.(season) ?? `${season - 1}-${String(season).slice(2)}`;
 };
 
-export const AwardsView: React.FC<AwardsViewProps> = ({ awards, teamColor = '#6366f1' }) => {
-  if (!awards || awards.length === 0) {
+export const AwardsView: React.FC<AwardsViewProps> = ({
+  awards,
+  teamColor = '#6366f1',
+  maxSeason,
+  trophyNamespace,
+  competitions,
+  formatSeasonLabel,
+}) => {
+  const trophyCatalog = useAwardTrophyCatalog(!!trophyNamespace);
+  const timelineAwards = maxSeason != null
+    ? filterAwardsToVisibleTimeline(awards, maxSeason)
+    : (awards ?? []).filter(award => isAwardVisibleInTimeline(award));
+  const visibleAwards = mergeNormalizedPlayerAwards(timelineAwards, []);
+
+  if (!visibleAwards || visibleAwards.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-20 text-slate-500 italic">
         <Trophy size={48} className="mb-4 opacity-20" />
@@ -90,22 +70,70 @@ export const AwardsView: React.FC<AwardsViewProps> = ({ awards, teamColor = '#63
     );
   }
 
-  // Grouping for summary
-  const summaryMap = awards.reduce((acc, award) => {
-    if (!acc[award.type]) {
-      acc[award.type] = [];
+  const competitionMeta = (competitionId?: string): CompetitionMeta => {
+    if (!competitionId) return { label: '' };
+    const competition = competitions?.find(entry => entry.id === competitionId);
+    if (competition) {
+      return {
+        label: competition.shortName ?? competition.displayName ?? competitionId,
+        catalogName: competition.displayName ?? competition.shortName ?? competitionId,
+        country: competition.country,
+        countryIso2: competition.countryCode,
+      };
     }
-    acc[award.type].push(award.season);
+    const source = [EUROLEAGUE_2026_SOURCE, ...EURO_BASKETBALL_SOURCE_ARCHIVES]
+      .find(entry => entry.competitionId === competitionId);
+    if (source) {
+      return {
+        label: source.shortName || source.displayName,
+        catalogName: source.displayName || source.shortName,
+        countryIso2: source.countryCode,
+      };
+    }
+    const known: Record<string, { label: string; countryIso2?: string }> = {
+      endesa: { label: 'ACB', countryIso2: 'ES' },
+      bleague: { label: 'B.LEAGUE', countryIso2: 'JP' },
+      gleague: { label: 'G League', countryIso2: 'US' },
+      chinacba: { label: 'CBA', countryIso2: 'CN' },
+      nblaustralia: { label: 'NBL', countryIso2: 'AU' },
+      pba: { label: 'PBA', countryIso2: 'PH' },
+    };
+    if (known[competitionId]) return { ...known[competitionId], catalogName: known[competitionId].label };
+    if (isInternationalCompetitionId(competitionId)) {
+      return { label: getInternationalCompetitionLabel(competitionId)?.tag ?? 'International' };
+    }
+    return { label: competitionId.replace(/-/g, ' ') };
+  };
+  const competitionLabel = (competitionId?: string) => {
+    const meta = competitionMeta(competitionId);
+    return getLeagueDisplayTag(competitionId, meta.label);
+  };
+  const summaryMap = visibleAwards.reduce((acc, award) => {
+    const key = `${award.competitionId ?? ''}|${award.country ?? ''}|${award.countryIso2 ?? ''}|${award.type}`;
+    if (!acc[key]) {
+      acc[key] = {
+        type: award.type,
+        competitionId: award.competitionId,
+        country: award.country,
+        countryIso2: award.countryIso2,
+        seasons: [],
+      };
+    }
+    acc[key].seasons.push(award.season);
     return acc;
-  }, {} as Record<string, number[]>);
+  }, {} as Record<string, {
+    type: string;
+    competitionId?: string;
+    country?: string;
+    countryIso2?: string;
+    seasons: number[];
+  }>);
 
-  // Sort seasons for each award type
-  Object.keys(summaryMap).forEach(type => {
-    summaryMap[type].sort((a, b) => a - b);
+  Object.values(summaryMap).forEach(entry => {
+    entry.seasons.sort((a, b) => a - b);
   });
 
-  // Sort award types by "importance" or frequency
-  const sortedAwardTypes = Object.keys(summaryMap).sort((a, b) => {
+  const sortedAwardTypes = Object.values(summaryMap).sort((a, b) => {
     const importance = (type: string) => {
       const t = type.toLowerCase();
       if (t.includes('championship') || t.includes('champion')) return 100;
@@ -115,7 +143,9 @@ export const AwardsView: React.FC<AwardsViewProps> = ({ awards, teamColor = '#63
       if (t.includes('all-star')) return 60;
       return 10;
     };
-    return importance(b) - importance(a);
+    return importance(b.type) - importance(a.type)
+      || competitionLabel(a.competitionId).localeCompare(competitionLabel(b.competitionId))
+      || a.type.localeCompare(b.type);
   });
 
   return (
@@ -131,24 +161,52 @@ export const AwardsView: React.FC<AwardsViewProps> = ({ awards, teamColor = '#63
         </div>
         
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {[...awards].sort((a, b) => b.season - a.season).map((award, i) => (
-            <div 
-              key={i} 
-              className="group flex items-center gap-4 bg-white/[0.02] hover:bg-white/[0.05] p-3 rounded-xl border border-white/5 transition-all duration-300"
-            >
-              <div className="w-10 h-10 flex items-center justify-center bg-white/[0.03] rounded-full shrink-0 group-hover:scale-110 transition-transform">
-                {getAwardIcon(award.type)}
-              </div>
-              <div className="min-w-0">
-                <div className="text-white font-bold text-xs truncate uppercase tracking-tight">
-                  {award.type}
+          {[...visibleAwards].sort((a, b) => b.season - a.season).map((award) => {
+            const meta = competitionMeta(award.competitionId);
+            const country = award.country ?? meta.country;
+            const countryIso2 = award.countryIso2 ?? meta.countryIso2;
+            const trophyPhoto = trophyNamespace ? resolveAwardTrophyPhoto(trophyCatalog, {
+              awardType: award.type,
+              namespace: trophyNamespace,
+              competitionId: award.competitionId,
+              competitionName: meta.catalogName,
+            }) : undefined;
+            return (
+              <div
+                key={`${award.season}-${award.competitionId ?? 'league'}-${country ?? countryIso2 ?? ''}-${award.type}`}
+                className="group flex items-center gap-4 bg-white/[0.02] hover:bg-white/[0.05] p-3 rounded-xl border border-white/5 transition-all duration-300"
+              >
+                <AwardTrophyArtwork
+                  src={trophyPhoto?.trophy}
+                  alt={`${award.type} trophy`}
+                  className="h-16 w-14 shrink-0 rounded-xl bg-white/[0.03] p-1.5 transition-transform group-hover:scale-105"
+                  fallback={trophyNamespace
+                    ? null
+                    : <img src={playerAwardFallbackTrophy(award.type)} alt="" className="h-full w-full object-contain" />}
+                />
+                <div className="min-w-0">
+                  <div className="text-white font-bold text-xs truncate uppercase tracking-tight">
+                    {award.type}
+                  </div>
+                  <div className="flex items-center gap-1.5 text-slate-500 text-[10px] font-mono mt-0.5">
+                    {formatSeason(award.season, formatSeasonLabel)}
+                    {(country || countryIso2) && (
+                      <CountryFlag
+                        country={country}
+                        iso2={countryIso2}
+                        className="inline-flex h-3 w-[18px] rounded-sm"
+                      />
+                    )}
+                    {award.competitionId && (
+                      <span className="font-sans font-black uppercase tracking-wider" style={{ color: teamColor }}>
+                        {competitionLabel(award.competitionId)}
+                      </span>
+                    )}
+                  </div>
                 </div>
-                <div className="text-slate-500 text-[10px] font-mono mt-0.5">
-                  {formatSeason(award.season)}
-                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
 
@@ -163,9 +221,9 @@ export const AwardsView: React.FC<AwardsViewProps> = ({ awards, teamColor = '#63
         </div>
 
         <div className="flex flex-col gap-3 max-w-2xl mx-auto">
-          {sortedAwardTypes.map((type) => {
-            const seasons = summaryMap[type];
-            // Helper to group consecutive seasons
+          {sortedAwardTypes.map((entry) => {
+            const { type, competitionId, seasons, country, countryIso2 } = entry;
+            const meta = competitionMeta(competitionId);
             const groupedSeasons = seasons.reduce((acc: string[], curr, i) => {
               const startYear = curr - 1;
               const endYearShort = String(curr).slice(2);
@@ -177,11 +235,9 @@ export const AwardsView: React.FC<AwardsViewProps> = ({ awards, teamColor = '#63
                 const prev = seasons[i - 1];
                 if (curr === prev + 1) {
                   const last = acc[acc.length - 1];
-                  // If it's already a range, update the end
                   if (last.includes('–')) {
                     acc[acc.length - 1] = last.split('–')[0] + '–' + endYearShort;
                   } else {
-                    // Start a new range
                     acc[acc.length - 1] = last + '–' + endYearShort;
                   }
                 } else {
@@ -192,11 +248,23 @@ export const AwardsView: React.FC<AwardsViewProps> = ({ awards, teamColor = '#63
             }, []);
 
             return (
-              <div key={type} className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 py-3 border-b border-white/[0.03] hover:bg-white/[0.01] transition-colors px-2 rounded-lg">
+              <div key={`${competitionId ?? 'league'}-${country ?? countryIso2 ?? ''}-${type}`} className="flex flex-col sm:flex-row sm:items-baseline gap-1 sm:gap-4 py-3 border-b border-white/[0.03] hover:bg-white/[0.01] transition-colors px-2 rounded-lg">
                 <div className="flex items-center gap-2 sm:w-64 shrink-0">
                   <div className="text-xs font-black text-white uppercase tracking-wider">
                     {type}
                   </div>
+                  {(country || countryIso2 || meta.country || meta.countryIso2) && (
+                    <CountryFlag
+                      country={country ?? meta.country}
+                      iso2={countryIso2 ?? meta.countryIso2}
+                      className="inline-flex h-3 w-[18px] rounded-sm"
+                    />
+                  )}
+                  {competitionId && (
+                    <div className="text-[9px] font-black uppercase tracking-wider text-slate-500">
+                      {competitionLabel(competitionId)}
+                    </div>
+                  )}
                   {seasons.length > 1 && (
                     <div className="text-[10px] font-bold px-1.5 py-0.5 bg-yellow-500/10 text-yellow-500 rounded border border-yellow-500/20">
                       {seasons.length}X

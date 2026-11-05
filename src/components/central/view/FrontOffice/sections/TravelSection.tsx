@@ -1,36 +1,27 @@
-import React, { useState, useMemo } from 'react';
-import { Bus, DollarSign, Hotel, MapPin, Plane, Star, TrendingUp, Zap } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Bus, Hotel, Lock, Minus, Plane, Plus, Save, ShieldCheck } from 'lucide-react';
 import type { TycoonState, TycoonTier } from '../../../../../types/tycoon';
 import { formatCurrencyWithCode } from '../../../../../utils/helpers';
-import { getTravelGameplayEffectsFromPreferences } from '../../../../../services/tycoon/travelGameplayEffects';
+import { applySponsorRecoveryBenefit, getTravelGameplayEffectsFromPreferences } from '../../../../../services/tycoon/travelGameplayEffects';
+import type { TravelFixtureStatus } from '../../../../../services/tycoon/travelFixtures';
+import { getSponsorRecoveryReduction, getSponsorTravelCoverage } from '../../../../../services/tycoon/sponsorBenefits';
+import {
+  getSponsorPerksForTarget,
+  getSponsorQualityFloor,
+  getSponsorTravelCostMultiplier,
+  isSponsorBudgetControlLocked,
+} from '../../../../../services/tycoon/sponsorPerkEngine';
+import { getBrandMeta, type LeagueKey } from '../../../../../data/sponsorCatalogFetcher';
+import { SponsorLogo } from '../../../../tycoon/SponsorLogo';
 
 type Axis = 'hotel' | 'flight' | 'bus';
 
 const TIER_DEFAULTS: Record<TycoonTier, Record<Axis, number>> = {
-  S: { hotel: 5.0, flight: 5.0, bus: 5.0 },
-  A: { hotel: 4.5, flight: 4.5, bus: 4.0 },
-  B: { hotel: 4.0, flight: 4.0, bus: 3.5 },
-  C: { hotel: 3.5, flight: 3.0, bus: 3.0 },
-  D: { hotel: 3.0, flight: 2.5, bus: 2.5 },
-};
-
-const HOTEL_LABELS: Record<string, string> = {
-  '0.5': 'Roadside motel', '1.0': 'Hostel', '1.5': 'Budget inn',
-  '2.0': 'Standard 2-star', '2.5': 'Comfort', '3.0': 'Mid-range 3-star',
-  '3.5': 'Superior 3-star', '4.0': 'First-class 4-star', '4.5': 'Premium 4-star suites',
-  '5.0': 'Luxury 5-star — single rooms, recovery suites',
-};
-const FLIGHT_LABELS: Record<string, string> = {
-  '0.5': 'Economy · long layovers', '1.0': 'Economy commercial', '1.5': 'Premium economy',
-  '2.0': 'Premium economy · priority', '2.5': 'Business class', '3.0': 'Business class · full team',
-  '3.5': 'Group charter · shared', '4.0': 'Charter jet', '4.5': 'Charter jet · business config',
-  '5.0': 'Private jet · custom layout',
-};
-const BUS_LABELS: Record<string, string> = {
-  '0.5': 'Public coach', '1.0': 'Standard coach', '1.5': 'Standard · wifi',
-  '2.0': 'Comfort coach', '2.5': 'Comfort · reclining', '3.0': 'Premium coach',
-  '3.5': 'Luxury · panoramic', '4.0': 'Sleeper coach', '4.5': 'Custom team bus',
-  '5.0': 'Custom luxury · galley + lounge',
+  S: { hotel: 5, flight: 5, bus: 5 },
+  A: { hotel: 4.5, flight: 4.5, bus: 4 },
+  B: { hotel: 4, flight: 4, bus: 3.5 },
+  C: { hotel: 3.5, flight: 3, bus: 3 },
+  D: { hotel: 3, flight: 2.5, bus: 2.5 },
 };
 
 const HOTEL_PRICE: Record<string, number> = {
@@ -46,224 +37,143 @@ const BUS_PRICE: Record<string, number> = {
   '3.0': 3_500, '3.5': 5_000, '4.0': 7_500, '4.5': 11_000, '5.0': 16_000,
 };
 
-const fk = (v: number) => v.toFixed(1);
+const qualityLabel = (value: number): string => value >= 4.5 ? 'World Class' : value >= 3.5 ? 'Premium' : value >= 2.5 ? 'Standard' : 'Budget';
 
-interface TravelSectionProps {
+const TravelLevel: React.FC<{
+  icon: React.ReactNode;
+  label: string;
+  value: number;
+  unitCost: number;
+  totalCost: number | null;
+  tripCount: number | null;
+  fmt: (value: number) => string;
+  onChange: (value: number) => void;
+  locked: boolean;
+  sponsor?: string;
+  sponsorLeague: LeagueKey;
+}> = ({ icon, label, value, unitCost, totalCost, tripCount, fmt, onChange, locked, sponsor, sponsorLeague }) => (
+  <div className="rounded-2xl border border-slate-700/80 bg-gradient-to-br from-slate-900/90 to-slate-950/80 p-4 shadow-lg shadow-black/10">
+    <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center gap-2 text-sm font-black text-white"><span className="text-amber-300">{icon}</span>{label}</div>
+      <div className="flex min-w-0 items-start gap-2 text-right">
+        {sponsor && <SponsorLogo name={sponsor} meta={getBrandMeta(sponsorLeague, sponsor)} size={30} />}
+        <div className="min-w-0">
+          <div className="text-lg font-black text-amber-300">{value.toFixed(1)} / 5</div>
+          <div className="max-w-36 truncate text-[10px] text-slate-400">{sponsor ? `${sponsor} · Sponsored` : qualityLabel(value)}</div>
+        </div>
+      </div>
+    </div>
+    <div className="mt-4 grid grid-cols-[42px_minmax(0,1fr)_42px] items-center overflow-hidden rounded-lg border border-slate-700 bg-slate-900/70">
+      <button type="button" onClick={() => onChange(Math.max(0.5, value - 0.5))} disabled={locked || value <= 0.5} aria-label={`Decrease ${label}`} className="flex h-10 items-center justify-center border-r border-slate-700 text-slate-200 hover:bg-white/5 disabled:text-slate-700"><Minus size={15} /></button>
+      <div className="text-center text-xs font-black uppercase tracking-wider text-slate-300">{qualityLabel(value)}</div>
+      <button type="button" onClick={() => onChange(Math.min(5, value + 0.5))} disabled={locked || value >= 5} aria-label={`Increase ${label}`} className="flex h-10 items-center justify-center border-l border-slate-700 text-slate-200 hover:bg-white/5 disabled:text-slate-700"><Plus size={15} /></button>
+    </div>
+    <div className="mt-3 flex items-center justify-between gap-3 text-xs">
+      <span className="text-slate-500">{fmt(unitCost)} × {tripCount ?? '—'}</span>
+      <span className="font-black tabular-nums text-slate-200">{totalCost == null ? '—' : fmt(totalCost)}</span>
+    </div>
+  </div>
+);
+
+export const TravelSection: React.FC<{
   tycoon: TycoonState;
   currency: string;
+  economyIndex?: number;
+  currentYear: number;
   domesticAwayGames: number;
   internationalAwayGames: number;
-  onSave: (prefs: { hotel: number; flight: number; bus: number }) => void;
+  fixtureStatus: TravelFixtureStatus;
+  onSave: (preferences: { hotel: number; flight: number; bus: number }) => void;
+  onDirtyChange?: (dirty: boolean) => void;
   locked?: boolean;
-}
-
-export const TravelSection: React.FC<TravelSectionProps> = ({
-  tycoon, currency, domesticAwayGames, internationalAwayGames, onSave, locked = false,
-}) => {
+  sponsorLeague: LeagueKey;
+}> = ({ tycoon, currency, economyIndex = 1, currentYear, domesticAwayGames, internationalAwayGames, fixtureStatus, onSave, onDirtyChange, locked = false, sponsorLeague }) => {
   const defaults = TIER_DEFAULTS[tycoon.tier];
-  const [hotel, setHotel] = useState(tycoon.travelPreferences?.hotel ?? defaults.hotel);
-  const [flight, setFlight] = useState(tycoon.travelPreferences?.flight ?? defaults.flight);
-  const [bus, setBus] = useState(tycoon.travelPreferences?.bus ?? defaults.bus);
-  const fmt = (v: number) => formatCurrencyWithCode(v, currency, false);
-
+  const savedHotel = tycoon.travelPreferences?.hotel ?? defaults.hotel;
+  const savedFlight = tycoon.travelPreferences?.flight ?? defaults.flight;
+  const savedBus = tycoon.travelPreferences?.bus ?? defaults.bus;
+  const [hotel, setHotel] = useState(savedHotel);
+  const [flight, setFlight] = useState(savedFlight);
+  const [bus, setBus] = useState(savedBus);
+  const dirty = hotel !== savedHotel || flight !== savedFlight || bus !== savedBus;
+  React.useEffect(() => onDirtyChange?.(dirty), [dirty, onDirtyChange]);
+  const flightCoverage = getSponsorTravelCoverage(tycoon, 'flight');
+  const busCoverage = getSponsorTravelCoverage(tycoon, 'bus');
+  const airlinePerk = getSponsorPerksForTarget(tycoon, currentYear, 'flightQualityStars')[0];
+  const hotelPerk = getSponsorPerksForTarget(tycoon, currentYear, 'hotelQualityStars')[0];
+  const groundTravelPerk = [
+    ...getSponsorPerksForTarget(tycoon, currentYear, 'busTravelCost'),
+    ...getSponsorPerksForTarget(tycoon, currentYear, 'railTravelCost'),
+    ...getSponsorPerksForTarget(tycoon, currentYear, 'ferryTravelCost'),
+  ][0];
+  const effectiveHotel = Math.max(hotel, getSponsorQualityFloor(tycoon, currentYear, 'hotelQualityStars') ?? 0);
+  const effectiveFlight = Math.max(flightCoverage?.package.serviceStars ?? flight, getSponsorQualityFloor(tycoon, currentYear, 'flightQualityStars') ?? 0);
+  const effectiveBus = Math.max(busCoverage?.package.serviceStars ?? bus, getSponsorQualityFloor(tycoon, currentYear, 'busTravelCost') ?? 0);
+  const recoveryReduction = getSponsorRecoveryReduction(tycoon);
+  const fmt = (value: number) => formatCurrencyWithCode(value, currency, false);
   const totalAwayGames = domesticAwayGames + internationalAwayGames;
-  const flightGames = Math.max(domesticAwayGames, internationalAwayGames);
-  const hotelPrice = HOTEL_PRICE[fk(hotel)] ?? 0;
-  const flightPrice = FLIGHT_PRICE[fk(flight)] ?? 0;
-  const busPrice = BUS_PRICE[fk(bus)] ?? 0;
-  const hotelTotal = hotelPrice * totalAwayGames;
-  const flightTotal = flightPrice * flightGames;
-  const busTotal = busPrice * domesticAwayGames;
-  const grandTotal = hotelTotal + flightTotal + busTotal;
-
-  const avgStars = ((hotel + flight + bus) / 3);
-  const comfortLabel = avgStars >= 4.5 ? 'World Class' : avgStars >= 3.5 ? 'Premium' : avgStars >= 2.5 ? 'Standard' : 'Budget';
-  const travelImpact = useMemo(
-    () => getTravelGameplayEffectsFromPreferences({ hotel, flight, bus }),
-    [hotel, flight, bus],
-  );
+  const countsPending = fixtureStatus === 'pending';
+  const controlsLocked = locked || countsPending;
+  const flightTrips = totalAwayGames;
+  const hotelUnit = Math.round((HOTEL_PRICE[effectiveHotel.toFixed(1)] ?? 0) * economyIndex * getSponsorTravelCostMultiplier(tycoon, currentYear, 'hotel'));
+  const flightUnit = flightCoverage ? 0 : Math.round((FLIGHT_PRICE[effectiveFlight.toFixed(1)] ?? 0) * economyIndex * getSponsorTravelCostMultiplier(tycoon, currentYear, 'flight'));
+  const busUnit = busCoverage ? 0 : Math.round((BUS_PRICE[effectiveBus.toFixed(1)] ?? 0) * economyIndex * getSponsorTravelCostMultiplier(tycoon, currentYear, 'bus'));
+  const hotelTotal = countsPending ? null : hotelUnit * totalAwayGames;
+  const flightTotal = countsPending ? null : flightUnit * flightTrips;
+  const busTotal = countsPending ? null : busUnit * domesticAwayGames;
+  const grandTotal = hotelTotal == null || flightTotal == null || busTotal == null ? null : hotelTotal + flightTotal + busTotal;
+  const average = (effectiveHotel + effectiveFlight + effectiveBus) / 3;
+  const impact = useMemo(() => applySponsorRecoveryBenefit(getTravelGameplayEffectsFromPreferences({ hotel: effectiveHotel, flight: effectiveFlight, bus: effectiveBus }), recoveryReduction), [effectiveHotel, effectiveFlight, effectiveBus, recoveryReduction]);
 
   return (
-    <div className="space-y-5">
-      <div className="grid sm:grid-cols-4 gap-3">
-        <KpiBox icon={<Plane size={22} />} label="Comfort Level" value={comfortLabel} sub={`${avgStars.toFixed(1)} avg`} accent="text-amber-300" />
-        <KpiBox icon={<DollarSign size={22} />} label="Travel Budget" value={fmt(grandTotal)} sub="Projected annual" accent="text-emerald-300" />
-        <KpiBox icon={<MapPin size={22} />} label="Away Games" value={String(totalAwayGames)} sub={internationalAwayGames > 0 ? `${domesticAwayGames} dom + ${internationalAwayGames} intl` : `${domesticAwayGames} domestic`} accent="text-sky-300" />
-        <KpiBox icon={<Zap size={22} />} label="Recovery Impact" value={avgStars >= 4 ? 'Optimal' : avgStars >= 3 ? 'Good' : 'Low'} sub="Road fatigue" accent="text-violet-300" />
-      </div>
-
-      <div className="grid lg:grid-cols-[1fr_300px] gap-5">
-        <div className="space-y-4">
-          <SliderCard
-            icon={<Hotel size={20} />}
-            title="Hotel"
-            value={hotel}
-            onChange={setHotel}
-            label={HOTEL_LABELS[fk(hotel)] ?? ''}
-            unitPrice={hotelPrice}
-            games={totalAwayGames}
-            gamesLabel="away games"
-            total={hotelTotal}
-            fmt={fmt}
-            accent="amber"
-            locked={locked}
-          />
-          <SliderCard
-            icon={<Plane size={20} />}
-            title="Flight"
-            value={flight}
-            onChange={setFlight}
-            label={FLIGHT_LABELS[fk(flight)] ?? ''}
-            unitPrice={flightPrice}
-            games={flightGames}
-            gamesLabel={internationalAwayGames > 0 ? 'away trips' : 'away trips'}
-            total={flightTotal}
-            fmt={fmt}
-            accent="sky"
-            locked={locked}
-          />
-          <SliderCard
-            icon={<Bus size={20} />}
-            title="Bus"
-            value={bus}
-            onChange={setBus}
-            label={BUS_LABELS[fk(bus)] ?? ''}
-            unitPrice={busPrice}
-            games={domesticAwayGames}
-            gamesLabel="domestic away"
-            total={busTotal}
-            fmt={fmt}
-            accent="violet"
-            locked={locked}
-          />
-
-          <div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-5 flex items-center justify-between">
-            <div>
-              <div className="text-xs font-black uppercase tracking-widest text-slate-400">Projected Travel Total</div>
-              <div className="text-3xl font-black text-white mt-1 tabular-nums">{fmt(grandTotal)}</div>
-            </div>
-            <button
-              onClick={() => onSave({ hotel, flight, bus })}
-              disabled={locked}
-              className="h-12 px-8 rounded-xl bg-amber-400 text-slate-950 font-black uppercase tracking-widest text-xs hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {locked ? 'Locked' : 'Save'}
-            </button>
+    <div className="space-y-4">
+      <div className={`rounded-2xl border p-4 shadow-xl shadow-black/10 sm:p-5 ${locked ? 'border-slate-700 bg-gradient-to-br from-slate-900/80 to-slate-950/70' : 'border-amber-400/30 bg-gradient-to-br from-amber-400/[0.09] via-slate-900/75 to-slate-950/80'}`}>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <div className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-300">Annual travel plan</div>
+            <div className="mt-1 text-3xl font-black tabular-nums text-white">{grandTotal == null ? '—' : fmt(grandTotal)}</div>
+            <p className="mt-1 text-sm text-slate-400">
+              {fixtureStatus === 'pending'
+                ? 'Fixture list pending · costs will appear after the draw'
+                : fixtureStatus === 'provisional'
+                  ? `${qualityLabel(average)} standard · ${totalAwayGames} confirmed away games · more draws pending`
+                  : `${qualityLabel(average)} standard · ${totalAwayGames} away games`}
+            </p>
           </div>
-          {locked && <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs font-bold text-amber-200">Travel standards are locked until next offseason.</div>}
+          <div className={`inline-flex items-center gap-2 self-start rounded-lg border px-3 py-2 text-xs font-black ${locked ? 'border-slate-700 text-slate-300' : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'}`}>
+            {controlsLocked ? <Lock size={14} /> : <ShieldCheck size={14} />}{locked ? 'Locked until next offseason' : countsPending ? 'Awaiting fixture release' : 'Ready to adjust'}
+          </div>
         </div>
-
-        <aside className="space-y-5">
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Cost Breakdown</div>
-            <div className="divide-y divide-slate-800">
-              {[
-                ['Hotels', hotelTotal, 'amber'],
-                ['Flights', flightTotal, 'sky'],
-                ['Bus / Ground', busTotal, 'violet'],
-              ].map(([label, val, color]) => (
-                <div key={label as string} className="py-3 flex justify-between items-center">
-                  <span className="text-sm text-slate-300">{label}</span>
-                  <span className={`text-sm font-black text-${color}-300 tabular-nums`}>{fmt(val as number)}</span>
-                </div>
-              ))}
-              <div className="py-3 flex justify-between items-center">
-                <span className="text-sm font-bold text-white">Total</span>
-                <span className="text-sm font-black text-amber-300 tabular-nums">{fmt(grandTotal)}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-4">Travel Impact</div>
-            <div className="space-y-3">
-              {[
-                ['Road Recovery', travelImpact.roadRecoveryScore],
-                ['Player Fatigue', travelImpact.playerFatigueScore],
-                ['Team Morale', travelImpact.teamMoraleScore],
-                ['Road Performance', travelImpact.roadPerformanceScore],
-              ].map(([label, value]) => (
-                <div key={label as string}>
-                  <div className="flex justify-between text-xs mb-1">
-                    <span className="text-slate-300">{label}</span>
-                    <span className="font-black text-amber-300">{value}%</span>
-                  </div>
-                  <div className="h-2 rounded-full bg-slate-800 overflow-hidden">
-                    <div className="h-full bg-amber-400" style={{ width: `${value}%` }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-            <div className="text-xs font-black uppercase tracking-widest text-slate-400 mb-3">Strategy Guide</div>
-            <div className="space-y-3 text-xs text-slate-400 leading-5">
-              <p><span className="text-amber-300 font-bold">Premium travel</span> reduces road fatigue and improves away performance, but costs significantly more.</p>
-              <p><span className="text-sky-300 font-bold">Budget travel</span> saves money but players arrive fatigued, increasing injury risk on road trips.</p>
-            </div>
-          </div>
-        </aside>
       </div>
+
+      <div className="grid gap-3 lg:grid-cols-3">
+        <TravelLevel icon={<Hotel size={18} />} label="Hotel" value={effectiveHotel} unitCost={hotelUnit} totalCost={hotelTotal} tripCount={countsPending ? null : totalAwayGames} fmt={fmt} onChange={setHotel} locked={controlsLocked || isSponsorBudgetControlLocked(tycoon, currentYear, 'hotelQualityStars')} sponsor={hotelPerk?.sponsor} sponsorLeague={sponsorLeague} />
+        <TravelLevel icon={<Plane size={18} />} label="Flights" value={effectiveFlight} unitCost={flightUnit} totalCost={flightTotal} tripCount={countsPending ? null : flightTrips} fmt={fmt} onChange={setFlight} locked={controlsLocked || !!flightCoverage || isSponsorBudgetControlLocked(tycoon, currentYear, 'flightQualityStars')} sponsor={flightCoverage?.sponsor ?? airlinePerk?.sponsor} sponsorLeague={sponsorLeague} />
+        <TravelLevel icon={<Bus size={18} />} label="Ground Travel" value={effectiveBus} unitCost={busUnit} totalCost={busTotal} tripCount={countsPending ? null : domesticAwayGames} fmt={fmt} onChange={setBus} locked={controlsLocked || !!busCoverage} sponsor={busCoverage?.sponsor ?? groundTravelPerk?.sponsor} sponsorLeague={sponsorLeague} />
+      </div>
+
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          ['Road Recovery', impact.roadRecoveryScore],
+          ['Fatigue Management', impact.playerFatigueScore],
+          ['Team Morale', impact.teamMoraleScore],
+          ['Road Performance', impact.roadPerformanceScore],
+        ].map(([label, score]) => (
+          <div key={label as string} className="rounded-2xl border border-slate-700/80 bg-gradient-to-br from-slate-900/90 to-slate-950/80 p-4 shadow-lg shadow-black/10">
+            <div className="text-[10px] font-black uppercase tracking-wider text-slate-400">{label}</div>
+            <div className="mt-1 text-2xl font-black text-amber-300">{score}%</div>
+          </div>
+        ))}
+      </div>
+
+      <button
+        type="button"
+        onClick={() => onSave({ hotel, flight, bus })}
+        disabled={controlsLocked || !dirty}
+        className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-amber-400 px-5 py-3 text-xs font-black uppercase tracking-widest text-slate-950 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
+      >
+        <Save size={15} /> {locked ? 'Travel plan locked' : countsPending ? 'Available after fixture release' : 'Save travel plan'}
+      </button>
     </div>
   );
 };
-
-const KpiBox: React.FC<{ icon: React.ReactNode; label: string; value: string; sub: string; accent: string }> = ({ icon, label, value, sub, accent }) => (
-  <div className="rounded-xl border border-slate-800 bg-slate-950/70 p-4 text-center">
-    <div className={`flex justify-center ${accent}`}>{icon}</div>
-    <div className="mt-2 text-[10px] font-black uppercase tracking-widest text-slate-500">{label}</div>
-    <div className={`mt-1 text-xl font-black ${accent}`}>{value}</div>
-    <div className="text-[10px] text-slate-500 mt-1">{sub}</div>
-  </div>
-);
-
-const StarRow: React.FC<{ value: number }> = ({ value }) => {
-  const full = Math.floor(value);
-  const hasHalf = value - full >= 0.5;
-  return (
-    <div className="flex items-center gap-0.5">
-      {Array.from({ length: 5 }, (_, i) => (
-        <div key={i} className="relative w-4 h-4">
-          <Star size={16} className="absolute inset-0 text-slate-700" />
-          {(i < full || (i === full && hasHalf)) && (
-            <div className="absolute inset-0 overflow-hidden" style={{ width: i < full ? '100%' : '50%' }}>
-              <Star size={16} className="text-amber-400 fill-amber-400" />
-            </div>
-          )}
-        </div>
-      ))}
-    </div>
-  );
-};
-
-const SliderCard: React.FC<{
-  icon: React.ReactNode; title: string; value: number; onChange: (v: number) => void;
-  label: string; unitPrice: number; games: number; gamesLabel: string;
-  total: number; fmt: (v: number) => string; accent: string;
-  locked?: boolean;
-}> = ({ icon, title, value, onChange, label, unitPrice, games, gamesLabel, total, fmt, accent, locked = false }) => (
-  <div className="rounded-2xl border border-slate-800 bg-slate-900/70 p-5">
-    <div className="flex items-center justify-between mb-3">
-      <div className="flex items-center gap-3">
-        <span className={`text-${accent}-400`}>{icon}</span>
-        <span className="text-sm font-black text-white uppercase tracking-wide">{title}</span>
-      </div>
-      <div className="flex items-center gap-3">
-        <StarRow value={value} />
-        <span className="text-sm font-black text-amber-300 tabular-nums w-8 text-right">{value.toFixed(1)}</span>
-      </div>
-    </div>
-    <input
-      type="range" min={0.5} max={5} step={0.5} value={value}
-      onChange={(e) => onChange(parseFloat(e.target.value))}
-      disabled={locked}
-      className={`w-full accent-${accent}-400 ${locked ? 'cursor-not-allowed opacity-50' : ''}`}
-    />
-    <p className="text-xs text-slate-400 mt-2">{label}</p>
-    <div className="mt-3 flex items-center justify-between text-xs">
-      <span className="text-slate-500">{fmt(unitPrice)} /trip <span className="text-slate-600">x {games} {gamesLabel}</span></span>
-      <span className="font-black text-slate-200 tabular-nums">{fmt(total)}</span>
-    </div>
-  </div>
-);

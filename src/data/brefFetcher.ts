@@ -9,6 +9,10 @@
  * Format: JSON array of 79 seasons (1946–47 → 2024–25), newest first.
  */
 
+import { readJsonResponse } from '../services/utils/jsonResponse';
+import { seasonLabelToEndYear } from '../utils/historicalTimeline';
+import { fetchWorkerNbaSeasonHistory } from './basketballDataWorkerHistory';
+
 const WIKI_URL =
   'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/wikipedianbahistory';
 
@@ -34,6 +38,11 @@ export interface BRefAllTeam {
   players: { name: string; team: string }[];
 }
 
+export interface BRefNamedAward {
+  awardName: string;
+  recipients: BRefAwardEntry[];
+}
+
 export interface BRefSeasonData {
   year: number;
   champion?: BRefAwardEntry;
@@ -43,13 +52,16 @@ export interface BRefSeasonData {
   mvp?: BRefAwardEntry;
   dpoy?: BRefAwardEntry;
   smoy?: BRefAwardEntry;
+  clutch?: BRefAwardEntry;
   mip?: BRefAwardEntry;
   roy?: BRefAwardEntry;
   coy?: BRefAwardEntry;
   bestRecords: BRefTeamRecord[];
+  teamRecords?: BRefTeamRecord[];
   allNBA: BRefAllTeam[];
   allDefensive: BRefAllTeam[];
   allRookie: BRefAllTeam[];
+  otherAwards: BRefNamedAward[];
   allStars: { name: string; team: string; conference: string }[];  // not in Wikipedia data — always []
 }
 
@@ -72,7 +84,7 @@ export const FRANCHISE_MERGE: Record<string, string> = {
   'chicago zephyrs': 'wizards',
   // 76ers
   'syracuse nationals': '76ers',
-  'philadelphia warriors': '76ers',
+  'philadelphia warriors': 'warriors',
   // Kings (Rochester/Cincinnati/KC)
   'rochester royals': 'kings',
   'cincinnati royals': 'kings',
@@ -109,6 +121,27 @@ export const FRANCHISE_MERGE: Record<string, string> = {
   // Cavaliers (no rename)
 };
 
+export function cleanWikiTeamName(value: unknown): string {
+  return String(value ?? '')
+    .replace(/\[[^\]]*\]/g, '')
+    .replace(/\([^)]*(?:title|appearance|seed|record|champion|finals|playoffs)[^)]*\)/gi, '')
+    .replace(/\(\s*\d+(?:st|nd|rd|th)?\s*\)/gi, '')
+    .replace(/[†*‡]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const normalizeClubMatchName = (value: unknown): string =>
+  cleanWikiTeamName(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\b(?:basketball club|basketball|basket|baloncesto|bc|bk|cb|kk)\b/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
 /**
  * Match a Wikipedia team name string to a team in state.teams.
  * Handles franchise merges (Seattle SuperSonics → Thunder),
@@ -119,7 +152,7 @@ export function matchTeamByWikiName(
   teams: { id: number; name?: string; region?: string; abbrev?: string }[],
 ): { id: number; name?: string; region?: string; abbrev?: string; [key: string]: any } | undefined {
   if (!wikiName) return undefined;
-  const wl = wikiName.trim().toLowerCase();
+  const wl = cleanWikiTeamName(wikiName).toLowerCase();
 
   // 1. Check franchise merge map first
   const merged = FRANCHISE_MERGE[wl];
@@ -141,6 +174,24 @@ export function matchTeamByWikiName(
     `${(t.region ?? '')} ${t.name ?? ''}`.trim().toLowerCase() === wl
   );
   if (exact) return exact;
+
+  const normalizedWikiName = normalizeClubMatchName(wikiName);
+  const normalizedFullMatch = teams.find(t =>
+    normalizeClubMatchName(`${t.region ?? ''} ${t.name ?? ''}`) === normalizedWikiName
+  );
+  if (normalizedFullMatch) return normalizedFullMatch;
+
+  if (normalizedWikiName.length >= 4) {
+    const regionMatches = teams.filter(t =>
+      normalizeClubMatchName(t.region) === normalizedWikiName
+    );
+    if (regionMatches.length === 1) return regionMatches[0];
+  }
+
+  const normalizedNameMatch = teams.find(t =>
+    normalizeClubMatchName(t.name) === normalizedWikiName
+  );
+  if (normalizedNameMatch) return normalizedNameMatch;
 
   // 4. Nickname-only match: wikiName contains team.name (bidirectional)
   const nickMatch = teams.find(t => {
@@ -186,6 +237,7 @@ export function generateAbbrev(name: string, existing?: Set<string>): string {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const _cache = new Map<number, BRefSeasonData>();
+const _inflight = new Map<number, Promise<BRefSeasonData>>();
 
 // Populated once on first fetch — holds the raw Wikipedia JSON array
 let _rawPromise: Promise<any[]> | null = null;
@@ -193,7 +245,11 @@ let _rawPromise: Promise<any[]> | null = null;
 function getRawData(): Promise<any[]> {
   if (_rawPromise) return _rawPromise;
   _rawPromise = fetch(WIKI_URL)
-    .then(r => { if (!r.ok) throw new Error(`wikiHistory: ${r.status}`); return r.json(); })
+    .then(r => readJsonResponse<unknown>(r, 'NBA season history'))
+    .then(data => {
+      if (!Array.isArray(data)) throw new Error('NBA season history returned a non-array payload.');
+      return data;
+    })
     .catch(e => { _rawPromise = null; throw e; });
   return _rawPromise;
 }
@@ -201,14 +257,6 @@ function getRawData(): Promise<any[]> {
 // ─────────────────────────────────────────────────────────────────────────────
 // Parse helpers
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** "2024–25" → 2025,  "1999–2000" → 2000,  "1946–47" → 1947 */
-function seasonStrToYear(s: string): number {
-  const m = s.match(/(\d{4})[–\-](\d{2,4})/);
-  if (!m) return 0;
-  if (m[2].length === 4) return parseInt(m[2]);
-  return parseInt(m[1].slice(0, 2) + m[2]);
-}
 
 /**
  * "Shai Gilgeous-Alexander (Oklahoma City Thunder)"  → { name, team }
@@ -234,8 +282,12 @@ function parseAwardStr(raw: string | undefined): BRefAwardEntry | undefined {
 function parseTeamPlayer(s: string): { name: string; team: string } {
   const stripped = s.replace(/^[FCGPS]{1,2}\s+/, '');
   const idx = stripped.lastIndexOf(',');
-  if (idx === -1) return { name: stripped.trim(), team: '' };
-  return { name: stripped.slice(0, idx).trim(), team: stripped.slice(idx + 1).trim() };
+  if (idx !== -1) {
+    return { name: stripped.slice(0, idx).trim(), team: stripped.slice(idx + 1).trim() };
+  }
+  const dash = stripped.match(/^(.+?)\s+[–—-]\s+(.+)$/);
+  if (dash) return { name: dash[1].trim(), team: dash[2].trim() };
+  return { name: stripped.trim(), team: '' };
 }
 
 function buildAllTeams(
@@ -258,7 +310,7 @@ function buildAllTeams(
 // ─────────────────────────────────────────────────────────────────────────────
 
 function parseRawSeason(raw: any): BRefSeasonData {
-  const year = seasonStrToYear(raw.season ?? '');
+  const year = seasonLabelToEndYear(raw.season) ?? 0;
   const info: Record<string, string> = raw.infobox ?? {};
   const awards: Record<string, string> = raw.awards ?? {};
   const allLeagueTeams: Record<string, string[]> = raw.allLeagueTeams ?? {};
@@ -268,6 +320,7 @@ function parseRawSeason(raw: any): BRefSeasonData {
   const mvpRaw       = info['Season MVP']        ?? awards['Most Valuable Player'];
   const dpoyRaw      = info['Defensive POY']     ?? awards['Defensive Player of the Year'];
   const smoyRaw      = info['Sixth Man']         ?? awards['Sixth Man of the Year'];
+  const clutchRaw    = awards['Clutch Player of the Year'];
   const mipRaw       = info['Most Improved']     ?? awards['Most Improved Player'];
   const royRaw       = info['Rookie of Year']    ?? awards['Rookie of the Year'];
   const coyRaw       = info['Coach of Year']     ?? awards['Coach of the Year'];
@@ -278,8 +331,18 @@ function parseRawSeason(raw: any): BRefSeasonData {
   // Best records — first entry per Eastern/Western group.
   // Older seasons only have "Division" groups, so fall back to infobox conference champs.
   const bestRecords: BRefTeamRecord[] = [];
+  const teamRecordByName = new Map<string, BRefTeamRecord>();
   const seenConf = new Set<string>();
   for (const s of standings) {
+    const cleanedName = cleanWikiTeamName(s.team.replace(/^[a-z\*\-]+\s*/, ''));
+    if (cleanedName && Number.isFinite(s.wins) && Number.isFinite(s.losses)) {
+      teamRecordByName.set(cleanedName.toLowerCase(), {
+        conference: s.group,
+        name: cleanedName,
+        wins: s.wins,
+        losses: s.losses,
+      });
+    }
     if (s.group !== 'Eastern' && s.group !== 'Western') continue;
     if (seenConf.has(s.group)) continue;
     seenConf.add(s.group);
@@ -312,20 +375,23 @@ function parseRawSeason(raw: any): BRefSeasonData {
 
   return {
     year,
-    champion:       champRaw    ? { name: champRaw.trim(),    team: champRaw.trim()    } : undefined,
-    runnerUp:       runnerUpRaw ? { name: runnerUpRaw.trim(), team: runnerUpRaw.trim() } : undefined,
+    champion:       champRaw    ? { name: cleanWikiTeamName(champRaw),    team: cleanWikiTeamName(champRaw)    } : undefined,
+    runnerUp:       runnerUpRaw ? { name: cleanWikiTeamName(runnerUpRaw), team: cleanWikiTeamName(runnerUpRaw) } : undefined,
     finalsMvp:      parseAwardStr(fmvpRaw),
     semifinalsMvps: [],
     mvp:            parseAwardStr(mvpRaw),
     dpoy:           parseAwardStr(dpoyRaw),
     smoy:           parseAwardStr(smoyRaw),
+    clutch:         parseAwardStr(clutchRaw),
     mip:            parseAwardStr(mipRaw),
     roy:            parseAwardStr(royRaw),
     coy:            parseAwardStr(coyRaw),
     bestRecords,
+    teamRecords: [...teamRecordByName.values()],
     allNBA:         buildAllTeams(allLeagueTeams, 'All-NBA',         ['First Team', 'Second Team', 'Third Team']),
     allDefensive:   buildAllTeams(allLeagueTeams, 'All-Defensive',   ['First Team', 'Second Team']),
     allRookie:      buildAllTeams(allLeagueTeams, 'All-Rookie',      ['First Team', 'Second Team']),
+    otherAwards:    [],
     allStars:       [],
   };
 }
@@ -340,16 +406,28 @@ function parseRawSeason(raw: any): BRefSeasonData {
  */
 export async function fetchBRefSeasonData(year: number): Promise<BRefSeasonData> {
   if (_cache.has(year)) return _cache.get(year)!;
-
-  const raw = await getRawData();
-  // Parse and cache every season so future calls are free
-  for (const item of raw) {
-    const parsed = parseRawSeason(item);
-    if (parsed.year > 0) _cache.set(parsed.year, parsed);
+  const existing = _inflight.get(year);
+  if (existing) return existing;
+  const request = (async () => {
+    const workerSeason = await fetchWorkerNbaSeasonHistory(year);
+    if (workerSeason) {
+      _cache.set(year, workerSeason);
+      return workerSeason;
+    }
+    const raw = await getRawData();
+    for (const item of raw) {
+      const parsed = parseRawSeason(item);
+      if (parsed.year > 0) _cache.set(parsed.year, parsed);
+    }
+    if (!_cache.has(year)) throw new Error(`wikiHistory: no data for ${year}`);
+    return _cache.get(year)!;
+  })();
+  _inflight.set(year, request);
+  try {
+    return await request;
+  } finally {
+    _inflight.delete(year);
   }
-
-  if (!_cache.has(year)) throw new Error(`wikiHistory: no data for ${year}`);
-  return _cache.get(year)!;
 }
 
 /** Synchronous read of the in-memory cache (populated after first fetch). */
@@ -361,7 +439,7 @@ export function getAllCachedSeasons(): Map<number, BRefSeasonData> {
 // React hooks  (same signatures as old brefFetcher)
 // ─────────────────────────────────────────────────────────────────────────────
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 
 export function useBRefSeason(year: number | null): {
   data: BRefSeasonData | null;
@@ -371,14 +449,15 @@ export function useBRefSeason(year: number | null): {
   const [data, setData]       = useState<BRefSeasonData | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState<string | null>(null);
-  const fetchedYear = useRef<number | null>(null);
-
   useEffect(() => {
-    if (year == null || fetchedYear.current === year) return;
-    if (_cache.has(year)) { setData(_cache.get(year)!); return; }
+    if (year == null) {
+      setData(null);
+      setLoading(false);
+      setError(null);
+      return;
+    }
 
     let cancelled = false;
-    fetchedYear.current = year;
     setLoading(true);
     setError(null);
 
@@ -394,29 +473,24 @@ export function useBRefSeason(year: number | null): {
 
 export function useBRefSeasonsBatch(years: number[]): Map<number, BRefSeasonData> {
   const [brefMap, setBrefMap] = useState<Map<number, BRefSeasonData>>(new Map());
-  const fetchedRef = useRef<Set<number>>(new Set());
   const yearsKey = years.join(',');
 
   useEffect(() => {
-    const toFetch = years.filter(y => !fetchedRef.current.has(y));
-    if (toFetch.length === 0) return;
-
     let cancelled = false;
-
-    (async () => {
-      for (const year of toFetch) {
-        if (cancelled) break;
-        fetchedRef.current.add(year);
-        if (_cache.has(year)) {
-          setBrefMap(prev => new Map(prev).set(year, _cache.get(year)!));
-          continue;
-        }
-        try {
-          const d = await fetchBRefSeasonData(year);
-          if (!cancelled) setBrefMap(prev => new Map(prev).set(year, d));
-        } catch { /* skip on error */ }
+    Promise.all(years.map(async year => {
+      try {
+        return [year, await fetchBRefSeasonData(year)] as const;
+      } catch {
+        return null;
       }
-    })();
+    })).then(entries => {
+      if (cancelled) return;
+      setBrefMap(previous => {
+        const next = new Map(previous);
+        entries.forEach(entry => { if (entry) next.set(entry[0], entry[1]); });
+        return next;
+      });
+    });
 
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps

@@ -6,9 +6,9 @@ import { generate as generateFaceRaw } from 'facesjs';
 // accessories only.
 const BASKETBALL_JERSEY_IDS = ['jersey', 'jersey2', 'jersey3', 'jersey4', 'jersey5'] as const;
 const BASKETBALL_ACCESSORY_IDS = ['none', 'headband', 'headband-high'] as const;
-export const generateBasketballFace = (opts?: { race?: string; gender?: 'male' | 'female' }): any => {
-  const jerseyId = BASKETBALL_JERSEY_IDS[Math.floor(Math.random() * BASKETBALL_JERSEY_IDS.length)];
-  const accessoryId = BASKETBALL_ACCESSORY_IDS[Math.floor(Math.random() * BASKETBALL_ACCESSORY_IDS.length)];
+export const generateBasketballFace = (opts?: { race?: string; gender?: 'male' | 'female' }, rng: () => number = Math.random): any => {
+  const jerseyId = BASKETBALL_JERSEY_IDS[Math.floor(rng() * BASKETBALL_JERSEY_IDS.length)];
+  const accessoryId = BASKETBALL_ACCESSORY_IDS[Math.floor(rng() * BASKETBALL_ACCESSORY_IDS.length)];
   const face = generateFaceRaw({
     jersey: { id: jerseyId },
     accessories: { id: accessoryId },
@@ -24,7 +24,10 @@ import {
   PATH_OVR_CAP, LEAGUE_HEIGHT_CEILING, PATH_TO_LEAGUE,
   COUNTRY_HEIGHT_MULT, YOUTH_EXTERNAL_OVR_CAP,
 } from '../constants';
-import { getNewgenPortraitUrl, getRegenPortraitUrl, newgenRoll, type RegenRace } from '../utils/newgenPortrait';
+import { getNewgenPortraitUrl, getRegenPortraitUrl, type RegenRace } from '../utils/newgenPortrait';
+import { normalizeCompactPositionLabel } from '../utils/positionUtils';
+import { getGenderedNamePools } from '../data/nameDataFetcher';
+import { resolveHistoricalNationalityProfile } from './identity/historicalNationality';
 
 // Deterministic seeded RNG for stratified draft sampling (Fix 16).
 function seededRng(seed: string): number {
@@ -33,6 +36,26 @@ function seededRng(seed: string): number {
   h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) | 0;
   h = Math.imul(h ^ (h >>> 16), 0x45d9f3b) | 0;
   return ((h ^ (h >>> 16)) >>> 0) / 0xffffffff;
+}
+
+function generatedDunkBadges(player: Pick<Player, 'drivingDunk' | 'standingDunk'>, ratings: Ratings): string[] {
+  const level = (score: number): string | null => {
+    if (score >= 92) return 'HOF';
+    if (score >= 85) return 'Gold';
+    if (score >= 78) return 'Silver';
+    if (score >= 71) return 'Bronze';
+    return null;
+  };
+  const scores = {
+    Posterizer: player.drivingDunk * 0.55 + ratings.dnk * 0.25 + ratings.jmp * 0.2,
+    'Aerial Wizard': player.drivingDunk * 0.45 + ratings.jmp * 0.4 + ratings.spd * 0.15,
+    'Rise Up': player.standingDunk * 0.55 + ratings.stre * 0.25 + ratings.hgt * 0.2,
+    Acrobat: player.drivingDunk * 0.35 + ratings.drb * 0.35 + ratings.jmp * 0.15 + ratings.spd * 0.15,
+  };
+  return Object.entries(scores).flatMap(([badge, score]) => {
+    const tier = level(score);
+    return tier ? [`${badge} ${tier}`] : [];
+  });
 }
 
 const TRAIT_EXCLUSIONS: [MoodTrait, MoodTrait][] = [
@@ -103,9 +126,15 @@ type AgeProfile = {
 
 export type DraftGenerationContext = {
   collegePool?: Record<string, number>;
+  currentAgeOverride?: number;
   forceCollegePath?: boolean;
   nationalityOverride?: string;
+  nationalityFrequencies?: Record<string, number>;
+  talentProfile?: 'pba';
+  suppressRealWorldOrigin?: boolean;
 };
+
+export type GeneratedPlayerGender = 'male' | 'female' | 'mixed';
 
 // Historically-accurate draft age distributions per eligibility era (College path).
 // Each entry is [age, weight]. The slider shifts the whole table by an integer offset.
@@ -143,6 +172,10 @@ function sampleEraAge(eligibilityRule: string, offset: number, rng: () => number
 }
 
 const AGE_PROFILES: Record<number, AgeProfile> = {
+  14: { noiseStd: 20, potBonus: 18, potVariance: 15, rawnessMod: 0.52, baseMultiplier: 0.46 },
+  15: { noiseStd: 18, potBonus: 15, potVariance: 14, rawnessMod: 0.58, baseMultiplier: 0.52 },
+  16: { noiseStd: 17, potBonus: 13, potVariance: 13, rawnessMod: 0.63, baseMultiplier: 0.58 },
+  17: { noiseStd: 15, potBonus: 10, potVariance: 11, rawnessMod: 0.69, baseMultiplier: 0.64 },
   18: { noiseStd: 14, potBonus: 8,  potVariance: 10, rawnessMod: 0.75, baseMultiplier: 0.70 },
   19: { noiseStd: 12, potBonus: 6,  potVariance: 8,  rawnessMod: 0.82, baseMultiplier: 0.72 },
   20: { noiseStd: 9,  potBonus: 3,  potVariance: 6,  rawnessMod: 0.90, baseMultiplier: 0.71 },
@@ -156,10 +189,10 @@ export function potEstimator(ovr: number, age: number): number {
   return 72.31428908571982 + -2.33062761 * age + 0.83308748 * ovr;
 }
 
-export function pickWeighted(obj: { [key: string]: number }): string {
+export function pickWeighted(obj: { [key: string]: number }, rng: () => number = Math.random): string {
   const keys = Object.keys(obj);
   const total = Object.values(obj).reduce((a, b) => a + b, 0);
-  let r = Math.random() * total;
+  let r = rng() * total;
   for (const key of keys) {
     r -= obj[key];
     if (r <= 0) return key;
@@ -171,8 +204,8 @@ function generateJerseyNumber(rng: () => number): string {
   return pickJerseyNumber(new Set(), rng);
 }
 
-function getArchetypeSelection(pos: string): string {
-  const r = Math.random() * 100;
+function getArchetypeSelection(pos: string, rng: () => number): string {
+  const r = rng() * 100;
   if (pos === 'PG') {
     if (r < 25) return 'Primary Creator';
     if (r < 45) return 'Scoring Guard';
@@ -244,12 +277,13 @@ export function generateDraftClass(
   currentSimYear?: number,
   eligibilityRule?: string,
   forcedOvrBand?: OvrBand,
-  gender?: 'male' | 'female',
+  gender?: GeneratedPlayerGender,
   context?: DraftGenerationContext,
 ): Player[] {
   const prospects: Player[] = [];
   for (let i = 0; i < count; i++) {
-    prospects.push(generateProspect(year, rng, nameData, path, currentSimYear, eligibilityRule, forcedOvrBand, gender, context));
+    const generatedGender = gender === 'mixed' ? (rng() < 0.5 ? 'male' : 'female') : gender;
+    prospects.push(generateProspect(year, rng, nameData, path, currentSimYear, eligibilityRule, forcedOvrBand, generatedGender, context));
   }
   return prospects;
 }
@@ -268,6 +302,7 @@ function generateProspect(
   gender?: 'male' | 'female',
   context?: DraftGenerationContext,
 ): Player {
+  const seededNormal = randomNormal.source(rng);
   // `draftAge` is the age the prospect will be AT the draft.
   // `age` is their CURRENT age (at the sim's current season) — drives ratings so prospects
   // synthesized for future classes don't arrive at draft-level skills too early.
@@ -284,7 +319,7 @@ function generateProspect(
     draftAge = sampleEraAge(rule, 0, rng);
   } else {
     const intlCenter = Math.max(17, eraDefault - 1);
-    const rawAge = Math.round(randomNormal(intlCenter, 1.2)());
+    const rawAge = Math.round(seededNormal(intlCenter, 1.2)());
     draftAge = Math.max(17, Math.min(26, rawAge));
   }
 
@@ -292,7 +327,10 @@ function generateProspect(
   // yearsUntilDraft = 0 → age = draftAge (current class, standard behavior)
   // yearsUntilDraft = 3 → age = draftAge - 3 (raw HS kid scouted 3 years ahead)
   const yearsUntilDraft = currentSimYear != null ? Math.max(0, year - currentSimYear) : 0;
-  const age = Math.max(15, draftAge - yearsUntilDraft);
+  const ageOverride = Number(context?.currentAgeOverride);
+  const age = Number.isFinite(ageOverride)
+    ? Math.max(14, Math.min(26, Math.round(ageOverride)))
+    : Math.max(14, draftAge - yearsUntilDraft);
 
   // Determine Position
   const posKeys: Position[] = ['PG', 'SG', 'SG/SF', 'SF', 'SF/PF', 'PF', 'PF/C', 'C'];
@@ -300,18 +338,18 @@ function generateProspect(
   const primaryPos = pos.split('/')[0] as 'PG' | 'SG' | 'SF' | 'PF' | 'C';
 
   // Archetype
-  const archetype = getArchetypeSelection(primaryPos);
+  const archetype = getArchetypeSelection(primaryPos, rng);
 
   // Nationality
   let nationality = 'USA';
   let college = '';
 
   if (path === 'College' || forceCollegePath) {
-    nationality = context?.nationalityOverride ?? pickWeighted(COUNTRY_FREQUENCIES);
+    nationality = context?.nationalityOverride ?? pickWeighted(context?.nationalityFrequencies ?? COUNTRY_FREQUENCIES, rng);
     const collegePool = context?.collegePool && Object.keys(context.collegePool).length > 0
       ? context.collegePool
       : COLLEGE_FREQUENCIES;
-    college = pickWeighted(collegePool);
+    college = pickWeighted(collegePool, rng);
   } else if (path === 'NBL') {
     nationality = rng() > 0.5 ? 'Australia' : 'New Zealand';
     const teamIds = Object.keys(NBL_TEAMS);
@@ -329,24 +367,20 @@ function generateProspect(
   } else if (path === 'Endesa') {
     const teamIds = Object.keys(ENDESA_TEAMS);
     college = ENDESA_TEAMS[teamIds[Math.floor(rng() * teamIds.length)]];
-    nationality = rng() > 0.3 ? 'Spain' : pickWeighted(COUNTRY_FREQUENCIES);
+    nationality = rng() > 0.3 ? 'Spain' : pickWeighted(context?.nationalityFrequencies ?? COUNTRY_FREQUENCIES, rng);
   } else {
-    nationality = pickWeighted(COUNTRY_FREQUENCIES);
+    nationality = pickWeighted(context?.nationalityFrequencies ?? COUNTRY_FREQUENCIES, rng);
     college = 'Unknown';
   }
 
-  // Defensive: names gist schema varies between ZenGM versions. Fall through country → USA →
-  // any populated entry → literal defaults so the generator never crashes on a lookup miss.
-  const countryData =
-    nameData.countries[nationality] ||
-    nameData.countries['USA'] ||
-    Object.values(nameData.countries).find((c: any) => c?.first && Object.keys(c.first).length > 0);
-  const firstPool = countryData?.first && Object.keys(countryData.first).length > 0
-    ? countryData.first : { Anthony: 1, James: 1, Chris: 1, Marcus: 1, Kevin: 1 };
-  const lastPool = countryData?.last && Object.keys(countryData.last).length > 0
-    ? countryData.last : { Williams: 1, Johnson: 1, Brown: 1, Jones: 1, Davis: 1 };
-  const firstName = pickWeighted(firstPool);
-  const lastName = pickWeighted(lastPool);
+  if (!context?.nationalityOverride && context?.nationalityFrequencies) {
+    nationality = pickWeighted(context.nationalityFrequencies, rng);
+  }
+  if (context?.suppressRealWorldOrigin) college = '';
+
+  const { first: firstPool, last: lastPool } = getGenderedNamePools(nameData, nationality, gender);
+  const firstName = pickWeighted(firstPool, rng);
+  const lastName = pickWeighted(lastPool, rng);
 
   // Base ratings distribution
   const ratings: any = { season: year };
@@ -359,10 +393,10 @@ function generateProspect(
   let qualityMod = 0;
   if (forcedOvrBand) {
     // Stratified band: bias qualityMod toward the target and let it still be noisy
-    qualityMod = forcedOvrBand.qualityBias + randomNormal(0, 4)();
+    qualityMod = forcedOvrBand.qualityBias + seededNormal(0, 4)();
   } else if (classRoll < 0.02) qualityMod = 20;       // star
   else if (classRoll < 0.07) qualityMod = -15; // bust
-  else qualityMod = randomNormal(0, 8)();       // normal
+  else qualityMod = seededNormal(0, 8)();       // normal
 
   const ageProfile = { ...(AGE_PROFILES[Math.min(age, 23)] ?? AGE_PROFILES[23]) };
   const isGenerational = forcedOvrBand?.min != null && forcedOvrBand.min >= 53
@@ -374,7 +408,7 @@ function generateProspect(
     // bust via the devSpeed lottery and yearly POT drift. Keep the quality-boost
     // and tighter consistency, but leave rawness + base multiplier alone so they
     // still look like a prospect, not a finished product.
-    qualityMod = 20 + randomNormal(0, 4)();
+    qualityMod = 20 + seededNormal(0, 4)();
     ageProfile.noiseStd = 5;         // tighter per-attr noise
     ageProfile.potBonus += 4;        // scouts project them higher
     ageProfile.potVariance += 2;
@@ -382,7 +416,7 @@ function generateProspect(
 
   attrs.forEach(attr => {
     const mean = (profile[attr] ?? 50) + qualityMod;
-    let val = randomNormal(mean, ageProfile.noiseStd)();        // noise based on age
+    let val = seededNormal(mean, ageProfile.noiseStd)();        // noise based on age
 
     // Rawness: suppress stats below their archetype mean for young players
     // Strong stats stay strong, weak stats get weaker
@@ -403,7 +437,7 @@ function generateProspect(
   // collapse to identical OVRs. Add a final tie-breaking noise term to spread them.
   const nonHgtAttrs = attrs.filter(a => a !== 'hgt');
   const ovrSum = nonHgtAttrs.reduce((sum, a) => sum + (ratings[a] || 0), 0);
-  ratings.ovr = Math.round(ovrSum / nonHgtAttrs.length + randomNormal(0, 2.5)());
+  ratings.ovr = Math.round(ovrSum / nonHgtAttrs.length + seededNormal(0, 2.5)());
   // Global -4 BBGM OVR rebalance — generated prospects (College + foreign paths)
   // were trending too strong vs the imported BBGM roster (real NBA + Euro draftees).
   // Floor at 25 so we don't accidentally manufacture sub-MLE rookies.
@@ -441,12 +475,12 @@ function generateProspect(
   // The actual simulation engine will recalculate overall as attributes rise over 3-6 seasons.
   if (age >= 22 && ratings.ovr >= 55) {
     ratings.pot = Math.round(
-      ratings.ovr + randomNormal(3, 3)()  // pot only slightly above ovr
+      ratings.ovr + seededNormal(3, 3)()  // pot only slightly above ovr
     );
   } else {
     // Generational bumped potBonus/potVariance above, so they still skew high
     // but are no longer guaranteed 90+.
-    ratings.pot = Math.round(ratings.ovr + ageProfile.potBonus + randomNormal(0, ageProfile.potVariance)());
+    ratings.pot = Math.round(ratings.ovr + ageProfile.potBonus + seededNormal(0, ageProfile.potVariance)());
   }
 
   // Fix 3: POT cap = leagueOvrCap + 8 (youth) / +4 (adult 22+)
@@ -480,6 +514,18 @@ function generateProspect(
   const hgtMult = COUNTRY_HEIGHT_MULT[nationality] ?? 1.0;
   if (hgtMult !== 1.0) hgtInches = Math.round(hgtInches * hgtMult);
 
+  const positionHeightFloor: Record<Position, number> = {
+    PG: 68,
+    SG: 72,
+    'SG/SF': 74,
+    SF: 75,
+    'SF/PF': 77,
+    PF: 78,
+    'PF/C': 80,
+    C: 81,
+  };
+  hgtInches = Math.max(hgtInches, Math.round(positionHeightFloor[pos] * hgtMult));
+
   // Fix 4: Per-league height ceiling
   const leagueName = PATH_TO_LEAGUE[path] ?? 'NBA';
   const hgtCeil = LEAGUE_HEIGHT_CEILING[leagueName] ?? 90;
@@ -498,7 +544,7 @@ function generateProspect(
 
   for (const attr of DUNK_ATTRS) {
     const mean = (profile[attr] ?? 30) + qualityMod;
-    let val = randomNormal(mean, ageProfile.noiseStd)();
+    let val = seededNormal(mean, ageProfile.noiseStd)();
     
     if (val < mean) {
       val = mean + (val - mean) * (1 / ageProfile.rawnessMod);
@@ -518,9 +564,9 @@ function generateProspect(
   if (rng() < 0.05) durability = 85 + (rng() * 14); // 5% iron man
   durability = Math.max(0, Math.min(99, Math.round(durability)));
 
-  let composure = randomNormal(60, 20)();
-  let clutch = randomNormal(65, 15)();
-  let workEthic = randomNormal(65, 18)();
+  let composure = seededNormal(60, 20)();
+  let clutch = seededNormal(65, 15)();
+  let workEthic = seededNormal(65, 18)();
 
   // Traits
   const traits: MoodTrait[] = [];
@@ -538,7 +584,7 @@ function generateProspect(
       coreWeights.COMPETITOR = 2;
     }
 
-    const trait = pickWeighted(coreWeights) as MoodTrait;
+    const trait = pickWeighted(coreWeights, rng) as MoodTrait;
     traits.push(trait);
   }
 
@@ -572,12 +618,19 @@ function generateProspect(
 
   // Determine Race
   const raceFreqs = getRaceFrequencies(nationality);
-  const race = pickWeighted(raceFreqs) as "black" | "asian" | "brown" | "white";
-  const face = generateFace({ race, gender });
+  const race = pickWeighted(raceFreqs, rng) as "black" | "asian" | "brown" | "white";
+  const face = generateFace({ race, gender }, rng);
   const jerseyNumber = generateJerseyNumber(rng);
+  const generatedId = `${Math.floor(rng() * 0xffffffff).toString(36)}${Math.floor(rng() * 0xffffffff).toString(36)}`;
+  const nationalityProfile = resolveHistoricalNationalityProfile(
+    nationality,
+    currentSimYear ?? year,
+    generatedId,
+    { allowAmbiguousHistoricalSplit: true },
+  );
 
   return {
-    id: Math.random().toString(36).substr(2, 9),
+    id: generatedId,
     firstName,
     lastName,
     jerseyNumber,
@@ -585,13 +638,16 @@ function generateProspect(
     age,
     // born.year reflects the sim's CURRENT year — derived so (currentSim − born) = current age.
     // If currentSimYear wasn't passed, fall back to original draft-year math.
-    born: { year: (currentSimYear ?? year) - age, loc: nationality },
+    born: { year: (currentSimYear ?? year) - age, loc: nationalityProfile.displayCountry },
     hgt: hgtInches,
     weight: weightLbs,
     finalHgt: hgtInches,
     finalWeight: weightLbs,
     college,
-    nationality,
+    nationality: nationalityProfile.displayCountry,
+    nationalityTimeline: nationalityProfile.timeline,
+    nationalitySuccessorCountry: nationalityProfile.successorCountry,
+    gender,
     race,
     face,
     draft: { year: year, round: 0, pick: 0, tid: -1 },
@@ -622,8 +678,13 @@ export async function generatePlayer(nameData: NameData, options: { year: number
 import type { NBAPlayer } from '../types';
 
 export type GeneratedPortraitMode = 'legacy_newgen' | 'regen_pack' | 'facesjs_only';
+export type DraftClassQualityMode = 'normal' | 'weak_fill' | 'bums_only';
 
-export function sandboxToNBAPlayer(p: Player, portraitMode: GeneratedPortraitMode = 'legacy_newgen'): NBAPlayer {
+export function sandboxToNBAPlayer(
+  p: Player,
+  portraitMode: GeneratedPortraitMode = 'legacy_newgen',
+  usedPortraitUrls?: Set<string>,
+): NBAPlayer {
   const rawRatings = p.ratings ?? [];
   const lastR = rawRatings[rawRatings.length - 1];
   const baseOvr = p.overallRating ?? lastR?.ovr ?? 45;
@@ -633,6 +694,7 @@ export function sandboxToNBAPlayer(p: Player, portraitMode: GeneratedPortraitMod
   const finalRatings = rawRatings.map((r, i) =>
     i === rawRatings.length - 1 ? { ...r, pot: derivedPot } : r,
   );
+  const badges = generatedDunkBadges(p, finalRatings[finalRatings.length - 1] as Ratings);
   let imgURL = p.imgURL;
   if (portraitMode === 'regen_pack') {
     const race: RegenRace = p.race === 'black' || p.race === 'asian' || p.race === 'brown' || p.race === 'white'
@@ -641,13 +703,11 @@ export function sandboxToNBAPlayer(p: Player, portraitMode: GeneratedPortraitMod
     imgURL = getRegenPortraitUrl(p.id, race, {
       nationality: p.nationality,
       bornLoc: p.born?.loc,
-    }) ?? getNewgenPortraitUrl(p.id, 'male');
+      gender: p.gender ?? 'male',
+      usedPortraitUrls,
+    }) ?? undefined;
   } else if (portraitMode === 'legacy_newgen') {
-    // Legacy newgen portraits: Europe/Endesa/NBL always get one.
-    // Domestic paths get a 50% sprinkle so the draft class isn't visually monolithic.
-    const overseasNewgenPath = p.path === 'Europe' || p.path === 'Endesa' || p.path === 'NBL';
-    const useNewgen = p.path !== 'B-League' && (overseasNewgenPath || newgenRoll(p.id, 0.5));
-    imgURL = useNewgen ? getNewgenPortraitUrl(p.id, 'male') : p.imgURL;
+    imgURL = p.imgURL ?? getNewgenPortraitUrl(p.id, p.gender ?? 'male');
   }
   return {
     internalId: p.id,
@@ -674,11 +734,13 @@ export function sandboxToNBAPlayer(p: Player, portraitMode: GeneratedPortraitMod
     ratings: finalRatings as any,
     overallRating: baseOvr,
     potential: derivedPot,
+    badges,
     moodTraits: p.traits as any,
     // Expose the extra generated attrs so downstream systems (progression, clutch, fight) can read them.
     ...( { drivingDunk: p.drivingDunk, standingDunk: p.standingDunk, durability: p.durability,
       composure: p.composure, clutch: p.clutch, workEthic: p.workEthic, archetype: p.archetype,
       face: p.face, finalHgt: p.finalHgt, finalWeight: p.finalWeight, nationality: p.nationality,
+      nationalityTimeline: p.nationalityTimeline, nationalitySuccessorCountry: p.nationalitySuccessorCountry, gender: p.gender,
       race: p.race, path: p.path } as any ),
   } as NBAPlayer;
 }
@@ -730,6 +792,71 @@ const DRAFT_BANDS: Array<{ min: number; max: number; qualityBias: number; baseCo
   { min: 24, max: 34, qualityBias: -9, potMin: 37, potMax: 48, baseCount: 15, extraRoll: 3 }, // Early 2nd:   K2 52-61 OVR, POT K2 64-73
 ];
 
+const WEAK_FILL_BAND = { min: 24, max: 32, qualityBias: -11, potMin: 34, potMax: 44, baseCount: 0, extraRoll: 0 };
+const BUM_FILL_BAND = { min: 18, max: 27, qualityBias: -16, potMin: 26, potMax: 36, baseCount: 0, extraRoll: 0 };
+const PBA_DRAFT_BANDS: Array<{ min: number; max: number; qualityBias: number; baseCount: number; extraRoll: number; potMin?: number; potMax?: number }> = [
+  { min: 28, max: 34, qualityBias: -5, potMin: 34, potMax: 42, baseCount: 2, extraRoll: 1 },
+  { min: 22, max: 29, qualityBias: -10, potMin: 28, potMax: 37, baseCount: 6, extraRoll: 2 },
+  { min: 16, max: 24, qualityBias: -16, potMin: 22, potMax: 31, baseCount: 14, extraRoll: 4 },
+];
+const PBA_FILL_BAND = { min: 8, max: 14, qualityBias: -25, potMin: 16, potMax: 26, baseCount: 0, extraRoll: 0 };
+const PBA_WEAK_FILL_BAND = { min: 6, max: 12, qualityBias: -28, potMin: 14, potMax: 22, baseCount: 0, extraRoll: 0 };
+
+function applyBandPotential(prospect: NBAPlayer, band: { potMin?: number; potMax?: number }, seedKey: string): NBAPlayer {
+  if (band.potMin === undefined || band.potMax === undefined) return prospect;
+  const potRange = band.potMax - band.potMin;
+  const potBbgm = Math.round(band.potMin + seededRng(seedKey) * potRange);
+  const ratings = prospect.ratings?.length
+    ? [...prospect.ratings.slice(0, -1), { ...prospect.ratings[prospect.ratings.length - 1], pot: potBbgm }]
+    : prospect.ratings;
+  return {
+    ...prospect,
+    potential: potBbgm,
+    ...(ratings ? { ratings } : {}),
+  } as NBAPlayer;
+}
+
+function qualityModeBand(mode: DraftClassQualityMode) {
+  if (mode === 'bums_only') return BUM_FILL_BAND;
+  if (mode === 'weak_fill') return WEAK_FILL_BAND;
+  return null;
+}
+
+function pbaQualityModeBand(mode: DraftClassQualityMode) {
+  if (mode === 'bums_only' || mode === 'weak_fill') return PBA_WEAK_FILL_BAND;
+  return PBA_FILL_BAND;
+}
+
+const PBA_SCALABLE_RATING_KEYS = [
+  'stre', 'spd', 'jmp', 'endu', 'ins', 'dnk', 'ft', 'fg', 'tp',
+  'oiq', 'diq', 'drb', 'pss', 'reb',
+] as const;
+
+function shapeGeneratedPbaProspect(prospect: NBAPlayer, overallCap?: number): NBAPlayer {
+  const currentOverall = Number(prospect.overallRating ?? prospect.ratings?.at(-1)?.ovr ?? 0);
+  const cappedOverall = Number.isFinite(overallCap)
+    ? Math.min(currentOverall, Number(overallCap))
+    : currentOverall;
+  const reduction = Math.max(0, currentOverall - cappedOverall);
+  const ratings = prospect.ratings?.map((rating, index, rows) => {
+    if (index !== rows.length - 1 || reduction <= 0) return rating;
+    const scaled = { ...rating } as Record<string, unknown>;
+    for (const key of PBA_SCALABLE_RATING_KEYS) {
+      const value = Number(scaled[key]);
+      if (Number.isFinite(value)) scaled[key] = Math.max(0, value - reduction);
+    }
+    scaled.ovr = cappedOverall;
+    return scaled as typeof rating;
+  });
+  return {
+    ...prospect,
+    overallRating: cappedOverall,
+    ...(ratings ? { ratings } : {}),
+    pos: normalizeCompactPositionLabel(prospect.pos, prospect.hgt),
+    pbaLocalEligible: true,
+  } as NBAPlayer;
+}
+
 export function generateDraftClassForGame(
   year: number,              // draft year (e.g. 2029 for the 2029 class)
   count: number,
@@ -737,19 +864,30 @@ export function generateDraftClassForGame(
   nameData: NameData,
   currentSimYear?: number,   // sim's current year — lets us age-down prospects for future classes
   eligibilityRule?: string,  // selects the era age distribution shape
-  gender?: 'male' | 'female',
+  gender?: GeneratedPlayerGender,
   portraitMode: GeneratedPortraitMode = 'legacy_newgen',
+  qualityMode: DraftClassQualityMode = 'normal',
   context?: DraftGenerationContext,
+  usedPortraitUrls?: Set<string>,
 ): NBAPlayer[] {
   const prospects: NBAPlayer[] = [];
+  const pbaProfile = context?.talentProfile === 'pba';
+  const fillBand = pbaProfile ? pbaQualityModeBand(qualityMode) : qualityModeBand(qualityMode);
 
   // Stratified quotas only apply when generating a full-class run (≥ 30 picks).
   // Single-player calls from externalLeagueSustainer skip stratification.
   if (count < 30) {
     for (let i = 0; i < count; i++) {
       const path = context?.forceCollegePath ? 'College' : samplePath(rng);
-      const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule, undefined, gender, context);
-      if (single[0]) prospects.push(sandboxToNBAPlayer(single[0], portraitMode));
+      const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule, fillBand ?? undefined, gender, context);
+      if (single[0]) {
+        let prospect = sandboxToNBAPlayer(single[0], portraitMode, usedPortraitUrls);
+        if (fillBand) {
+          prospect = applyBandPotential(prospect, fillBand, `draft_fill_small_${year}_${i}_${qualityMode}`);
+        }
+        if (pbaProfile) prospect = shapeGeneratedPbaProspect(prospect, fillBand?.max);
+        prospects.push(prospect);
+      }
     }
     return prospects;
   }
@@ -761,7 +899,15 @@ export function generateDraftClassForGame(
   const hasGenerational = yearRng < 0.33;
   let filled = 0;
 
-  for (const band of DRAFT_BANDS) {
+  const activeBands = pbaProfile
+    ? PBA_DRAFT_BANDS
+    : qualityMode === 'normal'
+      ? DRAFT_BANDS
+      : qualityMode === 'weak_fill'
+        ? DRAFT_BANDS.filter(band => band.min <= 39)
+        : DRAFT_BANDS.filter(band => band.min <= 34);
+
+  for (const band of activeBands) {
     const bandRng = seededRng(`draft_band_${year}_${band.min}`);
     let bandCount = band.baseCount + Math.floor(bandRng * (band.extraRoll + 1));
     if (band.min >= 53) bandCount = hasGenerational ? 1 : 0;
@@ -770,18 +916,9 @@ export function generateDraftClassForGame(
       const path = context?.forceCollegePath ? 'College' : samplePath(rng);
       const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule, band, gender, context);
       if (single[0]) {
-        let prospect = sandboxToNBAPlayer(single[0], portraitMode);
-        // potEstimator inflates every tier-2+ pick to K2 99 because it reads the
-        // already-high OVR. Override with the band's realistic ceiling instead.
-        if (band.potMin !== undefined && band.potMax !== undefined) {
-          const potRange = band.potMax - band.potMin;
-          const potBbgm = Math.round(band.potMin + seededRng(`draft_pot_${year}_${filled}_${band.min}`) * potRange);
-          prospect = { ...prospect, potential: potBbgm } as any;
-          if (prospect.ratings?.length) {
-            const lastR = { ...prospect.ratings[prospect.ratings.length - 1], pot: potBbgm };
-            prospect.ratings = [...prospect.ratings.slice(0, -1), lastR];
-          }
-        }
+        let prospect = sandboxToNBAPlayer(single[0], portraitMode, usedPortraitUrls);
+        prospect = applyBandPotential(prospect, band, `draft_pot_${year}_${filled}_${band.min}`);
+        if (pbaProfile) prospect = shapeGeneratedPbaProspect(prospect, band.max);
         prospects.push(prospect);
         filled++;
       }
@@ -792,8 +929,18 @@ export function generateDraftClassForGame(
   const fringeCount = count - filled;
   for (let i = 0; i < fringeCount; i++) {
     const path = context?.forceCollegePath ? 'College' : samplePath(rng);
-    const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule, undefined, gender, context);
-    if (single[0]) prospects.push(sandboxToNBAPlayer(single[0], portraitMode));
+    const fringeBand = pbaProfile ? PBA_FILL_BAND : fillBand ?? undefined;
+    const single = generateDraftClass(year, 1, rng, nameData, path, currentSimYear, eligibilityRule, fringeBand, gender, context);
+    if (single[0]) {
+      let prospect = sandboxToNBAPlayer(single[0], portraitMode, usedPortraitUrls);
+      if (fillBand) {
+        prospect = applyBandPotential(prospect, fillBand, `draft_fill_${year}_${i}_${qualityMode}`);
+      } else if (fringeBand) {
+        prospect = applyBandPotential(prospect, fringeBand, `draft_fill_${year}_${i}_${qualityMode}`);
+      }
+      if (pbaProfile) prospect = shapeGeneratedPbaProspect(prospect, fringeBand?.max);
+      prospects.push(prospect);
+    }
   }
 
   return prospects;

@@ -112,12 +112,12 @@ export function generateReboundNarrative(rebounder: any, isOffReb: boolean, isRe
     return `${rebounder.n} offensive board.`;
   }
   if (Math.random() < getBadgeProb(rebounder.n, 'Rebound Chaser', 0.3)) {
-    return `${rebounder.n} tracks it down — def. rebound.`;
+    return `${rebounder.n} tracks it down — defensive rebound.`;
   }
   if (Math.random() < getBadgeProb(rebounder.n, 'Boxout Beast', 0.2)) {
-    return `${rebounder.n} boxes out perfectly — def. rebound.`;
+    return `${rebounder.n} boxes out perfectly — defensive rebound.`;
   }
-  return `${rebounder.n} def. rebound.`;
+  return `${rebounder.n} defensive rebound.`;
 }
 
 export function generateTovNarrative(handler: any, stealer: any) {

@@ -1,0 +1,6194 @@
+{
+  "source": "pba-2027-final-jerseys-cleaned-bbgm.json",
+  "playerCount": 1190,
+  "players": [
+    {
+      "name": "Mike Harris (Import)",
+      "aliases": [
+        "Mike Harris"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Harris_Mike_uta_1314.jpg"
+    },
+    {
+      "name": "Charles Rhodes (Import)",
+      "aliases": [
+        "Charles Rhodes"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Rhodes_Charles_ncaa.jpg"
+    },
+    {
+      "name": "DaJuan Summers (Import)",
+      "aliases": [
+        "DaJuan Summers"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Summers_DaJuan_nyk1516.jpg"
+    },
+    {
+      "name": "Robert Dozier (Import)",
+      "aliases": [
+        "Robert Dozier"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Dozier_Robert.jpg"
+    },
+    {
+      "name": "Alonzo Gee (Import)",
+      "aliases": [
+        "Alonzo Gee"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Gee_Alonzo_nop1617.jpg"
+    },
+    {
+      "name": "Diamon Simpson (Import)",
+      "aliases": [
+        "Diamon Simpson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Simpson_Diamon_ncaa.jpg"
+    },
+    {
+      "name": "Romeo Travis (Import)",
+      "aliases": [
+        "Romeo Travis"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Travis_Romeo.jpg"
+    },
+    {
+      "name": "Gani Lawal (Import)",
+      "aliases": [
+        "Gani Lawal"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Lawal_Gani_phi_1314.jpg"
+    },
+    {
+      "name": "Manny Harris (Import)",
+      "aliases": [
+        "Manny Harris"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Harris_Manny_orl_1314.jpg"
+    },
+    {
+      "name": "Thomas Robinson (Import)",
+      "aliases": [
+        "Thomas Robinson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Robinson_Thomas_atl_18.jpg"
+    },
+    {
+      "name": "Alex Stepheson (Import)",
+      "aliases": [
+        "Alex Stepheson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Stepheson_Alex_ncaa.jpg"
+    },
+    {
+      "name": "Jamil Wilson (Import)",
+      "aliases": [
+        "Jamil Wilson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Wilson_Jamil_lac17.jpg"
+    },
+    {
+      "name": "Chris Daniels (Import)",
+      "aliases": [
+        "Chris Daniels"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Daniels_Chris_bkn1516.jpg"
+    },
+    {
+      "name": "Ray Parks",
+      "imgURL": "https://www.eurobasket.com/photos/Parks_Ray.jpg"
+    },
+    {
+      "name": "Justin Watts (Import)",
+      "aliases": [
+        "Justin Watts"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Watts_Justin_ncaa_unc.jpg"
+    },
+    {
+      "name": "Richard Howell (Import)",
+      "aliases": [
+        "Richard Howell"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Howell_Richard_por_1314.jpg"
+    },
+    {
+      "name": "Aaron Fuller (Import)",
+      "aliases": [
+        "Aaron Fuller"
+      ],
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/16/photo_L1.png"
+    },
+    {
+      "name": "Stanley Pringle",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/erv6qosxkb5i6po6c60esb0xzrjf"
+    },
+    {
+      "name": "Christian Standhardinger",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Standhardinger_Christian_ncaa_hi.jpg"
+    },
+    {
+      "name": "Denzel Bowles (Import)",
+      "aliases": [
+        "Denzel Bowles"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Bowles_Denzel_ncaa.jpg"
+    },
+    {
+      "name": "Justin Brownlee (Import)",
+      "aliases": [
+        "Justin Brownlee"
+      ],
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginBrownlee.png"
+    },
+    {
+      "name": "Terrence Jones (Import)",
+      "aliases": [
+        "Terrence Jones"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jones_Terrence_nop1617.jpg"
+    },
+    {
+      "name": "John Fields (Import)",
+      "aliases": [
+        "John Fields"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Fields_John_tn21.jpg"
+    },
+    {
+      "name": "Chris Ross",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/69/photo_L1.png"
+    },
+    {
+      "name": "Suleiman Braimoh (Import)",
+      "aliases": [
+        "Suleiman Braimoh"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Braimoh_Suleiman.jpg"
+    },
+    {
+      "name": "Joe Devance",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginDevance38.png"
+    },
+    {
+      "name": "Mike Williams",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Williams_Michael_usf_8642.jpg"
+    },
+    {
+      "name": "Greg Smith (Import)",
+      "aliases": [
+        "Greg Smith"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Smith_Greg_dal14.jpg"
+    },
+    {
+      "name": "Jared Dillinger",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mer-Dillinger.png"
+    },
+    {
+      "name": "Kyle Barone (Import)",
+      "aliases": [
+        "Kyle Barone"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Barone_Kyle_ncaa_id.jpg"
+    },
+    {
+      "name": "Olu Ashaolu (Import)",
+      "aliases": [
+        "Olu Ashaolu"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Ashaolu_Olu_ncaa_ore.jpg"
+    },
+    {
+      "name": "Tony Mitchell (Import)",
+      "aliases": [
+        "Tony Mitchell"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Mitchell_Tony_gsw1516.jpg"
+    },
+    {
+      "name": "Marqus Blakely (Import)",
+      "aliases": [
+        "Marqus Blakely"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Blakely_Marqus_LAC.jpg"
+    },
+    {
+      "name": "Ivan Aska (Import)",
+      "aliases": [
+        "Ivan Aska"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Aska_Ivan_ncaa_ms.jpg"
+    },
+    {
+      "name": "Delroy James (Import)",
+      "aliases": [
+        "Delroy James"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/James_Delroy.jpg"
+    },
+    {
+      "name": "Kelly Williams",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/91/photo_L1.png"
+    },
+    {
+      "name": "Carl Montgomery (Import)",
+      "aliases": [
+        "Carl Montgomery"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Montgomery_Carl.jpg"
+    },
+    {
+      "name": "Marcio Lassiter",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/71/photo_L1.png"
+    },
+    {
+      "name": "Eugene Phelps (Import)",
+      "aliases": [
+        "Eugene Phelps"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Phelps_Eugene_ncaa_lbs.jpg"
+    },
+    {
+      "name": "Jerramy King (Import)",
+      "aliases": [
+        "Jerramy King"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/King_Jerramy_ncaa_lbs.jpg"
+    },
+    {
+      "name": "John Holland (Import)",
+      "aliases": [
+        "John Holland"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Holland_John_cle_18.jpg"
+    },
+    {
+      "name": "Gabe Norwood",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/f1d7qob6efd4es89dhbgwsnlxbtb"
+    },
+    {
+      "name": "Japeth Aguilar",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/161/photo_L1.png"
+    },
+    {
+      "name": "Tony Bishop Jr (Import)",
+      "aliases": [
+        "Tony Bishop Jr"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Bishop_Tony_dleague.jpg"
+    },
+    {
+      "name": "Joel Wright (Import)",
+      "aliases": [
+        "Joel Wright"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Wright_Joel_ncaatexst.jpg"
+    },
+    {
+      "name": "Matthew Wright",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/phx-Wright.png"
+    },
+    {
+      "name": "Maverick Ahanmisi",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/148/photo_L1.png"
+    },
+    {
+      "name": "Curtis Washington (Import)",
+      "aliases": [
+        "Curtis Washington"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Washington_Curtis_ncaa_usc.jpg"
+    },
+    {
+      "name": "Stephen Holt",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/156/photo_L1.png"
+    },
+    {
+      "name": "Richard Ross (Import)",
+      "aliases": [
+        "Richard Ross"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Ross_Richard_ncaa_od.jpg"
+    },
+    {
+      "name": "Quincy Miller (Import)",
+      "aliases": [
+        "Quincy Miller"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Miller_Quincy_bkn1516.jpg"
+    },
+    {
+      "name": "Rakeem Christmas",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Christmas_Rakeem_ind1617.jpg"
+    },
+    {
+      "name": "Dez Wells (Import)",
+      "aliases": [
+        "Dez Wells"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Wells_Dez_okc1516.jpg"
+    },
+    {
+      "name": "Shabazz Muhammad (Import)",
+      "aliases": [
+        "Shabazz Muhammad"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Muhammad_Shabazz_mil_18.jpg"
+    },
+    {
+      "name": "Prince Ibeh (Import)",
+      "aliases": [
+        "Prince Ibeh"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Ibeh_Prince_ncaa_12.jpg"
+    },
+    {
+      "name": "Steve Taylor, Jr. (Import)",
+      "aliases": [
+        "Steve Taylor, Jr."
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Taylor_Steve_ncaamarq.jpg"
+    },
+    {
+      "name": "Rondae Hollis-Jefferson (Import)",
+      "aliases": [
+        "Rondae Hollis-Jefferson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jefferson_Rondae_min20.jpg"
+    },
+    {
+      "name": "Jimmie Taylor",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Taylor_Jimmie_ncaaal.jpg"
+    },
+    {
+      "name": "James Yap",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ros-Yap.png"
+    },
+    {
+      "name": "Joachim Thoss",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ala-Thoss.png"
+    },
+    {
+      "name": "Asi Taulava",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/nlx-Taulava.png"
+    },
+    {
+      "name": "Cyrus Baguio",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/phxBaguio3.png"
+    },
+    {
+      "name": "Arwind Santos",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-Santos.png"
+    },
+    {
+      "name": "Mark Caguioa",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginCaguioa47.png"
+    },
+    {
+      "name": "Christopher Ortiz (Import)",
+      "aliases": [
+        "Christopher Ortiz"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Ortiz_Chris_ncaa.jpg"
+    },
+    {
+      "name": "Johnathan Williams (Import)",
+      "aliases": [
+        "Johnathan Williams"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Williams_Johnathan_lal_18.jpg"
+    },
+    {
+      "name": "Thomas De Thaey (Import)",
+      "aliases": [
+        "Thomas De Thaey"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/De_Thaey_Thomas_ncaa_ncst.jpg"
+    },
+    {
+      "name": "June Mar Fajardo",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/72/photo_L1.png"
+    },
+    {
+      "name": "K.J. McDaniels (Import)",
+      "aliases": [
+        "K.J. McDaniels"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/McDaniels_KJ_okc_18.jpg"
+    },
+    {
+      "name": "Mark Barroca",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/37/photo_L1.png"
+    },
+    {
+      "name": "Ranidel De Ocampo",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/tnt-De-Ocampo.png"
+    },
+    {
+      "name": "Christopher Tiu",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/rosTiu17.png"
+    },
+    {
+      "name": "Joseph Casio",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ala-Casio.png"
+    },
+    {
+      "name": "Lester Prosper (Import)",
+      "aliases": [
+        "Lester Prosper"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Prosper_Lester.jpg"
+    },
+    {
+      "name": "Shonn Miller (Import)",
+      "aliases": [
+        "Shonn Miller"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Miller_Shonn_ncaa_cor.jpg"
+    },
+    {
+      "name": "Davon Potts",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Potts_Davon_ncaa_csun.jpg"
+    },
+    {
+      "name": "Tree Treadwell (Import)",
+      "aliases": [
+        "Tree Treadwell"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Treadwell_Demetrius_ncaa_akr.jpg"
+    },
+    {
+      "name": "Nino Johnson",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Johnson_Nino_ncaa_sems.jpg"
+    },
+    {
+      "name": "Mychal Ammons (Import)",
+      "aliases": [
+        "Mychal Ammons"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Ammons_Mychael_ncaa_sal.jpg"
+    },
+    {
+      "name": "Allen Durham (Import)",
+      "aliases": [
+        "Allen Durham"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Durham_Allen_euro_130923.jpg"
+    },
+    {
+      "name": "Antonio Hester (Import)",
+      "aliases": [
+        "Antonio Hester"
+      ],
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/199/photo_L1.png"
+    },
+    {
+      "name": "Raphael Banal",
+      "imgURL": "https://www.eurobasket.com/photos/Banal_Raphael.jpg"
+    },
+    {
+      "name": "Moala Tautuaa",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/75/photo_L1.png"
+    },
+    {
+      "name": "Robbie Herndon",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/5kn422g7jlu6c618l4fq4k9y1s97"
+    },
+    {
+      "name": "Kris Rosales",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/67/photo_L1.png"
+    },
+    {
+      "name": "Jason Perkins",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/117/photo_L1.png"
+    },
+    {
+      "name": "Tom Vodanovich (Import)",
+      "aliases": [
+        "Tom Vodanovich"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Vodanovich_Tom_jmu.jpg"
+    },
+    {
+      "name": "James Sena",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/438/photo_L1.png"
+    },
+    {
+      "name": "R.J. Jazul",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/mv7jius9lbbhuzm034lhekul8juw"
+    },
+    {
+      "name": "Bryan Faundo",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mer-Faundo.png"
+    },
+    {
+      "name": "L.A. Tenorio",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginTenorio5.png"
+    },
+    {
+      "name": "Gabriel Espinas",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-Espinas.png"
+    },
+    {
+      "name": "Ronald Tubid",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-Tubid.png"
+    },
+    {
+      "name": "Douglas Kramer",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/phx-Kramer.png"
+    },
+    {
+      "name": "Peter Simon",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/strSimon8.png"
+    },
+    {
+      "name": "Yancy de Ocampo",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-De-Ocampo.png"
+    },
+    {
+      "name": "J.C. Intal",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/phxIntal7.png"
+    },
+    {
+      "name": "Rafi Reavis",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/strReavis4.png"
+    },
+    {
+      "name": "Kenneth Bono",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mer-Bono.png"
+    },
+    {
+      "name": "Allein Maliksi",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/56/photo_L1.png"
+    },
+    {
+      "name": "Mike Cortez",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo_Cortez.png"
+    },
+    {
+      "name": "Dylan Ababou",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/bwe-Ababou.png"
+    },
+    {
+      "name": "Nino Canaleta",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo-Canaleta.png"
+    },
+    {
+      "name": "Willy Wilson",
+      "imgURL": "http://www.pba.ph/images/players/Wilson%20W.jpg"
+    },
+    {
+      "name": "Solomon Mercado",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginMercado3.png"
+    },
+    {
+      "name": "Reynel Hugnatan",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mer-Hugnatan.png"
+    },
+    {
+      "name": "Jay-R Reyes",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-Reyes.png"
+    },
+    {
+      "name": "Alex Cabagnot",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-Cabagnot.png"
+    },
+    {
+      "name": "Jay Washington",
+      "imgURL": "http://www.pba.ph/images/players/Washington.jpg"
+    },
+    {
+      "name": "Chico Lanete",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/phxLanete26.png"
+    },
+    {
+      "name": "Rabeh Al-Hussaini",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mer-Al-Husainni.png"
+    },
+    {
+      "name": "Sean Anthony",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/nlx-Anthony.png"
+    },
+    {
+      "name": "Rey Guevarra",
+      "imgURL": "https://www.eurobasket.com/photos/Guevarra_Rey.jpg"
+    },
+    {
+      "name": "Paul Lee Dalistan",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/d7tlum5xz4zwvwx00ajwaptus8kf"
+    },
+    {
+      "name": "Jeffrei Chan",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/rosChan16.png"
+    },
+    {
+      "name": "Jervy Cruz",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginCruz27.png"
+    },
+    {
+      "name": "Ryan Arana",
+      "imgURL": "https://www.eurobasket.com/photos/Arana_Ryan.jpg"
+    },
+    {
+      "name": "Beau Belga",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/15/photo_L1.png"
+    },
+    {
+      "name": "J.R. Quinahan",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo-Quinahan.png"
+    },
+    {
+      "name": "Larry Fonacier",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/tnt-Fonacier.png"
+    },
+    {
+      "name": "Ryan Reyes",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/tnt-R-Reyes.png"
+    },
+    {
+      "name": "Riego Gamalinda",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/bweGamalinda21.png"
+    },
+    {
+      "name": "Brandon Brown (Import)",
+      "aliases": [
+        "Brandon Brown"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Brown_Brandon.jpg"
+    },
+    {
+      "name": "James Martinez",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/qba3zh29ms10zdk3s5m6hngfse2r"
+    },
+    {
+      "name": "Billy Mamaril",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo-Mamaril.png"
+    },
+    {
+      "name": "Marc Pingris",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/strPingris15.png"
+    },
+    {
+      "name": "Jayson Castro William",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/4cjpxvj2w4w2jwe9k9fpyopahzoe"
+    },
+    {
+      "name": "Jason Ballesteros",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mahBallesteros18.png"
+    },
+    {
+      "name": "Chris McCullough (Import)",
+      "aliases": [
+        "Chris McCullough"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/McCullough_Chris_was17.jpg"
+    },
+    {
+      "name": "Mark Borboran",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/phxBorboran16.png"
+    },
+    {
+      "name": "Harvey Carey",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/tnt-Carey.png"
+    },
+    {
+      "name": "Michael Qualls (Import)",
+      "aliases": [
+        "Michael Qualls"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Qualls_Michael_ncaa_12.jpg"
+    },
+    {
+      "name": "Staphon Blair",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Blair_Staphon_ncaaucf.jpg"
+    },
+    {
+      "name": "James Farr (Import)",
+      "aliases": [
+        "James Farr"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Farr_James_ncaa.jpg"
+    },
+    {
+      "name": "David Marcelo",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginMarcelo10.png"
+    },
+    {
+      "name": "Yousif Taha",
+      "imgURL": "https://i.imgur.com/ca6R2v3.jpeg"
+    },
+    {
+      "name": "Clifford Hodge",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/51/photo_L1.png"
+    },
+    {
+      "name": "Kelly Nabong",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mer-Nabong.png"
+    },
+    {
+      "name": "Alex Mallari",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mah-Mallari.png"
+    },
+    {
+      "name": "Jewel Ponferada",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/rosPonferada15.png"
+    },
+    {
+      "name": "Aldrech Ramos",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/str-Ramos.png"
+    },
+    {
+      "name": "Andreas Cahilig",
+      "imgURL": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQuddgnDgdhAONm9WupI82yVfYHM9jivguKATr1Bj7djQ&s=10"
+    },
+    {
+      "name": "Vic Manuel",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ala-Manuel.png"
+    },
+    {
+      "name": "Kayel Locke (Import)",
+      "aliases": [
+        "Kayel Locke"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Locke_Kayel_ncaaunc.jpg"
+    },
+    {
+      "name": "Calvin Abueva",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/36/photo_L1.png"
+    },
+    {
+      "name": "Venky Jois (Import)",
+      "aliases": [
+        "Venky Jois"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jois_Venky_ncaaew.jpg"
+    },
+    {
+      "name": "Rashawn McCarthy (Import)",
+      "aliases": [
+        "Rashawn McCarthy"
+      ],
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-McCarthy.png"
+    },
+    {
+      "name": "Emanuel Monfort",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/nlx-Monfort.png"
+    },
+    {
+      "name": "Quintin Alexander (Import)",
+      "aliases": [
+        "Quintin Alexander"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Alexander_Kwame_21.jpg"
+    },
+    {
+      "name": "Joshua Munzon",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/144/photo_L1.png"
+    },
+    {
+      "name": "Matt Ganuelas-Rosser",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/tnt-Rosser.png"
+    },
+    {
+      "name": "Sedrick Barefield",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/165/photo_L1.png"
+    },
+    {
+      "name": "Arvin Tolentino",
+      "imgURL": "https://www.eurobasket.com/photos/Tolentino_Arvin.jpg"
+    },
+    {
+      "name": "George Isaac Go",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/155/photo_L1.png"
+    },
+    {
+      "name": "Mike DiGregorio",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mahDiGregorio7.png"
+    },
+    {
+      "name": "Zach Lofton (Import)",
+      "aliases": [
+        "Zach Lofton"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Lofton_Zach_ncaaill.jpg"
+    },
+    {
+      "name": "Franko House (Import)",
+      "aliases": [
+        "Franko House"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/House_Franko_ncaaball.jpg"
+    },
+    {
+      "name": "Trevis Jackson",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jackson_Trevis_ncaasacst.jpg"
+    },
+    {
+      "name": "Simon Enciso",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/66/photo_L1.png"
+    },
+    {
+      "name": "Terrence Romeo",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo-Romeo.png"
+    },
+    {
+      "name": "Nicolas Salva",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mah-Salva.png"
+    },
+    {
+      "name": "Justin Chua",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/172/photo_L1.png"
+    },
+    {
+      "name": "R.R. Garcia",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/re32ezmvxfjolz38gmvp63ev2ll0"
+    },
+    {
+      "name": "La Revilla",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mahRevilla2.png"
+    },
+    {
+      "name": "Raymond Almazan",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/55/photo_L1.png"
+    },
+    {
+      "name": "Jeric Teng",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mah-Teng.png"
+    },
+    {
+      "name": "Eric James Camson",
+      "imgURL": "https://www.eurobasket.com/photos/Camson_Eric.jpg"
+    },
+    {
+      "name": "Gregory Slaughter",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginSlaughter20.png"
+    },
+    {
+      "name": "Ian Paul Sangalang",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/35/photo_L1.png"
+    },
+    {
+      "name": "Justin Melton",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/strMelton2.png"
+    },
+    {
+      "name": "Christopher Exciminiano",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ala-Exciminiano.png"
+    },
+    {
+      "name": "Jeric Marco Fortuna",
+      "imgURL": "https://www.eurobasket.com/photos/Fortuna_Jeric.jpg"
+    },
+    {
+      "name": "Carlo Lastimosa",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/nlx-Lastimosa.png"
+    },
+    {
+      "name": "Anjo Caram",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1780pa1rpd7ej59579jynzlmup9s"
+    },
+    {
+      "name": "Sean Manganti",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/un5ec5f2l43fvnd3jrlg1qluktov"
+    },
+    {
+      "name": "Christopher Miller",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/332/photo_L1.png"
+    },
+    {
+      "name": "Bennie Boatwright (Import)",
+      "aliases": [
+        "Bennie Boatwright"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Boatwright_Bernie_usc.jpg"
+    },
+    {
+      "name": "Joseph Matthew Nieto",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/106/photo_L1.png"
+    },
+    {
+      "name": "Michael Joseph Nieto",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/187/photo_L1.png"
+    },
+    {
+      "name": "Richard Escoto",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/202/photo_L1.png"
+    },
+    {
+      "name": "Christian David",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/177/photo_L1.png"
+    },
+    {
+      "name": "Jalen Hudson (Import)",
+      "aliases": [
+        "Jalen Hudson"
+      ],
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/421/photo_L1.png"
+    },
+    {
+      "name": "Franky Johnson",
+      "imgURL": "https://www.eurobasket.com/photos/Johnson_Franky.jpg"
+    },
+    {
+      "name": "Keith Datu",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/q1ez9prh9zg1onan7ikfu5qtycds"
+    },
+    {
+      "name": "Ronald Pascual",
+      "imgURL": "https://www.eurobasket.com/photos/Pascual_Ronald.jpg"
+    },
+    {
+      "name": "Jake Elvin Pascual",
+      "imgURL": "https://www.eurobasket.com/photos/Pascual_JakeElvin.jpg"
+    },
+    {
+      "name": "Philip Paredes",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo-Paredes.png"
+    },
+    {
+      "name": "Paolo Taha",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/133/photo_L1.png"
+    },
+    {
+      "name": "Anthony Semerad",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/113/photo_L1.png"
+    },
+    {
+      "name": "John Rodney Brondial",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/80/photo_L1.png"
+    },
+    {
+      "name": "Kenneth Ighalo",
+      "imgURL": "https://www.eurobasket.com/photos/Ighalo_Kenneth.jpg"
+    },
+    {
+      "name": "Juami Tiongson",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/t69t7fstlnzc6vn69jypb8z0xcjc"
+    },
+    {
+      "name": "Poy Erram",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/45a6054z0y8u5wq5ln2afl3cap0m"
+    },
+    {
+      "name": "Kevin Alas",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/115/photo_L1.png"
+    },
+    {
+      "name": "Christopher Banchero",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/50/photo_L1.png"
+    },
+    {
+      "name": "Kyle Pascual",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/61/photo_L1.png"
+    },
+    {
+      "name": "Roider Cabrera",
+      "imgURL": "https://www.eurobasket.com/photos/Cabrera_Roider.jpg"
+    },
+    {
+      "name": "Brian Quinton Heruela",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-Heruela.png"
+    },
+    {
+      "name": "Khapri Alston (Import)",
+      "aliases": [
+        "Khapri Alston"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Alston_Khapri.jpg"
+    },
+    {
+      "name": "Brian Enriquez",
+      "imgURL": "https://www.eurobasket.com/photos/Enriquez_Brian.jpg"
+    },
+    {
+      "name": "Jordan Heading",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/218/photo_L1.png"
+    },
+    {
+      "name": "Rome de la Rosa",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/vr335cmpzz6biwajfiq0k1ly5clk"
+    },
+    {
+      "name": "David Semerad",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-Semerad.png"
+    },
+    {
+      "name": "Jericho Cruz",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/76/photo_L1.png"
+    },
+    {
+      "name": "Jerrick Ahanmisi",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/32/photo_L1.png"
+    },
+    {
+      "name": "Prince Caperal",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/i89vmszi6q0iaa2usy3ufcrt0lot"
+    },
+    {
+      "name": "Troy Rike",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Rike_Troy_wake.jpg"
+    },
+    {
+      "name": "Tyler Bey (Import)",
+      "aliases": [
+        "Tyler Bey"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Bey_Tyler_hou21.jpg"
+    },
+    {
+      "name": "Raymond Aguilar",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/159/photo_L1.png"
+    },
+    {
+      "name": "Raul Soyud",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/nlx-Soyud.png"
+    },
+    {
+      "name": "Frank Golla",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/tnt-Golla.png"
+    },
+    {
+      "name": "Kaleb Wesson (Import)",
+      "aliases": [
+        "Kaleb Wesson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Wesson_Kaleb_osu17.jpg"
+    },
+    {
+      "name": "DeAndre Williams (Import)",
+      "aliases": [
+        "DeAndre Williams"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Williams_Deandre_ev18.jpg"
+    },
+    {
+      "name": "John Clemente",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/350/photo_L1.png"
+    },
+    {
+      "name": "Brandon Rosser",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/n7f4hnxkew0osxq7vnw5bb4lmxf6"
+    },
+    {
+      "name": "Felix Lemetti",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/3/photo_L1.png"
+    },
+    {
+      "name": "Nick Demusis",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/17/photo_L1.png"
+    },
+    {
+      "name": "Cameron Oliver (Import)",
+      "aliases": [
+        "Cameron Oliver"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Oliver_Cameron_por_18.jpg"
+    },
+    {
+      "name": "Stokley Chaffee (Import)",
+      "aliases": [
+        "Stokley Chaffee"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Chaffee_Stokley_usf.jpg"
+    },
+    {
+      "name": "Norberto Torres",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/60/photo_L1.png"
+    },
+    {
+      "name": "Celedonio Trollano",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/68/photo_L1.png"
+    },
+    {
+      "name": "Philip Paniamogan",
+      "imgURL": "https://www.eurobasket.com/photos/Paniamogan_Philip.jpg"
+    },
+    {
+      "name": "Roi Sumang",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/342/photo_L1.png"
+    },
+    {
+      "name": "Aljon Mariano",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/201/photo_L1.png"
+    },
+    {
+      "name": "Scottie Thompson",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/153/photo_L1.png"
+    },
+    {
+      "name": "Bradwyn Guinto",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/nj08nwr6w84hsc3pbk3ug4vdsadr"
+    },
+    {
+      "name": "Marion Evan Magat",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ala-Magat.png"
+    },
+    {
+      "name": "Jeth Troy Rosario",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/175/photo_L1.png"
+    },
+    {
+      "name": "Almond Vosotros",
+      "imgURL": "https://www.eurobasket.com/photos/Vosotros_Almond.jpg"
+    },
+    {
+      "name": "Keith Jasper Agovida",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-Agovida.png"
+    },
+    {
+      "name": "Glenn Khobuntin",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/87/photo_L1.png"
+    },
+    {
+      "name": "Chris Newsome",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/52/photo_L1.png"
+    },
+    {
+      "name": "Garvo Lanete",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/nlx-Lanete.png"
+    },
+    {
+      "name": "Michael Miranda",
+      "imgURL": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQZDduGvlUTZeoiitebW8c0q47nox1CQ3_xnHwoVSK0ZoN_zVr08sxNvJue&s=10"
+    },
+    {
+      "name": "Arthur Dela Cruz",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/bweDelaCruz25.png"
+    },
+    {
+      "name": "Kevin Racal",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/192/photo_L1.png"
+    },
+    {
+      "name": "Caelan Tiongson",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/1/photo_L1.png"
+    },
+    {
+      "name": "Mark Cruz",
+      "imgURL": "https://www.eurobasket.com/photos/Cruz_Mark.jpg"
+    },
+    {
+      "name": "Yutien Andrada",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/izkdiovaejklnemz8mn4rcnvzdg7"
+    },
+    {
+      "name": "James Laput",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/42/photo_L1.png"
+    },
+    {
+      "name": "Jansen Rios",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/59/photo_L1.png"
+    },
+    {
+      "name": "Taylor Miller",
+      "imgURL": "https://www.eurobasket.com/photos/Miller_Taylor.jpg"
+    },
+    {
+      "name": "Deschon Winston (Import)",
+      "aliases": [
+        "Deschon Winston"
+      ],
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/188/photo_L1.png"
+    },
+    {
+      "name": "Kevin Ferrer",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/21/photo_L1.png"
+    },
+    {
+      "name": "Rey Mark Belo",
+      "imgURL": "https://www.eurobasket.com/photos/Belo_ReyMark.jpg"
+    },
+    {
+      "name": "Russell Escoto",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/4qx6x8p47yspognx7g87t8n3u0y4"
+    },
+    {
+      "name": "Kiefer Ravena",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Ravena_Kieferisaac_21.jpg"
+    },
+    {
+      "name": "Gabriel Banal",
+      "imgURL": "https://www.eurobasket.com/photos/Banal_Gabriel.jpg"
+    },
+    {
+      "name": "Abel Galliguez",
+      "imgURL": "https://www.eurobasket.com/photos/Galliguez_Abel.jpg"
+    },
+    {
+      "name": "Jaypee Mendoza",
+      "imgURL": "https://www.eurobasket.com/photos/Mendoza_Jaypee.jpg"
+    },
+    {
+      "name": "Pedrito Galanza",
+      "imgURL": "https://www.eurobasket.com/photos/Galanza_Pedrito.jpg"
+    },
+    {
+      "name": "Jeremiah Gray",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/149/photo_L1.png"
+    },
+    {
+      "name": "Roosevelt Adams",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Adams_Roosevelt_fifa22.jpg"
+    },
+    {
+      "name": "Loren Brill",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Brill_Loren_odu17.jpg"
+    },
+    {
+      "name": "Jiovani Jalalon",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/145/photo_L1.png"
+    },
+    {
+      "name": "Roger Ray Pogoy",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/89/photo_L1.png"
+    },
+    {
+      "name": "Michael Tolomia",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ros-Tolomia.png"
+    },
+    {
+      "name": "Gelo Alolino",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/phx-Alolino.png"
+    },
+    {
+      "name": "Carl Bryan Cruz",
+      "imgURL": "https://www.eurobasket.com/photos/Cruz_CarlBryan.jpg"
+    },
+    {
+      "name": "Von Rolfe Pessumal",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/158/photo_L1.png"
+    },
+    {
+      "name": "Reden Celda",
+      "imgURL": "https://www.eurobasket.com/photos/Celda_Reden.jpg"
+    },
+    {
+      "name": "Joseph Eriobu",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/41/photo_L1.png"
+    },
+    {
+      "name": "Jonathan Grey",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mer-Grey.png"
+    },
+    {
+      "name": "Alfonso Gotladera",
+      "imgURL": "https://www.eurobasket.com/photos/Gotladera_Alfonso.jpg"
+    },
+    {
+      "name": "Chris Javier",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/str-Javier.png"
+    },
+    {
+      "name": "Raymon Jammer Jamito",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/gin-Jamito.png"
+    },
+    {
+      "name": "Alfrancis Tamsi",
+      "imgURL": "https://www.eurobasket.com/photos/Tamsi_Alfrancis.jpg"
+    },
+    {
+      "name": "Jeff Viernes",
+      "imgURL": "https://www.eurobasket.com/photos/Viernes_Jeff.jpg"
+    },
+    {
+      "name": "Jackson Corpuz",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/IMG_1041.PNG"
+    },
+    {
+      "name": "Jamie Orme (Import)",
+      "aliases": [
+        "Jamie Orme"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Orme_Jamie_portst17.jpg"
+    },
+    {
+      "name": "Roldan Sara",
+      "imgURL": "https://www.eurobasket.com/photos/Sara_Roldan.jpg"
+    },
+    {
+      "name": "Jeron Teng",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/73/photo_L1.png"
+    },
+    {
+      "name": "Rey Nambatac",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/83/photo_L1.png"
+    },
+    {
+      "name": "Mark Tallo",
+      "imgURL": "https://www.eurobasket.com/photos/Tallo_Mark.jpg"
+    },
+    {
+      "name": "Nard Pinto",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/154/photo_L1.png"
+    },
+    {
+      "name": "Lervyn Flores",
+      "imgURL": "https://www.eurobasket.com/photos/Flores_Lervyn.jpg"
+    },
+    {
+      "name": "Joseph Gabayni",
+      "imgURL": "https://www.eurobasket.com/photos/Gabayni_Joseph.jpg"
+    },
+    {
+      "name": "Julian Sargent",
+      "imgURL": "https://www.eurobasket.com/photos/Sargent_Julian.jpg"
+    },
+    {
+      "name": "Sidney Onwubere",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/136/photo_L1.png"
+    },
+    {
+      "name": "Dalph Adem Panopio",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/322/photo_L1.png"
+    },
+    {
+      "name": "Jett Manuel",
+      "imgURL": "https://www.eurobasket.com/photos/Manuel_Jett.jpg"
+    },
+    {
+      "name": "Abu Jahal Tratter",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/138/photo_L1.png"
+    },
+    {
+      "name": "Yukien Andrada",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/357/photo_L1.png"
+    },
+    {
+      "name": "Richard Rodger",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/j9hy9uzrofmp32i6wfawrx0nbc12"
+    },
+    {
+      "name": "Paul Christian Zamar",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/eyr3exsf80q23baol7rf1vbwv2nm"
+    },
+    {
+      "name": "Henry Galinato",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/93/photo_L1.png"
+    },
+    {
+      "name": "Kier Quinto",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/54/photo_L1.png"
+    },
+    {
+      "name": "Robert Bolick",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/102/photo_L1.png"
+    },
+    {
+      "name": "Jayjay Alejandro",
+      "imgURL": "https://www.eurobasket.com/photos/Alejandro_Jayjay.jpg"
+    },
+    {
+      "name": "Javee Mocon",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/119/photo_L1.png"
+    },
+    {
+      "name": "CJ Perez",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/ulvle3y9otwfwzcjbu0hmg69ucst"
+    },
+    {
+      "name": "Jeepy Faundo",
+      "imgURL": "https://www.eurobasket.com/photos/Faundo_Jeepy.jpg"
+    },
+    {
+      "name": "Kris Porter",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/mmosn9j6m5m52e3sbo19f8177e5d"
+    },
+    {
+      "name": "Michael Calisaan",
+      "imgURL": "https://www.eurobasket.com/photos/Calisaan_Michael.jpg"
+    },
+    {
+      "name": "Mer Jesper Ayaay",
+      "imgURL": "https://www.eurobasket.com/photos/Ayaay_MerJesper.jpg"
+    },
+    {
+      "name": "Chris Koon",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/336/photo_L1.png"
+    },
+    {
+      "name": "Paul Varilla",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/86/photo_L1.png"
+    },
+    {
+      "name": "William Wilson",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/phxwWilson28.png"
+    },
+    {
+      "name": "Xyrus Torres",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/212/photo_L1.png"
+    },
+    {
+      "name": "Kainoa Ballungay",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/122/photo_L1.png"
+    },
+    {
+      "name": "Paul Garcia",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/152/photo_L1.png"
+    },
+    {
+      "name": "Zavier Lucero",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/40/photo_L1.png"
+    },
+    {
+      "name": "Justine Baltazar",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/297/photo_L1.png"
+    },
+    {
+      "name": "Javier Joaquin Gomez de Liano",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/328/photo_L1.png"
+    },
+    {
+      "name": "Juan Gomez De Liano",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/325/photo_L1.png"
+    },
+    {
+      "name": "Rey Anthony Suerte",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/qai00d4bvrvszbyau7iwdph0xq0h"
+    },
+    {
+      "name": "Brandon Ramirez",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/304/photo_L1.png"
+    },
+    {
+      "name": "Wendell Comboy",
+      "imgURL": "https://www.eurobasket.com/photos/Comboy_Wendell.jpg"
+    },
+    {
+      "name": "Kenneth Tuffin",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/127/photo_L1.png"
+    },
+    {
+      "name": "Jerrick Balanza",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/iukcrwe5cad0xe83hn5kzsz98jt1"
+    },
+    {
+      "name": "Kib Montalbo",
+      "imgURL": "https://www.eurobasket.com/photos/Montalbo_Kib.jpg"
+    },
+    {
+      "name": "Kevin Barkley Ebona",
+      "imgURL": "https://www.eurobasket.com/photos/Ebona_Kevin.jpg"
+    },
+    {
+      "name": "Jaycee Carlos Marcelino",
+      "imgURL": "https://www.eurobasket.com/photos/Marcelino_Jaycee.jpg"
+    },
+    {
+      "name": "Renzo Subido",
+      "imgURL": "https://www.eurobasket.com/photos/Subido_Renzo.jpg"
+    },
+    {
+      "name": "Aaron Black",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/ihwy86hl1pr0w6w868dn0gfqa8gr"
+    },
+    {
+      "name": "Adrian Wong",
+      "imgURL": "https://www.eurobasket.com/photos/Wong_Adrian.jpg"
+    },
+    {
+      "name": "Clint Doliguez",
+      "imgURL": "https://www.eurobasket.com/photos/Doliguez_Clint.jpg"
+    },
+    {
+      "name": "Daniel Guzman",
+      "imgURL": "https://www.eurobasket.com/photos/Guzman_Daniel.jpg"
+    },
+    {
+      "name": "Bon Batiller",
+      "imgURL": "https://www.eurobasket.com/photos/Batiller_Bon.jpg"
+    },
+    {
+      "name": "Christian Balagasay",
+      "imgURL": "https://www.eurobasket.com/photos/Balagasay_Christian.jpg"
+    },
+    {
+      "name": "Aris Dionisio",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/43/photo_L1.png"
+    },
+    {
+      "name": "Prince Rivero",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/ut8ec3htodzwoi595syqwkhpzeay"
+    },
+    {
+      "name": "Kemark Carino",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/28/photo_L1.png"
+    },
+    {
+      "name": "William Raniel Navarro",
+      "imgURL": "https://www.eurobasket.com/photos/Navarro_William.jpg"
+    },
+    {
+      "name": "Calvin John Oftana",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/85/photo_L1.png"
+    },
+    {
+      "name": "Rhon Abarrientos",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/150/photo_L1.png"
+    },
+    {
+      "name": "Anton Asistio",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/7/photo_L1.png"
+    },
+    {
+      "name": "Joshua Andrei Caracut",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/9/photo_L1.png"
+    },
+    {
+      "name": "Leonard Santillan",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/14/photo_L1.png"
+    },
+    {
+      "name": "Benedict Adamos",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/162/photo_L1.png"
+    },
+    {
+      "name": "Regile Ilagan",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/181/photo_L1.png"
+    },
+    {
+      "name": "Alvin Capobres",
+      "imgURL": "https://www.eurobasket.com/photos/Capobres_Alvin.jpg"
+    },
+    {
+      "name": "Michael Canete",
+      "imgURL": "https://www.eurobasket.com/photos/Canete_Michael.jpg"
+    },
+    {
+      "name": "Alvin Pasaol",
+      "imgURL": "https://www.eurobasket.com/photos/Pasaol_Alvin.jpg"
+    },
+    {
+      "name": "Philip Cahilig",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/23/photo_L1.png"
+    },
+    {
+      "name": "Aljun Melecio",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/6biizf8cd3wao63vqr6opscuo7kg"
+    },
+    {
+      "name": "Larry Muyang",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/116/photo_L1.png"
+    },
+    {
+      "name": "Alec Stockton",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/190/photo_L1.png"
+    },
+    {
+      "name": "David Murrell",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/324/photo_L1.png"
+    },
+    {
+      "name": "Jeo Ambohot",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/193/photo_L1.png"
+    },
+    {
+      "name": "Justin Arana",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/191/photo_L1.png"
+    },
+    {
+      "name": "Tyrus Hill",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/179/photo_L1.png"
+    },
+    {
+      "name": "Shaun Ildefonso",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1exdyw4rhv4ghu9ialrtaw4p3qbc"
+    },
+    {
+      "name": "Gian Robert Mamuyac",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/4/photo_L1.png"
+    },
+    {
+      "name": "Tyler Tio",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/126/photo_L1.png"
+    },
+    {
+      "name": "Jhonard Clarito",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/12/photo_L1.png"
+    },
+    {
+      "name": "John Calma",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/134/photo_L1.png"
+    },
+    {
+      "name": "Ato Ular",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/101/photo_L1.png"
+    },
+    {
+      "name": "Kit Zaldivar",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/rrgvht57v1eoa4n14p73pqhoogqs"
+    },
+    {
+      "name": "Jayson David",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/160/photo_L1.png"
+    },
+    {
+      "name": "Jollo Go",
+      "imgURL": "https://www.eurobasket.com/photos/Go_Jollo.jpg"
+    },
+    {
+      "name": "John Bryle Bahio",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/289/photo_L1.png"
+    },
+    {
+      "name": "Fran Louie Yu",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/135/photo_L1.png"
+    },
+    {
+      "name": "Jonathan Jed Mendoza",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/44/photo_L1.png"
+    },
+    {
+      "name": "Jerom Lastimosa",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/48/photo_L1.png"
+    },
+    {
+      "name": "Patrick Maagdenberg",
+      "imgURL": "https://www.eurobasket.com/photos/Maagdenberg_Patrick.jpg"
+    },
+    {
+      "name": "Bryan Santos",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/195/photo_L1.png"
+    },
+    {
+      "name": "Cade Flores",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/bzh7dftslu68xcfggjkkj7i2nwde"
+    },
+    {
+      "name": "Brent Paraiso",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/30/photo_L1.png"
+    },
+    {
+      "name": "Luis Villegas",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/13/photo_L1.png"
+    },
+    {
+      "name": "Brandon Bates",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/62/photo_L1.png"
+    },
+    {
+      "name": "Matthew Daves",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/fybi9pg07n00jsjud9snkm7ju0jx"
+    },
+    {
+      "name": "Ricci Paolo Rivero",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/130/photo_L1.png"
+    },
+    {
+      "name": "Raffy Verano",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/2p2emqopcxw4or6f5sbw2pu1wr0p"
+    },
+    {
+      "name": "Kim Aurin",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/94/photo_L1.png"
+    },
+    {
+      "name": "Tommy Olivario",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/9r6hyj8518xy1t4y7ifomoreiphh"
+    },
+    {
+      "name": "John Amores",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/140/photo_L1.png"
+    },
+    {
+      "name": "Dominick Fajardo",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/2em3kefus708ogljgltj4to3448e"
+    },
+    {
+      "name": "King Caralipio",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/196/photo_L1.png"
+    },
+    {
+      "name": "Adrian Nocum",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/2/photo_L1.png"
+    },
+    {
+      "name": "John De Los Santos",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/194/photo_L1.png"
+    },
+    {
+      "name": "Enoch Valdez",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/111/photo_L1.png"
+    },
+    {
+      "name": "Archie Concepcion",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/349/photo_L1.png"
+    },
+    {
+      "name": "James Kwekuteye",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/bqnp3dfxa612wght7v3xsncshrlq"
+    },
+    {
+      "name": "Clifford Jopia",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/174/photo_L1.png"
+    },
+    {
+      "name": "Damie Cuntapay",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/146/photo_L1.png"
+    },
+    {
+      "name": "Bryan Andrade",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/7xl8bto4dd5l367gdoijo90f7p7a"
+    },
+    {
+      "name": "C.J. Cansino",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/bcm549zcwbr6hvhwjabe4byvfmvs"
+    },
+    {
+      "name": "Peter Alfaro",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/owll3a7eu9nt27j4l4t1jewsi777"
+    },
+    {
+      "name": "Sonny Estil",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/321/photo_L1.png"
+    },
+    {
+      "name": "Joshua David",
+      "imgURL": "https://dashboard.pba.ph/assets/players/noimage.png"
+    },
+    {
+      "name": "Jonnel Policarpio",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/110/photo_L1.png"
+    },
+    {
+      "name": "Kurt Reyson",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/29gd5rjkaewt5ocvjlrw3vjgn0qx"
+    },
+    {
+      "name": "Mario Barasi",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/49wofm6u1nw1617zhdjurndycni4"
+    },
+    {
+      "name": "Evan Nelle",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/1kcu0gw3kiyb1nso0ezl0bhpaksv"
+    },
+    {
+      "name": "Mark Nonoy",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/2owfpmxqw5ste5wiby4ocqdrasqa"
+    },
+    {
+      "name": "C.J. Catapusan",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/djwi4mjjygkcgrbnkn7z3mpo4or7"
+    },
+    {
+      "name": "Ira Bataller",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/4pzpcu094mvw3b2utco2yfqnl0ka"
+    },
+    {
+      "name": "Pablo Hernandez",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/q3b3anzc1cf0hk38hjpzu8yss1g1"
+    },
+    {
+      "name": "Juan Matthew Bravo",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/gz6pgv5nh6wjq0ntkchw4mp2xlrn"
+    },
+    {
+      "name": "Didat Hanapi",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/27/photo_L1.png"
+    },
+    {
+      "name": "Jack Cruz-Dumont",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/323/photo_L1.png"
+    },
+    {
+      "name": "M.J. Garcia",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/357nyvjhhebds4iwo7fqjzmt1psf"
+    },
+    {
+      "name": "Pablo Javillonar",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/y2xzdqbx8a7s3uox3etmn2gch43t"
+    },
+    {
+      "name": "Kobe Monje",
+      "imgURL": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQsbRO9IHH8MvlPo3cw0H_snAWSv1WNPNCtF5LNx-Hc-A&s"
+    },
+    {
+      "name": "Roman Santos",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/jgwhz5d0s2pka1tx1lloj0atbkrn"
+    },
+    {
+      "name": "Michael Malonzo",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/291/photo_L1.png"
+    },
+    {
+      "name": "Dave Ando",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/329/photo_L1.png"
+    },
+    {
+      "name": "Francis Escandor",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/6/photo_L1.png"
+    },
+    {
+      "name": "Gab Gomez",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/etye898fpplw88xkmfo7eduqkbpn"
+    },
+    {
+      "name": "Royce Mantua",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/331/photo_L1.png"
+    },
+    {
+      "name": "Jeff Comia",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/cqtr5yi4c3xp3ry8bq3p6eayeret"
+    },
+    {
+      "name": "James Una",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/352/photo_L1.png"
+    },
+    {
+      "name": "Christian Manaytay",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/353/photo_L1.png"
+    },
+    {
+      "name": "Mark Sangco",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/qg7ocx81xe6ahxahx5ppvb1138o6"
+    },
+    {
+      "name": "John Abis",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/356/photo_L1.png"
+    },
+    {
+      "name": "Ljay Gonzales",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/359/photo_L1.png"
+    },
+    {
+      "name": "Herbert Hill (Import)",
+      "aliases": [
+        "Herbert Hill"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hill_Herbert.jpg"
+    },
+    {
+      "name": "Al Thornton (Import)",
+      "aliases": [
+        "Al Thornton"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Thornton_Al_gsw_12.jpg"
+    },
+    {
+      "name": "Sean Williams (Import)",
+      "aliases": [
+        "Sean Williams"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Williams_Sean_njn.jpg"
+    },
+    {
+      "name": "Patrick O'Bryant",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Obryant_Patrick_cha_1314.jpg"
+    },
+    {
+      "name": "Josh Boone (Import)",
+      "aliases": [
+        "Josh Boone"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Boone_Josh_njn.jpg"
+    },
+    {
+      "name": "Rodney Carney (Import)",
+      "aliases": [
+        "Rodney Carney"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Carney_Rodney_nop_1314.jpg"
+    },
+    {
+      "name": "Renaldo Balkman (Import)",
+      "aliases": [
+        "Renaldo Balkman"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Balkman_Renaldo_dal_1314.jpg"
+    },
+    {
+      "name": "Jason Maxiell",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Maxiell_Jason_cha14.jpg"
+    },
+    {
+      "name": "Antoine Wright (Import)",
+      "aliases": [
+        "Antoine Wright"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Wright_Antoine_dal.jpg"
+    },
+    {
+      "name": "D.J. Mbenga",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Mbenga_DJ_nyk14.jpg"
+    },
+    {
+      "name": "Justin Williams (Import)",
+      "aliases": [
+        "Justin Williams"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Williams_Justin_sac.jpg"
+    },
+    {
+      "name": "Rashad McCants (Import)",
+      "aliases": [
+        "Rashad McCants"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/McCants_Rashad_min.jpg"
+    },
+    {
+      "name": "Mario West (Import)",
+      "aliases": [
+        "Mario West"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/West_Mario_atl.jpg"
+    },
+    {
+      "name": "Andre Emmett (Import)",
+      "aliases": [
+        "Andre Emmett"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Emmett_Andre_ncaa.jpg"
+    },
+    {
+      "name": "Peter John Ramos (Import)",
+      "aliases": [
+        "Peter John Ramos"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Ramos_Peter_nba.jpg"
+    },
+    {
+      "name": "Marcus Douthit (Import)",
+      "aliases": [
+        "Marcus Douthit"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Douthit_Marcus_1.png"
+    },
+    {
+      "name": "Rodney White (Import)",
+      "aliases": [
+        "Rodney White"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/White_Rodney_lac.jpg"
+    },
+    {
+      "name": "Donnell Harvey (Import)",
+      "aliases": [
+        "Donnell Harvey"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Harvey_Donnell_uta.jpg"
+    },
+    {
+      "name": "Bruno Sundov (Import)",
+      "aliases": [
+        "Bruno Sundov"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Sundov_Bruno_nyk.jpg"
+    },
+    {
+      "name": "Donte Greene (Import)",
+      "aliases": [
+        "Donte Greene"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Greene_Donte_sac_1112.jpg"
+    },
+    {
+      "name": "Josh Powell",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Powell_Josh_mil1516.jpg"
+    },
+    {
+      "name": "Walter Sharpe",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Sharpe_Walter_det.jpg"
+    },
+    {
+      "name": "Henry Walker (Import)",
+      "aliases": [
+        "Henry Walker"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Walker_Bill_nyk_12.jpg"
+    },
+    {
+      "name": "Darnell Jackson (Import)",
+      "aliases": [
+        "Darnell Jackson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jackson_Darnell_ncaa.jpg"
+    },
+    {
+      "name": "Lou Amundson (Import)",
+      "aliases": [
+        "Lou Amundson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Amundson_Lou_nyk1617.jpg"
+    },
+    {
+      "name": "James Mays (Import)",
+      "aliases": [
+        "James Mays"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Mays_James_BKN.jpg"
+    },
+    {
+      "name": "Eddie Basden (Import)",
+      "aliases": [
+        "Eddie Basden"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Basden_Eddie_nba.jpg"
+    },
+    {
+      "name": "Cedric Bozeman (Import)",
+      "aliases": [
+        "Cedric Bozeman"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Bozeman_Cedric_nba.jpg"
+    },
+    {
+      "name": "Kevinn Pinkney (Import)",
+      "aliases": [
+        "Kevinn Pinkney"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Pinkey_Kevin_nba.jpg"
+    },
+    {
+      "name": "Kenny Adeleke (Import)",
+      "aliases": [
+        "Kenny Adeleke"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Adeleke_Kenny.jpg"
+    },
+    {
+      "name": "Terrence Williams (Import)",
+      "aliases": [
+        "Terrence Williams"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Williams_Terrence_DET.jpg"
+    },
+    {
+      "name": "Courtney Fells (Import)",
+      "aliases": [
+        "Courtney Fells"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Fells_Courtney_ncaa.jpg"
+    },
+    {
+      "name": "Paul Harris (Import)",
+      "aliases": [
+        "Paul Harris"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Harris_Paul_ncaa.jpg"
+    },
+    {
+      "name": "Shawn Taggart (Import)",
+      "aliases": [
+        "Shawn Taggart"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Taggart_Shawn_ncaa.jpg"
+    },
+    {
+      "name": "Marcus Cousin (Import)",
+      "aliases": [
+        "Marcus Cousin"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/COUSIN_MARCUS_hou_12.jpg"
+    },
+    {
+      "name": "Eric Dawson (Import)",
+      "aliases": [
+        "Eric Dawson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Dawson_Eric_atl_1314.jpg"
+    },
+    {
+      "name": "Reggie Williams (Import)",
+      "aliases": [
+        "Reggie Williams"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Williams_Reggie_sas1516.jpg"
+    },
+    {
+      "name": "Brian Butch (Import)",
+      "aliases": [
+        "Brian Butch"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Butch_Brian_ncaa.jpg"
+    },
+    {
+      "name": "David Simon (Import)",
+      "aliases": [
+        "David Simon"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Simon_David.jpg"
+    },
+    {
+      "name": "Vernon Macklin (Import)",
+      "aliases": [
+        "Vernon Macklin"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Macklin_Vernon_nop14.jpg"
+    },
+    {
+      "name": "Leon Rodgers (Import)",
+      "aliases": [
+        "Leon Rodgers"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Rodgers_Leon.jpg"
+    },
+    {
+      "name": "Herve Lamizana (Import)",
+      "aliases": [
+        "Herve Lamizana"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Lamizana_Herve.jpg"
+    },
+    {
+      "name": "Mike Dunigan (Import)",
+      "aliases": [
+        "Mike Dunigan"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Dunigan_Mike.jpg"
+    },
+    {
+      "name": "Solomon Alabi (Import)",
+      "aliases": [
+        "Solomon Alabi"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Alabi_Solomon_NOH.jpg"
+    },
+    {
+      "name": "Daniel Orton (Import)",
+      "aliases": [
+        "Daniel Orton"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Orton_Daniel_was14.jpg"
+    },
+    {
+      "name": "Damion James (Import)",
+      "aliases": [
+        "Damion James"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/James_Damion_was14.jpg"
+    },
+    {
+      "name": "Jerome Jordan (Import)",
+      "aliases": [
+        "Jerome Jordan"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jordan_Jerome_bkn14.jpg"
+    },
+    {
+      "name": "Arinze Onuaku (Import)",
+      "aliases": [
+        "Arinze Onuaku"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Onuaku_Arinze_orl1617.jpg"
+    },
+    {
+      "name": "Rick Jackson (Import)",
+      "aliases": [
+        "Rick Jackson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jackson_Rick_gsw.jpg"
+    },
+    {
+      "name": "Kevin Jones (Import)",
+      "aliases": [
+        "Kevin Jones"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jones_Kevin_nop14.jpg"
+    },
+    {
+      "name": "Henry Sims (Import)",
+      "aliases": [
+        "Henry Sims"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Sims_Henry_uta1617.jpg"
+    },
+    {
+      "name": "Jeremy Tyler",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Tyler_Jeremy_hou1516.jpg"
+    },
+    {
+      "name": "Joshua Smith (Import)",
+      "aliases": [
+        "Joshua Smith"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Smith_Joshua_hou1516.jpg"
+    },
+    {
+      "name": "Duke Crews (Import)",
+      "aliases": [
+        "Duke Crews"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Crews_Duke.jpg"
+    },
+    {
+      "name": "Curtis Kelly (Import)",
+      "aliases": [
+        "Curtis Kelly"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Kelly_Curtis_ncaa.jpg"
+    },
+    {
+      "name": "Wesley Witherspoon (Import)",
+      "aliases": [
+        "Wesley Witherspoon"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Witherspoon_Wesley_SAS.jpg"
+    },
+    {
+      "name": "Dior Lowhorn (Import)",
+      "aliases": [
+        "Dior Lowhorn"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Lowhorn_Dior_ncaa.jpg"
+    },
+    {
+      "name": "Derrick Caracter (Import)",
+      "aliases": [
+        "Derrick Caracter"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Caracter_Derrick_lal_12.jpg"
+    },
+    {
+      "name": "Iman Zandi",
+      "imgURL": "https://www.eurobasket.com/photos/Zandi_Iman.jpg"
+    },
+    {
+      "name": "Jamelle Cornley (Import)",
+      "aliases": [
+        "Jamelle Cornley"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Cornley_Jamelle_ncaa.jpg"
+    },
+    {
+      "name": "Steffphon Pettigrew (Import)",
+      "aliases": [
+        "Steffphon Pettigrew"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Pettigrew_Steffphon.jpg"
+    },
+    {
+      "name": "Glen Rice (Import)",
+      "aliases": [
+        "Glen Rice"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Rice_Glen_was14.jpg"
+    },
+    {
+      "name": "Josh Davis (Import)",
+      "aliases": [
+        "Josh Davis"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Davis_Josh_sas14.jpg"
+    },
+    {
+      "name": "Reggie Johnson (Import)",
+      "aliases": [
+        "Reggie Johnson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Johnson_Reggie_ncaa_mia.jpg"
+    },
+    {
+      "name": "Chris Lutz",
+      "imgURL": "https://www.eurobasket.com/photos/Lutz_Chris.jpg"
+    },
+    {
+      "name": "Mike Singletary (Import)",
+      "aliases": [
+        "Mike Singletary"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Singletary_Mike.jpg"
+    },
+    {
+      "name": "Cory Jefferson (Import)",
+      "aliases": [
+        "Cory Jefferson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jefferson_Cory_cle1617.jpg"
+    },
+    {
+      "name": "Mario Little (Import)",
+      "aliases": [
+        "Mario Little"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Little_Mario_dleague.jpg"
+    },
+    {
+      "name": "Dominique Sutton (Import)",
+      "aliases": [
+        "Dominique Sutton"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Sutton_Dominique_ncaa_kanst.jpg"
+    },
+    {
+      "name": "Akeem Wright (Import)",
+      "aliases": [
+        "Akeem Wright"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wright_Akeem.jpg"
+    },
+    {
+      "name": "Wayne Chism (Import)",
+      "aliases": [
+        "Wayne Chism"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Chism_Wayne_ncaa_ten.jpg"
+    },
+    {
+      "name": "Evan Brock (Import)",
+      "aliases": [
+        "Evan Brock"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Brock_Evan.jpg"
+    },
+    {
+      "name": "Josh Dollard (Import)",
+      "aliases": [
+        "Josh Dollard"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Dollard_Josh.jpg"
+    },
+    {
+      "name": "Steve Thomas (Import)",
+      "aliases": [
+        "Steve Thomas"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Thomas_Steve.jpg"
+    },
+    {
+      "name": "Malcolm White (Import)",
+      "aliases": [
+        "Malcolm White"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/White_Malcolm_ncaa_lsu.jpg"
+    },
+    {
+      "name": "Murphy Holloway (Import)",
+      "aliases": [
+        "Murphy Holloway"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Holloway_Murphy_ncaa_12.jpg"
+    },
+    {
+      "name": "Zach Graham (Import)",
+      "aliases": [
+        "Zach Graham"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Graham_Zach.jpg"
+    },
+    {
+      "name": "Terrence Watson (Import)",
+      "aliases": [
+        "Terrence Watson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Watson_Terrence.jpg"
+    },
+    {
+      "name": "Brian Williams (Import)",
+      "aliases": [
+        "Brian Williams"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Williams_Brian.jpg"
+    },
+    {
+      "name": "Rashad Woods (Import)",
+      "aliases": [
+        "Rashad Woods"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Woods_Rashad.jpg"
+    },
+    {
+      "name": "Liam McMorrow (Import)",
+      "aliases": [
+        "Liam McMorrow"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/McMorrow_Liam_dleague.jpg"
+    },
+    {
+      "name": "Jamine Peterson (Import)",
+      "aliases": [
+        "Jamine Peterson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Peterson_Jamine_dleague.jpg"
+    },
+    {
+      "name": "Hamady Ndiaye (Import)",
+      "aliases": [
+        "Hamady Ndiaye"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Ndiaye_Hamady_sac_1314.jpg"
+    },
+    {
+      "name": "Augustus Gilchrist (Import)",
+      "aliases": [
+        "Augustus Gilchrist"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Gilchrist_Augustus_ncaa_usf.jpg"
+    },
+    {
+      "name": "Jarrid Famous (Import)",
+      "aliases": [
+        "Jarrid Famous"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Famous_Jarrid_dal1516.jpg"
+    },
+    {
+      "name": "Ivan Johnson (Import)",
+      "aliases": [
+        "Ivan Johnson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Johnson_Ivan_dal14.jpg"
+    },
+    {
+      "name": "Marcus Simmons (Import)",
+      "aliases": [
+        "Marcus Simmons"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Simmons_Marcus_chi1516.jpg"
+    },
+    {
+      "name": "C.J. Leslie (Import)",
+      "aliases": [
+        "C.J. Leslie"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Leslie_Cj_nyk_1314.jpg"
+    },
+    {
+      "name": "Othyus Jeffers (Import)",
+      "aliases": [
+        "Othyus Jeffers"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jeffers_Othyus_min_1314.jpg"
+    },
+    {
+      "name": "Tyler Wilkerson (Import)",
+      "aliases": [
+        "Tyler Wilkerson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Wilkerson_Tyler_SAS.jpg"
+    },
+    {
+      "name": "Jason Forte (Import)",
+      "aliases": [
+        "Jason Forte"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Forte_Jason.jpg"
+    },
+    {
+      "name": "Elijah Millsap (Import)",
+      "aliases": [
+        "Elijah Millsap"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Millsap_Elijah_phx17.jpg"
+    },
+    {
+      "name": "Charles Garcia (Import)",
+      "aliases": [
+        "Charles Garcia"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Garcia_Charles_ncaa_sea.jpg"
+    },
+    {
+      "name": "Arnett Moultrie (Import)",
+      "aliases": [
+        "Arnett Moultrie"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Moultrie_Arnett_phi14.jpg"
+    },
+    {
+      "name": "Orlando Johnson (Import)",
+      "aliases": [
+        "Orlando Johnson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Johnson_Orlando_mil1617.jpg"
+    },
+    {
+      "name": "Mo Charlo (Import)",
+      "aliases": [
+        "Mo Charlo"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Charlo_Mo_dleague.jpg"
+    },
+    {
+      "name": "Troy Gillenwater (Import)",
+      "aliases": [
+        "Troy Gillenwater"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Gillenwater_Troy_ncaa_nmexs.jpg"
+    },
+    {
+      "name": "Wendell McKines (Import)",
+      "aliases": [
+        "Wendell McKines"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/McKines_Wendell_ncaa_nms.jpg"
+    },
+    {
+      "name": "Keala King (Import)",
+      "aliases": [
+        "Keala King"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/King_Keala_ncaa_asu.jpg"
+    },
+    {
+      "name": "Geron Johnson (Import)",
+      "aliases": [
+        "Geron Johnson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Johnson_Geron_ncaa.jpg"
+    },
+    {
+      "name": "Justin Jackson (Import)",
+      "aliases": [
+        "Justin Jackson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Jackson_Justin_ncaa_cin90.jpg"
+    },
+    {
+      "name": "J'Nathan Bullock (Import)",
+      "aliases": [
+        "J'Nathan Bullock"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Bullock_JNathan.jpg"
+    },
+    {
+      "name": "Eric Wise (Import)",
+      "aliases": [
+        "Eric Wise"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Wise_Eric_ncaa_usc.jpg"
+    },
+    {
+      "name": "Omar Sneed (Import)",
+      "aliases": [
+        "Omar Sneed"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Sneed_Omar.jpg"
+    },
+    {
+      "name": "Keith Benson (Import)",
+      "aliases": [
+        "Keith Benson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Benson_Keith_mia1617.jpg"
+    },
+    {
+      "name": "Shawn Weinstein",
+      "imgURL": "https://www.eurobasket.com/photos/Weinstein_Shawn.jpg"
+    },
+    {
+      "name": "Justin Harper (Import)",
+      "aliases": [
+        "Justin Harper"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Harper_Justin_bkn1516.jpg"
+    },
+    {
+      "name": "Shane Edwards (Import)",
+      "aliases": [
+        "Shane Edwards"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Edwards_Shane_dleague.jpg"
+    },
+    {
+      "name": "Kevin Murphy (Import)",
+      "aliases": [
+        "Kevin Murphy"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Murphy_Kevin_orl1617.jpg"
+    },
+    {
+      "name": "Keith Wright (Import)",
+      "aliases": [
+        "Keith Wright"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Wright_Keith_ncaa_har.jpg"
+    },
+    {
+      "name": "Omar Krayem (Import)",
+      "aliases": [
+        "Omar Krayem"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Krayem_Omar.jpg"
+    },
+    {
+      "name": "Calvin Warner (Import)",
+      "aliases": [
+        "Calvin Warner"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Warner_Calvin.jpg"
+    },
+    {
+      "name": "Markeith Cummings (Import)",
+      "aliases": [
+        "Markeith Cummings"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Cummings_Markeith_ncaa_kenst.jpg"
+    },
+    {
+      "name": "Chris Timberlake",
+      "imgURL": "https://www.eurobasket.com/photos/Timberlake_Chris.jpg"
+    },
+    {
+      "name": "Arizona Reid (Import)",
+      "aliases": [
+        "Arizona Reid"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Reid_Arizona.jpg"
+    },
+    {
+      "name": "Alex McLean (Import)",
+      "aliases": [
+        "Alex McLean"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/McLean_Alex.jpg"
+    },
+    {
+      "name": "Sylvester Morgan (Import)",
+      "aliases": [
+        "Sylvester Morgan"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Morgan_Sylvester.jpg"
+    },
+    {
+      "name": "Matt Rogers (Import)",
+      "aliases": [
+        "Matt Rogers"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Rogers_Matt_cha_1112.jpg"
+    },
+    {
+      "name": "M.J. Rhett (Import)",
+      "aliases": [
+        "M.J. Rhett"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Rhett_M.J._ncaa_tsu.jpg"
+    },
+    {
+      "name": "C.J. Aiken (Import)",
+      "aliases": [
+        "C.J. Aiken"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Aiken_CJ_ncaa_sj.jpg"
+    },
+    {
+      "name": "Ronald Roberts (Import)",
+      "aliases": [
+        "Ronald Roberts"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Roberts_Ronald_tor1516.jpg"
+    },
+    {
+      "name": "D.J. Covington (Import)",
+      "aliases": [
+        "D.J. Covington"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Covington_D.J._ncaa_vmi.jpg"
+    },
+    {
+      "name": "Trevis Simpson (Import)",
+      "aliases": [
+        "Trevis Simpson"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Simpson_Trevis_ncaa_uncg.jpg"
+    },
+    {
+      "name": "J.D. Weatherspoon (Import)",
+      "aliases": [
+        "J.D. Weatherspoon"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Weatherspoon_JD_ncaa.jpg"
+    },
+    {
+      "name": "Guna Ra (Import)",
+      "aliases": [
+        "Guna Ra"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Ratliffe_Ricardo_ncaami.jpg"
+    },
+    {
+      "name": "Adrian Forbes (Import)",
+      "aliases": [
+        "Adrian Forbes"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Forbes_Adrian_ncaa_aub.jpg"
+    },
+    {
+      "name": "Mike Glover (Import)",
+      "aliases": [
+        "Mike Glover"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Glover_Mike_ncaa_iona.jpg"
+    },
+    {
+      "name": "Chane Behanan",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Behanan_Chane_ncaa_12.jpg"
+    },
+    {
+      "name": "Jabril Trawick",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Trawick_Jabril_ncaa_gt.jpg"
+    },
+    {
+      "name": "Mohammad Jamshidi",
+      "imgURL": "https://www.eurobasket.com/photos/Jamshidi_Mohammad.jpg"
+    },
+    {
+      "name": "Jet Chang",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Chang_Jet_ncaa.jpg"
+    },
+    {
+      "name": "Kerby Raymundo",
+      "imgURL": "https://www.eurobasket.com/photos/Raymundo_Kerby.jpg"
+    },
+    {
+      "name": "Willie Miller, Jr.",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/williemiller.jpeg"
+    },
+    {
+      "name": "Michael Pennisi",
+      "imgURL": "https://www.eurobasket.com/photos/Pennisi_Michael.jpg"
+    },
+    {
+      "name": "JayJay Helterbrand",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginHelterbrand13.png"
+    },
+    {
+      "name": "Danny Seigle",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/tnt-Seigle.png"
+    },
+    {
+      "name": "Jimmy Alapag",
+      "imgURL": "https://www.eurobasket.com/photos/Alapag_Jimmy.png"
+    },
+    {
+      "name": "Dondon Hontiveros",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/5/56/Dondon_Hontiveros_2018.png"
+    },
+    {
+      "name": "Eric Conrad Menk",
+      "imgURL": "https://www.eurobasket.com/photos/Menk_Eric.jpg"
+    },
+    {
+      "name": "Jiwan Kim (Import)",
+      "aliases": [
+        "Jiwan Kim"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Kim_Jiwan.jpg"
+    },
+    {
+      "name": "Marcus Faison (Import)",
+      "aliases": [
+        "Marcus Faison"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Faison_Marcus.jpg"
+    },
+    {
+      "name": "Marnel Baracael",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/nlx-Baracael.png"
+    },
+    {
+      "name": "LaDontae Henton (Import)",
+      "aliases": [
+        "LaDontae Henton"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Henton_LaDontae_lac17.jpg"
+    },
+    {
+      "name": "Zaccheus Mason (Import)",
+      "aliases": [
+        "Zaccheus Mason"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Mason_Zaccheus_ncaa_chatt.jpg"
+    },
+    {
+      "name": "James White (Import)",
+      "aliases": [
+        "James White"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/White_James_ncaa_alr.jpg"
+    },
+    {
+      "name": "William Walker (Import)",
+      "aliases": [
+        "William Walker"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Walker_William.jpg"
+    },
+    {
+      "name": "Mark Isip",
+      "imgURL": "https://www.eurobasket.com/photos/Isip_Mark.jpg"
+    },
+    {
+      "name": "RenRen Ritualo",
+      "imgURL": "http://www.pba.ph/images/players/Ritualo.jpg"
+    },
+    {
+      "name": "Elmer Espiritu",
+      "imgURL": "https://www.eurobasket.com/photos/Espiritu_Elmer.jpg"
+    },
+    {
+      "name": "Nelbert Omolon",
+      "imgURL": "https://www.eurobasket.com/photos/Omolon_Nelbert.jpg"
+    },
+    {
+      "name": "Paolo Hubalde",
+      "imgURL": "https://www.eurobasket.com/photos/Hubalde_Paolo.jpg"
+    },
+    {
+      "name": "Magi King Sison",
+      "imgURL": "http://www.pba.ph/images/players/1322537249-Sison.jpg"
+    },
+    {
+      "name": "Hyram Bagatsing",
+      "imgURL": "http://www.pba.ph/images/players/Bagatsing.jpg"
+    },
+    {
+      "name": "Ogie Menor",
+      "imgURL": "http://www.pba.ph/images/players/Menor.jpg"
+    },
+    {
+      "name": "Bonbon Custodio",
+      "imgURL": "https://www.eurobasket.com/photos/Custodio_Bonbon.jpg"
+    },
+    {
+      "name": "Anthony Dela Cruz",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ala-Dela-Cruz.png"
+    },
+    {
+      "name": "Wesley Gonzales",
+      "imgURL": "https://www.eurobasket.com/photos/Gonzales_Wesley.jpg"
+    },
+    {
+      "name": "Nino Gelig",
+      "imgURL": "https://www.eurobasket.com/photos/Gelig_Nino.jpg"
+    },
+    {
+      "name": "Ervin Sotto",
+      "imgURL": "https://www.eurobasket.com/photos/Sotto_Ervin.jpg"
+    },
+    {
+      "name": "Samigue Eman",
+      "imgURL": "http://www.pba.ph/images/players/1296027357-Eman.jpg"
+    },
+    {
+      "name": "Eric Salamat",
+      "imgURL": "http://www.pba.ph/images/players/1318251402-Salamat.jpg"
+    },
+    {
+      "name": "Don Allado",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/donallado.jpg"
+    },
+    {
+      "name": "Sunday Salvacion",
+      "imgURL": "https://www.eurobasket.com/photos/Salvacion_Sunday.jpg"
+    },
+    {
+      "name": "Carlo Sharma",
+      "imgURL": "https://www.eurobasket.com/photos/Sharma_Carlo.jpg"
+    },
+    {
+      "name": "Wynne Arboleda",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/wynnearboleda.jpg"
+    },
+    {
+      "name": "Celino Cruz",
+      "imgURL": "https://www.eurobasket.com/photos/Cruz_Celino.jpg"
+    },
+    {
+      "name": "Reil Cervantes",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/bweCervantes26.png"
+    },
+    {
+      "name": "Jonas Villanueva",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/nlx-J-Villanueva.png"
+    },
+    {
+      "name": "Joshua Urbiztondo",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo-Urbiztondo.png"
+    },
+    {
+      "name": "Jerwin Gaco",
+      "imgURL": "http://www.pba.ph/images/players/Gaco.jpg"
+    },
+    {
+      "name": "Mike Burtscher",
+      "imgURL": "https://www.eurobasket.com/photos/Burtscher_Mike.jpg"
+    },
+    {
+      "name": "Rudy Hatfield",
+      "imgURL": "https://www.eurobasket.com/photos/Hatfield_Rudy.jpg"
+    },
+    {
+      "name": "Enrico Villanueva",
+      "imgURL": "https://www.eurobasket.com/photos/Villanueva_Enrico.jpg"
+    },
+    {
+      "name": "John Wilson",
+      "imgURL": "http://www.pba.ph/images/players/Wilson%20J.jpg"
+    },
+    {
+      "name": "Robert Labagala",
+      "imgURL": "http://www.pba.ph/images/players/Labagala.jpg"
+    },
+    {
+      "name": "Rico Maierhofer",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo-Maeirhofer.png"
+    },
+    {
+      "name": "Mark Cardona",
+      "imgURL": "https://www.eurobasket.com/photos/Cardona_Mark.jpg"
+    },
+    {
+      "name": "Paul Artadi",
+      "imgURL": "http://www.pba.ph/images/players/Artadi.jpg"
+    },
+    {
+      "name": "Mark Macapagal",
+      "imgURL": "https://www.eurobasket.com/photos/Macapagal_Mark.jpg"
+    },
+    {
+      "name": "Dennis Miranda",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/bwe-Miranda.png"
+    },
+    {
+      "name": "Joseph Yeo",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mer-Yeo.png"
+    },
+    {
+      "name": "Dorian Pena",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/dorianpena.jpeg"
+    },
+    {
+      "name": "Danny Ildefonso",
+      "imgURL": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRzsOBW-1n2Qp496TBTla8hjddf9uj9XF19OVs2jPDx0A&s=10"
+    },
+    {
+      "name": "Gary David",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-David.png"
+    },
+    {
+      "name": "Jondan Salvador",
+      "imgURL": "https://www.eurobasket.com/photos/Salvador_Jondan.jpg"
+    },
+    {
+      "name": "Rudy Lingganay",
+      "imgURL": "https://www.eurobasket.com/photos/Lingganay_Rudy.jpg"
+    },
+    {
+      "name": "Joshua Vanlandingham",
+      "imgURL": "https://www.eurobasket.com/photos/Vanlandingham_Joshua.jpg"
+    },
+    {
+      "name": "Lordy Tugade",
+      "imgURL": "http://www.pba.ph/images/players/tugade.jpg"
+    },
+    {
+      "name": "Ricky Calimag",
+      "imgURL": "http://www.pba.ph/images/players/Calimag.jpg"
+    },
+    {
+      "name": "Francis Allera",
+      "imgURL": "https://www.eurobasket.com/photos/Allera_Francis.jpg"
+    },
+    {
+      "name": "Ronjay Buenafe",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/bwe-Buenafe.png"
+    },
+    {
+      "name": "Jireh Ibanes",
+      "imgURL": "https://www.eurobasket.com/photos/Ibanes_Jireh.jpg"
+    },
+    {
+      "name": "Tyrone Tang",
+      "imgURL": "https://www.eurobasket.com/photos/Tang_Tyrone.jpg"
+    },
+    {
+      "name": "Ronnie Matias",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/rosMatias33.png"
+    },
+    {
+      "name": "Aaron Aban",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo-Aban.png"
+    },
+    {
+      "name": "John Raymundo",
+      "imgURL": "https://www.eurobasket.com/photos/Raymundo_John.jpg"
+    },
+    {
+      "name": "Ali Peek (Import)",
+      "aliases": [
+        "Ali Peek"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Peek_Ali.jpg"
+    },
+    {
+      "name": "Gilbert Lao",
+      "imgURL": "https://www.eurobasket.com/photos/Lao_Gilbert.jpg"
+    },
+    {
+      "name": "Richard Alvarez",
+      "imgURL": "http://www.pba.ph/images/players/Alvarez.jpg"
+    },
+    {
+      "name": "Gabe Freeman (Import)",
+      "aliases": [
+        "Gabe Freeman"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/NBLC_Jan_26%2C2017_-12_%28cropped%29.jpg/500px-NBLC_Jan_26%2C2017_-12_%28cropped%29.jpg"
+    },
+    {
+      "name": "LeRoy Hickerson (Import)",
+      "aliases": [
+        "LeRoy Hickerson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hickerson_LeRoy.jpg"
+    },
+    {
+      "name": "William Antonio",
+      "imgURL": "https://www.eurobasket.com/photos/Antonio_William.jpg"
+    },
+    {
+      "name": "Dennis Daa",
+      "imgURL": "http://www.pba.ph/images/players/Daa%202.jpg"
+    },
+    {
+      "name": "Gilbert Bulawan",
+      "imgURL": "https://www.eurobasket.com/photos/Bulawan_Gilbert.jpg"
+    },
+    {
+      "name": "Val Acuna",
+      "imgURL": "https://www.eurobasket.com/photos/Acuna_Val.jpg"
+    },
+    {
+      "name": "Brandon Cablay",
+      "imgURL": "https://www.eurobasket.com/photos/Cablay_Brandon.jpg"
+    },
+    {
+      "name": "Al Vergara",
+      "imgURL": "https://www.eurobasket.com/photos/Vergara_Al.jpg"
+    },
+    {
+      "name": "Nic Belasco",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/nicbelasco.jpg"
+    },
+    {
+      "name": "Paolo Bugia",
+      "imgURL": "https://www.eurobasket.com/photos/Bugia_Paolo.jpg"
+    },
+    {
+      "name": "Hans Thiele",
+      "imgURL": "https://www.eurobasket.com/photos/Thiele_Hans.jpg"
+    },
+    {
+      "name": "Lou Gatumbato",
+      "imgURL": "https://www.eurobasket.com/photos/Gatumbato_Lou.jpg"
+    },
+    {
+      "name": "Mark Yee",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mahYee27.png"
+    },
+    {
+      "name": "Yousif Aljamal",
+      "imgURL": "https://www.eurobasket.com/photos/Aljamal_Yousif.png"
+    },
+    {
+      "name": "Chito Jaime",
+      "imgURL": "http://www.pba.ph/images/players/Jaime.jpg"
+    },
+    {
+      "name": "Larry Rodriguez",
+      "imgURL": "http://www.pba.ph/images/players/1297318869-Rodriguez.jpg"
+    },
+    {
+      "name": "Jojo Duncil",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6d/2007_PBA_draft_Barako_%28cropped%29.jpg/250px-2007_PBA_draft_Barako_%28cropped%29.jpg"
+    },
+    {
+      "name": "Michael Craig (Import)",
+      "aliases": [
+        "Michael Craig"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Craig_Michael_ncaasomiss.jpg"
+    },
+    {
+      "name": "Stacy Davis (Import)",
+      "aliases": [
+        "Stacy Davis"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Davis_Stacy_ncaapep.jpg"
+    },
+    {
+      "name": "Lester Alvarez",
+      "imgURL": "https://www.eurobasket.com/photos/Alvarez_Lester.jpg"
+    },
+    {
+      "name": "Roger Yap",
+      "imgURL": "https://www.eurobasket.com/photos/Yap_Roger.jpg"
+    },
+    {
+      "name": "Simon Atkins",
+      "imgURL": "https://www.eurobasket.com/photos/Atkins_Simon.jpg"
+    },
+    {
+      "name": "Eddie Laure",
+      "imgURL": "https://www.eurobasket.com/photos/Laure_Eddie.jpg"
+    },
+    {
+      "name": "Chris Ellis",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/ginEllis34.png"
+    },
+    {
+      "name": "Alex Crisano",
+      "imgURL": "https://www.eurobasket.com/photos/Crisano_Alex.jpg"
+    },
+    {
+      "name": "Jonathan Uyloan",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mer-Uyloan.png"
+    },
+    {
+      "name": "Chris Pacana",
+      "imgURL": "https://www.eurobasket.com/photos/Pacana_Chris.jpg"
+    },
+    {
+      "name": "Angelus Raymundo",
+      "imgURL": "https://www.eurobasket.com/photos/Raymundo_Angelus.jpg"
+    },
+    {
+      "name": "Marvin Cruz",
+      "imgURL": "https://www.eurobasket.com/photos/Cruz_Marvin.jpg"
+    },
+    {
+      "name": "John Ferriols",
+      "imgURL": "https://www.eurobasket.com/photos/Ferriols_John.jpg"
+    },
+    {
+      "name": "Benny Koochoie",
+      "imgURL": "https://www.eurobasket.com/photos/Koochoie_Benny.jpg"
+    },
+    {
+      "name": "Mark Andaya",
+      "imgURL": "https://www.eurobasket.com/photos/Andaya_Mark.jpg"
+    },
+    {
+      "name": "Reed Juntilla",
+      "imgURL": "https://www.eurobasket.com/photos/Juntilla_Reed.jpg"
+    },
+    {
+      "name": "Kris Acox (Import)",
+      "aliases": [
+        "Kris Acox"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Acox_Kris_ncaafur.jpg"
+    },
+    {
+      "name": "Sanchir Tungalag",
+      "imgURL": "https://www.eurobasket.com/photos/Tungalag_Sanchir.jpg"
+    },
+    {
+      "name": "Richard Alonzo",
+      "imgURL": "https://www.eurobasket.com/photos/Alonzo_Richard.jpg"
+    },
+    {
+      "name": "Jai Reyes",
+      "imgURL": "https://www.eurobasket.com/photos/Reyes_Jai.jpg"
+    },
+    {
+      "name": "Jimbo Aquino",
+      "imgURL": "https://www.eurobasket.com/photos/Aquino_Jimbo.jpg"
+    },
+    {
+      "name": "Allan Mangahas",
+      "imgURL": "https://www.eurobasket.com/photos/Mangahas_Allan.jpg"
+    },
+    {
+      "name": "Malcolm Hill (Import)",
+      "aliases": [
+        "Malcolm Hill"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Hill_Malcolm_phi25.jpg"
+    },
+    {
+      "name": "Cinmeon Bowers (Import)",
+      "aliases": [
+        "Cinmeon Bowers"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Bowers_Cinemon_aub.jpg"
+    },
+    {
+      "name": "Jameel McKay (Import)",
+      "aliases": [
+        "Jameel McKay"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Mckay_Jameel_iast.jpg"
+    },
+    {
+      "name": "Antonio Campbell (Import)",
+      "aliases": [
+        "Antonio Campbell"
+      ],
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Campbell_Antonio_ncaaoh.jpg"
+    },
+    {
+      "name": "Terik Bridgeman",
+      "imgURL": "https://www.eurobasket.com/photos/Bridgeman_Terik.jpg"
+    },
+    {
+      "name": "Alexander Nuyles",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/tnt-Nuyles.png"
+    },
+    {
+      "name": "James Forrester",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/bwe-Forrester.png"
+    },
+    {
+      "name": "Isaac Holstein",
+      "imgURL": "https://www.eurobasket.com/photos/Holstein_Isaac.jpg"
+    },
+    {
+      "name": "Ryan Buenafe",
+      "imgURL": "https://www.eurobasket.com/photos/Buenafe_Ryan.jpg"
+    },
+    {
+      "name": "Eliud Poligrates",
+      "imgURL": "https://www.eurobasket.com/photos/Poligrates_Eliud.jpg"
+    },
+    {
+      "name": "Robby Celiz",
+      "imgURL": "https://www.eurobasket.com/photos/Celiz_Robby.jpg"
+    },
+    {
+      "name": "Samuel Marata",
+      "imgURL": "https://www.eurobasket.com/photos/Marata_Samuel.jpg"
+    },
+    {
+      "name": "Manny Pacquiao",
+      "imgURL": "https://basketball.realgm.com/images/nba/4.2/profiles/photos/2006/Pacquiao_Manny_intl.jpg"
+    },
+    {
+      "name": "Seiya Ando",
+      "imgURL": "https://www.eurobasket.com/photos/Ando_Seiya.jpg"
+    },
+    {
+      "name": "Raymond Austria",
+      "imgURL": "https://www.eurobasket.com/photos/Austria_Raymond.jpg"
+    },
+    {
+      "name": "Jeckster Apinan",
+      "imgURL": "https://www.eurobasket.com/photos/Apinan_Jeckster.jpg"
+    },
+    {
+      "name": "Juneric Baloria",
+      "imgURL": "https://www.eurobasket.com/photos/Baloria_Juneric.jpg"
+    },
+    {
+      "name": "Joshua Webb",
+      "imgURL": "https://www.eurobasket.com/photos/Webb_Joshua.jpg"
+    },
+    {
+      "name": "John Pinto",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/basketball_organizer/images/9gwycxt6pygjm7wqdzsubh850zt0"
+    },
+    {
+      "name": "Karl Dehesa",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/glo-Dehesa.png"
+    },
+    {
+      "name": "Jonathan Parreno",
+      "imgURL": "https://www.eurobasket.com/photos/Parreno_Jonathan.jpg"
+    },
+    {
+      "name": "Jopher Custodio",
+      "imgURL": "https://www.eurobasket.com/photos/Custodio_Jopher.jpg"
+    },
+    {
+      "name": "Josan Michael Nimes",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/mah-Nimes.png"
+    },
+    {
+      "name": "Jason Melano",
+      "imgURL": "https://www.eurobasket.com/photos/Melano_Jason.jpg"
+    },
+    {
+      "name": "Joseph Sedurifa",
+      "imgURL": "https://www.eurobasket.com/photos/Sedurifa_Joseph.jpg"
+    },
+    {
+      "name": "Michael Mabulac",
+      "imgURL": "https://www.eurobasket.com/photos/Mabulac_Michael.jpg"
+    },
+    {
+      "name": "Kwan Hee Lee",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/str-Lee2.png"
+    },
+    {
+      "name": "Levi Hernandez",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/tnt-Hernandez.png"
+    },
+    {
+      "name": "Arnold Van Opstal",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/smb-Opstal.png"
+    },
+    {
+      "name": "Tristan Perez",
+      "imgURL": "https://web.archive.org/web/20170704193949im_/http://d3frpjg8bot2ij.cloudfront.net/players/bwe-Perez.png"
+    },
+    {
+      "name": "Jan Jamon",
+      "imgURL": "https://www.eurobasket.com/photos/Jamon_Jan.jpg"
+    },
+    {
+      "name": "Kyle Drexler Neypes",
+      "imgURL": "https://www.eurobasket.com/photos/Neypes_KyleDrexler.jpg"
+    },
+    {
+      "name": "Ariel Mepana",
+      "imgURL": "http://www.pba.ph/images/players/Mepana.jpg"
+    },
+    {
+      "name": "Adonis Sta. Maria",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/2/20/Adonis_Santa_Maria.jpg"
+    },
+    {
+      "name": "Al David",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/aldavid.jpg"
+    },
+    {
+      "name": "Al Solis",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/alsolis.jpg"
+    },
+    {
+      "name": "Alejandro Aldo Perez",
+      "imgURL": "https://www.eurobasket.com/photos/Perez_Alejandro.jpg"
+    },
+    {
+      "name": "Allan Caidic",
+      "imgURL": "https://www.eurobasket.com/photos/Caidic_Allan.jpg"
+    },
+    {
+      "name": "Allan Gamboa",
+      "imgURL": "https://www.eurobasket.com/photos/Gamboa_Allan.jpg"
+    },
+    {
+      "name": "Allan Salangsang",
+      "imgURL": "https://www.eurobasket.com/photos/Salangsang_Allan.jpg"
+    },
+    {
+      "name": "Alvin Patrimonio",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/alvinpatrimonio.jpg"
+    },
+    {
+      "name": "Alvin Teng",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/alvinteng.jpg"
+    },
+    {
+      "name": "Ardy Larong",
+      "imgURL": "https://www.eurobasket.com/photos/Larong_Ardy.jpg"
+    },
+    {
+      "name": "Aris Dimaunahan",
+      "imgURL": "https://dashboard.pba.ph/assets/players/noimage.png"
+    },
+    {
+      "name": "Ato Agustin",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/atoagustin.jpg"
+    },
+    {
+      "name": "Atoy Co",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/atoyco.jpg"
+    },
+    {
+      "name": "Benedict Fernandez",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/31/Benedict_Fernandez.jpg/500px-Benedict_Fernandez.jpg"
+    },
+    {
+      "name": "Benjie Paras",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/benjieparas.jpg"
+    },
+    {
+      "name": "Benny Cheng",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/bennycheng.jpg"
+    },
+    {
+      "name": "Bonel Balingit",
+      "imgURL": "https://www.eurobasket.com/photos/Balingit_Bonel.jpg"
+    },
+    {
+      "name": "Carlo Espiritu",
+      "imgURL": "https://www.eurobasket.com/photos/Espiritu_Carlo.jpg"
+    },
+    {
+      "name": "Cesar Catli",
+      "imgURL": "https://www.eurobasket.com/photos/Catli_Cesar.jpg"
+    },
+    {
+      "name": "Charles Waters (Import)",
+      "aliases": [
+        "Charles Waters"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Waters_Charles.jpg"
+    },
+    {
+      "name": "Cholo Villanueva",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/88/Pocholo_Villanueva.jpg/250px-Pocholo_Villanueva.jpg"
+    },
+    {
+      "name": "Christian Coronel",
+      "imgURL": "https://www.eurobasket.com/photos/Coronel_Christian.jpg"
+    },
+    {
+      "name": "Christian Nicdao",
+      "imgURL": "https://www.eurobasket.com/photos/Nicdao_Christian.jpg"
+    },
+    {
+      "name": "Dale Singson",
+      "imgURL": "https://www.eurobasket.com/photos/Singson_Dale.jpg"
+    },
+    {
+      "name": "Danilo Aying",
+      "imgURL": "https://www.eurobasket.com/photos/Aying_Danilo.jpg"
+    },
+    {
+      "name": "Danilo Capobres",
+      "imgURL": "https://www.eurobasket.com/photos/Capobres_Danilo.jpg"
+    },
+    {
+      "name": "Dennis Espino",
+      "imgURL": "https://www.eurobasket.com/photos/Espino_Dennis.jpg"
+    },
+    {
+      "name": "Denver Lopez",
+      "imgURL": "https://www.eurobasket.com/photos/Lopez_Denver.jpg"
+    },
+    {
+      "name": "Dindo Pumaren",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/dindopumaren.jpg"
+    },
+    {
+      "name": "Don Dulay",
+      "imgURL": "https://www.eurobasket.com/photos/Dulay_Don.jpg"
+    },
+    {
+      "name": "Dwight Lago",
+      "imgURL": "https://www.eurobasket.com/photos/Lago_Dwight.jpg"
+    },
+    {
+      "name": "E. J. Feihl",
+      "imgURL": "https://www.eurobasket.com/photos/Feihl_EJ.jpg"
+    },
+    {
+      "name": "Edward Naron",
+      "imgURL": "https://www.eurobasket.com/photos/Naron_Edward.jpg"
+    },
+    {
+      "name": "Egay Billones",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/c/ce/Egay_Billones.jpg"
+    },
+    {
+      "name": "Eric Reyes",
+      "imgURL": "https://www.eurobasket.com/photos/Reyes_Eric.jpg"
+    },
+    {
+      "name": "Eugene Quilban",
+      "imgURL": "https://www.eurobasket.com/photos/Quilban_Eugene.jpg"
+    },
+    {
+      "name": "Felix Belano",
+      "imgURL": "https://www.eurobasket.com/photos/Belano_Felix.jpg"
+    },
+    {
+      "name": "Fernan Dino Manuel",
+      "imgURL": "https://www.eurobasket.com/photos/Manuel_Fernan.jpg"
+    },
+    {
+      "name": "Frankie Lim",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d9/Frankie_Lim.jpg/500px-Frankie_Lim.jpg"
+    },
+    {
+      "name": "Franz Pumaren",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/franzpumaren.jpg"
+    },
+    {
+      "name": "Freche Ang",
+      "imgURL": "https://www.eurobasket.com/photos/Ang_Freche.jpg"
+    },
+    {
+      "name": "Froilan Baguion",
+      "imgURL": "https://www.eurobasket.com/photos/Baguion_Froilan.jpg"
+    },
+    {
+      "name": "Gec Chia",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/6/60/Gec_Chia_%28cropped%29.jpg"
+    },
+    {
+      "name": "Genesis Sasuman",
+      "imgURL": "https://www.eurobasket.com/photos/Sasuman_Genesis.jpg"
+    },
+    {
+      "name": "Gilbert Castillo",
+      "imgURL": "https://www.eurobasket.com/photos/Castillo_Gilbert.jpg"
+    },
+    {
+      "name": "Glenn Capacio",
+      "imgURL": "https://www.eurobasket.com/photos/Capacio_Glenn.jpg"
+    },
+    {
+      "name": "Hector Calma",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/8/8b/Hectorcalma.jpg"
+    },
+    {
+      "name": "Henry Fernandez",
+      "imgURL": "https://www.eurobasket.com/photos/Fernandez_Henry.jpg"
+    },
+    {
+      "name": "Homer Se",
+      "imgURL": "https://www.eurobasket.com/photos/Se_Homer.jpg"
+    },
+    {
+      "name": "Jason Misolas",
+      "imgURL": "https://www.eurobasket.com/photos/Misolas_Jason.jpg"
+    },
+    {
+      "name": "Jasper Ocampo",
+      "imgURL": "https://www.eurobasket.com/photos/Ocampo_Jasper.jpg"
+    },
+    {
+      "name": "Jeffrey Cariaso",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/jeffreycariaso.jpg"
+    },
+    {
+      "name": "Joel Dualan",
+      "imgURL": "https://www.eurobasket.com/photos/Dualan_Joel.jpg"
+    },
+    {
+      "name": "John Arigo",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/johnarigo.jpg"
+    },
+    {
+      "name": "Johnny Abarrientos",
+      "imgURL": "https://pbaannual1999.neocities.org/images/pba2009-10/abbarientoshead.jpg"
+    },
+    {
+      "name": "Jojo Lastimosa",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/jojolastimosa.jpg"
+    },
+    {
+      "name": "Jojo Martin",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/jojomartin.jpg"
+    },
+    {
+      "name": "Jonathan de Guzman",
+      "imgURL": "https://www.eurobasket.com/photos/Guzman_Jonathan.jpg"
+    },
+    {
+      "name": "Jonathan Fernandez",
+      "imgURL": "https://www.eurobasket.com/photos/Fernandez_Jonathan.jpg"
+    },
+    {
+      "name": "Joy Carpio",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/joycarpio.jpg"
+    },
+    {
+      "name": "June Longalong",
+      "imgURL": "https://www.eurobasket.com/photos/Longalong_June.jpg"
+    },
+    {
+      "name": "Junel Mendiola",
+      "imgURL": "https://www.eurobasket.com/photos/Mendiola_Junel.jpg"
+    },
+    {
+      "name": "Junjun Cabatu",
+      "imgURL": "https://www.eurobasket.com/photos/Cabatu_Junjun.jpg"
+    },
+    {
+      "name": "Junthy Valenzuela",
+      "imgURL": "https://www.eurobasket.com/photos/Valenzuela_Junthy.jpg"
+    },
+    {
+      "name": "Kelvin dela Pena",
+      "imgURL": "https://www.eurobasket.com/photos/DelaPena_Kelvin.jpg"
+    },
+    {
+      "name": "Kelvin Gregorio",
+      "imgURL": "https://www.eurobasket.com/photos/Gregorio_Kelvin.jpg"
+    },
+    {
+      "name": "Kevin Ramas",
+      "imgURL": "https://www.eurobasket.com/photos/Ramas_Kevin.jpg"
+    },
+    {
+      "name": "Kevin White",
+      "imgURL": "https://www.eurobasket.com/photos/White_Kevin.jpg"
+    },
+    {
+      "name": "Lowell Briones",
+      "imgURL": "https://www.eurobasket.com/photos/Briones_Lowell.jpg"
+    },
+    {
+      "name": "Manny Victorino",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/PBA_2025May23_GINvBLA_MannyVictorino.jpg/500px-PBA_2025May23_GINvBLA_MannyVictorino.jpg"
+    },
+    {
+      "name": "Marcy Arellano",
+      "imgURL": "https://www.eurobasket.com/photos/Arellano_Marcy.jpg"
+    },
+    {
+      "name": "Mark Anthony Tallo",
+      "imgURL": "https://www.eurobasket.com/photos/Tallo_Mark.jpg"
+    },
+    {
+      "name": "Marlon Piodo",
+      "imgURL": "https://www.eurobasket.com/photos/Piodo_Marlon.jpg"
+    },
+    {
+      "name": "Marlou Aquino",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/8/88/Tesda_Marlou_Aquino.jpg"
+    },
+    {
+      "name": "Matthew Makalintal",
+      "imgURL": "https://www.eurobasket.com/photos/Makalintal_Matthew.jpg"
+    },
+    {
+      "name": "Melchor Teves",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/Aries_Dimaunahan.jpg/250px-Aries_Dimaunahan.jpg"
+    },
+    {
+      "name": "Melvin Mamaclay",
+      "imgURL": "https://www.eurobasket.com/photos/Mamaclay_Melvin.jpg"
+    },
+    {
+      "name": "Michael Orquillas",
+      "imgURL": "https://www.eurobasket.com/photos/Orquillas_Michael.jpg"
+    },
+    {
+      "name": "Michael Otto",
+      "imgURL": "https://www.eurobasket.com/photos/Otto_Michael.jpg"
+    },
+    {
+      "name": "Nelson Asaytono",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/nelsonasaytono.jpg"
+    },
+    {
+      "name": "Norman Gonzales",
+      "imgURL": "https://www.eurobasket.com/photos/Gonzales_Norman.jpg"
+    },
+    {
+      "name": "Olsen Racela",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/olsenracela.jpg"
+    },
+    {
+      "name": "Oscar Simon",
+      "imgURL": "https://www.eurobasket.com/photos/Simon_Oscar.jpg"
+    },
+    {
+      "name": "Paolo Mendoza",
+      "imgURL": "https://www.eurobasket.com/photos/Mendoza_Paolo.jpg"
+    },
+    {
+      "name": "Pedro Alfaro",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/38/photo_L1.png"
+    },
+    {
+      "name": "Peter Naron",
+      "imgURL": "https://www.eurobasket.com/photos/Naron_Peter.jpg"
+    },
+    {
+      "name": "Philip Butel",
+      "imgURL": "https://www.eurobasket.com/photos/Butel_Philip.jpg"
+    },
+    {
+      "name": "Philip Cezar",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bf/Philip_Cezar.png/500px-Philip_Cezar.png"
+    },
+    {
+      "name": "Philip Newton",
+      "imgURL": "https://www.eurobasket.com/photos/Newton_Philip.jpg"
+    },
+    {
+      "name": "Pido Jarencio",
+      "imgURL": "https://www.eurobasket.com/photos/Jarencio_Pido.jpg"
+    },
+    {
+      "name": "R. J. Rizada",
+      "imgURL": "https://www.eurobasket.com/photos/Rizada_RJ.jpg"
+    },
+    {
+      "name": "Ramon Fernandez",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/ramonfernandez.jpg"
+    },
+    {
+      "name": "Ramsey Williams",
+      "imgURL": "https://www.eurobasket.com/photos/Williams_Ramsey.jpg"
+    },
+    {
+      "name": "Ricardo Brown",
+      "imgURL": "https://www.eurobasket.com/photos/Brown_Ricardo.jpg"
+    },
+    {
+      "name": "Richard Dickie Bachmann",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/8/8d/PBBM-2023-Southeast_Asian_Games-Philippines-03_Bachmann_%28cropped%29.jpg"
+    },
+    {
+      "name": "Richard Yee",
+      "imgURL": "https://www.eurobasket.com/photos/Yee_Richard.jpg"
+    },
+    {
+      "name": "Rob Wainwright",
+      "imgURL": "https://www.eurobasket.com/photos/Wainwright_Rob.jpg"
+    },
+    {
+      "name": "Robert Jaworski",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Robert_Jaworski_2021_stamp_of_the_Philippines.jpg/500px-Robert_Jaworski_2021_stamp_of_the_Philippines.jpg"
+    },
+    {
+      "name": "Rommel Santos",
+      "imgURL": "https://www.eurobasket.com/photos/Santos_Rommel.jpg"
+    },
+    {
+      "name": "Romulo Bong Marata",
+      "imgURL": "https://www.eurobasket.com/photos/Marata_Romulo.jpg"
+    },
+    {
+      "name": "Romy dela Rosa",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/romydelarosa.jpg"
+    },
+    {
+      "name": "Ronilo Padilla",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/ronilopadilla.jpg"
+    },
+    {
+      "name": "Ronjay Enrile",
+      "imgURL": "https://www.eurobasket.com/photos/Enrile_Ronjay.jpg"
+    },
+    {
+      "name": "Ronnie Magsanoc",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/ronniemagsanoc.jpg"
+    },
+    {
+      "name": "Ruben dela Rosa",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/3/37/Rome_Adler_Dela_Rosa.jpg"
+    },
+    {
+      "name": "Rudy Distrito",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/rudydistrito.jpg"
+    },
+    {
+      "name": "Samboy Lim",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/8/84/Samboy.jpg"
+    },
+    {
+      "name": "Sonny Alvarado",
+      "imgURL": "https://philippinebasketball.neocities.org/images/alvarado/salvarado.gif"
+    },
+    {
+      "name": "Steven Smith (Import)",
+      "aliases": [
+        "Steven Smith"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Smith_Steven.jpg"
+    },
+    {
+      "name": "Stevenson Solomon (Import)",
+      "aliases": [
+        "Stevenson Solomon"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Solomon_Stevenson.jpg"
+    },
+    {
+      "name": "Teodoro Valera",
+      "imgURL": "https://www.eurobasket.com/photos/Valera_Teodoro.jpg"
+    },
+    {
+      "name": "Tim Coloso",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/en/thumb/0/04/Toyota_Super_Corollas_team_logo.svg/250px-Toyota_Super_Corollas_team_logo.svg.png"
+    },
+    {
+      "name": "Topex Robinson",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ef/PBA_-_2021_-_Phoenix_Super_LPG_Fuel_Masters_huddle_-_Topex_Robinson.jpg/500px-PBA_-_2021_-_Phoenix_Super_LPG_Fuel_Masters_huddle_-_Topex_Robinson.jpg"
+    },
+    {
+      "name": "Vergel Meneses",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/vergelmeneses.jpg"
+    },
+    {
+      "name": "Warren Ybanez",
+      "imgURL": "https://www.eurobasket.com/photos/Ybanez_Warren.jpg"
+    },
+    {
+      "name": "Willie Pearson",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8a/Willie_Pearson_Jr.jpg/250px-Willie_Pearson_Jr.jpg"
+    },
+    {
+      "name": "Zaldy Realubit",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/zaldyrealubit.jpg"
+    },
+    {
+      "name": "Andrew Kennedy (Import)",
+      "aliases": [
+        "Andrew Kennedy"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Kennedy_Andrew.jpg"
+    },
+    {
+      "name": "Billy Ray Bates (Import)",
+      "aliases": [
+        "Billy Ray Bates"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/5/50/Billy_Ray_Bates.jpg"
+    },
+    {
+      "name": "Bobby Parks (Import)",
+      "aliases": [
+        "Bobby Parks"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Parks_Bobby.jpg"
+    },
+    {
+      "name": "David Thirdkill (Import)",
+      "aliases": [
+        "David Thirdkill"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Thirdkill_David.png"
+    },
+    {
+      "name": "Derrick Rowland (Import)",
+      "aliases": [
+        "Derrick Rowland"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Rowland_Derrick.jpg"
+    },
+    {
+      "name": "Jamie Waller (Import)",
+      "aliases": [
+        "Jamie Waller"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Waller_Jamie.png"
+    },
+    {
+      "name": "Jeffrey Graves",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/en/2/27/Mr._AmericaJSA.jpg"
+    },
+    {
+      "name": "Jerry Codinera",
+      "imgURL": "https://www.eurobasket.com/photos/Codinera_Jerry.jpg"
+    },
+    {
+      "name": "Joe Ward (Import)",
+      "aliases": [
+        "Joe Ward"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Ward_Joe.jpg"
+    },
+    {
+      "name": "Kenny Fields (Import)",
+      "aliases": [
+        "Kenny Fields"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Fields_Kenny.png"
+    },
+    {
+      "name": "Kenny Travis (Import)",
+      "aliases": [
+        "Kenny Travis"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Travis_Kenny.jpg"
+    },
+    {
+      "name": "Kevin Gamble (Import)",
+      "aliases": [
+        "Kevin Gamble"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Gamble_Kevin.jpg"
+    },
+    {
+      "name": "Leo Austria",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3d/Leo_Austria_2026.jpg/500px-Leo_Austria_2026.jpg"
+    },
+    {
+      "name": "Lewis Jackson (Import)",
+      "aliases": [
+        "Lewis Jackson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Jackson_Lewis.jpg"
+    },
+    {
+      "name": "Michael Mike Phelps (Import)",
+      "aliases": [
+        "Michael Mike Phelps"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Phelps_Michael.png"
+    },
+    {
+      "name": "Norman Black (Import)",
+      "aliases": [
+        "Norman Black"
+      ],
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/normanblack.jpeg"
+    },
+    {
+      "name": "Paul Alvarez",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/paulalvarez.jpg"
+    },
+    {
+      "name": "Perry Young (Import)",
+      "aliases": [
+        "Perry Young"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Young_Perry.png"
+    },
+    {
+      "name": "Peter Aguilar",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/d/d1/Kit_shorts_blanksides2.png"
+    },
+    {
+      "name": "Ray Hall (Import)",
+      "aliases": [
+        "Ray Hall"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hall_Ray.jpg"
+    },
+    {
+      "name": "Ric Ric Marata",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/ricricmarata.jpg"
+    },
+    {
+      "name": "Tommy Davis (Import)",
+      "aliases": [
+        "Tommy Davis"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Davis_Tommy.jpg"
+    },
+    {
+      "name": "Tony White (Import)",
+      "aliases": [
+        "Tony White"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/White_Tony.jpg"
+    },
+    {
+      "name": "Vincent Askew (Import)",
+      "aliases": [
+        "Vincent Askew"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Askew_Vincent.jpg"
+    },
+    {
+      "name": "Bobby Jose",
+      "imgURL": "https://www.eurobasket.com/photos/Jose_Bobby.jpg"
+    },
+    {
+      "name": "Carl Lott (Import)",
+      "aliases": [
+        "Carl Lott"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Lott_Carl.png"
+    },
+    {
+      "name": "Carlton McKinney (Import)",
+      "aliases": [
+        "Carlton McKinney"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mckinney_Carlton.jpg"
+    },
+    {
+      "name": "Daren Queenan (Import)",
+      "aliases": [
+        "Daren Queenan"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Queenan_Daren.jpg"
+    },
+    {
+      "name": "Dexter Shouse (Import)",
+      "aliases": [
+        "Dexter Shouse"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Shouse_Dexter.jpg"
+    },
+    {
+      "name": "Ennis Whatley (Import)",
+      "aliases": [
+        "Ennis Whatley"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Whatley_Ennis.jpg"
+    },
+    {
+      "name": "Fernando Nandy Garcia",
+      "imgURL": "https://www.eurobasket.com/photos/Garcia_Fernando.jpg"
+    },
+    {
+      "name": "Keith Smart (Import)",
+      "aliases": [
+        "Keith Smart"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d7/Keith_Smart.jpg/500px-Keith_Smart.jpg"
+    },
+    {
+      "name": "Perry Moss (Import)",
+      "aliases": [
+        "Perry Moss"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/8/84/Perry_Moss_-_1948_Bowman.jpg"
+    },
+    {
+      "name": "Sean Chambers (Import)",
+      "aliases": [
+        "Sean Chambers"
+      ],
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/seanchambers.jpg"
+    },
+    {
+      "name": "Steve Burtt (Import)",
+      "aliases": [
+        "Steve Burtt"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Burtt_Steve.jpg"
+    },
+    {
+      "name": "Terrance Bailey (Import)",
+      "aliases": [
+        "Terrance Bailey"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Bailey_Terrance.png"
+    },
+    {
+      "name": "Walker Russell (Import)",
+      "aliases": [
+        "Walker Russell"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Russell_Walker.jpg"
+    },
+    {
+      "name": "Alfredrick Hughes (Import)",
+      "aliases": [
+        "Alfredrick Hughes"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hughes_Alfredrick.png"
+    },
+    {
+      "name": "Carlos Clark (Import)",
+      "aliases": [
+        "Carlos Clark"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/a/ab/Carlos_Clark_%289516896275%29.jpg/500px-Carlos_Clark_%289516896275%29.jpg"
+    },
+    {
+      "name": "Darryl Joe",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Barangay_Ginebra_San_Miguel_logo.png/250px-Barangay_Ginebra_San_Miguel_logo.png"
+    },
+    {
+      "name": "Derrek Hamilton (Import)",
+      "aliases": [
+        "Derrek Hamilton"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hamilton_Derrek.jpg"
+    },
+    {
+      "name": "Dwayne Johnson",
+      "imgURL": "https://www.eurobasket.com/photos/Johnson_Dwayne.jpg"
+    },
+    {
+      "name": "Everette Stephens (Import)",
+      "aliases": [
+        "Everette Stephens"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Stephens_Everette.png"
+    },
+    {
+      "name": "Glenn Dedmon",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Barangay_Ginebra_San_Miguel_logo.png/250px-Barangay_Ginebra_San_Miguel_logo.png"
+    },
+    {
+      "name": "Jeff Hodge (Import)",
+      "aliases": [
+        "Jeff Hodge"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hodge_Jeff.jpg"
+    },
+    {
+      "name": "Jose Slaughter (Import)",
+      "aliases": [
+        "Jose Slaughter"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Slaughter_Jose.png"
+    },
+    {
+      "name": "Kevin Williams (Import)",
+      "aliases": [
+        "Kevin Williams"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Williams_Kevin.jpg"
+    },
+    {
+      "name": "Lewis Lloyd (Import)",
+      "aliases": [
+        "Lewis Lloyd"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Lloyd_Lewis.png"
+    },
+    {
+      "name": "Michael Anderson (Import)",
+      "aliases": [
+        "Michael Anderson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Anderson_Michael.jpg"
+    },
+    {
+      "name": "Richard Morton (Import)",
+      "aliases": [
+        "Richard Morton"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Morton_Richard.jpg"
+    },
+    {
+      "name": "Ricky Wilson (Import)",
+      "aliases": [
+        "Ricky Wilson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wilson_Ricky.png"
+    },
+    {
+      "name": "Robert Rose (Import)",
+      "aliases": [
+        "Robert Rose"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Rose_Robert.jpg"
+    },
+    {
+      "name": "Tony Simms (Import)",
+      "aliases": [
+        "Tony Simms"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Simms_Tony.jpg"
+    },
+    {
+      "name": "Winston Crite (Import)",
+      "aliases": [
+        "Winston Crite"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/7/79/Winston_Crite_-_Phoenix_Suns.jpg"
+    },
+    {
+      "name": "Andrew Moten",
+      "imgURL": "https://www.eurobasket.com/photos/Moten_Andrew.jpg"
+    },
+    {
+      "name": "Art dela Cruz",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/artdelacruz.jpg"
+    },
+    {
+      "name": "Bernard Thompson (Import)",
+      "aliases": [
+        "Bernard Thompson"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/f/fc/Bernard_Thompson_-_Phoenix_Suns.jpg"
+    },
+    {
+      "name": "Darryl Johnson (Import)",
+      "aliases": [
+        "Darryl Johnson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Johnson_Darryl.jpg"
+    },
+    {
+      "name": "Donald Petties",
+      "imgURL": "https://www.eurobasket.com/photos/Petties_Donald.png"
+    },
+    {
+      "name": "Dwayne McClain (Import)",
+      "aliases": [
+        "Dwayne McClain"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mcclain_Dwayne.jpg"
+    },
+    {
+      "name": "Eric Brown (Import)",
+      "aliases": [
+        "Eric Brown"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Brown_Eric.jpg"
+    },
+    {
+      "name": "Jervis Cole",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/jerviscole.jpg"
+    },
+    {
+      "name": "Kelvin Upshaw (Import)",
+      "aliases": [
+        "Kelvin Upshaw"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Upshaw_Kelvin.png"
+    },
+    {
+      "name": "Lanard Copeland (Import)",
+      "aliases": [
+        "Lanard Copeland"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Copeland_Lanard.jpg"
+    },
+    {
+      "name": "Perry McDonald",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/perrymcdonald.jpg"
+    },
+    {
+      "name": "Rene Bong Hawkins Jr.",
+      "imgURL": "https://www.eurobasket.com/photos/Hawkins_Rene.jpg"
+    },
+    {
+      "name": "Richard Hollis",
+      "imgURL": "https://www.eurobasket.com/photos/Hollis_Richard.jpg"
+    },
+    {
+      "name": "Roehl Gomez",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/roehlgomez.jpg"
+    },
+    {
+      "name": "Sedric Toney (Import)",
+      "aliases": [
+        "Sedric Toney"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Toney_Sedric.png"
+    },
+    {
+      "name": "Wes Matthews (Import)",
+      "aliases": [
+        "Wes Matthews"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/92/WesMatthews1989.jpg/500px-WesMatthews1989.jpg"
+    },
+    {
+      "name": "William Alexander",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Barangay_Ginebra_San_Miguel_logo.png/250px-Barangay_Ginebra_San_Miguel_logo.png"
+    },
+    {
+      "name": "Bong Ravena",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/bongravena.jpg"
+    },
+    {
+      "name": "Clinton Smith (Import)",
+      "aliases": [
+        "Clinton Smith"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Smith_Clinton.jpg"
+    },
+    {
+      "name": "Danny Jones (Import)",
+      "aliases": [
+        "Danny Jones"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Jones_Danny.jpg"
+    },
+    {
+      "name": "David Henderson (Import)",
+      "aliases": [
+        "David Henderson"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/2b/1986_Duke_v_Kansas_-_Calvin_Thompson_and_David_Henderson.jpg/500px-1986_Duke_v_Kansas_-_Calvin_Thompson_and_David_Henderson.jpg"
+    },
+    {
+      "name": "Dell Demps (Import)",
+      "aliases": [
+        "Dell Demps"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Demps_Dell.png"
+    },
+    {
+      "name": "Derrick Chievous (Import)",
+      "aliases": [
+        "Derrick Chievous"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Chievous_Derrick.jpg"
+    },
+    {
+      "name": "Eldridge Recasner (Import)",
+      "aliases": [
+        "Eldridge Recasner"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Recasner_Eldridge.jpg"
+    },
+    {
+      "name": "Jerome Harmon (Import)",
+      "aliases": [
+        "Jerome Harmon"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Harmon_Jerome.png"
+    },
+    {
+      "name": "Joey Valdez",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/joeyvaldez.jpg"
+    },
+    {
+      "name": "Joey Wright (Import)",
+      "aliases": [
+        "Joey Wright"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wright_Joey.png"
+    },
+    {
+      "name": "Kurk Lee (Import)",
+      "aliases": [
+        "Kurk Lee"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Lee_Kurk.jpg"
+    },
+    {
+      "name": "Mark Stevenson",
+      "imgURL": "https://www.eurobasket.com/photos/Stevenson_Mark.jpg"
+    },
+    {
+      "name": "Melvin Newbern (Import)",
+      "aliases": [
+        "Melvin Newbern"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Newbern_Melvin.jpg"
+    },
+    {
+      "name": "Rick Calloway (Import)",
+      "aliases": [
+        "Rick Calloway"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Calloway_Rick.png"
+    },
+    {
+      "name": "Steve Colter (Import)",
+      "aliases": [
+        "Steve Colter"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Colter_Steve.png"
+    },
+    {
+      "name": "Tony Harris (Import)",
+      "aliases": [
+        "Tony Harris"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Harris_Tony.jpg"
+    },
+    {
+      "name": "Willie White (Import)",
+      "aliases": [
+        "Willie White"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/White_Willie.png"
+    },
+    {
+      "name": "Billy Martin",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/a/a1/Billy_Martin_1954.jpg"
+    },
+    {
+      "name": "Billy Thompson (Import)",
+      "aliases": [
+        "Billy Thompson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Thompson_Billy.jpg"
+    },
+    {
+      "name": "Boybits Victoria",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/boybitsvictoria.jpg"
+    },
+    {
+      "name": "Boyet Fernandez",
+      "imgURL": "https://www.eurobasket.com/photos/Fernandez_Boyet.jpg"
+    },
+    {
+      "name": "Byron Irvin (Import)",
+      "aliases": [
+        "Byron Irvin"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Irvin_Byron.png"
+    },
+    {
+      "name": "Carl Ray Harris",
+      "imgURL": "https://www.eurobasket.com/photos/Harris_CarlRay.png"
+    },
+    {
+      "name": "Darrin Mayo",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Barangay_Ginebra_San_Miguel_logo.png/250px-Barangay_Ginebra_San_Miguel_logo.png"
+    },
+    {
+      "name": "Edward Poch Juinio",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/edwardpochjuinio.jpg"
+    },
+    {
+      "name": "Erik Martin (Import)",
+      "aliases": [
+        "Erik Martin"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Martin_Erik.jpg"
+    },
+    {
+      "name": "Freddie Abuda",
+      "imgURL": "https://www.eurobasket.com/photos/Abuda_Freddie.png"
+    },
+    {
+      "name": "Herb Jones (Import)",
+      "aliases": [
+        "Herb Jones"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/eb/Herb_Jones.jpg/500px-Herb_Jones.jpg"
+    },
+    {
+      "name": "Jay Edwards (Import)",
+      "aliases": [
+        "Jay Edwards"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Edwards_Jay.jpg"
+    },
+    {
+      "name": "Jerome Lane (Import)",
+      "aliases": [
+        "Jerome Lane"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Lane_Jerome.png"
+    },
+    {
+      "name": "Kevin Holland (Import)",
+      "aliases": [
+        "Kevin Holland"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Holland_Kevin.jpg"
+    },
+    {
+      "name": "Lambert Shell (Import)",
+      "aliases": [
+        "Lambert Shell"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Shell_Lambert.jpg"
+    },
+    {
+      "name": "Leon Wood (Import)",
+      "aliases": [
+        "Leon Wood"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wood_Leon.jpg"
+    },
+    {
+      "name": "Marlin Kimbrew",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Barangay_Ginebra_San_Miguel_logo.png/250px-Barangay_Ginebra_San_Miguel_logo.png"
+    },
+    {
+      "name": "Mitchell Wiggins (Import)",
+      "aliases": [
+        "Mitchell Wiggins"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wiggins_Mitchell.jpg"
+    },
+    {
+      "name": "Noli Locsin",
+      "imgURL": "https://www.eurobasket.com/photos/Locsin_Noli.jpg"
+    },
+    {
+      "name": "Noynoy Falcasantos",
+      "imgURL": "https://www.eurobasket.com/photos/Falcasantos_Noynoy.jpg"
+    },
+    {
+      "name": "Rey Evangelista",
+      "imgURL": "https://www.eurobasket.com/photos/Evangelista_Rey.jpg"
+    },
+    {
+      "name": "Ronnie Coleman (Import)",
+      "aliases": [
+        "Ronnie Coleman"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Coleman_Ronnie.jpg"
+    },
+    {
+      "name": "Steve Hood (Import)",
+      "aliases": [
+        "Steve Hood"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hood_Steve.jpg"
+    },
+    {
+      "name": "Terrence Lewis (Import)",
+      "aliases": [
+        "Terrence Lewis"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Lewis_Terrence.jpg"
+    },
+    {
+      "name": "Victor Pablo",
+      "imgURL": "https://www.eurobasket.com/photos/Pablo_Victor.jpg"
+    },
+    {
+      "name": "Vince Hizon",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/vincehizon.jpg"
+    },
+    {
+      "name": "Wilmer Ong",
+      "imgURL": "https://www.eurobasket.com/photos/Ong_Wilmer.jpg"
+    },
+    {
+      "name": "Zandro Jun Limpot Jr.",
+      "imgURL": "https://www.eurobasket.com/photos/Limpot_Zandro.jpg"
+    },
+    {
+      "name": "Andy Bostick (Import)",
+      "aliases": [
+        "Andy Bostick"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Barangay_Ginebra_San_Miguel_logo.png/250px-Barangay_Ginebra_San_Miguel_logo.png"
+    },
+    {
+      "name": "Andy Seigle",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/fd/Andy_Seigle.jpg/500px-Andy_Seigle.jpg"
+    },
+    {
+      "name": "Angelo David",
+      "imgURL": "https://www.eurobasket.com/photos/David_Angelo.jpg"
+    },
+    {
+      "name": "Arnold Gamboa",
+      "imgURL": "https://www.eurobasket.com/photos/Gamboa_Arnold.jpg"
+    },
+    {
+      "name": "Artemus Tee McClary (Import)",
+      "aliases": [
+        "Artemus Tee McClary"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mcclary_Artemus.jpg"
+    },
+    {
+      "name": "Bal David",
+      "imgURL": "https://www.eurobasket.com/photos/David_Bal.jpg"
+    },
+    {
+      "name": "Chris Jackson",
+      "imgURL": "https://www.eurobasket.com/photos/Jackson_Chris.jpg"
+    },
+    {
+      "name": "Chris King (Import)",
+      "aliases": [
+        "Chris King"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/King_Chris.jpg"
+    },
+    {
+      "name": "Dennis Edwards (Import)",
+      "aliases": [
+        "Dennis Edwards"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Edwards_Dennis.jpg"
+    },
+    {
+      "name": "Dennis Williams (Import)",
+      "aliases": [
+        "Dennis Williams"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Williams_Dennis.jpg"
+    },
+    {
+      "name": "Edmund Reyes",
+      "imgURL": "https://www.eurobasket.com/photos/Reyes_Edmund.jpg"
+    },
+    {
+      "name": "Elmer Lago",
+      "imgURL": "https://www.eurobasket.com/photos/Lago_Elmer.jpg"
+    },
+    {
+      "name": "Estong Ballesteros",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/estongballesteros.jpg"
+    },
+    {
+      "name": "Isaiah Morris (Import)",
+      "aliases": [
+        "Isaiah Morris"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Morris_Isaiah.jpg"
+    },
+    {
+      "name": "Jason Webb",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/04/PBA_-_Jason_Webb_-_Star_Hotshots_-_2015-1225_%2823892209941%29.jpg/500px-PBA_-_Jason_Webb_-_Star_Hotshots_-_2015-1225_%2823892209941%29.jpg"
+    },
+    {
+      "name": "John Best (Import)",
+      "aliases": [
+        "John Best"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Best_John.jpg"
+    },
+    {
+      "name": "Kenneth Duremdes",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/kennethduremdes.jpg"
+    },
+    {
+      "name": "Larry Robinson (Import)",
+      "aliases": [
+        "Larry Robinson"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/ba/LarryRobinson.png/500px-LarryRobinson.png"
+    },
+    {
+      "name": "Leon Trimmingham (Import)",
+      "aliases": [
+        "Leon Trimmingham"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Trimmingham_Leon.jpg"
+    },
+    {
+      "name": "Michael Jones (Import)",
+      "aliases": [
+        "Michael Jones"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Jones_Michael.jpg"
+    },
+    {
+      "name": "Mike Jones (Import)",
+      "aliases": [
+        "Mike Jones"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Jones_Mike.jpg"
+    },
+    {
+      "name": "Patrick Fran",
+      "imgURL": "https://www.eurobasket.com/photos/Fran_Patrick.jpg"
+    },
+    {
+      "name": "Purnell Perry (Import)",
+      "aliases": [
+        "Purnell Perry"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Perry_Purnell.jpg"
+    },
+    {
+      "name": "Richard del Rosario",
+      "imgURL": "https://dashboard.pba.ph/assets/players/noimage.png"
+    },
+    {
+      "name": "Tyrone Hopkins (Import)",
+      "aliases": [
+        "Tyrone Hopkins"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hopkins_Tyrone.jpg"
+    },
+    {
+      "name": "Adrian Branch (Import)",
+      "aliases": [
+        "Adrian Branch"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/10/Adrian_Branch_dribble_%28Duke_Chronicle_1983-03-18%29.jpg/500px-Adrian_Branch_dribble_%28Duke_Chronicle_1983-03-18%29.jpg"
+    },
+    {
+      "name": "Andre Hardy (Import)",
+      "aliases": [
+        "Andre Hardy"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hardy_Andre.jpg"
+    },
+    {
+      "name": "Antonio Madison (Import)",
+      "aliases": [
+        "Antonio Madison"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Madison_Antonio.jpg"
+    },
+    {
+      "name": "Bob McCann (Import)",
+      "aliases": [
+        "Bob McCann"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mccann_Bob.png"
+    },
+    {
+      "name": "Bobby Allen (Import)",
+      "aliases": [
+        "Bobby Allen"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/f/f9/Bobby_aug2.jpg"
+    },
+    {
+      "name": "Darryl Prue (Import)",
+      "aliases": [
+        "Darryl Prue"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Prue_Darryl.jpg"
+    },
+    {
+      "name": "Fred Lewis (Import)",
+      "aliases": [
+        "Fred Lewis"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Lewis_Fred.jpg"
+    },
+    {
+      "name": "Gerrod Abram (Import)",
+      "aliases": [
+        "Gerrod Abram"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Abram_Gerrod.png"
+    },
+    {
+      "name": "Kelby Stuckey (Import)",
+      "aliases": [
+        "Kelby Stuckey"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Stuckey_Kelby.jpg"
+    },
+    {
+      "name": "Rodney Monroe (Import)",
+      "aliases": [
+        "Rodney Monroe"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Monroe_Rodney.jpg"
+    },
+    {
+      "name": "Sam Mack (Import)",
+      "aliases": [
+        "Sam Mack"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mack_Sam.jpg"
+    },
+    {
+      "name": "Stevin Smith (Import)",
+      "aliases": [
+        "Stevin Smith"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Smith_Stevin.jpg"
+    },
+    {
+      "name": "Andre Spencer (Import)",
+      "aliases": [
+        "Andre Spencer"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Spencer_Andre.jpg"
+    },
+    {
+      "name": "Dennis Hopson (Import)",
+      "aliases": [
+        "Dennis Hopson"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7c/Dennis_Hopson_Lourdes_Gray_Wolves%2C_December_2022.jpg/500px-Dennis_Hopson_Lourdes_Gray_Wolves%2C_December_2022.jpg"
+    },
+    {
+      "name": "Derek Rucker (Import)",
+      "aliases": [
+        "Derek Rucker"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/6/6b/Rucker_playing.jpg"
+    },
+    {
+      "name": "Derrick Gervin (Import)",
+      "aliases": [
+        "Derrick Gervin"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Gervin_Derrick.jpg"
+    },
+    {
+      "name": "Fred Cofield (Import)",
+      "aliases": [
+        "Fred Cofield"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Cofield_Fred.png"
+    },
+    {
+      "name": "Henry James (Import)",
+      "aliases": [
+        "Henry James"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/James_Henry.png"
+    },
+    {
+      "name": "Jack Santiago",
+      "imgURL": "https://www.eurobasket.com/photos/Santiago_Jack.jpg"
+    },
+    {
+      "name": "James Hodges (Import)",
+      "aliases": [
+        "James Hodges"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hodges_James.jpg"
+    },
+    {
+      "name": "Jojo English (Import)",
+      "aliases": [
+        "Jojo English"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/English_Jojo.png"
+    },
+    {
+      "name": "Kennard Winchester (Import)",
+      "aliases": [
+        "Kennard Winchester"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Winchester_Kennard.png"
+    },
+    {
+      "name": "Lamont Strothers (Import)",
+      "aliases": [
+        "Lamont Strothers"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Strothers_Lamont.png"
+    },
+    {
+      "name": "Lester Neal (Import)",
+      "aliases": [
+        "Lester Neal"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Neal_Lester.png"
+    },
+    {
+      "name": "Mark Hill (Import)",
+      "aliases": [
+        "Mark Hill"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hill_Mark.jpg"
+    },
+    {
+      "name": "Melvin Simon (Import)",
+      "aliases": [
+        "Melvin Simon"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Simon_Melvin.jpg"
+    },
+    {
+      "name": "Peter Martin",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bb/Martin_in_2026.jpg/500px-Martin_in_2026.jpg"
+    },
+    {
+      "name": "Reggie Fox (Import)",
+      "aliases": [
+        "Reggie Fox"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Fox_Reggie.jpg"
+    },
+    {
+      "name": "Tharon Mayes (Import)",
+      "aliases": [
+        "Tharon Mayes"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mayes_Tharon.jpg"
+    },
+    {
+      "name": "Tyrone Grandberry (Import)",
+      "aliases": [
+        "Tyrone Grandberry"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Grandberry_Tyrone.png"
+    },
+    {
+      "name": "Andre Perry (Import)",
+      "aliases": [
+        "Andre Perry"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Perry_Andre.jpg"
+    },
+    {
+      "name": "Braulio Lim",
+      "imgURL": "https://www.eurobasket.com/photos/Lim_Braulio.jpg"
+    },
+    {
+      "name": "Brixter Encarnacion",
+      "imgURL": "https://www.eurobasket.com/photos/Encarnacion_Brixter.jpg"
+    },
+    {
+      "name": "David Booth (Import)",
+      "aliases": [
+        "David Booth"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Booth_David.jpg"
+    },
+    {
+      "name": "Devin Davis (Import)",
+      "aliases": [
+        "Devin Davis"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Davis_Devin.jpg"
+    },
+    {
+      "name": "Donald Williams (Import)",
+      "aliases": [
+        "Donald Williams"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Williams_Donald.jpg"
+    },
+    {
+      "name": "Jessie Cabanayan",
+      "imgURL": "https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/main/pbamissingportraits/jessiecabanayan.jpg"
+    },
+    {
+      "name": "Joe Wylie (Import)",
+      "aliases": [
+        "Joe Wylie"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wylie_Joe.jpg"
+    },
+    {
+      "name": "John Strickland (Import)",
+      "aliases": [
+        "John Strickland"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Strickland_John.jpg"
+    },
+    {
+      "name": "Kenny Payne (Import)",
+      "aliases": [
+        "Kenny Payne"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/0/0b/Kenny_Payne.jpg"
+    },
+    {
+      "name": "Khari Jaxon (Import)",
+      "aliases": [
+        "Khari Jaxon"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Jaxon_Khari.jpg"
+    },
+    {
+      "name": "Kirk King (Import)",
+      "aliases": [
+        "Kirk King"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/King_Kirk.jpg"
+    },
+    {
+      "name": "Lance Miller (Import)",
+      "aliases": [
+        "Lance Miller"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Miller_Lance.jpg"
+    },
+    {
+      "name": "Marcus Liberty (Import)",
+      "aliases": [
+        "Marcus Liberty"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Liberty_Marcus.jpg"
+    },
+    {
+      "name": "Marcus Timmons (Import)",
+      "aliases": [
+        "Marcus Timmons"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Timmons_Marcus.jpg"
+    },
+    {
+      "name": "Melvin Cheatum (Import)",
+      "aliases": [
+        "Melvin Cheatum"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Cheatum_Melvin.jpg"
+    },
+    {
+      "name": "Michael Cumberland (Import)",
+      "aliases": [
+        "Michael Cumberland"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Cumberland_Michael.jpg"
+    },
+    {
+      "name": "Paul Graham (Import)",
+      "aliases": [
+        "Paul Graham"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Graham_Paul.jpg"
+    },
+    {
+      "name": "Rick Brunson (Import)",
+      "aliases": [
+        "Rick Brunson"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/20140322_Rick_Brunson_2_%28cropped%29.JPG/500px-20140322_Rick_Brunson_2_%28cropped%29.JPG"
+    },
+    {
+      "name": "Roy Hairston (Import)",
+      "aliases": [
+        "Roy Hairston"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hairston_Roy.jpg"
+    },
+    {
+      "name": "Sean Higgins (Import)",
+      "aliases": [
+        "Sean Higgins"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/2/2c/Sean_Higgins_1989_National_Champions.jpg"
+    },
+    {
+      "name": "Sherell Ford (Import)",
+      "aliases": [
+        "Sherell Ford"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Ford_Sherell.jpg"
+    },
+    {
+      "name": "Silas Mills (Import)",
+      "aliases": [
+        "Silas Mills"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mills_Silas.jpg"
+    },
+    {
+      "name": "Terquin Mott (Import)",
+      "aliases": [
+        "Terquin Mott"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mott_Terquin.jpg"
+    },
+    {
+      "name": "Victor Page (Import)",
+      "aliases": [
+        "Victor Page"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Page_Victor.jpg"
+    },
+    {
+      "name": "Wayman Strickland (Import)",
+      "aliases": [
+        "Wayman Strickland"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Barangay_Ginebra_San_Miguel_logo.png/250px-Barangay_Ginebra_San_Miguel_logo.png"
+    },
+    {
+      "name": "Arnold Rodriguez",
+      "imgURL": "https://www.eurobasket.com/photos/Rodriguez_Arnold.jpg"
+    },
+    {
+      "name": "Bryan Gahol",
+      "imgURL": "https://www.eurobasket.com/photos/Gahol_Bryan.jpg"
+    },
+    {
+      "name": "Derrick Brown (Import)",
+      "aliases": [
+        "Derrick Brown"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Brown_Derrick.jpg"
+    },
+    {
+      "name": "Dexter Boney (Import)",
+      "aliases": [
+        "Dexter Boney"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Boney_Dexter.jpg"
+    },
+    {
+      "name": "Eric Menk",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/79/Eric_Menk.jpg/500px-Eric_Menk.jpg"
+    },
+    {
+      "name": "Erwin Luna",
+      "imgURL": "https://www.eurobasket.com/photos/Luna_Erwin.jpg"
+    },
+    {
+      "name": "Galen Robinson (Import)",
+      "aliases": [
+        "Galen Robinson"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e9/Malik_Pope_2.JPG/500px-Malik_Pope_2.JPG"
+    },
+    {
+      "name": "Gerard Francisco",
+      "imgURL": "https://www.eurobasket.com/photos/Francisco_Gerard.jpg"
+    },
+    {
+      "name": "Ime Oduok (Import)",
+      "aliases": [
+        "Ime Oduok"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Oduok_Ime.jpg"
+    },
+    {
+      "name": "Ira Clark (Import)",
+      "aliases": [
+        "Ira Clark"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Clark_Ira.jpg"
+    },
+    {
+      "name": "Jevon Crudup (Import)",
+      "aliases": [
+        "Jevon Crudup"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Crudup_Jevon.jpg"
+    },
+    {
+      "name": "John Morton (Import)",
+      "aliases": [
+        "John Morton"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Morton_John.jpg"
+    },
+    {
+      "name": "Jomer Rubi",
+      "imgURL": "https://www.eurobasket.com/photos/Rubi_Jomer.jpg"
+    },
+    {
+      "name": "Jon Ordonio",
+      "imgURL": "https://www.eurobasket.com/photos/Ordonio_Jon.jpg"
+    },
+    {
+      "name": "Julius Nwosu (Import)",
+      "aliases": [
+        "Julius Nwosu"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Nwosu_Julius.jpg"
+    },
+    {
+      "name": "Kwan Johnson (Import)",
+      "aliases": [
+        "Kwan Johnson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Johnson_Kwan.jpg"
+    },
+    {
+      "name": "Monty Wilson (Import)",
+      "aliases": [
+        "Monty Wilson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wilson_Monty.jpg"
+    },
+    {
+      "name": "Rene Alforque",
+      "imgURL": "https://www.eurobasket.com/photos/Alforque_Rene.png"
+    },
+    {
+      "name": "Robert Duat",
+      "imgURL": "https://www.eurobasket.com/photos/Duat_Robert.jpg"
+    },
+    {
+      "name": "Roderick Bughao",
+      "imgURL": "https://www.eurobasket.com/photos/Bughao_Roderick.jpg"
+    },
+    {
+      "name": "Ronnie Fields (Import)",
+      "aliases": [
+        "Ronnie Fields"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Fields_Ronnie.jpg"
+    },
+    {
+      "name": "Shawn Harvey (Import)",
+      "aliases": [
+        "Shawn Harvey"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Harvey_Shawn.png"
+    },
+    {
+      "name": "Tremaine Fowlkes (Import)",
+      "aliases": [
+        "Tremaine Fowlkes"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Fowlkes_Tremaine.jpg"
+    },
+    {
+      "name": "Allan Yu",
+      "imgURL": "https://www.eurobasket.com/photos/Yu_Allan.jpg"
+    },
+    {
+      "name": "Ansu Sesay (Import)",
+      "aliases": [
+        "Ansu Sesay"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/22/Ansu_Sesay.jpg/500px-Ansu_Sesay.jpg"
+    },
+    {
+      "name": "Billy Reyes",
+      "imgURL": "https://www.eurobasket.com/photos/Reyes_Billy.jpg"
+    },
+    {
+      "name": "Brian Green (Import)",
+      "aliases": [
+        "Brian Green"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Green_Brian.jpg"
+    },
+    {
+      "name": "Davonn Harp",
+      "imgURL": "https://www.eurobasket.com/photos/Harp_Davonn.jpg"
+    },
+    {
+      "name": "Dino Aldeguer",
+      "imgURL": "https://www.eurobasket.com/photos/Aldeguer_Dino.png"
+    },
+    {
+      "name": "Don Camaso",
+      "imgURL": "https://www.eurobasket.com/photos/Camaso_Don.jpg"
+    },
+    {
+      "name": "Jimwell Torion (Import)",
+      "aliases": [
+        "Jimwell Torion"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Torion_Jimwell.jpg"
+    },
+    {
+      "name": "Joe Stephens (Import)",
+      "aliases": [
+        "Joe Stephens"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Stephens_Joe.jpg"
+    },
+    {
+      "name": "Maurice Bell (Import)",
+      "aliases": [
+        "Maurice Bell"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Bell_Maurice.jpg"
+    },
+    {
+      "name": "Mick Pennisi",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/4/43/PBA_-_Globalport_vs_Barako_Bull_-_Mick_Pennissi-Barako_Bull_-_2015-1225_%2823871084822%29_%28cropped%29.jpg"
+    },
+    {
+      "name": "Raymond Tutt (Import)",
+      "aliases": [
+        "Raymond Tutt"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Tutt_Raymond.jpg"
+    },
+    {
+      "name": "Ronald Magtulis",
+      "imgURL": "https://www.eurobasket.com/photos/Magtulis_Ronald.jpg"
+    },
+    {
+      "name": "Ryan Fletcher (Import)",
+      "aliases": [
+        "Ryan Fletcher"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Fletcher_Ryan.jpg"
+    },
+    {
+      "name": "Stephen Howard (Import)",
+      "aliases": [
+        "Stephen Howard"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Howard_Stephen.jpg"
+    },
+    {
+      "name": "Tod Bernard (Import)",
+      "aliases": [
+        "Tod Bernard"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Bernard_Tod.jpg"
+    },
+    {
+      "name": "Antonio Lang (Import)",
+      "aliases": [
+        "Antonio Lang"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Antonio_lang_%28cropped%29.jpg/500px-Antonio_lang_%28cropped%29.jpg"
+    },
+    {
+      "name": "Askia Jones (Import)",
+      "aliases": [
+        "Askia Jones"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Jones_Askia.jpg"
+    },
+    {
+      "name": "Billy Thomas (Import)",
+      "aliases": [
+        "Billy Thomas"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Thomas_Billy.jpg"
+    },
+    {
+      "name": "Brandon Williams (Import)",
+      "aliases": [
+        "Brandon Williams"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Williams_Brandon.jpg"
+    },
+    {
+      "name": "Bubba Wells (Import)",
+      "aliases": [
+        "Bubba Wells"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wells_Bubba.jpg"
+    },
+    {
+      "name": "Damian Owens (Import)",
+      "aliases": [
+        "Damian Owens"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Owens_Damian.jpg"
+    },
+    {
+      "name": "David Wood (Import)",
+      "aliases": [
+        "David Wood"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wood_David.jpg"
+    },
+    {
+      "name": "Francis Adriano",
+      "imgURL": "https://www.eurobasket.com/photos/Adriano_Francis.png"
+    },
+    {
+      "name": "Gilbert Demape",
+      "imgURL": "https://www.eurobasket.com/photos/Demape_Gilbert.jpg"
+    },
+    {
+      "name": "Jamie Watson (Import)",
+      "aliases": [
+        "Jamie Watson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Watson_Jamie.jpg"
+    },
+    {
+      "name": "Jason Sasser (Import)",
+      "aliases": [
+        "Jason Sasser"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Sasser_Jason.jpg"
+    },
+    {
+      "name": "Jerald Honeycutt (Import)",
+      "aliases": [
+        "Jerald Honeycutt"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/1/15/Jerald_Honeycutt_%282009%29.jpg"
+    },
+    {
+      "name": "Jercules Tangkay",
+      "imgURL": "https://www.eurobasket.com/photos/Tangkay_Jercules.jpg"
+    },
+    {
+      "name": "Jerod Ward (Import)",
+      "aliases": [
+        "Jerod Ward"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3e/Jerod_Ward.jpg/500px-Jerod_Ward.jpg"
+    },
+    {
+      "name": "Joey Mente",
+      "imgURL": "https://www.eurobasket.com/photos/Mente_Joey.jpg"
+    },
+    {
+      "name": "Juaquin Hawkins (Import)",
+      "aliases": [
+        "Juaquin Hawkins"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hawkins_Juaquin.jpg"
+    },
+    {
+      "name": "Kevin Freeman (Import)",
+      "aliases": [
+        "Kevin Freeman"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Freeman_Kevin.jpg"
+    },
+    {
+      "name": "Mark Jones (Import)",
+      "aliases": [
+        "Mark Jones"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Jones_Mark.jpg"
+    },
+    {
+      "name": "Marlon Basco",
+      "imgURL": "https://www.eurobasket.com/photos/Basco_Marlon.jpg"
+    },
+    {
+      "name": "Marvin Ortiguerra",
+      "imgURL": "https://www.eurobasket.com/photos/Ortiguerra_Marvin.jpg"
+    },
+    {
+      "name": "Nate Johnson (Import)",
+      "aliases": [
+        "Nate Johnson"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0b/MillerDavid.jpg/500px-MillerDavid.jpg"
+    },
+    {
+      "name": "Oliver Agapito",
+      "imgURL": "https://www.eurobasket.com/photos/Agapito_Oliver.png"
+    },
+    {
+      "name": "Ron Riley (Import)",
+      "aliases": [
+        "Ron Riley"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Riley_Ron.jpg"
+    },
+    {
+      "name": "Rosell Ellis (Import)",
+      "aliases": [
+        "Rosell Ellis"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Ellis_Rosell.jpg"
+    },
+    {
+      "name": "Tremaine Wingfield (Import)",
+      "aliases": [
+        "Tremaine Wingfield"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wingfield_Tremaine.jpg"
+    },
+    {
+      "name": "Ajani Williams (Import)",
+      "aliases": [
+        "Ajani Williams"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Williams_Ajani.jpg"
+    },
+    {
+      "name": "Art Long (Import)",
+      "aliases": [
+        "Art Long"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Long_Art.png"
+    },
+    {
+      "name": "Ben Davis (Import)",
+      "aliases": [
+        "Ben Davis"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Davis_Ben.jpg"
+    },
+    {
+      "name": "Bryant Basemore (Import)",
+      "aliases": [
+        "Bryant Basemore"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Basemore_Bryant.jpg"
+    },
+    {
+      "name": "Carlos Daniel (Import)",
+      "aliases": [
+        "Carlos Daniel"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Daniel_Carlos.jpg"
+    },
+    {
+      "name": "Chester Tolomia",
+      "imgURL": "https://www.eurobasket.com/photos/Tolomia_Chester.jpg"
+    },
+    {
+      "name": "Chito Victolero",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6b/Chito_Victolero7ab.jpg/500px-Chito_Victolero7ab.jpg"
+    },
+    {
+      "name": "Chris Morris (Import)",
+      "aliases": [
+        "Chris Morris"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/f/fb/Chris_Morris_basketball_1991.jpg"
+    },
+    {
+      "name": "Damon Flint (Import)",
+      "aliases": [
+        "Damon Flint"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Flint_Damon.jpg"
+    },
+    {
+      "name": "Danny Johnson (Import)",
+      "aliases": [
+        "Danny Johnson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Johnson_Danny.jpg"
+    },
+    {
+      "name": "Derek Grimm (Import)",
+      "aliases": [
+        "Derek Grimm"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Grimm_Derek.jpg"
+    },
+    {
+      "name": "Desmond Ferguson (Import)",
+      "aliases": [
+        "Desmond Ferguson"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Ferguson_Desmond.jpg"
+    },
+    {
+      "name": "Fred Williams (Import)",
+      "aliases": [
+        "Fred Williams"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Williams_Fred.jpg"
+    },
+    {
+      "name": "Gabe Muoneke (Import)",
+      "aliases": [
+        "Gabe Muoneke"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Muoneke_Gabe.jpg"
+    },
+    {
+      "name": "Gilbert Malabanan",
+      "imgURL": "https://www.eurobasket.com/photos/Malabanan_Gilbert.jpg"
+    },
+    {
+      "name": "Isaac Spencer (Import)",
+      "aliases": [
+        "Isaac Spencer"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e2/Isaac_Spencer.jpg/500px-Isaac_Spencer.jpg"
+    },
+    {
+      "name": "James Head (Import)",
+      "aliases": [
+        "James Head"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Head_James.jpg"
+    },
+    {
+      "name": "Jarrod Gee (Import)",
+      "aliases": [
+        "Jarrod Gee"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Barangay_Ginebra_San_Miguel_logo.png/250px-Barangay_Ginebra_San_Miguel_logo.png"
+    },
+    {
+      "name": "Jermaine Tate (Import)",
+      "aliases": [
+        "Jermaine Tate"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Tate_Jermaine.jpg"
+    },
+    {
+      "name": "Jermaine Walker (Import)",
+      "aliases": [
+        "Jermaine Walker"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Walker_Jermaine.jpg"
+    },
+    {
+      "name": "Joe Bunn (Import)",
+      "aliases": [
+        "Joe Bunn"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Bunn_Joe.jpg"
+    },
+    {
+      "name": "Johnny Taylor (Import)",
+      "aliases": [
+        "Johnny Taylor"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Taylor_Johnny.jpg"
+    },
+    {
+      "name": "Jojo Manalo",
+      "imgURL": "https://www.eurobasket.com/photos/Manalo_Jojo.jpg"
+    },
+    {
+      "name": "Keith Hill (Import)",
+      "aliases": [
+        "Keith Hill"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hill_Keith.jpg"
+    },
+    {
+      "name": "LeLand McDougal (Import)",
+      "aliases": [
+        "LeLand McDougal"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mcdougal_Leland.jpg"
+    },
+    {
+      "name": "Leonard White (Import)",
+      "aliases": [
+        "Leonard White"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/White_Leonard.jpg"
+    },
+    {
+      "name": "Mario Bennett (Import)",
+      "aliases": [
+        "Mario Bennett"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Bennett_Mario.jpg"
+    },
+    {
+      "name": "Mark Davis (Import)",
+      "aliases": [
+        "Mark Davis"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Davis_Mark.jpg"
+    },
+    {
+      "name": "Miguel Noble",
+      "imgURL": "https://www.eurobasket.com/photos/Noble_Miguel.jpg"
+    },
+    {
+      "name": "Muntrelle Dobbins (Import)",
+      "aliases": [
+        "Muntrelle Dobbins"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Dobbins_Muntrelle.jpg"
+    },
+    {
+      "name": "Nantambu Bu Willingham (Import)",
+      "aliases": [
+        "Nantambu Bu Willingham"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Willingham_Nantambu.jpg"
+    },
+    {
+      "name": "Rensy Bajar",
+      "imgURL": "https://www.eurobasket.com/photos/Bajar_Rensy.jpg"
+    },
+    {
+      "name": "Richard Richie Frahm (Import)",
+      "aliases": [
+        "Richard Richie Frahm"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/72/Richie_Frahm_Houston_Rockets_2006-03-29.jpg/500px-Richie_Frahm_Houston_Rockets_2006-03-29.jpg"
+    },
+    {
+      "name": "Ryan Bernardo",
+      "imgURL": "https://www.eurobasket.com/photos/Bernardo_Ryan.jpg"
+    },
+    {
+      "name": "Sean Lampley (Import)",
+      "aliases": [
+        "Sean Lampley"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Lampley_Sean.jpg"
+    },
+    {
+      "name": "Sedric Webber (Import)",
+      "aliases": [
+        "Sedric Webber"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Webber_Sedric.jpg"
+    },
+    {
+      "name": "Shea Seals (Import)",
+      "aliases": [
+        "Shea Seals"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Seals_Shea.jpg"
+    },
+    {
+      "name": "Tim Moore (Import)",
+      "aliases": [
+        "Tim Moore"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Moore_Tim.jpg"
+    },
+    {
+      "name": "Torraye Braggs (Import)",
+      "aliases": [
+        "Torraye Braggs"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Braggs_Torraye.jpg"
+    },
+    {
+      "name": "Victor Thomas (Import)",
+      "aliases": [
+        "Victor Thomas"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Thomas_Victor.jpg"
+    },
+    {
+      "name": "Willie Farley (Import)",
+      "aliases": [
+        "Willie Farley"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Farley_Willie.jpg"
+    },
+    {
+      "name": "Bernzon Franco",
+      "imgURL": "https://www.eurobasket.com/photos/Franco_Bernzon.jpg"
+    },
+    {
+      "name": "Chris Carrawell (Import)",
+      "aliases": [
+        "Chris Carrawell"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Carrawell_Chris.jpg"
+    },
+    {
+      "name": "Eugene Tejada",
+      "imgURL": "https://www.eurobasket.com/photos/Tejada_Eugene.jpg"
+    },
+    {
+      "name": "Isaac Fontaine (Import)",
+      "aliases": [
+        "Isaac Fontaine"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Fontaine_Isaac.jpg"
+    },
+    {
+      "name": "Stephen Padilla",
+      "imgURL": "https://www.eurobasket.com/photos/Padilla_Stephen.jpg"
+    },
+    {
+      "name": "Adrian Curtis",
+      "imgURL": "https://www.eurobasket.com/photos/Curtis_Adrian.jpg"
+    },
+    {
+      "name": "Alvin Jefferson",
+      "imgURL": "https://www.eurobasket.com/photos/Jefferson_Alvin.jpg"
+    },
+    {
+      "name": "Andre Brown (Import)",
+      "aliases": [
+        "Andre Brown"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Brown_Andre.jpg"
+    },
+    {
+      "name": "Anthony Miller (Import)",
+      "aliases": [
+        "Anthony Miller"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Miller_Anthony.jpg"
+    },
+    {
+      "name": "Antonio Espinosa",
+      "imgURL": "https://www.eurobasket.com/photos/Espinosa_Antonio.jpg"
+    },
+    {
+      "name": "Antonio Smith",
+      "imgURL": "https://www.eurobasket.com/photos/Smith_Antonio.jpg"
+    },
+    {
+      "name": "Bakari Hendrix (Import)",
+      "aliases": [
+        "Bakari Hendrix"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hendrix_Bakari.jpg"
+    },
+    {
+      "name": "Bingo Merriex",
+      "imgURL": "https://www.eurobasket.com/photos/Merriex_Bingo.jpg"
+    },
+    {
+      "name": "Brian Wethers (Import)",
+      "aliases": [
+        "Brian Wethers"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wethers_Brian.jpg"
+    },
+    {
+      "name": "Bruce Dacia",
+      "imgURL": "https://www.eurobasket.com/photos/Dacia_Bruce.jpg"
+    },
+    {
+      "name": "Carlos Wheeler",
+      "imgURL": "https://www.eurobasket.com/photos/Wheeler_Carlos.jpg"
+    },
+    {
+      "name": "Chris Burgess (Import)",
+      "aliases": [
+        "Chris Burgess"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/07/Chris_Burgess_as_BYU_Assistant_Coach_during_2019-20_season.jpg/500px-Chris_Burgess_as_BYU_Assistant_Coach_during_2019-20_season.jpg"
+    },
+    {
+      "name": "Cory Hightower (Import)",
+      "aliases": [
+        "Cory Hightower"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hightower_Cory.jpg"
+    },
+    {
+      "name": "Dalron Johnson",
+      "imgURL": "https://www.eurobasket.com/photos/Johnson_Dalron.jpg"
+    },
+    {
+      "name": "Darrell Johns",
+      "imgURL": "https://www.eurobasket.com/photos/Johns_Darrell.jpg"
+    },
+    {
+      "name": "DeAngelo Collins (Import)",
+      "aliases": [
+        "DeAngelo Collins"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Collins_Deangelo.jpg"
+    },
+    {
+      "name": "Dickey Simpkins (Import)",
+      "aliases": [
+        "Dickey Simpkins"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Simpkins_Dickey.png"
+    },
+    {
+      "name": "Earl Barron (Import)",
+      "aliases": [
+        "Earl Barron"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c5/Earl_Barron_2012.jpg/500px-Earl_Barron_2012.jpg"
+    },
+    {
+      "name": "Earl Ike",
+      "imgURL": "https://www.eurobasket.com/photos/Ike_Earl.jpg"
+    },
+    {
+      "name": "Eddie Elisma (Import)",
+      "aliases": [
+        "Eddie Elisma"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Elisma_Eddie.jpg"
+    },
+    {
+      "name": "Edgar Echavez",
+      "imgURL": "https://www.eurobasket.com/photos/Echavez_Edgar.jpg"
+    },
+    {
+      "name": "Galen Young (Import)",
+      "aliases": [
+        "Galen Young"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Young_Galen.jpg"
+    },
+    {
+      "name": "George Reese (Import)",
+      "aliases": [
+        "George Reese"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/d/d8/George_Reese_in_Poland.jpg"
+    },
+    {
+      "name": "Hiram Fuller (Import)",
+      "aliases": [
+        "Hiram Fuller"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Fuller_Hiram.jpg"
+    },
+    {
+      "name": "Jaja Richards",
+      "imgURL": "https://www.eurobasket.com/photos/Richards_Jaja.jpg"
+    },
+    {
+      "name": "Jameel Watkins (Import)",
+      "aliases": [
+        "Jameel Watkins"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ee/Jameel_Watkins.jpg/500px-Jameel_Watkins.jpg"
+    },
+    {
+      "name": "Joachim Sonny Thoss",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/3/3f/Sonny_Thoss_-_2015-1120.jpg"
+    },
+    {
+      "name": "Kalani Ferreira",
+      "imgURL": "https://www.eurobasket.com/photos/Ferreira_Kalani.jpg"
+    },
+    {
+      "name": "Kim Valenzuela",
+      "imgURL": "https://www.eurobasket.com/photos/Valenzuela_Kim.jpg"
+    },
+    {
+      "name": "Lorenzo Coleman (Import)",
+      "aliases": [
+        "Lorenzo Coleman"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Coleman_Lorenzo.jpg"
+    },
+    {
+      "name": "Manny Ramos",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Denok_Miranda.jpg/500px-Denok_Miranda.jpg"
+    },
+    {
+      "name": "Marcus Melvin",
+      "imgURL": "https://www.eurobasket.com/photos/Melvin_Marcus.jpg"
+    },
+    {
+      "name": "Marek Ondera",
+      "imgURL": "https://www.eurobasket.com/photos/Ondera_Marek.jpg"
+    },
+    {
+      "name": "Mark Sanford (Import)",
+      "aliases": [
+        "Mark Sanford"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/0/0c/Mark_Sanford_%28basketball%29_02.jpg/500px-Mark_Sanford_%28basketball%29_02.jpg"
+    },
+    {
+      "name": "Marlon Legaspi",
+      "imgURL": "https://www.eurobasket.com/photos/Legaspi_Marlon.jpg"
+    },
+    {
+      "name": "Melvin Robinson",
+      "imgURL": "https://www.eurobasket.com/photos/Robinson_Melvin.jpg"
+    },
+    {
+      "name": "Mike Bravo",
+      "imgURL": "https://www.eurobasket.com/photos/Bravo_Mike.jpg"
+    },
+    {
+      "name": "Mike Maddox",
+      "imgURL": "https://www.eurobasket.com/photos/Maddox_Mike.jpg"
+    },
+    {
+      "name": "Noel Felix (Import)",
+      "aliases": [
+        "Noel Felix"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Felix_Noel.jpg"
+    },
+    {
+      "name": "Peter June Simon",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/8/83/Peter_June_Simon_at_a_Purefoods_practice.jpg"
+    },
+    {
+      "name": "Randy Holcomb (Import)",
+      "aliases": [
+        "Randy Holcomb"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Holcomb_Randy.jpg"
+    },
+    {
+      "name": "Rich Alvarez",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f8/Rich_Alvarez_2007.jpg/500px-Rich_Alvarez_2007.jpg"
+    },
+    {
+      "name": "Richard Jeter",
+      "imgURL": "https://www.eurobasket.com/photos/Jeter_Richard.jpg"
+    },
+    {
+      "name": "Rob Johnson",
+      "imgURL": "https://statsspace01.sgp1.digitaloceanspaces.com/organizer/people/429/photo_L1.png"
+    },
+    {
+      "name": "Ronald Cuan",
+      "imgURL": "https://www.eurobasket.com/photos/Cuan_Ronald.jpg"
+    },
+    {
+      "name": "Tommy Smith (Import)",
+      "aliases": [
+        "Tommy Smith"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Smith_Tommy.jpg"
+    },
+    {
+      "name": "Tyrone Washington (Import)",
+      "aliases": [
+        "Tyrone Washington"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Washington_Tyrone.jpg"
+    },
+    {
+      "name": "Wesley Wilson",
+      "imgURL": "https://www.eurobasket.com/photos/Wilson_Wesley.jpg"
+    },
+    {
+      "name": "Artemus McClary (Import)",
+      "aliases": [
+        "Artemus McClary"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Mcclary_Artemus.jpg"
+    },
+    {
+      "name": "Chris Porter (Import)",
+      "aliases": [
+        "Chris Porter"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Porter_Chris.jpg"
+    },
+    {
+      "name": "Damien Cantrell (Import)",
+      "aliases": [
+        "Damien Cantrell"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Cantrell_Damien.jpg"
+    },
+    {
+      "name": "Darvin Ham (Import)",
+      "aliases": [
+        "Darvin Ham"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/7/74/Darvin_Ham_White_House_2021.jpg"
+    },
+    {
+      "name": "Luke Whitehead (Import)",
+      "aliases": [
+        "Luke Whitehead"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Whitehead_Luke.jpg"
+    },
+    {
+      "name": "Marquin Chandler (Import)",
+      "aliases": [
+        "Marquin Chandler"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/f/f5/Marquin_Chandler.JPG/500px-Marquin_Chandler.JPG"
+    },
+    {
+      "name": "Neil Raneses",
+      "imgURL": "https://www.eurobasket.com/photos/Raneses_Neil.jpg"
+    },
+    {
+      "name": "Odell Bradley (Import)",
+      "aliases": [
+        "Odell Bradley"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Bradley_Odell.jpg"
+    },
+    {
+      "name": "Omar Thomas (Import)",
+      "aliases": [
+        "Omar Thomas"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/1/15/Omar_Thomas_%282011%29.jpg"
+    },
+    {
+      "name": "Omar Weaver (Import)",
+      "aliases": [
+        "Omar Weaver"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Weaver_Omar.jpg"
+    },
+    {
+      "name": "Rico Hill (Import)",
+      "aliases": [
+        "Rico Hill"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Hill_Rico.jpg"
+    },
+    {
+      "name": "Shawn Daniels (Import)",
+      "aliases": [
+        "Shawn Daniels"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Daniels_Shawn.jpg"
+    },
+    {
+      "name": "Bruce Viray",
+      "imgURL": "https://www.eurobasket.com/photos/Viray_Bruce.jpg"
+    },
+    {
+      "name": "Christopher Daniels (Import)",
+      "aliases": [
+        "Christopher Daniels"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/7d/Christopher_Daniels_2011.jpg/250px-Christopher_Daniels_2011.jpg"
+    },
+    {
+      "name": "Denham Brown (Import)",
+      "aliases": [
+        "Denham Brown"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Brown_Denham.jpg"
+    },
+    {
+      "name": "Doug Kramer",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/94/Doug_Kramer.jpeg/500px-Doug_Kramer.jpeg"
+    },
+    {
+      "name": "Erick Rodriguez",
+      "imgURL": "https://www.eurobasket.com/photos/Rodriguez_Erick.jpg"
+    },
+    {
+      "name": "Jai Lewis (Import)",
+      "aliases": [
+        "Jai Lewis"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c1/Jai_lewis.jpg/500px-Jai_lewis.jpg"
+    },
+    {
+      "name": "John Williamson (Import)",
+      "aliases": [
+        "John Williamson"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/ce/Diamon_Simpson.jpg/500px-Diamon_Simpson.jpg"
+    },
+    {
+      "name": "Keena Young (Import)",
+      "aliases": [
+        "Keena Young"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Young_Keena.jpg"
+    },
+    {
+      "name": "Lorrenzo Wade (Import)",
+      "aliases": [
+        "Lorrenzo Wade"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Wade_Lorrenzo.jpg"
+    },
+    {
+      "name": "Mildon Ambres (Import)",
+      "aliases": [
+        "Mildon Ambres"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Ambres_Mildon.jpg"
+    },
+    {
+      "name": "Rashad Bell (Import)",
+      "aliases": [
+        "Rashad Bell"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/38/Rashad_Bell%2C_May_2018_%28cropped%29.jpg/500px-Rashad_Bell%2C_May_2018_%28cropped%29.jpg"
+    },
+    {
+      "name": "Reggie Larry",
+      "imgURL": "https://www.eurobasket.com/photos/Larry_Reggie.jpg"
+    },
+    {
+      "name": "Rod Nealy (Import)",
+      "aliases": [
+        "Rod Nealy"
+      ],
+      "imgURL": "https://www.eurobasket.com/photos/Nealy_Rod.jpg"
+    },
+    {
+      "name": "Rogemar Ogie Menor",
+      "imgURL": "https://www.eurobasket.com/photos/Menor_Rogemar.jpg"
+    },
+    {
+      "name": "Tony Washam Jr.",
+      "imgURL": "https://www.eurobasket.com/photos/Washam_Tony.jpg"
+    },
+    {
+      "name": "Jack Hartman (Import)",
+      "aliases": [
+        "Jack Hartman"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/8/8c/Jack_Hartman.jpg/250px-Jack_Hartman.jpg"
+    },
+    {
+      "name": "Roy Hammonds (Import)",
+      "aliases": [
+        "Roy Hammonds"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/2/24/Barangay_Ginebra_San_Miguel_logo.png/250px-Barangay_Ginebra_San_Miguel_logo.png"
+    },
+    {
+      "name": "Sean Green (Import)",
+      "aliases": [
+        "Sean Green"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e4/Seangreen.jpg/250px-Seangreen.jpg"
+    },
+    {
+      "name": "Terrence Shannon (Import)",
+      "aliases": [
+        "Terrence Shannon"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/1/13/Terrence_Shannon_Jr.jpg/250px-Terrence_Shannon_Jr.jpg"
+    },
+    {
+      "name": "Nate James (Import)",
+      "aliases": [
+        "Nate James"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9a/Nate_James_.jpg/250px-Nate_James_.jpg"
+    },
+    {
+      "name": "Ricky Price (Import)",
+      "aliases": [
+        "Ricky Price"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/da/Ricky_Price.JPG/250px-Ricky_Price.JPG"
+    },
+    {
+      "name": "Christian Luanzon",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c3/Christian_Luanzon.jpg/250px-Christian_Luanzon.jpg"
+    },
+    {
+      "name": "Boyet Bautista",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/f/f8/Boyet1.png"
+    },
+    {
+      "name": "Gabby Espinas",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/c/c2/Gabby_Espinas_2024.jpg/250px-Gabby_Espinas_2024.jpg"
+    },
+    {
+      "name": "Patrick Cabahug",
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/thumb/e/e5/PBA_-_Globalport_vs_Barako_Bull_-_Terrence_Romeo-GlobalPort_-_2015-1225_%2823953044826%29_%2823979254095%29.jpg/250px-PBA_-_Globalport_vs_Barako_Bull_-_Terrence_Romeo-GlobalPort_-_2015-1225_%2823953044826%29_%2823979254095%29.jpg"
+    },
+    {
+      "name": "Bol Bol (Import)",
+      "aliases": [
+        "Bol Bol"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/e/e4/Bol_Bol.png"
+    },
+    {
+      "name": "Cameron Clark (Import)",
+      "aliases": [
+        "Cameron Clark"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/e/e5/Caitlin_Clark_2025_2_%28cropped%29.jpg"
+    },
+    {
+      "name": "Kobey Lam (Import)",
+      "aliases": [
+        "Kobey Lam"
+      ],
+      "imgURL": "https://upload.wikimedia.org/wikipedia/commons/3/3b/Denver_Pioneers_%28old%29_logo.svg"
+    }
+  ]
+}

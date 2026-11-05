@@ -1,0 +1,5 @@
+Boxes, Suites, and Tables — center
+==================================
+
+VALKYRIES	sections/valkyries-center.svg
+VIP	sections/vip-center.svg

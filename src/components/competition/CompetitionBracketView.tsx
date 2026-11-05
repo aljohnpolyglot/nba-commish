@@ -1,122 +1,31 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { motion } from 'motion/react';
-import { Trophy, ChevronLeft, ChevronRight, FastForward, Play, SkipForward } from 'lucide-react';
+import { Trophy, ChevronLeft, ChevronRight, Eye, FastForward, Play, SkipForward } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { normalizeDate } from '../../utils/helpers';
+import { getOwnTeamId, normalizeDate } from '../../utils/helpers';
 import { resolveCompetitionSeason } from '../../services/competition/competitionResolver';
 import { selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
-import { dateForCompetitionSeason, matchesBoxScoreSeason } from '../../services/competition/competitionSeasonState';
-import { competitionSeasonForBox } from '../../services/pba/competitionGames';
+import { dateForCompetitionSeason, matchesScheduleSeason } from '../../services/competition/competitionSeasonState';
 import { BracketColumn } from '../playoffs/bracket/BracketColumn';
 import { SeriesCard } from '../playoffs/bracket/SeriesCard';
 import { SeriesDetailPanel } from '../playoffs/detail/SeriesDetailPanel';
 import type { PlayoffSeries, PlayoffBracket, NBATeam, Game, GameResult } from '../../types';
 import type { CompetitionKnockoutMatch } from '../../services/competition/competitionResolver';
-import type { CompetitionSpec } from '../../services/competition/types';
 import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
 import { getTeamFullName } from '../../utils/teamNames';
-import { findBoxScoreForGame } from '../../utils/boxScoreLookup';
+import { CompetitionGroupStandings } from './CompetitionGroupStandings';
+import {
+  countCompetitionSeriesWins,
+  matchesCompetitionSeason,
+  maxDateString,
+  PHASE_FOR_ROUND,
+  ROUND_NUMBER,
+} from './competitionBracketUtils';
 
-interface Props {
-  specId: string;
-}
-
-const ROUND_NUMBER: Record<CompetitionKnockoutMatch['round'], 1 | 2 | 3 | 4> = {
-  'play-in': 1,
-  'quarterfinal': 2,
-  'semifinal': 3,
-  'final': 4,
-};
-
-const PHASE_FOR_ROUND: Record<CompetitionKnockoutMatch['round'], 'play-in' | 'qf' | 'sf' | 'final'> = {
-  'play-in': 'play-in',
-  'quarterfinal': 'qf',
-  'semifinal': 'sf',
-  'final': 'final',
-};
-
-const matchesCompetitionSeason = (game: GameResult, spec: CompetitionSpec, season: number): boolean => {
-  if (spec.id.startsWith('pba-')) {
-    return competitionSeasonForBox(spec as any, game) === season;
-  }
-  return matchesBoxScoreSeason(game, season);
-};
-
-const maxDateString = (dates: Array<string | null | undefined>): string | null =>
-  dates
-    .filter((date): date is string => !!date)
-    .map(normalizeDate)
-    .sort()
-    .at(-1) ?? null;
-
-const countWins = (
-  match: CompetitionKnockoutMatch,
-  spec: CompetitionSpec,
-  competitionId: string,
-  phase: 'play-in' | 'qf' | 'sf' | 'final',
-  boxScores: GameResult[],
-  season: number,
-  seriesGames: Game[],
-): { high: number; low: number; complete: boolean; winnerTid?: number } => {
-  let high = 0;
-  let low = 0;
-  const maxGames = match.maxGames ?? match.bestOf;
-  const addWinner = (winner: number) => {
-    if (winner === match.highSeedTid) high++;
-    else if (winner === match.lowSeedTid) low++;
-  };
-  const currentWinner = () => {
-    const highNeeded = match.higherSeedWinsNeeded ?? Math.ceil(match.bestOf / 2);
-    const lowNeeded = match.lowerSeedWinsNeeded ?? Math.ceil(match.bestOf / 2);
-    return low >= lowNeeded
-      ? match.lowSeedTid
-      : high >= highNeeded
-        ? match.highSeedTid
-        : undefined;
-  };
-
-  let countedGames = 0;
-  for (const scheduledGame of seriesGames) {
-    const game = findBoxScoreForGame(boxScores, scheduledGame.gid, scheduledGame.date, {
-      homeTid: scheduledGame.homeTid,
-      awayTid: scheduledGame.awayTid,
-    });
-    if (!game) continue;
-    if (game.competitionId !== competitionId || game.competitionPhase !== phase) continue;
-    if (!matchesCompetitionSeason(game, spec, season)) continue;
-    const winner = game.homeScore > game.awayScore ? game.homeTeamId : game.awayTeamId;
-    addWinner(winner);
-    countedGames++;
-    if (countedGames >= maxGames || currentWinner() != null) break;
-  }
-
-  if (countedGames === 0) {
-    const fallbackGames = boxScores
-      .filter(game =>
-        game.competitionId === competitionId &&
-        game.competitionPhase === phase &&
-        matchesCompetitionSeason(game, spec, season) &&
-        ((game.homeTeamId === match.highSeedTid && game.awayTeamId === match.lowSeedTid) ||
-          (game.homeTeamId === match.lowSeedTid && game.awayTeamId === match.highSeedTid)),
-      )
-      .sort((a: any, b: any) =>
-        normalizeDate(a.date ?? '').localeCompare(normalizeDate(b.date ?? '')) ||
-        Number(a.gameId ?? a.gid ?? 0) - Number(b.gameId ?? b.gid ?? 0),
-      );
-    for (const game of fallbackGames.slice(0, maxGames)) {
-      const winner = game.homeScore > game.awayScore ? game.homeTeamId : game.awayTeamId;
-      addWinner(winner);
-      if (currentWinner() != null) break;
-    }
-  }
-
-  const winnerTid = currentWinner();
-  const complete = winnerTid != null;
-  return { high, low, complete, winnerTid };
-};
-
+interface Props { specId: string; }
 export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
   const { state, dispatchAction } = useGame();
+  const ownTid = getOwnTeamId(state);
   const spec = state.activeCompetitions?.find(c => c.id === specId);
   const rawSeason = state.leagueStats?.year ?? new Date().getFullYear();
   const preparedPbaSeason = Number((state.leagueStats as any)?.pbaYearEndRolloverPreparedSeason);
@@ -133,7 +42,6 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
     if (!spec) return null;
     return resolveCompetitionSeason(spec, state.boxScores as GameResult[], season, seedTids);
   }, [spec, state.boxScores, season, seedTids]);
-
   const [selectedSeriesId, setSelectedSeriesId] = useState<string | null>(null);
   const [selectedGameIdx, setSelectedGameIdx] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -163,11 +71,12 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
       .filter(game =>
         game.competitionId === spec.id &&
         game.competitionPhase === phase &&
+        matchesScheduleSeason(game, season) &&
         ((game.homeTid === m.highSeedTid && game.awayTid === m.lowSeedTid) ||
           (game.homeTid === m.lowSeedTid && game.awayTid === m.highSeedTid)),
       )
       .sort((a, b) => normalizeDate(a.date).localeCompare(normalizeDate(b.date)) || a.gid - b.gid);
-    const counts = countWins(m, spec, spec.id, phase, state.boxScores as GameResult[], season, seriesGames);
+    const counts = countCompetitionSeriesWins(m, spec, spec.id, phase, state.boxScores as GameResult[], season, seriesGames);
     return {
       id: `${spec.id}-${m.round}-${idx}`,
       round: ROUND_NUMBER[m.round],
@@ -184,9 +93,10 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
       status: counts.complete ? 'complete' : (counts.high + counts.low > 0 ? 'active' : 'pending'),
     };
   };
-
   const hasPhaseMaterialized = (phase: 'play-in' | 'qf' | 'sf' | 'final'): boolean =>
-    (state.schedule as Game[]).some(game => game.competitionId === spec.id && game.competitionPhase === phase) ||
+    (state.schedule as Game[]).some(game =>
+      game.competitionId === spec.id && game.competitionPhase === phase && matchesScheduleSeason(game, season)
+    ) ||
     (state.boxScores as GameResult[]).some(game =>
       game.competitionId === spec.id &&
       game.competitionPhase === phase &&
@@ -203,18 +113,46 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
   const playInComplete = spec.id !== 'euroleague' ||
     (playInSeriesRaw.length === resolution.playInMatches.length && playInSeriesRaw.every(series => series.status === 'complete'));
   const playInSeries = playInSeriesRaw;
-  const qfMatches = resolution.knockoutMatches.filter(m => m.round === 'quarterfinal');
-  const sfMatches = resolution.knockoutMatches.filter(m => m.round === 'semifinal');
-  const finalMatch = resolution.knockoutMatches.find(m => m.round === 'final');
+  const scheduledMatchesForRound = (
+    phase: 'qf' | 'sf' | 'final',
+    round: CompetitionKnockoutMatch['round'],
+  ): CompetitionKnockoutMatch[] => {
+    const grouped = new Map<string, Game[]>();
+    for (const game of state.schedule as Game[]) {
+      if (game.competitionId !== spec.id || game.competitionPhase !== phase || !matchesScheduleSeason(game, season)) continue;
+      const key = [game.homeTid, game.awayTid].sort((left, right) => left - right).join(':');
+      grouped.set(key, [...(grouped.get(key) ?? []), game]);
+    }
+    return [...grouped.values()].map(games => {
+      const first = games[0];
+      const homeSeed = resolution.standings.find(row => row.tid === first.homeTid)?.seed ?? Number.MAX_SAFE_INTEGER;
+      const awaySeed = resolution.standings.find(row => row.tid === first.awayTid)?.seed ?? Number.MAX_SAFE_INTEGER;
+      const highSeedTid = homeSeed <= awaySeed ? first.homeTid : first.awayTid;
+      const lowSeedTid = highSeedTid === first.homeTid ? first.awayTid : first.homeTid;
+      return {
+        round,
+        highSeedTid,
+        lowSeedTid,
+        winnerTid: highSeedTid,
+        loserTid: lowSeedTid,
+        bestOf: Math.max(1, games.length),
+      };
+    });
+  };
+  const resolvedQfMatches = resolution.knockoutMatches.filter(m => m.round === 'quarterfinal');
+  const resolvedSfMatches = resolution.knockoutMatches.filter(m => m.round === 'semifinal');
+  const resolvedFinalMatch = resolution.knockoutMatches.find(m => m.round === 'final');
+  const qfMatches = resolvedQfMatches.length > 0 ? resolvedQfMatches : scheduledMatchesForRound('qf', 'quarterfinal');
+  const sfMatches = resolvedSfMatches.length > 0 ? resolvedSfMatches : scheduledMatchesForRound('sf', 'semifinal');
+  const finalMatch = resolvedFinalMatch ?? scheduledMatchesForRound('final', 'final')[0];
   const qfSeries = hasPhaseMaterialized('qf') && playInComplete ? qfMatches.map(buildSeries) : [];
-  const qfComplete = qfSeries.length === qfMatches.length && qfSeries.length > 0 && qfSeries.every(series => series.status === 'complete');
-  const showBracketPath = qfSeries.length > 0;
-  const sfSeries = showBracketPath && hasPhaseMaterialized('sf') ? sfMatches.map(buildSeries) : [];
+  const qfComplete = qfMatches.length === 0
+    || (qfSeries.length === qfMatches.length && qfSeries.every(series => series.status === 'complete'));
+  const sfSeries = qfComplete && hasPhaseMaterialized('sf') ? sfMatches.map(buildSeries) : [];
   const sfComplete = sfSeries.length === sfMatches.length && sfSeries.length > 0 && sfSeries.every(series => series.status === 'complete');
-  const finalSeries = showBracketPath && hasPhaseMaterialized('final') && finalMatch ? buildSeries(finalMatch, 0) : null;
+  const finalSeries = sfComplete && hasPhaseMaterialized('final') && finalMatch ? buildSeries(finalMatch, 0) : null;
 
   const allSeries: PlayoffSeries[] = [...playInSeries, ...qfSeries, ...sfSeries, ...(finalSeries ? [finalSeries] : [])];
-
   const externalTeamsAsNBA: NBATeam[] = (state.nonNBATeams ?? []).map(t => ({
     id: t.tid,
     name: (t as any).name,
@@ -228,7 +166,6 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
     losses: 0,
   } as unknown as NBATeam));
   const teams: NBATeam[] = [...state.teams, ...externalTeamsAsNBA];
-
   const fakeBracket = { series: allSeries, playInGames: [], status: 'knockout' } as unknown as PlayoffBracket;
   const scheduleForBracket = (() => {
     const seriesByGameId = new Map<number, { id: string; gameNumber: number }>();
@@ -262,10 +199,21 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
     setSelectedGameIdx(Math.max(0, playedCount - 1));
   };
   const noKnockoutYet = !anyPhaseMaterialized;
+  const groupCount = Math.max(1, Number(spec.groupCount ?? 1));
+  const hasGroupStage = groupCount > 1;
+  const qualifierCount = qfMatches.length > 0 ? 8 : 4;
+  const bracketPendingCopy = hasGroupStage
+    ? 'The Final Four bracket appears when the group stage is complete.'
+    : spec.format === 'regular-league'
+      ? 'The playoff bracket appears when the regular season is complete.'
+      : spec.qualificationRule === 'domestic-titleholders'
+        ? 'The bracket appears when the titleholder field is confirmed.'
+        : 'The bracket appears when the tournament field is confirmed.';
 
   const compUnplayedGames = (state.schedule as Game[])
     .filter(g =>
       g.competitionId === spec.id &&
+      matchesScheduleSeason(g, season) &&
       !g.played &&
       ['play-in', 'qf', 'sf', 'final'].includes(String((g as any).competitionPhase))
     )
@@ -329,9 +277,12 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
     fallbackRoundEndDate,
   ]);
 
-  const simTo = (targetIsoOrDate: string) => {
+  const simTo = (targetIsoOrDate: string, stopBefore = false) => {
     const targetDate = normalizeDate(targetIsoOrDate);
-    dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: targetDate < today ? today : targetDate } } as any);
+    dispatchAction({
+      type: 'SIMULATE_TO_DATE',
+      payload: { targetDate: targetDate < today ? today : targetDate, ...(stopBefore ? { stopBefore: true } : {}) },
+    } as any);
   };
   const simToChampion = () => {
     if (!lastPlayoffDate) return;
@@ -386,6 +337,9 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
         {!championTeam && anyPhaseMaterialized && (
           <div className="mt-4 flex flex-wrap gap-2">
             <SimButton onClick={simOneDay} icon={Play}>Sim 1 Day</SimButton>
+            <SimButton onClick={() => nextActionDate && simTo(nextActionDate, true)} disabled={!nextActionDate} icon={Eye}>
+              Watch Next Game
+            </SimButton>
             <SimButton onClick={() => nextActionDate && simTo(nextActionDate)} disabled={!nextActionDate} icon={SkipForward}>
               Sim Next Game
             </SimButton>
@@ -401,13 +355,26 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
         )}
       </div>
 
+      {hasGroupStage && (
+        <CompetitionGroupStandings
+          groupCount={groupCount}
+          seedTids={seedTids}
+          standings={resolution.standings}
+          teams={teams}
+          qualifierCount={qualifierCount}
+          accentColor={accent}
+          ownTid={ownTid}
+          spec={spec}
+          season={season}
+          games={state.boxScores as GameResult[]}
+        />
+      )}
+
       {noKnockoutYet ? (
         <div className="rounded-2xl border border-dashed border-slate-700 bg-slate-950/40 p-12 text-center">
           <Trophy className="w-10 h-10 mx-auto text-slate-700 mb-3" />
-          <div className="text-sm font-bold text-slate-400">Bracket is set after the regular season ends.</div>
-          <div className="text-xs text-slate-600 mt-1">
-            Standings → seeds → knockout games will appear here automatically.
-          </div>
+          <div className="text-sm font-bold text-slate-400">{bracketPendingCopy}</div>
+          <div className="mt-1 text-xs text-slate-600">Qualified clubs and actual game winners determine every next round.</div>
         </div>
       ) : (
         <div className="relative w-full">
@@ -443,6 +410,7 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
                   selectedSeriesId={selectedSeriesId}
                   justify="space-between"
                   baseDelay={0.1}
+                  ownTid={ownTid}
                 />
               )}
               {qfSeries.length > 0 && (
@@ -458,6 +426,7 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
                   selectedSeriesId={selectedSeriesId}
                   justify="space-between"
                   baseDelay={0.2}
+                  ownTid={ownTid}
                 />
               )}
               {sfSeries.length > 0 && (
@@ -473,6 +442,7 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
                   selectedSeriesId={selectedSeriesId}
                   justify="space-around"
                   baseDelay={0.35}
+                  ownTid={ownTid}
                 />
               )}
               {finalSeries && (
@@ -498,6 +468,7 @@ export const CompetitionBracketView: React.FC<Props> = ({ specId }) => {
                       onClick={() => handleSeriesClick(finalSeries.id)}
                       label="Final TBD"
                       delay={0.55}
+                      ownTid={ownTid}
                     />
                   ) : (
                     <div className="flex items-center justify-center bg-white/[0.02] border border-dashed border-amber-500/20 rounded-xl w-48 min-h-[80px]">

@@ -10,6 +10,15 @@ import { CompetitionBadge } from '../../../competition/CompetitionBadge';
 import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../../utils/uiMode';
 import { findBoxScoreForGame } from '../../../../utils/boxScoreLookup';
+import { isDraftLotteryEnabled } from '../../../../lib/lotteryPresets';
+import { buildDraftProspects } from '../../../draft/DraftSimulatorView.helpers';
+import { didHomeTeamWin, getWinningTeamId } from '../../../../utils/gameOutcome';
+import { isLeagueTrainingCampWindow } from '../../../../services/leagueCalendar';
+import { getPlayerImage } from '../../../../utils/playerImage';
+import { getResolvedTeamLogoUrl } from '../../../../utils/teamAssets';
+import { PlayerPortrait } from '../../../shared/PlayerPortrait';
+import { TimeService } from '../../../../services/time/TimeService';
+import { formatPlayoffSeriesSnapshot, getPlayoffSeriesSnapshot } from '../playoffSeriesSnapshot';
 
 interface DayViewProps {
   selectedDate: string;
@@ -29,7 +38,7 @@ interface DayViewProps {
   onWatchShootingStars: () => void;
   onWatchSkillsChallenge: () => void;
   onWatchHorse: () => void;
-  onViewContestDetails: (type: 'dunk' | 'three') => void;
+  onViewContestDetails: (type: 'dunk' | 'three' | 'skills' | 'shooting-stars') => void;
   onViewBoxScore: (game: Game) => void;
   maxSimulatableDate: Date;
   openConfirmModal: (title: string, message: string, onConfirm: () => void) => void;
@@ -40,6 +49,7 @@ interface DayViewProps {
   onNavigateToDraftBoard?: () => void;
   onNavigateToSeasonPreview?: () => void;
   headerSlot?: React.ReactNode;
+  focusGameId?: number;
 }
 
 export const DayView: React.FC<DayViewProps> = ({
@@ -71,6 +81,7 @@ export const DayView: React.FC<DayViewProps> = ({
   onNavigateToDraftBoard,
   onNavigateToSeasonPreview,
   headerSlot,
+  focusGameId,
 }) => {
   const labels = useLeagueLabels();
   const euroIsolated = isEuroIsolatedMode(state);
@@ -79,19 +90,21 @@ export const DayView: React.FC<DayViewProps> = ({
   const stateDateNorm = normalizeDate(state.date);
   const selectedDateNorm = normalizeDate(selectedDate);
   const isActuallyToday = selectedDateNorm === stateDateNorm;
+  const currentDayCommitted = isActuallyToday && TimeService.isScheduledDayCommitted(stateDateNorm, state.schedule ?? []);
   const ownTid = getOwnTeamId(state);
 
-  const [year, month, day] = selectedDateNorm.split('-').map(Number);
   const ls = state?.leagueStats;
+  const year = Number(selectedDateNorm.slice(0, 4));
   const seasonYear: number = ls?.year ?? year;
+  const logoFor = (team: any) => team ? getResolvedTeamLogoUrl(team, seasonYear) : '';
   const allStarGameDate   = getAllStarGameDate(seasonYear, ls);
   const allStarGameStr    = toISODateString(allStarGameDate);
   const allStarSatStr     = toISODateString(new Date(allStarGameDate.getTime() - 1 * 86_400_000));
   const allStarFriStr     = toISODateString(new Date(allStarGameDate.getTime() - 2 * 86_400_000));
-  const isRisingStarsDay    = selectedDateNorm === allStarFriStr;
+  const isRisingStarsDay    = !pbaIsolated && selectedDateNorm === allStarFriStr;
   const isSaturdayEventsDay = selectedDateNorm === allStarSatStr;
   const isAllStarGameDay    = selectedDateNorm === allStarGameStr;
-  const isCelebrityGameDay  = selectedDateNorm === allStarFriStr;
+  const isCelebrityGameDay  = !pbaIsolated && selectedDateNorm === allStarFriStr;
 
   const isAllStarWeekend = !euroIsolated && (isRisingStarsDay || isSaturdayEventsDay || isAllStarGameDay || isCelebrityGameDay);
 
@@ -99,12 +112,14 @@ export const DayView: React.FC<DayViewProps> = ({
   const draftLotteryDateStr = toISODateString(getDraftLotteryDate(seasonYear, ls));
   const draftDateStr        = toISODateString(getDraftDate(seasonYear, ls));
   const draftBlockedByPlayoffs = isDraftBlockedByUnresolvedPlayoffs(state);
-  const isDraftLotteryDay   = !pbaIsolated && !noDraft && selectedDateNorm === draftLotteryDateStr;
+  const isDraftLotteryDay   = !pbaIsolated && !noDraft && isDraftLotteryEnabled(ls?.draftType) && selectedDateNorm === draftLotteryDateStr;
   const isNBADraftDay       = !pbaIsolated && !noDraft && selectedDateNorm === draftDateStr && !draftBlockedByPlayoffs;
 
-  // Season Preview — shows throughout October (training camp → opening night) until dismissed
-  const isPreseasonMonth = month === 10;
-  const showSeasonPreviewCard = !euroIsolated && !pbaIsolated && isPreseasonMonth && !state?.seasonPreviewDismissed && !!state?.seasonHistory?.length;
+  const showSeasonPreviewCard = !euroIsolated
+    && !pbaIsolated
+    && isLeagueTrainingCampWindow(selectedDateNorm, ls)
+    && !state?.seasonPreviewDismissed
+    && !!state?.seasonHistory?.length;
 
   // Non-playoff teams sorted by worst record (for lottery odds display)
   const lotteryTeams = useMemo(() => {
@@ -122,15 +137,14 @@ export const DayView: React.FC<DayViewProps> = ({
     return nonPlayoff.sort((a, b) => (a.wins - a.losses) - (b.wins - b.losses)).slice(0, 14);
   }, [isDraftLotteryDay, state?.teams, state?.playoffs]);
 
-  // Top draft prospects for NBA Draft card — only undrafted (tid === -2) players, excludes
-  // anyone who has already been picked (tid changed to a real team by DraftSimulatorView).
   const topProspects = useMemo(() => {
-    if (!players) return [];
-    return players
-      .filter(p => p.tid === -2)
-      .sort((a, b) => (b.overallRating ?? 0) - (a.overallRating ?? 0))
-      .slice(0, 5);
-  }, [players]);
+    return buildDraftProspects(
+      players ?? state?.players ?? [],
+      seasonYear,
+      false,
+      ls,
+    ).slice(0, 5);
+  }, [players, state?.players, seasonYear, ls]);
 
   const selectedDateUTC = new Date(`${selectedDateNorm}T00:00:00Z`);
   const stateDateUTC = new Date(`${stateDateNorm}T00:00:00Z`);
@@ -140,7 +154,7 @@ export const DayView: React.FC<DayViewProps> = ({
     if (!game.played || !boxScores || !players) return null;
     const boxScore = findBoxScoreForGame(boxScores as any, game.gid, game.date);
     if (!boxScore) return null;
-    const winnerId = game.homeScore > game.awayScore ? game.homeTid : game.awayTid;
+    const winnerId = Number(getWinningTeamId(game));
     const winnerStats = winnerId === game.homeTid
       ? boxScore.homeStats
       : boxScore.awayStats;
@@ -157,7 +171,7 @@ export const DayView: React.FC<DayViewProps> = ({
     return {
       name: best.name,
       statLine: parts.join(' · '),
-      imgURL: player?.imgURL,
+      player,
     };
   };
 
@@ -169,6 +183,7 @@ export const DayView: React.FC<DayViewProps> = ({
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setViewMode('calendar')}
+              aria-label="Back to calendar"
               className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-all"
             >
               <ChevronLeft size={20} />
@@ -191,6 +206,7 @@ export const DayView: React.FC<DayViewProps> = ({
                 d.setUTCDate(d.getUTCDate() - 1);
                 setSelectedDate(d.toISOString());
               }}
+              aria-label="Previous day"
               className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all"
             >
               <ChevronLeft size={18} />
@@ -201,6 +217,7 @@ export const DayView: React.FC<DayViewProps> = ({
                 d.setUTCDate(d.getUTCDate() + 1);
                 setSelectedDate(d.toISOString());
               }}
+              aria-label="Next day"
               className="p-2 rounded-lg bg-white/5 border border-white/10 text-slate-400 hover:text-white transition-all"
             >
               <ChevronRight size={18} />
@@ -211,7 +228,7 @@ export const DayView: React.FC<DayViewProps> = ({
         {headerSlot}
 
         <div className="flex flex-wrap items-center gap-2 mb-8">
-          <button
+          {!currentDayCommitted && <button
             onClick={() => simulateDay()}
             disabled={state.isSimulating || !isActuallyToday}
             className={`px-4 py-2 rounded-xl font-bold text-[10px] uppercase tracking-widest transition-all flex items-center gap-2 ${
@@ -222,7 +239,7 @@ export const DayView: React.FC<DayViewProps> = ({
           >
             <Play size={14} fill="currentColor" />
             Simulate Day
-          </button>
+          </button>}
           
           <button
             onClick={() => openConfirmModal('Simulate to Date', `Simulate until ${formatDateDisplay(selectedDate)}?`, () => simulateToDate(selectedDate))}
@@ -297,8 +314,8 @@ export const DayView: React.FC<DayViewProps> = ({
                         return (
                           <div key={team.id} className="flex items-center gap-2 bg-white/5 rounded-lg p-2">
                             <span className="text-[10px] font-black text-slate-600 w-4 text-right">{idx + 1}</span>
-                            {(team as any).logoUrl && (
-                              <img src={(team as any).logoUrl} className="w-5 h-5 object-contain shrink-0" alt={team.abbrev} referrerPolicy="no-referrer" />
+                            {logoFor(team) && (
+                              <img src={logoFor(team)} className="w-5 h-5 object-contain shrink-0" alt={team.abbrev} referrerPolicy="no-referrer" />
                             )}
                             <div className="flex-1 min-w-0">
                               <div className="text-[10px] font-black text-white truncate">{team.abbrev}</div>
@@ -346,16 +363,14 @@ export const DayView: React.FC<DayViewProps> = ({
                       {topProspects.map((prospect, idx) => (
                         <div key={prospect.internalId ?? prospect.name} className="flex items-center gap-3 bg-white/5 rounded-lg p-2">
                           <span className="text-[10px] font-black text-slate-600 w-4 text-right">#{idx + 1}</span>
-                          {prospect.imgURL && (
-                            <img src={prospect.imgURL} className="w-7 h-7 rounded-full object-cover border border-slate-700 shrink-0" alt={prospect.name} referrerPolicy="no-referrer" />
-                          )}
+                          <PlayerPortrait imgUrl={getPlayerImage(prospect as any)} face={(prospect as any).face} playerName={prospect.name} isDraftProspect size={28} />
                           <div className="flex-1 min-w-0">
                             <div className="text-xs font-black text-white truncate">{prospect.name}</div>
                             <div className="text-[9px] text-slate-500">
-                              {prospect.ratings?.[prospect.ratings.length - 1]?.pos ?? ''}{prospect.age ? ` · Age ${prospect.age}` : ''}
+                              {prospect.pos}{prospect.age ? ` · Age ${prospect.age}` : ''}
                             </div>
                           </div>
-                          <div className="text-xs font-mono text-amber-400 font-black shrink-0">{prospect.overallRating ?? '—'}</div>
+                          <div className="text-xs font-mono text-amber-400 font-black shrink-0">{prospect.displayOvr}</div>
                         </div>
                       ))}
                     </div>
@@ -389,9 +404,12 @@ export const DayView: React.FC<DayViewProps> = ({
                     <div className="flex flex-wrap gap-2">
                       {state.retirementAnnouncements.slice(0, 5).map((r: any) => (
                         <div key={r.pid ?? r.name} className="flex items-center gap-1.5 bg-white/5 rounded-lg px-2 py-1">
-                          {r.imgURL && (
-                            <img src={r.imgURL} className="w-5 h-5 rounded-full object-cover border border-slate-700" alt={r.name} referrerPolicy="no-referrer" />
-                          )}
+                          <PlayerPortrait
+                            imgUrl={getPlayerImage((state.players ?? []).find((player: NBAPlayer) => player.internalId === (r.pid ?? r.internalId)) ?? r)}
+                            face={r.face}
+                            playerName={r.name}
+                            size={20}
+                          />
                           <span className="text-[10px] font-bold text-white">{r.name}</span>
                           <span className="text-[9px] text-slate-500">Age {r.age}</span>
                         </div>
@@ -460,8 +478,8 @@ export const DayView: React.FC<DayViewProps> = ({
                         </div>
                       </div>
                       <div className="flex items-center justify-center gap-4 py-2">
-                        {(team as any)?.logoUrl ? (
-                          <img src={(team as any).logoUrl} className="w-10 h-10 object-contain" alt={team?.abbrev} referrerPolicy="no-referrer" />
+                        {logoFor(team) ? (
+                          <img src={logoFor(team)} className="w-10 h-10 object-contain" alt={team?.abbrev} referrerPolicy="no-referrer" />
                         ) : null}
                         <div className="text-center">
                           <div className="text-sm font-black text-white">{team?.abbrev ?? `Team ${tid}`}</div>
@@ -486,7 +504,7 @@ export const DayView: React.FC<DayViewProps> = ({
                 const resolveTeam = (tid: number) => {
                   if (tid >= 100) {
                     const nonNba = nonNBATeams.find(t => t.tid === tid);
-                    if (nonNba) return { id: tid, name: nonNba.name, abbrev: nonNba.abbrev, logoUrl: nonNba.imgURL, conference: nonNba.league };
+                    if (nonNba) return { ...nonNba, id: tid, name: nonNba.name, abbrev: nonNba.abbrev, logoUrl: getResolvedTeamLogoUrl({ ...nonNba, id: tid }, seasonYear), conference: nonNba.league };
                     return null;
                   }
                   return getTeamForGame(tid, state.teams);
@@ -514,8 +532,10 @@ export const DayView: React.FC<DayViewProps> = ({
                 const userIsAway = isUserGame && game.awayTid === ownTid;
 
                 return (
-                  <div key={game.gid} className={`border rounded-2xl p-4 transition-all ${
-                    isUserGame
+                  <div key={game.gid} data-schedule-game-id={game.gid} className={`border rounded-2xl p-4 transition-all ${
+                    focusGameId === game.gid
+                      ? 'bg-emerald-950/40 border-emerald-400 ring-2 ring-emerald-400/60 shadow-lg shadow-emerald-500/20'
+                    : isUserGame
                       ? 'bg-indigo-950/40 border-indigo-500/50 ring-1 ring-indigo-500/30 shadow-lg shadow-indigo-500/10'
                       : `bg-[#111] hover:border-white/10 ${game.isPlayoff || game.isPlayIn ? 'border-indigo-500/20' : (game as any).isNBACup ? 'border-amber-500/30' : isIntlPreseason ? 'border-emerald-500/20' : 'border-white/5'}`
                   }`}>
@@ -574,8 +594,8 @@ export const DayView: React.FC<DayViewProps> = ({
                     <div className="flex items-center justify-between gap-4">
                       {/* Away Team */}
                       <div className="flex-1 flex flex-col items-center gap-2">
-                        {(awayTeam as any).logoUrl ? (
-                          <img src={(awayTeam as any).logoUrl} className="w-12 h-12 object-contain" alt={awayName} referrerPolicy="no-referrer" />
+                        {logoFor(awayTeam) ? (
+                          <img src={logoFor(awayTeam)} className="w-12 h-12 object-contain" alt={awayName} referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-12 h-12 rounded-full bg-emerald-900/30 border border-emerald-500/30 flex items-center justify-center">
                             <Globe size={20} className="text-emerald-400" />
@@ -587,11 +607,11 @@ export const DayView: React.FC<DayViewProps> = ({
                         </div>
                         {game.played && (
                           <div className="flex flex-col items-center gap-1">
-                            <div className={`text-2xl font-black ${game.awayScore > game.homeScore ? 'text-white' : 'text-slate-700'}`}>
+                            <div className={`text-2xl font-black ${!didHomeTeamWin(game) ? 'text-white' : 'text-slate-700'}`}>
                               {game.awayScore}
                             </div>
-                            <span className={`text-[9px] font-black uppercase tracking-widest ${game.awayScore > game.homeScore ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {game.awayScore > game.homeScore ? 'W' : 'L'}
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${!didHomeTeamWin(game) ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {!didHomeTeamWin(game) ? 'W' : 'L'}
                             </span>
                           </div>
                         )}
@@ -599,9 +619,17 @@ export const DayView: React.FC<DayViewProps> = ({
 
                       <div className="flex flex-col items-center gap-2">
                         <div className="text-xs font-black text-slate-800 italic">VS</div>
+                        {game.played && game.tiebreaker && (
+                          <div className="text-[9px] font-black uppercase tracking-widest text-violet-300">
+                            {game.tiebreaker.type === 'shootout'
+                              ? `SO ${game.tiebreaker.awayScore}-${game.tiebreaker.homeScore}`
+                              : game.tiebreaker.type === 'target_score' ? 'Target' : 'Sudden death'}
+                          </div>
+                        )}
                         {!game.played && isActuallyToday && (
                           <button
                             onClick={() => handleWatchGame(game)}
+                            aria-label={`Watch ${awayName} at ${homeName}`}
                             className="p-2 rounded-full bg-white text-black hover:bg-emerald-400 transition-all"
                           >
                             <MonitorPlay size={16} fill="currentColor" />
@@ -611,8 +639,8 @@ export const DayView: React.FC<DayViewProps> = ({
 
                       {/* Home Team */}
                       <div className="flex-1 flex flex-col items-center gap-2">
-                        {(homeTeam as any).logoUrl ? (
-                          <img src={(homeTeam as any).logoUrl} className="w-12 h-12 object-contain" alt={homeName} referrerPolicy="no-referrer" />
+                        {logoFor(homeTeam) ? (
+                          <img src={logoFor(homeTeam)} className="w-12 h-12 object-contain" alt={homeName} referrerPolicy="no-referrer" />
                         ) : (
                           <div className="w-12 h-12 rounded-full bg-emerald-900/30 border border-emerald-500/30 flex items-center justify-center">
                             <Globe size={20} className="text-emerald-400" />
@@ -624,11 +652,11 @@ export const DayView: React.FC<DayViewProps> = ({
                         </div>
                         {game.played && (
                           <div className="flex flex-col items-center gap-1">
-                            <div className={`text-2xl font-black ${game.homeScore > game.awayScore ? 'text-white' : 'text-slate-700'}`}>
+                            <div className={`text-2xl font-black ${didHomeTeamWin(game) ? 'text-white' : 'text-slate-700'}`}>
                               {game.homeScore}
                             </div>
-                            <span className={`text-[9px] font-black uppercase tracking-widest ${game.homeScore > game.awayScore ? 'text-emerald-400' : 'text-rose-400'}`}>
-                              {game.homeScore > game.awayScore ? 'W' : 'L'}
+                            <span className={`text-[9px] font-black uppercase tracking-widest ${didHomeTeamWin(game) ? 'text-emerald-400' : 'text-rose-400'}`}>
+                              {didHomeTeamWin(game) ? 'W' : 'L'}
                             </span>
                           </div>
                         )}
@@ -640,14 +668,7 @@ export const DayView: React.FC<DayViewProps> = ({
                       if (!best) return null;
                       return (
                         <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
-                          {best.imgURL && (
-                            <img
-                              src={best.imgURL}
-                              alt={best.name}
-                              className="w-5 h-5 rounded-full object-cover border border-slate-700 shrink-0"
-                              referrerPolicy="no-referrer"
-                            />
-                          )}
+                          {best.player && <PlayerPortrait imgUrl={getPlayerImage(best.player)} face={best.player.face} playerName={best.name} size={20} />}
                           <span className="text-[10px] font-bold text-slate-400 truncate">
                             ⭐ {best.name}
                           </span>
@@ -665,20 +686,19 @@ export const DayView: React.FC<DayViewProps> = ({
                           const higher = state.teams.find((t: any) => t.id === series.higherSeedTid);
                           const lower = state.teams.find((t: any) => t.id === series.lowerSeedTid);
                           const gameNum = game.playoffGameNumber || 1;
-                          let text = `Game ${gameNum}`;
-                          if (series.higherSeedWins > 0 || series.lowerSeedWins > 0) {
-                            if (series.higherSeedWins > series.lowerSeedWins)
-                              text += ` · ${higher?.abbrev} leads ${series.higherSeedWins}-${series.lowerSeedWins}`;
-                            else if (series.lowerSeedWins > series.higherSeedWins)
-                              text += ` · ${lower?.abbrev} leads ${series.lowerSeedWins}-${series.higherSeedWins}`;
-                            else
-                              text += ` · Tied ${series.higherSeedWins}-${series.lowerSeedWins}`;
-                          }
+                          const snapshot = getPlayoffSeriesSnapshot(game, series, state.schedule ?? []);
+                          const text = formatPlayoffSeriesSnapshot(
+                            gameNum,
+                            snapshot,
+                            higher?.abbrev ?? 'Higher seed',
+                            lower?.abbrev ?? 'Lower seed',
+                            series.gamesNeeded,
+                          );
                           return <span className="text-[10px] font-bold text-indigo-400">{text}</span>;
                         })()}
                         {pigame && !series && (
                           <span className="text-[10px] font-bold text-indigo-400">
-                            Play-In · {pigame.gameType === '7v8' ? '7v8 · Winner → 7 Seed' : pigame.gameType === '9v10' ? '9v10 · Loser Eliminated' : 'Loser Game · Winner → 8 Seed'}
+                            Play-In · {pigame.gameType === '8v9' ? '8v9 · 8 Seed Needs 1 Win' : pigame.gameType === '8v9Game2' ? '8v9 · Winner → 8 Seed' : pigame.gameType === '7v8' ? '7v8 · Winner → 7 Seed' : pigame.gameType === '9v10' ? '9v10 · Loser Eliminated' : 'Loser Game · Winner → 8 Seed'}
                           </span>
                         )}
                       </div>

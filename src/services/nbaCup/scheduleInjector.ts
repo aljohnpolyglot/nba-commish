@@ -1,11 +1,35 @@
 import { Game, NBACupGroup } from '../../types';
 import { seededRandom, seededShuffle } from './seededRandom';
 
-/** All Tuesday+Friday dates in the Nov 4 – Dec 2 window for a given prevYr. */
-function getCupNightDates(prevYr: number): Date[] {
+interface NbaCupScheduleOptions {
+  excludeFromRecord?: boolean;
+  cupStart?: Date;
+  cupFinal?: Date;
+}
+
+const shiftDate = (date: Date, days: number) => new Date(date.getTime() + days * 86_400_000);
+
+export function getNbaCupScheduleDates(prevYr: number, options: Pick<NbaCupScheduleOptions, 'cupStart' | 'cupFinal'> = {}) {
+  const groupStart = options.cupStart ?? new Date(Date.UTC(prevYr, 10, 4));
+  const final = options.cupFinal ?? new Date(Date.UTC(prevYr, 11, 16));
+  const quarterfinal = shiftDate(final, -7);
+  const semifinal = shiftDate(final, -3);
+  const groupEnd = shiftDate(quarterfinal, -7);
+  return {
+    groupStart,
+    groupEnd,
+    quarterfinal,
+    semifinal,
+    final,
+    tbdDates: [quarterfinal, shiftDate(quarterfinal, 1), shiftDate(quarterfinal, 2)],
+  };
+}
+
+function getCupNightDates(prevYr: number, options: Pick<NbaCupScheduleOptions, 'cupStart' | 'cupFinal'>): Date[] {
   const dates: Date[] = [];
-  const start = new Date(`${prevYr}-11-04T00:00:00Z`);
-  const end   = new Date(`${prevYr}-12-03T00:00:00Z`);
+  const { groupStart, groupEnd } = getNbaCupScheduleDates(prevYr, options);
+  const start = new Date(groupStart);
+  const end = shiftDate(groupEnd, 1);
   const cur = new Date(start);
   while (cur < end) {
     const dow = cur.getUTCDay(); // 0=Sun, 2=Tue, 5=Fri
@@ -52,9 +76,9 @@ export function injectCupGroupGames(
   saveId: string,
   prevYr: number,
   scheduledDates: Record<string, Set<number>>,
-  options: { excludeFromRecord?: boolean } = {},
+  options: NbaCupScheduleOptions = {},
 ): { games: Game[]; gameId: number } {
-  const cupNights = getCupNightDates(prevYr);
+  const cupNights = getCupNightDates(prevYr, options);
   if (cupNights.length === 0) return { games, gameId };
 
   const allPairings = groups.flatMap(g => buildGroupPairings(g));
@@ -318,6 +342,7 @@ export function materializeTBDSlots(
   prevYr: number,
   saveId: string,
   startGid: number,
+  options: Pick<NbaCupScheduleOptions, 'cupStart' | 'cupFinal'> = {},
 ): { schedule: Game[]; nextGid: number; qfGameIds: Map<string, number> } {
   let nextGid = startGid;
   const qfGameIds = new Map<string, number>();
@@ -350,9 +375,13 @@ export function materializeTBDSlots(
   };
 
   // 1. Materialize QF games on Dec 9 (preferring whichever TBD date is free).
-  const qfPreferred = `${prevYr}-12-09`;
-  const koCandidates = [`${prevYr}-12-09`, `${prevYr}-12-10`, `${prevYr}-12-11`];
-  const replacementFallbacks = forwardDateFallbacks(`${prevYr}-12-09`, 28);
+  const configuredDates = getNbaCupScheduleDates(prevYr, options);
+  const savedTbdDates = [...new Set([...tbdByTeam.values()].map(game => String(game.date).slice(0, 10)))].sort();
+  const koCandidates = savedTbdDates.length > 0
+    ? savedTbdDates
+    : configuredDates.tbdDates.map(date => date.toISOString().slice(0, 10));
+  const qfPreferred = koCandidates[0];
+  const replacementFallbacks = forwardDateFallbacks(qfPreferred, 28);
   for (const m of qfMatchups) {
     const slot = koCandidates.find(d => !dateBusy(d, m.tid1, m.tid2)) ?? qfPreferred;
     const homeFirst = seededRandom(`cup_qf_ha_${saveId}_${prevYr}_${m.tid1}_${m.tid2}`) > 0.5;
@@ -384,8 +413,8 @@ export function materializeTBDSlots(
       if (usedSet.has(tB)) continue;
       const tbdA = tbdByTeam.get(tA);
       const tbdB = tbdByTeam.get(tB);
-      const dateA = tbdA ? String(tbdA.date).split('T')[0] : `${prevYr}-12-09`;
-      const dateB = tbdB ? String(tbdB.date).split('T')[0] : `${prevYr}-12-10`;
+      const dateA = tbdA ? String(tbdA.date).split('T')[0] : koCandidates[0];
+      const dateB = tbdB ? String(tbdB.date).split('T')[0] : koCandidates[1] ?? koCandidates[0];
       const candidates = [dateA, dateB, ...koCandidates, ...replacementFallbacks];
       const slot = candidates.find(d => !dateBusy(d, tA, tB)) ?? dateA;
       const homeFirst = seededRandom(`cup_tbd_ha_${saveId}_${prevYr}_${tA}_${tB}`) > 0.5;
@@ -428,14 +457,17 @@ export function buildKnockoutGames(
   knockout: import('../../types').NBACupKnockoutGame[],
   existingMaxGid: number,
   prevYr: number,
+  host?: { city?: string; arena?: string },
+  options: Pick<NbaCupScheduleOptions, 'cupStart' | 'cupFinal'> = {},
 ): Game[] {
   const newGames: Game[] = [];
   let gid = existingMaxGid + 1;
 
+  const configuredDates = getNbaCupScheduleDates(prevYr, options);
   const dateMap: Record<string, string> = {
-    QF: `${prevYr}-12-09`,
-    SF: `${prevYr}-12-13`,
-    Final: `${prevYr}-12-16`,
+    QF: configuredDates.quarterfinal.toISOString().slice(0, 10),
+    SF: configuredDates.semifinal.toISOString().slice(0, 10),
+    Final: configuredDates.final.toISOString().slice(0, 10),
   };
 
   for (const ko of knockout) {
@@ -457,7 +489,11 @@ export function buildKnockoutGames(
       nbaCupRound: ko.round,
       excludeFromRecord: !ko.countsTowardRecord,
       ...(ko.round === 'SF' || ko.round === 'Final'
-        ? { city: 'Las Vegas', country: 'USA' }
+        ? {
+            city: host?.city || 'Las Vegas',
+            venue: host?.arena,
+            ...(!host?.city ? { country: 'USA' } : {}),
+          }
         : {}),
     } as any);
     ko.gameId = gid - 1;

@@ -1,0 +1,464 @@
+{
+  "all_star_game_results": {
+    "summary": {
+      "eastern_conference_wins": 4,
+      "western_conference_wins": 10
+    },
+    "games": [
+      {
+        "year": 1999,
+        "result": "West 79, East 61",
+        "host_arena": "Madison Square Garden",
+        "host_city": "New York, New York",
+        "game_mvp": "Lisa Leslie, Los Angeles Sparks"
+      },
+      {
+        "year": 2000,
+        "result": "West 73, East 61",
+        "host_arena": "America West Arena",
+        "host_city": "Phoenix, Arizona",
+        "game_mvp": "Tina Thompson, Houston Comets"
+      },
+      {
+        "year": 2001,
+        "result": "West 80, East 72",
+        "host_arena": "TD Waterhouse Centre",
+        "host_city": "Orlando, Florida",
+        "game_mvp": "Lisa Leslie (2), Los Angeles Sparks (2)"
+      },
+      {
+        "year": 2002,
+        "result": "West 81, East 76",
+        "host_arena": "MCI Center",
+        "host_city": "Washington, D.C.",
+        "game_mvp": "Lisa Leslie (3), Los Angeles Sparks (3)"
+      },
+      {
+        "year": 2003,
+        "result": "West 84, East 75",
+        "host_arena": "Madison Square Garden (2)",
+        "host_city": "New York, New York (2)",
+        "game_mvp": "Nikki Teasley, Los Angeles Sparks (4)"
+      },
+      {
+        "year": 2004,
+        "result": "The Game at Radio City",
+        "host_arena": null,
+        "host_city": null,
+        "game_mvp": null
+      },
+      {
+        "year": 2005,
+        "result": "West 122, East 99",
+        "host_arena": "Mohegan Sun Arena",
+        "host_city": "Uncasville, Connecticut",
+        "game_mvp": "Sheryl Swoopes, Houston Comets (2)"
+      },
+      {
+        "year": 2006,
+        "result": "East 98, West 82",
+        "host_arena": "Madison Square Garden (3)",
+        "host_city": "New York, New York (3)",
+        "game_mvp": "Katie Douglas, Connecticut Sun"
+      },
+      {
+        "year": 2007,
+        "result": "East 103, West 99",
+        "host_arena": "Verizon Center",
+        "host_city": "Washington, D.C. (2)",
+        "game_mvp": "Cheryl Ford, Detroit Shock"
+      },
+      {
+        "year": 2008,
+        "result": "No game due to the 2008 Summer Olympics",
+        "host_arena": null,
+        "host_city": null,
+        "game_mvp": null
+      },
+      {
+        "year": 2009,
+        "result": "West 130, East 118",
+        "host_arena": "Mohegan Sun Arena (2)",
+        "host_city": "Uncasville, Connecticut (2)",
+        "game_mvp": "Swin Cash, Seattle Storm"
+      },
+      {
+        "year": 2010,
+        "result": "Stars at the Sun",
+        "host_arena": null,
+        "host_city": null,
+        "game_mvp": null
+      },
+      {
+        "year": 2011,
+        "result": "East 118, West 113",
+        "host_arena": "AT&T Center",
+        "host_city": "San Antonio, Texas",
+        "game_mvp": "Swin Cash (2), Seattle Storm (2)"
+      },
+      {
+        "year": 2012,
+        "result": "No game due to the 2012 Summer Olympics",
+        "host_arena": null,
+        "host_city": null,
+        "game_mvp": null
+      },
+      {
+        "year": 2013,
+        "result": "West 102, East 98",
+        "host_arena": "Mohegan Sun Arena (3)",
+        "host_city": "Uncasville, Connecticut (3)",
+        "game_mvp": "Candace Parker, Los Angeles Sparks (5)"
+      },
+      {
+        "year": 2014,
+        "result": "East 125, West 124 (OT)",
+        "host_arena": "US Airways Center (2)",
+        "host_city": "Phoenix, Arizona (2)",
+        "game_mvp": "Shoni Schimmel, Atlanta Dream"
+      },
+      {
+        "year": 2015,
+        "result": "West 117, East 112",
+        "host_arena": "Mohegan Sun Arena (4)",
+        "host_city": "Uncasville, Connecticut (4)",
+        "game_mvp": "Maya Moore, Minnesota Lynx"
+      },
+      {
+        "year": 2016,
+        "result": "No game due to the 2016 Summer Olympics",
+        "host_arena": null,
+        "host_city": null,
+        "game_mvp": null
+      },
+      {
+        "year": 2017,
+        "result": "West 130, East 121",
+        "host_arena": "KeyArena",
+        "host_city": "Seattle, Washington",
+        "game_mvp": "Maya Moore (2), Minnesota Lynx (2)"
+      },
+      {
+        "year": 2018,
+        "result": "Team Parker 119, Team Delle Donne 112",
+        "host_arena": "Target Center",
+        "host_city": "Minneapolis, Minnesota",
+        "game_mvp": "Maya Moore (3), Minnesota Lynx (3)"
+      },
+      {
+        "year": 2019,
+        "result": "Team Wilson 129, Team Delle Donne 126",
+        "host_arena": "Mandalay Bay Events Center",
+        "host_city": "Las Vegas, Nevada",
+        "game_mvp": "Erica Wheeler, Indiana Fever"
+      },
+      {
+        "year": 2020,
+        "result": "No game due to the 2020 Summer Olympics",
+        "host_arena": null,
+        "host_city": null,
+        "game_mvp": null
+      },
+      {
+        "year": 2021,
+        "result": "Team WNBA 93, Team USA 85",
+        "host_arena": "Michelob Ultra Arena (2)",
+        "host_city": "Las Vegas, Nevada (2)",
+        "game_mvp": "Arike Ogunbowale, Dallas Wings (2)"
+      },
+      {
+        "year": 2022,
+        "result": "Team Wilson 134, Team Stewart 112",
+        "host_arena": "Wintrust Arena",
+        "host_city": "Chicago, Illinois",
+        "game_mvp": "Kelsey Plum, Las Vegas Aces"
+      },
+      {
+        "year": 2023,
+        "result": "Team Stewart 143, Team Wilson 127",
+        "host_arena": "Michelob Ultra Arena (3)",
+        "host_city": "Las Vegas, Nevada (3)",
+        "game_mvp": "Jewell Loyd, Seattle Storm (3)"
+      },
+      {
+        "year": 2024,
+        "result": "Team WNBA 117, Team USA 109",
+        "host_arena": "Footprint Center (3)",
+        "host_city": "Phoenix, Arizona (3)",
+        "game_mvp": "Arike Ogunbowale (2), Dallas Wings (3)"
+      },
+      {
+        "year": 2025,
+        "result": "Team Collier 151, Team Clark 131",
+        "host_arena": "Gainbridge Fieldhouse",
+        "host_city": "Indianapolis, Indiana",
+        "game_mvp": "Napheesa Collier, Minnesota Lynx (4)"
+      },
+      {
+        "year": 2026,
+        "result": "Team Spoon 129, Team Coop 122",
+        "host_arena": "United Center",
+        "host_city": "Chicago, Illinois (2)",
+        "game_mvp": "Jonquel Jones, New York Liberty"
+      }
+    ],
+    "unhosted_cities": [
+      "Atlanta",
+      "Dallas",
+      "Los Angeles",
+      "Portland, OR",
+      "San Francisco",
+      "Toronto, ON"
+    ]
+  },
+  "three_point_contest": {
+    "history": [
+      {
+        "year": 2006,
+        "winner": "Dawn Staley",
+        "team": "Houston Comets",
+        "final_score_max": "17 / 30",
+        "pct_shots_made": "56.6%",
+        "other_contestants": ["Katie Douglas", "Katie Smith", "Diana Taurasi"]
+      },
+      {
+        "year": 2007,
+        "winner": "Laurie Koehn",
+        "team": "Washington Mystics",
+        "final_score_max": "25 / 30",
+        "pct_shots_made": "83.3%",
+        "other_contestants": ["Diana Taurasi", "Penny Taylor", "Katie Douglas", "Deanna Nolan"]
+      },
+      {
+        "year": 2009,
+        "winner": "Becky Hammon",
+        "team": "San Antonio Silver Stars",
+        "final_score_max": "16 / 30",
+        "pct_shots_made": "53.3%",
+        "other_contestants": ["Sue Bird", "Katie Smith", "Shameka Christon", "Katie Douglas", "Diana Taurasi"]
+      },
+      {
+        "year": 2010,
+        "winner": "Katie Douglas",
+        "team": "Indiana Fever",
+        "final_score_max": "23 / 30",
+        "pct_shots_made": "76.6%",
+        "other_contestants": ["Lindsay Whalen", "Swin Cash", "Sue Bird", "Monique Currie", "Angel McCoughtry"]
+      },
+      {
+        "year": 2017,
+        "winner": "Allie Quigley",
+        "team": "Chicago Sky",
+        "final_score_max": "27 / 34",
+        "pct_shots_made": "79.4%",
+        "other_contestants": ["Sugar Rodgers", "Maya Moore", "Jasmine Thomas", "Sue Bird"]
+      },
+      {
+        "year": 2018,
+        "winner": "Allie Quigley (2)",
+        "team": "Chicago Sky (2)",
+        "final_score_max": "29 / 34",
+        "pct_shots_made": "85.3%",
+        "other_contestants": ["Kayla McBride", "Kristi Toliver", "Jewell Loyd", "Renee Montgomery", "Kelsey Mitchell"]
+      },
+      {
+        "year": 2019,
+        "winner": "Shekinna Stricklen",
+        "team": "Connecticut Sun",
+        "final_score_max": "23 / 34",
+        "pct_shots_made": "67.6%",
+        "other_contestants": ["Kayla McBride", "Allie Quigley", "Kia Nurse", "Erica Wheeler", "Chelsea Gray"]
+      },
+      {
+        "year": 2021,
+        "winner": "Allie Quigley (3)",
+        "team": "Chicago Sky (3)",
+        "final_score_max": "28 / 40",
+        "pct_shots_made": "70.0%",
+        "other_contestants": ["Jonquel Jones", "Sami Whitcomb", "Jewell Loyd"]
+      },
+      {
+        "year": 2022,
+        "winner": "Allie Quigley (4)",
+        "team": "Chicago Sky (4)",
+        "final_score_max": "30 / 40",
+        "pct_shots_made": "75.0%",
+        "other_contestants": ["Ariel Atkins", "Rhyne Howard", "Arike Ogunbowale", "Jewell Loyd", "Kelsey Plum"]
+      },
+      {
+        "year": 2023,
+        "winner": "Sabrina Ionescu",
+        "team": "New York Liberty",
+        "final_score_max": "37 / 40",
+        "pct_shots_made": "92.5%",
+        "other_contestants": ["DiJonai Carrington", "Kelsey Mitchell", "Arike Ogunbowale", "Sami Whitcomb", "Jackie Young"]
+      },
+      {
+        "year": 2024,
+        "winner": "Allisha Gray",
+        "team": "Atlanta Dream",
+        "final_score_max": "22 / 40",
+        "pct_shots_made": "55.0%",
+        "other_contestants": ["Jonquel Jones", "Kayla McBride", "Stefanie Dolson", "Marina Mabrey"]
+      },
+      {
+        "year": 2025,
+        "winner": "Sabrina Ionescu (2)",
+        "team": "New York Liberty",
+        "final_score_max": "30 / 40",
+        "pct_shots_made": "75.0%",
+        "other_contestants": ["Allisha Gray", "Sonia Citron", "Kelsey Plum", "Lexie Hull"]
+      },
+      {
+        "year": 2026,
+        "winner": "Azzi Fudd",
+        "team": "Dallas Wings",
+        "final_score_max": "30 / 40",
+        "pct_shots_made": "75.0%",
+        "other_contestants": ["Bridget Carleton", "Janelle Salaün", "Marina Mabrey", "Natisha Hiedeman", "Rhyne Howard"]
+      }
+    ],
+    "multi_time_winners": [
+      {
+        "wins": 4,
+        "player": "Allie Quigley",
+        "teams": ["Chicago Sky"],
+        "years": [2017, 2018, 2021, 2022]
+      },
+      {
+        "wins": 2,
+        "player": "Sabrina Ionescu",
+        "teams": ["New York Liberty"],
+        "years": [2023, 2025]
+      }
+    ],
+    "champions_by_franchise": [
+      {
+        "franchise": "Chicago Sky",
+        "wins": 4,
+        "last_win": 2022
+      },
+      {
+        "franchise": "New York Liberty",
+        "wins": 2,
+        "last_win": 2025
+      },
+      {
+        "franchise": "Atlanta Dream",
+        "wins": 1,
+        "last_win": 2024
+      },
+      {
+        "franchise": "Connecticut Sun",
+        "wins": 1,
+        "last_win": 2019
+      },
+      {
+        "franchise": "Indiana Fever",
+        "wins": 1,
+        "last_win": 2010
+      },
+      {
+        "franchise": "San Antonio Silver Stars",
+        "wins": 1,
+        "last_win": 2009
+      },
+      {
+        "franchise": "Washington Mystics",
+        "wins": 1,
+        "last_win": 2007
+      },
+      {
+        "franchise": "Houston Comets",
+        "wins": 1,
+        "last_win": 2006
+      }
+    ]
+  },
+  "skills_challenge": {
+    "history": [
+      {
+        "year": 2003,
+        "winner": "Dawn Staley",
+        "team": "Charlotte Sting",
+        "final_time_or_runner_up": null,
+        "other_contestants": []
+      },
+      {
+        "year": 2005,
+        "winner": "Sue Bird",
+        "team": "Seattle Storm",
+        "final_time_or_runner_up": "Becky Hammon",
+        "other_contestants": ["Tamika Catchings", "Diana Taurasi", "Deanna Nolan", "Taj McWilliams-Franklin", "DeMya Walker", "Marie Ferdinand"]
+      },
+      {
+        "year": 2006,
+        "winner": "Seimone Augustus",
+        "team": "Minnesota Lynx",
+        "final_time_or_runner_up": "28.5",
+        "other_contestants": ["Sue Bird", "Cappie Pondexter", "Deanna Nolan"]
+      },
+      {
+        "year": 2007,
+        "winner": "Becky Hammon",
+        "team": "San Antonio Silver Stars",
+        "final_time_or_runner_up": "27.1",
+        "other_contestants": ["Seimone Augustus", "Betty Lennox", "Nikki Teasley"]
+      },
+      {
+        "year": 2009,
+        "winners": [
+          { "winner": "Cappie Pondexter", "team": "Phoenix Mercury" },
+          { "winner": "Sophia Young", "team": "San Antonio Silver Stars" },
+          { "winner": "Charde Houston", "team": "Minnesota Lynx" }
+        ],
+        "final_time_or_runner_up": "34.8",
+        "other_contestants": ["Jia Perkins", "Tamika Catchings", "Sancho Lyttle", "Swin Cash", "Nicole Powell", "Nicky Anosike", "Alana Beard", "Asjha Jones", "Sylvia Fowles"]
+      },
+      {
+        "year": 2010,
+        "winner": "Renee Montgomery",
+        "team": "Connecticut Sun",
+        "final_time_or_runner_up": "25.0",
+        "other_contestants": ["Cappie Pondexter", "Lindsay Whalen", "Iziane Castro Marques", "Lindsey Harding", "Angel McCoughtry"]
+      },
+      {
+        "year": 2019,
+        "winner": "Diamond DeShields",
+        "team": "Chicago Sky",
+        "final_time_or_runner_up": "Jonquel Jones",
+        "other_contestants": ["Courtney Vandersloot", "Sami Whitcomb", "Napheesa Collier", "Odyssey Sims", "Elizabeth Williams", "Brittney Griner"]
+      },
+      {
+        "year": 2022,
+        "winner": "Sabrina Ionescu",
+        "team": "New York Liberty",
+        "final_time_or_runner_up": "NaLyssa Smith",
+        "other_contestants": ["Courtney Vandersloot", "Jonquel Jones", "Jackie Young", "Kelsey Plum", "Azurá Stevens", "Rhyne Howard"]
+      },
+      {
+        "year": 2023,
+        "winners": [
+          { "winner": "Kelsey Plum", "team": "Las Vegas Aces" },
+          { "winner": "Chelsea Gray", "team": "Las Vegas Aces" }
+        ],
+        "final_time_or_runner_up": "Courtney Vandersloot / Sabrina Ionescu",
+        "other_contestants": ["Allisha Gray", "Cheyenne Parker", "Arike Ogunbowale", "Satou Sabally"]
+      },
+      {
+        "year": 2024,
+        "winner": "Allisha Gray",
+        "team": "Atlanta Dream",
+        "final_time_or_runner_up": "Sophie Cunningham",
+        "other_contestants": ["Brittney Griner", "Kelsey Mitchell", "Marina Mabrey"]
+      },
+      {
+        "year": 2025,
+        "winner": "Natasha Cloud",
+        "team": "New York Liberty (2)",
+        "final_time_or_runner_up": "Erica Wheeler",
+        "other_contestants": ["Allisha Gray", "Skylar Diggins", "Courtney Williams"]
+      }
+    ]
+  }
+}

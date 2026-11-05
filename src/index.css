@@ -1,5 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Montserrat:wght@100;200;300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
-@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Outfit:wght@300;400;500;600;700;800;900&family=Russo+One&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;0,700;1,300;1,400;1,500;1,600;1,700&family=Montserrat:wght@100;200;300;400;500;600;700;800;900&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;0,800;0,900;1,400;1,500;1,600;1,700;1,800;1,900&display=swap');
+@import "tailwindcss" source(".");
 
 @theme {
   --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
@@ -100,6 +100,26 @@ body {
   color: #fafafa;
 }
 
+.modded-setup {
+  font-family: "Outfit", ui-sans-serif, system-ui, sans-serif;
+}
+
+.modded-font-sport {
+  font-family: "Russo One", "Outfit", sans-serif;
+}
+
+.modded-scanlines::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  pointer-events: none;
+  background:
+    linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, .25) 50%),
+    linear-gradient(90deg, rgba(255, 0, 0, .06), rgba(0, 255, 0, .02), rgba(0, 0, 255, .06));
+  background-size: 100% 4px, 6px 100%;
+}
+
 /* ── CommishStore utilities ─────────────────────────────────────────── */
 
 /* Hide scrollbar (used in CommishStore sidebar) */
@@ -149,4 +169,33 @@ body {
 ::view-transition-new(*) {
   animation-duration: 0.25s;
   animation-timing-function: cubic-bezier(0.19, 1, 0.22, 1);
+}
+
+.fictional-league-settings [class~="bg-indigo-500"],
+.fictional-league-settings [class~="bg-indigo-600"] {
+  background-color: #dc2626 !important;
+}
+
+.fictional-league-settings [class~="bg-indigo-500/10"] {
+  background-color: rgb(239 68 68 / 0.1) !important;
+}
+
+.fictional-league-settings [class~="text-indigo-100"] {
+  color: #fee2e2 !important;
+}
+
+.fictional-league-settings [class~="text-indigo-400"] {
+  color: #f87171 !important;
+}
+
+.fictional-league-settings [class~="accent-indigo-500"] {
+  accent-color: #ef4444 !important;
+}
+
+.fictional-league-settings [class~="focus:border-indigo-500"]:focus {
+  border-color: #ef4444 !important;
+}
+
+.fictional-league-settings .peer:checked ~ [class~="peer-checked:bg-indigo-500"] {
+  background-color: #ef4444 !important;
 }

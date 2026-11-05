@@ -1,6 +1,6 @@
 import type { ElementType } from 'react';
 
-export type TabType = 'NEGOTIATION' | 'MORALE' | 'CONTRACT' | 'FINANCES' | 'OFFERS';
+export type TabType = 'NEGOTIATION' | 'ASPIRE' | 'MORALE' | 'CONTRACT' | 'FINANCES' | 'OFFERS';
 export type ContractType = 'GUARANTEED' | 'TWO_WAY' | 'NON_GUARANTEED';
 export type ContractOption = 'NONE' | 'PLAYER' | 'TEAM';
 export type MleType = 'room' | 'non_taxpayer' | 'taxpayer' | null;

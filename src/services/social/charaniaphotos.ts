@@ -1,4 +1,5 @@
 import { fetchWithCache } from '../utils/fetchWithCache';
+import { recordMediaRuntimeCall } from '../media/mediaRuntimeDiagnostics';
 
 const CHARANIA_PHOTOS_URL =
     'https://raw.githubusercontent.com/aljohnpolyglot/nba-store-data/refs/heads/main/shamstweetsphotos';
@@ -15,10 +16,10 @@ export interface CharaniaPhotoEntry {
 export let CHARANIA_PHOTOS: CharaniaPhotoEntry[] = [];
 
 export const fetchCharaniaPhotos = async () => {
+    recordMediaRuntimeCall('remoteProviderCalls');
     const data = await fetchWithCache<CharaniaPhotoEntry[]>('charania-photos', CHARANIA_PHOTOS_URL);
     if (data) {
         CHARANIA_PHOTOS = data.filter(e => !!e.image_url && !e.image_url.includes('amplify_video_thumb'));
-        console.log(`[CharaniaPhotos] Loaded ${CHARANIA_PHOTOS.length} photos.`);
     }
 };
 
@@ -35,6 +36,7 @@ export const findShamsPhoto = (
     playerName?: string,
     teamName?: string
 ): CharaniaPhotoEntry | null => {
+    recordMediaRuntimeCall('photoLookupCalls');
     if (CHARANIA_PHOTOS.length === 0 || !playerName) return null;
 
     const nameLower = playerName.toLowerCase();
@@ -53,7 +55,6 @@ export const findShamsPhoto = (
                 e.team.toLowerCase().includes(teamLower)
         );
         if (match) {
-            console.log(`[CharaniaPhotos] Match (name+team): "${playerName}" → "${match.player}" (${match.team})`);
             return match;
         }
     }
@@ -63,21 +64,21 @@ export const findShamsPhoto = (
         e => e.player && lastNameRe.test(e.player.toLowerCase()) && e.player.toLowerCase().includes(nameLower.split(' ')[0])
     );
     if (fullMatch) {
-        console.log(`[CharaniaPhotos] Match (full name): "${playerName}" → "${fullMatch.player}"`);
         return fullMatch;
     }
 
     // 3. Last name only — word boundary + min length 6 to avoid common-name false positives
     if (lastName.length >= 6) {
+        const firstInitial = nameLower[0];
         const lastOnly = CHARANIA_PHOTOS.find(
-            e => e.player && lastNameRe.test(e.player.toLowerCase())
+            e => e.player &&
+                e.player.toLowerCase()[0] === firstInitial &&
+                lastNameRe.test(e.player.toLowerCase())
         );
         if (lastOnly) {
-            console.log(`[CharaniaPhotos] Match (last name only, len≥6): "${playerName}" → "${lastOnly.player}"`);
             return lastOnly;
         }
     }
 
-    console.log(`[CharaniaPhotos] No match for "${playerName}" (${teamName ?? 'no team'}) — returning null`);
     return null;
 };

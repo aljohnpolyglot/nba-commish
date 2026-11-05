@@ -10,10 +10,15 @@ import { isEuroIsolatedMode } from '../../../utils/uiMode';
 import { fuzzRatingValue, getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../utils/scoutingFuzz';
 import {
   ensurePlayerRatingData,
+  getDisplayAge,
   resolvePlayerRatingBundle,
   usePlayerRatingStore,
 } from '../../../store/playerRatingStore';
 import { isOnRoster, resolveAnyTeam } from '../../../utils/teamLookup';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { getPlayerImage } from '../../../utils/playerImage';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { getProspectCollege } from '../../../utils/prospectUtils';
 const CAT_CONFIG = [
   { key: 'OS' as const, label: 'SCR', full: 'Outside Scoring' },
   { key: 'AT' as const, label: 'ATH', full: 'Athleticism' },
@@ -55,12 +60,16 @@ const CAT_COLORS: Record<CatKey, string> = {
 };
 type SortField = 'name' | 'age' | 'ovr' | 'pot' | CatKey | string;
 
-interface RowData {
+interface BaseRowData {
   player: NBAPlayer;
   age: number;
   ovr: number;
   pot: number;
+}
+
+interface RowData extends BaseRowData {
   k2: K2Data;
+  subRatings: Record<string, number>;
   OS: number; AT: number; IS: number; PL: number; DF: number; RB: number; MI: number;
 }
 
@@ -83,10 +92,15 @@ function RatingCell({ value }: { value: number }) {
 }
 
 function getSubVal(row: RowData, key: string): number {
+  if (Number.isFinite(row.subRatings[key])) return row.subRatings[key];
   const [cat, idxStr] = key.split('.');
   const idx = Number(idxStr);
   const value = (row.k2 as any)[cat]?.sub[idx];
   return Number.isFinite(value) ? value : 50;
+}
+
+function isDetailedField(field: SortField): boolean {
+  return ['OS', 'AT', 'IS', 'PL', 'DF', 'RB', 'MI'].includes(field) || field.includes('.');
 }
 
 export const PlayerRatingsView: React.FC = () => {
@@ -127,7 +141,7 @@ export const PlayerRatingsView: React.FC = () => {
     if (!pbaIsolated) {
       return state.players.filter(p =>
         euroIsolated
-          ? p.status === 'Euroleague' || p.status === 'Endesa'
+          ? scopedTeamIds.has(Number(p.tid)) && isOnRoster(p)
           : p.status === 'Active' || p.status === 'Free Agent' || p.tid === -2 || p.status === 'Prospect' || p.status === 'Draft Prospect',
       );
     }
@@ -137,18 +151,33 @@ export const PlayerRatingsView: React.FC = () => {
     );
   }, [pbaIsolated, euroIsolated, state.players, scopedTeamIds]);
 
-  const rows: RowData[] = useMemo(() => {
-    return sourcePlayers.map(player => {
+  const baseRows: BaseRowData[] = useMemo(() => {
+    return sourcePlayers.map(player => ({
+      player,
+      age: getDisplayAge(player, currentYear),
+      ovr: getScoutedDisplayOverall(state, player, season),
+      pot: getScoutedDisplayPotential(state, player, currentYear, season),
+    }));
+  }, [sourcePlayers, state, season, currentYear]);
+
+  const hydrateRow = React.useCallback((base: BaseRowData): RowData => {
+      const { player } = base;
       const bundle = resolvePlayerRatingBundle(player, currentYear, season);
       const k2 = bundle.displayK2;
-      const ovr = getScoutedDisplayOverall(state, player, season);
-      const pot = getScoutedDisplayPotential(state, player, currentYear, season);
+      const subRatings = Object.fromEntries(
+        CAT_CONFIG.flatMap(cat =>
+          SUB_ABBREVS[cat.key].map((_, index) => {
+            const key = `${cat.key}.${index}`;
+            const value = (k2 as any)[cat.key]?.sub[index] ?? 50;
+            return [key, fuzzRatingValue(value, state, player, key)];
+          }),
+        ),
+      );
       return {
-        player,
+        ...base,
         age: bundle.age,
-        ovr,
-        pot,
         k2,
+        subRatings,
         OS: fuzzRatingValue(k2.OS.ovr, state, player, 'OS'),
         AT: fuzzRatingValue(k2.AT.ovr, state, player, 'AT'),
         IS: fuzzRatingValue(k2.IS.ovr, state, player, 'IS'),
@@ -157,10 +186,10 @@ export const PlayerRatingsView: React.FC = () => {
         RB: fuzzRatingValue(k2.RB.ovr, state, player, 'RB'),
         MI: fuzzRatingValue(k2.MI.ovr, state, player, 'MI'),
       };
-    });
-  }, [sourcePlayers, state, season, currentYear, ratingVersion]);
+  }, [currentYear, season, state, ratingVersion]);
+
   const filtered = useMemo(() => {
-    let r = rows;
+    let r = baseRows;
     if (teamFilter !== 'all') {
       const tid = Number(teamFilter);
       r = r.filter(row => row.player.tid === tid);
@@ -170,7 +199,9 @@ export const PlayerRatingsView: React.FC = () => {
       r = r.filter(row => row.player.name.toLowerCase().includes(q));
     }
     if (Object.values(colFilters).some(Boolean)) {
+      const needsDetail = Object.entries(colFilters).some(([key, flt]) => !!flt && isDetailedField(key));
       r = r.filter(row => {
+        const detailedRow = needsDetail ? hydrateRow(row) : null;
         for (const [key, flt] of Object.entries(colFilters)) {
           if (!flt) continue;
           let val: string | number = '';
@@ -178,30 +209,33 @@ export const PlayerRatingsView: React.FC = () => {
           else if (key === 'age') val = row.age;
           else if (key === 'ovr') val = row.ovr;
           else if (key === 'pot') val = row.pot;
-          else if (['OS','AT','IS','PL','DF','RB','MI'].includes(key)) val = (row as any)[key];
-          else if (key.includes('.')) val = getSubVal(row, key);
+          else if (['OS','AT','IS','PL','DF','RB','MI'].includes(key)) val = detailedRow ? (detailedRow as any)[key] : 50;
+          else if (key.includes('.')) val = detailedRow ? getSubVal(detailedRow, key) : 50;
           if (!evaluateFilter(String(val), flt)) return false;
         }
         return true;
       });
     }
     return r;
-  }, [rows, teamFilter, search, colFilters]);
+  }, [baseRows, teamFilter, search, colFilters, hydrateRow]);
+
   const sorted = useMemo(() => {
-    return [...filtered].sort((a, b) => {
+    const needsDetail = isDetailedField(sortField);
+    const rowsForSort = needsDetail ? filtered.map(hydrateRow) : [...filtered];
+    return rowsForSort.sort((a, b) => {
       let cmp = 0;
       if (sortField === 'name') cmp = a.player.name.localeCompare(b.player.name);
       else if (sortField === 'age') cmp = a.age - b.age;
       else if (sortField === 'ovr') cmp = a.ovr - b.ovr;
       else if (sortField === 'pot') cmp = a.pot - b.pot;
-      else if (['OS', 'AT', 'IS', 'PL', 'DF', 'RB', 'MI'].includes(sortField)) {
+      else if (needsDetail && ['OS', 'AT', 'IS', 'PL', 'DF', 'RB', 'MI'].includes(sortField)) {
         cmp = (a as any)[sortField] - (b as any)[sortField];
-      } else if (sortField.includes('.')) {
-        cmp = getSubVal(a, sortField) - getSubVal(b, sortField);
+      } else if (needsDetail && sortField.includes('.')) {
+        cmp = getSubVal(a as RowData, sortField) - getSubVal(b as RowData, sortField);
       }
       return sortAsc ? cmp : -cmp;
     });
-  }, [filtered, sortField, sortAsc]);
+  }, [filtered, sortField, sortAsc, hydrateRow]);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) setSortAsc(prev => !prev);
@@ -210,7 +244,10 @@ export const PlayerRatingsView: React.FC = () => {
   };
 
   const totalPages = Math.ceil(sorted.length / PAGE_SIZE);
-  const paginated = sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
+  const paginated = useMemo(
+    () => sorted.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE).map(row => 'k2' in row ? row as RowData : hydrateRow(row as BaseRowData)),
+    [sorted, page, hydrateRow],
+  );
 
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ChevronDown size={10} className="text-slate-600" />;
@@ -219,9 +256,9 @@ export const PlayerRatingsView: React.FC = () => {
       : <ChevronDown size={10} className="text-indigo-400" />;
   };
 
-  const displayTeams = (pbaIsolated ? scopedTeams : state.teams)
+  const displayTeams = (pbaIsolated || euroIsolated ? scopedTeams : state.teams)
     .filter(t => t.id >= 0)
-    .sort((a, b) => a.name.localeCompare(b.name));
+    .sort((a, b) => getTeamFullName(a).localeCompare(getTeamFullName(b)));
   const summaryColumns: { key: SortField; label: string; title?: string; sticky?: boolean }[] = [
     { key: 'name', label: 'Name', sticky: true },
     { key: 'age',  label: 'AGE' },
@@ -267,13 +304,15 @@ export const PlayerRatingsView: React.FC = () => {
         <select
           value={teamFilter}
           onChange={e => { setTeamFilter(e.target.value); setPage(0); }}
-          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white focus:outline-none focus:border-indigo-500 max-w-xs"
+          className="px-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white [color-scheme:dark] focus:outline-none focus:border-indigo-500 max-w-xs"
         >
-          <option value="all">All Teams</option>
-          {!pbaIsolated && <option value="-1">Free Agents</option>}
-          {!pbaIsolated && <option value="-2">Draft Prospects</option>}
+          <option className="bg-slate-900 text-white" value="all">All Teams</option>
+          {!pbaIsolated && <option className="bg-slate-900 text-white" value="-1">Free Agents</option>}
+          {!pbaIsolated && <option className="bg-slate-900 text-white" value="-2">Draft Prospects</option>}
           {displayTeams.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+            <option className="bg-slate-900 text-white" key={t.id} value={t.id}>
+              {getTeamFullName(t) || t.abbrev || String(t.id)}
+            </option>
           ))}
         </select>
 
@@ -406,8 +445,13 @@ export const PlayerRatingsView: React.FC = () => {
           </thead>
           <tbody>
             {paginated.map((row, idx) => {
-              const team = resolveAnyTeam(row.player.tid, state.teams, state.nonNBATeams ?? []);
-              const teamAbbr = team?.abbrev ?? (row.player.tid === -1 ? 'FA' : row.player.tid === -2 ? 'DRAFT' : 'FA');
+              const isProspect = row.player.tid === -2 || row.player.status === 'Prospect' || row.player.status === 'Draft Prospect';
+              const team = row.player.tid >= 0
+                ? resolveAnyTeam(row.player.tid, state.teams, state.nonNBATeams ?? [])
+                : undefined;
+              const teamAbbr = isProspect
+                ? (getProspectCollege(row.player) ?? 'DRAFT')
+                : team?.abbrev ?? (row.player.tid === -1 ? 'FA' : 'FA');
               return (
                 <tr
                   key={row.player.internalId}
@@ -421,14 +465,12 @@ export const PlayerRatingsView: React.FC = () => {
                       return (
                         <td key={col.key} className="sticky left-0 bg-inherit px-3 py-2.5 shadow-[2px_0_0_#1e293b]">
                           <div className="flex items-center gap-2">
-                            {row.player.imgURL && (
-                              <img
-                                src={row.player.imgURL}
-                                alt=""
-                                className="w-7 h-7 rounded-full object-cover bg-slate-800 flex-shrink-0"
-                                referrerPolicy="no-referrer"
-                              />
-                            )}
+                            <PlayerPortrait
+                              imgUrl={getPlayerImage(row.player)}
+                              face={(row.player as any).face}
+                              playerName={row.player.name}
+                              size={28}
+                            />
                             <div className="min-w-0">
                               <span className="text-sm font-bold text-white truncate block max-w-[120px] md:max-w-none">
                                 {row.player.name}

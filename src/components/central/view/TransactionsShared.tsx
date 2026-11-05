@@ -15,16 +15,15 @@ import {
   UserX,
   Users,
 } from 'lucide-react';
-import { getGameDateParts } from '../../../utils/dateUtils';
+import { EXTERNAL_LEAGUE_STATUSES } from '../../../constants';
+import { getLeagueSeasonForDate } from '../../../services/leagueCalendar';
+import type { GameState, LeagueStats, StaffMember } from '../../../types';
 
-export function getSeasonYear(dateStr: string): number {
-  try {
-    const { month, day, year: calYear } = getGameDateParts(dateStr);
-    if (!Number.isFinite(calYear)) return 0;
-    return month >= 7 || (month === 6 && day >= 28) ? calYear + 1 : calYear;
-  } catch {
-    return 0;
-  }
+export function getSeasonYear(
+  dateStr: string,
+  leagueStats?: Pick<LeagueStats, 'leagueCalendar' | 'uiMode'>,
+): number {
+  return getLeagueSeasonForDate(dateStr, leagueStats);
 }
 
 export function detectType(text: string, type?: string) {
@@ -39,12 +38,28 @@ export function detectType(text: string, type?: string) {
   if (type === 'Retirement' || lowered.includes('has retired') || lowered.includes('announced his retirement') || lowered.includes('announced retirement')) return 'Retirement';
   if (type === 'Transfer' || lowered.includes('transferred from')) return 'Transfer';
   if (type === 'Trade' || lowered.includes('trade')) return 'Trade';
+  if (type === 'Contract Option' || lowered.includes('player option') || lowered.includes('team option')) return 'Contract Option';
   if (type === 'Re-signing' || lowered.includes('re-signed')) return 'Re-signing';
   if (type === 'Signing' || lowered.includes('signed') || lowered.includes('signs with')) return 'Signing';
   if (type === 'Waive' || lowered.includes('waived')) return 'Waive';
   if (type === 'Suspension' || lowered.includes('suspended')) return 'Suspension';
   if (lowered.includes('fired') || lowered.includes('hired')) return 'Personnel';
   return 'League Event';
+}
+
+export function stripTransactionNarrative(text: string): string {
+  return text.replace(/\s+[\p{L}.'’-]+(?:\s+[\p{L}.'’-]+){0,5}\s+(?:is returning to the NBA after playing in the|was playing in the|was previously with the)\s+[^.]+\.?$/iu, '').trim();
+}
+
+export function sortTransactionHistoryNewestFirst<T>(history: T[], fallbackDate: string): T[] {
+  return history
+    .map((entry, index) => ({ entry, index }))
+    .sort((left, right) => {
+      const leftDate = typeof left.entry === 'string' ? fallbackDate : (left.entry as any)?.date || fallbackDate;
+      const rightDate = typeof right.entry === 'string' ? fallbackDate : (right.entry as any)?.date || fallbackDate;
+      return new Date(rightDate).getTime() - new Date(leftDate).getTime() || right.index - left.index;
+    })
+    .map(({ entry }) => entry);
 }
 
 export function normalizePersonnelRoleText(text: string): string {
@@ -57,6 +72,7 @@ export const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React
   Transfer: { color: 'text-rose-300', bg: 'bg-rose-500/10', icon: <Handshake size={18} />, label: 'Transfer' },
   Signing: { color: 'text-emerald-400', bg: 'bg-emerald-500/10', icon: <UserCheck size={18} />, label: 'Signing' },
   'Re-signing': { color: 'text-teal-400', bg: 'bg-teal-500/10', icon: <UserCheck size={18} />, label: 'Re-signing' },
+  'Contract Option': { color: 'text-sky-400', bg: 'bg-sky-500/10', icon: <CheckCircle size={18} />, label: 'Contract Option' },
   Waive: { color: 'text-amber-400', bg: 'bg-amber-500/10', icon: <UserX size={18} />, label: 'Waiver' },
   Suspension: { color: 'text-rose-400', bg: 'bg-rose-500/10', icon: <AlertTriangle size={18} />, label: 'Suspension' },
   Personnel: { color: 'text-purple-400', bg: 'bg-purple-500/10', icon: <Users size={18} />, label: 'Personnel' },
@@ -69,8 +85,8 @@ export const TYPE_STYLE: Record<string, { color: string; bg: string; icon: React
   'League Event': { color: 'text-slate-400', bg: 'bg-slate-800', icon: <Info size={18} />, label: 'League Event' },
 };
 
-export const EXTERNAL_LEAGUES = ['Euroleague', 'G-League', 'PBA', 'B-League', 'Endesa', 'China CBA', 'NBL Australia'] as const;
-export type LeagueFilter = 'nba' | 'all' | (typeof EXTERNAL_LEAGUES)[number];
+export const EXTERNAL_LEAGUES: readonly string[] = EXTERNAL_LEAGUE_STATUSES;
+export type LeagueFilter = string;
 
 export const NAME_TOKEN_RE = /[A-Z][a-zA-Z'.\-]+(?: [A-Z][a-zA-Z'.\-]+)+/g;
 
@@ -84,11 +100,61 @@ export function findPlayerInText<P extends { name: string }>(text: string, playe
   return null;
 }
 
+export function getTransactionStaffCandidates(
+  state: Pick<GameState, 'staff' | 'staffFreeAgents' | 'staffRetirementAnnouncements' | 'teams' | 'nonNBATeams'>,
+): StaffMember[] {
+  const retirementRows: StaffMember[] = (state.staffRetirementAnnouncements ?? []).map(record => ({
+    name: record.name,
+    role: record.role,
+    position: record.role,
+    playerPortraitUrl: record.portraitUrl,
+    staffImageId: record.staffImageId,
+    team: record.teamName,
+    teamLogoUrl: record.teamLogoUrl,
+  }));
+  return [
+    ...retirementRows,
+    ...(state.teams ?? []).flatMap(team => team.tycoon?.staffMembers ?? []),
+    ...(state.nonNBATeams ?? []).flatMap(team => team.tycoon?.staffMembers ?? []),
+    ...(state.staffFreeAgents ?? []),
+    ...(state.staff?.coaches ?? []),
+    ...(state.staff?.gms ?? []),
+    ...(state.staff?.owners ?? []),
+    ...(state.staff?.leagueOffice ?? []),
+  ];
+}
+
+export function findStaffInText<T extends { name: string }>(text: string, staff: T[]): T | null {
+  const lowered = text.toLocaleLowerCase();
+  return staff
+    .filter(member => member.name.trim().length > 0)
+    .sort((left, right) => right.name.length - left.name.length)
+    .find(member => lowered.includes(member.name.toLocaleLowerCase())) ?? null;
+}
+
+const escapeRegExp = (value: string): string => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+export function teamMentionedInTransactionText<T extends { name: string; abbrev: string }>(text: string, team: T): boolean {
+  const name = String(team.name ?? '').trim();
+  const abbrev = String(team.abbrev ?? '').trim();
+  const nameMatch = name.length >= 3 && new RegExp(`(^|[^A-Za-z0-9])${escapeRegExp(name)}(?=$|[^A-Za-z0-9])`, 'i').test(text);
+  if (nameMatch) return true;
+  return abbrev.length >= 2
+    && new RegExp(`(^|[^A-Za-z0-9])${escapeRegExp(abbrev)}(?=$|[^A-Za-z0-9])`).test(text);
+}
+
 export function findTeamInText<T extends { name: string; abbrev: string }>(text: string, teams: T[]): T | null {
   for (const team of teams) {
-    if (text.includes(team.name) || text.includes(team.abbrev)) return team;
+    if (teamMentionedInTransactionText(text, team)) return team;
   }
   return null;
+}
+
+export function getTransactionTeamIds(entry: { teamIds?: number[]; trade?: { movements?: Array<{ fromTeamId: number; toTeamId: number }> } }): number[] {
+  return [...new Set([
+    ...(entry.teamIds ?? []),
+    ...(entry.trade?.movements ?? []).flatMap(movement => [movement.fromTeamId, movement.toTeamId]),
+  ])];
 }
 
 export type EnrichedEntry = {
@@ -97,6 +163,7 @@ export type EnrichedEntry = {
   type?: string;
   kind: string;
   player: any;
+  staff?: StaffMember | null;
   team: any;
   [key: string]: any;
 };
@@ -120,35 +187,35 @@ export function buildDisplayItems(filteredHistory: EnrichedEntry[]): DisplayItem
     if (used.has(i)) continue;
     const current = filteredHistory[i];
     if (current.kind !== 'Trade') {
-      result.push({ kind: 'single', entry: current });
+      result.push({ kind: 'single', entry: { ...current, text: stripTransactionNarrative(current.text) } });
       used.add(i);
       continue;
     }
 
-    let currentTokens = tokenCache.get(i);
-    if (!currentTokens) {
-      currentTokens = tokensFor(current.text || '');
-      tokenCache.set(i, currentTokens);
-    }
-
     const group: number[] = [i];
-    for (let j = i + 1; j < filteredHistory.length; j += 1) {
-      if (used.has(j)) continue;
-      const other = filteredHistory[j];
-      if (other.kind !== 'Trade' || other.date !== current.date) continue;
-      let otherTokens = tokenCache.get(j);
-      if (!otherTokens) {
-        otherTokens = tokensFor(other.text || '');
-        tokenCache.set(j, otherTokens);
-      }
-      let shared = false;
-      for (const token of currentTokens) {
-        if (otherTokens.has(token)) {
-          shared = true;
-          break;
+    if (current.transactionId) {
+      for (let j = i + 1; j < filteredHistory.length; j += 1) {
+        if (!used.has(j) && filteredHistory[j].kind === 'Trade' && filteredHistory[j].transactionId === current.transactionId) {
+          group.push(j);
         }
       }
-      if (shared) group.push(j);
+    } else {
+      let currentTokens = tokenCache.get(i);
+      if (!currentTokens) {
+        currentTokens = tokensFor(current.text || '');
+        tokenCache.set(i, currentTokens);
+      }
+      for (let j = i + 1; j < filteredHistory.length; j += 1) {
+        if (used.has(j)) continue;
+        const other = filteredHistory[j];
+        if (other.kind !== 'Trade' || other.date !== current.date) continue;
+        let otherTokens = tokenCache.get(j);
+        if (!otherTokens) {
+          otherTokens = tokensFor(other.text || '');
+          tokenCache.set(j, otherTokens);
+        }
+        if ([...currentTokens].some(token => otherTokens.has(token))) group.push(j);
+      }
     }
 
     if (group.length >= 2) {

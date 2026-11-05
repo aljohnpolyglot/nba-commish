@@ -72,7 +72,8 @@ export function getPlayerRealK2(playerName: string): Record<string, (number | nu
   const teams = teamsCache;
   if (!teams || teams.length === 0) return null;
 
-  const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
+  const norm = (s: string) =>
+    s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z]/g, '');
   const normTarget = norm(playerName);
 
   for (const team of teams) {

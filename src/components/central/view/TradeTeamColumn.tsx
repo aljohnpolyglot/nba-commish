@@ -20,8 +20,9 @@ type TradeTeamColumnProps = {
 export const TradeTeamColumn: React.FC<TradeTeamColumnProps> = ({ teamName, record, team, received, players, tradeDateMs, tradeYear, currentYear, teams, onPlayerClick }) => {
   const logoUrl = team?.logoUrl;
   const teamColor = team?.colors?.[0];
-  const isEmpty = players.length === 0 && received.pickStrs.length === 0 && received.cashStrs.length === 0 && received.playerNames.length === 0;
-  const totalPostWS = players.reduce((accumulator, player) => accumulator + getPostTradeWS(player, tradeYear).ws, 0);
+  const isEmpty = players.length === 0 && received.pickStrs.length === 0 && received.cashStrs.length === 0 && received.playerNames.length === 0 && !received.draftPicks?.length;
+  const sourceTeamId = (playerId: string) => received.playerSourceTeamIds?.[playerId] ?? received.sourceTeamId;
+  const totalPostWS = players.reduce((accumulator, player) => accumulator + getPostTradeWS(player, tradeYear, sourceTeamId(player.internalId)).ws, 0);
 
   return (
     <div className="bg-slate-900/30 border border-slate-800 rounded-xl overflow-hidden">
@@ -42,7 +43,7 @@ export const TradeTeamColumn: React.FC<TradeTeamColumnProps> = ({ teamName, reco
         ) : (
           <>
             {players.map(player => (
-              <PlayerReceivedCard key={player.internalId} player={player} tradeDateMs={tradeDateMs} tradeYear={tradeYear} currentYear={currentYear} receivingTeam={team} teams={teams} onClick={onPlayerClick} />
+              <PlayerReceivedCard key={player.internalId} player={player} sourceTeamId={sourceTeamId(player.internalId)} tradeDateMs={tradeDateMs} tradeYear={tradeYear} currentYear={currentYear} receivingTeam={team} teams={teams} onClick={onPlayerClick} />
             ))}
 
             {received.playerNames.filter(name => !players.some(player => player.name.toLowerCase() === name.toLowerCase())).map((name, index) => (
@@ -55,7 +56,8 @@ export const TradeTeamColumn: React.FC<TradeTeamColumnProps> = ({ teamName, reco
               </div>
             ))}
 
-            {received.pickStrs.map((pick, index) => <PickRow key={index} pickStr={pick} receivingTeamAbbrev={team?.abbrev} />)}
+            {received.draftPicks?.map(pick => <PickRow key={pick.dpid} pick={pick} receivingTeamAbbrev={team?.abbrev} onPlayerClick={onPlayerClick} />)}
+            {received.pickStrs.map((pick, index) => <PickRow key={index} pickStr={pick} fallbackSeason={tradeYear} sourceTeamId={received.sourceTeamId} receivingTeamAbbrev={team?.abbrev} onPlayerClick={onPlayerClick} />)}
 
             {received.cashStrs.map((cash, index) => (
               <div key={`cash-${index}`} className="flex items-center gap-3 p-3 rounded-xl border-2 bg-emerald-600/10 border-emerald-500/40">

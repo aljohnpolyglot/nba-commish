@@ -1,5 +1,9 @@
-import React from 'react';
+import React, { useEffect, useState, useSyncExternalStore } from 'react';
 import { LazySimProgress } from '../../types';
+import { formatGameDateShort, parseGameDate } from '../../utils/dateUtils';
+import { getLeagueStartupEstimatedCeiling } from '../../store/logic/leagueStartupProgress';
+import { getVisibleLongSimProgress, subscribeLongSimProgress } from '../../services/simulation/longSimCoordinator';
+import { resolveUserFacingSimulationText } from '../../services/simulation/targetPlanner';
 
 interface LazySimLoadingScreenProps {
   progress: LazySimProgress;
@@ -7,19 +11,55 @@ interface LazySimLoadingScreenProps {
 
 const formatDate = (iso: string): string => {
   if (!iso) return '';
-  const [y, m, d] = iso.split('-').map(Number);
-  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  return `${months[m - 1]} ${d}, ${y}`;
+  const parsed = parseGameDate(iso);
+  return Number.isFinite(parsed.getTime()) ? formatGameDateShort(parsed) : '';
 };
 
 export const LazySimLoadingScreen: React.FC<LazySimLoadingScreenProps> = ({ progress }) => {
-  const pct = Math.min(99, progress.percentComplete);
+  const streamedProgress = useSyncExternalStore(
+    subscribeLongSimProgress,
+    getVisibleLongSimProgress,
+    () => undefined,
+  );
+  const liveProgress = progress.kind === 'league-start' || progress.kind === 'save-load'
+    ? progress
+    : streamedProgress ?? progress;
+  const isSetupOrSaveLoad = liveProgress.kind === 'save-load' || liveProgress.kind === 'league-start';
+  const rawPct = Number(liveProgress.percentComplete);
+  const reportedPct = Math.max(0, Math.min(isSetupOrSaveLoad ? 100 : 99, Number.isFinite(rawPct) ? Math.round(rawPct) : 0));
+  const [estimatedPct, setEstimatedPct] = useState(reportedPct);
+  useEffect(() => {
+    if (liveProgress.kind !== 'league-start') {
+      setEstimatedPct(reportedPct);
+      return;
+    }
+    setEstimatedPct(current => current > reportedPct + 10 ? reportedPct : Math.max(current, reportedPct));
+    const ceiling = getLeagueStartupEstimatedCeiling(reportedPct);
+    const timer = globalThis.setInterval(() => {
+      setEstimatedPct(current => Math.max(reportedPct, Math.min(ceiling, current + 1)));
+    }, 700);
+    return () => globalThis.clearInterval(timer);
+  }, [liveProgress.kind, reportedPct]);
+  const pct = liveProgress.kind === 'league-start' ? estimatedPct : reportedPct;
+  const currentDate = formatDate(liveProgress.currentDate);
+  const targetDate = formatDate(liveProgress.targetDate);
+  const finalStopDate = formatDate(liveProgress.finalStopDate ?? liveProgress.targetDate);
+  const currentPhase = resolveUserFacingSimulationText(liveProgress.currentPhase) ?? 'Simulating season...';
+  const targetSemanticName = resolveUserFacingSimulationText(liveProgress.targetSemanticName, undefined);
+  const setupStep = Math.max(1, Math.min(liveProgress.daysTotal, Math.round(liveProgress.daysComplete)));
   const radius = 54;
   const circumference = 2 * Math.PI * radius;
   const dashOffset = circumference * (1 - pct / 100);
 
   return (
-    <div className="fixed inset-0 z-[200] bg-slate-950 flex flex-col items-center justify-center p-6">
+    <div
+      className="fixed inset-0 z-[200] bg-slate-950 flex flex-col items-center justify-center p-6"
+      data-testid="lazy-sim-loading"
+      data-current-date={liveProgress.currentDate}
+      data-days-complete={liveProgress.daysComplete}
+      data-percent-complete={pct}
+      data-current-phase={currentPhase}
+    >
       {/* Background glow */}
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-indigo-900/20 via-slate-950 to-slate-950 pointer-events-none" />
 
@@ -54,8 +94,20 @@ export const LazySimLoadingScreen: React.FC<LazySimLoadingScreenProps> = ({ prog
 
         {/* Phase label */}
         <div className="text-center">
-          <p className="text-lg font-black text-white tracking-tight">{progress.currentPhase}</p>
-          <p className="text-sm text-indigo-400 font-mono mt-1">{formatDate(progress.currentDate)}</p>
+          {targetSemanticName && (
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-indigo-300">
+              {targetSemanticName}
+            </p>
+          )}
+          <p className="text-lg font-black text-white tracking-tight">{currentPhase}</p>
+          {(currentDate || targetDate) && (
+            <p className="text-sm text-indigo-400 font-mono mt-1">{currentDate || targetDate}</p>
+          )}
+          {liveProgress.kind === 'league-start' && (
+            <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-2">
+              Setup step {setupStep} of {liveProgress.daysTotal}
+            </p>
+          )}
         </div>
 
         {/* Progress bar */}
@@ -66,18 +118,19 @@ export const LazySimLoadingScreen: React.FC<LazySimLoadingScreenProps> = ({ prog
           />
         </div>
 
-        {/* Stats row */}
-        <div className="flex gap-6 text-center">
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-widest font-bold">Days</div>
-            <div className="text-sm font-black text-white tabular-nums">{progress.daysComplete} / {progress.daysTotal}</div>
+        {!isSetupOrSaveLoad && (
+          <div className="flex gap-6 text-center">
+            <div>
+              <div className="text-xs text-slate-500 uppercase tracking-widest font-bold">Days</div>
+              <div className="text-sm font-black text-white tabular-nums">{liveProgress.daysComplete} / {liveProgress.daysTotal}</div>
+            </div>
+            <div className="w-px bg-slate-800" />
+            <div>
+              <div className="text-xs text-slate-500 uppercase tracking-widest font-bold">Target</div>
+              <div className="text-sm font-black text-indigo-300 tabular-nums">{finalStopDate}</div>
+            </div>
           </div>
-          <div className="w-px bg-slate-800" />
-          <div>
-            <div className="text-xs text-slate-500 uppercase tracking-widest font-bold">Target</div>
-            <div className="text-sm font-black text-indigo-300 tabular-nums">{formatDate(progress.targetDate)}</div>
-          </div>
-        </div>
+        )}
 
       </div>
     </div>

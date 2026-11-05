@@ -1,0 +1,31 @@
+export const WNBA_ALL_STAR_EVENT_LOGO_SOURCE = {
+  sourceUrl: 'https://www.sportslogos.net/logos/list_by_team/1153/WNBA-All-Star-Game-Logos/',
+  capturedAt: '2026-08-04',
+} as const;
+
+export const WNBA_ALL_STAR_EVENT_LOGOS: Readonly<Record<number, string>> = {
+  1999: 'https://content.sportslogos.net/logos/16/1153/full/5358.gif',
+  2000: 'https://content.sportslogos.net/logos/16/1153/full/5359.gif',
+  2001: 'https://content.sportslogos.net/logos/16/1153/full/5360.gif',
+  2002: 'https://content.sportslogos.net/logos/16/1153/full/5361.gif',
+  2003: 'https://content.sportslogos.net/logos/16/1153/full/5362.gif',
+  2004: 'https://content.sportslogos.net/logos/16/1153/full/5408.gif',
+  2005: 'https://content.sportslogos.net/logos/16/1153/full/5364.gif',
+  2006: 'https://content.sportslogos.net/logos/16/1153/full/p8fk00e6bl5qtffzpsdn.gif',
+  2007: 'https://content.sportslogos.net/logos/16/1153/full/dtlz69ffir8ien6ree63.gif',
+  2009: 'https://content.sportslogos.net/logos/16/1153/full/768_-wnba_all-star_game-primary-2009.gif',
+  2010: 'https://content.sportslogos.net/logos/16/1153/full/587_-wnba_all-star_game-primary-2010.gif',
+  2011: 'https://content.sportslogos.net/logos/16/1153/full/766_-wnba_all-star_game-primary-2011.gif',
+  2013: 'https://content.sportslogos.net/logos/16/1153/full/5921__wnba_all-star_game-primary-2013.png',
+  2014: 'https://content.sportslogos.net/logos/16/1153/full/7905__wnba_all-star_game-primary-2014.png',
+  2015: 'https://content.sportslogos.net/logos/16/1153/full/9056__wnba_all-star_game-primary-2015.png',
+  2017: 'https://content.sportslogos.net/logos/16/1153/full/5134__wnba_all-star_game-primary-2017.png',
+  2018: 'https://content.sportslogos.net/logos/16/1153/full/7245__wnba_all-star_game-primary-2018.png',
+  2019: 'https://content.sportslogos.net/logos/16/1153/full/4978__wnba_all-star_game-primary-2019.png',
+  2021: 'https://content.sportslogos.net/logos/16/1153/full/_wnba_all-star_game_logo_primary_2021_sportslogosnet-2380.png',
+  2022: 'https://content.sportslogos.net/logos/16/1153/full/_wnba_all-star_game_logo_primary_2022_sportslogosnet-7432.png',
+  2023: 'https://content.sportslogos.net/logos/16/1153/full/_wnba_all-star_game_logo_primary_2023_sportslogosnet-3490.png',
+  2024: 'https://content.sportslogos.net/logos/16/1153/full/_wnba_all-star_game_logo_primary_2024_sportslogosnet-4195.png',
+  2025: 'https://content.sportslogos.net/logos/16/1153/full/_wnba_all-star_game_logo_primary_2025sportslogosnet8820.png',
+  2026: 'https://content.sportslogos.net/logos/16/1153/full/-wnba-all-star-game-logo-primary-2026-115324572026.png',
+};

@@ -1,5 +1,14 @@
 import { NBAPlayer, NBAGMStat } from '../../../types';
 import { ComputedRow, StatType } from './PlayerStatsTypes';
+import {
+  ADVANCED_STAT_FORMULA_VERSION,
+  calculateIndividualOrtg,
+  getCalibratedEwa,
+  getCalibratedOrtg,
+  getCalibratedPer,
+  isSimulatorAdvancedStat,
+} from '../../../utils/advancedStatCalibration';
+import { getPlayerStatIdentityKey } from '../../../utils/playerStatIdentity';
 
 export const fmt1 = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '—');
 export const fmt0 = (v: number) => (Number.isFinite(v) ? Math.round(v).toString() : '—');
@@ -71,12 +80,21 @@ export function aggregateStats(statsList: Array<NBAGMStat | null | undefined>): 
   out.fpp = safePct(out.fp ?? 0, out.fpa ?? 0);
   out.ftp = safePct(out.ft, out.fta);
   const totalGp = out.gp || 1;
-  const wpd = (k: keyof NBAGMStat) => rows.reduce((a, s) => a + ((s[k] as number) ?? 0) * (s.gp ?? 0), 0) / totalGp;
-  out.per = wpd('per');
+  const totalMinutes = out.min || 1;
+  const wpd = (k: keyof NBAGMStat) => rows.reduce(
+    (a, s) => a + ((s[k] as number) ?? 0) * (s.min ?? 0),
+    0,
+  ) / totalMinutes;
+  out.per = rows.reduce((sum, stat) => sum + getCalibratedPer(stat) * (stat.min ?? 0), 0) / totalMinutes;
   out.tsPct = wpd('tsPct');
   out.efgPct = wpd('efgPct');
   out.usgPct = wpd('usgPct');
-  out.ortg = wpd('ortg');
+  const containsSimulatorStats = rows.some(isSimulatorAdvancedStat);
+  out.ortg = containsSimulatorStats ? calculateIndividualOrtg(out) : rows.reduce(
+    (sum, stat) => sum + getCalibratedOrtg(stat) * (stat.gp ?? 0),
+    0,
+  ) / totalGp;
+  if (containsSimulatorStats) out._advancedStatVersion = ADVANCED_STAT_FORMULA_VERSION;
   out.drtg = wpd('drtg');
   out.bpm = wpd('bpm');
   out.obpm = wpd('obpm');
@@ -92,14 +110,14 @@ export function aggregateStats(statsList: Array<NBAGMStat | null | undefined>): 
   out.ows = rows.reduce((a, s) => a + (s.ows ?? 0), 0);
   out.dws = rows.reduce((a, s) => a + (s.dws ?? 0), 0);
   out.vorp = rows.reduce((a, s) => a + (s.vorp ?? 0), 0);
-  out.ewa = rows.reduce((a, s) => a + (s.ewa ?? 0), 0);
+  out.ewa = rows.reduce((a, s) => a + getCalibratedEwa(s), 0);
   return out;
 }
 
 export function dedupeStatsRows(statsList: Array<NBAGMStat | null | undefined>): NBAGMStat[] {
   const grouped = new Map<string, NBAGMStat[]>();
   for (const row of validStatRows(statsList)) {
-    const key = `${row.season}|${row.tid}|${row.playoffs ? 1 : 0}|${row.competitionId ?? ''}`;
+    const key = getPlayerStatIdentityKey(row);
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key)!.push(row);
   }
@@ -217,12 +235,12 @@ export function toRow(
     pf: rawStat.pf / div,
     pts: rawStat.pts / div,
     pm: (rawStat.pm ?? 0) / div,
-    per: rawStat.per ?? 0,
-    ewa: rawStat.ewa ?? 0,
+    per: getCalibratedPer(rawStat),
+    ewa: getCalibratedEwa(rawStat),
     tsPct: rawStat.tsPct ?? 0,
     efgPctA: rawStat.efgPct ?? 0,
     usgPct: rawStat.usgPct ?? 0,
-    ortg: rawStat.ortg ?? 0,
+    ortg: getCalibratedOrtg(rawStat),
     drtg: rawStat.drtg ?? 0,
     bpm: rawStat.bpm ?? 0,
     obpm: rawStat.obpm ?? 0,
@@ -254,32 +272,41 @@ export function historicalTeamRows(
   teamFilter: string,
 ): ComputedRow[] {
   const rows = validStatRows(stats);
-  const byTid = new Map<number, NBAGMStat[]>();
+  const statAbbrev = (stat: NBAGMStat): string => String((stat as any).abbrev ?? (stat as any).teamAbbrev ?? (stat as any).tm ?? '').trim().toUpperCase();
+  const matchesFilter = (tid: number, abbrev: string): boolean => {
+    if (teamFilter === 'all') return true;
+    const team = teams.find(entry => entry.id === tid)
+      ?? teams.find(entry => entry.abbrev.toUpperCase() === abbrev);
+    return team != null && String(team.id) === teamFilter;
+  };
+  const byTeam = new Map<string, { tid: number; abbrev: string; stats: NBAGMStat[] }>();
   for (const stat of rows) {
-    if (!byTid.has(stat.tid)) byTid.set(stat.tid, []);
-    byTid.get(stat.tid)!.push(stat);
+    const abbrev = statAbbrev(stat);
+    const key = abbrev ? `abbr:${abbrev}` : `tid:${stat.tid}`;
+    if (!byTeam.has(key)) byTeam.set(key, { tid: stat.tid, abbrev, stats: [] });
+    byTeam.get(key)!.stats.push(stat);
   }
 
-  if (byTid.size <= 1) {
+  if (byTeam.size <= 1) {
     const agg = rows.length > 1 ? aggregateStats(rows) : rows[0];
     if (!agg || agg.gp < 1) return [];
     const team = teams.find(entry => entry.id === agg.tid);
-    const rowTeam = team?.abbrev ?? (agg.tid < 0 ? 'FA' : '?');
-    if (teamFilter !== 'all' && rowTeam !== teamFilter) return [];
+    const rowTeam = statAbbrev(agg) || team?.abbrev || (agg.tid < 0 ? 'FA' : '?');
+    if (!matchesFilter(agg.tid, statAbbrev(agg))) return [];
     return [toRow(player, agg, statType, seasonLabel, rowTeam, age)];
   }
 
   const result: ComputedRow[] = [];
   if (teamFilter === 'all') {
     const agg = aggregateStats(rows);
-    if (agg.gp >= 1) result.push(toRow(player, agg, statType, seasonLabel, `${byTid.size}TM`, age));
+    if (agg.gp >= 1) result.push(toRow(player, agg, statType, seasonLabel, `${byTeam.size}TM`, age));
   }
-  for (const [tid, teamStats] of byTid) {
+  for (const { tid, abbrev, stats: teamStats } of byTeam.values()) {
     const agg = teamStats.length > 1 ? aggregateStats(teamStats) : teamStats[0];
     if (agg.gp < 1) continue;
     const team = teams.find(entry => entry.id === tid);
-    const rowTeam = team?.abbrev ?? (tid < 0 ? 'FA' : '?');
-    if (teamFilter !== 'all' && rowTeam !== teamFilter) continue;
+    const rowTeam = abbrev || team?.abbrev || (tid < 0 ? 'FA' : '?');
+    if (!matchesFilter(tid, abbrev)) continue;
     result.push(toRow(player, agg, statType, seasonLabel, rowTeam, age));
   }
   return result;

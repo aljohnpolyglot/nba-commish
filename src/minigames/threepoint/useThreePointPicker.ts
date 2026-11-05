@@ -7,6 +7,8 @@ import {
 } from '../../components/allstar/allstarevents/threepoint/contestants';
 import { loadRatings } from '../../data/NBA2kRatings';
 import { calculateK2 } from '../../services/simulation/convert2kAttributes';
+import { useGame } from '../../store/GameContext';
+import { resolveMinigameNbaPlayers } from '../shared/minigameRoster';
 
 export const TPT_MAX_PICKS = 8;
 export const TPT_MIN_PICKS = 3;
@@ -30,6 +32,7 @@ const tpScore = (p: NBAPlayer): number => {
 };
 
 export function useThreePointPicker() {
+  const { state } = useGame();
   const [view, setView] = useState<View>('LOADING');
   const [players, setPlayers] = useState<NBAPlayer[]>([]);
   const [teamAbbrevByTid, setTeamAbbrevByTid] = useState<Record<number, string>>({});
@@ -44,9 +47,9 @@ export function useThreePointPicker() {
       .then(([{ players: roster, teams }]) => {
         if (cancelled) return;
         const abbrevMap: Record<number, string> = {};
-        teams.forEach((t: any) => { abbrevMap[t.id] = t.abbrev; });
+        [...teams, ...state.teams].forEach((t: any) => { abbrevMap[t.id] = t.abbrev; });
         setTeamAbbrevByTid(abbrevMap);
-        const filtered = (roster as NBAPlayer[])
+        const filtered = resolveMinigameNbaPlayers(state.players, roster as NBAPlayer[])
           .filter((p: any) => p.tid >= 0 && p.tid < 100 && !p.retiredYear)
           .sort((a, b) => tpScore(b) - tpScore(a));
         setPlayers(filtered);
@@ -57,7 +60,7 @@ export function useThreePointPicker() {
         if (!cancelled) setView('PICK');
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [state.players, state.teams]);
 
   const toggle = (id: string) => {
     setSelectedIds(prev => {
@@ -75,9 +78,9 @@ export function useThreePointPicker() {
 
   const selectedContestants: ThreePointContestant[] = useMemo(
     () => selectedPlayers.map(p =>
-      mapPlayerToContestant(p, teamAbbrevByTid[(p as any).tid] ?? 'NBA')
+      mapPlayerToContestant(p, teamAbbrevByTid[(p as any).tid] ?? 'NBA', undefined, state.leagueStats.year)
     ),
-    [selectedPlayers, teamAbbrevByTid]
+    [selectedPlayers, state.leagueStats.year, teamAbbrevByTid]
   );
 
   const start = () => setView('RUN');

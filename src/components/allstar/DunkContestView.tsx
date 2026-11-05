@@ -5,6 +5,8 @@ import { useGame } from '../../store/GameContext';
 import { calcDunkOdds } from '../../utils/allStarOdds';
 import { DUNK_MOVES } from '../../services/allStar/dunkMoves';
 import { getPlayerImage } from '../../utils/playerImage';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
+import { getLeagueEventDisplayName } from '../../services/franchises/franchiseEventNaming';
 
 interface DunkContestViewProps {
   allStar: any;
@@ -17,11 +19,12 @@ const avatarUrl = (name: string, background = '27272a', size = 160) =>
   `https://ui-avatars.com/api/?name=${encodeURIComponent(String(name).split(' ').map((n: string) => n[0]).join('') || 'P')}&background=${background}&color=fff&size=${size}`;
 
 const getContestPortrait = (player: any) =>
-  getPlayerImage(player) || player?.imgURL || avatarUrl(player?.name ?? player?.playerName ?? 'Player');
+  getPlayerImage(player) || avatarUrl(player?.name ?? player?.playerName ?? 'Player');
 
 export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, players, teams: providedTeams, ownTid }) => {
   const { state } = useGame();
   const teams = providedTeams ?? state.teams;
+  const eventName = getLeagueEventDisplayName(state, 'slam_dunk', 'Slam Dunk Contest');
   const allStarData = allStar ?? {};
 
   const dunkContestContestants = allStarData.dunkContestContestants ?? [];
@@ -38,7 +41,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
         <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
           <Zap className="w-8 h-8 text-zinc-600" />
         </div>
-        <h3 className="text-lg font-bold text-white mb-2">Slam Dunk Contest</h3>
+        <h3 className="text-lg font-bold text-white mb-2">{eventName}</h3>
         <p className="text-sm text-zinc-500">
           The participants will be announced before All-Star Saturday.
         </p>
@@ -55,7 +58,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
             <p className="text-xs font-bold tracking-widest text-zinc-500 uppercase mb-1">
               Saturday · All-Star Weekend
             </p>
-            <h2 className="text-3xl font-black italic tracking-tighter text-white">SLAM DUNK CONTEST</h2>
+            <h2 className="text-3xl font-black italic tracking-tighter text-white">{eventName}</h2>
           </div>
 
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -63,6 +66,8 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
               const player = players.find(p => p.internalId === (contestant.internalId || contestant.playerId)) || contestant;
               if (!player || !player.name) return null;
 
+              const team = teams.find(t => t.id === player.tid);
+              const teamLogoSrc = getResolvedTeamLogoUrl(team, state.leagueStats.year);
               const wins = player.awards?.filter((a: any) => a.type === 'Slam Dunk Contest Winner').length ?? 0;
               const isOwn = ownTid !== null && ownTid !== undefined && player?.tid === ownTid;
 
@@ -84,18 +89,25 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                   }`}>
 
                   {/* Portrait */}
-                  <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-800 mb-3 border-2 border-white/10">
-                    {portraitSrc ? (
-                      <img
-                        src={portraitSrc}
-                        alt={player.name}
-                        className="w-full h-full object-cover object-top"
-                        onError={e => { (e.target as HTMLImageElement).src = avatarUrl(player.name); }}
-                        referrerPolicy="no-referrer"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-zinc-500 font-black text-lg">
-                        {player.name.split(' ').map((n: string) => n[0]).join('')}
+                  <div className="relative mb-3">
+                    <div className="w-20 h-20 rounded-full overflow-hidden bg-zinc-800 border-2 border-white/10">
+                      {portraitSrc ? (
+                        <img
+                          src={portraitSrc}
+                          alt={player.name}
+                          className="w-full h-full object-cover object-top"
+                          onError={e => { (e.target as HTMLImageElement).src = avatarUrl(player.name); }}
+                          referrerPolicy="no-referrer"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-zinc-500 font-black text-lg">
+                          {player.name.split(' ').map((n: string) => n[0]).join('')}
+                        </div>
+                      )}
+                    </div>
+                    {teamLogoSrc && (
+                      <div className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full border border-zinc-800 bg-zinc-950 p-1">
+                        <img src={teamLogoSrc} alt={team?.abbrev ?? 'team'} className="h-full w-full object-contain" referrerPolicy="no-referrer" />
                       </div>
                     )}
                   </div>
@@ -105,9 +117,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                     <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>
                   </p>
                   <p className="text-[10px] text-zinc-500 font-bold uppercase tracking-widest mb-3">
-                    {player.pos} · {allStarData.roster?.find((r: any) => r.playerId === player.internalId)
-                      ? teams.find(t => t.id === player.tid)?.abbrev ?? '' 
-                      : teams.find(t => t.id === player.tid)?.abbrev ?? ''}
+                    {player.pos} · {team?.abbrev ?? ''}
                   </p>
 
                   {/* Vegas odds */}
@@ -155,7 +165,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                     <Trophy className="w-12 h-12 text-yellow-500" />
                   </div>
                   <h2 className="text-3xl font-black italic tracking-tighter mt-3 text-white">{dunkContestResult.winnerName}</h2>
-                  <p className="text-xs text-zinc-500 mt-1">Slam Dunk Contest Champion</p>
+                  <p className="text-xs text-zinc-500 mt-1">{eventName} Champion</p>
                 </div>
               );
             }
@@ -185,7 +195,7 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                 <h2 className="text-3xl font-black italic tracking-tighter mt-3 text-white">
                   <PlayerNameWithHover player={winner}>{winner.name}</PlayerNameWithHover>
                 </h2>
-                <p className="text-xs text-zinc-500 mt-1 mb-6">Slam Dunk Contest Champion</p>
+                <p className="text-xs text-zinc-500 mt-1 mb-6">{eventName} Champion</p>
                 
 
                 {dunkContestResult.mvpDunk && (
@@ -222,12 +232,14 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-800/50">
-                    {(dunkContestResult.round1 ?? [])
+                    {[...(dunkContestResult.round1 ?? [])]
                       .sort((a: any, b: any) => (b.total ?? b.totalScore ?? 0) - (a.total ?? a.totalScore ?? 0))
                       .map((r1: any, i: number) => {
                         // Match by any available name/id field (handles old and new save formats)
                         const r1Name = r1.playerName || r1.playerId;
                         const player = players.find(p => p.internalId === r1.playerId) || players.find(p => p.name === r1Name);
+                        const playerTeam = teams.find(t => t.id === player?.tid);
+                        const playerTeamLogo = getResolvedTeamLogoUrl(playerTeam, state.leagueStats.year);
                         const displayName = player?.name ?? r1.playerName ?? r1.playerId ?? 'Unknown';
                         const finalsRow = (dunkContestResult.round2 ?? []).find((r: any) =>
                           (r.playerName && r.playerName === r1Name) ||
@@ -264,9 +276,12 @@ export const DunkContestView: React.FC<DunkContestViewProps> = ({ allStar, playe
                                       : displayName}
                                   </p>
                                   <p className="text-[10px] text-zinc-600">
-                                    {teams.find(t => t.id === player?.tid)?.abbrev ?? r1.teamAbbrev ?? 'PBA'}
+                                    {playerTeam?.abbrev ?? r1.teamAbbrev ?? 'PBA'}
                                   </p>
                                 </div>
+                                {playerTeamLogo && (
+                                  <img src={playerTeamLogo} alt={playerTeam?.abbrev ?? 'team'} className="ml-auto h-5 w-5 object-contain" referrerPolicy="no-referrer" />
+                                )}
                               </div>
                             </td>
                             <td className="px-4 py-3 text-center font-mono text-zinc-400 text-sm">

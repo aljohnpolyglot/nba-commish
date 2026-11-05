@@ -158,7 +158,7 @@ export const systemDescriptions: Record<string, { desc: string, pos: string[], n
   "The Wheel": {
     desc: "A continuous motion offense with no hero ball, focusing on passing, cutting, and teamwork.",
     pos: ["Unpredictable", "Involves everyone", "Resilient to injuries"],
-    neg: ["Lacks a go-to scorer in crunch time", "Requires high IQ from all five players"],
+    neg: ["Lacks a go-to scorer in crunch time", "Requires high IQ from everyone on the court"],
     requirements: [
       { slot: "Point Hub", archetypes: ["Point Forward", "Offensive Hub", "Two-Way Big"], importance: "Essential" },
       { slot: "Quick Router", archetypes: ["Pass-First Floor Gen", "Two-Way PG"], importance: "Essential" },

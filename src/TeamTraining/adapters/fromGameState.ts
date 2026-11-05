@@ -1,9 +1,11 @@
-import type { NBAPlayer, NBATeam } from '../../types';
+import type { GameState, NBAPlayer, NBATeam } from '../../types';
 import type { Player, Team, PlayerStats } from '../types';
 import { getDisplayOverall, getDisplayPotential, calculatePlayerOverallForYear } from '../../utils/playerRatings';
 import { convertTo2KRating } from '../../utils/helpers';
-import { calculateMentorExp } from '../../services/training/mentorScore';
+import { calculateMentorExp, countProfessionalSeasons } from '../../services/training/mentorScore';
 import { computeMoodScore } from '../../utils/mood/moodScore';
+import { fuzzRatingValue, getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../utils/scoutingFuzz';
+import { resolvePersistentPlayerImage } from '../../utils/playerImage';
 
 function pickRatings(p: NBAPlayer): any {
   if (!p.ratings || p.ratings.length === 0) return {};
@@ -34,8 +36,7 @@ function deriveStats(p: NBAPlayer): PlayerStats {
 }
 
 function deriveExperience(p: NBAPlayer): number {
-  if (!p.stats) return 0;
-  return p.stats.filter(s => !s.playoffs && (s.gp ?? 0) > 0).length;
+  return countProfessionalSeasons(p);
 }
 
 function deriveYearsWithTeam(p: NBAPlayer): number {
@@ -55,15 +56,23 @@ export interface AdapterContext {
   team?: NBATeam;
   dateStr?: string;
   teamPlayers?: NBAPlayer[];
+  state?: GameState;
 }
 
 export function nbaPlayerToTrainingPlayer(p: NBAPlayer, leagueYear: number, ctx?: AdapterContext): Player {
   const stats = deriveStats(p);
   const age = p.age ?? (leagueYear - (p.born?.year ?? leagueYear - 25));
+  const trainingPortrait = ctx?.state && ctx.state.leagueType !== 'fictional'
+    ? resolvePersistentPlayerImage(p, { portraitSeason: leagueYear })
+    : p.imgURL;
   // Canonical display ratings — same source as PlayerRatingsModal / NBA Central /
   // PlayerRatingsView. Never expose raw BBGM 0-100 numbers in the UI.
-  const displayOvr = getDisplayOverall(p);
-  const displayPot = getDisplayPotential(p, leagueYear);
+  const displayOvr = ctx?.state
+    ? getScoutedDisplayOverall(ctx.state, p, leagueYear)
+    : getDisplayOverall(p);
+  const displayPot = ctx?.state
+    ? getScoutedDisplayPotential(ctx.state, p, leagueYear, leagueYear)
+    : Math.max(getDisplayPotential(p, leagueYear), displayOvr);
 
   // Year-over-year deltas (mirrors TeamOfficeRosterView's getK2WithDelta).
   let ovrDelta: number | null = null;
@@ -71,9 +80,11 @@ export function nbaPlayerToTrainingPlayer(p: NBAPlayer, leagueYear: number, ctx?
   if (p.ratings && p.ratings.length >= 2) {
     const prevR = p.ratings.find(r => r.season === leagueYear - 1) ?? p.ratings[p.ratings.length - 2];
     const prevOvrBbgm = calculatePlayerOverallForYear(p as any, leagueYear - 1);
-    const prevK2 = convertTo2KRating(prevOvrBbgm, prevR?.hgt ?? 50, prevR?.tp ?? 50);
+    const rawPrevK2 = convertTo2KRating(prevOvrBbgm, prevR?.hgt ?? 50, prevR?.tp ?? 50);
+    const prevK2 = ctx?.state ? fuzzRatingValue(rawPrevK2, ctx.state, p, `ovr-${leagueYear - 1}`) : rawPrevK2;
     ovrDelta = displayOvr - prevK2;
-    const prevPot = getDisplayPotential(p, leagueYear - 1);
+    const rawPrevPot = getDisplayPotential(p, leagueYear - 1);
+    const prevPot = ctx?.state ? Math.max(fuzzRatingValue(rawPrevPot, ctx.state, p, `pot-${leagueYear - 1}`), prevK2) : Math.max(rawPrevPot, prevK2);
     potDelta = displayPot - prevPot;
   }
 
@@ -93,7 +104,9 @@ export function nbaPlayerToTrainingPlayer(p: NBAPlayer, leagueYear: number, ctx?
   return {
     id: p.internalId,
     name: p.name,
-    imgURL: p.imgURL,
+    imgURL: trainingPortrait,
+    srID: p.srID,
+    slug: p.slug,
     face: p.face,
     age,
     ovr: displayOvr,

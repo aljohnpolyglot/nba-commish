@@ -3,26 +3,23 @@ import type { AnnualLedger } from '../../types/tycoon';
 
 const MAX_HISTORY = 10;
 
-/**
- * Pushes a fresh ledger into team.tycoon.ledgerHistory (FIFO max 10),
- * updates cashOnHand by profit, recomputes 3-year FFP rolling deficit.
- */
 export function snapshot(team: NBATeam, ledger: AnnualLedger): void {
   const t = team.tycoon;
   if (!t) return;
+  const history = Array.isArray(t.ledgerHistory) ? t.ledgerHistory : (t.ledgerHistory = []);
 
-  ledger.cashOnHandEnd = t.cashOnHand + ledger.profit;
+  ledger.cashOnHandEnd = t.cashOnHand;
 
-  t.ledgerHistory.push(ledger);
-  if (t.ledgerHistory.length > MAX_HISTORY) t.ledgerHistory.shift();
+  history.push(ledger);
+  if (history.length > MAX_HISTORY) history.shift();
 
-  t.cashOnHand = ledger.cashOnHandEnd;
-  t.ffpRollingDeficit = t.ledgerHistory
+  t.ffpRollingDeficit = history
     .slice(-3)
     .reduce((sum, l) => sum + Math.min(l.profit, 0), 0);
 }
 
 export function getCurrentSeasonLedgerPreview(team: NBATeam): AnnualLedger | null {
-  if (!team.tycoon) return null;
-  return team.tycoon.ledgerHistory[team.tycoon.ledgerHistory.length - 1] ?? null;
+  const history = team.tycoon?.ledgerHistory;
+  if (!Array.isArray(history) || history.length === 0) return null;
+  return history.at(-1) ?? null;
 }

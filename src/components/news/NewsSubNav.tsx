@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { ChevronDown, Bookmark, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { NBATeam } from '../../types';
+import { getTeamFullName } from '../../utils/teamNames';
 
 interface NewsSubNavProps {
   teams: NBATeam[];
@@ -33,7 +34,7 @@ const TeamDropdown: React.FC<{ teams: NBATeam[]; selectedTeam: string | null; on
         {selected?.logoUrl && (
           <img src={selected.logoUrl} alt="" className="w-5 h-5 object-contain" referrerPolicy="no-referrer" />
         )}
-        <span>{selectedTeam ?? 'Teams'}</span>
+        <span>{selected ? getTeamFullName(selected) : 'Teams'}</span>
         <ChevronDown size={13} className={`transition-transform ${open ? 'rotate-180' : ''}`} />
       </button>
 
@@ -51,7 +52,7 @@ const TeamDropdown: React.FC<{ teams: NBATeam[]; selectedTeam: string | null; on
               >
                 All Teams
               </button>
-              {teams.filter(t => t.id > 0).sort((a, b) => a.name.localeCompare(b.name)).map(team => {
+              {teams.filter(t => t.id >= 0).sort((a, b) => getTeamFullName(a).localeCompare(getTeamFullName(b))).map(team => {
                 return (
                   <button
                     key={team.id}
@@ -59,7 +60,7 @@ const TeamDropdown: React.FC<{ teams: NBATeam[]; selectedTeam: string | null; on
                     className={`w-full flex items-center gap-3 px-4 py-2.5 text-sm font-medium rounded-lg transition-colors ${selectedTeam === team.name ? 'bg-blue-50 text-[#0078ff]' : 'text-gray-700 hover:bg-gray-50'}`}
                   >
                     {team.logoUrl && <img src={team.logoUrl} alt="" className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />}
-                    <span>{team.name}</span>
+                    <span>{getTeamFullName(team)}</span>
                   </button>
                 );
               })}

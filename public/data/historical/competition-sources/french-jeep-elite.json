@@ -1,0 +1,2980 @@
+{
+  "champions": [
+    {
+      "season": "1920–21",
+      "winner": "Stade Français"
+    },
+    {
+      "season": "1921–22",
+      "winner": "Lille"
+    },
+    {
+      "season": "1922–23",
+      "winner": "École Normale Arras"
+    },
+    {
+      "season": "1923–24",
+      "winner": "FAM"
+    },
+    {
+      "season": "1924–25",
+      "winner": "FAM"
+    },
+    {
+      "season": "1925–26",
+      "winner": "FAM"
+    },
+    {
+      "season": "1926–27",
+      "winner": "Stade Français"
+    },
+    {
+      "season": "1927–28",
+      "winner": "FAM"
+    },
+    {
+      "season": "1928–29",
+      "winner": "FAM"
+    },
+    {
+      "season": "1929–30",
+      "winner": "FAM"
+    },
+    {
+      "season": "1930–31",
+      "winner": "FAM"
+    },
+    {
+      "season": "1931–32",
+      "winner": "CAUFA Reims"
+    },
+    {
+      "season": "1932–33",
+      "winner": "CAUFA Reims"
+    },
+    {
+      "season": "1933–34",
+      "winner": "Olympique Lillois"
+    },
+    {
+      "season": "1934–35",
+      "winner": "CAM"
+    },
+    {
+      "season": "1935–36",
+      "winner": "SCPO"
+    },
+    {
+      "season": "1936–37",
+      "winner": "CAM"
+    },
+    {
+      "season": "1937–38",
+      "winner": "SCPO"
+    },
+    {
+      "season": "1938–39",
+      "winner": "Métro"
+    },
+    {
+      "season": "1939–41",
+      "winner": null,
+      "note": "Not held due to WWII"
+    },
+    {
+      "season": "1941–42",
+      "winner": "Métro"
+    },
+    {
+      "season": "1942–43",
+      "winner": "Grenoble"
+    },
+    {
+      "season": "1943–44",
+      "winner": "Grenoble"
+    },
+    {
+      "season": "1944–45",
+      "winner": "Championnet Sports"
+    },
+    {
+      "season": "1945–46",
+      "winner": "ESSMG Lyon"
+    },
+    {
+      "season": "1946–47",
+      "winner": "PUC"
+    },
+    {
+      "season": "1947–48",
+      "winner": "Union athlétique de Marseille"
+    },
+    {
+      "season": "1948–49",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1949–50",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1950–51",
+      "winner": "Racing Club de France"
+    },
+    {
+      "season": "1951–52",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1952–53",
+      "winner": "Racing Club de France"
+    },
+    {
+      "season": "1953–54",
+      "winner": "Racing Club de France"
+    },
+    {
+      "season": "1954–55",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1955–56",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1956–57",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1957–58",
+      "winner": "Étoile Charleville-Mézières"
+    },
+    {
+      "season": "1958–59",
+      "winner": "Chorale Mulsant"
+    },
+    {
+      "season": "1959–60",
+      "winner": "Étoile Charleville-Mézières"
+    },
+    {
+      "season": "1960–61",
+      "winner": "Alsace de Bagnolet"
+    },
+    {
+      "season": "1961–62",
+      "winner": "Alsace de Bagnolet"
+    },
+    {
+      "season": "1962–63",
+      "winner": "PUC"
+    },
+    {
+      "season": "1963–64",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1964–65",
+      "winner": "Denain Voltaire"
+    },
+    {
+      "season": "1965–66",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1966–67",
+      "winner": "Alsace de Bagnolet"
+    },
+    {
+      "season": "1967–68",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1968–69",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1969–70",
+      "winner": "Olympique Antibes"
+    },
+    {
+      "season": "1970–71",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1971–72",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1972–73",
+      "winner": "Berck"
+    },
+    {
+      "season": "1973–74",
+      "winner": "Berck"
+    },
+    {
+      "season": "1974–75",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1975–76",
+      "winner": "ASPO Tours"
+    },
+    {
+      "season": "1976–77",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1977–78",
+      "winner": "Moderne"
+    },
+    {
+      "season": "1978–79",
+      "winner": "Moderne"
+    },
+    {
+      "season": "1979–80",
+      "winner": "ASPO Tours"
+    },
+    {
+      "season": "1980–81",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "1981–82",
+      "winner": "Moderne"
+    },
+    {
+      "season": "1982–83",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "1983–84",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "1984–85",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "1985–86",
+      "winner": "Orthez"
+    },
+    {
+      "season": "1986–87",
+      "winner": "Orthez"
+    },
+    {
+      "season": "1987–88",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "1988–89",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "1989–90",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "1990–91",
+      "winner": "Olympique Antibes"
+    },
+    {
+      "season": "1991–92",
+      "winner": "Pau-Orthez"
+    },
+    {
+      "season": "1992–93",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "1993–94",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "1994–95",
+      "winner": "Olympique Antibes"
+    },
+    {
+      "season": "1995–96",
+      "winner": "Pau-Orthez"
+    },
+    {
+      "season": "1996–97",
+      "winner": "PSG Racing"
+    },
+    {
+      "season": "1997–98",
+      "winner": "Pau-Orthez"
+    },
+    {
+      "season": "1998–99",
+      "winner": "Pau-Orthez"
+    },
+    {
+      "season": "1999–00",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "2000–01",
+      "winner": "Pau-Orthez"
+    },
+    {
+      "season": "2001–02",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "2002–03",
+      "winner": "Pau-Orthez"
+    },
+    {
+      "season": "2003–04",
+      "winner": "Pau-Orthez"
+    },
+    {
+      "season": "2004–05",
+      "winner": "SIG Strasbourg"
+    },
+    {
+      "season": "2005–06",
+      "winner": "Le Mans Sarthe"
+    },
+    {
+      "season": "2006–07",
+      "winner": "Chorale Roanne"
+    },
+    {
+      "season": "2007–08",
+      "winner": "SLUC Nancy"
+    },
+    {
+      "season": "2008–09",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "2009–10",
+      "winner": "Cholet"
+    },
+    {
+      "season": "2010–11",
+      "winner": "SLUC Nancy"
+    },
+    {
+      "season": "2011–12",
+      "winner": "Élan Chalon"
+    },
+    {
+      "season": "2012–13",
+      "winner": "JSF Nanterre"
+    },
+    {
+      "season": "2013–14",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "2014–15",
+      "winner": "Limoges CSP"
+    },
+    {
+      "season": "2015–16",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "2016–17",
+      "winner": "Élan Chalon"
+    },
+    {
+      "season": "2017–18",
+      "winner": "Le Mans Sarthe"
+    },
+    {
+      "season": "2018–19",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "2019–20",
+      "winner": null,
+      "note": "Cancelled due to COVID-19"
+    },
+    {
+      "season": "2020–21",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "2021–22",
+      "winner": "ASVEL"
+    },
+    {
+      "season": "2022–23",
+      "winner": "AS Monaco"
+    },
+    {
+      "season": "2023–24",
+      "winner": "AS Monaco"
+    },
+    {
+      "season": "2024–25",
+      "winner": "Paris Basketball"
+    },
+    {
+      "season": "2025–26",
+      "winner": "AS Monaco"
+    }
+  ],
+  "mvp_winners": [
+    {
+      "season": "1982–83",
+      "recipients": [
+        {
+          "player": "Philippe Szanyiel",
+          "nationality": "France",
+          "club": "ASVEL"
+        },
+        {
+          "player": "Ed Murphy",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1983–84",
+      "recipients": [
+        {
+          "player": "Hervé Dubuisson",
+          "nationality": "France",
+          "club": "Stade"
+        },
+        {
+          "player": "Ed Murphy",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1984–85",
+      "recipients": [
+        {
+          "player": "Richard Dacoury",
+          "nationality": "France",
+          "club": "Limoges"
+        },
+        {
+          "player": "Ed Murphy",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1985–86",
+      "recipients": [
+        {
+          "player": "Stéphane Ostrowski",
+          "nationality": "France",
+          "club": "Limoges"
+        },
+        {
+          "player": "Kevin Figaro",
+          "nationality": "United States",
+          "club": "Challans"
+        }
+      ]
+    },
+    {
+      "season": "1986–87",
+      "recipients": [
+        {
+          "player": "Freddy Hufnagel",
+          "nationality": "France",
+          "club": "Orthez"
+        },
+        {
+          "player": "Bill Varner",
+          "nationality": "United States",
+          "club": "Antibes"
+        }
+      ]
+    },
+    {
+      "season": "1987–88",
+      "recipients": [
+        {
+          "player": "Stéphane Ostrowski",
+          "nationality": "France",
+          "club": "Limoges"
+        },
+        {
+          "player": "Don Collins",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1988–89",
+      "recipients": [
+        {
+          "player": "Stéphane Ostrowski",
+          "nationality": "France",
+          "club": "Limoges"
+        },
+        {
+          "player": "Don Collins",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1989–90",
+      "recipients": [
+        {
+          "player": "Stéphane Ostrowski",
+          "nationality": "France",
+          "club": "Limoges"
+        },
+        {
+          "player": "Don Collins",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1990–91",
+      "recipients": [
+        {
+          "player": "Antoine Rigaudeau",
+          "nationality": "France",
+          "club": "Cholet"
+        },
+        {
+          "player": "Michael Brooks",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1991–92",
+      "recipients": [
+        {
+          "player": "Antoine Rigaudeau",
+          "nationality": "France",
+          "club": "Cholet"
+        },
+        {
+          "player": "Michael Brooks",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1992–93",
+      "recipients": [
+        {
+          "player": "Antoine Rigaudeau",
+          "nationality": "France",
+          "club": "Cholet"
+        },
+        {
+          "player": "Michael Young",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1993–94",
+      "recipients": [
+        {
+          "player": "Antoine Rigaudeau",
+          "nationality": "France",
+          "club": "Cholet"
+        },
+        {
+          "player": "Michael Young",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "1994–95",
+      "recipients": [
+        {
+          "player": "Yann Bonato",
+          "nationality": "France",
+          "club": "Paris"
+        },
+        {
+          "player": "David Rivers",
+          "nationality": "United States",
+          "club": "Antibes"
+        }
+      ]
+    },
+    {
+      "season": "1995–96",
+      "recipients": [
+        {
+          "player": "Antoine Rigaudeau",
+          "nationality": "France",
+          "club": "Orthez"
+        },
+        {
+          "player": "Delaney Rudd",
+          "nationality": "United States",
+          "club": "ASVEL"
+        }
+      ]
+    },
+    {
+      "season": "1996–97",
+      "recipients": [
+        {
+          "player": "Yann Bonato",
+          "nationality": "France",
+          "club": "Limoges"
+        },
+        {
+          "player": "Delaney Rudd",
+          "nationality": "United States",
+          "club": "ASVEL"
+        }
+      ]
+    },
+    {
+      "season": "1997–98",
+      "recipients": [
+        {
+          "player": "Jim Bilba",
+          "nationality": "France",
+          "club": "ASVEL"
+        },
+        {
+          "player": "Jerry McCullough",
+          "nationality": "United States",
+          "club": "BCM"
+        }
+      ]
+    },
+    {
+      "season": "1998–99",
+      "recipients": [
+        {
+          "player": "Laurent Foirest",
+          "nationality": "France",
+          "club": "Orthez"
+        },
+        {
+          "player": "Keith Jennings",
+          "nationality": "United States",
+          "club": "MSB"
+        }
+      ]
+    },
+    {
+      "season": "1999–00",
+      "recipients": [
+        {
+          "player": "Moustapha Sonko",
+          "nationality": "France",
+          "club": "ASVEL"
+        },
+        {
+          "player": "Marcus Brown",
+          "nationality": "United States",
+          "club": "Limoges"
+        }
+      ]
+    },
+    {
+      "season": "2000–01",
+      "recipients": [
+        {
+          "player": "Jim Bilba",
+          "nationality": "France",
+          "club": "ASVEL"
+        },
+        {
+          "player": "Bill Edwards",
+          "nationality": "United States",
+          "club": "ASVEL"
+        }
+      ]
+    },
+    {
+      "season": "2001–02",
+      "recipients": [
+        {
+          "player": "Cyril Julian",
+          "nationality": "France",
+          "club": "Nancy"
+        },
+        {
+          "player": "Roger Esteller",
+          "nationality": "Spain",
+          "club": "Orthez"
+        }
+      ]
+    },
+    {
+      "season": "2002–03",
+      "recipients": [
+        {
+          "player": "Boris Diaw",
+          "nationality": "France",
+          "club": "Orthez"
+        },
+        {
+          "player": "Rico Hill",
+          "nationality": "United States",
+          "club": "MSB"
+        }
+      ]
+    },
+    {
+      "season": "2003–04",
+      "recipients": [
+        {
+          "player": "Laurent Foirest",
+          "nationality": "France",
+          "club": "Orthez"
+        },
+        {
+          "player": "Rick Hughes",
+          "nationality": "United States",
+          "club": "SIG"
+        }
+      ]
+    },
+    {
+      "season": "2004–05",
+      "recipients": [
+        {
+          "player": "Laurent Sciarra",
+          "nationality": "France",
+          "club": "BCM"
+        },
+        {
+          "player": "Jermaine Guice",
+          "nationality": "United States",
+          "club": "STB"
+        }
+      ]
+    },
+    {
+      "season": "2005–06",
+      "recipients": [
+        {
+          "player": "Cyril Julian",
+          "nationality": "France",
+          "club": "Nancy"
+        },
+        {
+          "player": "Jason Rowe",
+          "nationality": "United States",
+          "club": "Toulon"
+        }
+      ]
+    },
+    {
+      "season": "2006–07",
+      "recipients": [
+        {
+          "player": "Cyril Julian",
+          "nationality": "France",
+          "club": "Nancy"
+        },
+        {
+          "player": "Dewarick Spencer",
+          "nationality": "United States",
+          "club": "Roanne"
+        }
+      ]
+    },
+    {
+      "season": "2007–08",
+      "recipients": [
+        {
+          "player": "Nando de Colo",
+          "nationality": "France",
+          "club": "Cholet"
+        },
+        {
+          "player": "Marc Salyers",
+          "nationality": "United States",
+          "club": "Roanne"
+        }
+      ]
+    },
+    {
+      "season": "2008–09",
+      "recipients": [
+        {
+          "player": "Alain Koffi",
+          "nationality": "France",
+          "club": "MSB"
+        },
+        {
+          "player": "Austin Nichols",
+          "nationality": "United States",
+          "club": "Toulon"
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "recipients": [
+        {
+          "player": "Ali Traoré",
+          "nationality": "France",
+          "club": "ASVEL"
+        },
+        {
+          "player": "Ricardo Greer",
+          "nationality": "Dominican Republic",
+          "club": "Nancy"
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "recipients": [
+        {
+          "player": "Mickaël Gelabale",
+          "nationality": "France",
+          "club": "ASVEL"
+        },
+        {
+          "player": "Sammy Mejia",
+          "nationality": "Dominican Republic",
+          "club": "Cholet"
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "recipients": [
+        {
+          "player": "Fabien Causeur",
+          "nationality": "France",
+          "club": "Cholet"
+        },
+        {
+          "player": "Blake Schilb",
+          "nationality": "Czech Republic",
+          "club": "Chalon"
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "recipients": [
+        {
+          "player": "Edwin Jackson",
+          "nationality": "France",
+          "club": "ASVEL"
+        },
+        {
+          "player": "Dwight Buycks",
+          "nationality": "United States",
+          "club": "BCM"
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "recipients": [
+        {
+          "player": "Antoine Diot",
+          "nationality": "France",
+          "club": "SIG"
+        },
+        {
+          "player": "Randal Falker",
+          "nationality": "United States",
+          "club": "Nancy"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "recipients": [
+        {
+          "player": "Adrien Moerman",
+          "position": "PF",
+          "nationality": "France",
+          "club": "Limoges CSP"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "recipients": [
+        {
+          "player": "Devin Booker",
+          "position": "C/PF",
+          "nationality": "United States",
+          "club": "Élan Chalon"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "recipients": [
+        {
+          "player": "D. J. Cooper",
+          "position": "PG",
+          "nationality": "United States",
+          "club": "Élan Béarnais Pau-Orthez"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "recipients": [
+        {
+          "player": "Zachery Peacock",
+          "position": "C/PF",
+          "nationality": "United States",
+          "club": "JL Bourg"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "recipients": [
+        {
+          "player": "David Holston",
+          "position": "PG",
+          "nationality": "United States",
+          "club": "JDA Dijon"
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "recipients": [],
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "recipients": [
+        {
+          "player": "Bonzie Colson",
+          "position": "SF/PF",
+          "nationality": "United States",
+          "club": "SIG Strasbourg"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "recipients": [
+        {
+          "player": "Will Cummings",
+          "position": "PG",
+          "nationality": "United States",
+          "club": "Metropolitans 92"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "recipients": [
+        {
+          "player": "Victor Wembanyama",
+          "position": "F/C",
+          "nationality": "France",
+          "club": "Metropolitans 92"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "recipients": [
+        {
+          "player": "T. J. Shorts",
+          "position": "PG",
+          "nationality": "United States",
+          "club": "Paris Basketball"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "recipients": [
+        {
+          "player": "T. J. Shorts",
+          "position": "PG",
+          "nationality": "United States",
+          "club": "Paris Basketball"
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "recipients": [
+        {
+          "player": "Élie Okobo",
+          "position": "SG",
+          "nationality": "France",
+          "club": "AS Monaco"
+        }
+      ]
+    }
+  ],
+  "finals_mvp": [
+    {
+      "season": "2004–05",
+      "player": "Ricardo Greer",
+      "position": "Forward",
+      "nationality": "Dominican Republic",
+      "club": "SIG Strasbourg"
+    },
+    {
+      "season": "2005–06",
+      "player": "Hüseyin Beşok",
+      "position": "Forward",
+      "nationality": "Turkey",
+      "club": "Le Mans"
+    },
+    {
+      "season": "2006–07",
+      "player": "Marc Salyers",
+      "position": "Forward",
+      "nationality": "United States",
+      "club": "Chorale Roanne"
+    },
+    {
+      "season": "2008–09",
+      "player": "Amara Sy",
+      "position": "Forward",
+      "nationality": "France",
+      "club": "ASVEL"
+    },
+    {
+      "season": "2009–10",
+      "player": "Mickaël Gelabale",
+      "position": "Forward",
+      "nationality": "France",
+      "club": "Cholet"
+    },
+    {
+      "season": "2010–11",
+      "player": "John Linehan",
+      "position": "Guard",
+      "nationality": "United States",
+      "club": "SLUC Nancy"
+    },
+    {
+      "season": "2011–12",
+      "player": "Blake Schilb",
+      "position": "Forward",
+      "nationality": "Czech Republic",
+      "club": "Élan Chalon"
+    },
+    {
+      "season": "2012–13",
+      "player": "David Lighty",
+      "position": "Guard",
+      "nationality": "United States",
+      "club": "Nanterre"
+    },
+    {
+      "season": "2013–14",
+      "player": "Alex Acker",
+      "position": "Guard",
+      "nationality": "Italy",
+      "club": "Limoges"
+    },
+    {
+      "season": "2014–15",
+      "player": "Ousmane Camara",
+      "position": "Forward",
+      "nationality": "France",
+      "club": "Limoges"
+    },
+    {
+      "season": "2015–16",
+      "player": "Casper Ware",
+      "position": "Guard",
+      "nationality": "United States",
+      "club": "ASVEL"
+    },
+    {
+      "season": "2016–17",
+      "player": "Jérémy Nzeulie",
+      "position": "Guard",
+      "nationality": "Cameroon",
+      "club": "Élan Chalon"
+    },
+    {
+      "season": "2017–18",
+      "recipients": [
+        {
+          "player": "Chris Lofton",
+          "position": "Guard",
+          "nationality": "United States",
+          "club": "Le Mans Sarthe"
+        },
+        {
+          "player": "Romeo Travis",
+          "position": "Forward",
+          "nationality": "United States",
+          "club": "Le Mans Sarthe"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "player": "DeMarcus Nelson",
+      "position": "Guard",
+      "nationality": "United States",
+      "club": "ASVEL Basket"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "David Lighty",
+      "position": "Guard",
+      "nationality": "United States",
+      "club": "ASVEL"
+    },
+    {
+      "season": "2021–22",
+      "player": "Elie Okobo",
+      "position": "Guard",
+      "nationality": "France",
+      "club": "ASVEL"
+    },
+    {
+      "season": "2022–23",
+      "player": "Jordan Loyd",
+      "position": "Guard",
+      "nationality": "USA",
+      "club": "Monaco"
+    },
+    {
+      "season": "2023–24",
+      "player": "Mike James",
+      "position": "Guard",
+      "nationality": "USA",
+      "club": "Monaco"
+    },
+    {
+      "season": "2024–25",
+      "player": "T. J. Shorts",
+      "position": "Guard",
+      "nationality": "MKD",
+      "club": "Paris Basketball"
+    }
+  ],
+  "top_scorers": [
+    {
+      "season": "1949–50",
+      "player": "François Németh",
+      "nationality": "Hungary-France",
+      "club": "ASVEL Basket",
+      "points_per_game": 22.9,
+      "metric": "total points"
+    },
+    {
+      "season": "1950–51",
+      "player": "François Németh",
+      "nationality": "Hungary-France",
+      "club": "Paris Basket Racing",
+      "points_per_game": 24.4,
+      "metric": "total points"
+    },
+    {
+      "season": "1951–52",
+      "player": "Henri Théron",
+      "nationality": "France",
+      "club": "AS Montferrand Basket",
+      "points_per_game": 20.6,
+      "metric": "total points"
+    },
+    {
+      "season": "1952–53",
+      "player": "Jacques Dessemme",
+      "nationality": "France",
+      "club": "EV Bellegarde",
+      "points_per_game": 24.2,
+      "metric": "total points"
+    },
+    {
+      "season": "1953–54",
+      "player": "Roger Haudegand",
+      "nationality": "France",
+      "club": "RCS Marly",
+      "points_per_game": 28.4,
+      "metric": "total points"
+    },
+    {
+      "season": "1954–55",
+      "player": "Roger Haudegand",
+      "nationality": "France",
+      "club": "RCS Marly",
+      "points_per_game": 24.9,
+      "metric": "total points"
+    },
+    {
+      "season": "1955–56",
+      "player": "Roger Haudegand",
+      "nationality": "France",
+      "club": "RCS Marly",
+      "points_per_game": 29.8,
+      "metric": "total points"
+    },
+    {
+      "season": "1956–57",
+      "player": "Roger Haudegand",
+      "nationality": "France",
+      "club": "RCS Marly",
+      "points_per_game": 29.7,
+      "metric": "total points"
+    },
+    {
+      "season": "1957–58",
+      "player": "Roger Haudegand",
+      "nationality": "France",
+      "club": "RCS Marly",
+      "points_per_game": 22.7,
+      "metric": "total points"
+    },
+    {
+      "season": "1958–59",
+      "player": "Robert Monclar",
+      "nationality": "France",
+      "club": "Paris Basket Racing",
+      "points_per_game": 22.7,
+      "metric": "total points"
+    },
+    {
+      "season": "1959–60",
+      "player": "Roger Haudegand",
+      "nationality": "France",
+      "club": "RCS Marly",
+      "points_per_game": 25.7,
+      "metric": "total points"
+    },
+    {
+      "season": "1960–61",
+      "player": "Roger Haudegand",
+      "nationality": "France",
+      "club": "RCS Valenciennes",
+      "points_per_game": 27.9,
+      "metric": "total points"
+    },
+    {
+      "season": "1961–62",
+      "player": "Jean Degros",
+      "nationality": "France",
+      "club": "Denain Basket",
+      "points_per_game": 22.8,
+      "metric": "total points"
+    },
+    {
+      "season": "1962–63",
+      "player": "Jean-Paul Beugnot",
+      "nationality": "France",
+      "club": "Charleville",
+      "points_per_game": 27.3,
+      "metric": "total points"
+    },
+    {
+      "season": "1963–64",
+      "player": "Michel Le Ray",
+      "nationality": "France",
+      "club": "ABC Nantes",
+      "points_per_game": 21.3,
+      "metric": "total points"
+    },
+    {
+      "season": "1964–65",
+      "player": "Michel Le Ray",
+      "nationality": "France",
+      "club": "ABC Nantes",
+      "points_per_game": 21.2,
+      "metric": "total points"
+    },
+    {
+      "season": "1965–66",
+      "player": "Jean-Pierre Staelens",
+      "nationality": "France",
+      "club": "Denain Basket",
+      "points_per_game": 28.1,
+      "metric": "total points"
+    },
+    {
+      "season": "1966–67",
+      "player": "Jean-Pierre Staelens",
+      "nationality": "France",
+      "club": "Denain Basket",
+      "points_per_game": 28.9,
+      "metric": "total points"
+    },
+    {
+      "season": "1967–68",
+      "player": "Jean-Pierre Staelens",
+      "nationality": "France",
+      "club": "Denain Basket",
+      "points_per_game": 26.6,
+      "metric": "total points"
+    },
+    {
+      "season": "1968–69",
+      "player": "Willie Davis",
+      "nationality": "United States",
+      "club": "CSE Toulous",
+      "points_per_game": 29.8,
+      "metric": "total points"
+    },
+    {
+      "season": "1969–70",
+      "player": "Rudy Bennett",
+      "nationality": "United States",
+      "club": "JA Vichy",
+      "points_per_game": 30.8,
+      "metric": "total points"
+    },
+    {
+      "season": "1970–71",
+      "player": "Larry Robertson",
+      "nationality": "United States",
+      "club": "Nice ASPTT Basket",
+      "points_per_game": 32.5,
+      "metric": "total points"
+    },
+    {
+      "season": "1971–72",
+      "player": "L.C. Bowen",
+      "nationality": "United States",
+      "club": "ASPO Tours",
+      "points_per_game": 34,
+      "metric": "total points"
+    },
+    {
+      "season": "1972–73",
+      "player": "Bob Thate",
+      "nationality": "United States",
+      "club": "SS Nilvange",
+      "points_per_game": 39,
+      "metric": "total points"
+    },
+    {
+      "season": "1973–74",
+      "player": "Dennis Stewart",
+      "nationality": "United States",
+      "club": "JA Vichy",
+      "points_per_game": 33.5,
+      "metric": "total points"
+    },
+    {
+      "season": "1974–75",
+      "player": "Jacques Cachemire",
+      "nationality": "France",
+      "club": "Olympique Antibes",
+      "points_per_game": 29.1,
+      "metric": "total points"
+    },
+    {
+      "season": "1975–76",
+      "player": "L.C. Bowen",
+      "nationality": "United States",
+      "club": "ASPO Tours",
+      "points_per_game": 30.7,
+      "metric": "total points"
+    },
+    {
+      "season": "1976–77",
+      "player": "John Dearman",
+      "nationality": "United States",
+      "club": "AS Tarare Basket",
+      "points_per_game": 32.7,
+      "metric": "points per game"
+    },
+    {
+      "season": "1977–78",
+      "player": "Bob Wymbs",
+      "nationality": "United States",
+      "club": "Denain Basket",
+      "points_per_game": 32.4,
+      "metric": "points per game"
+    },
+    {
+      "season": "1978–79",
+      "player": "John Garrett",
+      "nationality": "United States",
+      "club": "ES Avignon Basket",
+      "points_per_game": 30.1,
+      "metric": "points per game"
+    },
+    {
+      "season": "1979–80",
+      "player": "Floyd Allen",
+      "nationality": "United States",
+      "club": "Basket CRO Lyon",
+      "points_per_game": 32.1,
+      "metric": "points per game"
+    },
+    {
+      "season": "1980–81",
+      "player": "Paul Henderson",
+      "nationality": "United States-France",
+      "club": "Élan Béarnais Orthez",
+      "points_per_game": 27.2,
+      "metric": "points per game"
+    },
+    {
+      "season": "1981–82",
+      "player": "Ed Murphy",
+      "nationality": "United States",
+      "club": "Limoges CSP",
+      "points_per_game": 29.8,
+      "metric": "points per game"
+    },
+    {
+      "season": "1982–83",
+      "player": "Ed Murphy",
+      "nationality": "United States",
+      "club": "Limoges CSP",
+      "points_per_game": 31.7,
+      "metric": "points per game"
+    },
+    {
+      "season": "1983–84",
+      "player": "Ed Murphy",
+      "nationality": "United States",
+      "club": "Limoges CSP",
+      "points_per_game": 32.3,
+      "metric": "points per game"
+    },
+    {
+      "season": "1984–85",
+      "player": "Ed Murphy",
+      "nationality": "United States",
+      "club": "Limoges CSP",
+      "points_per_game": 34.1,
+      "metric": "points per game"
+    },
+    {
+      "season": "1985–86",
+      "player": "Keith Edmonson",
+      "nationality": "United States",
+      "club": "Caen Basket Calvados",
+      "points_per_game": 35.3,
+      "metric": "points per game"
+    },
+    {
+      "season": "1986–87",
+      "player": "Joe Dawson",
+      "nationality": "United States",
+      "club": "FC Mulhouse Basket",
+      "points_per_game": 35.3,
+      "metric": "points per game"
+    },
+    {
+      "season": "1987–88",
+      "player": "Ron Davis",
+      "nationality": "United States-France",
+      "club": "FC Mulhouse Basket",
+      "points_per_game": 30.2,
+      "metric": "points per game"
+    },
+    {
+      "season": "1988–89",
+      "player": "Ron Davis",
+      "nationality": "United States-France",
+      "club": "FC Mulhouse Basket",
+      "points_per_game": 31.1,
+      "metric": "points per game"
+    },
+    {
+      "season": "1989–90",
+      "player": "Derrick Rowland",
+      "nationality": "United States",
+      "club": "Caen Basket Calvados",
+      "points_per_game": 26.3,
+      "metric": "points per game"
+    },
+    {
+      "season": "1990–91",
+      "player": "Bill Jones",
+      "nationality": "United States",
+      "club": "Montpellier Paillade Basket",
+      "points_per_game": 26.5,
+      "metric": "points per game"
+    },
+    {
+      "season": "1991–92",
+      "player": "Bill Jones",
+      "nationality": "United States",
+      "club": "Montpellier Paillade Basket",
+      "points_per_game": 24.8,
+      "metric": "points per game"
+    },
+    {
+      "season": "1992–93",
+      "player": "Terence Stansbury",
+      "nationality": "United States",
+      "club": "Levallois SC Basket",
+      "points_per_game": 26.3,
+      "metric": "points per game"
+    },
+    {
+      "season": "1993–94",
+      "player": "Skeeter Henry",
+      "nationality": "United States",
+      "club": "JDA Dijon Basket",
+      "points_per_game": 24.2,
+      "metric": "points per game"
+    },
+    {
+      "season": "1994–95",
+      "player": "Ron Anderson",
+      "nationality": "United States",
+      "club": "Montpellier Paillade Basket",
+      "points_per_game": 25.5,
+      "metric": "points per game"
+    },
+    {
+      "season": "1995–96",
+      "player": "Todd Mitchell",
+      "nationality": "United States",
+      "club": "Montpellier Paillade Basket",
+      "points_per_game": 24.7,
+      "metric": "points per game"
+    },
+    {
+      "season": "1996–97",
+      "player": "David Booth",
+      "nationality": "United States",
+      "club": "JDA Dijon Basket",
+      "points_per_game": 22.5,
+      "metric": "points per game"
+    },
+    {
+      "season": "1997–98",
+      "player": "Jerry McCullough",
+      "nationality": "United States",
+      "club": "BCM Gravelines",
+      "points_per_game": 20.3,
+      "metric": "points per game"
+    },
+    {
+      "season": "1998–99",
+      "player": "Keith Jennings",
+      "nationality": "United States",
+      "club": "Le Mans Sarthe Basket",
+      "points_per_game": 19.4,
+      "metric": "points per game"
+    },
+    {
+      "season": "1999–00",
+      "player": "John White",
+      "nationality": "United States",
+      "club": "SIG Strasbourg",
+      "points_per_game": 19.6,
+      "metric": "points per game"
+    },
+    {
+      "season": "2000–01",
+      "player": "Curtis McCants",
+      "nationality": "United States",
+      "club": "Montpellier Paillade Basket",
+      "points_per_game": 21.7,
+      "metric": "points per game"
+    },
+    {
+      "season": "2001–02",
+      "player": "Tony Dorsey",
+      "nationality": "United Kingdom-United States",
+      "club": "Cholet Basket",
+      "points_per_game": 20,
+      "metric": "points per game"
+    },
+    {
+      "season": "2002–03",
+      "player": "Aubrey Reese",
+      "nationality": "United States",
+      "club": "Chorale Roanne Basket",
+      "points_per_game": 19.9,
+      "metric": "points per game"
+    },
+    {
+      "season": "2003–04",
+      "player": "Rick Hughes",
+      "nationality": "United States",
+      "club": "SIG Strasbourg",
+      "points_per_game": 24.1,
+      "metric": "points per game"
+    },
+    {
+      "season": "2004–05",
+      "player": "Rowan Barrett",
+      "nationality": "Canada",
+      "club": "JDA Dijon Basket",
+      "points_per_game": 21.5,
+      "metric": "points per game"
+    },
+    {
+      "season": "2005–06",
+      "player": "Jason Rowe",
+      "nationality": "United States",
+      "club": "HTV Basket",
+      "points_per_game": 21,
+      "metric": "points per game"
+    },
+    {
+      "season": "2006–07",
+      "player": "Dewarick Spencer",
+      "nationality": "United States",
+      "club": "Chorale Roanne Basket",
+      "points_per_game": 20.6,
+      "metric": "points per game"
+    },
+    {
+      "season": "2007–08",
+      "player": "Sean Colson",
+      "nationality": "United States",
+      "club": "HTV Basket",
+      "points_per_game": 21.4,
+      "metric": "points per game"
+    },
+    {
+      "season": "2008–09",
+      "player": "Austin Nichols",
+      "nationality": "United States",
+      "club": "HTV Basket",
+      "points_per_game": 18.4,
+      "metric": "points per game"
+    },
+    {
+      "season": "2009–10",
+      "player": "Derrick Obasohan",
+      "nationality": "Nigeria-United States",
+      "club": "HTV Basket",
+      "points_per_game": 19.8,
+      "metric": "points per game"
+    },
+    {
+      "season": "2010–11",
+      "player": "Rick Hughes",
+      "nationality": "United States",
+      "club": "HTV Basket",
+      "points_per_game": 19.1,
+      "metric": "points per game"
+    },
+    {
+      "season": "2011–12",
+      "player": "Eric Chatfield",
+      "nationality": "United States",
+      "club": "Paris-Levallois Basket",
+      "points_per_game": 19.8,
+      "metric": "points per game"
+    },
+    {
+      "season": "2012–13",
+      "player": "Sean May",
+      "nationality": "United States",
+      "club": "Paris-Levallois Basket",
+      "points_per_game": 18.4,
+      "metric": "points per game"
+    },
+    {
+      "season": "2013–14",
+      "player": "Edwin Jackson",
+      "nationality": "France",
+      "club": "ASVEL Basket",
+      "points_per_game": 18.2,
+      "metric": "points per game"
+    },
+    {
+      "season": "2014–15",
+      "player": "Steven Gray",
+      "nationality": "United States",
+      "club": "JDA Dijon Basket",
+      "points_per_game": 16.8,
+      "metric": "points per game"
+    },
+    {
+      "season": "2015–16",
+      "player": "Michael Thompson",
+      "nationality": "United States",
+      "club": "Pau-Lacq-Orthez",
+      "points_per_game": 17.8,
+      "metric": "points per game"
+    },
+    {
+      "season": "2016–17",
+      "player": "Cameron Clark",
+      "nationality": "United States",
+      "club": "Élan Chalon",
+      "points_per_game": 18.6,
+      "metric": "points per game"
+    },
+    {
+      "season": "2017–18",
+      "player": "Zachery Peacock",
+      "nationality": "United States",
+      "club": "JL Bourg",
+      "points_per_game": 19.3,
+      "metric": "points per game"
+    },
+    {
+      "season": "2018–19",
+      "player": "Devin Ebanks",
+      "nationality": "United States",
+      "club": "Châlons-Reims",
+      "points_per_game": 18.8,
+      "metric": "points per game"
+    },
+    {
+      "season": "2019–20",
+      "player": "Miralem Halilović",
+      "nationality": "Bosnia and Herzegovina",
+      "club": "Orléans Loiret Basket",
+      "points_per_game": 17.6,
+      "metric": "points per game"
+    },
+    {
+      "season": "2020–21",
+      "player": "Danilo Anđušić",
+      "nationality": "Serbia",
+      "club": "AS Monaco Basket",
+      "points_per_game": 20,
+      "metric": "points per game"
+    },
+    {
+      "season": "2021–22",
+      "player": "Brandon Jefferson",
+      "nationality": "United States",
+      "club": "Élan Béarnais",
+      "points_per_game": 18.2,
+      "metric": "points per game"
+    },
+    {
+      "season": "2022–23",
+      "player": "Victor Wembanyama",
+      "nationality": "France",
+      "club": "Metropolitans 92",
+      "points_per_game": 21.6,
+      "metric": "points per game"
+    },
+    {
+      "season": "2023–24",
+      "player": "T. J. Shorts",
+      "nationality": "North Macedonia",
+      "club": "Paris Basketball",
+      "points_per_game": 16.3,
+      "metric": "points per game"
+    },
+    {
+      "season": "2024–25",
+      "player": "Nadir Hifi",
+      "nationality": "France",
+      "club": "Paris Basketball",
+      "points_per_game": 18.2,
+      "metric": "points per game"
+    },
+    {
+      "season": "2025–26",
+      "player": "Nadir Hifi",
+      "nationality": "France",
+      "club": "Paris Basketball",
+      "points_per_game": 20.4,
+      "metric": "points per game"
+    }
+  ],
+  "best_sixth_man": [
+    {
+      "season": "2014–15",
+      "recipients": [
+        {
+          "player": "Jamar Smith",
+          "position": "Guard",
+          "nationality": "United States",
+          "team": "Limoges CSP"
+        },
+        {
+          "player": "Darnell Harris",
+          "position": "Forward",
+          "nationality": "United States",
+          "team": "Orléans Loiret"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "recipients": [
+        {
+          "player": "Mathias Lessort",
+          "position": "Forward/center",
+          "nationality": "France",
+          "team": "Élan Chalon"
+        },
+        {
+          "player": "Matt Howard",
+          "position": "Forward",
+          "nationality": "United States",
+          "team": "SIG Strasbourg"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "recipients": [
+        {
+          "player": "Louis Labeyrie",
+          "position": "Forward",
+          "nationality": "France",
+          "team": "SIG Strasbourg"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "recipients": [
+        {
+          "player": "D. J. Stephens",
+          "position": "Forward",
+          "nationality": "United States",
+          "team": "Le Mans"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "recipients": [
+        {
+          "player": "Ali Traoré",
+          "position": "Center",
+          "nationality": "France",
+          "team": "Strasbourg IG"
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "recipients": [],
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "recipients": [
+        {
+          "player": "Pierre Pelos",
+          "position": "Forward/center",
+          "nationality": "France",
+          "team": "JL Bourg"
+        }
+      ]
+    }
+  ],
+  "best_defender": [
+    {
+      "season": "1985–86",
+      "player": "Allen Bunting",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Olympique Antibes"
+    },
+    {
+      "season": "1986–87",
+      "player": "Richard Dacoury",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1987–88",
+      "player": "Richard Dacoury",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1988–89",
+      "player": "Richard Dacoury",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1989–90",
+      "player": "Richard Dacoury",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1990–91",
+      "player": "Richard Dacoury",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1991–92",
+      "player": "Richard Dacoury",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1992–93",
+      "player": "Richard Dacoury",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1993–94",
+      "player": "Richard Dacoury",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1994–95",
+      "player": "Richard Dacoury",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1995–96",
+      "player": "Arsène Ade-Mensah",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Olympique Antibes"
+    },
+    {
+      "season": "1996–97",
+      "player": "Jim Bilba",
+      "position": "Center",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "1997–98",
+      "player": "Arsène Ade-Mensah",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Paris Basket Racing"
+    },
+    {
+      "season": "1998–99",
+      "player": "Jim Bilba",
+      "position": "Center",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "1999–00",
+      "player": "Jim Bilba",
+      "position": "Center",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "2000–01",
+      "player": "Jim Bilba",
+      "position": "Center",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "2001–02",
+      "player": "Florent Piétrus",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Pau-Orthez"
+    },
+    {
+      "season": "2002–03",
+      "player": "Makan Dioumassi",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Hyères-Toulon"
+    },
+    {
+      "season": "2003–04",
+      "player": "Thierry Rupert",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "SIG Strasbourg"
+    },
+    {
+      "season": "2004–05",
+      "player": "Michael Mokongo",
+      "position": "Guard",
+      "nationality": "Central Africa",
+      "team": "Élan Chalon"
+    },
+    {
+      "season": "2005–06",
+      "player": "John Linehan",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "Racing Paris/SIG Strasbourg"
+    },
+    {
+      "season": "2006–07",
+      "player": "Marc-Antoine Pellin",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Chorale Roanne"
+    },
+    {
+      "season": "2007–08",
+      "player": "Dounia Issa",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "JA Vichy"
+    },
+    {
+      "season": "2008–09",
+      "player": "Tony Dobbins",
+      "position": "Guard",
+      "nationality": "Italy",
+      "team": "Orléans Loiret"
+    },
+    {
+      "season": "2009–10",
+      "player": "John Linehan",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Cholet"
+    },
+    {
+      "season": "2010–11",
+      "player": "John Linehan",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "SLUC Nancy"
+    },
+    {
+      "season": "2011–12",
+      "player": "Andrew Albicy",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "BCM Gravelines"
+    },
+    {
+      "season": "2012–13",
+      "player": "Tony Dobbins",
+      "position": "Guard",
+      "nationality": "Italy",
+      "team": "Poitiers"
+    },
+    {
+      "season": "2013–14",
+      "player": "Tony Dobbins",
+      "position": "Guard",
+      "nationality": "Italy",
+      "team": "JDA Dijon"
+    },
+    {
+      "season": "2014–15",
+      "player": "Florent Piétrus",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "SLUC Nancy"
+    },
+    {
+      "season": "2015–16",
+      "player": "Charles Lombahe-Kahudi",
+      "position": "Guard/forward",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "2016–17",
+      "player": "Moustapha Fall",
+      "position": "Center",
+      "nationality": "France",
+      "team": "Élan Chalon"
+    },
+    {
+      "season": "2017–18",
+      "player": "Aaron Craft",
+      "position": "Guard",
+      "nationality": "United States",
+      "team": "Monaco"
+    },
+    {
+      "season": "2018–19",
+      "player": "Lahaou Konaté",
+      "position": "Shooting guard",
+      "nationality": "France",
+      "team": "Nanterre 92"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Moustapha Fall",
+      "position": "Center",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "2021–22",
+      "player": "Ismaël Kamagate",
+      "position": "Center",
+      "nationality": "France",
+      "team": "Paris Basketball"
+    },
+    {
+      "season": "2022–23",
+      "player": "Victor Wembanyama",
+      "position": "Forward/center",
+      "nationality": "France",
+      "team": "Metropolitans 92"
+    },
+    {
+      "season": "2023–24",
+      "player": "John Brown",
+      "position": "Forward",
+      "nationality": "United States",
+      "team": "AS Monaco Basket"
+    },
+    {
+      "season": "2024–25",
+      "player": "Alpha Diallo",
+      "position": "Forward",
+      "nationality": "Guinea",
+      "team": "AS Monaco Basket"
+    },
+    {
+      "season": "2025–26",
+      "player": "Alpha Diallo",
+      "position": "Forward",
+      "nationality": "Guinea",
+      "team": "AS Monaco Basket"
+    }
+  ],
+  "most_improved_player": [
+    {
+      "season": "2007–08",
+      "player": "Nando de Colo",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Cholet"
+    },
+    {
+      "season": "2008–09",
+      "player": "Rodrigue Beaubois",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Cholet"
+    },
+    {
+      "season": "2009–10",
+      "player": "Kevin Seraphin",
+      "position": "Center",
+      "nationality": "France",
+      "team": "Cholet"
+    },
+    {
+      "season": "2010–11",
+      "player": "Evan Fournier",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Poitiers"
+    },
+    {
+      "season": "2011–12",
+      "player": "Evan Fournier",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Poitiers"
+    },
+    {
+      "season": "2012–13",
+      "player": "Edwin Jackson",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "2013–14",
+      "player": "Clint Capela",
+      "position": "Center",
+      "nationality": "Switzerland",
+      "team": "Cholet"
+    },
+    {
+      "season": "2014–15",
+      "player": "Benjamin Sene",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "SLUC Nancy"
+    },
+    {
+      "season": "2015–16",
+      "player": "Wilfried Yeguete",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Pau-Orthez"
+    },
+    {
+      "season": "2016–17",
+      "player": "Paul Lacombe",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "SIG Strasbourg"
+    },
+    {
+      "season": "2024–25",
+      "player": "Clément Frisch",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "SLUC Nancy"
+    },
+    {
+      "season": "2025–26",
+      "player": "Gérald Ayayi",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Cholet"
+    }
+  ],
+  "best_young_player": [
+    {
+      "season": "1982–83",
+      "player": "Valéry Demory",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Stade Français"
+    },
+    {
+      "season": "1983–84",
+      "player": "Stéphane Ostrowski",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Le Mans"
+    },
+    {
+      "season": "1984–85",
+      "player": "Valéry Demory",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Stade Français"
+    },
+    {
+      "season": "1985–86",
+      "player": "Christian Garnier",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Monaco"
+    },
+    {
+      "season": "1986–87",
+      "player": "Didier Gadou",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Pau-Orthez"
+    },
+    {
+      "season": "1987–88",
+      "player": "Hugues Occansey",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1988–89",
+      "player": "Jim Bilba",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Cholet"
+    },
+    {
+      "season": "1989–90",
+      "player": "Antoine Rigaudeau",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Cholet"
+    },
+    {
+      "season": "1990–91",
+      "player": "Antoine Rigaudeau",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Cholet"
+    },
+    {
+      "season": "1991–92",
+      "player": "Antoine Rigaudeau",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Cholet"
+    },
+    {
+      "season": "1992–93",
+      "player": "Yann Bonato",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Olympique Antibes"
+    },
+    {
+      "season": "1993–94",
+      "player": "Alain Digbeu",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "1994–95",
+      "player": "Alain Digbeu",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "1995–96",
+      "player": "Fabien Dubos",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Pau-Orthez"
+    },
+    {
+      "season": "1996–97",
+      "player": "Frédéric Weis",
+      "position": "Center",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1997–98",
+      "player": "Willem Laure",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "JDA Dijon"
+    },
+    {
+      "season": "1998–99",
+      "player": "Frédéric Weis",
+      "position": "Center",
+      "nationality": "France",
+      "team": "Limoges CSP"
+    },
+    {
+      "season": "1999–00",
+      "player": "David Gautier",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Cholet"
+    },
+    {
+      "season": "2000–01",
+      "player": "Tony Parker",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Racing Paris"
+    },
+    {
+      "season": "2001–02",
+      "player": "Boris Diaw",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Élan Béarnais Pau-Orthez"
+    },
+    {
+      "season": "2002–03",
+      "player": "Pape-Philippe Amagou",
+      "position": "Guard",
+      "nationality": "Ivory Coast",
+      "team": "Le Mans"
+    },
+    {
+      "season": "2003–04",
+      "player": "Pape-Philippe Amagou",
+      "position": "Guard",
+      "nationality": "Ivory Coast",
+      "team": "Le Mans"
+    },
+    {
+      "season": "2004–05",
+      "player": "Michael Mokongo",
+      "position": "Guard",
+      "nationality": "Central Africa",
+      "team": "Élan Chalon"
+    },
+    {
+      "season": "2005–06",
+      "player": "Ian Mahinmi",
+      "position": "Center",
+      "nationality": "France",
+      "team": "STB Le Havre"
+    },
+    {
+      "season": "2006–07",
+      "player": "Nicolas Batum",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Le Mans"
+    },
+    {
+      "season": "2007–08",
+      "player": "Nicolas Batum",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Le Mans"
+    },
+    {
+      "season": "2008–09",
+      "player": "Thomas Heurtel",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Élan Béarnais Pau-Lacq-Orthez"
+    },
+    {
+      "season": "2009–10",
+      "player": "Andrew Albicy",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Paris-Levallois"
+    },
+    {
+      "season": "2010–11",
+      "player": "Evan Fournier",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Poitiers"
+    },
+    {
+      "season": "2011–12",
+      "player": "Evan Fournier",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "Poitiers"
+    },
+    {
+      "season": "2012–13",
+      "player": "Livio Jean-Charles",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "ASVEL"
+    },
+    {
+      "season": "2013–14",
+      "player": "Clint Capela",
+      "position": "Center",
+      "nationality": "Switzerland",
+      "team": "Cholet"
+    },
+    {
+      "season": "2014–15",
+      "player": "Petr Cornelie",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Le Mans"
+    },
+    {
+      "season": "2015–16",
+      "player": "Frank Ntilikina",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "SIG Strasbourg"
+    },
+    {
+      "season": "2016–17",
+      "player": "Frank Ntilikina",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "SIG Strasbourg"
+    },
+    {
+      "season": "2017–18",
+      "player": "Adam Mokoka",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "BCM Gravelines"
+    },
+    {
+      "season": "2018–19",
+      "player": "Théo Maledon",
+      "position": "Guard",
+      "nationality": "France",
+      "team": "LDLC ASVEL"
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Victor Wembanyama",
+      "position": "Center",
+      "nationality": "France",
+      "team": "Nanterre 92"
+    },
+    {
+      "season": "2021–22",
+      "player": "Victor Wembanyama",
+      "position": "Center",
+      "nationality": "France",
+      "team": "LDLC ASVEL"
+    },
+    {
+      "season": "2022–23",
+      "player": "Victor Wembanyama",
+      "position": "Center",
+      "nationality": "France",
+      "team": "Metropolitans 92"
+    },
+    {
+      "season": "2023–24",
+      "player": "Zaccharie Risacher",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "JL Bourg"
+    },
+    {
+      "season": "2024–25",
+      "player": "Noah Penda",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Le Mans"
+    },
+    {
+      "season": "2025–26",
+      "player": "Hugo Yimga-Moukouri",
+      "position": "Forward",
+      "nationality": "France",
+      "team": "Nanterre 92"
+    }
+  ],
+  "best_coach": [
+    {
+      "season": "1985–86",
+      "coaches": [
+        {
+          "name": "Michel Gomez",
+          "nationality": "France",
+          "club": "Vendée Challans Basket"
+        }
+      ]
+    },
+    {
+      "season": "1986–87",
+      "coaches": [
+        {
+          "name": "George Fisher",
+          "nationality": "United States",
+          "club": "Élan Béarnais Pau-Orthez"
+        }
+      ]
+    },
+    {
+      "season": "1987–88",
+      "coaches": [
+        {
+          "name": "Jean Galle",
+          "nationality": "France",
+          "club": "Cholet Basket"
+        }
+      ]
+    },
+    {
+      "season": "1988–89",
+      "coaches": [
+        {
+          "name": "Jean-Luc Monschau",
+          "nationality": "France",
+          "club": "FC Mulhouse Basket"
+        }
+      ]
+    },
+    {
+      "season": "1989–90",
+      "coaches": [
+        {
+          "name": "Michel Gomez",
+          "nationality": "France",
+          "club": "Limoges CSP"
+        }
+      ]
+    },
+    {
+      "season": "1990–91",
+      "coaches": [
+        {
+          "name": "Michel Gomez",
+          "nationality": "France",
+          "club": "Élan Béarnais Pau-Orthez"
+        }
+      ]
+    },
+    {
+      "season": "1991–92",
+      "coaches": [
+        {
+          "name": "Alain Thinet",
+          "nationality": "France",
+          "club": "Chorale Roanne Basket"
+        }
+      ]
+    },
+    {
+      "season": "1992–93",
+      "coaches": [
+        {
+          "name": "Božidar Maljković",
+          "nationality": "Federal Republic of Yugoslavia",
+          "club": "Limoges CSP"
+        }
+      ]
+    },
+    {
+      "season": "1993–94",
+      "coaches": [
+        {
+          "name": "Božidar Maljković",
+          "nationality": "Federal Republic of Yugoslavia",
+          "club": "Limoges CSP"
+        }
+      ]
+    },
+    {
+      "season": "1994–95",
+      "coaches": [
+        {
+          "name": "Jacques Monclar",
+          "nationality": "France",
+          "club": "Olympique Antibes"
+        }
+      ]
+    },
+    {
+      "season": "1995–96",
+      "coaches": [
+        {
+          "name": "Grégor Beugnot",
+          "nationality": "France",
+          "club": "ASVEL Basket"
+        }
+      ]
+    },
+    {
+      "season": "1996–97",
+      "coaches": [
+        {
+          "name": "Grégor Beugnot",
+          "nationality": "France",
+          "club": "ASVEL Basket"
+        }
+      ]
+    },
+    {
+      "season": "1997–98",
+      "coaches": [
+        {
+          "name": "Grégor Beugnot",
+          "nationality": "France",
+          "club": "ASVEL Basket"
+        }
+      ]
+    },
+    {
+      "season": "1998–99",
+      "coaches": [
+        {
+          "name": "Claude Bergeaud",
+          "nationality": "France",
+          "club": "Élan Béarnais Pau-Orthez"
+        }
+      ]
+    },
+    {
+      "season": "1999–00",
+      "coaches": [
+        {
+          "name": "Christophe Vitoux",
+          "nationality": "France",
+          "club": "Strasbourg IG"
+        },
+        {
+          "name": "Duško Ivanović",
+          "nationality": "Federal Republic of Yugoslavia",
+          "club": "Limoges CSP"
+        }
+      ]
+    },
+    {
+      "season": "2000–01",
+      "coaches": [
+        {
+          "name": "Vincent Collet",
+          "nationality": "France",
+          "club": "Le Mans Sarthe Basket"
+        }
+      ]
+    },
+    {
+      "season": "2001–02",
+      "coaches": [
+        {
+          "name": "Savo Vucević",
+          "nationality": "Federal Republic of Yugoslavia",
+          "club": "Cholet Basket"
+        }
+      ]
+    },
+    {
+      "season": "2002–03",
+      "coaches": [
+        {
+          "name": "Frédéric Sarre",
+          "nationality": "France",
+          "club": "Élan Béarnais Pau-Orthez"
+        }
+      ]
+    },
+    {
+      "season": "2003–04",
+      "coaches": [
+        {
+          "name": "Vincent Collet",
+          "nationality": "France",
+          "club": "Le Mans Sarthe Basket"
+        }
+      ]
+    },
+    {
+      "season": "2004–05",
+      "coaches": [
+        {
+          "name": "Éric Girard",
+          "nationality": "France",
+          "club": "Strasbourg IG"
+        }
+      ]
+    },
+    {
+      "season": "2005–06",
+      "coaches": [
+        {
+          "name": "Frédéric Sarre",
+          "nationality": "France",
+          "club": "JL Bourg Basket"
+        }
+      ]
+    },
+    {
+      "season": "2006–07",
+      "coaches": [
+        {
+          "name": "Jean-Denys Choulet",
+          "nationality": "France",
+          "club": "Chorale Roanne Basket"
+        }
+      ]
+    },
+    {
+      "season": "2007–08",
+      "coaches": [
+        {
+          "name": "Christian Monschau",
+          "nationality": "France",
+          "club": "STB Le Havre"
+        }
+      ]
+    },
+    {
+      "season": "2008–09",
+      "coaches": [
+        {
+          "name": "Philippe Hervé",
+          "nationality": "France",
+          "club": "Orléans Loiret Basket"
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "coaches": [
+        {
+          "name": "Ruddy Nelhomme",
+          "nationality": "France",
+          "club": "Poitiers Basket 86"
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "coaches": [
+        {
+          "name": "Erman Kunter",
+          "nationality": "Turkey",
+          "club": "Cholet Basket"
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "coaches": [
+        {
+          "name": "Grégor Beugnot",
+          "nationality": "France",
+          "club": "Élan Chalon"
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "coaches": [
+        {
+          "name": "Christian Monschau",
+          "nationality": "France",
+          "club": "BCM Gravelines-Dunkerque"
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "coaches": [
+        {
+          "name": "Jean-Louis Borg",
+          "nationality": "France",
+          "club": "JDA Dijon Basket"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "coaches": [
+        {
+          "name": "Vincent Collet",
+          "nationality": "France",
+          "club": "Strasbourg IG"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "coaches": [
+        {
+          "name": "Vincent Collet",
+          "nationality": "France",
+          "club": "Strasbourg IG"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "coaches": [
+        {
+          "name": "Zvezdan Mitrović",
+          "nationality": "Montenegro",
+          "club": "AS Monaco Basket"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "coaches": [
+        {
+          "name": "Zvezdan Mitrović",
+          "nationality": "Montenegro",
+          "club": "AS Monaco Basket"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "coaches": [
+        {
+          "name": "Pascal Donnadieu",
+          "nationality": "France",
+          "club": "Nanterre 92"
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "coaches": [],
+      "note": "Not awarded due to the COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "coaches": [
+        {
+          "name": "Zvezdan Mitrović",
+          "nationality": "Montenegro",
+          "club": "AS Monaco Basket"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "coaches": [
+        {
+          "name": "Vincent Collet",
+          "nationality": "France",
+          "club": "Levallois Metropolitans"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "coaches": [
+        {
+          "name": "Laurent Vila",
+          "nationality": "France",
+          "club": "Cholet"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "coaches": [
+        {
+          "name": "Tuomas Iisalo",
+          "nationality": "Finland",
+          "club": "Paris"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "coaches": [
+        {
+          "name": "Fabrice Lefrançois",
+          "nationality": "France",
+          "club": "Cholet"
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "coaches": [
+        {
+          "name": "Julien Mahé",
+          "nationality": "France",
+          "club": "Nanterre 92"
+        }
+      ]
+    }
+  ]
+}

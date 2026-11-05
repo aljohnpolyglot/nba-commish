@@ -6,19 +6,27 @@ import { getPlayerImage } from '../central/view/bioCache';
 interface PlayerChipProps {
   player: any;
   teamAbbrev?: string;
+  teamLogoUrl?: string;
   isWinner?: boolean;
 }
 
-export const ChallengePlayerChip: React.FC<PlayerChipProps> = ({ player, teamAbbrev, isWinner }) => {
+export const ChallengePlayerChip: React.FC<PlayerChipProps> = ({ player, teamAbbrev, teamLogoUrl, isWinner }) => {
   const img = player ? getPlayerImage(player) : null;
   return (
     <div className={`flex items-center gap-3 rounded-xl border p-3 ${isWinner ? 'border-amber-500/40 bg-amber-500/10' : 'border-slate-800 bg-slate-900/60'}`}>
-      <div className="h-10 w-10 shrink-0 overflow-hidden rounded-full bg-slate-800">
-        {img ? (
-          <img src={img} alt={player.name} className="h-full w-full object-cover object-top" referrerPolicy="no-referrer" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-xs font-black text-slate-500">
-            {player?.name?.split(' ').map((n: string) => n[0]).join('') ?? '?'}
+      <div className="relative shrink-0">
+        <div className="h-10 w-10 overflow-hidden rounded-full bg-slate-800">
+          {img ? (
+            <img src={img} alt={player.name} className="h-full w-full object-cover object-top" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-xs font-black text-slate-500">
+              {player?.name?.split(' ').map((n: string) => n[0]).join('') ?? '?'}
+            </div>
+          )}
+        </div>
+        {teamLogoUrl && (
+          <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border border-slate-800 bg-slate-950 p-0.5">
+            <img src={teamLogoUrl} alt={teamAbbrev ?? 'team'} className="h-full w-full object-contain" referrerPolicy="no-referrer" />
           </div>
         )}
       </div>

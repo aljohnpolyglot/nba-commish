@@ -1,154 +1,176 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useGame } from '../../store/GameContext';
-import { X, Search, Music, Mic2, CheckCircle2, Star, Trophy, MapPin, Users, Sparkles } from 'lucide-react';
+import { X, Search, Music, CheckCircle2, Star, Trophy, Sparkles } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { NBATeam } from '../../types';
-
-interface Artist {
-  id: string;
-  name: string;
-  track?: string;
-}
+import { getGameDateParts } from '../../utils/dateUtils';
+import {
+  isAllStarHalftimePerformance,
+  isAllStarSaturdayPerformance,
+  isFinalsPerformance,
+  getPerformanceEventNames,
+} from '../../services/events/performanceEvents';
+import {
+  getRecommendedPerformanceArtists,
+  loadPerformanceArtists,
+  type PerformanceArtist as Artist,
+} from '../../services/events/performanceArtists';
 
 interface InvitePerformanceModalProps {
   onClose: () => void;
   preselectedEvent?: string | null;
-  onConfirm: (payload: { 
-    type: 'performance' | 'national_anthem', 
-    event?: string, 
-    teamId?: number, 
-    gameId?: number,
+  onConfirm: (payload: Array<{
+    type: 'performance',
+    event: string,
     artists: string[],
+    artistDetails?: Array<Pick<Artist, 'name' | 'imageUrl'>>,
+    seasonYear?: number,
     isHighProfile?: boolean
-  }) => void;
+  }>) => void;
 }
-
-const ARTISTS_URL = 'https://gist.githubusercontent.com/tmcw/890b953ee7f2488f56b515a4f013191a/raw/bf1f72f36cee071d12d343f65d3cd2d5dcaa50ac/tracks.json';
-
-const EXCLUDED_ARTISTS = new Set([
-  'XXXTENTACION', 'Juice WRLD', 'Pop Smoke', 'Mac Miller', 'Nipsey Hussle', 
-  'Lil Peep', 'Avicii', 'Prince', 'Michael Jackson', 'David Bowie', 
-  'Whitney Houston', 'Amy Winehouse', '2Pac', 'The Notorious B.I.G.',
-  'Eazy-E', 'Left Eye', 'Aaliyah', 'Liam Payne'
-]);
 
 export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ onClose, onConfirm, preselectedEvent }) => {
   const { state } = useGame();
-  const [step, setStep] = useState<'type' | 'event' | 'team' | 'game' | 'artists'>('type');
-  const [performanceType, setPerformanceType] = useState<'performance' | 'national_anthem' | null>(null);
-  const [selectedEvent, setSelectedEvent] = useState<string | null>(preselectedEvent || null);
-
-  useEffect(() => {
-    if (preselectedEvent) {
-      setPerformanceType('performance');
-      if (preselectedEvent === 'Regular Season Halftime') {
-        setStep('team');
-      } else {
-        setStep('artists');
-      }
-    }
-  }, [preselectedEvent]);
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
-  const [selectedGameId, setSelectedGameId] = useState<number | null>(null);
+  const [step, setStep] = useState<'event' | 'artists'>('event');
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(null);
   const [artists, setArtists] = useState<Artist[]>([]);
   const [loading, setLoading] = useState(true);
+  const [artistLoadFailed, setArtistLoadFailed] = useState(false);
+  const [artistDecade, setArtistDecade] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedArtists, setSelectedArtists] = useState<Artist[]>([]);
+  const [bookings, setBookings] = useState<Record<string, Artist>>({});
+  const gameDateYear = getGameDateParts(state.date).year;
+  const artistYear = Number.isFinite(gameDateYear) ? gameDateYear : state.leagueStats.year;
+  const usePbaPool = state.leagueStats?.uiMode === 'pba_isolated';
 
   useEffect(() => {
-    fetch(ARTISTS_URL)
-      .then(res => res.json())
-      .then(data => {
-        const rawArtists = data.idMap ? Object.values(data.idMap) : [];
-        const processed = new Map<string, Artist>();
-        
-        (rawArtists as any[]).forEach(item => {
-          let name = item.artist;
-          if (name) {
-            // Clean leading asterisks and whitespace
-            name = name.replace(/^[*]+/, '').trim();
-            
-            if (!EXCLUDED_ARTISTS.has(name) && !processed.has(name)) {
-              processed.set(name, {
-                id: item.id || Math.random().toString(),
-                name: name
-              });
-            }
-          }
-        });
-        
-        setArtists(Array.from(processed.values()).sort((a, b) => a.name.localeCompare(b.name)));
-        setLoading(false);
+    let cancelled = false;
+    setLoading(true);
+    setArtistLoadFailed(false);
+    setArtistDecade('');
+
+    loadPerformanceArtists(artistYear, usePbaPool)
+      .then(selected => {
+        if (cancelled) return;
+        setArtists(selected.artists);
+        setArtistDecade(selected.decade);
       })
       .catch(err => {
+        if (cancelled) return;
         console.error("Failed to fetch artists", err);
-        setLoading(false);
+        setArtists([]);
+        setArtistDecade('');
+        setArtistLoadFailed(true);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
       });
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [artistYear, usePbaPool]);
 
   const filteredArtists = useMemo(() => {
-    if (!searchTerm) return artists.slice(0, 50);
+    if (!searchTerm) return artists;
     return artists.filter(a => 
       a.name.toLowerCase().includes(searchTerm.toLowerCase())
-    ).slice(0, 50);
+    );
   }, [artists, searchTerm]);
 
-  const hasPastChamp = useMemo(() => {
-    return state.teams.some(t => t.seasons?.some(s => s.playoffRoundsWon === 4));
-  }, [state.teams]);
+  const events = useMemo(() => {
+    const eventNames = getPerformanceEventNames(state.leagueStats.uiMode);
+    const scheduledThisSeason = (state.scheduledEvents ?? [])
+      .filter(event =>
+        event.type === 'PERFORMANCE_DAY'
+        && Number(event.payload?.seasonYear ?? String(event.date).slice(0, 4)) === state.leagueStats.year,
+      )
+      .map(event => String(event.payload?.event ?? ''));
+    const flagsAreCurrent = state.leagueStats.performanceInvitationYear === state.leagueStats.year;
+    return [
+      {
+        id: 'all_star',
+        name: eventNames.allStarHalftime,
+        icon: Star,
+        disabled: (flagsAreCurrent && state.leagueStats.hasAllStarHalftime)
+          || scheduledThisSeason.some(isAllStarHalftimePerformance),
+      },
+      {
+        id: 'all_star_saturday',
+        name: eventNames.allStarSaturday,
+        icon: Music,
+        disabled: (flagsAreCurrent && state.leagueStats.hasAllStarSaturdayPerformance)
+          || scheduledThisSeason.some(isAllStarSaturdayPerformance),
+      },
+      {
+        id: 'halftime_finals',
+        name: eventNames.finals,
+        icon: Trophy,
+        disabled: (flagsAreCurrent && state.leagueStats.hasFinalsHalftime)
+          || scheduledThisSeason.some(isFinalsPerformance),
+      },
+    ];
+  }, [
+    state.leagueStats.hasAllStarHalftime,
+    state.leagueStats.hasAllStarSaturdayPerformance,
+    state.leagueStats.hasFinalsHalftime,
+    state.leagueStats.performanceInvitationYear,
+    state.leagueStats.uiMode,
+    state.leagueStats.year,
+    state.scheduledEvents,
+  ]);
 
-  const isPastSeasonOpener = useMemo(() => {
-    return state.schedule.some(g => g.played);
-  }, [state.schedule]);
+  const recommendations = useMemo(() => {
+    const chosen = getRecommendedPerformanceArtists(artists, artistYear, events.length);
+    return events.map((event, index) => ({ event, artist: chosen[index] })).filter(row => row.artist);
+  }, [artistYear, artists, events]);
 
-  const events = [
-    { id: 'halftime_finals', name: 'Finals Halftime Show', icon: Trophy, disabled: state.leagueStats.hasFinalsHalftime },
-    { id: 'ring_ceremony', name: 'Championship Ring Ceremony', icon: Trophy, disabled: state.leagueStats.hasRingCeremony || !hasPastChamp || isPastSeasonOpener },
-    { id: 'all_star', name: 'All-Star Game Halftime', icon: Star, disabled: state.leagueStats.hasAllStarHalftime },
-    { id: 'random_halftime', name: 'Regular Season Halftime', icon: Music, disabled: false },
-  ];
+  useEffect(() => {
+    if (!preselectedEvent) return;
+    const event = events.find(candidate => candidate.id === preselectedEvent || candidate.name === preselectedEvent);
+    if (!event || event.disabled) return;
+    setSelectedEventId(event.id);
+    setStep('artists');
+  }, [events, preselectedEvent]);
 
   const handleConfirm = () => {
-    if (performanceType && selectedArtists.length > 0) {
-      onConfirm({
-        type: performanceType,
-        event: performanceType === 'performance' ? selectedEvent || undefined : undefined,
-        teamId: (performanceType === 'national_anthem' || selectedEvent === 'Regular Season Halftime') ? selectedTeamId || undefined : undefined,
-        gameId: (performanceType === 'national_anthem' || selectedEvent === 'Regular Season Halftime') ? selectedGameId || undefined : undefined,
-        artists: selectedArtists.map(a => a.name),
-        isHighProfile: performanceType === 'performance' && selectedEvent !== 'Regular Season Halftime'
-      });
-    }
+    const payload: Parameters<InvitePerformanceModalProps['onConfirm']>[0] = events.flatMap(event => {
+      const artist = bookings[event.id];
+      return artist ? [{
+        type: 'performance' as const,
+        event: event.name,
+        artists: [artist.name],
+        artistDetails: [{ name: artist.name, imageUrl: artist.imageUrl }],
+        seasonYear: state.leagueStats.year,
+        isHighProfile: true,
+      }] : [];
+    });
+    if (payload.length > 0) onConfirm(payload);
   };
 
-  const isStepValid = () => {
-    if (step === 'type') return performanceType !== null;
-    if (step === 'event') {
-      return selectedEvent !== null;
-    }
-    if (step === 'team') {
-      return selectedTeamId !== null;
-    }
-    if (step === 'game') {
-      return selectedGameId !== null;
-    }
-    if (step === 'artists') {
-      if (performanceType === 'national_anthem') return selectedArtists.length === 1;
-      return selectedArtists.length > 0;
-    }
-    return false;
+  const selectEvent = (eventId: string) => {
+    setSelectedEventId(eventId);
+    setSearchTerm('');
+    setStep('artists');
   };
 
-  const handleArtistToggle = (artist: Artist) => {
-    if (performanceType === 'national_anthem') {
-      setSelectedArtists([artist]);
-    } else {
-      if (selectedArtists.find(a => a.id === artist.id)) {
-        setSelectedArtists(selectedArtists.filter(a => a.id !== artist.id));
-      } else {
-        setSelectedArtists([...selectedArtists, artist]);
+  const selectArtist = (artist: Artist) => {
+    if (!selectedEventId) return;
+    setBookings(current => ({ ...current, [selectedEventId]: artist }));
+    setSelectedEventId(null);
+    setSearchTerm('');
+    setStep('event');
+  };
+
+  const applyRecommendations = () => {
+    setBookings(current => {
+      const next = { ...current };
+      for (const event of events) {
+        if (event.disabled || next[event.id]) continue;
+        const recommended = recommendations.find(row => row.event.id === event.id)?.artist;
+        if (recommended) next[event.id] = recommended;
       }
-    }
+      return next;
+    });
   };
 
   return (
@@ -169,11 +191,7 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
             <div className="flex min-w-0 items-start gap-3 text-amber-400">
                 <Music size={24} />
                 <h3 className="text-lg sm:text-xl font-black uppercase tracking-tight text-white leading-tight">
-                    {step === 'type' ? 'Invite Performance' : 
-                     step === 'event' ? 'Select Event' : 
-                     step === 'team' ? 'Select Team' :
-                     step === 'game' ? 'Select Game' :
-                     'Select Artist(s)'}
+                    {step === 'event' ? 'Invite Performers' : 'Select Artist'}
                 </h3>
             </div>
             <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors flex-shrink-0">
@@ -182,137 +200,118 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
           </div>
 
           <div className="flex-1 overflow-y-auto custom-scrollbar p-4 sm:p-6 space-y-6">
-            {step === 'type' && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <button
-                  onClick={() => {
-                    setPerformanceType('performance');
-                    setStep('event');
-                  }}
-                  className="flex flex-col items-center gap-4 p-8 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800 hover:border-amber-500/50 transition-all group"
-                >
-                  <div className="w-16 h-16 rounded-2xl bg-amber-500/10 flex items-center justify-center text-amber-500 group-hover:scale-110 transition-transform">
-                    <Music size={32} />
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-black text-white uppercase tracking-tight">Full Performance</div>
-                    <p className="text-xs text-slate-500 mt-1">Halftime shows, ceremonies, and concerts.</p>
-                  </div>
-                </button>
-                <button
-                  onClick={() => {
-                    setPerformanceType('national_anthem');
-                    setStep('team');
-                  }}
-                  className="flex flex-col items-center gap-4 p-8 rounded-2xl border border-slate-800 bg-slate-900/50 hover:bg-slate-800 hover:border-blue-500/50 transition-all group"
-                >
-                  <div className="w-16 h-16 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-500 group-hover:scale-110 transition-transform">
-                    <Mic2 size={32} />
-                  </div>
-                  <div className="text-center">
-                    <div className="text-lg font-black text-white uppercase tracking-tight">National Anthem</div>
-                    <p className="text-xs text-slate-500 mt-1">Single artist performance before tip-off.</p>
-                  </div>
-                </button>
-              </div>
-            )}
-
             {step === 'event' && (
-              <div className="grid grid-cols-1 gap-3">
-                {events.map(event => (
-                  <button
-                    key={event.id}
-                    disabled={event.disabled}
-                    onClick={() => setSelectedEvent(event.name)}
-                    className={`flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
-                      event.disabled ? 'opacity-40 grayscale cursor-not-allowed' :
-                      selectedEvent === event.name 
-                        ? 'bg-amber-600/20 border-amber-500/50' 
-                        : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800'
-                    }`}
-                  >
-                    <div className={`p-2 rounded-lg ${selectedEvent === event.name ? 'bg-amber-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                      <event.icon size={20} />
-                    </div>
-                    <div className="flex flex-col">
-                        <span className="font-bold text-white">{event.name}</span>
-                        {event.disabled && <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Already Held This Season</span>}
-                    </div>
-                    {selectedEvent === event.name && <CheckCircle2 size={18} className="ml-auto text-amber-400" />}
-                  </button>
-                ))}
-              </div>
-            )}
-
-            {step === 'team' && (
               <div className="space-y-4">
-                <div className="text-sm text-slate-400 mb-2">
-                  Select the home team hosting the {performanceType === 'national_anthem' ? 'National Anthem' : 'Regular Season Halftime'} performance.
+                <div className="rounded-xl border border-sky-500/20 bg-sky-500/10 p-4 text-xs leading-relaxed text-sky-100">
+                  Regular-season ceremonies, anthems, and halftime entertainment are handled by the home team. This screen controls the league's marquee events.
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  {state.teams.map(team => (
+                {!loading && recommendations.length === events.length && (
+                  <section className="rounded-2xl border border-violet-500/20 bg-[radial-gradient(circle_at_top_right,rgba(139,92,246,0.12),transparent_38%),rgba(15,23,42,0.55)] p-4">
+                    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex items-center gap-3">
+                        <Sparkles className="shrink-0 text-violet-400" size={24} />
+                        <div>
+                          <h4 className="font-black uppercase tracking-wide text-white">Recommended Slate</h4>
+                          <p className="mt-1 text-xs text-slate-400">Suggested artists for the league's three biggest stages.</p>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={applyRecommendations}
+                        className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-violet-600 px-5 text-xs font-black uppercase tracking-wider text-white transition hover:bg-violet-500"
+                      >
+                        <Sparkles size={15} />
+                        Use recommendations
+                      </button>
+                    </div>
+                    <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                      {recommendations.map(({ event, artist }) => (
+                        <button
+                          type="button"
+                          key={event.id}
+                          onClick={() => selectEvent(event.id)}
+                          className="overflow-hidden rounded-xl border border-slate-700/80 bg-slate-950/35 text-left transition hover:border-violet-500/50"
+                        >
+                          <div className="relative aspect-[4/3] bg-slate-800">
+                            {artist.imageUrl ? (
+                              <img
+                                src={artist.imageUrl}
+                                alt=""
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                                className="absolute inset-0 h-full w-full object-cover"
+                                onError={imageEvent => {
+                                  imageEvent.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              <Music className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 text-slate-600" size={28} />
+                            )}
+                          </div>
+                          <div className="p-3">
+                            <div className="truncate text-sm font-black text-white">{artist.name}</div>
+                            <div className="mt-1 line-clamp-2 text-[10px] font-bold uppercase tracking-wide text-violet-300">{event.name}</div>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                )}
+                <div className="grid grid-cols-1 gap-3">
+                  {events.map(event => (
                     <button
-                      key={team.id}
-                      onClick={() => {
-                        setSelectedTeamId(team.id);
-                        setSelectedGameId(null);
-                      }}
-                      className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
-                        selectedTeamId === team.id 
-                          ? 'bg-blue-600/20 border-blue-500/50' 
+                      key={event.id}
+                      disabled={event.disabled && !bookings[event.id]}
+                      onClick={() => selectEvent(event.id)}
+                      className={`flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
+                        event.disabled && !bookings[event.id] ? 'opacity-40 grayscale cursor-not-allowed' :
+                        bookings[event.id]
+                          ? 'bg-emerald-500/10 border-emerald-500/40'
                           : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800'
                       }`}
                     >
-                      <img src={team.logoUrl} alt={team.name} className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
-                      <span className="text-sm font-bold text-white truncate">{team.name}</span>
-                      {selectedTeamId === team.id && <CheckCircle2 size={16} className="ml-auto text-blue-400" />}
+                      <div className={`relative h-12 w-12 shrink-0 overflow-hidden rounded-xl flex items-center justify-center ${bookings[event.id] ? 'bg-emerald-500/20 text-emerald-300' : 'bg-slate-800 text-slate-400'}`}>
+                        <event.icon size={20} />
+                        {bookings[event.id]?.imageUrl && (
+                          <img
+                            src={bookings[event.id].imageUrl}
+                            alt=""
+                            loading="lazy"
+                            referrerPolicy="no-referrer"
+                            className="absolute inset-0 h-full w-full object-cover"
+                            onError={event => {
+                              event.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        )}
+                      </div>
+                      <div className="flex min-w-0 flex-1 flex-col">
+                          <span className="font-bold text-white">{event.name}</span>
+                          {bookings[event.id] ? (
+                            <span className="truncate text-xs font-bold text-emerald-300">{bookings[event.id].name}</span>
+                          ) : event.disabled ? (
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Already Held This Season</span>
+                          ) : (
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Select performer</span>
+                          )}
+                      </div>
+                      {bookings[event.id] && <CheckCircle2 size={18} className="ml-auto shrink-0 text-emerald-400" />}
                     </button>
                   ))}
                 </div>
               </div>
             )}
 
-            {step === 'game' && (
-              <div className="space-y-4">
-                <div className="text-sm text-slate-400 mb-2">
-                  Select the upcoming home game for the performance.
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  {state.schedule.filter(g => g.homeTid === selectedTeamId && !g.played).slice(0, 10).map(game => {
-                    const awayTeam = state.teams.find(t => t.id === game.awayTid);
-                    return (
-                      <button
-                        key={game.gid}
-                        onClick={() => setSelectedGameId(game.gid)}
-                        className={`flex items-center gap-4 p-4 rounded-xl border text-left transition-all ${
-                          selectedGameId === game.gid 
-                            ? 'bg-amber-600/20 border-amber-500/50' 
-                            : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800'
-                        }`}
-                      >
-                        <div className="flex flex-col flex-1">
-                          <span className="text-xs text-slate-400 font-bold uppercase tracking-wider">{game.date}</span>
-                          <div className="flex items-center gap-2 mt-1">
-                            <span className="text-slate-300">vs</span>
-                            <img src={awayTeam?.logoUrl} alt={awayTeam?.name} className="w-6 h-6 object-contain" referrerPolicy="no-referrer" />
-                            <span className="font-bold text-white">{awayTeam?.name}</span>
-                          </div>
-                        </div>
-                        {selectedGameId === game.gid && <CheckCircle2 size={18} className="text-amber-400" />}
-                      </button>
-                    );
-                  })}
-                  {state.schedule.filter(g => g.homeTid === selectedTeamId && !g.played).length === 0 && (
-                    <div className="text-center py-8 text-slate-500">
-                      No upcoming home games found for this team.
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
             {step === 'artists' && (
               <div className="space-y-4">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
+                    {artistDecade ? `${artistDecade} artists` : 'Artists'}
+                  </p>
+                  {!loading && !artistLoadFailed && (
+                    <span className="text-xs text-slate-600">{artists.length} available</span>
+                  )}
+                </div>
                 <div className="relative">
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
                   <input
@@ -330,22 +329,38 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
                     <Music className="animate-bounce mb-4" size={32} />
                     <p className="text-sm font-bold uppercase tracking-widest">Loading Artist Database...</p>
                   </div>
+                ) : artistLoadFailed ? (
+                  <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-8 text-center text-sm text-red-200">
+                    The artist list is unavailable right now. Close this window and try again.
+                  </div>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {filteredArtists.map(artist => {
-                      const isSelected = selectedArtists.some(a => a.id === artist.id);
+                      const isSelected = selectedEventId ? bookings[selectedEventId]?.id === artist.id : false;
                       return (
                         <button
                           key={artist.id}
-                          onClick={() => handleArtistToggle(artist)}
+                          onClick={() => selectArtist(artist)}
                           className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all ${
                             isSelected 
                               ? 'bg-amber-600/20 border-amber-500/50 shadow-lg shadow-amber-500/10' 
                               : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800 hover:border-slate-700'
                           }`}
                         >
-                          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-amber-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                            {artist.name.charAt(0)}
+                          <div className={`relative w-12 h-12 overflow-hidden rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${isSelected ? 'bg-amber-500 text-white' : 'bg-slate-800 text-slate-400'}`}>
+                            <span>{artist.name.charAt(0)}</span>
+                            {artist.imageUrl && (
+                              <img
+                                src={artist.imageUrl}
+                                alt=""
+                                loading="lazy"
+                                referrerPolicy="no-referrer"
+                                className="absolute inset-0 h-full w-full object-cover"
+                                onError={event => {
+                                  event.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            )}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className={`text-sm font-bold truncate ${isSelected ? 'text-white' : 'text-slate-300'}`}>{artist.name}</div>
@@ -354,6 +369,11 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
                         </button>
                       );
                     })}
+                    {filteredArtists.length === 0 && (
+                      <div className="col-span-full rounded-xl border border-slate-800 bg-slate-950/40 px-4 py-8 text-center text-sm text-slate-500">
+                        No artists match your search.
+                      </div>
+                    )}
                   </div>
                 )}
               </div>
@@ -362,59 +382,24 @@ export const InvitePerformanceModal: React.FC<InvitePerformanceModalProps> = ({ 
 
           <div className="p-4 sm:p-6 border-t border-slate-800 bg-slate-900/50 flex flex-col gap-3 sm:flex-row sm:justify-between sm:items-center">
             <div className="text-xs font-bold text-slate-500 uppercase tracking-wider text-center sm:text-left">
-              {step === 'artists' ? `${selectedArtists.length} Artist(s) Selected` : ''}
+              {step === 'event' ? `${Object.keys(bookings).length} event${Object.keys(bookings).length === 1 ? '' : 's'} booked` : ''}
             </div>
             <div className="flex flex-col-reverse sm:flex-row gap-3">
-              {step !== 'type' && (
+              {step === 'artists' && (
                 <button 
-                  onClick={() => {
-                    if (step === 'event') setStep('type');
-                    if (step === 'team') setStep(performanceType === 'performance' ? 'event' : 'type');
-                    if (step === 'game') setStep('team');
-                    if (step === 'artists') {
-                        if (performanceType === 'national_anthem') setStep('game');
-                        else if (selectedEvent === 'Regular Season Halftime') setStep('game');
-                        else setStep('event');
-                    }
-                  }}
+                  onClick={() => setStep('event')}
                   className="w-full sm:w-auto px-4 py-3 sm:py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-white hover:bg-slate-800 transition-colors uppercase tracking-wider"
                 >
                   Back
                 </button>
               )}
-              <button 
-                onClick={onClose}
-                className="px-4 py-2 rounded-xl text-xs font-bold text-slate-500 hover:text-white hover:bg-slate-800 transition-colors uppercase tracking-wider"
-              >
-                Cancel
-              </button>
-              {step !== 'artists' ? (
-                <button 
-                  onClick={() => {
-                      if (step === 'type') {
-                          if (performanceType === 'performance') setStep('event');
-                          else setStep('team');
-                      } else if (step === 'event') {
-                          if (selectedEvent === 'Regular Season Halftime') setStep('team');
-                          else setStep('artists');
-                      } else if (step === 'team') {
-                          setStep('game');
-                      } else if (step === 'game') {
-                          setStep('artists');
-                      }
-                  }}
-                  disabled={!isStepValid()}
-                  className="px-6 py-2 rounded-xl text-xs font-black text-white bg-amber-600 hover:bg-amber-500 disabled:opacity-50 transition-all uppercase tracking-wider shadow-lg shadow-amber-600/20"
-                >
-                  Next
-                </button>
-              ) : (
+              {step === 'event' && (
                 <button 
                   onClick={handleConfirm}
-                  disabled={!isStepValid()}
+                  disabled={Object.keys(bookings).length === 0}
                   className="px-6 py-2 rounded-xl text-xs font-black text-white bg-amber-600 hover:bg-amber-500 disabled:opacity-50 transition-all uppercase tracking-wider shadow-lg shadow-amber-600/20"
                 >
-                  Confirm Invite
+                  Mark Done
                 </button>
               )}
             </div>

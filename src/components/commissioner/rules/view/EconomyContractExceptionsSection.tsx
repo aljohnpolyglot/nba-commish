@@ -1,10 +1,11 @@
 import React from 'react';
 import { InfoTooltip } from './InfoTooltip';
+import { INITIAL_LEAGUE_STATS } from '../../../../constants';
 
 export const EconomyContractExceptionsSection = ({ props }: { props: any }) => {
   if (!props.mleEnabled) return null;
 
-  const cap = props.salaryCap || 154_647_000;
+  const cap = props.salaryCap || INITIAL_LEAGUE_STATS.salaryCap;
   const dollars = (pct: number) => (cap * pct / 100);
   const setRoomPct = (pct: number) => {
     props.setRoomMlePercentage(pct);
@@ -64,7 +65,7 @@ export const EconomyContractExceptionsSection = ({ props }: { props: any }) => {
       <div className="flex items-center justify-between">
         <div className="flex items-center">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Biannual Exception</span>
-          <InfoTooltip text="A smaller exception available every other year to teams below the 1st apron. Cannot be combined with any MLE." />
+          <InfoTooltip text="Available to over-cap teams every other league year. Contracts are limited to two seasons, usage triggers the 1st-apron hard cap, and it may coexist with the non-taxpayer MLE on separate contracts." />
         </div>
         <button
           onClick={() => props.setBiannualEnabled(!props.biannualEnabled)}

@@ -1,0 +1,1598 @@
+{
+  "aba_league_finals_results": [
+    {
+      "season": "2001–02",
+      "champion": "Union Olimpija",
+      "score": "73–59",
+      "runner_up": "Krka",
+      "semifinalists": [
+        "Pivovarna Laško",
+        "Cibona VIP"
+      ]
+    },
+    {
+      "season": "2002–03",
+      "champion": "Zadar",
+      "score": "91–88",
+      "runner_up": "Maccabi Elite Tel Aviv",
+      "semifinalists": [
+        "Crvena zvezda",
+        "Union Olimpija"
+      ]
+    },
+    {
+      "season": "2003–04",
+      "champion": "Reflex",
+      "score": "71–70",
+      "runner_up": "Cibona VIP",
+      "semifinalists": [
+        "Crvena zvezda",
+        "Union Olimpija"
+      ]
+    },
+    {
+      "season": "2004–05",
+      "champion": "Hemofarm",
+      "score": "89–76",
+      "runner_up": "Partizan Pivara MB",
+      "semifinalists": [
+        "Reflex",
+        "Crvena zvezda"
+      ]
+    },
+    {
+      "season": "2005–06",
+      "champion": "FMP",
+      "score": "73–72",
+      "runner_up": "Partizan Pivara MB",
+      "semifinalists": [
+        "Crvena zvezda",
+        "Hemofarm"
+      ]
+    },
+    {
+      "season": "2006–07",
+      "champion": "Partizan",
+      "score": "2–0",
+      "runner_up": "FMP",
+      "semifinalists": [
+        "Cibona VIP",
+        "Hemofarm"
+      ]
+    },
+    {
+      "season": "2007–08",
+      "champion": "Partizan Igokea",
+      "score": "69–51",
+      "runner_up": "Hemofarm",
+      "semifinalists": [
+        "Union Olimpija",
+        "Zadar"
+      ]
+    },
+    {
+      "season": "2008–09",
+      "champion": "Partizan Igokea",
+      "score": "63–49",
+      "runner_up": "Cibona VIP",
+      "semifinalists": [
+        "Crvena zvezda",
+        "Hemofarm"
+      ]
+    },
+    {
+      "season": "2009–10",
+      "champion": "Partizan",
+      "score": "75–74 (OT)",
+      "runner_up": "Cibona VIP",
+      "semifinalists": [
+        "Hemofarm",
+        "Union Olimpija"
+      ]
+    },
+    {
+      "season": "2010–11",
+      "champion": "Partizan",
+      "score": "77–74",
+      "runner_up": "Union Olimpija",
+      "semifinalists": [
+        "Budućnost m:tel",
+        "Krka"
+      ]
+    },
+    {
+      "season": "2011–12",
+      "champion": "Maccabi Electra Tel Aviv",
+      "score": "87–77",
+      "runner_up": "Cedevita",
+      "semifinalists": [
+        "Budućnost VOLI",
+        "Partizan mt:s"
+      ]
+    },
+    {
+      "season": "2012–13",
+      "champion": "Partizan mt:s",
+      "score": "71–63",
+      "runner_up": "Crvena zvezda Telekom",
+      "semifinalists": [
+        "Igokea",
+        "Radnički Kragujevac"
+      ]
+    },
+    {
+      "season": "2013–14",
+      "champion": "Cibona",
+      "score": "72–59",
+      "runner_up": "Cedevita",
+      "semifinalists": [
+        "Crvena zvezda Telekom",
+        "Partizan"
+      ]
+    },
+    {
+      "season": "2014–15",
+      "champion": "Crvena zvezda Telekom",
+      "score": "3–1",
+      "runner_up": "Cedevita",
+      "semifinalists": [
+        "Partizan NIS",
+        "Budućnost VOLI"
+      ]
+    },
+    {
+      "season": "2015–16",
+      "champion": "Crvena zvezda Telekom",
+      "score": "3–0",
+      "runner_up": "Mega Leks",
+      "semifinalists": [
+        "Cedevita",
+        "Budućnost VOLI"
+      ]
+    },
+    {
+      "season": "2016–17",
+      "champion": "Crvena zvezda mts",
+      "score": "3–0",
+      "runner_up": "Cedevita",
+      "semifinalists": [
+        "Budućnost VOLI",
+        "Partizan NIS"
+      ]
+    },
+    {
+      "season": "2017–18",
+      "champion": "Budućnost VOLI",
+      "score": "3–1",
+      "runner_up": "Crvena zvezda mts",
+      "semifinalists": [
+        "Cedevita",
+        "Mornar"
+      ]
+    },
+    {
+      "season": "2018–19",
+      "champion": "Crvena zvezda mts",
+      "score": "3–2",
+      "runner_up": "Budućnost VOLI",
+      "semifinalists": [
+        "Partizan NIS",
+        "Cedevita"
+      ]
+    },
+    {
+      "season": "2019–20",
+      "champion": null,
+      "score": null,
+      "runner_up": null,
+      "semifinalists": [],
+      "note": "Canceled due to the COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "champion": "Crvena zvezda mts",
+      "score": "3–2",
+      "runner_up": "Budućnost VOLI",
+      "semifinalists": [
+        "Mornar",
+        "Igokea"
+      ]
+    },
+    {
+      "season": "2021–22",
+      "champion": "Crvena zvezda mts",
+      "score": "3–2",
+      "runner_up": "Partizan NIS",
+      "semifinalists": [
+        "Budućnost VOLI",
+        "Cedevita Olimpija"
+      ]
+    },
+    {
+      "season": "2022–23",
+      "champion": "Partizan Mozzart Bet",
+      "score": "3–2",
+      "runner_up": "Crvena zvezda Meridianbet",
+      "semifinalists": [
+        "Budućnost VOLI",
+        "Cedevita Olimpija"
+      ]
+    },
+    {
+      "season": "2023–24",
+      "champion": "Crvena zvezda Meridianbet",
+      "score": "3–0",
+      "runner_up": "Partizan Mozzart Bet",
+      "semifinalists": [
+        "Budućnost VOLI",
+        "Mega MIS"
+      ]
+    },
+    {
+      "season": "2024–25",
+      "champion": "Partizan Mozzart Bet",
+      "score": "3–1",
+      "runner_up": "Budućnost VOLI",
+      "semifinalists": [
+        "Dubai Basketball",
+        "Crvena zvezda Meridianbet"
+      ]
+    },
+    {
+      "season": "2025–26",
+      "champion": "Dubai Basketball",
+      "score": "3–1",
+      "runner_up": "Partizan Mozzart Bet",
+      "semifinalists": [
+        "Budućnost VOLI",
+        "Crvena zvezda Meridianbet"
+      ]
+    }
+  ],
+  "aba_league_supercup": [
+    {
+      "year": "2017",
+      "host": "Bar, Montenegro",
+      "winner": "Cedevita (Croatia)",
+      "score": "78–69",
+      "runner_up": "Budućnost VOLI (Montenegro)"
+    },
+    {
+      "year": "2018",
+      "host": "Laktaši, Bosnia and Herzegovina",
+      "winner": "Crvena zvezda mts (Serbia)",
+      "score": "89–75",
+      "runner_up": "Budućnost VOLI (Montenegro)"
+    },
+    {
+      "year": "2019",
+      "host": "Zagreb, Croatia",
+      "winner": "Partizan NIS (Serbia)",
+      "score": "99–77",
+      "runner_up": "Cedevita Olimpija (Slovenia)"
+    },
+    {
+      "year": "2020",
+      "host": "Podgorica, Montenegro",
+      "note": "Cancelled due to the COVID-19 pandemic"
+    },
+    {
+      "year": "2023",
+      "host": "Podgorica, Montenegro",
+      "winner": "SC Derby (Montenegro)",
+      "score": "83–81",
+      "runner_up": "Partizan Mozzart Bet (Serbia)"
+    }
+  ],
+  "aba_league_regular_season_mvp": [
+    {
+      "season": "2001–02",
+      "player": "Marino Baždarić",
+      "nationality": "Croatia",
+      "team": "Triglav osiguranje",
+      "pir": 17.64
+    },
+    {
+      "season": "2002–03",
+      "player": "Kenyan Weaks",
+      "nationality": "United States",
+      "team": "Pivovarna Laško",
+      "pir": 19.33
+    },
+    {
+      "season": "2003–04",
+      "player": "Dejan Milojević",
+      "nationality": "Serbia and Montenegro",
+      "team": "Budućnost",
+      "pir": 29.35
+    },
+    {
+      "season": "2004–05",
+      "player": "Dejan Milojević",
+      "nationality": "Serbia and Montenegro",
+      "team": "Partizan",
+      "pir": 30.35
+    },
+    {
+      "season": "2005–06",
+      "player": "Dejan Milojević",
+      "nationality": "Serbia and Montenegro",
+      "team": "Partizan",
+      "pir": 26.21
+    },
+    {
+      "season": "2006–07",
+      "player": "Milan Gurović",
+      "nationality": "Serbia",
+      "team": "Crvena Zvezda",
+      "pir": 29.3
+    },
+    {
+      "season": "2007–08",
+      "player": "Tadija Dragićević",
+      "nationality": "Serbia",
+      "team": "Crvena Zvezda",
+      "pir": 21.93
+    },
+    {
+      "season": "2008–09",
+      "player": "Ante Tomić",
+      "nationality": "Croatia",
+      "team": "Zagreb",
+      "pir": 22.42
+    },
+    {
+      "season": "2009–10",
+      "player": "Chester Mason",
+      "nationality": "United States",
+      "team": "Široki",
+      "pir": 19.96
+    },
+    {
+      "season": "2010–11",
+      "player": "Luka Žorić",
+      "nationality": "Croatia",
+      "team": "Zagreb",
+      "pir": 23.62
+    },
+    {
+      "season": "2011–12",
+      "player": "David Simon",
+      "nationality": "United States",
+      "team": "Radnički",
+      "pir": 22.27
+    },
+    {
+      "season": "2012–13",
+      "player": "Aleksandar Ćapin",
+      "nationality": "Slovenia",
+      "team": "Radnički",
+      "pir": 20.43
+    },
+    {
+      "season": "2013–14",
+      "player": "Dario Šarić",
+      "nationality": "Croatia",
+      "team": "Cibona",
+      "pir": 21.15
+    },
+    {
+      "season": "2014–15",
+      "player": "Nikola Jokić",
+      "nationality": "Serbia",
+      "team": "Mega Leks",
+      "pir": 21.96
+    },
+    {
+      "season": "2015–16",
+      "player": "Miro Bilan",
+      "nationality": "Croatia",
+      "team": "Cedevita",
+      "pir": 20.81
+    },
+    {
+      "season": "2016–17",
+      "player": "Nikola Janković",
+      "nationality": "Serbia",
+      "team": "Union Olimpija",
+      "pir": 19.24
+    },
+    {
+      "season": "2017–18",
+      "player": "Luka Žorić",
+      "nationality": "Croatia",
+      "team": "Cibona",
+      "pir": 23.24
+    },
+    {
+      "season": "2018–19",
+      "player": "Goga Bitadze",
+      "nationality": "Georgia",
+      "team": "Budućnost",
+      "pir": 19.95
+    },
+    {
+      "season": "2019–20",
+      "player": null,
+      "nationality": null,
+      "team": null,
+      "pir": null,
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "player": "Filip Petrušev",
+      "nationality": "Serbia",
+      "team": "Mega Soccerbet",
+      "pir": 27.95
+    },
+    {
+      "season": "2021–22",
+      "player": "Nikola Kalinić",
+      "nationality": "Serbia",
+      "team": "Crvena zvezda mts",
+      "pir": 12.96
+    },
+    {
+      "season": "2022–23",
+      "player": "Luka Božić",
+      "nationality": "Croatia",
+      "team": "Zadar",
+      "pir": 32.56
+    },
+    {
+      "season": "2023–24",
+      "player": "Luka Božić",
+      "nationality": "Croatia",
+      "team": "Zadar",
+      "pir": 29.16
+    },
+    {
+      "season": "2024–25",
+      "player": "McKinley Wright",
+      "nationality": "United States",
+      "team": "Budućnost VOLI",
+      "pir": 16
+    },
+    {
+      "season": "2025–26",
+      "player": "Bogoljub Marković",
+      "nationality": "Serbia",
+      "team": "Mega Superbet",
+      "pir": 23.8
+    }
+  ],
+  "aba_league_finals_mvp": [
+    {
+      "season": "2001–02",
+      "winners": [
+        {
+          "player": "Jure Zdovc",
+          "nationality": "Slovenia",
+          "team": "Union Olimpija"
+        }
+      ]
+    },
+    {
+      "season": "2002–03",
+      "winners": [
+        {
+          "player": "Marko Popović",
+          "nationality": "Croatia",
+          "team": "Zadar"
+        }
+      ]
+    },
+    {
+      "season": "2003–04",
+      "winners": [
+        {
+          "player": "Ognjen Aškrabić",
+          "nationality": "Serbia and Montenegro",
+          "team": "FMP"
+        }
+      ]
+    },
+    {
+      "season": "2004–05",
+      "winners": [
+        {
+          "player": "Nebojša Bogavac",
+          "nationality": "Serbia and Montenegro",
+          "team": "Hemofarm"
+        }
+      ]
+    },
+    {
+      "season": "2005–06",
+      "winners": [
+        {
+          "player": "Vonteego Cummings",
+          "nationality": "United States",
+          "team": "Partizan"
+        }
+      ]
+    },
+    {
+      "season": "2006–07",
+      "winners": [
+        {
+          "player": "Vonteego Cummings",
+          "nationality": "United States",
+          "team": "Partizan"
+        },
+        {
+          "player": "Zoran Erceg",
+          "nationality": "Serbia",
+          "team": "FMP"
+        }
+      ]
+    },
+    {
+      "season": "2007–08",
+      "winners": [
+        {
+          "player": "Nikola Peković",
+          "nationality": "Montenegro",
+          "team": "Partizan"
+        }
+      ]
+    },
+    {
+      "season": "2008–09",
+      "winners": [
+        {
+          "player": "Novica Veličković",
+          "nationality": "Serbia",
+          "team": "Partizan"
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "winners": [
+        {
+          "player": "Jamont Gordon",
+          "nationality": "United States",
+          "team": "Cibona"
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "winners": [
+        {
+          "player": "Nate Jawai",
+          "nationality": "Australia",
+          "team": "Partizan"
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "winners": [
+        {
+          "player": "Keith Langford",
+          "nationality": "United States",
+          "team": "Maccabi Tel Aviv"
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "winners": [
+        {
+          "player": "Raško Katić",
+          "nationality": "Serbia",
+          "team": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "winners": [
+        {
+          "player": "Dario Šarić",
+          "nationality": "Croatia",
+          "team": "Cibona"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "winners": [
+        {
+          "player": "Boban Marjanović",
+          "nationality": "Serbia",
+          "team": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "winners": [
+        {
+          "player": "Stefan Jović",
+          "nationality": "Serbia",
+          "team": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "winners": [
+        {
+          "player": "Charles Jenkins",
+          "nationality": "United States",
+          "team": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "winners": [
+        {
+          "player": "Nemanja Gordić",
+          "nationality": "Bosnia and Herzegovina",
+          "team": "Budućnost"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "winners": [
+        {
+          "player": "Billy Baron",
+          "nationality": "United States",
+          "team": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "winners": [],
+      "note": "Not awarded"
+    },
+    {
+      "season": "2020–21",
+      "winners": [
+        {
+          "player": "Landry Nnoko",
+          "nationality": "Cameroon",
+          "team": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "winners": [
+        {
+          "player": "Ognjen Dobrić",
+          "nationality": "Serbia",
+          "team": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "winners": [
+        {
+          "player": "Kevin Punter",
+          "nationality": "United States",
+          "team": "Partizan"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "winners": [
+        {
+          "player": "Yago dos Santos",
+          "nationality": "Brazil",
+          "team": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "winners": [
+        {
+          "player": "Tyrique Jones",
+          "nationality": "United States",
+          "team": "Partizan"
+        }
+      ]
+    }
+  ],
+  "aba_league_top_scorers": [
+    {
+      "season": "2001–02",
+      "player": "Marino Baždarić",
+      "nationality": "Croatia",
+      "team": "Triglav osiguranje",
+      "ppg": 26.2
+    },
+    {
+      "season": "2002–03",
+      "player": "Kenyan Weaks",
+      "nationality": "United States",
+      "team": "Pivovarna Laško",
+      "ppg": 20.1
+    },
+    {
+      "season": "2003–04",
+      "player": "Igor Rakočević",
+      "nationality": "Serbia and Montenegro",
+      "team": "Crvena zvezda",
+      "ppg": 23.2
+    },
+    {
+      "season": "2004–05",
+      "player": "Dejan Milojević",
+      "nationality": "Serbia and Montenegro",
+      "team": "Partizan",
+      "ppg": 21.8
+    },
+    {
+      "season": "2005–06",
+      "player": "Dejan Milojević",
+      "nationality": "Serbia and Montenegro",
+      "team": "Partizan",
+      "ppg": 17.7
+    },
+    {
+      "season": "2006–07",
+      "player": "Milan Gurović",
+      "nationality": "Serbia",
+      "team": "Crvena zvezda",
+      "ppg": 28.6
+    },
+    {
+      "season": "2007–08",
+      "player": "Tadija Dragićević",
+      "nationality": "Serbia",
+      "team": "Crvena zvezda",
+      "ppg": 20.5
+    },
+    {
+      "season": "2008–09",
+      "player": "Dragan Labović",
+      "nationality": "Serbia",
+      "team": "FMP",
+      "ppg": 18
+    },
+    {
+      "season": "2009–10",
+      "player": "Andrija Žižić",
+      "nationality": "Croatia",
+      "team": "Cedevita",
+      "ppg": 17.1
+    },
+    {
+      "season": "2010–11",
+      "player": "Michael Lee",
+      "nationality": "United States",
+      "team": "Radnički",
+      "ppg": 19.6
+    },
+    {
+      "season": "2011–12",
+      "player": "David Simon",
+      "nationality": "United States",
+      "team": "Radnički",
+      "ppg": 19.4
+    },
+    {
+      "season": "2012–13",
+      "player": "Aleksandar Ćapin",
+      "nationality": "Slovenia",
+      "team": "Radnički",
+      "ppg": 17.5
+    },
+    {
+      "season": "2013–14",
+      "player": "Dario Šarić",
+      "nationality": "Croatia",
+      "team": "Cibona",
+      "ppg": 16.3
+    },
+    {
+      "season": "2014–15",
+      "player": "Malcolm Armstead",
+      "nationality": "United States",
+      "team": "Krka",
+      "ppg": 17.6
+    },
+    {
+      "season": "2015–16",
+      "player": "Tadija Dragićević",
+      "nationality": "Serbia",
+      "team": "Budućnost",
+      "ppg": 16.3
+    },
+    {
+      "season": "2016–17",
+      "player": "Ivan Marinković",
+      "nationality": "Serbia",
+      "team": "Zadar",
+      "ppg": 17.8
+    },
+    {
+      "season": "2017–18",
+      "player": "Luka Žorić",
+      "nationality": "Croatia",
+      "team": "Cibona",
+      "ppg": 19.7
+    },
+    {
+      "season": "2018–19",
+      "player": "Dragan Apić",
+      "nationality": "Serbia",
+      "team": "FMP",
+      "ppg": 21.2
+    },
+    {
+      "season": "2019–20",
+      "player": "Lance Harris",
+      "nationality": "United States",
+      "team": "Mornar",
+      "ppg": 18.6
+    },
+    {
+      "season": "2020–21",
+      "player": "Filip Petrušev",
+      "nationality": "Serbia",
+      "team": "Mega Basket",
+      "ppg": 23.7
+    },
+    {
+      "season": "2021–22",
+      "player": "Shannon Shorter",
+      "nationality": "United States",
+      "team": "Split",
+      "ppg": 17
+    },
+    {
+      "season": "2022–23",
+      "player": "Hunter Hale",
+      "nationality": "United States",
+      "team": "Borac Mozzart",
+      "ppg": 22.3
+    },
+    {
+      "season": "2023–24",
+      "player": "Luka Božić",
+      "nationality": "Croatia",
+      "team": "Zadar",
+      "ppg": 20.6
+    },
+    {
+      "season": "2024–25",
+      "player": "Bryce Jones",
+      "nationality": "United States",
+      "team": "Igokea",
+      "ppg": 18.4
+    },
+    {
+      "season": "2025–26",
+      "player": "Duane Washington",
+      "nationality": "United States",
+      "team": "Partizan",
+      "ppg": 21.2
+    }
+  ],
+  "aba_league_coach_of_the_season": [
+    {
+      "season": "2012–13",
+      "coaches": [
+        {
+          "coach": "Dragan Bajić",
+          "nationality": "Bosnia and Herzegovina",
+          "club": "Igokea"
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "coaches": [
+        {
+          "coach": "Dejan Radonjić",
+          "nationality": "Montenegro",
+          "club": "Crvena zvezda Telekom"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "coaches": [
+        {
+          "coach": "Dejan Radonjić",
+          "nationality": "Montenegro",
+          "club": "Crvena zvezda Telekom"
+        }
+      ]
+    },
+    {
+      "season": "2020–21",
+      "coaches": [
+        {
+          "coach": "Dragan Bajić",
+          "nationality": "Bosnia and Herzegovina",
+          "club": "Igokea"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "coaches": [
+        {
+          "coach": "Željko Obradović",
+          "nationality": "Serbia",
+          "club": "Partizan NIS"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "coaches": [
+        {
+          "coach": "Željko Obradović",
+          "nationality": "Serbia",
+          "club": "Partizan Mozzart Bet"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "coaches": [
+        {
+          "coach": "Danijel Jusup",
+          "nationality": "Croatia",
+          "club": "Zadar"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "coaches": [
+        {
+          "coach": "Andrej Žakelj",
+          "nationality": "Slovenia",
+          "club": "Budućnost VOLI"
+        },
+        {
+          "coach": "Zvezdan Mitrović",
+          "nationality": "Montenegro",
+          "club": "Cedevita Olimpija"
+        }
+      ]
+    }
+  ],
+  "aba_league_ideal_starting_five": [
+    {
+      "season": "2013–14",
+      "players": [
+        {
+          "player": "DeMarcus Nelson",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Crvena zvezda"
+        },
+        {
+          "player": "Bogdan Bogdanović",
+          "position": "G",
+          "nationality": "Serbia",
+          "club": "Partizan"
+        },
+        {
+          "player": "Dario Šarić",
+          "position": "F",
+          "nationality": "Croatia",
+          "club": "Cibona"
+        },
+        {
+          "player": "Joffrey Lauvergne",
+          "position": "F",
+          "nationality": "France",
+          "club": "Partizan"
+        },
+        {
+          "player": "Boban Marjanović",
+          "position": "C",
+          "nationality": "Serbia",
+          "club": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "players": [
+        {
+          "player": "Malcolm Armstead",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Krka"
+        },
+        {
+          "player": "Suad Šehović",
+          "position": "G",
+          "nationality": "Montenegro",
+          "club": "Budućnost"
+        },
+        {
+          "player": "Sasha Pavlović",
+          "position": "F",
+          "nationality": "Serbia",
+          "club": "Partizan"
+        },
+        {
+          "player": "Milan Mačvan",
+          "position": "F",
+          "nationality": "Serbia",
+          "club": "Partizan"
+        },
+        {
+          "player": "Boban Marjanović",
+          "position": "C",
+          "nationality": "Serbia",
+          "club": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "players": [
+        {
+          "player": "Jacob Pullen",
+          "position": "G",
+          "nationality": "Georgia",
+          "club": "Cedevita"
+        },
+        {
+          "player": "Timothé Luwawu-Cabarrot",
+          "position": "G",
+          "nationality": "France",
+          "club": "Mega Leks"
+        },
+        {
+          "player": "Tadija Dragićević",
+          "position": "F",
+          "nationality": "Serbia",
+          "club": "Budućnost"
+        },
+        {
+          "player": "Miro Bilan",
+          "position": "F",
+          "nationality": "Croatia",
+          "club": "Cedevita"
+        },
+        {
+          "player": "Maik Zirbes",
+          "position": "C",
+          "nationality": "Germany",
+          "club": "Crvena zvezda"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "players": [
+        {
+          "player": "Stefan Jović",
+          "position": "G",
+          "nationality": "Serbia",
+          "club": "Crvena zvezda"
+        },
+        {
+          "player": "Charles Jenkins",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Crvena zvezda"
+        },
+        {
+          "player": "Marko Simonović",
+          "position": "F",
+          "nationality": "Serbia",
+          "club": "Crvena zvezda"
+        },
+        {
+          "player": "Novica Veličković",
+          "position": "F",
+          "nationality": "Serbia",
+          "club": "Partizan"
+        },
+        {
+          "player": "Miro Bilan",
+          "position": "C",
+          "nationality": "Croatia",
+          "club": "Cedevita"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "players": [
+        {
+          "player": "Taylor Rochestie",
+          "position": "G",
+          "nationality": "Montenegro",
+          "club": "Crvena zvezda"
+        },
+        {
+          "player": "Nemanja Gordić",
+          "position": "G",
+          "nationality": "Bosnia and Herzegovina",
+          "club": "Budućnost"
+        },
+        {
+          "player": "Džanan Musa",
+          "position": "F",
+          "nationality": "Bosnia and Herzegovina",
+          "club": "Cedevita"
+        },
+        {
+          "player": "Novica Veličković",
+          "position": "F",
+          "nationality": "Serbia",
+          "club": "Partizan"
+        },
+        {
+          "player": "Uroš Luković",
+          "position": "C",
+          "nationality": "Serbia",
+          "club": "Mornar"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "players": [
+        {
+          "player": "Joe Ragland",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Crvena zvezda"
+        },
+        {
+          "player": "Jacob Pullen",
+          "position": "G",
+          "nationality": "Georgia",
+          "club": "Cedevita"
+        },
+        {
+          "player": "Stratos Perperoglou",
+          "position": "F",
+          "nationality": "Greece",
+          "club": "Crvena zvezda"
+        },
+        {
+          "player": "Jock Landale",
+          "position": "F",
+          "nationality": "Australia",
+          "club": "Partizan"
+        },
+        {
+          "player": "Goga Bitadze",
+          "position": "C",
+          "nationality": "Georgia",
+          "club": "Budućnost"
+        }
+      ]
+    },
+    {
+      "season": "2020–21",
+      "players": [
+        {
+          "player": "Jordan Loyd",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Crvena zvezda"
+        },
+        {
+          "player": "Nikola Ivanović",
+          "position": "G",
+          "nationality": "Montenegro",
+          "club": "Budućnost"
+        },
+        {
+          "player": "Jaka Blažič",
+          "position": "F",
+          "nationality": "Slovenia",
+          "club": "Cedevita Olimpija"
+        },
+        {
+          "player": "Marko Simonović",
+          "position": "F",
+          "nationality": "Montenegro",
+          "club": "Mega Soccerbet"
+        },
+        {
+          "player": "Filip Petrušev",
+          "position": "C",
+          "nationality": "Serbia",
+          "club": "Mega Soccerbet"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "players": [
+        {
+          "player": "Kevin Punter",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Partizan NIS"
+        },
+        {
+          "player": "Jaka Blažič",
+          "position": "G",
+          "nationality": "Slovenia",
+          "club": "Cedevita Olimpija"
+        },
+        {
+          "player": "Nikola Kalinić",
+          "position": "F",
+          "nationality": "Serbia",
+          "club": "Crvena zvezda mts"
+        },
+        {
+          "player": "Zach LeDay",
+          "position": "F",
+          "nationality": "United States",
+          "club": "Partizan NIS"
+        },
+        {
+          "player": "Kenan Kamenjaš",
+          "position": "C",
+          "nationality": "Bosnia and Herzegovina",
+          "club": "SC Derby"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "players": [
+        {
+          "player": "Facundo Campazzo",
+          "position": "G",
+          "nationality": "Argentina",
+          "club": "Crvena zvezda Meridianbet"
+        },
+        {
+          "player": "Kevin Punter",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Partizan Mozzart Bet"
+        },
+        {
+          "player": "Dante Exum",
+          "position": "F",
+          "nationality": "Australia",
+          "club": "Partizan Mozzart Bet"
+        },
+        {
+          "player": "Luka Božić",
+          "position": "F",
+          "nationality": "Croatia",
+          "club": "Zadar"
+        },
+        {
+          "player": "Mathias Lessort",
+          "position": "C",
+          "nationality": "France",
+          "club": "Partizan Mozzart Bet"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "players": [
+        {
+          "player": "Nikola Topić",
+          "position": "G",
+          "nationality": "Serbia",
+          "club": "Mega MIS / Crvena zvezda Meridianbet"
+        },
+        {
+          "player": "Miloš Teodosić",
+          "position": "G",
+          "nationality": "Serbia",
+          "club": "Crvena zvezda Meridianbet"
+        },
+        {
+          "player": "Luka Božić",
+          "position": "F",
+          "nationality": "Croatia",
+          "club": "Zadar"
+        },
+        {
+          "player": "Zach LeDay",
+          "position": "F",
+          "nationality": "United States",
+          "club": "Partizan Mozzart Bet"
+        },
+        {
+          "player": "Kenan Kamenjaš",
+          "position": "C",
+          "nationality": "Bosnia and Herzegovina",
+          "club": "SC Derby / Budućnost VOLI"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "players": [
+        {
+          "player": "Bryce Jones",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Igokea m:tel"
+        },
+        {
+          "player": "McKinley Wright",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Budućnost VOLI"
+        },
+        {
+          "player": "Sterling Brown",
+          "position": "F",
+          "nationality": "United States",
+          "club": "Partizan Mozzart Bet"
+        },
+        {
+          "player": "Filip Petrušev",
+          "position": "F",
+          "nationality": "Serbia",
+          "club": "Crvena zvezda Meridianbet"
+        },
+        {
+          "player": "Kenan Kamenjaš",
+          "position": "C",
+          "nationality": "Bosnia and Herzegovina",
+          "club": "Budućnost VOLI"
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "players": [
+        {
+          "player": "Dwayne Bacon",
+          "position": "G",
+          "nationality": "United States",
+          "club": "Dubai Basketball"
+        },
+        {
+          "player": "Mitch Creek",
+          "position": "G",
+          "nationality": "Australia",
+          "club": "U-BT Cluj-Napoca"
+        },
+        {
+          "player": "Isaac Bonga",
+          "position": "F",
+          "nationality": "Germany",
+          "club": "Partizan Mozzart Bet"
+        },
+        {
+          "player": "Bogoljub Marković",
+          "position": "F",
+          "nationality": "Serbia",
+          "club": "Mega Superbet"
+        },
+        {
+          "player": "Mfiondu Kabengele",
+          "position": "C",
+          "nationality": "Canada",
+          "club": "Dubai Basketball"
+        }
+      ]
+    }
+  ],
+  "aba_league_top_prospect": [
+    {
+      "year": "2014",
+      "winner": "Dario Šarić",
+      "club": "Cibona"
+    },
+    {
+      "year": "2015",
+      "winner": "Nikola Jokić",
+      "club": "Mega Leks"
+    },
+    {
+      "year": "2016",
+      "winner": "Ante Žižić",
+      "club": "Cibona"
+    },
+    {
+      "year": "2017",
+      "winner": "Jonah Bolden",
+      "club": "FMP"
+    },
+    {
+      "year": "2018",
+      "winner": "Džanan Musa",
+      "club": "Cedevita"
+    },
+    {
+      "year": "2019",
+      "winner": "Goga Bitadze",
+      "club": "Budućnost VOLI"
+    },
+    {
+      "year": "2020",
+      "winner": null,
+      "note": "Not awarded"
+    },
+    {
+      "year": "2021",
+      "winner": "Filip Petrušev",
+      "club": "Mega Soccerbet"
+    },
+    {
+      "year": "2022",
+      "winner": "Nikola Jović",
+      "club": "Mega Mozzart"
+    },
+    {
+      "year": "2023",
+      "winner": "Nikola Đurišić",
+      "club": "Mega MIS"
+    },
+    {
+      "year": "2024",
+      "winner": "Nikola Topić",
+      "club": "Crvena zvezda Meridianbet"
+    },
+    {
+      "year": "2025",
+      "winner": "Bogoljub Marković",
+      "club": "Mega Superbet"
+    },
+    {
+      "year": "2026",
+      "winner": "Bogoljub Marković",
+      "club": "Mega Superbet"
+    }
+  ],
+  "aba_league_winning_coaches": [
+    {
+      "season": "2001–02",
+      "coach": "Zmago Sagadin",
+      "nationality": "Slovenia",
+      "club": "Union Olimpija"
+    },
+    {
+      "season": "2002–03",
+      "coach": "Danijel Jusup",
+      "nationality": "Croatia",
+      "club": "Zadar"
+    },
+    {
+      "season": "2003–04",
+      "coach": "Boško Đokić",
+      "nationality": "Serbia and Montenegro",
+      "club": "FMP (Reflex)"
+    },
+    {
+      "season": "2004–05",
+      "coach": "Željko Lukajić",
+      "nationality": "Serbia and Montenegro",
+      "club": "Hemofarm"
+    },
+    {
+      "season": "2005–06",
+      "coach": "Vlada Vukoičić",
+      "nationality": "Serbia and Montenegro",
+      "club": "FMP"
+    },
+    {
+      "season": "2006–07",
+      "coach": "Duško Vujošević",
+      "nationality": "Montenegro",
+      "club": "Partizan"
+    },
+    {
+      "season": "2007–08",
+      "coach": "Duško Vujošević",
+      "nationality": "Montenegro",
+      "club": "Partizan Igokea"
+    },
+    {
+      "season": "2008–09",
+      "coach": "Duško Vujošević",
+      "nationality": "Montenegro",
+      "club": "Partizan Igokea"
+    },
+    {
+      "season": "2009–10",
+      "coach": "Duško Vujošević",
+      "nationality": "Montenegro",
+      "club": "Partizan"
+    },
+    {
+      "season": "2010–11",
+      "coach": "Vlada Jovanović",
+      "nationality": "Serbia",
+      "club": "Partizan"
+    },
+    {
+      "season": "2011–12",
+      "coach": "David Blatt",
+      "nationality": "Israel",
+      "club": "Maccabi Tel Aviv"
+    },
+    {
+      "season": "2012–13",
+      "coach": "Duško Vujošević",
+      "nationality": "Montenegro",
+      "club": "Partizan m:ts"
+    },
+    {
+      "season": "2013–14",
+      "coach": "Slaven Rimac",
+      "nationality": "Croatia",
+      "club": "Cibona"
+    },
+    {
+      "season": "2014–15",
+      "coach": "Dejan Radonjić",
+      "nationality": "Montenegro",
+      "club": "Crvena zvezda Telekom"
+    },
+    {
+      "season": "2015–16",
+      "coach": "Dejan Radonjić",
+      "nationality": "Montenegro",
+      "club": "Crvena zvezda Telekom"
+    },
+    {
+      "season": "2016–17",
+      "coach": "Dejan Radonjić",
+      "nationality": "Montenegro",
+      "club": "Crvena zvezda mts"
+    },
+    {
+      "season": "2017–18",
+      "coach": "Aleksandar Džikić",
+      "nationality": "Serbia",
+      "club": "Budućnost VOLI"
+    },
+    {
+      "season": "2018–19",
+      "coach": "Milan Tomić",
+      "nationality": "Serbia",
+      "club": "Crvena zvezda mts"
+    },
+    {
+      "season": "2019–20",
+      "note": "Cancelled due to the COVID-19 pandemic"
+    },
+    {
+      "season": "2020–21",
+      "coach": "Dejan Radonjić",
+      "nationality": "Montenegro",
+      "club": "Crvena zvezda mts"
+    },
+    {
+      "season": "2021–22",
+      "coach": "Dejan Radonjić",
+      "nationality": "Montenegro",
+      "club": "Crvena zvezda mts"
+    },
+    {
+      "season": "2022–23",
+      "coach": "Željko Obradović",
+      "nationality": "Serbia",
+      "club": "Partizan Mozzart Bet"
+    },
+    {
+      "season": "2023–24",
+      "coach": "Ioannis Sfairopoulos",
+      "nationality": "Greece",
+      "club": "Crvena zvezda mts"
+    }
+  ]
+}

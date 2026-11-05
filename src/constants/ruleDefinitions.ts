@@ -6,6 +6,7 @@ export interface RuleDefinition {
     type: 'number' | 'boolean' | 'select';
     min?: number;
     max?: number;
+    step?: number;
     unit?: string;
     options?: { label: string; value: string }[];
 }
@@ -273,14 +274,14 @@ export const RULE_DEFINITIONS: Record<string, RuleDefinition> = {
     multiballEnabled: {
         id: 'multiballEnabled',
         label: 'Multiball Mode',
-        description: 'Two balls are in play simultaneously. Chaos ensues.',
+        description: 'Experimental setting. Saved for future use, but it does not affect games yet.',
         category: 'Personnel',
         type: 'boolean'
     },
     multiballCount: {
         id: 'multiballCount',
         label: 'Number of Basketballs',
-        description: 'The number of basketballs in play during multiball mode.',
+        description: 'Experimental value reserved for a future multiball simulator.',
         category: 'Personnel',
         type: 'number',
         min: 2,
@@ -304,6 +305,23 @@ export const RULE_DEFINITIONS: Record<string, RuleDefinition> = {
         min: 10,
         max: 60,
         unit: 'SEC'
+    },
+    homeCourtAdvantage: {
+        id: 'homeCourtAdvantage',
+        label: 'Home-Court Advantage',
+        description: 'Sets the home-team advantage from neutral (0) to twice the standard effect (100). The default is 50.',
+        category: 'Structure',
+        type: 'number',
+        min: 0,
+        max: 100,
+        step: 1
+    },
+    freeThrowsEnabled: {
+        id: 'freeThrowsEnabled',
+        label: 'Free Throws',
+        description: 'Enables free throws as a scoring method.',
+        category: 'Scoring',
+        type: 'boolean'
     },
     backcourtTimerEnabled: {
         id: 'backcourtTimerEnabled',
@@ -488,36 +506,16 @@ export const RULE_DEFINITIONS: Record<string, RuleDefinition> = {
         description: 'Points awarded for a successful dunk.',
         category: 'Scoring',
         type: 'number',
-        min: 1,
-        max: 10,
-        unit: 'PTS'
-    },
-    midrangeValue: {
-        id: 'midrangeValue',
-        label: 'Midrange Value',
-        description: 'Points awarded for shots outside the paint but inside the 3PT line.',
-        category: 'Scoring',
-        type: 'number',
-        min: 1,
-        max: 10,
+        min: 2,
+        max: 3,
         unit: 'PTS'
     },
     heaveRuleEnabled: {
         id: 'heaveRuleEnabled',
         label: 'Heave Rule',
-        description: 'Shots from the backcourt count for extra points.',
+        description: 'Eligible missed end-of-period heaves count as team attempts instead of individual misses.',
         category: 'Scoring',
         type: 'boolean'
-    },
-    halfCourtShotValue: {
-        id: 'halfCourtShotValue',
-        label: 'Half-Court Value',
-        description: 'Point value for successful shots from beyond midcourt.',
-        category: 'Scoring',
-        type: 'number',
-        min: 3,
-        max: 10,
-        unit: 'PTS'
     },
     freeThrowDistance: {
         id: 'freeThrowDistance',
@@ -598,6 +596,38 @@ export const RULE_DEFINITIONS: Record<string, RuleDefinition> = {
         type: 'number',
         min: 1,
         max: 10
+    },
+    teamFoulPenaltyPoints: {
+        id: 'teamFoulPenaltyPoints',
+        label: 'Penalty Points',
+        description: 'Points awarded to the opponent after the configured consecutive-team-foul threshold.',
+        category: 'Fouls',
+        type: 'number',
+        min: 1,
+        max: 4
+    },
+    temporaryDisqualificationFoulLimit: {
+        id: 'temporaryDisqualificationFoulLimit',
+        label: 'Temporary Removal Limit',
+        description: 'Personal contact fouls before the player is removed until the next score.',
+        category: 'Fouls',
+        type: 'number',
+        min: 1,
+        max: 15
+    },
+    temporaryDisqualificationUntilNextScore: {
+        id: 'temporaryDisqualificationUntilNextScore',
+        label: 'Return After Next Score',
+        description: 'Removes a player at the temporary foul limit and restores eligibility after the next score.',
+        category: 'Fouls',
+        type: 'boolean'
+    },
+    temporaryDisqualificationAllowsSubstitute: {
+        id: 'temporaryDisqualificationAllowsSubstitute',
+        label: 'Allow Substitute',
+        description: 'Allows a substitute while a player is temporarily removed. Disable it for original-rules short-handed play.',
+        category: 'Fouls',
+        type: 'boolean'
     },
     flagrantFoulPenaltyEnabled: {
         id: 'flagrantFoulPenaltyEnabled',
@@ -789,5 +819,45 @@ export const RULE_DEFINITIONS: Record<string, RuleDefinition> = {
         description: 'If a challenge is successful, the team retains the challenge.',
         category: 'Coaching',
         type: 'boolean'
+    },
+    pace: {
+        id: 'pace', label: 'Pace', description: 'Sets the league baseline for possessions per game.',
+        category: 'Scoring', type: 'number', min: 1, max: 400
+    },
+    threePointTendencyFactor: {
+        id: 'threePointTendencyFactor', label: '3PT Frequency', description: 'Adjusts how often teams attempt three-pointers.',
+        category: 'Scoring', type: 'number', min: 0, max: 4, step: 0.05, unit: '×'
+    },
+    threePointAccuracyFactor: {
+        id: 'threePointAccuracyFactor', label: '3PT Accuracy', description: 'Adjusts league-wide three-point accuracy.',
+        category: 'Scoring', type: 'number', min: 0, max: 4, step: 0.05, unit: '×'
+    },
+    twoPointAccuracyFactor: {
+        id: 'twoPointAccuracyFactor', label: '2PT Accuracy', description: 'Adjusts league-wide two-point accuracy.',
+        category: 'Scoring', type: 'number', min: 0, max: 4, step: 0.05, unit: '×'
+    },
+    ftAccuracyFactor: {
+        id: 'ftAccuracyFactor', label: 'FT Accuracy', description: 'Adjusts league-wide free-throw accuracy.',
+        category: 'Scoring', type: 'number', min: 0, max: 4, step: 0.05, unit: '×'
+    },
+    foulRateFactor: {
+        id: 'foulRateFactor', label: 'Foul Rate', description: 'Adjusts how frequently fouls produce free throws.',
+        category: 'Fouls', type: 'number', min: 0, max: 4, step: 0.05, unit: '×'
+    },
+    blockFactor: {
+        id: 'blockFactor', label: 'Blocks', description: 'Adjusts the league-wide block rate.',
+        category: 'Scoring', type: 'number', min: 0, max: 4, step: 0.05, unit: '×'
+    },
+    stealFactor: {
+        id: 'stealFactor', label: 'Steals', description: 'Adjusts how often turnovers are credited as steals.',
+        category: 'Scoring', type: 'number', min: 0, max: 4, step: 0.05, unit: '×'
+    },
+    turnoverFactor: {
+        id: 'turnoverFactor', label: 'Turnovers', description: 'Adjusts the league-wide turnover rate.',
+        category: 'Scoring', type: 'number', min: 0, max: 4, step: 0.05, unit: '×'
+    },
+    orbFactor: {
+        id: 'orbFactor', label: 'Offensive Rebounds', description: 'Adjusts the league-wide offensive rebound rate.',
+        category: 'Scoring', type: 'number', min: 0, max: 4, step: 0.05, unit: '×'
     }
 };

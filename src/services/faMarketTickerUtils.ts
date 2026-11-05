@@ -3,6 +3,9 @@ import type { FreeAgentBid } from './freeAgencyBidding';
 import { getRFAPriorTid } from './freeAgencyBidding';
 import { getDisplayAge, getDisplayOverall } from '../store/playerRatingStore';
 import type { MarketTickResult } from './faMarketTickerTypes';
+import { getLeagueCalendarDates, getLeagueSeasonForDate, isLeagueTrainingCampWindow } from './leagueCalendar';
+import { parseGameDate } from '../utils/dateUtils';
+import { getFranchiseCareerLoyaltyTid } from '../utils/franchiseCareerLoyalty';
 
 export const MARKET_K2_THRESHOLD = 70;
 export const MAX_NEW_MARKETS_PER_DAY = 8;
@@ -22,33 +25,16 @@ export function lastYearOptionLabel(option: FreeAgentBid['option']): 'Player' | 
   return '';
 }
 
-export function isPostPreseason(stateDate: string | undefined): boolean {
+export function isPostPreseason(stateDate: string | undefined, leagueStats: any): boolean {
   if (!stateDate) return false;
-  const match = stateDate.match(/^([A-Za-z]{3}) (\d{1,2}),/);
-  if (!match) return false;
-  const monthMap: Record<string, number> = {
-    Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6,
-    Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12,
-  };
-  const m = monthMap[match[1]] ?? 0;
-  const day = parseInt(match[2], 10) || 0;
-  if (m >= 7 && m <= 9) return false;
-  if (m === 10 && day <= 21) return false;
-  return true;
+  const season = getLeagueSeasonForDate(stateDate, leagueStats);
+  if (!Number.isFinite(season) || season <= 0) return false;
+  return parseGameDate(stateDate) >= getLeagueCalendarDates(season, leagueStats).regularSeasonStart;
 }
 
 export function isPreseasonCampWindow(stateDate: string | undefined, leagueStats: any): boolean {
   if ((leagueStats?.nonGuaranteedContractsEnabled ?? true) === false) return false;
-  if (!stateDate) return false;
-  const match = stateDate.match(/^([A-Za-z]{3}) (\d{1,2}),/);
-  if (!match) return false;
-  const monthMap: Record<string, number> = {
-    Jan: 1, Feb: 2, Mar: 3, Apr: 4, May: 5, Jun: 6,
-    Jul: 7, Aug: 8, Sep: 9, Oct: 10, Nov: 11, Dec: 12,
-  };
-  const m = monthMap[match[1]] ?? 0;
-  const day = parseInt(match[2], 10) || 0;
-  return (m >= 7 && m <= 9) || (m === 10 && day <= 21);
+  return !!stateDate && isLeagueTrainingCampWindow(stateDate, leagueStats);
 }
 
 export function isCampInviteBid(
@@ -56,7 +42,10 @@ export function isCampInviteBid(
   bid: Pick<FreeAgentBid, 'salaryUSD' | 'years'>,
   state: GameState,
 ): boolean {
-  if (!isPreseasonCampWindow(state.date, state.leagueStats as any)) return false;
+  const lateCentralMarket = state.offseasonChecklist?.freeAgency === 'in-progress'
+    && Number(state.faTagsTotal) > 15
+    && Number(state.faTagCounter) > 15;
+  if (!lateCentralMarket && !isPreseasonCampWindow(state.date, state.leagueStats as any)) return false;
   if (bid.years > 1) return false;
   const cap = (((state.leagueStats as any)?.salaryCap as number | undefined) ?? 140_000_000);
   const pct = bid.salaryUSD / cap;
@@ -67,6 +56,8 @@ export function isCampInviteBid(
 }
 
 export function isLoyalMarketBlocked(player: NBAPlayer, bidTeamIds: number[], currentYear: number): boolean {
+  const careerLoyaltyTid = getFranchiseCareerLoyaltyTid(player);
+  if (careerLoyaltyTid >= 0) return !bidTeamIds.includes(careerLoyaltyTid);
   const traits: string[] = (player as any).moodTraits ?? [];
   if (!traits.includes('LOYAL')) return false;
   if ((player as any).status === 'Retired' || (player as any).diedYear) return false;
@@ -95,6 +86,7 @@ export function buildEmptyMarketTickResult(): MarketTickResult {
     userBidResolutions: [],
     rfaOfferSheets: [],
     rfaMatchResolutions: [],
+    aspireOutcomes: [],
     shouldStopSim: false,
   };
 }

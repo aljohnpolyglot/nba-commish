@@ -1,7 +1,7 @@
 import type { GameState, OffseasonChecklist } from '../../types';
-import { EXTERNAL_LEAGUE_OVR_CAP, PBA_ISOLATED_DEFAULTS } from '../../constants';
+import { EURO_ISOLATED_DEFAULTS, EXTERNAL_LEAGUE_OVR_CAP, EXTERNAL_LEAGUE_STATUSES, PBA_ISOLATED_DEFAULTS, UNDRAFTED_OVR_CAP } from '../../constants';
 import { normalizeDate } from '../../utils/helpers';
-import { repairGeneratedExternalPlayer, enforceExternalMinRoster } from '../../services/externalLeagueSustainer';
+import { repairGeneratedExternalPlayer } from '../../services/externalLeagueSustainer';
 import { applyCupAwardsToPlayers } from '../../services/nbaCup/awards';
 import { defaultAwardSettings } from '../../services/awards/AwardEngine';
 import { computeRookieSalaryUSD } from '../../utils/rookieContractUtils';
@@ -9,21 +9,57 @@ import { isPlausibleActiveMarket, MAX_FA_MARKET_DECISION_WINDOW_DAYS } from '../
 import { hasLiveContractAfterWaive, stripLiveContractAfterWaive } from '../../utils/contractCleanup';
 import { repairBirdRightsForLoadedPlayer } from '../../utils/playerBirdRights';
 import { resolveYearsWithCurrentTeamFromStats } from '../../utils/playerTenure';
-import { isNoDraftLeague } from '../../services/offseason/offseasonState';
+import { getDraftSeasonYearForState, isNoDraftLeague } from '../../services/offseason/offseasonState';
 import { initialState } from '../initialState';
-import { deriveOfficialNbaRecords } from '../../utils/nbaOfficialRecords';
-import { generateFuturePicksForTeamIds } from '../../services/draft/DraftPickGenerator';
-import { computeContractOffer, getContractLimits } from '../../utils/salaryUtils';
-import { buildPbaImportContractMetadata, isPbaRosterLocal, isRegisteredPbaRosterIdentity } from '../../services/pba/importManager';
-import { attachPbaStaffToTeam } from '../../services/pba/staffSources';
+import { deriveOfficialNbaRecords, type OfficialNbaRecordRow } from '../../utils/nbaOfficialRecords';
+import { didHomeTeamWin } from '../../utils/gameOutcome';
+import { classifyBoxScoreGame } from '../../utils/gameClassification';
+import { DEFAULT_TRADABLE_PICK_SEASONS, generateDraftPicksForTeamIdsAndSeasons, generateFuturePicksForTeamIds, getDraftRoundsForLeague, isCurrentDraftClassComplete } from '../../services/draft/DraftPickGenerator';
+import { computeContractOffer, getContractLimits, seasonLabelToYear } from '../../utils/salaryUtils';
+import { buildPbaImportContractMetadata, clampPbaImportOfferSalary, getPbaImportOfferRange, isPbaRosterLocal, isRegisteredPbaRosterIdentity } from '../../services/pba/importManager';
+import { applyPbaStaffEconomyScale, attachPbaStaffToTeam } from '../../services/pba/staffSources';
+import { createPortraitUsageSet } from '../../utils/newgenPortrait';
 import { computeLocalPBASalaryUSD, getPBARosterEconomyConfig } from '../../services/externalRosterService';
-import { ensureDraftClasses } from '../../services/draftClassFiller';
-import { buildPbaCollegePoolFromSource } from '../../services/pba/collegeSources';
 import { tunePbaDraftProspects } from '../../services/pba/draftRules';
 import { getPbaCompetitionIdForConference, isPbaActiveConferenceMode, isPbaActiveConferencePhase } from '../../utils/uiMode';
 import { getPbaRosterPortrait } from '../../services/pba/portraits';
+import {
+  isDefaultProballers,
+  isLowQualityPlayerPortrait,
+  resolvePersistentPlayerImage,
+  resolveWnbaPlayerPortrait,
+} from '../../utils/playerImage';
+import { hasTwoWayContractMarker, normalizeContractOptionKind } from '../../utils/contractTypes';
+import { syncPlayerContractAmountForSeason } from '../../utils/contractSeasonSync';
+import { getHistoricalNbaRisingStarsFormat, isHistoricalNbaStart } from '../../data/historicalNbaSeasons';
+import { getPbaHistoricalEconomyFactor, PBA_PLAYER_ECONOMY_VERSION } from '../../services/pba/historicalEconomy';
+import {
+  AWARD_SETTINGS_ERA_VERSION,
+  migrateAwardSettingsToCurrentEra,
+} from '../../services/awards/awardEraProgression';
+import {
+  healWnbaAwardDefaults,
+  healWnbaAllStarTimingDefaults,
+  healWnbaDevelopmentalContractDefaults,
+  healWnbaDraftLotteryDefaults,
+  healWnbaTransactionCalendarDefaults,
+} from '../../services/wnba/history';
+import { ensureOpeningTeamHeadCoach, isOpeningNbaStaffWindow } from '../../services/staff/activeStaffContracts';
+import { isDraftLotteryEnabled } from '../../lib/lotteryPresets';
+import { getCachedExternalPortraitForName } from '../../services/externalPortraitCatalog';
+import { getPbaDraftPickYears } from '../../services/pba/draftCalendar';
+import { resolveSeasonRolloverPlayerScope } from '../../services/logic/seasonRollover/leagueScope';
+import { isPlayerInLeagueScope } from '../../utils/playerLeagueScope';
+import { daysBetweenGameDates, getDraftDate, parseGameDate } from '../../utils/dateUtils';
+import { getPlayoffCompletionEvidence } from '../../services/playoffs/playoffCompletion';
+import { getVerifiedBioForPlayerIdentity } from '../../data/realPlayerDataFetcher';
+import { isInternationalTournamentOnlyPlayer } from '../../utils/prospectUtils';
+import { mergePlayerSalaries } from '../../utils/playerCareerMerge';
+import { buildAutomaticGameDiscipline } from '../../services/disciplinePolicy';
+import { appendPlayerDisciplineRecord } from '../../services/playerDisciplineHistory';
+import { getLeagueCurrencyCode } from '../../utils/helpers';
 
-const EXTERNAL_STATUSES_SET = new Set(['WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
+const EXTERNAL_STATUSES_SET = new Set(EXTERNAL_LEAGUE_STATUSES);
 const DEAD_MONEY_FLOOR_USD = 50_000;
 const NBA_TO_FICTIONAL_HANDLES: Record<string, string> = {
   nba: 'TheLeagueOfficial',
@@ -32,15 +68,273 @@ const NBA_TO_FICTIONAL_HANDLES: Record<string, string> = {
   ShamsCharania: 'TariqHassan',
   shamscharania: 'TariqHassan',
 };
+const NBA_TO_PBA_HANDLES: Record<string, string> = {
+  nba: 'PBAOfficial',
+  NBA: 'PBAOfficial',
+  wojespn: 'CourtsideDeskPH',
+  ShamsCharania: 'ManilaHoopsWire',
+  shamscharania: 'ManilaHoopsWire',
+};
 
 const PBA_LEGACY_ECONOMY_CAP_FLOOR = 1_000_000;
 const PBA_CONFERENCES = new Set(['philippine', 'commissioners', 'governors']);
 const PBA_CONFERENCE_PHASES = new Set(['regularSeason', 'playoffs', 'offseason', 'complete']);
 
+/** Backfill the factual ledger for GM-save brawls created before automatic discipline existed. */
+export function healLegacyAutomaticBrawlDiscipline<T extends GameState>(loaded: T): T {
+  if (loaded.gameMode !== 'gm') return loaded;
+  const brawls = (loaded.boxScores ?? []).filter(result => result.fight?.severity === 'brawl');
+  if (brawls.length === 0) return loaded;
+  const notices = buildAutomaticGameDiscipline(loaded, brawls);
+  if (notices.length === 0) return loaded;
+  const noticesByPlayer = new Map<string, typeof notices>();
+  for (const notice of notices) {
+    noticesByPlayer.set(notice.playerId, [...(noticesByPlayer.get(notice.playerId) ?? []), notice]);
+  }
+  const currencyCode = getLeagueCurrencyCode(loaded.leagueStats);
+  const seasonForDate = (date: string) => {
+    const parsed = parseGameDate(date);
+    return parsed.getMonth() >= 6 ? parsed.getFullYear() + 1 : parsed.getFullYear();
+  };
+  return {
+    ...loaded,
+    players: loaded.players.map(player => {
+      const playerNotices = noticesByPlayer.get(player.internalId);
+      if (!playerNotices) return player;
+      return playerNotices.reduce((current, notice) => appendPlayerDisciplineRecord(current, {
+        id: notice.id,
+        date: notice.gameDate,
+        season: seasonForDate(notice.gameDate) || Number(loaded.leagueStats.year),
+        action: 'fine_and_suspension',
+        amount: notice.amountUSD,
+        currencyCode,
+        games: notice.suspensionGames,
+        reason: notice.reason,
+        authority: 'automatic',
+        templateId: notice.templateId,
+        templateName: notice.templateName,
+        tid: notice.teamId,
+        source: 'game',
+      }), player);
+    }),
+  };
+}
+
+export function healStaleCompletedNbaFinalsLifecycle<T extends GameState>(loaded: T): T {
+  const lifecycle = loaded.seasonLifecycle;
+  const playoffs = loaded.playoffs;
+  const season = Number(playoffs?.season);
+  const isAffectedNbaGmSave = loaded.gameMode === 'gm'
+    && loaded.leagueType === 'modded'
+    && (loaded.moddedLeagueBase ?? 'nba') === 'nba'
+    && loaded.leagueStats?.uiMode === 'nba';
+  if (!isAffectedNbaGmSave) return loaded;
+  const staleSelectedIds = Object.values(lifecycle?.draft?.selectedPlayerIdsBySlot ?? {});
+  const selectedPlayers = new Map((loaded.players ?? []).map(player => [player.internalId, player]));
+  const selectedIdsBelongToAnotherDraft = staleSelectedIds.length > 0
+    && staleSelectedIds.every(playerId => Number(selectedPlayers.get(playerId)?.draft?.year) !== season);
+  const hasCurrentDraftTransaction = (loaded.players ?? []).some(player =>
+    (player.transactions ?? []).some(transaction => transaction.type === 'draft' && Number(transaction.season) === season),
+  );
+  const finals = playoffs?.series?.find(series => series.conference === 'Finals' && series.status === 'complete');
+  const finalsDates = (loaded.schedule ?? [])
+    .filter(game => game.isPlayoff && game.played && game.playoffSeriesId === finals?.id && game.date)
+    .map(game => normalizeDate(game.date))
+    .sort();
+  const finalsDate = finalsDates.at(-1);
+  const today = normalizeDate(loaded.date);
+  const snapshot = loaded.completedSeasonSnapshots?.[`nba:${season}`] ?? loaded.completedSeasonSnapshot;
+  const staleFinalizationDate = Number(snapshot?.season) === season
+    && !!finalsDate
+    && normalizeDate(snapshot?.completedAtDate ?? '') > finalsDate;
+  const beforeOrOnDraft = !!finalsDate
+    && today > finalsDate
+    && today <= normalizeDate(getDraftDate(season, loaded.leagueStats).toISOString());
+  const staleTaskCycle = lifecycle?.currentPhase === 'PRESEASON_ACTIVE'
+    && Number(lifecycle.completedSeason) < season
+    && lifecycle.offseasonOpen === true
+    && lifecycle.taskCycle?.season === season
+    && lifecycle.taskCycle.status === 'complete'
+    && loaded.offseasonChecklist?.seasonSummary === 'done'
+    && loaded.offseasonChecklist?.performanceReview !== 'done';
+  const staleBoardTask = loaded.pendingGovernorsBoardMeeting?.season === season
+    && loaded.pendingGovernorsBoardMeeting.reviewed === true
+    && !!finalsDate
+    && normalizeDate(loaded.pendingGovernorsBoardMeeting.generatedAt ?? '') < finalsDate;
+  const staleSummerTask = Number(loaded.summerLeagueTournament?.year) < season
+    && loaded.offseasonChecklist?.summerLeague === 'done';
+  const alreadyRestoredTaskCycle = lifecycle?.currentPhase === 'OFFSEASON_TASKS_ACTIVE'
+    && lifecycle.completedSeason === season
+    && lifecycle.taskCycle?.season === season
+    && lifecycle.taskCycle.status === 'pending'
+    && today === finalsDate;
+
+  if (
+    isAffectedNbaGmSave
+    && Number.isFinite(season)
+    && Number(loaded.leagueStats?.year) === season
+    && !hasCurrentDraftTransaction
+    && alreadyRestoredTaskCycle
+    && (staleBoardTask || staleSummerTask)
+  ) {
+    console.log(`[LOAD_GAME] Removed stale prior-cycle task evidence from the restored ${season} NBA offseason.`);
+    return {
+      ...loaded,
+      ...(staleBoardTask ? { pendingGovernorsBoardMeeting: undefined } : {}),
+      offseasonChecklist: loaded.offseasonChecklist ? {
+        ...loaded.offseasonChecklist,
+        ...(staleBoardTask ? { governorsBoardMeeting: 'skipped' as const } : {}),
+        ...(staleSummerTask ? { summerLeague: 'pending' as const } : {}),
+      } : loaded.offseasonChecklist,
+    };
+  }
+
+  if (
+    !isAffectedNbaGmSave
+    || !Number.isFinite(season)
+    || Number(loaded.leagueStats?.year) !== season
+    || !getPlayoffCompletionEvidence(playoffs, loaded.schedule).complete
+    || !staleTaskCycle
+    || !selectedIdsBelongToAnotherDraft
+    || hasCurrentDraftTransaction
+    || !(loaded.draftLotteryResult?.length)
+    || !staleFinalizationDate
+    || !beforeOrOnDraft
+    || !finalsDate
+  ) return loaded;
+
+  const rewindDays = Math.max(0, Math.round(daysBetweenGameDates(finalsDate, loaded.date)));
+  const runnerUpTeamId = finals?.higherSeedTid === playoffs?.champion
+    ? finals?.lowerSeedTid
+    : finals?.higherSeedTid;
+  const repairedSnapshot = { ...snapshot!, completedAtDate: finalsDate };
+  const reset = {
+    ...loaded,
+    date: finalsDate,
+    day: Number.isFinite(Number(loaded.day)) ? Math.max(0, Number(loaded.day) - rewindDays) : loaded.day,
+    activeDraftOrder: undefined,
+    activeDraftPicks: {},
+    activeDraftPassedPicks: {},
+    offseasonChecklist: undefined,
+    pendingGovernorsBoardMeeting: undefined,
+    completedSeasonSnapshot: Number(loaded.completedSeasonSnapshot?.season) === season
+      ? repairedSnapshot
+      : loaded.completedSeasonSnapshot,
+    completedSeasonSnapshots: {
+      ...(loaded.completedSeasonSnapshots ?? {}),
+      [`nba:${season}`]: repairedSnapshot,
+    },
+    seasonLifecycle: {
+      ...lifecycle,
+      activeSeason: season,
+      completedSeason: season,
+      currentPhase: 'OFFSEASON_TASKS_ACTIVE' as const,
+      regularSeason: {
+        ...lifecycle.regularSeason,
+        season,
+        status: 'complete' as const,
+        completedGameIds: (loaded.schedule ?? [])
+          .filter(game => !game.isPreseason && !game.isPlayoff && !game.isPlayIn && game.played)
+          .map(game => game.gid)
+          .sort((left, right) => left - right),
+      },
+      playoffs: {
+        ...lifecycle.playoffs,
+        season,
+        materialized: true,
+        bracketFingerprint: repairedSnapshot.bracketFingerprint,
+        championTeamId: playoffs?.champion,
+        runnerUpTeamId,
+        finalizedAtDate: finalsDate,
+      },
+      awards: {
+        season,
+        status: 'complete' as const,
+        finalizedAwardKeys: repairedSnapshot.enabledAwardKeys,
+      },
+      taskCycle: { id: `nba:${season}`, season, status: 'pending' as const },
+      offseasonCycle: season,
+      offseasonOpen: true,
+      retirements: 'pending' as const,
+      transition: {
+        ...lifecycle.transition,
+        fromSeason: season,
+        toSeason: season + 1,
+        status: 'pending' as const,
+        completedAtDate: undefined,
+      },
+      nextSeason: season + 1,
+      nextValidTransition: 'NEXT_SEASON_PREPARED' as const,
+      draft: {
+        ...lifecycle.draft,
+        year: season,
+        lottery: 'complete' as const,
+        lotteryEvidence: undefined,
+        orderReview: 'pending' as const,
+        orderLedger: [],
+        orderReviewedSeason: undefined,
+        draft: 'pending' as const,
+        draftCompleteSeason: undefined,
+        selectedPlayerIdsBySlot: {},
+        passedSlots: [],
+        historyPersisted: false,
+        rookieContracts: 'blocked' as const,
+        rookieContractsResolvedSeason: undefined,
+      },
+    },
+  } as T;
+  console.log(`[LOAD_GAME] Restored stale ${season} NBA Finals save to ${finalsDate} and reopened its offseason tasks.`);
+  return reset;
+}
+
+export function healNbaDraftCycleState<T extends GameState | Record<string, any>>(loaded: T): T {
+  const isNba = loaded?.leagueType === 'modded' && (loaded?.moddedLeagueBase ?? 'nba') === 'nba';
+  if (!isNba || isNoDraftLeague(loaded?.leagueStats)) return loaded;
+  if (loaded?.draftComplete === true) {
+    if (isCurrentDraftClassComplete(loaded as any)) return loaded;
+    console.log(`[LOAD_GAME] Restored the open ${loaded?.leagueStats?.year ?? ''} NBA Draft cycle.`);
+    return { ...loaded, draftComplete: false };
+  }
+
+  const draftSeason = getDraftSeasonYearForState(loaded as any);
+  const leagueYear = Number(loaded?.leagueStats?.year);
+  if (!Number.isFinite(leagueYear) || draftSeason >= leagueYear) return loaded;
+  const activeTeamCount = (loaded?.teams ?? []).filter((team: any) => {
+    const id = Number(team?.id ?? team?.tid);
+    return Number.isFinite(id) && id >= 0 && id < 100 && team?.disabled !== true;
+  }).length;
+  const expectedSelections = activeTeamCount * 2;
+  if (expectedSelections <= 0) return loaded;
+
+  const completedSlots = new Set<number>();
+  let currentProspectRemains = false;
+  for (const player of loaded?.players ?? []) {
+    const isProspect = player?.tid === -2 || player?.status === 'Prospect' || player?.status === 'Draft Prospect';
+    if (isProspect && Number(player?.draft?.year) === draftSeason) currentProspectRemains = true;
+    for (const transaction of player?.transactions ?? []) {
+      if (transaction?.type !== 'draft' || Number(transaction?.season) !== draftSeason) continue;
+      const pick = Number(transaction?.pickNum);
+      if (Number.isFinite(pick) && pick > 0) completedSlots.add(pick);
+    }
+  }
+  if (currentProspectRemains || completedSlots.size < expectedSelections) return loaded;
+
+  console.log(`[LOAD_GAME] Recovered the completed ${draftSeason} NBA Draft from ${completedSlots.size} saved selections.`);
+  return {
+    ...loaded,
+    draftComplete: true,
+    offseasonChecklist: loaded?.offseasonChecklist
+      ? { ...loaded.offseasonChecklist, draft: 'done' }
+      : loaded?.offseasonChecklist,
+  };
+}
+
 export function healPbaEconomySettings(leagueStats: any) {
   if (leagueStats?.uiMode !== 'pba_isolated') return leagueStats;
   let changed = false;
   const next = { ...leagueStats };
+  const needsPlayerEconomyMigration =
+    Number(next.pbaPlayerEconomyVersion ?? 0) !== PBA_PLAYER_ECONOMY_VERSION;
   const salaryCap = Number(next.salaryCap ?? 0);
   const minContract = Number(next.minContractStaticAmount ?? 0);
   if (!Number.isFinite(salaryCap) || salaryCap <= 0 || salaryCap >= PBA_LEGACY_ECONOMY_CAP_FLOOR) {
@@ -55,14 +349,28 @@ export function healPbaEconomySettings(leagueStats: any) {
     next.maxContractStaticPercentage = PBA_ISOLATED_DEFAULTS.maxContractStaticPercentage;
     changed = true;
   }
+  if (
+    needsPlayerEconomyMigration
+    || !Number.isFinite(Number(next.historicalEconomyScale))
+    || Number(next.historicalEconomyScale) <= 0
+  ) {
+    next.historicalEconomyScale = getPbaHistoricalEconomyFactor(Number(next.year));
+    changed = true;
+  }
+  if (needsPlayerEconomyMigration) {
+    next.pbaPlayerEconomyVersion = PBA_PLAYER_ECONOMY_VERSION;
+    changed = true;
+  }
   const forced = {
     salaryCapEnabled: false,
     salaryCapType: 'none',
     luxuryTaxEnabled: false,
     apronsEnabled: false,
     minimumPayrollEnabled: false,
+    maxContractType: 'none',
     twoWayContractsEnabled: false,
     maxTwoWayPlayersPerTeam: 0,
+    minPlayersPerTeam: next.minPlayersPerTeam ?? PBA_ISOLATED_DEFAULTS.minPlayersPerTeam,
     maxPlayersPerTeam: PBA_ISOLATED_DEFAULTS.maxPlayersPerTeam,
     maxStandardPlayersPerTeam: PBA_ISOLATED_DEFAULTS.maxStandardPlayersPerTeam,
     maxTrainingCampRoster: PBA_ISOLATED_DEFAULTS.maxTrainingCampRoster,
@@ -71,6 +379,7 @@ export function healPbaEconomySettings(leagueStats: any) {
     playerOptionsEnabled: false,
     inflationEnabled: false,
     pbaLocalEligibilityMode: next.pbaLocalEligibilityMode ?? PBA_ISOLATED_DEFAULTS.pbaLocalEligibilityMode,
+    pbaLocalFreeAgencyDays: next.pbaLocalFreeAgencyDays ?? PBA_ISOLATED_DEFAULTS.pbaLocalFreeAgencyDays,
   };
   for (const [key, value] of Object.entries(forced)) {
     if (next[key] !== value) {
@@ -86,7 +395,8 @@ function dedupePlayerStats(stats: any[] | undefined) {
   if (!stats?.length) return stats ?? [];
   const grouped = new Map<string, any[]>();
   for (const row of stats) {
-    const key = `${row.season}|${row.tid}|${row.playoffs ? 1 : 0}`;
+    const competition = String(row.competitionId ?? row.tag ?? row.league ?? '').toLowerCase();
+    const key = `${row.season}|${row.tid}|${row.playoffs ? 1 : 0}|${competition}`;
     if (!grouped.has(key)) grouped.set(key, []);
     grouped.get(key)!.push(row);
   }
@@ -122,6 +432,10 @@ function clampExternalLeaguePlayer(player: any) {
   };
 }
 
+export function normalizeExternalLeagueRatingCaps(players: any[]): any[] {
+  return players.map(clampExternalLeaguePlayer);
+}
+
 function recoverAmountFromContractYears(player: any, currentSeasonStr: string, saneGuaranteedCapUsd: number, saneContractCapThousands: number): number | undefined {
   const contractYears = player.contractYears as Array<{ season: string; guaranteed: number }> | undefined;
   if (!Array.isArray(contractYears) || contractYears.length === 0) return undefined;
@@ -139,6 +453,164 @@ function recoverAmountFromContractYears(player: any, currentSeasonStr: string, s
   return candidates.find(value => value > 0 && value <= saneContractCapThousands);
 }
 
+function historyTime(value: unknown): number {
+  const time = new Date(String(value ?? '')).getTime();
+  return Number.isFinite(time) ? time : 0;
+}
+
+function mergeContractYears(player: any, incoming: any[]): any[] {
+  const incomingSeasons = new Set(incoming.map(row => String(row?.season ?? '')));
+  return [
+    ...(Array.isArray(player.contractYears) ? player.contractYears : []).filter((row: any) => !incomingSeasons.has(String(row?.season ?? ''))),
+    ...incoming,
+  ].sort((left, right) => String(left?.season ?? '').localeCompare(String(right?.season ?? '')));
+}
+
+function restoreSavedSigningContract(loaded: any, player: any, currentSeasonYear: number): any {
+  if (player.tid < 0 || player.status !== 'Active') return player;
+  const loadedTime = historyTime(loaded.date);
+  const entries = (loaded.history ?? [])
+    .filter((entry: any) => typeof entry === 'object'
+      && entry?.type === 'Signing'
+      && entry?.playerIds?.includes(player.internalId)
+      && Number(entry?.tid) === Number(player.tid)
+      && (!loadedTime || !historyTime(entry?.date) || historyTime(entry?.date) <= loadedTime))
+    .sort((left: any, right: any) => historyTime(right?.date) - historyTime(left?.date));
+  for (const entry of entries) {
+    const saved = entry.contractTransaction;
+    if (
+      saved?.playerId === player.internalId
+      && Number(saved?.teamId) === Number(player.tid)
+      && Number(saved?.contract?.exp) > Number(player.contract?.exp ?? 0)
+      && Array.isArray(saved.contractYears)
+    ) {
+      return {
+        ...player,
+        contract: { ...saved.contract },
+        contractYears: mergeContractYears(player, saved.contractYears),
+        salaries: mergePlayerSalaries(saved.salaries, player.salaries),
+      };
+    }
+
+    if (Number(player.contract?.exp ?? 0) > currentSeasonYear) continue;
+    const text = String(entry?.text ?? '');
+    if (!text.toLowerCase().startsWith(`${String(player.name).toLowerCase()} re-signs with `)) continue;
+    const match = text.match(/\$([\d.]+)\s*([mk])\s*\/\s*(\d+)\s*yr/i);
+    if (!match) continue;
+    const total = Number(match[1]) * (match[2].toLowerCase() === 'm' ? 1_000_000 : 1_000);
+    const guaranteedYears = Math.max(1, Number(match[3]) || 1);
+    if (!Number.isFinite(total) || total <= 0 || guaranteedYears > 6) continue;
+    const baseSalaryUSD = Math.round(total / guaranteedYears);
+    const startSeason = currentSeasonYear + 1;
+    const option = /player option/i.test(text) ? 'player' : /team option/i.test(text) ? 'team' : '';
+    const totalSeasons = guaranteedYears + (option ? 1 : 0);
+    const contractYears = Array.from({ length: totalSeasons }, (_, index) => ({
+      season: `${startSeason + index - 1}-${String(startSeason + index).slice(-2)}`,
+      guaranteed: Math.round(baseSalaryUSD * Math.pow(1.05, index)),
+      option: index === totalSeasons - 1 ? option : '',
+    }));
+    const salaries = contractYears.map((row, index) => ({
+      season: startSeason + index,
+      amount: Math.round(row.guaranteed / 1_000),
+      tid: player.tid,
+      option: row.option || undefined,
+    }));
+    return {
+      ...player,
+      contract: {
+        ...player.contract,
+        exp: startSeason + totalSeasons - 1,
+        hasPlayerOption: option === 'player' || undefined,
+        hasTeamOption: option === 'team' || undefined,
+        playerOptionExp: option === 'player' ? startSeason + totalSeasons - 1 : undefined,
+        teamOptionExp: option === 'team' ? startSeason + totalSeasons - 1 : undefined,
+      },
+      contractYears: mergeContractYears(player, contractYears),
+      salaries: mergePlayerSalaries(salaries, player.salaries),
+    };
+  }
+  return player;
+}
+
+function restoreTournamentPlayerToDraftClass(
+  loaded: any,
+  player: any,
+  currentSeasonYear: number,
+  canonicalProspect?: any,
+): any {
+  const isHistoricalNba = loaded.leagueType === 'modded'
+    && (loaded.moddedLeagueBase ?? 'nba') === 'nba'
+    && isHistoricalNbaStart(Number(loaded.nbaStartYear ?? loaded.leagueStats?.historicalEraStartYear ?? 0));
+  if (!isHistoricalNba || !isInternationalTournamentOnlyPlayer(player)) return player;
+  const isLeakedFreeAgent = player.tid === -1 && player.status === 'Free Agent';
+  const isRecoveredProspect = player.tid === -2 && player.status === 'Draft Prospect';
+  if (!isLeakedFreeAgent && !isRecoveredProspect) return player;
+  const bio = getVerifiedBioForPlayerIdentity(player);
+  const draftYear = Number(canonicalProspect?.draft?.year ?? bio?.draftYear ?? 0);
+  if (!Number.isFinite(draftYear) || draftYear <= currentSeasonYear) return player;
+  const transactions = (player.transactions ?? []).filter((row: any) =>
+    Number(row?.season) < currentSeasonYear || (row?.type !== 'freeAgent' && row?.type !== 'waive'),
+  );
+  return {
+    ...player,
+    ...(canonicalProspect?.personId ? { personId: canonicalProspect.personId } : {}),
+    ...(canonicalProspect?.sourceIds ? { sourceIds: canonicalProspect.sourceIds } : {}),
+    tid: -2,
+    status: 'Draft Prospect',
+    internationalTournamentOnly: undefined,
+    draft: { year: draftYear, tid: -2, originalTid: -1, round: 0, pick: 0 },
+    contract: undefined,
+    contractYears: [],
+    salaries: (player.salaries ?? []).filter((row: any) => Number(row?.season) < currentSeasonYear),
+    transactions: [
+      ...transactions,
+      ...(!transactions.some((row: any) => row?.type === 'draftDeclaration' && Number(row?.season) === draftYear)
+        ? [{ season: draftYear, tid: -2, type: 'draftDeclaration' }]
+        : []),
+    ],
+    recentlyWaivedBy: undefined,
+    recentlyWaivedDate: undefined,
+    hasBirdRights: false,
+    yearsWithTeam: 0,
+    signedDate: undefined,
+    tradeEligibleDate: undefined,
+  };
+}
+
+export function healLoadedSigningContractsAndTournamentDraftClasses(
+  loaded: any,
+  players: any[],
+  currentSeasonYear: number,
+): any[] {
+  const normalizedSurname = (name: unknown) => String(name ?? '')
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .trim()
+    .split(/\s+/)
+    .at(-1);
+  const futureProspects = (players ?? []).filter(player =>
+    !isInternationalTournamentOnlyPlayer(player)
+    && (player.tid === -2 || player.status === 'Draft Prospect')
+    && Number(player.draft?.year ?? 0) > currentSeasonYear,
+  );
+  return (players ?? []).map(player => {
+    const matches = isInternationalTournamentOnlyPlayer(player)
+      ? futureProspects.filter(candidate =>
+          Number(candidate.born?.year ?? 0) === Number(player.born?.year ?? 0)
+          && normalizedSurname(candidate.name) === normalizedSurname(player.name),
+        )
+      : [];
+    const restored = restoreTournamentPlayerToDraftClass(
+      loaded,
+      player,
+      currentSeasonYear,
+      matches.length === 1 ? matches[0] : undefined,
+    );
+    return restoreSavedSigningContract(loaded, restored, currentSeasonYear);
+  });
+}
+
 export function migrateLoadedPlayers(loaded: any, currentSeasonYear: number) {
   const currentSeasonStr = `${currentSeasonYear - 1}-${String(currentSeasonYear).slice(-2)}`;
   const saneContractCapThousands = 250_000;
@@ -148,24 +620,56 @@ export function migrateLoadedPlayers(loaded: any, currentSeasonYear: number) {
     : 30;
   let normalizedFreeAgentTypoCount = 0;
   let healedWaivedGhostContractCount = 0;
+  const isWnbaIsolated = loaded.leagueStats?.uiMode === 'wnba_isolated'
+    || loaded.moddedLeagueBase === 'wnba';
+  const wnbaCoreStatuses = new Set(['Active', 'Free Agent', 'Waived', 'Retired', 'Draft Prospect', 'Prospect', 'WNBA']);
+  const { playerScope, activeTeamIds } = resolveSeasonRolloverPlayerScope(loaded as GameState);
 
   const migratedPlayers = (loaded.players as any[] | undefined)?.map(player => {
-    const pbaPortrait = player?.status === 'PBA' && /^pba-\d+-/.test(String(player?.internalId ?? ''))
-      ? getPbaRosterPortrait(player.name)
+    const isWnbaCoreIdentity = isWnbaIsolated && (
+      (Number(player?.tid) >= 0 && Number(player?.tid) < 100)
+      || wnbaCoreStatuses.has(String(player?.status ?? ''))
+    );
+    const externalLeague = isWnbaCoreIdentity
+      ? 'WNBA'
+      : player?.status === 'PBA' && /^pba-\d+-/.test(String(player?.internalId ?? ''))
+        ? 'PBA'
+        : String(player?.status ?? '');
+    const catalogPortrait = getCachedExternalPortraitForName(externalLeague, player.name, currentSeasonYear);
+    const pbaPortrait = externalLeague === 'PBA'
+      ? catalogPortrait ?? getPbaRosterPortrait(player.name, currentSeasonYear)
       : undefined;
-    let updated = pbaPortrait && (!player.imgURL || isBadPortrait(player))
-      ? { ...player, imgURL: pbaPortrait }
+    const preferredPortrait = catalogPortrait ?? pbaPortrait;
+    const replaceablePortrait = !player.imgURL
+      || isBadPortrait(player)
+      || isDefaultProballers(String(player.imgURL))
+      || isLowQualityPlayerPortrait(String(player.imgURL));
+    let updated = preferredPortrait && replaceablePortrait
+      ? { ...player, imgURL: preferredPortrait }
       : isBadPortrait(player) ? { ...player, imgURL: undefined } : player;
+    const isWnbaCorePlayer = isWnbaIsolated && (
+      (Number(updated.tid) >= 0 && Number(updated.tid) < 100)
+      || wnbaCoreStatuses.has(String(updated.status ?? ''))
+    );
+    if (isWnbaCorePlayer) {
+      updated = { ...updated, imgURL: resolveWnbaPlayerPortrait(updated.imgURL) };
+    }
+    updated = restoreTournamentPlayerToDraftClass(loaded, updated, currentSeasonYear);
+    updated = restoreSavedSigningContract(loaded, updated, currentSeasonYear);
     updated = repairGeneratedExternalPlayer(updated as any, currentSeasonYear) as any;
     updated = clampExternalLeaguePlayer(updated);
-    if (updated.contract && Array.isArray(updated.contractYears)) {
-      const entry = updated.contractYears.find((contractYear: any) => contractYear.season === currentSeasonStr);
-      if (entry && entry.guaranteed > 0 && entry.guaranteed <= saneGuaranteedCapUsd) {
-        const syncedAmount = Math.round(entry.guaranteed / 1000);
-        if (syncedAmount > 0 && syncedAmount <= saneContractCapThousands && syncedAmount !== updated.contract.amount) {
-          updated = { ...updated, contract: { ...updated.contract, amount: syncedAmount } };
-        }
-      }
+    const isBackgroundNbaPlayerInPbaSave = loaded.leagueStats?.uiMode === 'pba_isolated'
+      && Number(updated.tid) >= 0
+      && Number(updated.tid) < 100
+      && updated.status !== 'PBA';
+    const isReleasedPbaImportInPbaSave = loaded.leagueStats?.uiMode === 'pba_isolated'
+      && Number(updated.tid) === -1
+      && updated.status === 'Free Agent'
+      && Array.isArray(updated.pbaImportHistory)
+      && updated.pbaImportHistory.length > 0;
+    const isActiveLeaguePlayer = isPlayerInLeagueScope(updated, playerScope, activeTeamIds);
+    if (isActiveLeaguePlayer && !isBackgroundNbaPlayerInPbaSave && !isReleasedPbaImportInPbaSave && updated.contract && Array.isArray(updated.contractYears)) {
+      updated = syncPlayerContractAmountForSeason(updated, currentSeasonYear);
     }
     if (
       updated.contract?.rookie &&
@@ -217,9 +721,37 @@ export function migrateLoadedPlayers(loaded: any, currentSeasonYear: number) {
     const currentSeasonContractYear = liveContractYears.find((contractYear: any) => contractYear.season === currentSeasonStr)
       ?? liveContractYears[0];
     const currentGuaranteedUSD = Number(currentSeasonContractYear?.guaranteed ?? 0);
+    const currentOptionKind = normalizeContractOptionKind(currentSeasonContractYear?.option);
+    const finalLiveContractYear = liveContractYears[liveContractYears.length - 1];
+    const finalOptionKind = normalizeContractOptionKind(finalLiveContractYear?.option);
+    const finalContractYear = seasonLabelToYear(String(finalLiveContractYear?.season ?? ''));
+    const hasCompleteContractYearCoverage = Number.isFinite(finalContractYear)
+      && finalContractYear >= Number(updated.contract?.exp ?? Number.POSITIVE_INFINITY);
+    if (
+      updated.contract
+      && finalLiveContractYear
+      && (hasCompleteContractYearCoverage || finalOptionKind === 'player' || finalOptionKind === 'team')
+    ) {
+      const optionExp = seasonLabelToYear(String(finalLiveContractYear?.season ?? ''));
+      updated = {
+        ...updated,
+        contract: {
+          ...updated.contract,
+          hasPlayerOption: finalOptionKind === 'player' || undefined,
+          hasTeamOption: finalOptionKind === 'team' || undefined,
+          teamOptionExp: finalOptionKind === 'team' && Number.isFinite(optionExp) ? optionExp : undefined,
+        },
+      };
+    }
+    if (currentOptionKind === 'twoWay' && !hasTwoWayContractMarker(updated)) {
+      updated = { ...updated, twoWay: true, contract: { ...updated.contract, type: 'TWO_WAY' } };
+    }
+    if (currentOptionKind === 'nonGuaranteed' && !updated.nonGuaranteed) {
+      updated = { ...updated, nonGuaranteed: true };
+    }
     const shouldInferLegacyTwoWay =
       loaded.leagueStats?.uiMode !== 'euro_isolated' &&
-      !updated.twoWay &&
+      !hasTwoWayContractMarker(updated) &&
       !updated.nonGuaranteed &&
       updated.tid >= 0 &&
       updated.status === 'Active' &&
@@ -230,13 +762,19 @@ export function migrateLoadedPlayers(loaded: any, currentSeasonYear: number) {
       currentGuaranteedUSD <= 700_000 &&
       liveContractYears.length <= 1;
     if (shouldInferLegacyTwoWay) {
-      updated = { ...updated, twoWay: true };
+      updated = { ...updated, twoWay: true, contract: { ...updated.contract, type: 'TWO_WAY' } };
+    }
+    const persistentPortrait = isWnbaCorePlayer
+      ? resolveWnbaPlayerPortrait(updated.imgURL)
+      : resolvePersistentPlayerImage(updated as any);
+    if (persistentPortrait && persistentPortrait !== updated.imgURL) {
+      updated = { ...updated, imgURL: persistentPortrait };
     }
     if ((updated as any).status === 'FreeAgent') {
       updated = { ...updated, status: 'Free Agent' };
       normalizedFreeAgentTypoCount++;
     }
-    if (updated.tid === -1 && updated.status === 'Free Agent' && updated.recentlyWaivedDate) {
+    if (updated.tid === -1 && updated.status === 'Free Agent' && updated.recentlyWaivedDate && !isReleasedPbaImportInPbaSave) {
       if (hasLiveContractAfterWaive(updated, currentSeasonYear)) {
         healedWaivedGhostContractCount++;
         updated = {
@@ -245,6 +783,7 @@ export function migrateLoadedPlayers(loaded: any, currentSeasonYear: number) {
           nonGuaranteed: false,
           gLeagueAssigned: false,
           mleSignedVia: undefined,
+          baeSignedVia: undefined,
           hasBirdRights: false,
           yearsWithTeam: 0,
           signedDate: undefined,
@@ -252,10 +791,15 @@ export function migrateLoadedPlayers(loaded: any, currentSeasonYear: number) {
         };
       }
     }
-    if (updated.contract?.hasTeamOption && updated.draft?.year) {
+    if (updated.contract?.rookie && updated.contract.hasTeamOption && updated.draft?.year) {
       const draftYear = Number(updated.draft.year);
       const guaranteedYears = loaded.leagueStats?.rookieContractLength ?? 2;
-      if (updated.contract.teamOptionExp === draftYear + guaranteedYears) {
+      const optionYears = loaded.leagueStats?.rookieTeamOptionYears ?? 2;
+      const latestRookieContractExpiry = draftYear + guaranteedYears + optionYears;
+      if (
+        updated.contract.teamOptionExp === draftYear + guaranteedYears
+        && Number(updated.contract.exp ?? 0) <= latestRookieContractExpiry
+      ) {
         updated = {
           ...updated,
           contract: {
@@ -335,6 +879,7 @@ export function migrateLoadedPlayers(loaded: any, currentSeasonYear: number) {
   return migratedPlayers;
 }
 
+
 function isFilipinoPbaPlayer(player: any): boolean {
   const explicit = String(player?.born?.country ?? player?.nationality ?? '').toLowerCase();
   const loc = String(player?.born?.loc ?? '').toLowerCase();
@@ -391,11 +936,14 @@ export function healLoadedPbaContracts(players: any[], leagueStats: any, current
   const pbaTeamIds = new Set((nonNBATeams ?? []).filter((team: any) => team?.league === 'PBA').map((team: any) => Number(team?.tid ?? team?.id)));
   let healed = 0;
   const nextPlayers = (players ?? []).map((player: any) => {
-    if (!player?.contract || Number(player?.tid ?? -1) < 0) return player;
+    if (Number(player?.tid ?? -1) < 0) return player;
     const isPbaPlayer = player.status === 'PBA' || pbaTeamIds.has(Number(player.tid));
     if (!isPbaPlayer) return player;
-    const currentSalaryUSD = Number(player.contract.amount ?? 0) * 1_000;
-    if (!Number.isFinite(currentSalaryUSD) || currentSalaryUSD <= 0) return player;
+    const currentSalaryUSD = Number(player.contract?.amount ?? 0) * 1_000;
+    const hasCurrentEconomyContract =
+      Number(player.contract?.pbaEconomyVersion ?? 0) === PBA_PLAYER_ECONOMY_VERSION
+      && Number.isFinite(currentSalaryUSD)
+      && currentSalaryUSD > 0;
     const registeredLocal = isFilipinoPbaPlayer(player) || isRegisteredPbaRosterIdentity(player);
     const staleLocalFlag = !!player.pbaLocalEligible && !registeredLocal;
     const classificationPlayer = staleLocalFlag ? { ...player, pbaLocalEligible: undefined } : player;
@@ -426,20 +974,56 @@ export function healLoadedPbaContracts(players: any[], leagueStats: any, current
       !!player.pbaImportContract &&
       player.pbaImportContract.status !== 'released';
     if (hasActiveConferenceImportContract) {
-      if (staleLocalFlag || !player.isImport || player.importConference !== currentConference || Number(player.importTeamId ?? player.tid) !== Number(player.tid)) {
-        healed++;
-        return {
-          ...player,
-          ...(staleLocalFlag ? { pbaLocalEligible: undefined } : {}),
-          isImport: true,
-          importConference: currentConference,
-          importTeamId: Number(player.tid),
-          pbaImportContract: player.pbaImportContract,
-        };
-      }
-      return player;
+      const importIdentityNeedsRepair =
+        staleLocalFlag
+        || !player.isImport
+        || player.importConference !== currentConference
+        || Number(player.importTeamId ?? player.tid) !== Number(player.tid);
+      if (!importIdentityNeedsRepair && hasCurrentEconomyContract) return player;
+      const range = getPbaImportOfferRange(player, leagueStats, currentConference as any);
+      const targetSalaryUSD = clampPbaImportOfferSalary(
+        currentSalaryUSD > 0 ? currentSalaryUSD : range.marketSalaryUSD,
+        player,
+        leagueStats,
+        currentConference as any,
+      );
+      const exp = Math.max(Number(player.contract?.exp ?? currentSeasonYear), currentSeasonYear);
+      const contractPlayer = {
+        ...player,
+        contract: { ...(player.contract ?? {}), exp },
+      };
+      healed++;
+      return {
+        ...player,
+        ...(staleLocalFlag ? { pbaLocalEligible: undefined } : {}),
+        isImport: true,
+        importConference: currentConference,
+        importTeamId: Number(player.tid),
+        pbaImportContract: player.pbaImportContract,
+        contract: {
+          ...(player.contract ?? {}),
+          amount: Math.round(targetSalaryUSD / 1_000),
+          exp,
+          type: 'PBA_IMPORT',
+          pbaEconomyVersion: PBA_PLAYER_ECONOMY_VERSION,
+          pbaSalarySource: 'import',
+        },
+        contractYears: rebuildLiveContractYears(contractPlayer, currentSeasonYear, targetSalaryUSD),
+      };
     }
     const isImport = explicitImport;
+    const localIdentityNeedsRepair =
+      staleLocalFlag
+      || (!explicitImport && registeredLocal && player.pbaLocalEligible !== true);
+    if (hasCurrentEconomyContract && !localIdentityNeedsRepair) return player;
+    if (hasCurrentEconomyContract) {
+      healed++;
+      return {
+        ...player,
+        ...(staleLocalFlag ? { pbaLocalEligible: undefined } : {}),
+        ...(!explicitImport && registeredLocal ? { pbaLocalEligible: true } : {}),
+      };
+    }
     const limits = getContractLimits(player, leagueStats);
     const offer = computeContractOffer(player, leagueStats);
     const ratings = Array.isArray(player.ratings) ? player.ratings : [];
@@ -448,7 +1032,14 @@ export function healLoadedPbaContracts(players: any[], leagueStats: any, current
     const targetSalaryUSD = isImport
       ? Math.min(limits.maxSalaryUSD, Math.max(limits.minSalaryUSD, offer.salaryUSD))
       : computeLocalPBASalaryUSD(pbaOvr, pbaEconomy, player, currentSeasonYear);
-    if (currentSalaryUSD >= targetSalaryUSD * 0.98 && currentSalaryUSD <= targetSalaryUSD * 1.02) return player;
+    const exp = Math.max(
+      Number(player.contract?.exp ?? currentSeasonYear + Math.max(1, offer.years) - 1),
+      currentSeasonYear,
+    );
+    const contractPlayer = {
+      ...player,
+      contract: { ...(player.contract ?? {}), exp },
+    };
     healed++;
     return {
       ...player,
@@ -461,10 +1052,13 @@ export function healLoadedPbaContracts(players: any[], leagueStats: any, current
         pbaImportContract: player.pbaImportContract ?? buildPbaImportContractMetadata(Number(player.tid), currentConference as any, undefined),
       } : {}),
       contract: {
-        ...player.contract,
+        ...(player.contract ?? {}),
         amount: Math.round(targetSalaryUSD / 1_000),
+        exp,
+        pbaEconomyVersion: PBA_PLAYER_ECONOMY_VERSION,
+        pbaSalarySource: isImport ? 'import' : 'generated',
       },
-      contractYears: rebuildLiveContractYears(player, currentSeasonYear, targetSalaryUSD),
+      contractYears: rebuildLiveContractYears(contractPlayer, currentSeasonYear, targetSalaryUSD),
     };
   });
   if (healed > 0) console.log(`[LOAD_GAME] Healed ${healed} PBA contract salary row(s).`);
@@ -473,23 +1067,44 @@ export function healLoadedPbaContracts(players: any[], leagueStats: any, current
 
 export function healLoadedPbaDraftProspects(players: any[], leagueStats: any, currentSeasonYear: number) {
   if (leagueStats?.uiMode !== 'pba_isolated') return players;
-  const pbaCollegePool = buildPbaCollegePoolFromSource(players as any);
-  const fillResult = ensureDraftClasses(
-    players as any,
-    currentSeasonYear,
-    leagueStats?.draftEligibilityRule,
-    'regen_pack',
-    {
-      collegePool: pbaCollegePool,
-      nationalityOverride: 'Philippines',
-      forceCollegePath: true,
-    },
-  );
-  const merged = fillResult.additions.length > 0 ? [...players, ...fillResult.additions] : players;
-  if (fillResult.additions.length > 0) {
-    console.log(`[LOAD_GAME] Seeded ${fillResult.additions.length} missing PBA draft prospect(s).`, fillResult.generatedByYear);
-  }
-  return tunePbaDraftProspects(merged as any, currentSeasonYear, leagueStats);
+  return tunePbaDraftProspects(players as any, currentSeasonYear, leagueStats);
+}
+
+export function healCompletedNbaDraftUndraftedFreeAgents(players: any[], loaded: any, currentSeasonYear: number) {
+  const isNba = loaded?.leagueType === 'modded' && (loaded?.moddedLeagueBase ?? 'nba') === 'nba';
+  if (!isNba || !loaded?.draftComplete || isNoDraftLeague(loaded?.leagueStats)) return players;
+  let healed = 0;
+  const nextPlayers = (players ?? []).map((player: any) => {
+    const isProspectState = player?.tid === -2 || player?.status === 'Prospect' || player?.status === 'Draft Prospect';
+    if (!isProspectState) return player;
+    const isBranchDraftSelection = Number(player?.tid) >= 0
+      && Number(player?.draft?.round ?? 0) > 0
+      && Number(player?.draft?.pick ?? 0) > 0;
+    if (isBranchDraftSelection) return player;
+    const rawDraftYear = Number(player?.draft?.year ?? 0);
+    const draftYear = Number.isFinite(rawDraftYear) && rawDraftYear > 0 ? rawDraftYear : currentSeasonYear;
+    if (draftYear > currentSeasonYear) return player;
+    const transactions = Array.isArray(player?.transactions) ? player.transactions : [];
+    const hasUndraftedTx = transactions.some((tx: any) =>
+      tx?.type === 'draft' &&
+      Number(tx?.season) === draftYear &&
+      Number(tx?.pickNum ?? -1) === 0
+    );
+    const rawOverall = Number(player?.overallRating ?? UNDRAFTED_OVR_CAP);
+    healed++;
+    return {
+      ...player,
+      overallRating: Number.isFinite(rawOverall) ? Math.min(rawOverall, UNDRAFTED_OVR_CAP) : UNDRAFTED_OVR_CAP,
+      tid: -1,
+      status: 'Free Agent',
+      transactions: hasUndraftedTx
+        ? transactions
+        : [...transactions, { season: draftYear, tid: -1, type: 'draft', phase: 0, pickNum: 0 }],
+      draft: { ...(player?.draft ?? {}), round: 0, pick: 0, year: draftYear, tid: -1, originalTid: -1 },
+    };
+  });
+  if (healed > 0) console.log(`[LOAD_GAME] Healed ${healed} completed-draft prospect(s) into undrafted free agents.`);
+  return nextPlayers;
 }
 
 export function finalizeLoadedPlayers(loaded: any, players: any[], currentSeasonYear: number) {
@@ -523,15 +1138,7 @@ export function finalizeLoadedPlayers(loaded: any, players: any[], currentSeason
     console.warn(`[LOAD_GAME] Released ${healedPhantomUserRosterCount} phantom user-roster FA(s) back to free agency.`);
   }
 
-  const { additions: externalRosterRepairs } = enforceExternalMinRoster({
-    ...loaded,
-    players: loadedPlayers,
-  } as any, currentSeasonYear);
-  const finalPlayers = (
-    externalRosterRepairs.length > 0
-      ? [...loadedPlayers, ...externalRosterRepairs]
-      : loadedPlayers
-  ).map((player: any) => {
+  const finalPlayers = loadedPlayers.map((player: any) => {
     const repaired = repairBirdRightsForLoadedPlayer(player);
     const rebuiltYearsWithTeam = resolveYearsWithCurrentTeamFromStats(repaired);
     return rebuiltYearsWithTeam === Number((repaired as any).yearsWithTeam ?? 0)
@@ -543,7 +1150,7 @@ export function finalizeLoadedPlayers(loaded: any, players: any[], currentSeason
   if (loaded.nbaCup?.mvpPlayerId) allHistoricalCups.push(loaded.nbaCup);
   const backfilledPlayers = allHistoricalCups.reduce(
     (acc: any[], cup: any) => cup?.mvpPlayerId || cup?.allTournamentTeam?.length || cup?.championTid != null
-      ? applyCupAwardsToPlayers(cup, acc)
+      ? applyCupAwardsToPlayers(cup, acc, loaded.leagueStats)
       : acc,
     finalPlayers,
   );
@@ -716,7 +1323,35 @@ export function healDuplicatePlayerInternalIds(players: any[], boxScores: any[],
 }
 
 export function healLoadedDraftPicks(loaded: any, currentSeasonYear: number) {
-  const draftPicks = Array.isArray(loaded?.draftPicks) ? loaded.draftPicks : [];
+  let draftPicks = Array.isArray(loaded?.draftPicks) ? loaded.draftPicks : [];
+  const noDraft = isNoDraftLeague(loaded?.leagueStats);
+  const windowFallback = loaded?.leagueType === 'modded' && loaded?.moddedLeagueBase === 'philippines'
+    ? 3
+    : DEFAULT_TRADABLE_PICK_SEASONS;
+  const windowSize = Number(loaded?.leagueStats?.tradableDraftPickSeasons ?? windowFallback);
+  const includeActiveDraft = !loaded?.draftComplete;
+  if (!noDraft && loaded?.leagueStats?.uiMode !== 'euro_isolated') {
+    const nbaTeamIds = (loaded?.teams ?? [])
+      .filter((team: any) => Number(team?.id) >= 0 && Number(team?.id) < 100)
+      .map((team: any) => Number(team.id))
+      .filter((tid: number) => Number.isFinite(tid));
+
+    if (nbaTeamIds.length > 0) {
+      const before = draftPicks.length;
+      draftPicks = generateFuturePicksForTeamIds(
+        draftPicks,
+        nbaTeamIds,
+        currentSeasonYear,
+        windowSize,
+        getDraftRoundsForLeague(loaded?.leagueStats),
+        includeActiveDraft,
+      );
+      if (draftPicks.length > before) {
+        console.log(`[LOAD_GAME] Healed ${draftPicks.length - before} missing NBA draft pick(s).`);
+      }
+    }
+  }
+
   if (loaded?.leagueType !== 'modded' || loaded?.moddedLeagueBase !== 'philippines') return draftPicks;
 
   const pbaTeamIds = (loaded?.nonNBATeams ?? [])
@@ -726,8 +1361,12 @@ export function healLoadedDraftPicks(loaded: any, currentSeasonYear: number) {
 
   if (pbaTeamIds.length === 0) return draftPicks;
 
-  const windowSize = Number(loaded?.leagueStats?.tradableDraftPickSeasons ?? 3);
-  const healedDraftPicks = generateFuturePicksForTeamIds(draftPicks, pbaTeamIds, currentSeasonYear, windowSize, 2);
+  const healedDraftPicks = generateDraftPicksForTeamIdsAndSeasons(
+    draftPicks,
+    pbaTeamIds,
+    getPbaDraftPickYears(currentSeasonYear, windowSize, includeActiveDraft),
+    2,
+  );
   if (healedDraftPicks.length > draftPicks.length) {
     console.log(`[LOAD_GAME] Healed ${healedDraftPicks.length - draftPicks.length} missing PBA draft pick(s).`);
   }
@@ -738,12 +1377,36 @@ export function migrateLeagueStats(loaded: any) {
   const loadedLeagueStats = loaded.leagueStats ?? {};
   const migratedLeagueStats = { ...loadedLeagueStats };
   let staleRulesMigrated = false;
+  if (!migratedLeagueStats.uiMode) {
+    if (loaded.moddedLeagueBase === 'europe' || loaded.euroSetupSeed) {
+      Object.assign(migratedLeagueStats, EURO_ISOLATED_DEFAULTS, loadedLeagueStats, { uiMode: 'euro_isolated' });
+      console.log('[LOAD_GAME] Restored missing Euro isolated mode flag.');
+    } else if (loaded.moddedLeagueBase === 'philippines') {
+      migratedLeagueStats.uiMode = 'pba_isolated';
+      console.log('[LOAD_GAME] Restored missing PBA isolated mode flag.');
+    }
+  }
   if (!migratedLeagueStats.awardSettings) {
     const uiMode = migratedLeagueStats.uiMode ?? 'nba';
     migratedLeagueStats.awardSettings = defaultAwardSettings(
-      uiMode === 'euro_isolated' || uiMode === 'fictional' ? uiMode : 'nba',
+      uiMode === 'euro_isolated' || uiMode === 'pba_isolated' || uiMode === 'wnba_isolated' || uiMode === 'fictional' ? uiMode : 'nba',
+      Number(migratedLeagueStats.year),
     );
     console.log(`[LOAD_GAME] Seeded default awardSettings for uiMode=${uiMode}`);
+  }
+  const historicalAwardSeason = Number(migratedLeagueStats.year);
+  const historicalNbaAwards = loaded.leagueType === 'modded'
+    && (loaded.moddedLeagueBase ?? 'nba') === 'nba'
+    && isHistoricalNbaStart(Number(loaded.nbaStartYear ?? migratedLeagueStats.historicalEraStartYear ?? 0));
+  if (
+    historicalNbaAwards
+    && Number(migratedLeagueStats.awardSettingsEraVersion ?? 0) < AWARD_SETTINGS_ERA_VERSION
+  ) {
+    Object.assign(
+      migratedLeagueStats,
+      migrateAwardSettingsToCurrentEra(migratedLeagueStats, historicalAwardSeason),
+    );
+    console.log(`[LOAD_GAME] Applied NBA award-era defaults for season ${historicalAwardSeason}.`);
   }
   if (migratedLeagueStats.allStarGameTargetScore == null) {
     migratedLeagueStats.allStarGameTargetScore =
@@ -759,21 +1422,63 @@ export function migrateLeagueStats(loaded: any) {
     migratedLeagueStats.celebrityGameMirrorLeagueRules = true;
     staleRulesMigrated = true;
   }
-  if (loadedLeagueStats.allStarMirrorLeagueRules === true && loadedLeagueStats.allStarQuarterLength === 12) {
+  if (loadedLeagueStats.allStarOneOnOneEnabled === true) {
+    migratedLeagueStats.allStarThroneEnabled = true;
+    migratedLeagueStats.allStarThroneFieldSize =
+      Number(loadedLeagueStats.allStarOneOnOneParticipants ?? 8) > 8 ? 16 : 8;
+    migratedLeagueStats.allStarThroneFormat =
+      migratedLeagueStats.allStarThroneFieldSize === 16 ? 'full16' : 'mini8';
+    migratedLeagueStats.allStarOneOnOneEnabled = false;
+    staleRulesMigrated = true;
+  }
+  const currentUiMode = migratedLeagueStats.uiMode ?? 'nba';
+  if (currentUiMode === 'wnba_isolated') {
+    Object.assign(
+      migratedLeagueStats,
+      healWnbaAllStarTimingDefaults(
+        healWnbaDevelopmentalContractDefaults(
+          healWnbaAwardDefaults(
+            healWnbaDraftLotteryDefaults(healWnbaTransactionCalendarDefaults(migratedLeagueStats)),
+          ),
+        ),
+      ),
+    );
+  }
+  const usesCurrentNbaTournamentDefaults = currentUiMode !== 'fictional'
+    && currentUiMode !== 'euro_isolated'
+    && currentUiMode !== 'pba_isolated'
+    && currentUiMode !== 'wnba_isolated';
+  if (usesCurrentNbaTournamentDefaults && loadedLeagueStats.allStarMirrorLeagueRules === true && loadedLeagueStats.allStarQuarterLength === 12) {
     migratedLeagueStats.allStarMirrorLeagueRules = false;
     migratedLeagueStats.allStarQuarterLength = 3;
     staleRulesMigrated = true;
   }
-  if (loadedLeagueStats.allStarMirrorLeagueRules === false && loadedLeagueStats.allStarQuarterLength === 12) {
+  if (usesCurrentNbaTournamentDefaults && loadedLeagueStats.allStarMirrorLeagueRules === false && loadedLeagueStats.allStarQuarterLength === 12) {
     migratedLeagueStats.allStarQuarterLength = 3;
     staleRulesMigrated = true;
   }
-  if (loadedLeagueStats.risingStarsMirrorLeagueRules === false && loadedLeagueStats.risingStarsQuarterLength === 12) {
+  if (usesCurrentNbaTournamentDefaults && loadedLeagueStats.risingStarsMirrorLeagueRules === false && loadedLeagueStats.risingStarsQuarterLength === 12) {
     migratedLeagueStats.risingStarsQuarterLength = 3;
     staleRulesMigrated = true;
   }
-  if (loadedLeagueStats.risingStarsFormat === 'rookies_vs_sophomores' || loadedLeagueStats.risingStarsFormat === 'tournament') {
+  if (currentUiMode === 'fictional' && Number(migratedLeagueStats.allStarQuarterLength ?? 0) <= 3) {
+    migratedLeagueStats.allStarQuarterLength = 12;
+    migratedLeagueStats.allStarNumQuarters = 4;
+    staleRulesMigrated = true;
+  }
+  const historicalStartYear = Number(loaded.nbaStartYear ?? migratedLeagueStats.historicalEraStartYear ?? 0);
+  const historicalRisingStarsFormat = isHistoricalNbaStart(historicalStartYear)
+    ? getHistoricalNbaRisingStarsFormat(historicalStartYear)
+    : null;
+  if (historicalRisingStarsFormat && loadedLeagueStats.risingStarsFormat !== historicalRisingStarsFormat) {
+    migratedLeagueStats.risingStarsFormat = historicalRisingStarsFormat;
+    staleRulesMigrated = true;
+  } else if (!historicalRisingStarsFormat && (loadedLeagueStats.risingStarsFormat === 'rookies_vs_sophomores' || loadedLeagueStats.risingStarsFormat === 'tournament')) {
     migratedLeagueStats.risingStarsFormat = '4team_tournament';
+    staleRulesMigrated = true;
+  }
+  if (migratedLeagueStats.risingStarsFormat === 'captains_draft' && migratedLeagueStats.risingStarsCaptainType !== 'legend') {
+    migratedLeagueStats.risingStarsCaptainType = 'legend';
     staleRulesMigrated = true;
   }
   if (staleRulesMigrated) {
@@ -813,10 +1518,24 @@ export function migrateLeagueStats(loaded: any) {
 }
 
 export function healSchedule(schedule: any[] | undefined, migratedLeagueStats: any) {
+  const risingStarsFormat = migratedLeagueStats?.risingStarsFormat ?? '4team_tournament';
+  const risingStarsIsTournament = risingStarsFormat === '4team_tournament' || risingStarsFormat === 'random_4team';
   return (schedule ?? []).map((game: any) => {
+    if (game?.isRisingStars && !risingStarsIsTournament) {
+      const healed = { ...game };
+      delete healed.gameFormat;
+      delete healed.targetScore;
+      return healed;
+    }
     if (game?.isRisingStars && game.gid === 91001) return { ...game, gameFormat: 'target_score', targetScore: game.targetScore ?? 40 };
     if (game?.isRisingStars && game.gid === 91002) return { ...game, gameFormat: 'target_score', targetScore: game.targetScore ?? 40 };
     if (game?.isRisingStars && game.gid === 91099) return { ...game, gameFormat: 'target_score', targetScore: game.targetScore ?? 25 };
+    if (game?.isAllStar && migratedLeagueStats.allStarGameFormat === 'timed') {
+      const healed = { ...game };
+      delete healed.gameFormat;
+      delete healed.targetScore;
+      return healed;
+    }
     if (game?.isAllStar && migratedLeagueStats.allStarGameFormat && migratedLeagueStats.allStarGameFormat !== 'timed') {
       return {
         ...game,
@@ -854,24 +1573,128 @@ export function cleanDeadMoneyTeams(teams: any[] | undefined) {
   return cleanedTeams;
 }
 
+const emptyNbaRecordRow = (): OfficialNbaRecordRow => ({
+  totalWins: 0,
+  totalLosses: 0,
+  totalTies: 0,
+  homeWins: 0,
+  homeLosses: 0,
+  confWins: 0,
+  confLosses: 0,
+  divWins: 0,
+  divLosses: 0,
+  ptsFor: 0,
+  ptsAgainst: 0,
+  games: [],
+});
+
+const countRecordGames = (records: Map<number, OfficialNbaRecordRow>) =>
+  Array.from(records.values()).reduce((sum, row) => sum + row.totalWins + row.totalLosses, 0);
+
+function deriveLoadedNbaRecordsFromBoxScores(loaded: any, teams: any[], healedSchedule: any[], season: number) {
+  const teamMap = new Map(
+    (teams ?? [])
+      .filter((team: any) => typeof team?.id === 'number' && team.id >= 0 && team.id < 100)
+      .map((team: any) => [team.id, team]),
+  );
+  const rows = new Map<number, OfficialNbaRecordRow>();
+  for (const tid of teamMap.keys()) rows.set(tid, emptyNbaRecordRow());
+
+  for (const game of loaded?.boxScores ?? []) {
+    const homeTid = Number(game?.homeTeamId);
+    const awayTid = Number(game?.awayTeamId);
+    if (!teamMap.has(homeTid) || !teamMap.has(awayTid)) continue;
+    const homeScore = Number(game?.homeScore);
+    const awayScore = Number(game?.awayScore);
+    if (
+      !Number.isFinite(homeScore)
+      || !Number.isFinite(awayScore)
+      || (homeScore === awayScore && game?.winnerId == null)
+    ) continue;
+    const meta = classifyBoxScoreGame(
+      game,
+      healedSchedule,
+      loaded?.playoffs,
+      loaded?.nbaCup,
+      loaded?.nbaCupHistory,
+      season,
+      loaded?.leagueStats,
+    );
+    if (meta.seasonYear !== season) continue;
+    if (meta.isPreseason || meta.isPlayoff || meta.isPlayIn || meta.isAllStar || meta.excludeFromRecord) continue;
+
+    const home = rows.get(homeTid);
+    const away = rows.get(awayTid);
+    const homeTeam = teamMap.get(homeTid);
+    const awayTeam = teamMap.get(awayTid);
+    if (!home || !away || !homeTeam || !awayTeam) continue;
+
+    const homeWon = didHomeTeamWin(game);
+    home.ptsFor += homeScore;
+    home.ptsAgainst += awayScore;
+    away.ptsFor += awayScore;
+    away.ptsAgainst += homeScore;
+    homeWon ? home.totalWins++ : home.totalLosses++;
+    homeWon ? home.homeWins++ : home.homeLosses++;
+    !homeWon ? away.totalWins++ : away.totalLosses++;
+
+    const sameConf = homeTeam.conference === awayTeam.conference;
+    const sameDiv = homeTeam.did !== undefined && homeTeam.did === awayTeam.did;
+    if (sameConf) {
+      homeWon ? home.confWins++ : home.confLosses++;
+      !homeWon ? away.confWins++ : away.confLosses++;
+    }
+    if (sameDiv) {
+      homeWon ? home.divWins++ : home.divLosses++;
+      !homeWon ? away.divWins++ : away.divLosses++;
+    }
+    const date = String(game?.date ?? '');
+    home.games.push({ won: homeWon, date });
+    away.games.push({ won: !homeWon, date });
+  }
+
+  return rows;
+}
+
 export function healLoadedNbaTeamRecords(loaded: any, migratedLeagueStats: any, healedSchedule: any[], teams: any[]) {
   const uiMode = migratedLeagueStats?.uiMode ?? 'nba';
   if (uiMode === 'euro_isolated' || uiMode === 'pba_isolated') return teams;
 
   const season = migratedLeagueStats?.year ?? loaded?.leagueStats?.year ?? new Date().getFullYear();
+  const nbaStartYear = Number(loaded?.nbaStartYear ?? 0);
+  const isHistoricalNbaBranch =
+    loaded?.leagueType === 'modded' &&
+    loaded?.moddedLeagueBase === 'nba' &&
+    isHistoricalNbaStart(nbaStartYear) &&
+    Number(season) > nbaStartYear;
   const nbaTeams = (teams ?? []).filter((team: any) => typeof team?.id === 'number' && team.id >= 0 && team.id < 100);
   if (nbaTeams.length === 0) return teams;
 
-  const recordMap = deriveOfficialNbaRecords(healedSchedule, teams, season);
+  let recordMap = deriveOfficialNbaRecords(healedSchedule, teams, season);
+  if (countRecordGames(recordMap) === 0) {
+    recordMap = deriveLoadedNbaRecordsFromBoxScores(
+      { ...loaded, leagueStats: migratedLeagueStats },
+      teams,
+      healedSchedule,
+      season,
+    );
+  }
+  const rebuiltLeagueGames = countRecordGames(recordMap);
+  if (rebuiltLeagueGames === 0 && !isHistoricalNbaBranch) return teams;
 
   const corruptedTeams = nbaTeams.filter((team: any) => {
     const rec = recordMap.get(team.id);
     const row = team.seasons?.find((entry: any) => Number(entry?.season) === Number(season));
     const savedTotal = Number(row?.won ?? row?.wins ?? team.wins ?? 0) + Number(row?.lost ?? row?.losses ?? team.losses ?? 0);
     const rebuiltTotal = Number(rec?.totalWins ?? 0) + Number(rec?.totalLosses ?? 0);
-    return rebuiltTotal > 0 && savedTotal !== rebuiltTotal;
+    const staleFullSeasonRecord = savedTotal >= 82 && rebuiltTotal < savedTotal;
+    return savedTotal !== rebuiltTotal && (isHistoricalNbaBranch ||
+      (rebuiltTotal > 0 && (savedTotal === 0 || rebuiltTotal >= savedTotal || savedTotal > 82)) ||
+      staleFullSeasonRecord
+    );
   });
   if (corruptedTeams.length === 0) return teams;
+  const corruptedTeamIds = new Set(corruptedTeams.map((team: any) => team.id));
 
   const champTid = loaded?.playoffs?.bracketComplete ? loaded?.playoffs?.champion : undefined;
   const finalsSeries = (loaded?.playoffs?.series ?? []).find((series: any) => series.round === 4);
@@ -880,9 +1703,9 @@ export function healLoadedNbaTeamRecords(loaded: any, migratedLeagueStats: any, 
     : undefined;
 
   const healedTeams = teams.map((team: any) => {
-    if (!recordMap.has(team?.id)) return team;
+    if (!corruptedTeamIds.has(team?.id)) return team;
     const rec = recordMap.get(team.id);
-    if (!rec || (rec.totalWins + rec.totalLosses) === 0) return team;
+    if (!rec) return team;
     const seasons = Array.isArray(team.seasons) ? [...team.seasons] : [];
     const seasonIndex = seasons.findIndex((entry: any) => Number(entry?.season) === Number(season));
     const prev = seasonIndex >= 0 ? seasons[seasonIndex] : {};
@@ -910,11 +1733,13 @@ export function healLoadedNbaTeamRecords(loaded: any, migratedLeagueStats: any, 
     };
   });
 
-  console.log(`[LOAD_GAME] Healed ${corruptedTeams.length} NBA team record row(s) from played schedule.`);
+  console.log(`[LOAD_GAME] Healed ${corruptedTeams.length} NBA team record row(s) from ${rebuiltLeagueGames > 0 ? 'current-season games' : 'historical current-season reset'}.`);
   return healedTeams;
 }
 
 export function healLegacyNbaStaff(teams: any[], loaded: any) {
+  const branchStartYear = Number(loaded?.nbaStartYear ?? loaded?.leagueStats?.historicalEraStartYear ?? 0);
+  if (!Number.isFinite(branchStartYear) || branchStartYear < 2025) return teams;
   let patched = 0;
   const healedTeams = (teams ?? []).map((team: any) => {
     const teamName = `${team?.region ?? ''} ${team?.name ?? ''}`.trim();
@@ -945,19 +1770,66 @@ export function healLegacyNbaStaff(teams: any[], loaded: any) {
   return healedTeams;
 }
 
-export function healPbaTeamStaff(nonNBATeams: any[], leagueStats: any) {
+export function healNbaActiveStaffContracts(teams: any[], loaded: any) {
+  if (!isOpeningNbaStaffWindow(loaded)) return { teams, releasedStaff: [], historyEntries: [] };
+  const currentYear = Number(loaded.leagueStats.year);
+  const directoryCoaches = loaded?.staff?.coaches ?? [];
+  let changed = false;
+  const healedTeams = (teams ?? []).map((team: any) => {
+    const repair = ensureOpeningTeamHeadCoach(team, currentYear, directoryCoaches);
+    changed ||= repair.changed;
+    return repair.team;
+  });
+  if (changed) console.log('[LOAD_GAME] Restored active opening-day NBA head-coach assignments.');
+  return { teams: changed ? healedTeams : teams, releasedStaff: [], historyEntries: [] };
+}
+
+export function healHistoricalNbaStaffFreeAgents(loaded: any, migratedLeagueStats: any, staffFreeAgents: any[], players: any[]) {
+  const nbaStartYear = Number(loaded?.nbaStartYear ?? loaded?.leagueStats?.historicalEraStartYear ?? 0);
+  const isHistoricalNbaSave = loaded?.leagueType === 'modded'
+    && loaded?.moddedLeagueBase === 'nba'
+    && isHistoricalNbaStart(nbaStartYear)
+    && migratedLeagueStats?.uiMode !== 'pba_isolated'
+    && migratedLeagueStats?.uiMode !== 'euro_isolated';
+  if (!isHistoricalNbaSave) return staffFreeAgents;
+
+  const activeRosterPlayerIds = new Set(
+    (players ?? [])
+      .filter((player: any) => Number(player?.tid ?? -1) >= 0 && Number(player?.tid ?? -1) < 100)
+      .map((player: any) => String(player?.internalId ?? '').trim())
+      .filter(Boolean),
+  );
+  const filtered = (staffFreeAgents ?? []).filter((member: any) => {
+    const sourcePlayerId = String(member?.sourcePlayerId ?? '').trim();
+    if (sourcePlayerId && activeRosterPlayerIds.has(sourcePlayerId)) return false;
+    return true;
+  });
+  if (filtered.length !== (staffFreeAgents ?? []).length) {
+    console.log(`[LOAD_GAME] Removed ${(staffFreeAgents ?? []).length - filtered.length} active-player staff free-agent row(s) from historical NBA market.`);
+  }
+  return filtered;
+}
+
+export function healPbaTeamStaff(nonNBATeams: any[], leagueStats: any, historicalPba?: { sourceVersion?: string }) {
   if (leagueStats?.uiMode !== 'pba_isolated') return nonNBATeams;
   let patched = 0;
   const year = leagueStats?.year ?? new Date().getFullYear();
+  const usedPortraitUrls = createPortraitUsageSet(
+    (nonNBATeams ?? []).flatMap((team: any) =>
+      (team?.tycoon?.staffMembers ?? []).map((member: any) => member?.playerPortraitUrl),
+    ),
+  );
   const healed = (nonNBATeams ?? []).map((team: any) => {
     if (team?.league !== 'PBA') return team;
-    const before = team?.tycoon?.staffMembers?.length ?? 0;
-    const next = attachPbaStaffToTeam(team, year);
-    const after = next?.tycoon?.staffMembers?.length ?? 0;
-    if (after > before) patched++;
+    const before = team;
+    const attached = historicalPba?.sourceVersion
+      ? team
+      : attachPbaStaffToTeam(team, year, usedPortraitUrls);
+    const next = applyPbaStaffEconomyScale(attached, year);
+    if (next !== before) patched++;
     return next;
   });
-  if (patched > 0) console.log(`[LOAD_GAME] Healed real PBA staff for ${patched} team(s).`);
+  if (patched > 0) console.log(`[LOAD_GAME] Healed PBA staff contracts and era salary scale for ${patched} team(s).`);
   return healed;
 }
 
@@ -1116,7 +1988,10 @@ export function cleanDuplicateAutoNews(news: any[] | undefined) {
 export async function refreshTrainingCalendars(loaded: any, teams: any[]) {
   let teamsWithFreshTraining = teams;
   try {
-    const { autoGenerateTrainingCalendarsForAllTeams } = await import('../../services/training/trainingScheduler');
+    const {
+      autoGenerateTrainingCalendarsForAllTeams,
+      haveCurrentTrainingCalendars,
+    } = await import('../../services/training/trainingScheduler');
     let migratedCount = 0;
     teamsWithFreshTraining = teamsWithFreshTraining.map((team: any) => {
       const calendar = team.trainingCalendar;
@@ -1133,13 +2008,29 @@ export async function refreshTrainingCalendars(loaded: any, teams: any[]) {
     }
     if (loaded.schedule && Array.isArray(loaded.schedule) && loaded.date) {
       const startIso = normalizeDate(loaded.date);
-      teamsWithFreshTraining = autoGenerateTrainingCalendarsForAllTeams(
-        teamsWithFreshTraining,
-        loaded.schedule,
-        startIso,
-        365,
-      );
-      console.log(`[LOAD_GAME] Refreshed training calendars via auto-scheduler (startISO=${startIso}).`);
+      const lifecyclePhase = String(loaded.seasonLifecycle?.currentPhase ?? '');
+      const completedPostseason = lifecyclePhase === 'CHAMPION_FINALIZED'
+        || lifecyclePhase === 'OFFSEASON_OPEN'
+        || lifecyclePhase === 'OFFSEASON_TASKS_ACTIVE';
+      if (
+        migratedCount > 0
+        || !haveCurrentTrainingCalendars(
+          teamsWithFreshTraining,
+          loaded.schedule,
+          startIso,
+          365,
+          completedPostseason,
+        )
+      ) {
+        teamsWithFreshTraining = autoGenerateTrainingCalendarsForAllTeams(
+          teamsWithFreshTraining,
+          loaded.schedule,
+          startIso,
+          365,
+          loaded.leagueStats,
+        );
+        console.log(`[LOAD_GAME] Refreshed training calendars via auto-scheduler (startISO=${startIso}).`);
+      }
     }
   } catch (error) {
     console.warn('[LOAD_GAME] training-calendar migration failed', error);
@@ -1168,14 +2059,92 @@ export async function applyTrainingAiSetup(loaded: any, players: any[], teams: a
 }
 
 export function healFollowedHandles(loaded: any) {
-  return loaded.leagueType === 'fictional' && Array.isArray(loaded.followedHandles)
+  if (!Array.isArray(loaded.followedHandles)) return loaded.followedHandles;
+  if (loaded.leagueStats?.uiMode === 'pba_isolated') {
+    return loaded.followedHandles.map((handle: string) => NBA_TO_PBA_HANDLES[handle] ?? handle);
+  }
+  return loaded.leagueType === 'fictional'
     ? loaded.followedHandles.map((handle: string) => NBA_TO_FICTIONAL_HANDLES[handle] ?? handle)
     : loaded.followedHandles;
 }
 
 export function healOffseasonChecklist(loaded: any) {
   const persistedChecklist = loaded.offseasonChecklist as OffseasonChecklist | undefined;
-  let healedOffseasonChecklist = persistedChecklist;
+  const legacyEuroScheduleDraw = persistedChecklist
+    && loaded.leagueStats?.uiMode === 'euro_isolated'
+    && persistedChecklist.euroScheduleDraw == null;
+  let healedOffseasonChecklist = persistedChecklist ? {
+    ...persistedChecklist,
+    euroScheduleDraw: legacyEuroScheduleDraw
+      ? persistedChecklist.preseasonFriendlies ?? 'pending'
+      : persistedChecklist.euroScheduleDraw ?? 'skipped',
+    preseasonFriendlies: legacyEuroScheduleDraw
+      ? persistedChecklist.preseasonFriendlies === 'done'
+        || persistedChecklist.preseasonFriendlies === 'in-progress'
+        || persistedChecklist.trainingCamp === 'done'
+        ? 'done'
+        : 'pending'
+      : persistedChecklist.preseasonFriendlies,
+    summerLeague: persistedChecklist.summerLeague
+      ?? (loaded.summerLeagueTournament?.reviewed || loaded.summerLeagueTournament?.status === 'reviewed'
+        ? 'done'
+        : loaded.summerLeagueTournament ? 'pending' : 'skipped'),
+    internationalTournament: persistedChecklist.internationalTournament
+      ?? (loaded.internationalTournament?.reviewed || loaded.internationalTournament?.status === 'reviewed' ? 'done' : loaded.internationalTournament ? 'pending' : 'skipped'),
+  } : undefined;
+  const isPbaYearEnd = loaded.leagueStats?.uiMode === 'pba_isolated'
+    && loaded.leagueStats?.pbaConference === 'governors'
+    && loaded.leagueStats?.pbaConferencePhase === 'offseason';
+  const isSeasonEndChecklist = !!healedOffseasonChecklist && (
+    isPbaYearEnd
+    || healedOffseasonChecklist.seasonSummary !== 'skipped'
+  );
+  if (healedOffseasonChecklist && loaded.gameMode !== 'gm') {
+    healedOffseasonChecklist = {
+      ...healedOffseasonChecklist,
+      performanceReview: 'skipped',
+    };
+  } else if (healedOffseasonChecklist && isSeasonEndChecklist) {
+    const gmDecisionOpen = !!loaded.gmCareer && (
+      !!loaded.gmCareer.pendingReview
+      || !!loaded.gmCareer.pendingContractDecision
+      || loaded.gmCareer.jobOffers !== undefined
+    );
+    const hasUnfinishedSeasonTask = Object.entries(healedOffseasonChecklist).some(([row, status]) =>
+      row !== 'performanceReview'
+      && (status === 'pending' || status === 'in-progress')
+    );
+    healedOffseasonChecklist = {
+      ...healedOffseasonChecklist,
+      performanceReview: healedOffseasonChecklist.performanceReview === 'done'
+        ? 'done'
+        : gmDecisionOpen
+          ? 'in-progress'
+          : hasUnfinishedSeasonTask ? 'pending' : 'done',
+    };
+  }
+  if (healedOffseasonChecklist && isPbaYearEnd) {
+    const pbaDraftOpen = healedOffseasonChecklist.pbaDraft === 'pending'
+      || healedOffseasonChecklist.pbaDraft === 'in-progress';
+    const pbaLocalMarketOpen = healedOffseasonChecklist.pbaLocalFreeAgency === 'pending'
+      || healedOffseasonChecklist.pbaLocalFreeAgency === 'in-progress';
+    healedOffseasonChecklist = {
+      ...healedOffseasonChecklist,
+      draftLottery: pbaDraftOpen && (healedOffseasonChecklist.draftLottery == null || healedOffseasonChecklist.draftLottery === 'skipped')
+        ? 'pending'
+        : healedOffseasonChecklist.draftLottery,
+      myFAs: pbaLocalMarketOpen && (healedOffseasonChecklist.myFAs == null || healedOffseasonChecklist.myFAs === 'skipped')
+        ? 'pending'
+        : healedOffseasonChecklist.myFAs,
+      hofCeremony: healedOffseasonChecklist.hofCeremony === 'done' ? 'done' : 'skipped',
+      pbaOpeningCeremony: healedOffseasonChecklist.pbaOpeningCeremony === 'done'
+        ? 'done'
+        : healedOffseasonChecklist.pbaOpeningCeremony === 'in-progress'
+          ? 'in-progress'
+          : 'pending',
+      strategyReview: 'skipped',
+    };
+  }
   if (persistedChecklist && isPbaActiveConferenceMode(loaded)) {
     console.log('[LOAD_GAME] Cleared stale PBA offseason checklist during active conference play.');
     return undefined;
@@ -1188,7 +2157,7 @@ export function healOffseasonChecklist(loaded: any) {
       isUnfinished(persistedChecklist.rookieContracts);
     if (needsHeal) {
       healedOffseasonChecklist = {
-        ...persistedChecklist,
+        ...healedOffseasonChecklist,
         draftLottery: 'skipped',
         draft: 'skipped',
         rookieContracts: 'skipped',
@@ -1196,5 +2165,39 @@ export function healOffseasonChecklist(loaded: any) {
       console.log('[LOAD_GAME] Healed legacy draft rows → skipped (no_draft active).');
     }
   }
+  if (
+    healedOffseasonChecklist
+    && loaded.leagueStats?.uiMode !== 'pba_isolated'
+    && isDraftLotteryEnabled(loaded.leagueStats?.draftType)
+    && !loaded.draftComplete
+    && !(loaded.draftLotteryResult?.length)
+    && (healedOffseasonChecklist.draft === 'pending' || healedOffseasonChecklist.draft === 'in-progress')
+  ) {
+    healedOffseasonChecklist = {
+      ...healedOffseasonChecklist,
+      draftLottery: 'pending',
+      draft: 'pending',
+    };
+  }
   return healedOffseasonChecklist;
+}
+
+export function healPbaCommissionerBootstrapDraftState(state: GameState): GameState {
+  if (state.gameMode === 'gm' || state.leagueStats?.uiMode !== 'pba_isolated') return state;
+  const sourceSeason = Number(
+    state.pbaSeasonKey
+    ?? state.historicalPba?.sourceSeason
+    ?? (state.pbaStartYear != null ? state.pbaStartYear + 1 : Number.NaN),
+  );
+  if (!Number.isFinite(sourceSeason) || sourceSeason !== Number(state.leagueStats.year)) return state;
+  const checklist = state.offseasonChecklist;
+  const pbaDraftResolved = checklist?.pbaDraft === 'done';
+  if (state.draftComplete && (!checklist || pbaDraftResolved)) return state;
+  return {
+    ...state,
+    draftComplete: true,
+    offseasonChecklist: checklist
+      ? { ...checklist, pbaDraft: 'done' }
+      : checklist,
+  };
 }

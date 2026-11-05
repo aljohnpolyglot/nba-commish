@@ -1,10 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ThreePointContestant } from '../../../../services/allStar/ThreePointContestant';
-import { ShootingZoneData } from '../../../../services/allStar/ThreePointContestSim';
 
 interface PlayerIntroSequenceProps {
   contestants: ThreePointContestant[];
-  zoneData: Map<string, ShootingZoneData>;
   moneyrackAssignments: Map<string, number>;
   onComplete: () => void;
   onSkip: () => void;
@@ -14,7 +12,7 @@ const STATION_NAMES = ['Left Corner', 'Left Wing', 'Top of Key', 'Right Wing', '
 const PLAYER_DURATION = 8000;
 
 export const PlayerIntroSequence: React.FC<PlayerIntroSequenceProps> = ({
-  contestants, zoneData, moneyrackAssignments, onComplete, onSkip
+  contestants, moneyrackAssignments, onComplete, onSkip
 }) => {
   const [currentPlayerIdx, setCurrentPlayerIdx] = useState(0);
   const [phase, setPhase] = useState(0);
@@ -22,37 +20,27 @@ export const PlayerIntroSequence: React.FC<PlayerIntroSequenceProps> = ({
   const [countedPA, setCountedPA] = useState(0);
   const [countedPct, setCountedPct] = useState(0);
   const [countedTotalPM, setCountedTotalPM] = useState(0);
-  const [zonesVisible, setZonesVisible] = useState<boolean[]>([false,false,false,false,false]);
   const [sliderPos, setSliderPos] = useState(50);
   const [sliderStopped, setSliderStopped] = useState(false);
   const [moneyballRevealed, setMoneyballRevealed] = useState(false);
 
   const contestant = contestants[currentPlayerIdx];
-  const zones = zoneData.get(contestant?.id ?? '');
   const moneyrack = moneyrackAssignments.get(contestant?.id ?? '') ?? 3;
   const sliderStopPct = ((moneyrack - 0.5) / 5) * 100;
 
   const stats = React.useMemo(() => {
     let threePct = 0, threePM = 0, threePA = 0, totalPM = 0, totalPA = 0;
 
-    if (zones) {
-      totalPA = zones.volByStation.reduce((a, b) => a + b, 0);
-      totalPM = zones.pctByStation.reduce((sum, pct, i) => sum + pct * zones.volByStation[i], 0);
+    if (contestant?.seasonStats?.gp) {
+      totalPA = contestant.seasonStats.tpa;
+      totalPM = contestant.seasonStats.tp;
       threePct = totalPA > 0 ? (totalPM / totalPA) * 100 : 0;
-      const estimatedGames = totalPA > 15 ? 35 : 1;
-      threePA = totalPA / estimatedGames;
-      threePM = totalPM / estimatedGames;
-    } else {
-      const tp = contestant.ratings.tp;
-      threePct = tp * 0.28 + 20;
-      threePA = tp * 0.08 + 2;
-      threePM = threePA * (threePct / 100);
-      totalPA = Math.round(threePA * 35);
-      totalPM = Math.round(threePM * 35);
+      threePA = totalPA / contestant.seasonStats.gp;
+      threePM = totalPM / contestant.seasonStats.gp;
     }
 
     return { threePct, threePM, threePA, totalPM, totalPA };
-  }, [contestant, zones]);
+  }, [contestant]);
 
   const onCompleteRef = React.useRef(onComplete);
   useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
@@ -60,7 +48,6 @@ export const PlayerIntroSequence: React.FC<PlayerIntroSequenceProps> = ({
   useEffect(() => {
     setPhase(0);
     setCountedPM(0); setCountedPA(0); setCountedPct(0); setCountedTotalPM(0);
-    setZonesVisible([false,false,false,false,false]);
     setSliderPos(50); setSliderStopped(false); setMoneyballRevealed(false);
 
     const timers: ReturnType<typeof setTimeout>[] = [];
@@ -97,16 +84,6 @@ export const PlayerIntroSequence: React.FC<PlayerIntroSequenceProps> = ({
     }, duration / steps);
     return () => clearInterval(timer);
   }, [phase, stats]);
-
-  useEffect(() => {
-    if (phase !== 5) return;
-    const timers = STATION_NAMES.map((_, i) =>
-      setTimeout(() => {
-        setZonesVisible(prev => { const next = [...prev]; next[i] = true; return next; });
-      }, i * 120)
-    );
-    return () => timers.forEach(clearTimeout);
-  }, [phase]);
 
   useEffect(() => {
     if (phase !== 6) return;
@@ -219,17 +196,20 @@ export const PlayerIntroSequence: React.FC<PlayerIntroSequenceProps> = ({
           </div>
         )}
 
-        {phase >= 3 && (
+        {phase >= 3 && !contestant.seasonStats?.gp && (
+          <p style={{ color: '#cbd5e1', textAlign: 'center', marginBottom: 32 }}>No regular-season stats available.</p>
+        )}
+        {phase >= 3 && !!contestant.seasonStats?.gp && (
           <div style={{
             display: 'flex', gap: 'clamp(12px, 4vw, 24px)', marginBottom: 32,
             animation: 'fadeIn 0.3s ease forwards',
             alignItems: 'flex-end', flexWrap: 'wrap', justifyContent: 'center',
           }}>
             {[
-              { val: countedPct.toFixed(1), unit: '%', label: '3P%' },
-              { val: countedPM.toFixed(1), unit: '', label: '3PM/G' },
-              { val: countedPA.toFixed(1), unit: '', label: '3PA/G' },
-              { val: countedTotalPM, unit: '', label: 'TOTAL 3PM' },
+              { val: (phase >= 4 ? stats.threePct : countedPct).toFixed(1), unit: '%', label: '3P%' },
+              { val: (phase >= 4 ? stats.threePM : countedPM).toFixed(1), unit: '', label: '3PM/G' },
+              { val: (phase >= 4 ? stats.threePA : countedPA).toFixed(1), unit: '', label: '3PA/G' },
+              { val: phase >= 4 ? stats.totalPM : countedTotalPM, unit: '', label: 'TOTAL 3PM' },
             ].map((item, i) => (
               <React.Fragment key={i}>
                 {i > 0 && <div style={{ width: 1, height: 30, background: '#334155' }} />}
@@ -246,52 +226,6 @@ export const PlayerIntroSequence: React.FC<PlayerIntroSequenceProps> = ({
                 </div>
               </React.Fragment>
             ))}
-          </div>
-        )}
-
-        {phase >= 4 && zones && (
-          <div style={{ fontSize: 9, fontWeight: 700, letterSpacing: '0.2em', color: '#cbd5e1', marginBottom: 10 }}>
-            SHOOTING ZONES
-          </div>
-        )}
-
-        {phase >= 5 && zones && (
-          <div style={{ display: 'flex', gap: 'clamp(2px, 1vw, 6px)', width: '100%', marginBottom: 'clamp(16px, 4vh, 28px)' }}>
-            {zones.racks.map((rack, i) => {
-              const pct = parseFloat(rack.pct);
-              const isHot = pct >= 40;
-              const isMoneyrack = moneyrack === i + 1;
-              return (
-                <div key={i} style={{
-                  flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4,
-                  opacity: zonesVisible[i] ? 1 : 0,
-                  transform: zonesVisible[i] ? 'translateY(0)' : 'translateY(10px)',
-                  transition: 'all 0.3s ease',
-                }}>
-                  <div style={{
-                    width: '100%', height: 'clamp(40px, 10vh, 60px)',
-                    background: '#0d1117', borderRadius: 4, overflow: 'hidden', position: 'relative',
-                    border: `1px solid ${isMoneyrack ? '#f59e0b' : '#1e293b'}`,
-                  }}>
-                    <div style={{
-                      position: 'absolute', bottom: 0, width: '100%',
-                      height: zonesVisible[i] ? `${pct}%` : '0%',
-                      background: isMoneyrack ? '#f59e0b' : isHot ? '#4ade80' : '#3b82f6',
-                      transition: 'height 0.5s ease', opacity: 0.8,
-                    }} />
-                    <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <span style={{ fontSize: 'clamp(9px, 2.5vw, 11px)', fontWeight: 700, fontFamily: 'monospace', color: '#fff', zIndex: 1 }}>
-                        {rack.pct}
-                      </span>
-                    </div>
-                  </div>
-                  <div style={{ fontSize: 8, color: '#94a3b8' }}>{rack.vol}</div>
-                  <div style={{ fontSize: 7, color: '#cbd5e1', textAlign: 'center', lineHeight: 1.2 }}>
-                    {STATION_NAMES[i].split(' ')[0]}
-                  </div>
-                </div>
-              );
-            })}
           </div>
         )}
 

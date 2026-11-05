@@ -1,0 +1,2147 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "french-jeep-elite-league-file.589959325465733",
+  "competitionKey": "french-jeep-elite",
+  "competitionName": "Betclic Élite",
+  "leagueKey": "french-jeep-elite",
+  "generatedAt": "2026-07-19T12:03:28.098Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "french-jeep-elite-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/12/French-Jeep-Elite/stats/2026/Averages/All/All",
+        "sourcePath": "public/data/external/french-jeep-elite/french-jeep-elite-2026-bbgm.json",
+        "sourceHash": "34c505cf899da5423cf6c2085c1febf02bc417a09f5e436d7659b6688737c52b",
+        "fetchedAt": "2026-07-19T12:03:28.098Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2005,
+      "seasonLabel": "2005",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Strasbourg IG",
+        "canonicalKey": "french-jeep-elite:strasbourg-ig"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Nancy Basket",
+        "canonicalKey": "french-jeep-elite:nancy-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "ASVEL Basket",
+          "canonicalKey": "french-jeep-elite:asvel-basket"
+        },
+        "won": 27,
+        "lost": 10
+      }
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Le Mans Sarthe Basket",
+        "canonicalKey": "french-jeep-elite:le-mans-sarthe-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Nancy Basket",
+        "canonicalKey": "french-jeep-elite:nancy-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Nancy Basket",
+          "canonicalKey": "french-jeep-elite:nancy-basket"
+        },
+        "won": 28,
+        "lost": 10
+      }
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Chorale Roanne Basket",
+        "canonicalKey": "french-jeep-elite:chorale-roanne-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Nancy Basket",
+        "canonicalKey": "french-jeep-elite:nancy-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Nancy Basket",
+          "canonicalKey": "french-jeep-elite:nancy-basket"
+        },
+        "won": 29,
+        "lost": 11
+      }
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Nancy Basket",
+        "canonicalKey": "french-jeep-elite:nancy-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Chorale Roanne Basket",
+        "canonicalKey": "french-jeep-elite:chorale-roanne-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Le Mans Sarthe Basket",
+          "canonicalKey": "french-jeep-elite:le-mans-sarthe-basket"
+        },
+        "won": 26,
+        "lost": 9
+      }
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "ASVEL Basket",
+        "canonicalKey": "french-jeep-elite:asvel-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Orleans Loiret Basket",
+        "canonicalKey": "french-jeep-elite:orleans-loiret-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "ASVEL Basket",
+          "canonicalKey": "french-jeep-elite:asvel-basket"
+        },
+        "won": 27,
+        "lost": 10
+      }
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Cholet Basket",
+        "canonicalKey": "french-jeep-elite:cholet-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Le Mans Sarthe Basket",
+        "canonicalKey": "french-jeep-elite:le-mans-sarthe-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Cholet Basket",
+          "canonicalKey": "french-jeep-elite:cholet-basket"
+        },
+        "won": 28,
+        "lost": 8
+      }
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Nancy Basket",
+        "canonicalKey": "french-jeep-elite:nancy-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Cholet Basket",
+        "canonicalKey": "french-jeep-elite:cholet-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Cholet Basket",
+          "canonicalKey": "french-jeep-elite:cholet-basket"
+        },
+        "won": 26,
+        "lost": 9
+      }
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "BCM Gravelines",
+          "canonicalKey": "french-jeep-elite:bcm-gravelines"
+        },
+        "won": 28,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Amara Sy",
+                "canonicalKey": "person:amara-sy"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Orleans Loiret Basket",
+                "canonicalKey": "french-jeep-elite:orleans-loiret-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Blake Schilb",
+                "canonicalKey": "person:blake-schilb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chalon-Sur-Saone",
+                "canonicalKey": "french-jeep-elite:chalon-sur-saone"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Albicy",
+                "canonicalKey": "person:andrew-albicy"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BCM Gravelines",
+                "canonicalKey": "french-jeep-elite:bcm-gravelines"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Evan Fournier",
+                "canonicalKey": "person:evan-fournier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Poitiers Basket 86",
+                "canonicalKey": "french-jeep-elite:poitiers-basket-86"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Blake Schilb",
+                "canonicalKey": "person:blake-schilb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chalon-Sur-Saone",
+                "canonicalKey": "french-jeep-elite:chalon-sur-saone"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Albicy",
+                "canonicalKey": "person:andrew-albicy"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BCM Gravelines",
+                "canonicalKey": "french-jeep-elite:bcm-gravelines"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Evan Fournier",
+                "canonicalKey": "person:evan-fournier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Poitiers Basket 86",
+                "canonicalKey": "french-jeep-elite:poitiers-basket-86"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Nanterre 92",
+        "canonicalKey": "french-jeep-elite:nanterre-92"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Strasbourg IG",
+        "canonicalKey": "french-jeep-elite:strasbourg-ig"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "BCM Gravelines",
+          "canonicalKey": "french-jeep-elite:bcm-gravelines"
+        },
+        "won": 21,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edwin Jackson",
+                "canonicalKey": "person:edwin-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "David Lighty",
+                "canonicalKey": "person:david-lighty"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nanterre 92",
+                "canonicalKey": "french-jeep-elite:nanterre-92"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tony Dobbins",
+                "canonicalKey": "person:tony-dobbins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Poitiers Basket 86",
+                "canonicalKey": "french-jeep-elite:poitiers-basket-86"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Livio Jean-Charles",
+                "canonicalKey": "person:livio-jean-charles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sean May",
+                "canonicalKey": "person:sean-may"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "french-jeep-elite:boulogne-levallois"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tony Dobbins",
+                "canonicalKey": "person:tony-dobbins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Poitiers Basket 86",
+                "canonicalKey": "french-jeep-elite:poitiers-basket-86"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Livio Jean-Charles",
+                "canonicalKey": "person:livio-jean-charles"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSP Limoges",
+        "canonicalKey": "french-jeep-elite:csp-limoges"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Strasbourg IG",
+        "canonicalKey": "french-jeep-elite:strasbourg-ig"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSP Limoges",
+          "canonicalKey": "french-jeep-elite:csp-limoges"
+        },
+        "won": 28,
+        "lost": 12
+      }
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "CSP Limoges",
+        "canonicalKey": "french-jeep-elite:csp-limoges"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Strasbourg IG",
+        "canonicalKey": "french-jeep-elite:strasbourg-ig"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Strasbourg IG",
+          "canonicalKey": "french-jeep-elite:strasbourg-ig"
+        },
+        "won": 36,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adrien Moerman",
+                "canonicalKey": "person:adrien-moerman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSP Limoges",
+                "canonicalKey": "french-jeep-elite:csp-limoges"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sarra Camara",
+                "canonicalKey": "person:sarra-camara"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSP Limoges",
+                "canonicalKey": "french-jeep-elite:csp-limoges"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Florent Pietrus",
+                "canonicalKey": "person:florent-pietrus"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nancy Basket",
+                "canonicalKey": "french-jeep-elite:nancy-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Petr Cornelie",
+                "canonicalKey": "person:petr-cornelie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Le Mans Sarthe Basket",
+                "canonicalKey": "french-jeep-elite:le-mans-sarthe-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Florent Pietrus",
+                "canonicalKey": "person:florent-pietrus"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nancy Basket",
+                "canonicalKey": "french-jeep-elite:nancy-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Petr Cornelie",
+                "canonicalKey": "person:petr-cornelie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Le Mans Sarthe Basket",
+                "canonicalKey": "french-jeep-elite:le-mans-sarthe-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "ASVEL Basket",
+        "canonicalKey": "french-jeep-elite:asvel-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Strasbourg IG",
+        "canonicalKey": "french-jeep-elite:strasbourg-ig"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AS Monaco",
+          "canonicalKey": "french-jeep-elite:as-monaco"
+        },
+        "won": 30,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devin Booker",
+                "canonicalKey": "person:devin-booker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chalon-Sur-Saone",
+                "canonicalKey": "french-jeep-elite:chalon-sur-saone"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Casper Ware",
+                "canonicalKey": "person:casper-ware"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Charles Lombahe-Kahudi",
+                "canonicalKey": "person:charles-lombahe-kahudi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Frank Ntilikina",
+                "canonicalKey": "person:frank-ntilikina"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Strasbourg IG",
+                "canonicalKey": "french-jeep-elite:strasbourg-ig"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Charles Lombahe-Kahudi",
+                "canonicalKey": "person:charles-lombahe-kahudi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Frank Ntilikina",
+                "canonicalKey": "person:frank-ntilikina"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Strasbourg IG",
+                "canonicalKey": "french-jeep-elite:strasbourg-ig"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AS Monaco",
+          "canonicalKey": "french-jeep-elite:as-monaco"
+        },
+        "won": 31,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Cooper",
+                "canonicalKey": "person:d-j-cooper"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Pau-Orthez",
+                "canonicalKey": "french-jeep-elite:pau-orthez"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jeremy Nzeulie",
+                "canonicalKey": "person:jeremy-nzeulie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chalon-Sur-Saone",
+                "canonicalKey": "french-jeep-elite:chalon-sur-saone"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Moustapha Fall",
+                "canonicalKey": "person:moustapha-fall"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chalon-Sur-Saone",
+                "canonicalKey": "french-jeep-elite:chalon-sur-saone"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Frank Ntilikina",
+                "canonicalKey": "person:frank-ntilikina"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Strasbourg IG",
+                "canonicalKey": "french-jeep-elite:strasbourg-ig"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Moustapha Fall",
+                "canonicalKey": "person:moustapha-fall"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chalon-Sur-Saone",
+                "canonicalKey": "french-jeep-elite:chalon-sur-saone"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Frank Ntilikina",
+                "canonicalKey": "person:frank-ntilikina"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Strasbourg IG",
+                "canonicalKey": "french-jeep-elite:strasbourg-ig"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Le Mans Sarthe Basket",
+        "canonicalKey": "french-jeep-elite:le-mans-sarthe-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "AS Monaco",
+        "canonicalKey": "french-jeep-elite:as-monaco"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AS Monaco",
+          "canonicalKey": "french-jeep-elite:as-monaco"
+        },
+        "won": 32,
+        "lost": 13
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zachery Peacock",
+                "canonicalKey": "person:zachery-peacock"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg-en-Bresse",
+                "canonicalKey": "french-jeep-elite:jl-bourg-en-bresse"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Lofton",
+                "canonicalKey": "person:chris-lofton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Le Mans Sarthe Basket",
+                "canonicalKey": "french-jeep-elite:le-mans-sarthe-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adam Mokoka",
+                "canonicalKey": "person:adam-mokoka"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BCM Gravelines",
+                "canonicalKey": "french-jeep-elite:bcm-gravelines"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adam Mokoka",
+                "canonicalKey": "person:adam-mokoka"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "BCM Gravelines",
+                "canonicalKey": "french-jeep-elite:bcm-gravelines"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "ASVEL Basket",
+        "canonicalKey": "french-jeep-elite:asvel-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "AS Monaco",
+        "canonicalKey": "french-jeep-elite:as-monaco"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "ASVEL Basket",
+          "canonicalKey": "french-jeep-elite:asvel-basket"
+        },
+        "won": 35,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "David Holston",
+                "canonicalKey": "person:david-holston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JDA Dijon Basket",
+                "canonicalKey": "french-jeep-elite:jda-dijon-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeMarcus Nelson",
+                "canonicalKey": "person:demarcus-nelson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Theo Maledon",
+                "canonicalKey": "person:theo-maledon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Theo Maledon",
+                "canonicalKey": "person:theo-maledon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AS Monaco",
+          "canonicalKey": "french-jeep-elite:as-monaco"
+        },
+        "won": 21,
+        "lost": 5
+      }
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "ASVEL Basket",
+        "canonicalKey": "french-jeep-elite:asvel-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "JDA Dijon Basket",
+        "canonicalKey": "french-jeep-elite:jda-dijon-basket"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "ASVEL Basket",
+          "canonicalKey": "french-jeep-elite:asvel-basket"
+        },
+        "won": 30,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bonzie Colson, Jr.",
+                "canonicalKey": "person:bonzie-colson-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Strasbourg IG",
+                "canonicalKey": "french-jeep-elite:strasbourg-ig"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "David Lighty",
+                "canonicalKey": "person:david-lighty"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Moustapha Fall",
+                "canonicalKey": "person:moustapha-fall"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Danilo Andjusic",
+                "canonicalKey": "person:danilo-andjusic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg-en-Bresse",
+                "canonicalKey": "french-jeep-elite:jl-bourg-en-bresse"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Moustapha Fall",
+                "canonicalKey": "person:moustapha-fall"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "ASVEL Basket",
+        "canonicalKey": "french-jeep-elite:asvel-basket"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "AS Monaco",
+        "canonicalKey": "french-jeep-elite:as-monaco"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "ASVEL Basket",
+          "canonicalKey": "french-jeep-elite:asvel-basket"
+        },
+        "won": 34,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Cummings",
+                "canonicalKey": "person:will-cummings"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "french-jeep-elite:boulogne-levallois"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Elie Okobo",
+                "canonicalKey": "person:elie-okobo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ismael Kamagate",
+                "canonicalKey": "person:ismael-kamagate"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "french-jeep-elite:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Wembanyama",
+                "canonicalKey": "person:victor-wembanyama"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brandon Jefferson",
+                "canonicalKey": "person:brandon-jefferson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Pau-Orthez",
+                "canonicalKey": "french-jeep-elite:pau-orthez"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ismael Kamagate",
+                "canonicalKey": "person:ismael-kamagate"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "french-jeep-elite:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Wembanyama",
+                "canonicalKey": "person:victor-wembanyama"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "french-jeep-elite:asvel-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AS Monaco",
+        "canonicalKey": "french-jeep-elite:as-monaco"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Boulogne-Levallois",
+        "canonicalKey": "french-jeep-elite:boulogne-levallois"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AS Monaco",
+          "canonicalKey": "french-jeep-elite:as-monaco"
+        },
+        "won": 34,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Wembanyama",
+                "canonicalKey": "person:victor-wembanyama"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "french-jeep-elite:boulogne-levallois"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jordan Loyd",
+                "canonicalKey": "person:jordan-loyd"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Wembanyama",
+                "canonicalKey": "person:victor-wembanyama"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "french-jeep-elite:boulogne-levallois"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Wembanyama",
+                "canonicalKey": "person:victor-wembanyama"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "french-jeep-elite:boulogne-levallois"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Wembanyama",
+                "canonicalKey": "person:victor-wembanyama"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "french-jeep-elite:boulogne-levallois"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Wembanyama",
+                "canonicalKey": "person:victor-wembanyama"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "french-jeep-elite:boulogne-levallois"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Victor Wembanyama",
+                "canonicalKey": "person:victor-wembanyama"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boulogne-Levallois",
+                "canonicalKey": "french-jeep-elite:boulogne-levallois"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AS Monaco",
+        "canonicalKey": "french-jeep-elite:as-monaco"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Paris",
+        "canonicalKey": "french-jeep-elite:paris"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AS Monaco",
+          "canonicalKey": "french-jeep-elite:as-monaco"
+        },
+        "won": 37,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "french-jeep-elite:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike James",
+                "canonicalKey": "person:mike-james"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Brown",
+                "canonicalKey": "person:john-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zaccharie Risacher",
+                "canonicalKey": "person:zaccharie-risacher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg-en-Bresse",
+                "canonicalKey": "french-jeep-elite:jl-bourg-en-bresse"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "french-jeep-elite:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Brown",
+                "canonicalKey": "person:john-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zaccharie Risacher",
+                "canonicalKey": "person:zaccharie-risacher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "JL Bourg-en-Bresse",
+                "canonicalKey": "french-jeep-elite:jl-bourg-en-bresse"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AS Monaco",
+        "canonicalKey": "french-jeep-elite:as-monaco"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Paris",
+        "canonicalKey": "french-jeep-elite:paris"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Paris",
+          "canonicalKey": "french-jeep-elite:paris"
+        },
+        "won": 31,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "french-jeep-elite:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "french-jeep-elite:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alpha Diallo",
+                "canonicalKey": "person:alpha-diallo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Noah Penda",
+                "canonicalKey": "person:noah-penda"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Le Mans Sarthe Basket",
+                "canonicalKey": "french-jeep-elite:le-mans-sarthe-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nadir Hifi",
+                "canonicalKey": "person:nadir-hifi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "french-jeep-elite:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alpha Diallo",
+                "canonicalKey": "person:alpha-diallo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Noah Penda",
+                "canonicalKey": "person:noah-penda"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Le Mans Sarthe Basket",
+                "canonicalKey": "french-jeep-elite:le-mans-sarthe-basket"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AS Monaco",
+        "canonicalKey": "french-jeep-elite:as-monaco"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Paris",
+        "canonicalKey": "french-jeep-elite:paris"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AS Monaco",
+          "canonicalKey": "french-jeep-elite:as-monaco"
+        },
+        "won": 31,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Elie Okobo",
+                "canonicalKey": "person:elie-okobo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Elie Okobo",
+                "canonicalKey": "person:elie-okobo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alpha Diallo",
+                "canonicalKey": "person:alpha-diallo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Hugo Yimga Moukouri",
+                "canonicalKey": "person:hugo-yimga-moukouri"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nanterre 92",
+                "canonicalKey": "french-jeep-elite:nanterre-92"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nadir Hifi",
+                "canonicalKey": "person:nadir-hifi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "french-jeep-elite:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alpha Diallo",
+                "canonicalKey": "person:alpha-diallo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "french-jeep-elite:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Hugo Yimga Moukouri",
+                "canonicalKey": "person:hugo-yimga-moukouri"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nanterre 92",
+                "canonicalKey": "french-jeep-elite:nanterre-92"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

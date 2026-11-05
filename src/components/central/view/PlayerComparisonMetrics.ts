@@ -1,5 +1,8 @@
-import { calculateK2, K2_CATS } from '../../../services/simulation/convert2kAttributes';
-import type { NBAPlayer } from '../../../types';
+import { K2_CATS } from '../../../services/simulation/convert2kAttributes';
+import type { GameState, NBAPlayer } from '../../../types';
+import { resolvePlayerRatingBundle } from '../../../store/playerRatingStore';
+import { getScoutedK2Data } from '../../../utils/scoutingFuzz';
+import { getCalibratedPer } from '../../../utils/advancedStatCalibration';
 
 export const cn = (...classes: (string | boolean | undefined)[]) => classes.filter(Boolean).join(' ');
 
@@ -36,6 +39,11 @@ function rate(player: NBAPlayer, season: number, key: keyof typeof player.stats[
   return (player.stats?.find((entry) => entry.season === season && !entry.playoffs)?.[key] as number) ?? 0;
 }
 
+function per(player: NBAPlayer, season: number): number {
+  const stat = player.stats?.find((entry) => entry.season === season && !entry.playoffs);
+  return stat ? getCalibratedPer(stat) : 0;
+}
+
 const fmt1 = (value: number) => value.toFixed(1);
 const fmtSign = (value: number) => (value >= 0 ? '+' : '') + value.toFixed(1);
 const fmtPct3 = (value: number) => value > 0 ? '.' + Math.round(value * 1000).toString().padStart(3, '0') : '—';
@@ -58,7 +66,7 @@ export const PG_METRICS: Metric[] = [
 export const ADV_METRICS: Metric[] = [
   { id: 'gp', label: 'GP', isBetterHigher: true, format: (value) => String(Math.round(value)), getValue: (player, season) => rate(player, season, 'gp') },
   { id: 'min', label: 'MIN', isBetterHigher: true, format: fmt1, getValue: (player, season) => pg(player, season, 'min') },
-  { id: 'per', label: 'PER', title: 'Player Efficiency Rating', isBetterHigher: true, format: fmt1, getValue: (player, season) => rate(player, season, 'per') },
+  { id: 'per', label: 'PER', title: 'Player Efficiency Rating', isBetterHigher: true, format: fmt1, getValue: per },
   { id: 'ewa', label: 'EWA', title: 'Estimated Wins Added', isBetterHigher: true, format: fmt1, getValue: (player, season) => rate(player, season, 'ewa') },
   { id: 'ts', label: 'TS%', title: 'True Shooting %', isBetterHigher: true, format: fmt1, getValue: (player, season) => rate(player, season, 'tsPct') },
   { id: 'usg', label: 'USG%', title: 'Usage Rate', isBetterHigher: true, format: fmt1, getValue: (player, season) => rate(player, season, 'usgPct') },
@@ -91,14 +99,10 @@ export const ADV_METRICS: Metric[] = [
   { id: 'vorp', label: 'VORP', title: 'Value Over Replacement Player', isBetterHigher: true, format: fmt1, getValue: (player, season) => rate(player, season, 'vorp') },
 ];
 
-export function getK2(player: NBAPlayer) {
+export function getK2(player: NBAPlayer, state: GameState) {
   const ratings = player.ratings?.[player.ratings.length - 1];
   if (!ratings) return null;
-  return calculateK2(ratings as any, {
-    pos: player.pos,
-    heightIn: player.hgt,
-    weightLbs: player.weight,
-    age: player.age,
-  });
+  const season = (ratings as any).season ?? state.leagueStats.year;
+  const bundle = resolvePlayerRatingBundle(player, season, season);
+  return getScoutedK2Data(state, player, bundle.displayK2);
 }
-

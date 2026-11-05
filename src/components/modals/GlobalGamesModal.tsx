@@ -1,128 +1,188 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { X, Globe, Search, MapPin } from 'lucide-react';
-import { NBATeam } from '../../types';
-import { getOpeningNightDate, toISODateString } from '../../utils/dateUtils';
-
-interface City {
-  name: string;
-  lat: number;
-  lng: number;
-  country?: string;
-}
+import { X, Globe, MapPin, Sparkles, Star } from 'lucide-react';
+import { NBAPlayer, NBATeam, type LeagueStats } from '../../types';
+import { toISODateString } from '../../utils/dateUtils';
+import { getLeagueCalendarDates } from '../../services/leagueCalendar';
+import {
+  buildGlobalGameRecommendations,
+  DEFAULT_GLOBAL_GAME_CITIES,
+  getGlobalCityMarketScore,
+  loadGlobalGameCities,
+  type GlobalGameCity,
+} from '../../services/globalGamesRecommendations';
+import { getTeamFullName } from '../../utils/teamNames';
+import { CountryFlag } from '../shared/CountryFlag';
+import { GlobalGameSelectorCard, type GlobalGameDraft } from './GlobalGameSelectorCard';
+import { loadPbaVenues, type PbaVenue } from '../../services/pba/venues';
 
 interface GlobalGamesModalProps {
   teams: NBATeam[];
+  players: NBAPlayer[];
   onClose: () => void;
-  onConfirm: (games: { homeTid: number; awayTid: number; date: string; city: string; country: string }[]) => void;
+  onConfirm: (games: GlobalGameDraft[]) => void;
   seasonYear?: number;
+  leagueStats?: Pick<LeagueStats, 'leagueCalendar' | 'uiMode'>;
+  variant?: 'global' | 'pba-opening-night';
+  fixedDate?: string;
+  initialGames?: GlobalGameDraft[];
 }
 
-const GLOBAL_CITIES_URL = 'https://gist.githubusercontent.com/randymeech/e9398d4f6fb827e2294a/raw/22925b92339f0f4c005159ae4d36f8f3988e9d39/top-1000-cities.json';
+const RECOMMENDATION_ACCENTS = [
+  'border-l-blue-500',
+  'border-l-violet-500',
+  'border-l-cyan-400',
+  'border-l-amber-400',
+  'border-l-rose-500',
+] as const;
 
-const FALLBACK_CITIES: City[] = [
-  { name: 'Paris', lat: 48.8566, lng: 2.3522, country: 'France' },
-  { name: 'London', lat: 51.5074, lng: -0.1278, country: 'United Kingdom' },
-  { name: 'Berlin', lat: 52.5200, lng: 13.4050, country: 'Germany' },
-  { name: 'Tokyo', lat: 35.6762, lng: 139.6503, country: 'Japan' },
-  { name: 'Mexico City', lat: 19.4326, lng: -99.1332, country: 'Mexico' },
-  { name: 'Abu Dhabi', lat: 24.4539, lng: 54.3773, country: 'United Arab Emirates' },
-  { name: 'Athens', lat: 37.9838, lng: 23.7275, country: 'Greece' },
-  { name: 'Madrid', lat: 40.4168, lng: -3.7038, country: 'Spain' }
-];
-
-export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClose, onConfirm, seasonYear = 2026 }) => {
-  const openingNightMs = getOpeningNightDate(seasonYear).getTime();
-  const regularSeasonEnd = new Date(Date.UTC(seasonYear - 1, 3, 15)).getTime(); // Apr 15 of pre-season year
-  const [games, setGames] = useState<{ homeTid: number; awayTid: number; date: string; city: string; country: string }[]>([
-    { homeTid: -1, awayTid: -1, date: '2026-01-15', city: '', country: '' }
-  ]);
-  const [cities, setCities] = useState<City[]>([]);
+export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({
+  teams,
+  players,
+  onClose,
+  onConfirm,
+  seasonYear = 2026,
+  leagueStats,
+  variant = 'global',
+  fixedDate,
+  initialGames,
+}) => {
+  const isPbaOpeningNight = variant === 'pba-opening-night';
+  const calendarDates = getLeagueCalendarDates(seasonYear, leagueStats);
+  const openingNightMs = calendarDates.regularSeasonStart.getTime();
+  const regularSeasonEnd = calendarDates.regularSeasonEnd.getTime();
+  const defaultDate = fixedDate ?? toISODateString(new Date(openingNightMs + Math.max(0, regularSeasonEnd - openingNightMs) / 2));
+  const emptyGame: GlobalGameDraft = { homeTid: -1, awayTid: -1, date: defaultDate, city: '', country: '' };
+  const [games, setGames] = useState<GlobalGameDraft[]>(
+    initialGames?.length ? initialGames.slice(0, isPbaOpeningNight ? 1 : 5) : [emptyGame],
+  );
+  const [cities, setCities] = useState<GlobalGameCity[]>([]);
+  const [pbaVenues, setPbaVenues] = useState<PbaVenue[]>([]);
   const [loading, setLoading] = useState(true);
   const [citySearchTerms, setCitySearchTerms] = useState<string[]>(['']);
   const [activeCitySearchIndex, setActiveCitySearchIndex] = useState<number | null>(null);
+  const [expandedGames, setExpandedGames] = useState<boolean[]>([true]);
 
   useEffect(() => {
-    fetch(GLOBAL_CITIES_URL)
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          // Filter out US cities for global games
-          const internationalCities = data
-            .filter((c: any) => c.country !== 'United States')
-            .map((c: any) => ({
-              name: c.name,
-              lat: c.lat,
-              lng: c.lng,
-              country: c.country
-            }));
-          setCities(internationalCities.length > 0 ? internationalCities : FALLBACK_CITIES);
-        } else {
-          setCities(FALLBACK_CITIES);
-        }
+    if (isPbaOpeningNight) {
+      loadPbaVenues(seasonYear)
+        .then(venues => {
+          setPbaVenues(venues);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoading(false);
+        });
+      return;
+    }
+    loadGlobalGameCities()
+      .then(internationalCities => {
+        setCities(internationalCities);
         setLoading(false);
       })
       .catch(err => {
         console.error(err);
-        setCities(FALLBACK_CITIES);
+        setCities(DEFAULT_GLOBAL_GAME_CITIES);
         setLoading(false);
       });
-  }, []);
+  }, [isPbaOpeningNight, seasonYear]);
+
+  const recommendations = useMemo(() => isPbaOpeningNight ? [] : buildGlobalGameRecommendations({
+    teams,
+    players,
+    seasonYear,
+    regularSeasonStart: toISODateString(calendarDates.regularSeasonStart),
+    regularSeasonEnd: toISODateString(calendarDates.regularSeasonEnd),
+    cities: cities.length > 0 ? cities : DEFAULT_GLOBAL_GAME_CITIES,
+  }), [calendarDates.regularSeasonEnd, calendarDates.regularSeasonStart, cities, isPbaOpeningNight, players, seasonYear, teams]);
+
+  const useRecommendations = () => {
+    setGames(recommendations.map(({ homeTid, awayTid, date, city, country }) => ({
+      homeTid,
+      awayTid,
+      date,
+      city,
+      country,
+    })));
+    setCitySearchTerms(recommendations.map(game => `${game.city}, ${game.country}`));
+    setExpandedGames(recommendations.map(() => true));
+  };
 
   const addGame = () => {
-    if (games.length < 5) {
-      setGames([...games, { homeTid: -1, awayTid: -1, date: '2026-01-15', city: '', country: '' }]);
+    if (!isPbaOpeningNight && games.length < 5) {
+      setGames([...games, emptyGame]);
       setCitySearchTerms([...citySearchTerms, '']);
+      setExpandedGames([...expandedGames, true]);
     }
   };
 
   const removeGame = (index: number) => {
     const newGames = [...games];
     newGames.splice(index, 1);
-    setGames(newGames.length > 0 ? newGames : [{ homeTid: -1, awayTid: -1, date: '2026-01-15', city: '', country: '' }]);
+    setGames(newGames.length > 0 ? newGames : [emptyGame]);
     
     const newSearchTerms = [...citySearchTerms];
     newSearchTerms.splice(index, 1);
     setCitySearchTerms(newSearchTerms.length > 0 ? newSearchTerms : ['']);
+
+    const newExpandedGames = [...expandedGames];
+    newExpandedGames.splice(index, 1);
+    setExpandedGames(newExpandedGames.length > 0 ? newExpandedGames : [true]);
   };
 
-  const updateGame = (index: number, field: keyof typeof games[0], value: any) => {
-    const newGames = [...games];
-    newGames[index] = { ...newGames[index], [field]: value };
-    setGames(newGames);
+  const updateGame = <K extends keyof GlobalGameDraft>(index: number, field: K, value: GlobalGameDraft[K]) => {
+    setGames(current => current.map((game, gameIndex) => (
+      gameIndex === index ? { ...game, [field]: value } : game
+    )));
+  };
+
+  const updateGameLocation = (index: number, city: string, country: string) => {
+    setGames(current => current.map((game, gameIndex) => (
+      gameIndex === index ? { ...game, city, country } : game
+    )));
   };
 
   const getFilteredCities = (index: number) => {
-    const term = citySearchTerms[index].toLowerCase();
+    const term = (citySearchTerms[index] ?? '').toLowerCase();
     if (!term) return [];
     return cities.filter(c => 
       c.name.toLowerCase().includes(term) || 
       (c.country && c.country.toLowerCase().includes(term))
-    ).slice(0, 10);
+    ).sort((left, right) => getGlobalCityMarketScore(right) - getGlobalCityMarketScore(left)).slice(0, 10);
   };
 
-  const activeGames = games.map((g, i) => {
+  const resolvedGames = games.map((g, i) => {
     const term = citySearchTerms[i] || '';
     const displayCity = g.city || (term.includes(',') ? term.split(',')[0].trim() : term.trim());
     const displayCountry = g.country || (term.includes(',') ? term.split(',')[1].trim() : '');
     return { ...g, displayCity, displayCountry };
-  }).filter(g => g.homeTid !== -1 || g.awayTid !== -1 || g.displayCity !== '');
+  });
+  const activeGames = resolvedGames.filter(g => g.homeTid !== -1 || g.awayTid !== -1 || g.displayCity !== '');
 
-  const isValid = activeGames.length > 0 && activeGames.every(g => {
+  const isGameConfigured = (g: typeof resolvedGames[number]) => {
     const gameDate = new Date(g.date).getTime();
-    const minDate = openingNightMs;
-    const maxDate = regularSeasonEnd;
-    
+    if (isPbaOpeningNight) {
+      return (
+        g.homeTid !== -1
+        && g.awayTid !== -1
+        && g.homeTid !== g.awayTid
+        && g.date === defaultDate
+        && g.venue?.trim() !== ''
+        && g.displayCity !== ''
+      );
+    }
     return (
-      g.homeTid !== -1 && 
-      g.awayTid !== -1 && 
-      g.homeTid !== g.awayTid && 
-      g.date !== '' && 
+      g.homeTid !== -1 &&
+      g.awayTid !== -1 &&
+      g.homeTid !== g.awayTid &&
+      g.date !== '' &&
       g.displayCity !== '' &&
       !isNaN(gameDate) &&
-      gameDate >= minDate &&
-      gameDate <= maxDate
+      gameDate >= openingNightMs &&
+      gameDate <= regularSeasonEnd
     );
-  });
+  };
+  const isValid = activeGames.length > 0 && activeGames.every(isGameConfigured);
 
   const usedTeamIds = new Set<number>();
   games.forEach(g => {
@@ -132,15 +192,15 @@ export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClo
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 md:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className="bg-slate-900 border border-slate-800 rounded-[2rem] w-full max-w-3xl overflow-hidden shadow-2xl flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]">
+      <div className="bg-slate-900 border border-slate-800 rounded-[2rem] w-full max-w-6xl overflow-hidden shadow-2xl flex flex-col max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)]">
         <div className="p-4 sm:p-6 md:p-8 border-b border-slate-800 flex items-start justify-between gap-3 bg-slate-900/50">
           <div className="flex min-w-0 items-start gap-3 sm:gap-4">
             <div className="w-12 h-12 rounded-2xl bg-blue-500/20 flex items-center justify-center border border-blue-500/30">
-              <Globe className="text-blue-500" size={24} />
+              {isPbaOpeningNight ? <MapPin className="text-blue-500" size={24} /> : <Globe className="text-blue-500" size={24} />}
             </div>
             <div className="min-w-0">
-              <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">Global Games</h2>
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Schedule International Matchups</p>
+              <h2 className="text-xl sm:text-2xl font-black text-white uppercase tracking-tight">{isPbaOpeningNight ? 'PBA Opening Night' : 'Global Games'}</h2>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{isPbaOpeningNight ? 'Choose the matchup and venue' : 'Schedule International Matchups'}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-xl transition-colors text-slate-400 hover:text-white flex-shrink-0">
@@ -151,142 +211,142 @@ export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClo
         <div className="flex-1 overflow-y-auto p-4 sm:p-6 md:p-8 space-y-6 custom-scrollbar">
           <div className="bg-slate-800/30 border border-slate-700/50 rounded-2xl p-4">
             <p className="text-sm text-slate-400 leading-relaxed italic">
-              "Commissioner, expanding our global footprint is key to revenue growth. Select up to 5 matchups to be played internationally this season (Oct 24 - Apr 15)."
+              {isPbaOpeningNight
+                ? 'Choose the two teams that will open the Philippine Cup and the arena that will host opening night.'
+                : '"Commissioner, expanding our global footprint is key to revenue growth. Select up to 5 matchups to be played internationally this season."'}
             </p>
           </div>
 
-          <div className="space-y-4">
-            {games.map((game, index) => (
-              <div 
-                key={index} 
-                className="flex flex-col gap-4 bg-slate-800/50 p-4 rounded-2xl border border-slate-700/50 group animate-in slide-in-from-bottom-2 duration-300" 
-                style={{ 
-                  animationDelay: `${index * 50}ms`,
-                  zIndex: activeCitySearchIndex === index ? 50 : 1
-                }}
-              >
-                <div className="flex items-center justify-between">
-                  <h4 className="text-white font-bold text-sm">Game {index + 1}</h4>
-                  <button 
-                    onClick={() => removeGame(index)}
-                    className="text-slate-500 hover:text-rose-400 transition-colors p-1"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Away Team</label>
-                    <select
-                      value={game.awayTid}
-                      onChange={(e) => updateGame(index, 'awayTid', parseInt(e.target.value))}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                    >
-                      <option value="-1">Select Team</option>
-                      {teams.map(t => (
-                        <option 
-                          key={t.id} 
-                          value={t.id} 
-                          disabled={usedTeamIds.has(t.id) && game.awayTid !== t.id}
-                        >
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
+          {recommendations.length > 0 && (
+            <section className="overflow-hidden rounded-[1.75rem] border border-blue-400/20 bg-[radial-gradient(circle_at_top_left,rgba(37,99,235,0.13),transparent_46%),linear-gradient(145deg,rgba(15,38,76,0.96),rgba(8,25,50,0.96))] p-4 shadow-[0_22px_70px_rgba(2,12,27,0.35)] sm:p-6">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="flex min-w-0 items-center gap-3 sm:gap-4">
+                  <div className="flex size-12 shrink-0 items-center justify-center rounded-full border border-blue-400/70 bg-blue-500/10 text-blue-300 shadow-[inset_0_0_18px_rgba(59,130,246,0.12)] sm:size-14">
+                    <Star size={26} strokeWidth={1.7} />
                   </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Home Team</label>
-                    <select
-                      value={game.homeTid}
-                      onChange={(e) => updateGame(index, 'homeTid', parseInt(e.target.value))}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                    >
-                      <option value="-1">Select Team</option>
-                      {teams.map(t => (
-                        <option 
-                          key={t.id} 
-                          value={t.id} 
-                          disabled={usedTeamIds.has(t.id) && game.homeTid !== t.id}
-                        >
-                          {t.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="space-y-1.5">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Date</label>
-                    <input
-                      type="date"
-                      value={game.date}
-                      min="2025-10-24"
-                      max="2026-04-15"
-                      onChange={(e) => updateGame(index, 'date', e.target.value)}
-                      className="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                    />
-                  </div>
-                  <div className="space-y-1.5 relative">
-                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">International City</label>
-                    <div className="relative">
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-600" size={14} />
-                      <input
-                        type="text"
-                        value={citySearchTerms[index]}
-                        onFocus={() => {
-                          setActiveCitySearchIndex(index);
-                        }}
-                        onBlur={() => {
-                          // Small delay to allow onMouseDown to fire
-                          setTimeout(() => setActiveCitySearchIndex(null), 200);
-                        }}
-                        onChange={(e) => {
-                          const newTerms = [...citySearchTerms];
-                          newTerms[index] = e.target.value;
-                          setCitySearchTerms(newTerms);
-                          setActiveCitySearchIndex(index);
-                          if (game.city) {
-                            updateGame(index, 'city', '');
-                            updateGame(index, 'country', '');
-                          }
-                        }}
-                        placeholder="Search city..."
-                        className="w-full bg-slate-900 border border-slate-700 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
-                      />
-                    </div>
-                    {activeCitySearchIndex === index && citySearchTerms[index] && !game.city && (
-                      <div className="absolute z-[100] w-full mt-1 bg-slate-800 border border-slate-700 rounded-xl shadow-2xl overflow-hidden max-h-40 overflow-y-auto custom-scrollbar">
-                        {loading ? (
-                          <div className="p-3 text-center text-xs text-slate-500">Loading cities...</div>
-                        ) : getFilteredCities(index).length > 0 ? (
-                          getFilteredCities(index).map((city, cIdx) => (
-                            <button
-                              key={cIdx}
-                              onMouseDown={(e) => {
-                                e.preventDefault();
-                                updateGame(index, 'city', city.name);
-                                updateGame(index, 'country', city.country || '');
-                                const newTerms = [...citySearchTerms];
-                                newTerms[index] = city.country && city.country.trim() ? `${city.name}, ${city.country.trim()}` : city.name;
-                                setCitySearchTerms(newTerms);
-                                setActiveCitySearchIndex(null);
-                              }}
-                              className="w-full flex items-center gap-2 px-4 py-2 text-left text-sm text-slate-300 hover:bg-slate-700 hover:text-white transition-colors"
-                            >
-                              <MapPin size={12} className="text-slate-500" />
-                              <span>{city.name}{city.country && city.country.trim() ? `, ${city.country.trim()}` : ''}</span>
-                            </button>
-                          ))
-                        ) : (
-                          <div className="p-3 text-center text-xs text-slate-500">No cities found</div>
-                        )}
-                      </div>
-                    )}
+                  <div className="min-w-0">
+                    <h3 className="text-lg font-black uppercase tracking-wide text-white sm:text-xl">Recommended slate</h3>
+                    <p className="mt-1 text-xs leading-relaxed text-slate-300 sm:text-sm">Basketball interest, market size, team strength, and roster connections.</p>
                   </div>
                 </div>
+                <button onClick={useRecommendations} className="flex w-full items-center justify-center gap-2 rounded-xl border border-blue-300/40 bg-blue-600 px-5 py-3 text-xs font-black uppercase tracking-wider text-white shadow-lg shadow-blue-950/40 transition hover:bg-blue-500 lg:w-auto lg:min-w-64">
+                  <Sparkles size={16} /> Use recommendations
+                </button>
               </div>
-            ))}
+              <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                {recommendations.map((game, index) => {
+                  const awayTeam = teams.find(team => team.id === game.awayTid);
+                  const homeTeam = teams.find(team => team.id === game.homeTid);
+                  return (
+                    <article
+                      key={`${game.city}-${game.homeTid}-${game.awayTid}`}
+                      className={`rounded-2xl border border-l-[6px] border-slate-500/60 ${RECOMMENDATION_ACCENTS[index % RECOMMENDATION_ACCENTS.length]} bg-slate-950/25 p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.025)] sm:p-5`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <div className="flex min-w-0 items-center gap-2.5">
+                            <CountryFlag
+                              country={game.country}
+                              className="inline-flex h-6 w-9 rounded-sm sm:h-7 sm:w-10"
+                              imageClassName="h-full w-full rounded-sm object-cover"
+                            />
+                            <h4 className="min-w-0 text-base font-black leading-tight text-white sm:text-lg">
+                              {game.city}, {game.country}
+                            </h4>
+                            <MapPin size={15} className="hidden shrink-0 text-slate-300 sm:block" />
+                          </div>
+                          <p className="mt-2 text-sm text-slate-300 sm:text-base">
+                            {getTeamFullName(awayTeam)} vs {getTeamFullName(homeTeam)}
+                          </p>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                          {[awayTeam, homeTeam].map(team => (
+                            <div key={team?.id ?? getTeamFullName(team)} className="flex size-11 items-center justify-center sm:size-14">
+                              {team?.logoUrl ? (
+                                <img
+                                  src={team.logoUrl}
+                                  alt={getTeamFullName(team)}
+                                  className="max-h-full max-w-full object-contain drop-shadow-lg"
+                                  loading="lazy"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <span className="text-[10px] font-black text-slate-400">{team?.abbrev ?? '—'}</span>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                      <div className="mt-4 flex flex-wrap items-center gap-2">
+                        {[
+                          { value: game.marketFit, label: 'Market fit' },
+                          { value: game.matchupStrength, label: 'Matchup strength' },
+                          {
+                            value: game.rosterConnections,
+                            label: `Roster connection${game.rosterConnections === 1 ? '' : 's'}`,
+                          },
+                        ].map(metric => (
+                          <div key={metric.label} className="inline-flex items-center gap-2 rounded-lg border border-blue-300/10 bg-slate-950/30 px-2 py-1.5">
+                            <span className="rounded-md bg-blue-500/10 px-1.5 py-0.5 text-sm font-black tabular-nums text-sky-300">{metric.value}</span>
+                            <span className="text-[9px] font-bold uppercase tracking-wide text-slate-300 sm:text-[10px]">{metric.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+          )}
+
+          <div className="space-y-3">
+            {games.map((game, index) => {
+              const resolvedGame = resolvedGames[index];
+              return (
+                <GlobalGameSelectorCard
+                  key={index}
+                  index={index}
+                  game={game}
+                  teams={teams}
+                  usedTeamIds={usedTeamIds}
+                  citySearchTerm={citySearchTerms[index] ?? ''}
+                  filteredCities={getFilteredCities(index)}
+                  displayCity={resolvedGame.displayCity}
+                  displayCountry={resolvedGame.displayCountry}
+                  configured={isGameConfigured(resolvedGame)}
+                  expanded={expandedGames[index] ?? true}
+                  active={activeCitySearchIndex === index}
+                  loading={loading}
+                  minDate={isPbaOpeningNight ? defaultDate : toISODateString(calendarDates.regularSeasonStart)}
+                  maxDate={isPbaOpeningNight ? defaultDate : toISODateString(calendarDates.regularSeasonEnd)}
+                  venueOptions={isPbaOpeningNight ? pbaVenues : undefined}
+                  onUpdate={(field, value) => updateGame(index, field, value)}
+                  onSearchFocus={() => setActiveCitySearchIndex(index)}
+                  onSearchBlur={() => setTimeout(() => setActiveCitySearchIndex(null), 200)}
+                  onSearchChange={value => {
+                    const newTerms = [...citySearchTerms];
+                    newTerms[index] = value;
+                    setCitySearchTerms(newTerms);
+                    setActiveCitySearchIndex(index);
+                    if (game.city) {
+                      updateGameLocation(index, '', '');
+                    }
+                  }}
+                  onSelectCity={city => {
+                    updateGameLocation(index, city.name, city.country);
+                    const newTerms = [...citySearchTerms];
+                    newTerms[index] = `${city.name}, ${city.country}`;
+                    setCitySearchTerms(newTerms);
+                    setActiveCitySearchIndex(null);
+                  }}
+                  onToggle={() => setExpandedGames(current => current.map((value, gameIndex) => gameIndex === index ? !value : value))}
+                  onRemove={() => removeGame(index)}
+                />
+              );
+            })}
           </div>
 
-          {games.length < 5 && (
+          {!isPbaOpeningNight && games.length < 5 && (
             <button 
               onClick={addGame}
               className="w-full py-4 border-2 border-dashed border-slate-700 rounded-2xl text-slate-400 hover:text-white hover:border-slate-500 hover:bg-slate-800/50 transition-all font-bold text-sm flex items-center justify-center gap-2"
@@ -316,7 +376,7 @@ export const GlobalGamesModal: React.FC<GlobalGamesModalProps> = ({ teams, onClo
                 : 'bg-slate-800 text-slate-500 cursor-not-allowed'
             }`}
           >
-            Confirm Schedule
+            {isPbaOpeningNight ? 'Confirm Opening Night' : 'Confirm Schedule'}
           </button>
         </div>
       </div>

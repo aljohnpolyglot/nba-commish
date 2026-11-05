@@ -15,6 +15,7 @@ export const CONTRACTS_URL = 'https://raw.githubusercontent.com/aljohnpolyglot/n
 
 /** Season year offset: the sim calendar year is (leagueStats.year - SEASON_YEAR_OFFSET). */
 export const SEASON_YEAR_OFFSET = 1;
+export const DEFAULT_CAP_INFLATION_AVERAGE = 5.5;
 
 export const DEFAULT_CONFS: NBAConf[] = [
   { cid: 0, name: 'Eastern Conference' },
@@ -39,6 +40,7 @@ export const DEFAULT_TIEBREAKERS = [
 
 export const INITIAL_LEAGUE_STATS: LeagueStats = {
   revenue: 6900, // $6.9B base (sponsorship/merch/tickets — media rights negotiated separately)
+  leagueOperatingSurplusRate: 0.0735,
   viewership: 1.8, // 1.8M average
   uiMode: 'nba',
   currency: 'USD',
@@ -49,6 +51,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   minContract: 950000,
   maxContract: 4500000,     
   numGamesPlayoffSeries: [7, 7, 7, 7],
+  playoffsEnabled: true,
   playIn: true,
   inSeasonTournament: true,
   minAgeRequirement: 19,
@@ -85,6 +88,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   allStarNumQuarters: 4,
   allStarDunkContest: true,
   allStarDunkContestPlayers: 4,
+  allStarDanceContestEnabled: false,
   allStarThreePointContest: true,
   allStarThreePointContestPlayers: 8,
   allStarShootingStars: true,
@@ -103,7 +107,6 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   allStarHorseNoGlobalRepeat: false,
   allStarOneOnOneEnabled: false,
   allStarOneOnOneParticipants: 8,
-  // The Throne — opt-in premium 1v1 tournament; replaces simulateOneOnOneTournament when enabled.
   allStarThroneEnabled: false,
   allStarThroneFieldSize: 16,
   allStarThroneFormat: 'full16',
@@ -133,6 +136,8 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   numberOfAprons: 2,
   firstApronPercentage: 126.7,
   secondApronPercentage: 134.4,
+  firstApronAmount: 195_945_000,
+  secondApronAmount: 207_824_000,
   tradeMatchingRatioUnder: 1.25,
   tradeMatchingRatioOver1st: 1.10,
   tradeMatchingRatioOver2nd: 1.00,
@@ -183,8 +188,23 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   inflationEnabled: true,
   inflationMin: 0,
   inflationMax: 10,
-  inflationAverage: 5.5,
+  inflationAverage: DEFAULT_CAP_INFLATION_AVERAGE,
   inflationStdDev: 2.0,
+
+  // Economy - Cap Exceptions
+  mleEnabled: true,
+  roomMleAmount: 8_781_000,
+  nonTaxpayerMleAmount: 14_104_000,
+  taxpayerMleAmount: 5_685_000,
+  biannualEnabled: true,
+  biannualAmount: 5_135_000,
+  roomMlePercentage: 5.68,
+  nonTaxpayerMlePercentage: 9.12,
+  taxpayerMlePercentage: 3.68,
+  biannualPercentage: 3.32,
+  biannualTradeWaiverEnabled: true,
+  biannualFirstApronHardCapEnabled: true,
+  biannualProrationEnabled: true,
 
   // Economy - Draft Picks
   tradableDraftPickSeasons: 7,
@@ -208,8 +228,8 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   // 2026 and 2027 hosts and the history view renders them as UPCOMING until sim plays
   // past All-Star Sunday of that year.
   allStarHosts: [
-    { year: 2026, city: 'Inglewood, CA', arena: 'Intuit Dome',             teamIds: [] as number[] },
-    { year: 2027, city: 'Phoenix, AZ',   arena: 'Mortgage Matchup Center', teamIds: [] as number[] },
+    { year: 2026, city: 'Inglewood, CA', arena: 'Intuit Dome',             teamIds: [12] },
+    { year: 2027, city: 'Phoenix, AZ',   arena: 'Mortgage Matchup Center', teamIds: [23] },
   ],
 
   // Honors
@@ -221,90 +241,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   allRookiePlayersPerTeam: 5,
   positionlessAwards: false,
 
-  awards: [
-    // MAJOR POSTSEASON AWARDS
-    { 
-        id: 'award-post-1', 
-        title: 'NBA Finals MVP', 
-        description: 'The Bill Russell Trophy - Awarded to the most impactful player in the championship series.' 
-    },
-    { 
-        id: 'award-post-2', 
-        title: 'Western Conference Finals MVP', 
-        description: 'The Earvin "Magic" Johnson Trophy - Awarded to the top performer in the West finals.' 
-    },
-    { 
-        id: 'award-post-3', 
-        title: 'Eastern Conference Finals MVP', 
-        description: 'The Larry Bird Trophy - Awarded to the top performer in the East finals.' 
-    },
-    { 
-        id: 'award-post-4', 
-        title: 'In-Season Tournament MVP',
-        description: 'Awarded to the standout player of the mid-season tournament.'
-    },
-
-    // REGULAR SEASON PERFORMANCE
-    { 
-        id: 'award-1', 
-        title: 'Most Valuable Player (MVP)', 
-        description: 'The Michael Jordan Trophy - Awarded to the league’s best regular season performer.' 
-    },
-    { 
-        id: 'award-2', 
-        title: 'Defensive Player of the Year', 
-        description: 'The Hakeem Olajuwon Trophy - Awarded to the most impactful defensive presence.' 
-    },
-    { 
-        id: 'award-3', 
-        title: 'Rookie of the Year', 
-        description: 'The Wilt Chamberlain Trophy - Awarded to the top performing first-year player.' 
-    },
-    { 
-        id: 'award-4', 
-        title: 'Sixth Man of the Year', 
-        description: 'The John Havlicek Trophy - Awarded to the best player coming off the bench.' 
-    },
-    { 
-        id: 'award-5', 
-        title: 'Most Improved Player', 
-        description: 'The George Mikan Trophy - Awarded to the player with the biggest year-over-year leap.' 
-    },
-    { 
-        id: 'award-6', 
-        title: 'Clutch Player of the Year', 
-        description: 'The Jerry West Trophy - Awarded to the player who performs best in late-game situations.' 
-    },
-
-    // ALL-STAR & COACHING
-    { 
-        id: 'award-7', 
-        title: 'All-Star Game MVP', 
-        description: 'The Kobe Bryant Trophy - Awarded to the standout performer of the All-Star Game.' 
-    },
-    { 
-        id: 'award-8', 
-        title: 'Coach of the Year', 
-        description: 'The Red Auerbach Trophy - Awarded to the league’s most successful head coach.' 
-    },
-
-    // CHARACTER & SOCIAL IMPACT
-    { 
-        id: 'award-9', 
-        title: 'Social Justice Champion', 
-        description: 'The Kareem Abdul-Jabbar Trophy - Recognizes players making strides in the fight for social justice.' 
-    },
-    { 
-        id: 'award-10', 
-        title: 'Sportsmanship Award', 
-        description: 'The Joe Dumars Trophy - Awarded to the player who best represents ethical behavior on court.' 
-    },
-    { 
-        id: 'award-11', 
-        title: 'Teammate of the Year', 
-        description: 'The Twyman-Stokes Trophy - Awarded to the "ideal teammate" based on selfless play and dedication.' 
-    }
-  ],
+  awards: [],
   celebrityGame: true,
   globalGames: false,
   handcheckingEnabled: false,
@@ -338,7 +275,7 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   numQuarters: 4,
   overtimeDuration: 5,
   overtimeTargetPoints: 0,
-  shootoutRounds: 0,
+  shootoutRounds: 3,
   overtimeType: 'standard',
   maxTimeouts: 7,
   coachChallenges: true,
@@ -380,9 +317,17 @@ export const INITIAL_LEAGUE_STATS: LeagueStats = {
   threePointLineDistance: 23.75,
   fourPointLineDistance: 27,
   dunkValue: 2,
-  midrangeValue: 2,
+  fieldGoalValue: 2,
+  freeThrowsEnabled: true,
+  dribbleRule: 'continuous',
+  madeBasketRestart: 'inbound',
+  teamFoulPenaltyMode: 'free_throws',
+  teamFoulPenaltyPoints: 1,
+  temporaryDisqualificationFoulLimit: 0,
+  temporaryDisqualificationUntilNextScore: false,
+  temporaryDisqualificationAllowsSubstitute: true,
+  homeCourtAdvantage: 50,
   heaveRuleEnabled: false,
-  halfCourtShotValue: 3,
   gameFormat: 'timed',
   gameTargetScore: 100,
   clutchTimeoutLimit: 2,
@@ -411,7 +356,7 @@ export const SEASON_DATES = [
   { phase: 'Trade Deadline' as GamePhase, displayName: 'Trade Deadline', start: [2, 15], end: [2, 15] },
   { phase: 'Regular Season (Part 2)' as GamePhase, displayName: 'Regular Season', start: [2, 16], end: [4, 15] },
   { phase: 'Playoffs' as GamePhase, displayName: 'Playoffs', start: [4, 16], end: [6, 20] },
-  { phase: 'Draft Lottery' as GamePhase, displayName: 'Draft Lottery', start: [6, 21], end: [6, 21] },
+  { phase: 'Draft Lottery' as GamePhase, displayName: 'Draft Lottery', start: [5, 14], end: [5, 14] },
   { phase: 'Draft' as GamePhase, displayName: 'Draft', start: [6, 25], end: [6, 25] },
   { phase: 'Free Agency' as GamePhase, displayName: 'Free Agency', start: [7, 1], end: [7, 31] },
 ];
@@ -466,28 +411,59 @@ export const ENDESA_TEAM_COUNTRY = 'Spain';
  */
 export const EXTERNAL_SALARY_SCALE: Record<string, { maxPct: number; minPct: number }> = {
   Euroleague:       { maxPct: 0.032,  minPct: 0.003 },   // ~$5M max, ~$460K min at $154M cap
+  EuroCup:          { maxPct: 0.020,  minPct: 0.0020 },
   Endesa:           { maxPct: 0.019,  minPct: 0.0019 },  // ~$3M max, ~$290K min
   'B-League':       { maxPct: 0.0065, minPct: 0.00065 }, // ~$1M max, ~$100K min
   PBA:              { maxPct: 0.0088, minPct: 0.0010 },  // ~$1.36M max, ~$155K min
   'G-League':       { maxPct: 0.003,  minPct: 0.0003 },  // ~$460K max, ~$46K min
   'China CBA':      { maxPct: 0.019,  minPct: 0.0013 },  // ~$3M max, ~$200K min
   'NBL Australia':  { maxPct: 0.0065, minPct: 0.00065 }, // ~$1M max, ~$100K min
+  'France Elite':   { maxPct: 0.015,  minPct: 0.0015 },
+  'Italy Serie A':  { maxPct: 0.017,  minPct: 0.0017 },
+  'Germany BBL':    { maxPct: 0.015,  minPct: 0.0015 },
+  'Greece A1':      { maxPct: 0.017,  minPct: 0.0017 },
+  'Turkey BSL':     { maxPct: 0.019,  minPct: 0.0019 },
+  'Lithuania LKL':  { maxPct: 0.011,  minPct: 0.0011 },
+  'Israel BSL':     { maxPct: 0.012,  minPct: 0.0012 },
+  VTB:              { maxPct: 0.020,  minPct: 0.0020 },
+  ABA:              { maxPct: 0.014,  minPct: 0.0014 },
   // WNBA cap is structurally tied to the NBA cap as ~1.6% (real-world WNBA supermax
   // ~$250K vs NBA cap ~$154M). Players make $80K-$250K, top stars touch supermax.
   WNBA:             { maxPct: 0.0016, minPct: 0.0005 },  // ~$250K max, ~$77K min at $154M cap
 };
 
+export const EXTERNAL_LEAGUE_STATUSES = Object.freeze(Object.keys(EXTERNAL_SALARY_SCALE));
+export const EXTERNAL_MENS_LEAGUE_STATUSES = Object.freeze(EXTERNAL_LEAGUE_STATUSES.filter(status => status !== 'WNBA'));
+
+export function isExternalLeagueStatus(status?: string | null): boolean {
+  return !!status && EXTERNAL_SALARY_SCALE[status] !== undefined;
+}
+
 /** Currency display for external leagues — USD stored internally, converted at display */
 export const EXTERNAL_CURRENCY: Record<string, { symbol: string; code: string; rate: number }> = {
   Euroleague:      { symbol: '€',  code: 'EUR', rate: 0.92 },
+  EuroCup:         { symbol: '€',  code: 'EUR', rate: 0.92 },
   Endesa:          { symbol: '€',  code: 'EUR', rate: 0.92 },
   'B-League':      { symbol: '¥',  code: 'JPY', rate: 149.5 },
   PBA:             { symbol: '₱',  code: 'PHP', rate: 56.2 },
   'G-League':      { symbol: '$',  code: 'USD', rate: 1 },
   'China CBA':     { symbol: '¥',  code: 'CNY', rate: 7.24 },
   'NBL Australia': { symbol: 'A$', code: 'AUD', rate: 1.53 },
+  'France Elite':  { symbol: '€',  code: 'EUR', rate: 0.92 },
+  'Italy Serie A': { symbol: '€',  code: 'EUR', rate: 0.92 },
+  'Germany BBL':   { symbol: '€',  code: 'EUR', rate: 0.92 },
+  'Greece A1':     { symbol: '€',  code: 'EUR', rate: 0.92 },
+  'Turkey BSL':    { symbol: '₺',  code: 'EUR', rate: 0.92 },
+  'Lithuania LKL': { symbol: '€',  code: 'EUR', rate: 0.92 },
+  'Israel BSL':    { symbol: '₪',  code: 'EUR', rate: 0.92 },
+  VTB:             { symbol: '€',  code: 'EUR', rate: 0.92 },
+  ABA:             { symbol: '€',  code: 'EUR', rate: 0.92 },
   WNBA:            { symbol: '$',  code: 'USD', rate: 1 },
 };
+
+export function convertUSDToExternalCurrency(usd: number, league: string): number {
+  return usd * (EXTERNAL_CURRENCY[league]?.rate ?? 1);
+}
 
 /** Format salary in local currency for an external league */
 export function formatExternalSalary(usd: number, league: string): string {
@@ -497,7 +473,7 @@ export function formatExternalSalary(usd: number, league: string): string {
     if (usd >= 1_000) return `$${(usd / 1_000).toFixed(0)}K`;
     return `$${Math.round(usd)}`;
   }
-  const local = usd * cur.rate;
+  const local = convertUSDToExternalCurrency(usd, league);
   if (local >= 1_000_000_000) return `${cur.symbol}${(local / 1_000_000_000).toFixed(1)}B`;
   if (local >= 1_000_000) return `${cur.symbol}${(local / 1_000_000).toFixed(1)}M`;
   if (local >= 1_000) return `${cur.symbol}${(local / 1_000).toFixed(0)}K`;
@@ -520,6 +496,15 @@ export const TRANSFER_MARKET_NBA_DEFAULTS: NonNullable<LeagueStats['transferMark
   releaseClauseDefaultMult: 1.5,
 };
 
+export const LOAN_MARKET_NBA_DEFAULTS: NonNullable<LeagueStats['loanMarket']> = {
+  enabled: false,
+  summerStart: '07-01',
+  summerEnd: '08-31',
+  winterStart: '01-01',
+  winterEnd: '01-31',
+  maxActiveLoansPerClub: 2,
+};
+
 export const EURO_ISOLATED_DEFAULTS: Partial<LeagueStats> = {
   uiMode: 'euro_isolated',
   currency: 'EUR',
@@ -529,13 +514,21 @@ export const EURO_ISOLATED_DEFAULTS: Partial<LeagueStats> = {
   transferMarket: {
     enabled: true,
     summerStart: '07-01',
-    summerEnd: '08-31',
+    summerEnd: '09-30',
     winterStart: '12-15',
     winterEnd: '01-31',
     auctionDays: 7,
     tierGating: true,
     bidderPool: 'euro',
     releaseClauseDefaultMult: 1.5,
+  },
+  loanMarket: {
+    enabled: true,
+    summerStart: '07-01',
+    summerEnd: '09-15',
+    winterStart: '01-01',
+    winterEnd: '01-31',
+    maxActiveLoansPerClub: 2,
   },
   // FIBA / Euroleague / Endesa cadence: 4 × 10-minute quarters = 40-min game,
   // 200-min team budget. Without this, GameSimulator falls back to NBA defaults
@@ -592,6 +585,9 @@ export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
   pbaConference: 'philippine',
   pbaConferencePhase: 'setup',
   pbaLocalEligibilityMode: 'registered_roster',
+  pbaLocalFreeAgencyDays: 15,
+  faStartMonth: 10,
+  faStartDay: 1,
   fourPointLine: true,
   fourPointLineDistance: 27,
   quarterLength: 12,
@@ -601,6 +597,7 @@ export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
   foulOutLimit: 6,
   overtimeEnabled: true,
   overtimeDuration: 5,
+  minPlayersPerTeam: 10,
   maxPlayersPerTeam: 18,
   maxStandardPlayersPerTeam: 18,
   maxTrainingCampRoster: 18,
@@ -610,7 +607,7 @@ export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
   salaryCapType: 'none',
   minContractType: 'static',
   minContractStaticAmount: 0.015,
-  maxContractType: 'static',
+  maxContractType: 'none',
   maxContractStaticPercentage: 35,
   luxuryTaxEnabled: false,
   apronsEnabled: false,
@@ -621,12 +618,20 @@ export const PBA_ISOLATED_DEFAULTS: Partial<import('./types').LeagueStats> = {
   playerOptionsEnabled: false,
   rookieScaleType: 'none',
   rookieContractLength: 2,
+  minContractLength: 1,
+  maxContractLengthStandard: 4,
+  maxContractLengthBird: 4,
   rookieTeamOptionsEnabled: false,
   rookieRestrictedFreeAgentEligibility: false,
   tradeMatchingRatioUnder: 0,
   stepienRuleEnabled: false,
   tradableDraftPickSeasons: 3,
   allStarGameEnabled: true,
+  allStarFormat: 'captains_draft',
+  allStarTeams: 2,
+  allStarCaptainType: 'player',
+  allStarPlayerCaptainNameStyle: 'first_name',
+  pbaAllStarDanceContestEnabled: true,
   allStarMirrorLeagueRules: false,
   allStarGameFormat: 'timed',
   allStarQuarterLength: 12,
@@ -660,15 +665,15 @@ export const NATIONALITY_LEAGUE_BIAS: Record<string, string> = {
   Australia:   'NBL Australia',
   China:       'China CBA',
   Spain:       'Endesa',
-  Greece:      'Euroleague',
-  Turkey:      'Euroleague',
-  Serbia:      'Euroleague',
-  France:      'Euroleague',
-  Germany:     'Euroleague',
-  Italy:       'Euroleague',
-  Lithuania:   'Euroleague',
-  Israel:      'Euroleague',
-  Russia:      'Euroleague',
+  Greece:      'Greece A1',
+  Turkey:      'Turkey BSL',
+  Serbia:      'ABA',
+  France:      'France Elite',
+  Germany:     'Germany BBL',
+  Italy:       'Italy Serie A',
+  Lithuania:   'Lithuania LKL',
+  Israel:      'Israel BSL',
+  Russia:      'VTB',
 };
 
 // ── T1 — GENERATOR CAPS ──────────────────────────────────────────────────────
@@ -724,6 +729,8 @@ export const YOUTH_EXTERNAL_OVR_CAP = 37;
 
 /** BBGM raw OVR cap for undrafted players (no round assigned). K2 ~80. */
 export const UNDRAFTED_OVR_CAP = 56;
+
+export const DRAFT_CLASS_HORIZON_YEARS = 4; // current class plus the next three
 
 // ── T2 — NATIONALITY / CLUB AFFINITY ─────────────────────────────────────────
 
@@ -809,6 +816,7 @@ export const CLUB_NATIONALITY_MAP: Record<number, string> = {
 // to avoid cross-service circular imports.
 export const EXTERNAL_LEAGUE_OVR_CAP: Record<string, number> = {
   Euroleague:      58,
+  EuroCup:         56,
   Endesa:          55,
   'NBL Australia': 52,
   'China CBA':     50,

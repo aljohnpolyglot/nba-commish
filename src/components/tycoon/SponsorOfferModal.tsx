@@ -1,18 +1,19 @@
 import React from 'react';
-import { X, CheckCircle2, Star, ArrowRight, Sparkles } from 'lucide-react';
+import { X, CheckCircle2, Star, ArrowRight } from 'lucide-react';
 import { SponsorLogo } from './SponsorLogo';
-import { getBrandMeta } from '../../data/sponsorCatalogFetcher';
+import { getBrandMeta, type LeagueKey } from '../../data/sponsorCatalogFetcher';
 import type { SponsorshipSlot, SponsorIndustry } from '../../types/tycoon';
 import { formatCurrencyWithCode } from '../../utils/helpers';
 import {
-  SLOT_PLACEMENT_LABEL, SLOT_VISIBILITY, INDUSTRY_PROFILE_LABEL,
+  SLOT_PLACEMENT_LABEL, INDUSTRY_PROFILE_LABEL,
   describeBrand, getSponsorPerks, getClubBenefits, breakdownAnnualValue,
-  STRATEGIC_FIT_GRADES, type StrategicFitGrade, type ExclusivityType,
+  type ExclusivityType,
   NEGOTIATION_WINDOW_DAYS,
 } from '../../services/tycoon/sponsorOfferConstants';
 
 export interface SponsorOfferModalData {
   brand: string;
+  sponsorLeague?: LeagueKey;
   industry: SponsorIndustry | 'generic';
   archetype?: 'premium' | 'gambling' | 'tech' | 'local' | 'generic';
   slot: SponsorshipSlot;
@@ -34,7 +35,6 @@ export interface SponsorOfferModalData {
   exclusivityScope: string;      // e.g. "Telecommunications"
   interestLabel: 'Very Interested' | 'Interested' | 'Neutral' | 'Not Interested';
   interestSub: string;
-  strategicFit: StrategicFitGrade;
   negotiationDaysLeft: number;
   expiresOn: string;             // e.g. "Jun 01, 2026"
   currentSponsorRevenue: number;
@@ -60,9 +60,6 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
   const dealTypeLabel = isOneTime ? 'One-Time' : (isEndorsement ? 'Endorsement' : 'Sponsorship');
   const dealTypeSub = data.dealTypeLabel ?? (isEndorsement ? 'Player Endorsement' : SLOT_PLACEMENT_LABEL[data.slot]);
   const detailsPanelTitle = isEndorsement ? 'Endorsement Details' : 'Sponsorship Details';
-  const placementLabel = isEndorsement ? (data.dealTypeLabel ?? 'Community Activation') : SLOT_PLACEMENT_LABEL[data.slot];
-  const visibilityLabel = isEndorsement ? 'Player appearances, social & community' : SLOT_VISIBILITY[data.slot];
-  const categoryLabel = data.dealTypeLabel ?? INDUSTRY_PROFILE_LABEL[data.industry];
   const perks = data.brandGets ?? getSponsorPerks(data.slot);
   const clubBenefits = data.clubGets ?? getClubBenefits(data.industry);
   const yearsLabel = `${data.contractYears} Year${data.contractYears === 1 ? '' : 's'}`;
@@ -73,7 +70,6 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
 
   const totalValue = isOneTime ? data.valuePerYear : data.valuePerYear * data.contractYears;
   const breakdown = breakdownAnnualValue(data.valuePerYear, data.archetype);
-  const fit = STRATEGIC_FIT_GRADES[data.strategicFit];
   const projectedRevenue = data.currentSponsorRevenue + data.valuePerYear;
   const revenueDelta = data.valuePerYear;
   const revenuePctDelta = data.currentSponsorRevenue > 0 ? (revenueDelta / data.currentSponsorRevenue) * 100 : 0;
@@ -86,7 +82,7 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
           <div className="shrink-0">
             <SponsorLogo
               name={data.brand}
-              meta={getBrandMeta('spain', data.brand)}
+              meta={getBrandMeta(data.sponsorLeague ?? 'spain', data.brand)}
               industry={data.industry}
               size={96}
             />
@@ -133,7 +129,7 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
                     <div className="flex items-center justify-center rounded-xl border border-slate-800 bg-slate-950/70 p-3">
                       {isEndorsement ? (
                         <div className="w-full aspect-[3/4] rounded-lg border border-slate-700 bg-gradient-to-b from-violet-500/15 to-slate-900/40 flex flex-col items-center justify-center gap-2 p-2">
-                          <SponsorLogo name={data.brand} meta={getBrandMeta('spain', data.brand)} industry={data.industry} size={56} />
+                          <SponsorLogo name={data.brand} meta={getBrandMeta(data.sponsorLeague ?? 'spain', data.brand)} industry={data.industry} size={56} />
                           <div className="text-[10px] font-black uppercase tracking-widest text-violet-300 text-center">Endorsement</div>
                         </div>
                       ) : (
@@ -145,10 +141,6 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
                       )}
                     </div>
                     <dl className="text-sm">
-                      <DetailRow k="Placement" v={placementLabel} />
-                      <DetailRow k="Visibility" v={visibilityLabel} />
-                      <DetailRow k="Territory" v="Local / Regional" />
-                      <DetailRow k="Category" v={categoryLabel} />
                       {isOneTime ? (
                         <>
                           <DetailRow k="Activation" v="One-Time Event" />
@@ -226,18 +218,6 @@ export const SponsorOfferModal: React.FC<Props> = ({ open, onClose, data, onDism
                       </li>
                     ))}
                   </ul>
-                  <div className="mt-4 rounded-xl border border-emerald-400/30 bg-emerald-400/5 p-4 flex items-start gap-3">
-                    <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/20">
-                      <Sparkles size={14} className="text-emerald-300" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className={`text-sm font-black ${fit.tint}`}>Strategic Fit</div>
-                      <div className="text-xs text-slate-300 mt-1">{fit.copy}</div>
-                    </div>
-                    <div className="shrink-0 w-9 h-9 rounded-lg border border-emerald-400/40 bg-emerald-400/15 flex items-center justify-center font-black text-emerald-300">
-                      {data.strategicFit}
-                    </div>
-                  </div>
                 </Panel>
 
                 <Panel title="Financial Impact">

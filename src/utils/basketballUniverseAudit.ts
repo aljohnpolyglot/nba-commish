@@ -157,6 +157,32 @@ function logRosterAudit(state: GameState) {
   console.table(Object.entries(buckets).map(([bucket, players]) => ({ bucket, players })));
 }
 
+function logNbaExternalPbaMarketAudit(state: GameState) {
+  if (state.leagueType !== 'modded' || state.moddedLeagueBase !== 'nba') return;
+  const calendarYear = Number(normalizeDate(state.date).slice(0, 4));
+  const sourcePlayers = state.players.filter(player => !!player.historicalPbaSource);
+  const futureDraftLeaks = sourcePlayers.filter(player => {
+    const draftYear = Number(player.draft?.year);
+    return Number.isFinite(draftYear) && draftYear > calendarYear;
+  });
+  console.log(TAG, 'NBA external PBA market', {
+    tracker: state.nbaExternalPbaMarket,
+    sourcePlayers: sourcePlayers.length,
+    pbaMarketPlayers: sourcePlayers.filter(player => player.status === 'PBA').length,
+    openFreeAgents: sourcePlayers.filter(player => player.tid === -1 && player.status === 'Free Agent').length,
+    nbaClaimed: sourcePlayers.filter(player => player.tid >= 0 && player.tid < 100).length,
+    futureDraftLeaks: futureDraftLeaks.length,
+  });
+  if (futureDraftLeaks.length > 0) {
+    console.table(futureDraftLeaks.map(player => ({
+      player: player.name,
+      draftYear: player.draft?.year,
+      status: player.status,
+      tid: player.tid,
+    })));
+  }
+}
+
 export function logBasketballUniverseAudit(state: GameState, context = 'manual'): void {
   const season = Number(state.leagueStats?.year ?? new Date().getFullYear());
   const activeSpecs = state.activeCompetitions?.length ? state.activeCompetitions : [];
@@ -181,6 +207,7 @@ export function logBasketballUniverseAudit(state: GameState, context = 'manual')
   console.table(buildCompetitionRows(state, effectivePbaSpecs, season));
   console.log(TAG, 'Roster scope sanity');
   logRosterAudit(state);
+  logNbaExternalPbaMarketAudit(state);
   if (state.leagueStats?.uiMode === 'pba_isolated') {
     logPbaLazySimAudit(state, `${context} detail`);
   }

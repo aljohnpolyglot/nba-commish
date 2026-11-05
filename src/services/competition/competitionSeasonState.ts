@@ -8,12 +8,14 @@ export interface PostseasonScheduleState {
   boxScores: GameResult[];
   nonNBATeams?: Array<{ tid: number; league?: string }>;
   clubAliasMap?: Record<number, number>;
+  euroleagueSeededTids?: number[];
+  euroleagueSeedSeason?: number;
   userTeamId?: number | null;
+  leagueStats?: { uiMode?: string; year?: number };
 }
 
 export interface EuroSeasonCompletionState extends PostseasonScheduleState {
   activeCompetitions?: CompetitionSpec[];
-  leagueStats?: { uiMode?: string; year?: number };
 }
 
 type CompetitionSeasonResolver = (
@@ -22,8 +24,6 @@ type CompetitionSeasonResolver = (
   season: number,
   seedTids?: number[],
 ) => { championTid: number | null } | null;
-
-const EURO_SEASON_COMPLETION_COMPETITION_IDS = new Set(['endesa', 'euroleague']);
 
 export function dateForRound(season: number, month: number, day: number): string {
   return new Date(Date.UTC(month >= 9 ? season - 1 : season, month - 1, day)).toISOString();
@@ -51,6 +51,7 @@ export function matchesBoxScoreSeason(game: GameResult, season?: number): boolea
 }
 
 export function matchesScheduleSeason(game: Game, season: number): boolean {
+  if (typeof game.season === 'number') return game.season === season;
   const year = new Date(game.date ?? '').getUTCFullYear();
   return Number.isFinite(year) && (year === season || year === season - 1);
 }
@@ -156,7 +157,6 @@ export function getUnresolvedEuroSeasonCompetitionIds(
   if (seasons.length === 0) return [];
 
   return (state.activeCompetitions ?? [])
-    .filter((spec) => EURO_SEASON_COMPLETION_COMPETITION_IDS.has(spec.id))
     .filter((spec) => {
       return seasons.some((season) => {
         if (!hasCompetitionSeasonMaterial(state, spec, season)) return false;

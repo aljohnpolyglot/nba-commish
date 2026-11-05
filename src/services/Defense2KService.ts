@@ -29,6 +29,7 @@ function defense2KFromK2Sub(df: number[]): Defense2K {
 
 export class Defense2KService {
   private static playerMap = new Map<string, Defense2K>();
+  private static simulationPlayerMap: Map<string, Defense2K | undefined> | null = null;
 
   /** Normalize to lowercase ASCII — strips accents, dots, apostrophes, extra spaces.
    *  "Luka Dončić" → "luka doncic"  |  "O.G. Anunoby" → "og anunoby"
@@ -41,6 +42,20 @@ export class Defense2KService {
       .replace(/\s+/g, ' ')             // collapse whitespace
       .trim()
       .toLowerCase();
+  }
+
+  /**
+   * Imported and historical rows can legitimately lack an internalId. A map
+   * keyed only by that optional field collapses several rotation players into
+   * one worker profile. Include stable roster identity so hydration mirrors
+   * the main realm's name lookup for every player.
+   */
+  private static simulationProfileKey(player: Player): string {
+    return [
+      String(player.internalId ?? ''),
+      String(player.tid ?? ''),
+      this.normalize(player.name ?? ''),
+    ].join('|');
   }
 
   static async initialize() {
@@ -97,6 +112,10 @@ export class Defense2KService {
    * and a CBA journeyman reads honestly weak — no per-league table required.
    */
   static getPlayerDefense(player: Player): Defense2K | undefined {
+    const simulationKey = this.simulationProfileKey(player);
+    if (this.simulationPlayerMap?.has(simulationKey)) {
+      return this.simulationPlayerMap.get(simulationKey);
+    }
     const mapped = this.playerMap.get(this.normalize(player.name));
     if (mapped) return mapped;
 
@@ -111,17 +130,40 @@ export class Defense2KService {
     return defense2KFromK2Sub(k2.DF.sub);
   }
 
+  static captureSimulationProfiles(players: Player[]): Record<string, Defense2K | null> {
+    return Object.fromEntries(players.map(player => [
+      this.simulationProfileKey(player),
+      this.getPlayerDefense(player) ?? null,
+    ]));
+  }
+
+  static withSimulationProfiles<T>(
+    profiles: Record<string, Defense2K | null>,
+    run: () => T,
+  ): T {
+    const previous = this.simulationPlayerMap;
+    this.simulationPlayerMap = new Map(Object.entries(profiles).map(([id, profile]) => [
+      id,
+      profile ?? undefined,
+    ]));
+    try {
+      return run();
+    } finally {
+      this.simulationPlayerMap = previous;
+    }
+  }
+
   // Calculates the weighted team averages based on rotation
-  static getTeamDefense(rotation: Player[]): Defense2K {
-    const top9 = rotation.slice(0, 9);
+  static getTeamDefense(rotation: Player[], playersOnCourt = 5): Defense2K {
+    const weightedRotation = rotation.slice(0, Math.max(9, playersOnCourt + 4));
     const defaultDef = { interiorDef: 65, perimeterDef: 65, steal: 65, block: 65, helpDefIq: 65, passPerception: 65, defConsistency: 65, overallDef: 65 };
-    if (top9.length === 0) return defaultDef;
+    if (weightedRotation.length === 0) return defaultDef;
 
     let totals = { int: 0, per: 0, stl: 0, blk: 0, help: 0, pass: 0, cons: 0, ovr: 0 };
     let totalWeight = 0;
 
-    top9.forEach((p, i) => {
-      const weight = i < 5 ? 2.0 : 1.0; // Starters matter 2x as much
+    weightedRotation.forEach((p, i) => {
+      const weight = i < playersOnCourt ? 2.0 : 1.0;
       const def = this.getPlayerDefense(p) || defaultDef;
       
       totals.int += def.interiorDef * weight;

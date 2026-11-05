@@ -1,5 +1,6 @@
 import React from 'react';
 import { LivePlayer } from './liveContestTypes';
+import { PlayerPortrait } from '../../components/shared/PlayerPortrait';
 
 interface LiveContestPlayerCardProps {
   player: LivePlayer;
@@ -7,8 +8,6 @@ interface LiveContestPlayerCardProps {
   role?: string;
   isCompeting?: boolean;
 }
-
-const fallbackFace = (name: string) => `https://faces.basketball-gm.com/api/v1/face?seed=${encodeURIComponent(name || '')}`;
 
 export const LiveContestPlayerCard: React.FC<LiveContestPlayerCardProps> = ({ player, isActive, role, isCompeting }) => {
   const rating = player.ratings[0];
@@ -27,15 +26,7 @@ export const LiveContestPlayerCard: React.FC<LiveContestPlayerCardProps> = ({ pl
       )}
 
       <div className="z-10 mr-4 flex flex-col items-center">
-        <div className="relative h-14 w-14 overflow-hidden rounded-full border-2 border-slate-800 bg-neutral-800 shadow-inner">
-          <img
-            src={player.imgURL || fallbackFace(player.name)}
-            onError={event => { event.currentTarget.src = fallbackFace(player.name); }}
-            alt={player.name}
-            className="relative z-10 h-full w-full object-cover"
-            referrerPolicy="no-referrer"
-          />
-        </div>
+        <PlayerPortrait imgUrl={player.imgURL} playerName={player.name} size={56} />
         <div className={`mt-1 text-[10px] font-black ${isActive ? 'text-blue-400' : 'text-neutral-500'}`}>
           {player.pos || 'G'}
         </div>

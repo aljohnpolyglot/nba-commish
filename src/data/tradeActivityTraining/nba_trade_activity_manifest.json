@@ -1,0 +1,94 @@
+{
+  "schemaVersion": 1,
+  "algorithmVersion": "nba-trade-activity-v1",
+  "sourcePath": "nba-player-movement-by-year/nba-player-movement-*.json",
+  "sourceSha256": "f91b0043002b37d878c53903326900ef479a4dffc9b8b2477aabfe3a51283983",
+  "sourceFiles": [
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2015.json",
+      "sha256": "1e5a88a429fe1f7df4527f621d1bdfc732d14650a0acd5b65654a12c0f7bfdce",
+      "bytes": 205359,
+      "movementRows": 498
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2016.json",
+      "sha256": "a08f6493ce6c2359fac793d8913197231083b7625cb1fffe3ca7bbd1b7dbb3f9",
+      "bytes": 300494,
+      "movementRows": 726
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2017.json",
+      "sha256": "00eefbf94207a6e42a78ca6b830476c7c91824e0523a58b480b8837513c54932",
+      "bytes": 315401,
+      "movementRows": 759
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2018.json",
+      "sha256": "6ed39cc41323341704e3a185069f09fc9e8f91bd47c9759d30decefdef750cbf",
+      "bytes": 333554,
+      "movementRows": 801
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2019.json",
+      "sha256": "8b3f0db503e559fadd15758ed6681d63c265c87b09ade9fd371e2222ec0d56da",
+      "bytes": 362325,
+      "movementRows": 867
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2020.json",
+      "sha256": "a3d92d32bd9c549c1ad0fc2ed6b46850a16d664dfd015f45fc5a8f3156b5204b",
+      "bytes": 288990,
+      "movementRows": 689
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2021.json",
+      "sha256": "2a5925ea12798f4dc104f52b62f2aaba1f760856c7c73786634058f693996151",
+      "bytes": 429362,
+      "movementRows": 1026
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2022.json",
+      "sha256": "3c02602ec1e27e56921648685507e60a38f4c296e6c25573ee326fa4d11c937a",
+      "bytes": 395870,
+      "movementRows": 948
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2023.json",
+      "sha256": "695e4afb818f527ff5c4380765bc7400d4ba445e7fc5e4799f19d8db94f00465",
+      "bytes": 394958,
+      "movementRows": 946
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2024.json",
+      "sha256": "2fcef78f133734ded170a87408e8e809749221db7124dbb0425a61f8d241fd01",
+      "bytes": 388257,
+      "movementRows": 930
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2025.json",
+      "sha256": "21e3ea8efa87e693e9eafdab20542b87068ecd32c4341683490ca0faf38d2986",
+      "bytes": 406871,
+      "movementRows": 980
+    },
+    {
+      "path": "nba-player-movement-by-year/nba-player-movement-2026.json",
+      "sha256": "633f8b20b613dbf15cc4326f7e88b35e08ec6146bf749f7a1dc8e54ae2a93d57",
+      "bytes": 213978,
+      "movementRows": 508
+    }
+  ],
+  "sourceCoverage": {
+    "startDate": "2015-07-01",
+    "endDate": "2026-07-10",
+    "latestSeasonIncomplete": true
+  },
+  "movementRowCount": 9678,
+  "tradeMovementRowCount": 1775,
+  "nonTradeMovementRowCount": 7903,
+  "canonicalTradeEventCount": 494,
+  "multiRowTradeCount": 450,
+  "largestMovementRowCount": 16,
+  "dedupeRule": "Filter transactionType === Trade, then collapse every row sharing the exact GroupSort value into one event.",
+  "deadlineAlignmentRule": "Use the versioned actual NBA deadline for the event season; offsets are calendar days where deadline day is 0.",
+  "offseasonAlignmentRule": "Use season-specific Draft, Free Agency opening, and Training Camp anchors; exposure ends at the local source coverage date."
+}

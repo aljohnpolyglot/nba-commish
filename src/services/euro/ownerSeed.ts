@@ -1,7 +1,7 @@
 import { getNameData } from '../../data/nameDataFetcher';
 import { getTeamCountry } from '../../utils/teamCountry';
 import { buildCoachNationalityPool } from './nationalityPool';
-import { generate as generateFaceRaw } from 'facesjs';
+import { deterministicStaffImageId } from '../../utils/staffPortrait';
 import type {
   GameState,
   NBATeam,
@@ -93,24 +93,12 @@ export function seedOwner(
   const nationality = homeCountry && rng() < 0.7 ? homeCountry : weightedCountry(pool, rng);
   const defaults = TIER_DEFAULTS[tier];
 
-  // Generate a facesjs config so the Owner card has a recognizable cartoon
-  // portrait instead of an indexed Staff{N}.png (those rendered as squished
-  // logo-like images in the small 14×16 frame). Keeps staffImageId around
-  // for the OwnerProfile shape — the UI now prefers face when present.
-  let ownerFace: any;
-  try {
-    ownerFace = generateFaceRaw({
-      jersey: { id: 'suit' },
-      accessories: { id: 'none' },
-    } as any);
-  } catch {
-    ownerFace = undefined;
-  }
+  const name = pickName(nationality, rng);
   return {
-    name: pickName(nationality, rng),
+    name,
     nationality,
-    face: ownerFace,
-    staffImageId: Math.floor(rng() * 948) + 1,
+    face: null,
+    staffImageId: deterministicStaffImageId(name),
     wealthTier: weightedDraw(defaults.wealth, rng),
     patience: weightedDraw(defaults.patience, rng),
     vision: weightedDraw(defaults.vision, rng),

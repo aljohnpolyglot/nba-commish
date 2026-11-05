@@ -1,22 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Zap, RotateCcw, Search } from 'lucide-react';
+import { Sparkles, Zap, RotateCcw, Search, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { NBAPlayer } from '../../../types';
-import { loadRatings, getRawTeams } from '../../../data/NBA2kRatings';
 
-interface DunkRating { drivingDunk: number; vertical: number; score: number; }
-
-function normalize2K(name: string): string {
-  return name
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[.']/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-    .toLowerCase();
-}
+interface DunkRating { speed: number; vertical: number; score: number; }
 
 interface DunkContestModalProps {
   onClose: () => void;
@@ -36,10 +25,9 @@ const ModalShell = ({ children, wide }: { children: React.ReactNode; wide?: bool
 
 export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onConfirm }) => {
   const { state } = useGame();
-  const [ratings, setRatings] = useState<Map<string, DunkRating>>(new Map());
-  const [loading, setLoading] = useState(true);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState('');
+  const contestantCount = Math.min(12, Math.max(2, Math.round(state.leagueStats.allStarDunkContestPlayers ?? 4)));
 
   const existingContestants: NBAPlayer[] = state.allStar?.dunkContestContestants ?? [];
   const isEditMode = existingContestants.length > 0;
@@ -49,44 +37,21 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
     const existingIds = new Set((state.allStar?.dunkContestContestants ?? []).map((p: NBAPlayer) => p.internalId));
     setSelected(existingIds);
 
-    loadRatings()
-      .then(() => {
-        const teams = getRawTeams();
-        const map = new Map<string, DunkRating>();
-        for (const team of teams) {
-          for (const p of team.roster) {
-            const athl = p.attributes?.Athleticism ?? {};
-            const inside = p.attributes?.['Inside Scoring'] ?? {};
-            const clean = (obj: any) => {
-              const out: any = {};
-              for (const [k, v] of Object.entries(obj)) {
-                out[(k as string).replace(/^[+-]\d+\s+/, '').trim()] = parseInt(v as string, 10) || 50;
-              }
-              return out;
-            };
-            const cleanAthl = clean(athl);
-            const cleanInside = clean(inside);
-            const drivingDunk = cleanInside['Driving Dunk'] ?? cleanInside['Dunk'] ?? 50;
-            const vertical = cleanAthl['Vertical'] ?? 50;
-            const score = Math.round((drivingDunk + vertical) / 2);
-            map.set(normalize2K(p.name), { drivingDunk, vertical, score });
-          }
-        }
-        setRatings(map);
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false));
   }, []);
 
   const allPlayers = useMemo(() => {
     return state.players
-      .filter(p => p.status === 'Active' && p.tid >= 0)
+      .filter(p => p.status === 'Active' && p.tid >= 0 && p.tid < 100)
       .map(p => {
-        const r = ratings.get(normalize2K(p.name));
-        return { player: p, rating: r ?? { drivingDunk: 50, vertical: 50, score: 50 }, hasRating: !!r };
+        const current = [...(p.ratings ?? [])]
+          .sort((left, right) => Number(right.season ?? 0) - Number(left.season ?? 0))[0];
+        const speed = Number(current?.spd ?? 0);
+        const vertical = Number(current?.jmp ?? 0);
+        const rating: DunkRating = { speed, vertical, score: speed + vertical };
+        return { player: p, rating };
       })
       .sort((a, b) => b.rating.score - a.rating.score);
-  }, [state.players, ratings]);
+  }, [state.players]);
 
   const visiblePlayers = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -102,7 +67,7 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
     setSelected(prev => {
       const n = new Set(prev);
       if (n.has(id)) n.delete(id);
-      else if (n.size < 6) n.add(id);
+      else if (n.size < contestantCount) n.add(id);
       return n;
     });
   };
@@ -130,6 +95,9 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
             >
               <RotateCcw size={13} /> Edit Lineup
             </button>
+            <button onClick={onClose} className="rounded-xl p-2 text-slate-500 hover:bg-slate-800 hover:text-white" aria-label="Close">
+              <X size={20} />
+            </button>
           </div>
         </div>
         <div className="custom-scrollbar flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
@@ -155,9 +123,6 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
             })}
           </div>
         </div>
-        <div className="flex justify-end border-t border-slate-800 p-4 pt-4 sm:p-8">
-          <button onClick={onClose} className="px-6 py-3 rounded-xl bg-slate-800 text-slate-300 hover:text-white font-bold uppercase tracking-wider text-xs">Close</button>
-        </div>
       </ModalShell>
     );
   }
@@ -178,11 +143,23 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
           <div className="flex-1">
             <h3 className="text-xl font-black text-white uppercase tracking-widest">Dunk Contest</h3>
             <p className="text-slate-400 text-xs">
-              {!search ? 'Top 30 recommended — ' : ''}{selected.size}/6 selected
+              {!search ? 'Top 30 recommended · ' : ''}{selected.size}/{contestantCount} selected
             </p>
           </div>
+          <button onClick={onClose} className="rounded-xl p-2 text-slate-500 hover:bg-slate-800 hover:text-white" aria-label="Close">
+            <X size={20} />
+          </button>
         </div>
-        <div className="relative">
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <button
+            type="button"
+            onClick={() => setSelected(new Set(allPlayers.slice(0, contestantCount).map(entry => entry.player.internalId)))}
+            disabled={allPlayers.length < contestantCount}
+            className="flex items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-[10px] font-black uppercase tracking-wider text-amber-300 hover:bg-amber-500/20 disabled:opacity-40"
+          >
+            <Sparkles size={13} /> Auto-select participants
+          </button>
+          <div className="relative flex-1">
           <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 pointer-events-none" />
           <input
             type="text"
@@ -191,17 +168,15 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
             onChange={e => setSearch(e.target.value)}
             className="w-full pl-8 pr-3 py-2 bg-slate-800 border border-slate-700 rounded-xl text-sm text-white placeholder-slate-500 focus:outline-none focus:border-amber-500"
           />
+          </div>
         </div>
       </div>
 
       <div className="custom-scrollbar flex-1 overflow-y-auto px-4 pb-6 sm:px-8">
-        {loading ? (
-          <div className="text-center py-12 text-slate-500 text-sm">Loading ratings...</div>
-        ) : (
-          <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
+        <div className="grid grid-cols-3 gap-3 sm:grid-cols-4 lg:grid-cols-5">
             {visiblePlayers.map(x => {
               const isSelected = selected.has(x.player.internalId);
-              const canSelect = isSelected || selected.size < 6;
+              const canSelect = isSelected || selected.size < contestantCount;
               const team = state.teams.find(t => t.id === x.player.tid);
               return (
                 <button
@@ -229,19 +204,17 @@ export const DunkContestModal: React.FC<DunkContestModalProps> = ({ onClose, onC
                 </button>
               );
             })}
-          </div>
-        )}
-        {!search && !loading && (
+        </div>
+        {!search && (
           <p className="text-center text-[10px] text-slate-600 mt-4">Recommended top 30 shown — search to find anyone</p>
         )}
       </div>
 
       <div className="flex flex-col gap-3 border-t border-slate-800 p-4 pt-4 sm:flex-row sm:items-center sm:justify-between sm:p-8">
-        <p className="text-xs text-slate-500">{selected.size}/6 selected</p>
+        <p className="text-xs text-slate-500">{selected.size}/{contestantCount} selected</p>
         <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row">
-          <button onClick={onClose} className="w-full rounded-xl px-6 py-3 text-xs font-bold uppercase tracking-wider text-slate-400 hover:bg-slate-800 hover:text-white sm:w-auto">Cancel</button>
           <button
-            disabled={selected.size < 2}
+            disabled={selected.size !== contestantCount}
             onClick={() => onConfirm(selectedPlayers)}
             className="w-full rounded-xl bg-amber-600 px-6 py-3 text-xs font-bold uppercase tracking-wider text-white hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
           >

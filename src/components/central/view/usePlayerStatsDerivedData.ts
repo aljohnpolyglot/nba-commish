@@ -22,6 +22,11 @@ import {
   buildCurrentSeasonStatsByPhase,
   buildShotLocMap,
 } from './playerStatsBoxScoreMaps';
+import {
+  getHistoricalNbaBranchSeasonCutoff,
+  getHistoricalNbaCompletedSeasonCutoff,
+} from '../../../services/playerDevelopment/hofHistoryWindow';
+import { getPbaBranchStartSeason } from '../../../services/pba/branchHistoryOwnership';
 
 interface UsePlayerStatsDerivedDataArgs {
   state: GameState;
@@ -75,33 +80,50 @@ export function usePlayerStatsDerivedData({
 }: UsePlayerStatsDerivedDataArgs): UsePlayerStatsDerivedDataResult {
   const [brefLoading, setBrefLoading] = useState(false);
   const brefAttempted = useRef(new Set<string>());
+  const currentSeason = state.leagueStats.year;
+  const pbaSourceCutoff = getPbaBranchStartSeason(state);
+  const maxVisibleSeason = getHistoricalNbaCompletedSeasonCutoff({
+    currentYear: currentSeason,
+    leagueType: state.leagueType,
+    moddedLeagueBase: state.moddedLeagueBase,
+    nbaStartYear: state.nbaStartYear,
+  }) ?? currentSeason;
+  const historicalSourceCutoff = getHistoricalNbaBranchSeasonCutoff({
+    currentYear: currentSeason,
+    leagueType: state.leagueType,
+    moddedLeagueBase: state.moddedLeagueBase,
+    nbaStartYear: state.nbaStartYear,
+  });
+  const isStatsSeasonVisible = (seasonYear: number) => seasonYear <= maxVisibleSeason || seasonYear === currentSeason;
   const competitionIdKey = competitionIds?.join('|') ?? '';
   const competitionIdSet = useMemo(
     () => competitionIds ? new Set(competitionIds.map(id => id.toLowerCase())) : undefined,
     [competitionIdKey],
   );
 
-  const cupStatsByPlayer = useMemo(() => buildCupStatsByPlayer(state), [
+  const cupStatsByPlayer = useMemo(() => buildCupStatsByPlayer(state, scopedTids), [
     state.boxScores,
     state.schedule,
     state.playoffs,
     state.nbaCup,
     state.nbaCupHistory,
     state.leagueStats.year,
+    scopedTids,
   ]);
 
-  const currentSeasonStatsByPhase = useMemo(() => buildCurrentSeasonStatsByPhase(state), [
+  const currentSeasonStatsByPhase = useMemo(() => buildCurrentSeasonStatsByPhase(state, scopedTids), [
     state.boxScores,
     state.schedule,
     state.playoffs,
     state.nbaCup,
     state.nbaCupHistory,
     state.leagueStats.year,
+    scopedTids,
   ]);
 
   const boxScoreStatsByPlayer = useMemo(
     () => competitionIdSet
-      ? buildBoxScoreStatsByPlayer(state, { competitionIds: competitionIdSet, phase: phase === 'cup' ? 'regular' : phase })
+      ? buildBoxScoreStatsByPlayer(state, { competitionIds: competitionIdSet, teamIds: scopedTids, phase: phase === 'cup' ? 'regular' : phase })
       : null,
     [
       state.boxScores,
@@ -112,6 +134,7 @@ export function usePlayerStatsDerivedData({
       state.leagueStats,
       competitionIdSet,
       phase,
+      scopedTids,
     ],
   );
 
@@ -120,15 +143,23 @@ export function usePlayerStatsDerivedData({
 
     const getPhaseStats = (player: NBAPlayer, targetSeason: number | null): NBAGMStat[] => {
       const allStats = dedupeStatsRows(player.stats ?? []);
-      const filtered = targetSeason !== null ? allStats.filter(stat => stat.season === targetSeason) : [...allStats];
+      const timelineStats = allStats.filter(stat => stat.season <= maxVisibleSeason);
+      const filtered = targetSeason !== null ? timelineStats.filter(stat => stat.season === targetSeason) : [...timelineStats];
       if (phase === 'cup') {
-        if (targetSeason !== null && targetSeason !== state.leagueStats.year) return [];
-        const cup = cupStatsByPlayer.get(`${targetSeason ?? state.leagueStats.year}:${player.internalId}`);
+        if (targetSeason !== null && targetSeason !== currentSeason) return [];
+        const cup = cupStatsByPlayer.get(`${targetSeason ?? currentSeason}:${player.internalId}`);
         return cup ? [cup] : [];
       }
-      if (targetSeason === state.leagueStats.year) {
+      if (phase === 'preseason' && targetSeason !== null && targetSeason !== currentSeason) return [];
+      if (phase === 'preseason' && targetSeason === null) {
+        const current = currentSeasonStatsByPhase.preseason.get(player.internalId);
+        return current ? [current] : [];
+      }
+      if (targetSeason === currentSeason) {
         const currentMap =
-          phase === 'regular'
+          phase === 'preseason'
+            ? currentSeasonStatsByPhase.preseason
+            : phase === 'regular'
             ? currentSeasonStatsByPhase.regular
             : phase === 'playoffs'
               ? currentSeasonStatsByPhase.playoffs
@@ -146,19 +177,41 @@ export function usePlayerStatsDerivedData({
 
     for (const player of statPlayers) {
       if (!player.name || player.diedYear) continue;
+      if (season === currentSeason && (player as NBAPlayer & { euroAcademyPlayer?: boolean; promotedFromAcademy?: boolean }).euroAcademyPlayer && !(player as NBAPlayer & { promotedFromAcademy?: boolean }).promotedFromAcademy) continue;
       if (isScoped && player.tid >= 0 && !scopedTids.has(player.tid)) continue;
 
       const currentTeam = resolveAnyTeam(player.tid, state.teams, state.nonNBATeams ?? []);
       const currentTeamAbbrev = currentTeam?.abbrev ?? (player.tid < 0 ? 'FA' : '?');
-      if (!boxScoreStatsByPlayer && teamFilter !== 'all' && player.tid > 0 && currentTeamAbbrev !== teamFilter && (season === 'career' || season === state.leagueStats.year)) {
+      const currentTeamMatchesFilter = teamFilter === 'all' || String(currentTeam?.id) === teamFilter;
+      if (!boxScoreStatsByPlayer && player.tid > 0 && !currentTeamMatchesFilter && (season === 'career' || season === currentSeason)) {
         continue;
       }
 
-      const age = getDisplayAge(player, state.leagueStats.year ?? new Date().getFullYear());
+      const age = getDisplayAge(player, currentSeason ?? new Date().getFullYear());
 
       if (boxScoreStatsByPlayer || externalStatsByPlayer) {
-        const archiveStats = (phase === 'playoffs' ? [] : externalStatsByPlayer?.get(player.internalId) ?? []);
-        const boxStats = boxScoreStatsByPlayer?.get(player.internalId) ?? [];
+        const embeddedStats = (phase === 'preseason' ? [] : dedupeStatsRows(player.stats ?? []))
+          .filter(stat => phase === 'playoffs' ? stat.playoffs : !stat.playoffs)
+          .filter(stat => !(
+            state.leagueStats.uiMode === 'pba_isolated'
+            && Number(stat.season) >= pbaSourceCutoff
+            && (
+              (stat as NBAGMStat & { historicalPbaSourceStat?: boolean }).historicalPbaSourceStat === true
+              || String(stat.competitionId ?? '').toLowerCase() === 'pba'
+            )
+          ));
+        const externalStats = phase === 'playoffs' || phase === 'preseason' ? [] : externalStatsByPlayer?.get(player.internalId) ?? [];
+        const archiveStats = dedupeStatsRows([...embeddedStats, ...externalStats])
+          .filter(stat => stat.season <= currentSeason)
+          .filter(stat => {
+            if (!competitionIdSet) return true;
+            const id = String((stat as any).competitionId ?? (stat as any)._archiveCompetitionId ?? '').toLowerCase();
+            return !!id && competitionIdSet.has(id);
+          })
+          .filter(stat => isStatsSeasonVisible(stat.season));
+        const boxStats = (boxScoreStatsByPlayer?.get(player.internalId) ?? [])
+          .filter(stat => isStatsSeasonVisible(stat.season));
+        const liveSeasons = new Set(boxStats.map(stat => stat.season));
         const statKey = (stat: NBAGMStat) => [
           stat.season,
           stat.tid,
@@ -167,7 +220,10 @@ export function usePlayerStatsDerivedData({
         ].join('|');
         const boxKeys = new Set(boxStats.map(statKey));
         const stats = [
-          ...archiveStats.filter(stat => !boxKeys.has(statKey(stat))),
+          ...archiveStats.filter(stat =>
+            !boxKeys.has(statKey(stat))
+            && !(String(stat.competitionId ?? '').toLowerCase() === 'pba' && liveSeasons.has(stat.season))
+          ),
           ...boxStats,
         ];
         if (!stats.length) continue;
@@ -175,7 +231,7 @@ export function usePlayerStatsDerivedData({
         if (season === 'career') {
           const filteredStats = teamFilter === 'all'
             ? stats
-            : stats.filter(stat => statTeams.find(team => team.id === stat.tid)?.abbrev === teamFilter);
+            : stats.filter(stat => String(statTeams.find(team => team.id === stat.tid)?.id) === teamFilter);
           if (!filteredStats.length) continue;
           const agg = aggregateStats(filteredStats);
           if (agg.gp < 1) continue;
@@ -184,13 +240,14 @@ export function usePlayerStatsDerivedData({
         }
 
         if (season === 'all') {
-          const years = new Set(stats.map(stat => stat.season));
+          const years = new Set(stats.map(stat => stat.season).filter(isStatsSeasonVisible));
           for (const year of years) {
             result.push(...historicalTeamRows(stats.filter(stat => stat.season === year), player, statTeams, statType, year, age, teamFilter));
           }
           continue;
         }
 
+        if (typeof season === 'number' && !isStatsSeasonVisible(season)) continue;
         result.push(...historicalTeamRows(stats.filter(stat => stat.season === season), player, statTeams, statType, season as number, age, teamFilter));
         continue;
       }
@@ -209,14 +266,14 @@ export function usePlayerStatsDerivedData({
       }
 
       if (season === 'all') {
-        const years = new Set<number>((player.stats ?? []).map(stat => stat.season));
+        const years = new Set<number>((player.stats ?? []).map(stat => stat.season).filter(year => year <= maxVisibleSeason));
         for (const year of years) {
           const stats = getPhaseStats(player, year);
           if (!stats.length) continue;
-          if (year === state.leagueStats.year) {
+          if (year === currentSeason) {
             const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
             if (agg.gp < 1) continue;
-            if (teamFilter !== 'all' && currentTeamAbbrev !== teamFilter) continue;
+            if (!currentTeamMatchesFilter) continue;
             result.push(toRow(player, agg, statType, year, currentTeamAbbrev, age));
           } else {
             result.push(...historicalTeamRows(stats, player, statTeams, statType, year, age, teamFilter));
@@ -225,12 +282,13 @@ export function usePlayerStatsDerivedData({
         continue;
       }
 
+      if (typeof season === 'number' && !isStatsSeasonVisible(season)) continue;
       const stats = getPhaseStats(player, season as number);
       if (!stats.length) continue;
-      if (season === state.leagueStats.year) {
+      if (season === currentSeason) {
         const agg = stats.length > 1 ? aggregateStats(stats) : stats[0];
         if (agg.gp < 1) continue;
-        if (teamFilter !== 'all' && currentTeamAbbrev !== teamFilter) continue;
+        if (!currentTeamMatchesFilter) continue;
         result.push(toRow(player, agg, statType, season as number, currentTeamAbbrev, age));
       } else {
         result.push(...historicalTeamRows(stats, player, statTeams, statType, season as number, age, teamFilter));
@@ -245,7 +303,8 @@ export function usePlayerStatsDerivedData({
     isScoped,
     state.teams,
     state.nonNBATeams,
-    state.leagueStats.year,
+    currentSeason,
+    pbaSourceCutoff,
     season,
     phase,
     statType,
@@ -255,6 +314,7 @@ export function usePlayerStatsDerivedData({
     currentSeasonStatsByPhase,
     boxScoreStatsByPlayer,
     externalStatsByPlayer,
+    maxVisibleSeason,
   ]);
 
   useEffect(() => {
@@ -265,6 +325,13 @@ export function usePlayerStatsDerivedData({
           player.name &&
           !player.diedYear &&
           (player.hof || player.status === 'Retired') &&
+          (
+            historicalSourceCutoff === undefined
+            || (
+              Number(player.retiredYear ?? 0) > 0
+              && Number(player.retiredYear) <= historicalSourceCutoff
+            )
+          ) &&
           (!player.stats || player.stats.filter(stat => !stat.playoffs && stat.gp > 0).length === 0) &&
           !brefAttempted.current.has(player.internalId),
       )
@@ -283,17 +350,18 @@ export function usePlayerStatsDerivedData({
       setBrefRows(newMap);
       setBrefLoading(false);
     });
-  }, [season, statPlayers, isScoped]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [historicalSourceCutoff, season, statPlayers, isScoped]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const shotLocMap = useMemo(() => competitionIdSet
-    ? buildBoxScoreShotLocMap(state, statType, season, phase === 'cup' ? 'regular' : phase, competitionIdSet)
-    : buildShotLocMap(state.boxScores, statType, season, phase), [
+    ? buildBoxScoreShotLocMap(state, statType, season, phase === 'cup' ? 'regular' : phase, competitionIdSet, scopedTids)
+    : buildShotLocMap(state, statType, season, phase, scopedTids), [
     state,
     state.boxScores,
     statType,
     season,
     phase,
     competitionIdSet,
+    scopedTids,
   ]);
 
   const enrichedRows = useMemo((): ComputedRow[] => {

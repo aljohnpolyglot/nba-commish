@@ -2,9 +2,11 @@ import React, { useMemo, useState } from 'react';
 import { useGame } from '../../../store/GameContext';
 import { getLsYear } from '../../../utils/leagueYear';
 import { getPlayerImage } from '../../central/view/bioCache';
-import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 import { getTeamFullName } from '../../../utils/teamNames';
 import { fuzzDraftRatingValue } from '../../../utils/scoutingFuzz';
+import { getHistoricalTeamSnapshot, getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import { getProspectCollege } from '../../../utils/prospectUtils';
 
 interface FullDraftTableProps {
   drafted: Record<number, any>;
@@ -21,7 +23,8 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, passedP
   const leagueYear = getLsYear(_ftState);
   const [teamFilter, setTeamFilter] = useState<string>('ALL');
   const teamIdOf = (team: any) => Number(team?.id ?? team?.tid);
-  const teamNameOf = (team: any) => getTeamFullName(team) || team?.name || 'Team';
+  const teamNameOf = (team: any) =>
+    getTeamFullName(team) || team?.name || team?.region || team?.abbrev || `Team ${teamIdOf(team)}`;
 
   // Build sorted alphabetical team list from draft order (deduplicated)
   const teamOptions = useMemo(() => {
@@ -49,13 +52,16 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, passedP
   }, [allSlots, teamFilter]);
 
   return (
-    <div className="mt-10 space-y-5">
-      <div className="border-b border-[#333] pb-3 flex items-center justify-between gap-4">
-        <h4 className="text-xl font-black text-white uppercase tracking-tight">Full Draft</h4>
+    <div className="mb-8 space-y-5">
+      <div className="border-b border-[#333] pb-3 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.24em] text-indigo-300">{leagueYear} Draft</p>
+          <h4 className="mt-1 text-xl font-black uppercase tracking-tight text-white">Live Draft Board</h4>
+        </div>
         <select
           value={teamFilter}
           onChange={e => setTeamFilter(e.target.value)}
-          className="bg-[#1A1A1A] border border-[#444] text-white text-[11px] font-black uppercase tracking-widest rounded-sm px-3 py-1.5 focus:outline-none focus:border-indigo-500 cursor-pointer"
+          className="w-full cursor-pointer rounded-sm border border-[#444] bg-[#1A1A1A] px-3 py-2 text-[11px] font-black uppercase tracking-widest text-white focus:border-indigo-500 focus:outline-none sm:w-auto sm:py-1.5"
         >
           <option value="ALL">All Teams</option>
           {teamOptions.map(t => (
@@ -71,6 +77,9 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, passedP
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredSlots.map(({ pick, team, player, passed }) => {
+            const displayTeam = team ? getHistoricalTeamSnapshot(team, leagueYear) : team;
+            const teamLogoUrl = getResolvedTeamLogoUrl(displayTeam, leagueYear);
+            const teamDisplayName = displayTeam ? teamNameOf(displayTeam) : '—';
             const isUserTeam = isGM && userTeamId != null && teamIdOf(team) === Number(userTeamId);
             const isCurrent = pick === currentPick && !player && !passed;
             const isEmpty = !player && !passed;
@@ -79,7 +88,7 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, passedP
               <div
                 key={pick}
                 onClick={() => player && onReview(player)}
-                className={`bg-[#1A1A1A] border rounded-sm flex h-20 overflow-hidden transition-all group ${
+                className={`bg-[#1A1A1A] border rounded-sm flex h-auto min-h-20 sm:h-20 overflow-hidden transition-all group ${
                   player ? 'cursor-pointer hover:border-indigo-600' : 'cursor-default'
                 } ${
                   isUserTeam
@@ -88,24 +97,31 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, passedP
                     ? 'border-indigo-500/80 shadow-[0_0_12px_rgba(99,102,241,0.35)]'
                     : 'border-[#333]'
                 } ${isEmpty && !isCurrent && !isUserTeam ? 'opacity-70' : ''}`}
-              >
-                {/* Pick # */}
-                <div className={`w-11 flex items-center justify-center shrink-0 ${
+                >
+                  {/* Pick # */}
+                <div className={`w-10 sm:w-11 flex items-center justify-center shrink-0 ${
                   isUserTeam ? 'bg-amber-700/60' : isCurrent ? 'bg-indigo-700/80' : 'bg-indigo-900/60'
                 }`}>
-                  <span className="text-xl font-black text-white">{String(pick).padStart(2, '0')}</span>
+                  <span className="text-lg sm:text-xl font-black text-white">{String(pick).padStart(2, '0')}</span>
                 </div>
 
                 {/* Player photo or placeholder */}
-                <div className="w-20 bg-[#111] relative shrink-0 overflow-hidden">
+                <div className="w-16 sm:w-20 bg-[#111] relative shrink-0 overflow-hidden flex items-center justify-center">
                   {player ? (
-                    (() => {
-                      const img = getPlayerImage(player as any);
-                      const face = (player as any).face;
-                      if (img) return <img src={img} alt={player.name} className="w-full h-full object-cover object-top" referrerPolicy="no-referrer" />;
-                      if (isRealFaceConfig(face)) return <div className="relative w-full h-full"><div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}><MyFace face={face} style={{ width: '100%', height: '100%' }} /></div></div>;
-                      return <div className="w-full h-full flex items-center justify-center text-2xl font-black text-indigo-900">{player.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</div>;
-                    })()
+                    <PlayerPortrait
+                      imgUrl={getPlayerImage(player as any)}
+                      fallbackImgUrl={(player as any).imgURL}
+                      face={(player as any).face}
+                      playerName={player.name}
+                      playerIdentity={player}
+                      portraitSeason={Number((player as any).draft?.year ?? leagueYear)}
+                      isDraftProspect
+                      teamLogoUrl={teamLogoUrl}
+                      overallRating={player.overallRating ?? player.displayOvr}
+                      ratings={(player as any).ratings}
+                      ovrLabel={String(fuzzDraftRatingValue(player.displayOvr ?? player.overallRating ?? 0, _ftState, player, 'ovr'))}
+                      size={52}
+                    />
                   ) : passed ? (
                     <div className="w-full h-full flex items-center justify-center bg-zinc-950">
                       <span className="text-white/25 text-[10px] font-black uppercase tracking-widest">Pass</span>
@@ -125,27 +141,27 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, passedP
                 <div className="flex-1 p-3 flex flex-col justify-center min-w-0">
                   {player ? (
                     <>
-                      <p className="font-black text-white text-base truncate uppercase tracking-tight">{player.name}</p>
-                      <div className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                      <p className="font-black text-white text-sm sm:text-base truncate uppercase tracking-tight">{player.name}</p>
+                      <div className="text-[9px] sm:text-[10px] font-bold text-white/40 uppercase tracking-widest">
                         {player.pos} · {player.born?.year ? leagueYear - player.born.year : (player.age ?? '?')}y · OVR {fuzzDraftRatingValue(player.displayOvr ?? 0, _ftState, player, 'ovr')} · POT {fuzzDraftRatingValue(player.displayPot ?? 0, _ftState, player, 'pot')}
-                        {player.college && ` · ${player.college}`}
+                        {(getProspectCollege(player) || player.preDraftClub?.name) && ` · ${getProspectCollege(player) || player.preDraftClub?.name}`}
                       </div>
                     </>
                   ) : passed ? (
                     <>
-                      <p className="font-black text-zinc-400 text-base truncate uppercase tracking-tight">Pick Passed</p>
-                      <div className="text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
-                        {teamNameOf(team)} declined this selection
+                      <p className="font-black text-zinc-400 text-sm sm:text-base truncate uppercase tracking-tight">Pick Passed</p>
+                      <div className="text-[9px] sm:text-[10px] font-bold text-zinc-600 uppercase tracking-widest">
+                        {teamDisplayName} declined this selection
                       </div>
                     </>
                   ) : (
                     <>
-                      <p className={`font-black text-base truncate uppercase tracking-tight ${
+                      <p className={`font-black text-sm sm:text-base truncate uppercase tracking-tight ${
                         isUserTeam ? 'text-amber-200' : isCurrent ? 'text-white' : 'text-white/50'
                       }`}>
-                        {team ? teamNameOf(team) : '—'}
+                        {teamDisplayName}
                       </p>
-                      <div className="text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 flex-wrap">
+                      <div className="text-[9px] sm:text-[10px] font-bold uppercase tracking-widest flex items-center gap-2 flex-wrap">
                         {isCurrent ? (
                           <span className="text-indigo-300 flex items-center gap-1.5">
                             <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
@@ -167,11 +183,17 @@ export const FullDraftTable: React.FC<FullDraftTableProps> = ({ drafted, passedP
                 </div>
 
                 {/* Team logo */}
-                <div className="w-14 flex items-center justify-center shrink-0 border-l border-[#333] bg-black/20 group-hover:bg-black/40 transition-colors">
-                  {team?.logoUrl ? (
-                    <img src={team.logoUrl} alt="" className="w-9 h-9 object-contain" referrerPolicy="no-referrer" />
+                <div className="w-11 sm:w-14 flex items-center justify-center shrink-0 border-l border-[#333] bg-black/20 group-hover:bg-black/40 transition-colors">
+                  {teamLogoUrl ? (
+                    <img
+                      src={teamLogoUrl}
+                      alt=""
+                      className="w-8 h-8 sm:w-9 sm:h-9 object-contain"
+                      referrerPolicy="no-referrer"
+                      onError={(event) => { (event.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                    />
                   ) : (
-                    <span className="text-[10px] font-black text-white/30">{team?.abbrev}</span>
+                    <span className="text-[10px] font-black text-white/30">{displayTeam?.abbrev}</span>
                   )}
                 </div>
               </div>

@@ -1,8 +1,8 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
-import { ChevronLeft, Play, FastForward, Zap } from 'lucide-react';
+import { ChevronLeft, Play, FastForward, Music2, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useGame } from '../../../store/GameContext';
-import { NBATeam, Game, Tab, NBAPlayer } from '../../../types';
+import { NBATeam, Game, Tab, NBAPlayer, ResolvedGamePresentation } from '../../../types';
 import { DunkContest } from '../../../services/allStar/DunkContest';
 import { ThreePointContest, mapPlayerToContestant } from '../../allstar/allstarevents';
 import { normalizeDate, getTeamForGame, getPlayersForExhibitionTeam } from '../../../utils/helpers';
@@ -15,13 +15,24 @@ import { WatchGamePreviewModal } from '../../modals/WatchGamePreviewModal';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
 import { useRosterComplianceGate } from '../../../hooks/useRosterComplianceGate';
 import { useDraftEventGate } from '../../../hooks/useDraftEventGate';
+import { useSimulationBoundaryPreflight } from '../../../hooks/useSimulationBoundaryPreflight';
 import { isEuroIsolatedMode, isPbaActiveConferenceMode, isPbaIsolatedMode } from '../../../utils/uiMode';
 import { isEuroVisibleScheduleGame } from '../../../utils/euroLeagueDefaults';
-import { ShootingStarsLiveContest } from '../../../minigames/shootingstars/ShootingStarsLiveContest';
-import { SkillsChallengeLiveContest } from '../../../minigames/skills/SkillsChallengeLiveContest';
-import { HorseLiveContest } from '../../../minigames/horse/HorseLiveContest';
-import { buildShootingStarsLiveTeams, buildSkillsLiveTeams } from '../../../minigames/shared/liveContestBuilders';
-import { findBoxScoreForGame } from '../../../utils/boxScoreLookup';
+import { DanceContestMiniGame } from '../../../minigames/pbadance/DanceContestMiniGame';
+import {
+  AllStarSatelliteLiveContestOverlay,
+  type SatelliteLiveContestKind,
+} from '../../allstar/AllStarSatelliteLiveContestOverlay';
+import { findBoxScoreForGame, findBoxScoreForScheduledGame } from '../../../utils/boxScoreLookup';
+import { shouldAdvanceAfterAllStarEventDay } from '../../../services/allStar/allStarSaturdayCompletion';
+import { getDraftDate, toISODateString } from '../../../utils/dateUtils';
+import { getCurrentPbaOffseasonTaskTarget } from '../../../services/pba/offseasonTaskTarget';
+import { isDanceContestEnabled } from '../../../services/allStar/allStarEventAvailability';
+import { simulateDanceContest, type DanceContestResult } from '../../../services/pba/danceContest';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { compileTargetPlan, type TargetPlan } from '../../../services/simulation/targetPlanner';
+import { buildDunkJudgePool } from '../../../services/allStar/allStarWeekendEvents';
+import { getAllStarPlayerEligibility } from '../../../services/allStar/allStarSelectionHelpers';
 
 // Sub-components
 import { AllStarDayView } from './components/AllStarDayView';
@@ -35,21 +46,40 @@ export const ScheduleView: React.FC = () => {
   const { state, dispatchAction, setCurrentView } = useGame();
   
   const [selectedDate, setSelectedDate] = useState(state.date);
+  const [focusedGameId, setFocusedGameId] = useState<number | undefined>();
   const [viewMode, setViewMode] = useState<'calendar' | 'day' | 'watching'>('calendar');
   const [watchingGame, setWatchingGame] = useState<Game | null>(null);
   const [watchingDunkContest, setWatchingDunkContest] = useState(false);
   const [watchingThreePoint, setWatchingThreePoint] = useState(false);
-  const [watchingShootingStars, setWatchingShootingStars] = useState(false);
-  const [watchingSkillsChallenge, setWatchingSkillsChallenge] = useState(false);
-  const [watchingHorse, setWatchingHorse] = useState(false);
+  const [satelliteLiveContest, setSatelliteLiveContest] = useState<SatelliteLiveContestKind | null>(null);
+  const [watchingDance, setWatchingDance] = useState(false);
+  const [pendingDanceGame, setPendingDanceGame] = useState<Game | null>(null);
   const [pendingWatchGame, setPendingWatchGame] = useState<Game | null>(null);
   const [riggedForTid, setRiggedForTid] = useState<number | undefined>(undefined);
   const [precomputedWatchResult, setPrecomputedWatchResult] = useState<any>(null);
+  const [watchPresentation, setWatchPresentation] = useState<ResolvedGamePresentation | null>(null);
   const [selectedBoxScoreGame, setSelectedBoxScoreGame] = useState<Game | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date(state.date));
   const [allStarModalTab, setAllStarModalTab] = useState<string | null>(null);
-  const [contestModalType, setContestModalType] = useState<'dunk' | 'three' | null>(null);
+  const [contestModalType, setContestModalType] = useState<'dunk' | 'three' | 'skills' | 'shooting-stars' | null>(null);
   const [boxScoreClickedPlayer, setBoxScoreClickedPlayer] = useState<NBAPlayer | null>(null);
+  const pendingWatchPresentation = useMemo(() => {
+    if (!pendingWatchGame) return null;
+    const homeRoster = getPlayersForExhibitionTeam(pendingWatchGame, true, state.allStar, state.players, state.leagueType);
+    const awayRoster = getPlayersForExhibitionTeam(pendingWatchGame, false, state.allStar, state.players, state.leagueType);
+    return GameSimulator.prepareDayGames(
+      state.teams,
+      state.players,
+      [pendingWatchGame],
+      pendingWatchGame.date,
+      state.stats.playerApproval,
+      state.allStar,
+      homeRoster.length ? homeRoster : undefined,
+      awayRoster.length ? awayRoster : undefined,
+      undefined,
+      state.leagueStats,
+    )[0]?.presentation ?? null;
+  }, [pendingWatchGame, state.allStar, state.leagueStats, state.leagueType, state.players, state.stats.playerApproval, state.teams]);
   
   const settings = useMemo(() => SettingsManager.getSettings(), [state.isProcessing]);
   const MAX_SIM_DAYS = useMemo(() => {
@@ -90,8 +120,30 @@ export const ScheduleView: React.FC = () => {
     setCalendarMonth(new Date(state.date));
   }, [state.date, state.day]);
 
+  useEffect(() => {
+    const focus = state.pendingScheduleFocus;
+    if (!focus) return;
+    setSelectedDate(focus.date);
+    setFocusedGameId(focus.gameId);
+    setCalendarMonth(new Date(`${focus.date}T12:00:00Z`));
+    setViewMode('day');
+    void dispatchAction({ type: 'UPDATE_STATE', payload: { pendingScheduleFocus: undefined } } as any);
+  }, [dispatchAction, state.pendingScheduleFocus]);
+
   const euroIsolated = isEuroIsolatedMode(state);
   const pbaIsolated = isPbaIsolatedMode(state);
+  const pbaOffseasonTaskTarget = useMemo(
+    () => getCurrentPbaOffseasonTaskTarget(state),
+    [state],
+  );
+  const contestTeams = useMemo(
+    () => pbaIsolated
+      ? (state.nonNBATeams ?? [])
+          .filter((team: any) => team.league === 'PBA')
+          .map((team: any) => ({ ...team, id: team.tid ?? team.id }))
+      : state.teams,
+    [pbaIsolated, state.nonNBATeams, state.teams],
+  );
   const euroScheduleState = useMemo(() => ({
     activeCompetitions: state.activeCompetitions,
     leagueStats: state.leagueStats,
@@ -137,30 +189,72 @@ export const ScheduleView: React.FC = () => {
     return visibleSchedule.filter(g => normalizeDate(g.date) === normalizeDate(selectedDate));
   }, [visibleSchedule, selectedDate]);
 
-  const shootingStarsPlayers = useMemo(() => ((state.allStar as any)?.shootingStarsContestants ?? [])
-    .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
-    .filter(Boolean), [state.allStar, state.players]);
-  const skillsChallengePlayers = useMemo(() => ((state.allStar as any)?.skillsChallengeContestants ?? [])
-    .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
-    .filter(Boolean), [state.allStar, state.players]);
-  const horsePlayers = useMemo(() => ((state.allStar as any)?.horseContestants ?? [])
-    .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
-    .filter(Boolean), [state.allStar, state.players]);
-  const shootingStarsLiveTeams = useMemo(() => buildShootingStarsLiveTeams(shootingStarsPlayers, state.teams), [shootingStarsPlayers, state.teams]);
-  const skillsLiveTeams = useMemo(() => buildSkillsLiveTeams(skillsChallengePlayers, state.teams), [skillsChallengePlayers, state.teams]);
-
   // Roster compliance gate — shared hook covers every sim advancement path.
   const rosterGate = useRosterComplianceGate();
   const draftGate = useDraftEventGate({
     onNavigateToDraftLottery: () => setCurrentView('Draft Lottery' as Tab),
     onNavigateToDraft: () => setCurrentView('Draft Board' as Tab),
   });
+  const boundaryPreflight = useSimulationBoundaryPreflight(state);
+
+  const startLongSimulation = (
+    plan: TargetPlan,
+    start: (resolvedPlan: TargetPlan) => void | Promise<void>,
+  ) => {
+    boundaryPreflight.attempt(plan, resolvedPlan => {
+      rosterGate.attempt(() => draftGate.attempt(async () => {
+        await start(resolvedPlan);
+        if (
+          resolvedPlan.confirmedBoundaries.includes('DRAFT_LOTTERY')
+          && resolvedPlan.boundaryPolicy.draftLottery === 'STOP_AND_WATCH'
+        ) {
+          setCurrentView('Draft Lottery' as Tab);
+        }
+      }, resolvedPlan));
+    });
+  };
+
+  const openCurrentPbaTask = async (): Promise<boolean> => {
+    const target = pbaOffseasonTaskTarget;
+    if (!target) return false;
+    if (target.row === 'pbaLocalFreeAgency') {
+      await dispatchAction({
+        type: 'UPDATE_STATE',
+        payload: { pendingTeamOfficeNav: { tab: 'intel', intelTab: 'fa' } },
+      } as any);
+    }
+    if (target.row === 'pbaDraft') {
+      const draftDate = toISODateString(getDraftDate(state.leagueStats.year, state.leagueStats));
+      if (normalizeDate(state.date) < draftDate) {
+        await dispatchAction({
+          type: 'SIMULATE_TO_DATE',
+          payload: { targetDate: draftDate, stopBefore: true },
+        } as any);
+      }
+    }
+    const directRows = new Set([
+      'pbaDraft',
+      'pbaLocalFreeAgency',
+      'pbaImportSearch',
+      'pbaImportDecision',
+      'pbaAllStarWeekend',
+    ]);
+    if (!directRows.has(target.row) && !target.tab) return false;
+    await dispatchAction({ type: 'OFFSEASON_ENTER_PHASE', payload: { row: target.row } } as any);
+    if (target.tab) setCurrentView(target.tab);
+    return true;
+  };
 
   const simulateDay = async () => {
     // Calendar advance is paused during offseason — user steps through
     // phases via the AUFGABEN sidebar instead. Avoids dual-driver bugs
     // where ADVANCE_DAY skips past Tag-counter ticks or option deadlines.
-    if (state.offseasonChecklist && !isPbaActiveConferenceMode(state)) {
+    if (
+      state.offseasonChecklist
+      && !isPbaActiveConferenceMode(state)
+      && !shouldAdvanceAfterAllStarEventDay(state)
+    ) {
+      if (pbaIsolated && await openCurrentPbaTask()) return;
       setOffseasonBlockOpen(true);
       return;
     }
@@ -169,30 +263,33 @@ export const ScheduleView: React.FC = () => {
 
   const simulateToDate = async (targetDateStr: string) => {
     if (state.offseasonChecklist && !isPbaActiveConferenceMode(state)) {
+      if (pbaIsolated && await openCurrentPbaTask()) return;
       setOffseasonBlockOpen(true);
       return;
     }
     // stopBefore: land ON the selected date with that day's games still unplayed,
     // so the user can choose to watch or sim them manually.
-    rosterGate.attempt(() =>
-      draftGate.attempt(() =>
-        dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: targetDateStr, stopBefore: true } } as any)
-      )
-    );
+    const plan = compileTargetPlan(state, 'SIMULATE_TO_DATE', targetDateStr);
+    startLongSimulation(plan, resolvedPlan => dispatchAction({
+      type: 'SIMULATE_TO_DATE',
+      payload: { targetDate: targetDateStr, stopBefore: true, targetPlan: resolvedPlan },
+    } as any));
   };
 
   const simulateSeason = async () => {
     // Season sim — include the last day's games (we want the season complete).
     const lastGame = [...visibleSchedule].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0];
-    rosterGate.attempt(() => draftGate.attempt(() => {
-      if (lastGame) {
-        return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: lastGame.date } } as any);
-      }
+    const targetDate = lastGame?.date ?? (() => {
       const stateDateNorm = normalizeDate(state.date);
       const farDate = new Date(`${stateDateNorm}T00:00:00Z`);
       farDate.setUTCDate(farDate.getUTCDate() + 180);
-      return dispatchAction({ type: 'SIMULATE_TO_DATE', payload: { targetDate: farDate.toISOString() } } as any);
-    }));
+      return farDate.toISOString();
+    })();
+    const plan = compileTargetPlan(state, 'SIMULATE_TO_DATE', targetDate);
+    startLongSimulation(plan, resolvedPlan => dispatchAction({
+      type: 'SIMULATE_TO_DATE',
+      payload: { targetDate, targetPlan: resolvedPlan },
+    } as any));
   };
 
   const formatDateDisplay = (dateStr: string) => {
@@ -216,10 +313,11 @@ export const ScheduleView: React.FC = () => {
 
   const getCityFromTeamName = (name: string) => {
     const multiWordCities = ['New York', 'Los Angeles', 'San Antonio', 'Golden State', 'Oklahoma City', 'New Orleans'];
+    const safeName = String(name ?? '').trim();
     for (const city of multiWordCities) {
-      if (name.startsWith(city)) return city;
+      if (safeName.startsWith(city)) return city;
     }
-    return name.split(' ')[0];
+    return safeName.split(' ')[0] || 'Unknown';
   };
 
   const handleDunkComplete = (simResult: any) => {
@@ -292,8 +390,23 @@ export const ScheduleView: React.FC = () => {
     const isToday = gameDateNorm === stateDateNorm;
 
     if (isToday) {
+      if (
+        game.isAllStar
+        && isDanceContestEnabled(state.leagueStats)
+        && !state.allStar?.danceContest?.complete
+      ) {
+        setPendingDanceGame(game);
+        return;
+      }
       setPendingWatchGame(game);
     }
+  };
+
+  const saveDanceResult = async (result: DanceContestResult) => {
+    await dispatchAction({
+      type: 'SAVE_CONTEST_RESULT',
+      payload: { contest: 'dance', result },
+    } as any);
   };
 
   // Resolve a team by tid — NBA, non-NBA (tid ≥ 100), or exhibition mocks.
@@ -305,21 +418,18 @@ export const ScheduleView: React.FC = () => {
     } as unknown as NBATeam);
   };
 
-  const executeWatchGame = async (result: any) => {
+  const finishWatchGame = (result: any) => {
     if (!watchingGame) return;
-    const gameId = watchingGame.gid;
     const currentRig = riggedForTid; // capture before clearing state
     setWatchingGame(null);
     setRiggedForTid(undefined);
+    setPrecomputedWatchResult(null);
+    setWatchPresentation(null);
     setViewMode('day');
 
-    // Save the live game result immediately (no LLM, marks game as played)
-    await dispatchAction({
-      type: 'RECORD_WATCHED_GAME' as any,
-      payload: { gameId, result }
-    });
-
-    // Advance the day — exhibition games (All-Star weekend) skip this
+    // The result was persisted before the watch screen opened. Advance only
+    // after the user finishes or leaves so a normal game cannot unmount its
+    // own live screen during preview confirmation.
     const isExhibition = watchingGame.homeTid < 0;
     if (!isExhibition) {
       rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
@@ -394,6 +504,7 @@ export const ScheduleView: React.FC = () => {
                 setSelectedDate={setSelectedDate}
                 setViewMode={setViewMode}
                 state={state}
+                focusGameId={focusedGameId}
                 formatDateDisplay={formatDateDisplay}
                 gamesForSelectedDate={gamesForSelectedDate}
                 simulateDay={simulateDay}
@@ -404,9 +515,9 @@ export const ScheduleView: React.FC = () => {
                 onViewRosters={setAllStarModalTab}
                 onWatchDunkContest={() => setWatchingDunkContest(true)}
                 onWatchThreePoint={() => setWatchingThreePoint(true)}
-                onWatchShootingStars={() => setWatchingShootingStars(true)}
-                onWatchSkillsChallenge={() => setWatchingSkillsChallenge(true)}
-                onWatchHorse={() => setWatchingHorse(true)}
+                onWatchShootingStars={() => setSatelliteLiveContest('shooting-stars')}
+                onWatchSkillsChallenge={() => setSatelliteLiveContest('skills')}
+                onWatchHorse={() => setSatelliteLiveContest('horse')}
                 onViewContestDetails={setContestModalType}
                 onViewBoxScore={setSelectedBoxScoreGame}
                 maxSimulatableDate={maxSimulatableDate}
@@ -421,7 +532,7 @@ export const ScheduleView: React.FC = () => {
             </motion.div>
           )}
 
-          {viewMode === 'watching' && watchingGame && (
+          {viewMode === 'watching' && watchingGame && watchPresentation && (
             <motion.div
               key="watching"
               initial={{ opacity: 0 }}
@@ -431,16 +542,12 @@ export const ScheduleView: React.FC = () => {
             >
               <GameSimulatorScreen
                 game={watchingGame}
-                teams={[...state.teams, ...(state.nonNBATeams ?? []).map((t: any) => ({
-                  id: t.tid, name: t.name, abbrev: t.abbrev || t.name.substring(0,3).toUpperCase(),
-                  logoUrl: t.imgURL || '', wins: 0, losses: 0, conference: t.league,
-                } as unknown as NBATeam))]}
+                presentation={watchPresentation}
                 players={state.players}
-                allStar={state.allStar}
                 isProcessing={state.isProcessing}
                 precomputedResult={precomputedWatchResult}
-                onClose={() => { setViewMode('day'); setPrecomputedWatchResult(null); }}
-                onComplete={() => { setViewMode('day'); setPrecomputedWatchResult(null); }}
+                onClose={() => finishWatchGame(precomputedWatchResult)}
+                onComplete={finishWatchGame}
                 riggedForTid={riggedForTid}
                 otherGamesToday={0}
               />
@@ -457,23 +564,32 @@ export const ScheduleView: React.FC = () => {
         />
       )}
 
-      {watchingDunkContest && !euroIsolated && !state.allStar?.dunkContest?.complete && (
+      {watchingDunkContest && !euroIsolated && (
         <div className="fixed inset-0 z-[100] bg-black">
           <DunkContest
             contestants={(state.allStar?.dunkContestContestants ?? [])
               .map((c: any) => state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c)
               .filter(Boolean)}
+            judgeCandidates={buildDunkJudgePool(
+              state,
+              state.players.filter(getAllStarPlayerEligibility(state.leagueStats, state.teams)),
+            )}
             onClose={() => setWatchingDunkContest(false)}
             onComplete={handleDunkComplete}
           />
         </div>
       )}
 
-      {watchingThreePoint && !euroIsolated && !state.allStar?.threePointContest?.complete && (() => {
+      {watchingThreePoint && !euroIsolated && (() => {
         const threeContestants = (state.allStar?.threePointContestants ?? []).map((c: any) => {
           const player = state.players.find((p: any) => p.internalId === (c.internalId || c.playerId)) || c;
-          const team = state.teams.find((t: any) => t.id === player.tid);
-          return mapPlayerToContestant(player, team?.abbrev ?? 'NBA');
+          const team = contestTeams.find((t: any) => Number(t.id ?? t.tid) === Number(player.tid));
+          return mapPlayerToContestant(
+            player,
+            team?.abbrev ?? '',
+            team ? getResolvedTeamLogoUrl(team, state.leagueStats.year) : undefined,
+            state.leagueStats.year,
+          );
         });
         return (
           <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
@@ -486,55 +602,12 @@ export const ScheduleView: React.FC = () => {
         );
       })()}
 
-      {watchingShootingStars && !euroIsolated && !state.allStar?.shootingStars?.complete && (
-        <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
-          <ShootingStarsLiveContest
-            teams={shootingStarsLiveTeams}
-            year={state.leagueStats.year}
-            onClose={() => setWatchingShootingStars(false)}
-            onComplete={(result) => {
-              dispatchAction({
-                type: 'SAVE_CONTEST_RESULT',
-                payload: { contest: 'shooting-stars', result: { ...result, complete: true }, contestants: shootingStarsPlayers },
-              });
-            }}
-          />
-        </div>
-      )}
-
-      {watchingSkillsChallenge && !euroIsolated && !state.allStar?.skillsChallenge?.complete && (
-        <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
-          <SkillsChallengeLiveContest
-            teams={skillsLiveTeams}
-            year={state.leagueStats.year}
-            onClose={() => setWatchingSkillsChallenge(false)}
-            onComplete={(result) => {
-              dispatchAction({
-                type: 'SAVE_CONTEST_RESULT',
-                payload: { contest: 'skills', result: { ...result, complete: true }, contestants: skillsChallengePlayers },
-              });
-            }}
-          />
-        </div>
-      )}
-
-      {watchingHorse && !euroIsolated && !(state.allStar as any)?.horseTournament?.complete && (
-        <div className="fixed inset-0 z-[100] bg-black overflow-y-auto">
-          <HorseLiveContest
-            contestants={horsePlayers}
-            rules={{
-              noPlayerRepeat: state.leagueStats.allStarHorseNoPlayerRepeat === true,
-              noGlobalRepeat: state.leagueStats.allStarHorseNoGlobalRepeat === true,
-            }}
-            onClose={() => setWatchingHorse(false)}
-            onComplete={(result) => {
-              dispatchAction({
-                type: 'SAVE_CONTEST_RESULT',
-                payload: { contest: 'horse', result: { ...result, complete: true }, contestants: horsePlayers },
-              });
-            }}
-          />
-        </div>
+      {!euroIsolated && (
+        <AllStarSatelliteLiveContestOverlay
+          active={satelliteLiveContest}
+          contestTeams={contestTeams as NBATeam[]}
+          onClose={() => setSatelliteLiveContest(null)}
+        />
       )}
 
       {allStarModalTab && !euroIsolated && (
@@ -558,60 +631,68 @@ export const ScheduleView: React.FC = () => {
         />
       )}
 
-      <AnimatePresence>
-        {pendingWatchGame && (() => {
-          const rsTeams = state.allStar?.risingStarsTeams ?? ['Team USA', 'Team World'];
-          const fakeHomeTeam = {
-            id: -3,
-            name: rsTeams[0],
-            abbrev: rsTeams[0].split(' ')[1]?.substring(0,3).toUpperCase() ?? 'USA',
-            logoUrl: '',
-            wins: 0, losses: 0,
-            city: '', state: '', pop: 0, region: '', conference: '', division: '',
-            primaryColor: '', secondaryColor: '',
-            arena: '', capacity: 0,
-            championships: 0,
-            playoffAppearances: 0,
-            history: [],
-            retiredNumbers: [],
-            rivals: [],
-            fanBase: 0,
-            marketSize: 0,
-            prestige: 0,
-            facilities: 0,
-            budget: 0,
-            expenses: { scouting: 0, coaching: 0, health: 0, facilities: 0 }
-          } as unknown as NBATeam;
-          const fakeAwayTeam = {
-            id: -4,
-            name: rsTeams[1],
-            abbrev: rsTeams[1].split(' ')[1]?.substring(0,3).toUpperCase() ?? 'WLD',
-            logoUrl: '',
-            wins: 0, losses: 0,
-            city: '', state: '', pop: 0, region: '', conference: '', division: '',
-            primaryColor: '', secondaryColor: '',
-            arena: '', capacity: 0,
-            championships: 0,
-            playoffAppearances: 0,
-            history: [],
-            retiredNumbers: [],
-            rivals: [],
-            fanBase: 0,
-            marketSize: 0,
-            prestige: 0,
-            facilities: 0,
-            budget: 0,
-            expenses: { scouting: 0, coaching: 0, health: 0, facilities: 0 }
-          } as unknown as NBATeam;
+      {pendingDanceGame && !watchingDance && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center bg-black/85 p-4">
+          <div className="w-full max-w-lg rounded-3xl border border-blue-500/30 bg-slate-950 p-6 shadow-2xl">
+            <Music2 className="text-blue-400" size={30} />
+            <h2 className="mt-4 text-2xl font-black text-white">Watch the Dance Contest first?</h2>
+            <p className="mt-2 text-sm leading-6 text-slate-400">
+              The All-Star teams perform before the main game. Watch the routines or pass straight to the saved result.
+            </p>
+            <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <button type="button" onClick={() => setWatchingDance(true)} className="rounded-xl bg-blue-500 px-4 py-3 text-sm font-black uppercase tracking-wider text-white hover:bg-blue-400">
+                Watch Dance Contest
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const game = pendingDanceGame;
+                  const result = simulateDanceContest(state.allStar?.roster ?? []);
+                  if (result) await saveDanceResult(result);
+                  setPendingDanceGame(null);
+                  setPendingWatchGame(game);
+                }}
+                className="rounded-xl bg-slate-800 px-4 py-3 text-sm font-black uppercase tracking-wider text-slate-200 hover:bg-slate-700"
+              >
+                Pass & Continue
+              </button>
+            </div>
+            <button type="button" onClick={() => setPendingDanceGame(null)} className="mt-3 w-full py-2 text-xs font-bold text-slate-500 hover:text-white">
+              Not now
+            </button>
+          </div>
+        </div>
+      )}
 
-          return (
+      {pendingDanceGame && watchingDance && (
+        <div className="fixed inset-0 z-[115] overflow-y-auto bg-black p-4 md:p-8">
+          <DanceContestMiniGame
+            roster={state.allStar?.roster ?? []}
+            players={state.players}
+            teams={[...(state.teams ?? []), ...(state.nonNBATeams ?? [])]}
+            result={state.allStar?.danceContest}
+            onSave={result => {
+              void saveDanceResult(result);
+            }}
+            onExit={() => {
+              const game = pendingDanceGame;
+              setWatchingDance(false);
+              setPendingDanceGame(null);
+              setPendingWatchGame(game);
+            }}
+          />
+        </div>
+      )}
+
+      <AnimatePresence>
+        {pendingWatchGame && pendingWatchPresentation && (
             <WatchGamePreviewModal
               game={pendingWatchGame}
-              homeTeam={pendingWatchGame.isRisingStars ? fakeHomeTeam : resolveTeam(pendingWatchGame.homeTid)}
-              awayTeam={pendingWatchGame.isRisingStars ? fakeAwayTeam : resolveTeam(pendingWatchGame.awayTid)}
+              homeTeam={pendingWatchPresentation.home.team}
+              awayTeam={pendingWatchPresentation.away.team}
               players={state.players}
-              homeStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, true, state.allStar, state.players)}
-              awayStartersOverride={getPlayersForExhibitionTeam(pendingWatchGame, false, state.allStar, state.players)}
+              homeStartersOverride={pendingWatchPresentation.home.roster}
+              awayStartersOverride={pendingWatchPresentation.away.roster}
               onClose={() => setPendingWatchGame(null)}
               onConfirm={async (rig, watchLive) => {
                 if (watchLive === false) {
@@ -621,27 +702,27 @@ export const ScheduleView: React.FC = () => {
                   // Pre-simulate the game and record the result BEFORE opening the watch screen.
                   // This makes Leave Game a pure exit button — no re-simulation on close.
                   const game = pendingWatchGame;
-                  const isExhibition = game.homeTid < 0;
-                  const homeT = game.isRisingStars ? fakeHomeTeam : resolveTeam(game.homeTid);
-                  const awayT = game.isRisingStars ? fakeAwayTeam : resolveTeam(game.awayTid);
-                  const homeOverride = getPlayersForExhibitionTeam(game, true, state.allStar, state.players);
-                  const awayOverride = getPlayersForExhibitionTeam(game, false, state.allStar, state.players);
-                  const simResult = GameSimulator.simulateGame(
-                    homeT, awayT, state.players,
-                    game.gid, game.date, 50,
+                  const homeOverride = getPlayersForExhibitionTeam(game, true, state.allStar, state.players, state.leagueType);
+                  const awayOverride = getPlayersForExhibitionTeam(game, false, state.allStar, state.players, state.leagueType);
+                  const prepared = GameSimulator.prepareDayGames(
+                    state.teams,
+                    state.players,
+                    [game],
+                    game.date,
+                    50,
+                    state.allStar,
                     homeOverride?.length ? homeOverride : undefined,
                     awayOverride?.length ? awayOverride : undefined,
-                    undefined, undefined, undefined, rig
+                    rig,
+                    state.leagueStats,
                   );
+                  const simResult = GameSimulator.simulatePreparedDayGames(prepared)[0];
+                  const presentation = prepared[0]?.presentation;
+                  if (!simResult || !presentation) throw new Error(`Unable to prepare watched game ${game.gid}`);
                   console.log(`[WatchGame] pre-sim done — home=${simResult.homeScore} away=${simResult.awayScore} gid=${simResult.gameId}`);
                   await dispatchAction({ type: 'RECORD_WATCHED_GAME' as any, payload: { gameId: game.gid, result: simResult } });
-                  if (!isExhibition) {
-                    rosterGate.attempt(() => draftGate.attempt(() => dispatchAction({
-                      type: 'ADVANCE_DAY',
-                      payload: { watchedGameResult: simResult, isWatchingGame: true, ...(rig !== undefined ? { riggedForTid: rig } : {}) },
-                    } as any)));
-                  }
                   setPrecomputedWatchResult(simResult);
+                  setWatchPresentation(presentation);
                   setRiggedForTid(rig);
                   setWatchingGame(game);
                   setPendingWatchGame(null);
@@ -649,13 +730,12 @@ export const ScheduleView: React.FC = () => {
                 }
               }}
             />
-          );
-        })()}
+        )}
 
         {selectedBoxScoreGame && (
           <BoxScoreModal
             game={selectedBoxScoreGame}
-            result={findBoxScoreForGame(state.boxScores, selectedBoxScoreGame.gid, selectedBoxScoreGame.date)}
+            result={findBoxScoreForScheduledGame(state.boxScores, selectedBoxScoreGame)}
             homeTeam={(() => {
               const tid = selectedBoxScoreGame.homeTid;
               if (tid >= 100) {
@@ -664,7 +744,7 @@ export const ScheduleView: React.FC = () => {
               // For fake/exhibition teams (tid < 0), prefer the name stored in the box score
               // so Rising Stars bracket teams show their real names (Team Melo, G League, etc.)
               if (tid < 0) {
-                const bs = findBoxScoreForGame(state.boxScores, selectedBoxScoreGame.gid, selectedBoxScoreGame.date);
+                const bs = findBoxScoreForScheduledGame(state.boxScores, selectedBoxScoreGame);
                 const base = getTeamForGame(tid, state.teams);
                 if (bs?.homeTeamName) return { ...base, name: bs.homeTeamName, abbrev: bs.homeTeamAbbrev ?? base.abbrev };
                 return base;
@@ -677,7 +757,7 @@ export const ScheduleView: React.FC = () => {
                 return resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []) ?? getTeamForGame(tid, state.teams);
               }
               if (tid < 0) {
-                const bs = findBoxScoreForGame(state.boxScores, selectedBoxScoreGame.gid, selectedBoxScoreGame.date);
+                const bs = findBoxScoreForScheduledGame(state.boxScores, selectedBoxScoreGame);
                 const base = getTeamForGame(tid, state.teams);
                 if (bs?.awayTeamName) return { ...base, name: bs.awayTeamName, abbrev: bs.awayTeamAbbrev ?? base.abbrev };
                 return base;
@@ -703,6 +783,7 @@ export const ScheduleView: React.FC = () => {
 
       {rosterGate.modal}
       {draftGate.modal}
+      {boundaryPreflight.modal}
       <AnimatePresence>
         {offseasonBlockOpen && (
           <div className="fixed inset-0 z-[110] flex items-center justify-center p-6">
@@ -719,13 +800,13 @@ export const ScheduleView: React.FC = () => {
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
               className="relative bg-[#111] border border-white/10 rounded-[32px] p-10 max-w-lg w-full shadow-2xl"
             >
-              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300 mb-3">Offseason Flow</p>
-              <h3 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Calendar Sim Paused</h3>
+              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300 mb-3">Offseason Calendar</p>
+              <h3 className="text-3xl font-black text-white uppercase tracking-tight mb-4">Use Offseason Tasks</h3>
               <p className="text-slate-300 text-sm mb-4 leading-relaxed">
-                During the offseason, the calendar is phase-driven so draft, free agency, training camp, and other checkpoints do not get skipped out of order.
+                Draft, free agency, training camp, and summer reviews are handled from the offseason task list.
               </p>
               <p className="text-slate-500 text-sm mb-8 leading-relaxed">
-                Use the <span className="font-bold text-white">Offseason Tasks</span> panel or the <span className="font-bold text-white">Free Agency Day bar</span> to advance.
+                Advance there to keep each league event in the right order.
               </p>
               <button
                 onClick={() => setOffseasonBlockOpen(false)}

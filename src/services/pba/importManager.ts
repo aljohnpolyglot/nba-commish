@@ -1,10 +1,12 @@
 import { convertTo2KRating, getCountryFromLoc } from '../../utils/helpers';
 import type { LeagueStats, NBAPlayer } from '../../types';
+import { getPBARosterEconomyConfig } from '../externalRosterService.shared';
 
-export type ImportRule = 'none' | 'one_no_height_limit' | 'one_max_6ft5';
+export type ImportRule = 'none' | 'one_no_height_limit' | 'one_max_6ft6';
 export type PbaConference = 'philippine' | 'commissioners' | 'governors';
 
-const MAX_HEIGHT_INCHES_GOV_CUP = 77; // 6'5"
+export const PBA_GOVERNORS_IMPORT_MAX_HEIGHT_INCHES = 78;
+export const PBA_GOVERNORS_IMPORT_HEIGHT_LABEL = `6'6"`;
 const ACTIVE_EXTERNAL_ROSTER_STATUSES = new Set([
   'Euroleague',
   'B-League',
@@ -19,11 +21,16 @@ const IMPORT_MONTHS_BY_CONFERENCE: Record<PbaConference, number> = {
   governors: 2,
 };
 const PBA_IMPORT_MONTHLY_FLOOR = 25_000;
-const PBA_IMPORT_STAR_MULTIPLIER = 30;
+const PBA_IMPORT_STAR_POOL_PCT = 0.28;
+const PBA_IMPORT_CONFERENCE_CEILING_PCT = 0.50;
 export const PBA_IMPORT_MIN_K2 = 65;
 export const PBA_IMPORT_MAX_K2 = 70;
 
 const clamp01 = (value: number): number => Math.max(0, Math.min(1, value));
+type PbaImportEconomySource = Partial<Pick<
+  LeagueStats,
+  'salaryCap' | 'minContractStaticAmount' | 'maxContractStaticPercentage' | 'historicalEconomyScale'
+>>;
 
 export function getPbaImportK2(player: NBAPlayer): number {
   const ratings = Array.isArray(player.ratings) ? player.ratings : [];
@@ -56,8 +63,13 @@ export function getEffectivePbaConference(
 
 export function getImportRuleForConference(conference?: PbaConference): ImportRule {
   if (conference === 'commissioners') return 'one_no_height_limit';
-  if (conference === 'governors') return 'one_max_6ft5';
+  if (conference === 'governors') return 'one_max_6ft6';
   return 'none';
+}
+
+export function hasLegalPbaGovernorsImportHeight(player: Pick<NBAPlayer, 'hgt'>): boolean {
+  const height = Number(player.hgt);
+  return Number.isFinite(height) && height > 0 && height <= PBA_GOVERNORS_IMPORT_MAX_HEIGHT_INCHES;
 }
 
 export function isFilipino(player: NBAPlayer): boolean {
@@ -70,12 +82,28 @@ export function isFilipino(player: NBAPlayer): boolean {
 }
 
 export function isRegisteredPbaRosterIdentity(player: NBAPlayer): boolean {
-  return String((player as any).internalId ?? '').toLowerCase().startsWith('pba-');
+  const id = String((player as any).internalId ?? '').toLowerCase();
+  return id.startsWith('pba-') || id.startsWith('pba-history:');
 }
 
 function hasActivePbaImportContract(player: NBAPlayer): boolean {
   const contract = (player as any).pbaImportContract;
   return !!contract && contract.status !== 'released';
+}
+
+export function hasExplicitPbaImportProvenance(player: NBAPlayer): boolean {
+  return (player as any).historicalPbaSource?.importTagged === true
+    || (player as any).isImport === true
+    || !!(player as any).importConference
+    || hasActivePbaImportContract(player)
+    || (player.contract as any)?.type === 'PBA_IMPORT'
+    || String(player.status ?? '') === 'PBA Import Reserve';
+}
+
+export function hasPbaImportExperience(player: NBAPlayer): boolean {
+  return hasExplicitPbaImportProvenance(player)
+    || !!(player as any).pbaImportContract
+    || ((player as any).pbaImportHistory ?? []).length > 0;
 }
 
 export function isActiveExternalRosterPlayer(player: NBAPlayer): boolean {
@@ -85,9 +113,9 @@ export function isActiveExternalRosterPlayer(player: NBAPlayer): boolean {
 }
 
 export function isPbaRosterLocal(player: NBAPlayer, leagueStats?: Pick<LeagueStats, 'pbaLocalEligibilityMode'>): boolean {
+  if (hasExplicitPbaImportProvenance(player)) return false;
   if (isFilipino(player)) return true;
   if (leagueStats?.pbaLocalEligibilityMode === 'filipino_only') return false;
-  if ((player as any).isImport || (player as any).importConference || hasActivePbaImportContract(player)) return false;
   if ((player as any).pbaLocalEligible) return true;
   const tid = Number(player.tid);
   const hasPbaRosterIdentity = player.status === 'PBA' || (Number.isFinite(tid) && tid >= 2000 && tid < 3000);
@@ -109,10 +137,13 @@ export function isImportEligible(
     return { eligible: true };
   }
 
-  if (rule === 'one_max_6ft5' && (player.hgt ?? 0) > MAX_HEIGHT_INCHES_GOV_CUP) {
+  if (rule === 'one_max_6ft6' && !hasLegalPbaGovernorsImportHeight(player)) {
+    if (!Number.isFinite(Number(player.hgt)) || Number(player.hgt) <= 0) {
+      return { eligible: false, reason: `Governors' Cup imports need a verified height of ${PBA_GOVERNORS_IMPORT_HEIGHT_LABEL} or shorter` };
+    }
     const feet = Math.floor((player.hgt ?? 0) / 12);
     const inches = (player.hgt ?? 0) % 12;
-    return { eligible: false, reason: `Governors' Cup imports must be 6'5" or shorter (player is ${feet}'${inches}")` };
+    return { eligible: false, reason: `Governors' Cup imports must be ${PBA_GOVERNORS_IMPORT_HEIGHT_LABEL} or shorter (player is ${feet}'${inches}")` };
   }
 
   return { eligible: true };
@@ -135,32 +166,48 @@ export function isPbaImportForTeam(
 
 export function getPbaImportConferenceSalary(
   requestedSalary: number,
-  leagueStats: Pick<LeagueStats, 'salaryCap'> | undefined,
+  leagueStats: PbaImportEconomySource | undefined,
   conference: PbaConference,
 ): number {
-  const cap = leagueStats?.salaryCap ?? 33_750_000;
+  const economy = getPBARosterEconomyConfig(leagueStats, 'pba_isolated');
   const months = IMPORT_MONTHS_BY_CONFERENCE[conference] || 2;
-  const monthlyFloor = Math.max(PBA_IMPORT_MONTHLY_FLOOR, Math.round(cap * 0.06));
+  const monthlyFloor = Math.max(
+    Math.round(PBA_IMPORT_MONTHLY_FLOOR * economy.economyScale),
+    Math.round(economy.salaryCapUSD * 0.06),
+  );
   const conferenceFloor = monthlyFloor * months;
   return Math.max(Math.round(requestedSalary || 0), conferenceFloor);
 }
 
 export function getPbaImportOfferRange(
   player: NBAPlayer,
-  leagueStats: Pick<LeagueStats, 'salaryCap'> | undefined,
+  leagueStats: PbaImportEconomySource | undefined,
   conference: PbaConference,
 ): { minSalaryUSD: number; marketSalaryUSD: number; maxSalaryUSD: number } {
-  const cap = Math.max(1, leagueStats?.salaryCap ?? 427_000);
+  const economy = getPBARosterEconomyConfig(leagueStats, 'pba_isolated');
+  const cap = Math.max(1, economy.salaryCapUSD);
   const months = IMPORT_MONTHS_BY_CONFERENCE[conference] || 2;
-  const baseline = Math.max(PBA_IMPORT_MONTHLY_FLOOR * months, Math.round(cap * 0.12));
+  const conferenceFloor = Math.max(
+    Math.round(PBA_IMPORT_MONTHLY_FLOOR * economy.economyScale) * months,
+    Math.round(cap * 0.12),
+  );
+  const conferenceCeiling = Math.max(conferenceFloor, Math.round(cap * PBA_IMPORT_CONFERENCE_CEILING_PCT));
   const k2 = getPbaImportK2(player);
-  const starScore = Math.pow(clamp01((k2 - 68) / 31), 2.2);
-  const nbaPremium = hasNbaExperience(player) ? 1.35 : 1;
-  const marketSalaryUSD = Math.round(baseline + starScore * cap * PBA_IMPORT_STAR_MULTIPLIER * nbaPremium);
-  const maxMultiplier = k2 >= 90 ? 2.5 : k2 >= 84 ? 2.1 : k2 >= 78 ? 1.8 : 1.55;
-  const maxSalaryUSD = Math.max(Math.round(marketSalaryUSD * maxMultiplier), baseline * 2);
+  const starScore = Math.pow(clamp01((k2 - PBA_IMPORT_MIN_K2) / (90 - PBA_IMPORT_MIN_K2)), 1.6);
+  const nbaPremium = hasNbaExperience(player) ? 1.22 : 1;
+  const marketSalaryUSD = Math.min(
+    conferenceCeiling,
+    Math.max(
+      conferenceFloor,
+      Math.round(conferenceFloor + starScore * cap * PBA_IMPORT_STAR_POOL_PCT * nbaPremium),
+    ),
+  );
+  const maxSalaryUSD = Math.max(
+    marketSalaryUSD,
+    Math.min(conferenceCeiling, Math.max(Math.round(marketSalaryUSD * 1.35), conferenceFloor * 2)),
+  );
   return {
-    minSalaryUSD: 0,
+    minSalaryUSD: conferenceFloor,
     marketSalaryUSD,
     maxSalaryUSD,
   };
@@ -169,7 +216,7 @@ export function getPbaImportOfferRange(
 export function clampPbaImportOfferSalary(
   requestedSalary: number,
   player: NBAPlayer,
-  leagueStats: Pick<LeagueStats, 'salaryCap'> | undefined,
+  leagueStats: PbaImportEconomySource | undefined,
   conference: PbaConference,
 ): number {
   const range = getPbaImportOfferRange(player, leagueStats, conference);
@@ -245,11 +292,66 @@ export function canSignInPba(
     return { allowed: false, reason: `Imports cannot play for two PBA teams in the same conference.` };
   }
 
-  if (rule === 'one_max_6ft5' && (player.hgt ?? 0) > MAX_HEIGHT_INCHES_GOV_CUP) {
+  if (rule === 'one_max_6ft6' && !hasLegalPbaGovernorsImportHeight(player)) {
+    if (!Number.isFinite(Number(player.hgt)) || Number(player.hgt) <= 0) {
+      return { allowed: false, reason: `Governors' Cup imports need a verified height of ${PBA_GOVERNORS_IMPORT_HEIGHT_LABEL} or shorter.` };
+    }
     const feet = Math.floor((player.hgt ?? 0) / 12);
     const inches = (player.hgt ?? 0) % 12;
-    return { allowed: false, reason: `Governors' Cup imports must be 6'5" or shorter. This player is ${feet}'${inches}".` };
+    return { allowed: false, reason: `Governors' Cup imports must be ${PBA_GOVERNORS_IMPORT_HEIGHT_LABEL} or shorter. This player is ${feet}'${inches}".` };
   }
 
   return { allowed: true };
+}
+
+export function isPbaImportPoolCandidate(
+  player: NBAPlayer,
+  conference: PbaConference,
+  allPlayers: NBAPlayer[],
+  leagueStats?: Pick<LeagueStats, 'pbaLocalEligibilityMode' | 'year'>,
+): boolean {
+  if (String(player.status ?? '') !== 'Free Agent') return false;
+  if (Number(player.injury?.gamesRemaining ?? 0) > 0 || Number((player as any).suspension?.gamesRemaining ?? 0) > 0) return false;
+  if (isActiveExternalRosterPlayer(player) || isPbaRosterLocal(player, leagueStats)) return false;
+  const sourceImport = player.historicalPbaSource?.importTagged === true;
+  if (!sourceImport && !hasPbaImportExperience(player) && (!hasNbaExperience(player) || !isPbaImportRatingEligible(player))) return false;
+  const priorTeamId = [...((player as any).pbaImportHistory ?? [])]
+    .reverse()
+    .find((entry: any) =>
+      Number(entry.season) === Number(leagueStats?.year) && entry.conference === conference,
+    )?.teamId;
+  return canSignInPba(player, Number.isFinite(Number(priorTeamId)) ? Number(priorTeamId) : -1, conference, allPlayers, leagueStats).allowed;
+}
+
+type PbaSigningWindowState = {
+  players: NBAPlayer[];
+  leagueStats?: Pick<LeagueStats, 'pbaLocalEligibilityMode' | 'year'> & {
+    pbaConference?: PbaConference;
+    pbaConferencePhase?: string;
+  };
+  offseasonChecklist?: {
+    pbaImportSearch?: string;
+  } | null;
+};
+
+export function canSignInCurrentPbaWindow(
+  player: NBAPlayer,
+  teamId: number,
+  state: PbaSigningWindowState,
+): { allowed: boolean; reason?: string } {
+  const conference = getEffectivePbaConference(state.leagueStats);
+  const conferenceGate = canSignInPba(player, teamId, conference, state.players, state.leagueStats);
+  if (!conferenceGate.allowed || isPbaRosterLocal(player, state.leagueStats)) return conferenceGate;
+
+  const importSearch = state.offseasonChecklist?.pbaImportSearch;
+  const windowOpen = state.leagueStats?.pbaConferencePhase === 'offseason'
+    && (importSearch === 'pending' || importSearch === 'in-progress');
+  if (!windowOpen) {
+    return {
+      allowed: false,
+      reason: `The import signing window is closed. Imports can only sign during Import Search before the Commissioner's or Governors' Cup.`,
+    };
+  }
+
+  return conferenceGate;
 }

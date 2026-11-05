@@ -20,6 +20,7 @@ export type NewsCategory =
   | 'game_result'
   | 'duo_performance'
   | 'all_star_winner'
+  | 'all_star_contest'
   | 'all_star_mvp'
   | 'all_star_bracket'
   | 'playoff_series_win'
@@ -38,10 +39,55 @@ export type NewsCategory =
   | 'award_smoy'
   | 'award_mip'
   | 'award_coy'
-  | 'team_feat';
+  | 'team_feat'
+  | 'league_contract_extension'
+  | 'league_coaching_change'
+  | 'international_field_set'
+  | 'international_champion'
+  | 'euro_transfer_completed'
+  | 'euro_loan_completed'
+  | 'euro_domestic_champion'
+  | 'euro_continental_champion'
+  | 'euro_award_winner'
+  | 'euro_promotion'
+  | 'euro_relegation'
+  | 'euro_continental_qualification'
+  | 'euro_license_decision'
+  | 'euro_final_four'
+  | 'euro_derby'
+  | 'euro_media_rights'
+  | 'euro_club_finance'
+  | 'euro_academy_promotion'
+  | 'euro_coaching_change'
+  | 'euro_contract_extension'
+  | 'pba_game_recap'
+  | 'pba_close_game'
+  | 'pba_upset'
+  | 'pba_player_performance'
+  | 'pba_conference_preview'
+  | 'pba_standings_race'
+  | 'pba_playoff_series'
+  | 'pba_finals_bound'
+  | 'pba_conference_champion'
+  | 'pba_grand_slam'
+  | 'pba_all_star_captains'
+  | 'pba_all_star_recap'
+  | 'pba_contest_winner'
+  | 'pba_award_winner'
+  | 'pba_draft_pick'
+  | 'pba_import_signing';
+
+export type NewsTemplateScope = 'shared' | 'euro' | 'pba';
+
+export interface NewsTemplateContext {
+  uiMode?: string | null;
+  moddedLeagueBase?: string | null;
+  seed?: string | number;
+}
 
 export interface NewsTemplate {
   category: NewsCategory;
   headlines: string[];
   contents: string[];
+  scope?: NewsTemplateScope;
 }

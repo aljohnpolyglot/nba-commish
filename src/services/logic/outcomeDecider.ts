@@ -92,13 +92,6 @@ export const calculateOutcome = (
             break;
         }
 
-        case 'BRIBE_PERSON': {
-            const impact = moneyImpact(payload.amount || 100000, 1.5);
-            changes.ownerApproval = vary(impact * 0.6, 0.3);
-            changes.publicApproval = -vary(impact * 0.2, 0.4); // risk of scandal
-            break;
-        }
-
         case 'GIVE_MONEY': {
             const impact = moneyImpact(payload.amount || 50000, 1);
             changes.playerApproval = vary(impact * 0.8, 0.3);
@@ -116,12 +109,6 @@ export const calculateOutcome = (
             changes.morale = vary(-8, 0.3);
             changes.playerApproval = vary(-6, 0.3);
             changes.publicApproval = -vary(3, 0.4); // if found out
-            break;
-
-        case 'LEAK_SCANDAL':
-            changes.publicApproval = vary(-5, 0.4);
-            changes.viewership = vary(3, 0.4);
-            changes.legacy = -vary(2, 0.5);
             break;
 
         case 'GO_TO_CLUB': {
@@ -163,11 +150,6 @@ export const calculateOutcome = (
             changes.revenue = vary(10, 0.2);
             changes.legacy = vary(5, 0.3);
             changes.viewership = vary(2, 0.3);
-            break;
-
-        case 'RIG_LOTTERY':
-            changes.publicApproval = -20;
-            changes.ownerApproval = 20;
             break;
 
         case 'HYPNOTIC_BROADCAST':

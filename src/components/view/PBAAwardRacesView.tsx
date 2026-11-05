@@ -1,12 +1,10 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { Trophy, Star, Target, Zap, UserCheck, Info, Award, Flame, Sparkles, Users } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { Trophy, Info } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { useHubScope } from '../../hooks/useHubScope';
 import { AwardService, type AllNBASpot } from '../../services/logic/AwardService';
 import { assignCoachOdds, assignOdds } from '../../services/logic/AwardServiceShared';
 import { resolveStaffRating } from '../../services/staff/displayAttributes';
-import { fetchCoachData, getCoachPhoto } from '../../data/photos/coaches';
-import { PlayerBioView } from '../central/view/PlayerBioView';
 import { RankedPersonCard, StatPills } from '../shared/ui';
 import { getOwnTeamId } from '../../utils/helpers';
 import type { NBAPlayer } from '../../types';
@@ -17,7 +15,20 @@ import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { isPbaRosterLocal } from '../../services/pba/importManager';
 import { getPbaMostImprovedCandidates, isPbaRookieForSeason } from '../../services/pba/awards';
 import { getPbaHeadCoachPhotoForTeam } from '../../services/pba/staffSources';
+import { resolveHeadCoachMember, resolveHeadCoachName } from '../../services/staff/coachNameResolver';
 import { selectCountedPbaRegularBoxScores } from '../../services/pba/competitionGames';
+import { filterAwardsToVisibleTimeline } from '../../utils/awardHistory';
+import { getHistoricalTeamSnapshot } from '../../utils/teamAssets';
+import { getTeamFullName } from '../../utils/teamNames';
+import { getStaffImageUrl } from '../../utils/staffPortrait';
+import { buildBoxScoreStatsByPlayer } from '../central/view/playerStatsBoxScoreMaps';
+import {
+  limitPbaAwardRaceCandidates,
+  PBA_AWARD_RACE_CANDIDATE_LIMIT,
+  rankPbaConferenceCandidates,
+} from '../../services/pba/awardRaceRankings';
+import { AwardTrophyArtwork } from '../shared/AwardTrophyArtwork';
+import { pbaAwardRaceTrophy } from './awardRaceTrophyAssets';
 
 type PbaTab = 'mvp' | 'bpc' | 'bestImport' | 'roy' | 'mip' | 'coy' | 'dpoy' | 'mqm' | 'allPBA';
 
@@ -37,16 +48,16 @@ type PbaCoachCandidate = {
   odds?: string;
 };
 
-const TAB_META: Record<PbaTab, { title: string; desc: string; icon: React.ReactElement }> = {
-  mvp: { title: 'Most Valuable Player', desc: 'Top all-around performer in the PBA.', icon: <Star className="text-yellow-400" /> },
-  bpc: { title: 'Best Player of the Conference', desc: 'Conference-level top performer.', icon: <Award className="text-indigo-400" /> },
-  bestImport: { title: 'Best Import of the Conference', desc: 'Top import in the active PBA conference.', icon: <Users className="text-cyan-400" /> },
-  roy: { title: 'Rookie of the Year', desc: 'Top-performing rookie.', icon: <Sparkles className="text-emerald-400" /> },
-  mip: { title: 'Most Improved Player', desc: 'Biggest leap from last season.', icon: <Zap className="text-orange-400" /> },
-  coy: { title: 'Coach of the Year', desc: 'Best coaching job this season.', icon: <UserCheck className="text-teal-400" /> },
-  dpoy: { title: 'Defensive Player of the Year', desc: 'Most impactful defender.', icon: <Target className="text-blue-400" /> },
-  mqm: { title: 'Mr. Quality Minutes', desc: 'Best bench/rotation value.', icon: <Flame className="text-pink-400" /> },
-  allPBA: { title: 'Mythical Team / All-Defense / All-Rookie', desc: 'Projected PBA honor teams in the NBA award-race layout.', icon: <Users className="text-indigo-400" /> },
+const TAB_META: Record<PbaTab, { title: string; desc: string }> = {
+  mvp: { title: 'Most Valuable Player', desc: 'Top all-around performer in the PBA.' },
+  bpc: { title: 'Best Player of the Conference', desc: 'Conference-level top performer.' },
+  bestImport: { title: 'Best Import of the Conference', desc: 'Top import in the active PBA conference.' },
+  roy: { title: 'Rookie of the Year', desc: 'Top-performing rookie.' },
+  mip: { title: 'Most Improved Player', desc: 'Biggest leap from last season.' },
+  coy: { title: 'Coach of the Year', desc: 'Best coaching job this season.' },
+  dpoy: { title: 'Defensive Player of the Year', desc: 'Most impactful defender.' },
+  mqm: { title: 'Mr. Quality Minutes', desc: 'Best bench/rotation value.' },
+  allPBA: { title: 'Mythical Team / All-Defense / All-Rookie', desc: 'Projected PBA honor teams in the NBA award-race layout.' },
 };
 
 const HISTORY_TYPES: Record<PbaTab, string> = {
@@ -102,15 +113,14 @@ const posGroup = (pos?: string): 'G' | 'F' | 'C' => {
 };
 
 export const PBAAwardRacesView: React.FC = () => {
-  const { state } = useGame();
+  const { state, navigateToPlayer } = useGame();
   const { players, teams } = useHubScope();
   const ownTid = getOwnTeamId(state);
   const [selectedTab, setSelectedTab] = useState<PbaTab>('mvp');
-  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
 
   const season = state.leagueStats?.year ?? new Date().getFullYear();
   const pbaConference = ((state.leagueStats as any)?.pbaConference ?? 'philippine') as 'philippine' | 'commissioners' | 'governors';
-  const currentHistory = (state.historicalAwards ?? []).filter((award: any) => {
+  const currentHistory = filterAwardsToVisibleTimeline(state.historicalAwards ?? [], season).filter((award: any) => {
     if (Number(award.season) !== Number(season)) return false;
     if (selectedTab === 'bpc' || selectedTab === 'bestImport') {
       const awardConference = normalizeText(award.conference ?? award.source ?? award.type);
@@ -137,10 +147,6 @@ export const PBAAwardRacesView: React.FC = () => {
       : (['mvp', 'bpc', 'roy', 'mip', 'coy', 'dpoy', 'mqm', 'allPBA'] as PbaTab[])
   ), [showBestImport]);
 
-  useEffect(() => {
-    void fetchCoachData();
-  }, []);
-
   const teamsWithRecords = useMemo(() => {
     const records = new Map<number, { wins: number; losses: number }>();
     for (const team of teams) {
@@ -166,10 +172,19 @@ export const PBAAwardRacesView: React.FC = () => {
     });
   }, [pbaSpec, season, state.boxScores, teams]);
 
-  const pbaPlayers = useMemo(
-    () => players.filter(player => isPbaTeamPlayer(player)),
-    [players],
-  );
+  const currentConferenceStats = useMemo(() => buildBoxScoreStatsByPlayer(state, {
+    competitionIds: new Set([pbaSpec.id]),
+    phase: 'regular',
+  }), [pbaSpec.id, state]);
+  const pbaPlayers = useMemo(() => players
+    .filter(player => isPbaTeamPlayer(player))
+    .map(player => ({
+      ...player,
+      stats: [
+        ...(player.stats ?? []).filter(row => Number(row.season) < Number(season)),
+        ...(currentConferenceStats.get(player.internalId) ?? []),
+      ],
+    })), [currentConferenceStats, players, season]);
   const localPbaPlayers = useMemo(
     () => pbaPlayers.filter(player => isPbaLocalAwardPlayer(player, state.leagueStats)),
     [pbaPlayers, state.leagueStats],
@@ -185,6 +200,8 @@ export const PBAAwardRacesView: React.FC = () => {
     season,
     state.staff,
     state.leagueStats?.minGamesRequirement,
+    PBA_AWARD_RACE_CANDIDATE_LIMIT,
+    'pba_isolated',
   ), [localPbaPlayers, teamsWithRecords, season, state.staff, state.leagueStats?.minGamesRequirement]);
 
   const pbaTeamMeta = useMemo(() => {
@@ -244,13 +261,23 @@ export const PBAAwardRacesView: React.FC = () => {
           pbaTeamMeta.byName.get(normalizeText(team.name)) ??
           pbaTeamMeta.byName.get(normalizeText(team.region)) ??
           pbaTeamMeta.byName.get(normalizeText(`${team.region ?? ''} ${team.name ?? ''}`));
-        const coachName = teamMeta?.coach ?? (team as any).coachName ?? (team as any).coach ?? (team as any).headCoach ?? '';
+        const headCoachMember = resolveHeadCoachMember(team, state.staff);
+        const coachName = resolveHeadCoachName(team, state.staff, season)
+          ?? teamMeta?.coach
+          ?? (team as any).coachName
+          ?? (team as any).coach
+          ?? (team as any).headCoach
+          ?? '';
         if (!coachName) return null;
-        const coachRating = resolveStaffRating('Head Coach', {
+        const coachRating = resolveStaffRating('Head Coach', headCoachMember ?? {
           name: coachName,
           role: 'Head Coach',
-          attributeProfile: 'nba',
+          attributeProfile: 'default',
         });
+        const coachSource = String((headCoachMember as any)?.source ?? '');
+        const strictPortrait = coachSource === 'historical-nba-coaches'
+          || (coachSource.startsWith('pba') && (headCoachMember as any)?.isPlaceholder !== true);
+        const historicalPbaCoach = coachSource === 'pba-historical-coaches';
         const score = (winPct * 72) + (coachRating * 0.45);
         return {
           coachName,
@@ -261,14 +288,16 @@ export const PBAAwardRacesView: React.FC = () => {
           losses,
           improvement: 0,
           coachRating,
-          coachPhotoUrl: getPbaHeadCoachPhotoForTeam(team, season) ?? getCoachPhoto(coachName),
+          coachPhotoUrl: headCoachMember?.playerPortraitUrl
+            ?? (historicalPbaCoach ? undefined : getPbaHeadCoachPhotoForTeam(team, season))
+            ?? (strictPortrait || !headCoachMember ? undefined : getStaffImageUrl(headCoachMember.staffImageId)),
         };
       })
       .filter((entry): entry is NonNullable<typeof entry> => !!entry)
       .sort((a, b) => b.score - a.score);
 
     return assignCoachOdds(scored);
-  }, [pbaTeamMeta, season, teamsWithRecords]);
+  }, [pbaTeamMeta, season, state.staff, teamsWithRecords]);
 
   const hasRegularSeasonSample = useMemo(() => (state.boxScores ?? []).some((box: any) => {
     const phase = String(box?.competitionPhase ?? '').toLowerCase();
@@ -279,28 +308,8 @@ export const PBAAwardRacesView: React.FC = () => {
   }), [pbaSpec.id, season, state.boxScores]);
 
   const fallback = useMemo(() => {
-    const scorePlayers = (pool: NBAPlayer[]) => pool
-      .map((player) => {
-        const stats = player.stats?.find((row: any) => Number(row.season) === Number(season) && !row.playoffs && (row.gp ?? 0) > 0)
-          ?? player.stats?.[player.stats.length - 1];
-        if (!stats || !stats.gp) return null;
-        const team = teamsWithRecords.find(t => t.id === player.tid);
-        if (!team) return null;
-        const ppg = (stats.pts ?? 0) / stats.gp;
-        const rpg = (statRebounds(stats) || 0) / stats.gp;
-        const apg = (stats.ast ?? 0) / stats.gp;
-        const winPct = team && (team.wins + team.losses) > 0 ? team.wins / (team.wins + team.losses) : 0.5;
-        return {
-          player,
-          team,
-          stats,
-          score: (ppg * 1.1 + rpg * 0.35 + apg * 0.35) * (0.75 + winPct * 0.5),
-        };
-      })
-      .filter((entry): entry is NonNullable<typeof entry> => !!entry)
-      .sort((a, b) => b.score - a.score);
-    const scoredLocals = scorePlayers(localPbaPlayers);
-    const scoredImports = scorePlayers(importPbaPlayers);
+    const scoredLocals = rankPbaConferenceCandidates(localPbaPlayers, teamsWithRecords, season);
+    const scoredImports = rankPbaConferenceCandidates(importPbaPlayers, teamsWithRecords, season);
 
     return {
       bpc: scoredLocals,
@@ -312,7 +321,6 @@ export const PBAAwardRacesView: React.FC = () => {
   const rookieCandidates = useMemo(() => {
     const candidates = (fallback.bpc as Array<PbaCandidate & { score?: number }>)
       .filter(entry => isPbaRookieForSeason(state, entry.player, season))
-      .slice(0, 10)
       .map(entry => ({ ...entry, odds: entry.odds ?? '' }));
     return assignOdds(candidates as any) as PbaCandidate[];
   }, [fallback.bpc, season, state]);
@@ -352,7 +360,10 @@ export const PBAAwardRacesView: React.FC = () => {
   const selectedMeta = TAB_META[selectedTab];
 
   const pbaMipCandidates = useMemo(
-    () => getPbaMostImprovedCandidates(state, localPbaPlayers, teamsWithRecords as any, season, { live: true }) as PbaCandidate[],
+    () => getPbaMostImprovedCandidates(state, localPbaPlayers, teamsWithRecords as any, season, {
+      live: true,
+      limit: PBA_AWARD_RACE_CANDIDATE_LIMIT,
+    }) as PbaCandidate[],
     [localPbaPlayers, season, state, teamsWithRecords],
   );
 
@@ -378,25 +389,27 @@ export const PBAAwardRacesView: React.FC = () => {
     if (!visibleTabs.includes(selectedTab)) setSelectedTab('mvp');
   }, [selectedTab, visibleTabs]);
 
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
-  }
-
   const renderPlayerBoard = (candidates: PbaCandidate[], accentColor: 'indigo' | 'teal' | 'amber' | 'emerald' | 'rose' | 'violet' | 'sky' = 'indigo') => (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {candidates.slice(0, 10).map((candidate, index) => {
+      {limitPbaAwardRaceCandidates(candidates).map((candidate, index) => {
         const isOwn = ownTid !== null && candidate.player.tid === ownTid;
         const gp = candidate.stats?.gp || 1;
+        const teamSnapshot = candidate.team ? getHistoricalTeamSnapshot(candidate.team, season) : null;
         return (
-          <div key={candidate.player.internalId} className={isOwn ? 'ring-2 ring-indigo-500/50 rounded-xl' : ''}>
+          <div
+            key={candidate.player.internalId}
+            data-testid="pba-award-candidate"
+            data-candidate-id={candidate.player.internalId}
+            className={isOwn ? 'ring-2 ring-indigo-500/50 rounded-xl' : ''}
+          >
             <RankedPersonCard
               rank={index + 1}
               portraitUrl={candidate.player.imgURL}
               face={(candidate.player as any).face}
               name={candidate.player.name}
               badge={candidate.player.pos}
-              subtitle={`${candidate.team?.name ?? 'PBA'} · ${candidate.team ? `${candidate.team.wins}-${candidate.team.losses}` : '—'}`}
-              teamLogoUrl={candidate.team?.logoUrl}
+              subtitle={`${teamSnapshot ? getTeamFullName(teamSnapshot) : 'PBA'} · ${candidate.team ? `${candidate.team.wins}-${candidate.team.losses}` : '—'}`}
+              teamLogoUrl={teamSnapshot?.logoUrl}
               stats={[
                 { label: 'PTS', val: ((candidate.stats.pts ?? 0) / gp).toFixed(1) },
                 { label: 'REB', val: (((candidate.stats.trb ?? ((candidate.stats.orb ?? 0) + (candidate.stats.drb ?? 0))) || 0) / gp).toFixed(1) },
@@ -405,7 +418,7 @@ export const PBAAwardRacesView: React.FC = () => {
               odds={candidate.odds}
               accentColor={accentColor}
               animDelay={index * 0.05}
-              onClick={() => setViewingPlayer(candidate.player)}
+              onClick={() => navigateToPlayer(candidate.player)}
             />
           </div>
         );
@@ -415,19 +428,23 @@ export const PBAAwardRacesView: React.FC = () => {
 
   const renderCoachBoard = (candidates: PbaCoachCandidate[]) => (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {candidates.slice(0, 10).map((candidate, index) => (
-        <RankedPersonCard
-          key={`${candidate.coachName}-${candidate.team.id}`}
-          rank={index + 1}
-          portraitUrl={candidate.coachPhotoUrl ?? getCoachPhoto(candidate.coachName)}
-          name={candidate.coachName}
-          subtitle={`${candidate.team.name} · ${candidate.wins}–${candidate.losses}`}
-          teamLogoUrl={candidate.team.logoUrl}
-          odds={candidate.odds}
-          accentColor="teal"
-          animDelay={index * 0.05}
-        />
-      ))}
+      {candidates.slice(0, 10).map((candidate, index) => {
+        const teamSnapshot = getHistoricalTeamSnapshot(candidate.team, season);
+        return (
+          <RankedPersonCard
+            key={`${candidate.coachName}-${candidate.team.id}`}
+            rank={index + 1}
+            portraitUrl={candidate.coachPhotoUrl}
+            disableNameFallback
+            name={candidate.coachName}
+            subtitle={`${getTeamFullName(teamSnapshot)} · ${candidate.wins}–${candidate.losses}`}
+            teamLogoUrl={teamSnapshot.logoUrl}
+            odds={candidate.odds}
+            accentColor="teal"
+            animDelay={index * 0.05}
+          />
+        );
+      })}
     </div>
   );
 
@@ -442,10 +459,11 @@ export const PBAAwardRacesView: React.FC = () => {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {team.map((spot, si) => {
               const isOwn = ownTid !== null && spot.player.tid === ownTid;
+              const teamSnapshot = getHistoricalTeamSnapshot(spot.team, season);
               return (
                 <div
                   key={`${spot.player.internalId}-${ti}-${si}`}
-                  onClick={() => setViewingPlayer(spot.player)}
+                  onClick={() => navigateToPlayer(spot.player)}
                   className={`group flex items-center gap-3 border rounded-xl p-3 cursor-pointer transition-all ${
                     isOwn
                       ? 'bg-indigo-500/10 hover:bg-indigo-500/15 border-indigo-500/40 hover:border-indigo-500/60'
@@ -456,12 +474,12 @@ export const PBAAwardRacesView: React.FC = () => {
                     imgUrl={spot.player.imgURL}
                     face={(spot.player as any).face}
                     playerName={spot.player.name}
-                    teamLogoUrl={spot.team.logoUrl}
+                    teamLogoUrl={teamSnapshot.logoUrl}
                     size={40}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-bold text-white text-xs truncate group-hover:text-indigo-400 transition-colors"><PlayerNameWithHover player={spot.player}>{spot.player.name}</PlayerNameWithHover></p>
-                    <p className="text-[10px] text-slate-500">{spot.pos} · {spot.team.abbrev}</p>
+                    <p className="text-[10px] text-slate-500">{spot.pos} · {teamSnapshot.abbrev}</p>
                     <p className="text-[10px] text-slate-600">{spot.team.wins}–{spot.team.losses}</p>
                   </div>
                   <StatPills
@@ -528,9 +546,11 @@ export const PBAAwardRacesView: React.FC = () => {
       <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
         <div className="max-w-6xl mx-auto">
           <div className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-indigo-900/20 to-slate-900 border border-indigo-500/20 flex items-center gap-6">
-            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-              {React.cloneElement(selectedMeta.icon, { size: 32 } as any)}
-            </div>
+            <AwardTrophyArtwork
+              alt={`${selectedMeta.title} trophy`}
+              className="h-20 w-16 shrink-0"
+              fallback={<img src={pbaAwardRaceTrophy(selectedTab)} alt="" className="h-full w-full object-contain" />}
+            />
             <div>
               <h3 className="text-2xl font-bold text-white">{selectedMeta.title}</h3>
               <p className="text-slate-400">{selectedMeta.desc}</p>

@@ -3,18 +3,20 @@ import { motion } from 'motion/react';
 import { Award, LayoutDashboard, Search, Trophy, Users } from 'lucide-react';
 import { useLeagueLabels } from '../../../utils/leagueLabels';
 import { BracketTeam, Standing } from '../types';
-import { getTeamLogo } from './NBACupData';
+import { getTeamLogo, type NbaCupTeamIdentityInput } from './NBACupData';
 
 export function GroupTable({
   name,
   standings,
   variant = 'default',
   teams,
+  season,
 }: {
   name: string;
   standings: Standing[];
   variant?: 'default' | 'info' | 'success';
-  teams?: { id: number; name: string; logoURL?: string }[];
+  teams?: NbaCupTeamIdentityInput[];
+  season?: number;
 }) {
   const variantStyles = {
     default: { border: 'border-white/5', header: 'bg-white/5', icon: <Users className="w-4 h-4 text-amber-500" /> },
@@ -76,7 +78,7 @@ export function GroupTable({
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-black/40 flex items-center justify-center p-1.5 border border-white/10 shadow-inner group-hover:border-white/20 transition-all">
                           <img
-                            src={getTeamLogo(row.team, teams) ?? `https://via.placeholder.com/32?text=${row.team.charAt(0)}`}
+                            src={getTeamLogo(row.team, teams, season) ?? `https://via.placeholder.com/32?text=${row.team.charAt(0)}`}
                             alt={row.team}
                             className="w-full h-full object-contain"
                             onError={e => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
@@ -109,13 +111,15 @@ function MatchCard({
   size = 'default',
   delay = 0,
   liveTeams,
+  season,
   onGameClick,
 }: {
   teams: [BracketTeam, BracketTeam];
   highlighted?: boolean;
   size?: 'default' | 'large';
   delay?: number;
-  liveTeams?: { id: number; name: string; logoURL?: string }[];
+  liveTeams?: NbaCupTeamIdentityInput[];
+  season?: number;
   onGameClick?: () => void;
 }) {
   const winnerIndex = matchTeams[0].score > matchTeams[1].score ? 0 : 1;
@@ -134,7 +138,7 @@ function MatchCard({
             <span className="text-[10px] font-black text-slate-500 w-4 tabular-nums">{team.seed}</span>
             <div className="w-6 h-6 shrink-0 rounded bg-black/20 p-0.5 border border-white/5">
               <img
-                src={getTeamLogo(team.team, liveTeams) ?? `https://via.placeholder.com/24?text=${team.team.charAt(0)}`}
+                src={getTeamLogo(team.team, liveTeams, season) ?? `https://via.placeholder.com/24?text=${team.team.charAt(0)}`}
                 alt={team.team}
                 className="w-full h-full object-contain"
                 onError={e => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
@@ -152,10 +156,12 @@ function MatchCard({
 export function BracketDisplay({
   bracket,
   liveTeams,
+  season,
   onGameClick,
 }: {
   bracket: BracketTeam[];
-  liveTeams?: { id: number; name: string; logoURL?: string }[];
+  liveTeams?: NbaCupTeamIdentityInput[];
+  season?: number;
   onGameClick?: (gameId: number) => void;
 }) {
   const labels = useLeagueLabels();
@@ -175,6 +181,41 @@ export function BracketDisplay({
   for (let i = 0; i < bracket.length; i += 2) {
     if (bracket[i] && bracket[i + 1]) games.push([bracket[i], bracket[i + 1]]);
   }
+  const hasRoundMetadata = games.every(game => Boolean(game[0].roundId));
+  if (hasRoundMetadata) {
+    const rounds = [...new Set(games.map(game => game[0].roundId!))].map(roundId => ({
+      roundId,
+      label: games.find(game => game[0].roundId === roundId)?.[0].roundLabel ?? roundId,
+      games: games.filter(game => game[0].roundId === roundId),
+    }));
+    return (
+      <div className="relative overflow-x-auto no-scrollbar pb-10">
+        <div
+          className="grid gap-10 items-center pt-12 pb-8 px-4"
+          style={{ minWidth: `${Math.max(1, rounds.length) * 300}px`, gridTemplateColumns: `repeat(${Math.max(1, rounds.length)}, minmax(260px, 1fr))` }}
+        >
+          {rounds.map((round, roundIndex) => (
+            <section key={round.roundId} className="flex flex-col justify-center gap-8">
+              <div className={`text-[10px] font-black uppercase tracking-[0.3em] text-center mb-4 ${roundIndex === rounds.length - 1 ? 'text-amber-500/70' : 'text-slate-600'}`}>{round.label}</div>
+              {round.games.map((game, gameIndex) => (
+                <div key={`${round.roundId}-${gameIndex}`} className="flex justify-center">
+                  <MatchCard
+                    teams={game}
+                    highlighted={roundIndex === rounds.length - 1}
+                    size={roundIndex === rounds.length - 1 ? 'large' : 'default'}
+                    delay={(roundIndex + gameIndex) * 0.1}
+                    liveTeams={liveTeams}
+                    season={season}
+                    onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined}
+                  />
+                </div>
+              ))}
+            </section>
+          ))}
+        </div>
+      </div>
+    );
+  }
   const qf = games.slice(0, 4);
   const sf = games.slice(4, 6);
   const final = games.slice(6, 7);
@@ -184,12 +225,12 @@ export function BracketDisplay({
       <div className="min-w-[900px] flex justify-between gap-8 pt-12 pb-8 px-4">
         <div className="flex flex-col justify-between gap-8">
           <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] text-center mb-4">Quarterfinals</div>
-          {qf.map((game, i) => <MatchCard key={i} teams={game} delay={i * 0.1} liveTeams={liveTeams} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
+          {qf.map((game, i) => <MatchCard key={i} teams={game} delay={i * 0.1} liveTeams={liveTeams} season={season} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
         </div>
         <div className="flex flex-col justify-around py-20 w-8">{[1, 2].map(i => <div key={i} className="h-32 border-y border-r border-white/10 rounded-r-xl" />)}</div>
         <div className="flex flex-col justify-around py-16">
           <div className="text-[10px] font-black text-slate-600 uppercase tracking-[0.3em] text-center mb-4">Semifinals</div>
-          {sf.map((game, i) => <MatchCard key={i} teams={game} delay={0.4 + i * 0.1} liveTeams={liveTeams} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
+          {sf.map((game, i) => <MatchCard key={i} teams={game} delay={0.4 + i * 0.1} liveTeams={liveTeams} season={season} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
         </div>
         <div className="flex flex-col justify-center py-20 w-8"><div className="h-64 border-y border-r border-white/10 rounded-r-xl" /></div>
         <div className="flex flex-col justify-center pt-20">
@@ -201,7 +242,7 @@ export function BracketDisplay({
                 <span className="text-[10px] font-black text-amber-500 uppercase tracking-[0.3em] whitespace-nowrap italic">{labels.cupChampion}</span>
               </div>
             </div>
-            {final.map((game, i) => <MatchCard key={i} teams={game} highlighted size="large" delay={0.7} liveTeams={liveTeams} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
+            {final.map((game, i) => <MatchCard key={i} teams={game} highlighted size="large" delay={0.7} liveTeams={liveTeams} season={season} onGameClick={game[0].gameId != null ? () => onGameClick?.(game[0].gameId!) : undefined} />)}
           </div>
         </div>
       </div>

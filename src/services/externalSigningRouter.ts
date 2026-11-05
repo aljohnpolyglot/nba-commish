@@ -21,6 +21,9 @@ import { convertTo2KRating, getCountryFromLoc } from '../utils/helpers';
 import { getGameDateParts } from '../utils/dateUtils';
 import { EXTERNAL_SALARY_SCALE, NATIONALITY_LEAGUE_BIAS, EXTERNAL_LEAGUE_OVR_CAP } from '../constants';
 import { getOffseasonState, logOffseasonDrift } from './offseason/offseasonState';
+import { simDebug } from '../utils/simDebug';
+import { appendPlayerTransaction } from '../utils/playerBirdRights';
+import { isUnavailableInternationalTournamentPlayer } from '../utils/prospectUtils';
 
 export interface ExternalRoutingResult {
   playerId: string;
@@ -126,18 +129,25 @@ const MIN_NBA_FA_TIER_MID   = 30; // K2 60–69
 
 export function routeUnsignedPlayers(
   state: GameState,
-  options: { protectedPlayerIds?: Set<string>; excludedDestinationLeagues?: Set<ExternalRoutingResult['league']> } = {},
+  options: {
+    protectedPlayerIds?: Set<string>;
+    excludedDestinationLeagues?: Set<ExternalRoutingResult['league']>;
+    routingDay?: number;
+    routingDays?: number;
+  } = {},
 ): { results: ExternalRoutingResult[]; players: NBAPlayer[] } {
   // [OSPLAN] drift check — overseas routing should fire only on Oct 1 (preCamp).
   if (state.date) {
     const os = getOffseasonState(state.date, state.leagueStats as any, state.schedule as any);
     logOffseasonDrift(
       'externalSigningRouter.routeUnsignedPlayers',
-      ['preCamp'],
+      options.routingDay != null ? ['openFA', 'preCamp', 'inSeason'] : ['preCamp', 'inSeason'],
       os.phase,
       `date=${os.dateStr}`,
     );
-    console.log(`[OSPLAN] externalSigningRouter.routeUnsignedPlayers fire date=${state.date} phase=${os.phase}`);
+    simDebug('lifecycle', () => (
+      `[OSPLAN] externalSigningRouter.routeUnsignedPlayers fire date=${state.date} phase=${os.phase}`
+    ));
   }
 
   const EXCLUDED_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Draft Prospect', 'Prospect']);
@@ -145,7 +155,10 @@ export function routeUnsignedPlayers(
 
   // Pre-compute K2 OVR for each eligible FA so we can decide which ones to protect
   const eligibleFAs = state.players
-    .filter(p => p.tid === -1 && p.status === 'Free Agent' && !EXCLUDED_STATUSES.has(p.status ?? ''))
+    .filter(p => p.tid === -1
+      && p.status === 'Free Agent'
+      && !isUnavailableInternationalTournamentPlayer(p)
+      && !EXCLUDED_STATUSES.has(p.status ?? ''))
     .map(p => {
       const lastRating = (p as any).ratings?.[(p as any).ratings?.length - 1];
       const hgtAttr = lastRating?.hgt ?? 50;
@@ -168,6 +181,7 @@ export function routeUnsignedPlayers(
     // Only route NBA free agents (not external players, prospects, or retired)
     if (p.tid !== -1) return p;
     if (p.status !== 'Free Agent') return p;
+    if (isUnavailableInternationalTournamentPlayer(p)) return p;
     if (EXCLUDED_STATUSES.has(p.status ?? '')) return p;
 
     // Convert to K2 scale — all thresholds below are K2 (per the header comment)
@@ -188,6 +202,8 @@ export function routeUnsignedPlayers(
     if (playerAge >= 36 && k2Ovr < 72) return p;
     let playerSeed = 0;
     for (let ci = 0; ci < p.internalId.length; ci++) playerSeed += p.internalId.charCodeAt(ci);
+    if (options.routingDay != null && options.routingDays != null
+      && (playerSeed % options.routingDays) + 1 !== options.routingDay) return p;
 
     const dest = pickDestination(k2Ovr, playerAge, state.nonNBATeams ?? [], playerSeed, (p as any).born);
     if (!dest) return p;
@@ -253,6 +269,8 @@ export function routeUnsignedPlayers(
         guaranteed: salaryUSD,
         option: '',
       }],
+      signedDate: state.date,
+      transactions: appendPlayerTransaction(p, { season: leagueYear, tid: dest.tid, type: 'freeAgent' }),
     };
   });
 

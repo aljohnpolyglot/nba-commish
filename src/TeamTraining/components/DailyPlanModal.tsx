@@ -173,7 +173,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                            <div className="flex items-center gap-2">
                               <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">Workload Intensity</h4>
                               <Tooltip text="Game-speed vs walk-through. Low = film & walk-throughs. High (70%+) raises dev cap and injury risk. Recovery days locked at 15%.">
-                                 <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-help">
+                                 <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-default">
                                     <Info size={10} className="text-slate-400 md:w-3 md:h-3" />
                                  </div>
                               </Tooltip>
@@ -330,7 +330,7 @@ export function DailyPlanModal({ isOpen, onClose, day, activity, intensity: init
                            <div className="flex items-center gap-2">
                               <h4 className="text-xs font-black text-slate-300 uppercase tracking-widest">System Practice</h4>
                               <Tooltip text="Up to 5 sets the team drills today. Each rep raises System Familiarity — the higher the meter, the better the team executes that set in-game. Mix offense and defense.">
-                                 <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-help">
+                                 <div className="bg-slate-800 p-0.5 md:p-1 rounded-full cursor-default">
                                     <Info size={10} className="text-slate-400 md:w-3 md:h-3" />
                                  </div>
                               </Tooltip>

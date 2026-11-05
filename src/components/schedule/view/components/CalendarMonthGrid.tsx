@@ -6,6 +6,8 @@ import { getAllStarWeekendDates } from '../../../../services/allStar/AllStarWeek
 import { resolveAnyTeam } from '../../../../utils/teamLookup';
 import { getConferenceSpec, getPbaCalendarPosition, type PbaConference } from '../../../../services/pba/conferenceTransition';
 import { dateForCompetitionSeason } from '../../../../services/competition/competitionSeasonState';
+import { isDraftLotteryEnabled } from '../../../../lib/lotteryPresets';
+import { getResolvedTeamLogoUrl } from '../../../../utils/teamAssets';
 
 interface CalendarMonthGridProps {
   year: number;
@@ -64,10 +66,18 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
   onDateClick,
   renderDayOverlay,
 }) => {
+  const logoFor = (team: NBATeam | null | undefined) => team ? getResolvedTeamLogoUrl(team, state.leagueStats?.year) : '';
   const ownTid = getOwnTeamId(state);
   const gmTid = focusTeamId !== undefined ? focusTeamId : ownTid;
   const pbaIsolated = state.leagueStats?.uiMode === 'pba_isolated';
+  const draftLotteryEnabled = isDraftLotteryEnabled(state.leagueStats?.draftType);
   const resolveTeam = (tid: number): NBATeam | null => resolveAnyTeam(tid, state.teams ?? [], state.nonNBATeams ?? []);
+  const competitionLabel = (competitionId?: string) => {
+    if (!competitionId) return '';
+    if (competitionId.startsWith('pba-')) return competitionId.replace('pba-', '').replace(/-/g, ' ');
+    const competition = state.activeCompetitions?.find((item: any) => item.id === competitionId);
+    return competition?.shortName ?? competition?.displayName ?? competitionId.replace(/-/g, ' ');
+  };
   const allStarDateSet = new Set<string>();
   const addWeekend = (targetYear: number) => {
     try {
@@ -135,7 +145,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         const showPlayoff = !euroIsolated && (hasPlayoff || (!pbaIsolated && inPlayoffWindow));
         const showNbaCalendarEvents = state.leagueStats?.uiMode !== 'euro_isolated' && state.leagueStats?.uiMode !== 'pba_isolated';
         const isTradeDeadline = !euroIsolated && dateNorm === tradeDeadlineStr;
-        const isDraftLottery = showNbaCalendarEvents && !noDraft && dateNorm === draftLotteryStr;
+        const isDraftLottery = showNbaCalendarEvents && !noDraft && draftLotteryEnabled && dateNorm === draftLotteryStr;
         const inCombineWindow = showNbaCalendarEvents && !noDraft && dateNorm >= combineStartStr && dateNorm <= combineEndStr;
         const isDraft = showNbaCalendarEvents && !noDraft && dateNorm === draftDayStr && !draftBlockedByPlayoffs;
         const isFAMoratorium = showNbaCalendarEvents && dateNorm === faStartStr;
@@ -230,6 +240,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
         return (
           <button
             key={day}
+            aria-label={`${dateNorm}, ${games.length} scheduled ${games.length === 1 ? 'game' : 'games'}`}
             onClick={() => {
               const handled = onDateClick?.({ date: dateNorm, dateObj, games, focusTeamGame: userGame });
               if (handled) return;
@@ -385,9 +396,9 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
 
             {hasRichGM && isUserScrimmage && (
               <>
-                {userTeam && (userTeam.logoUrl || (userTeam as any).imgURL) && (
+                {logoFor(userTeam) && (
                   <img
-                    src={userTeam.logoUrl || (userTeam as any).imgURL}
+                    src={logoFor(userTeam)}
                     alt={userTeam.name}
                     referrerPolicy="no-referrer"
                     onError={e => { e.currentTarget.style.display = 'none'; }}
@@ -405,9 +416,9 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
 
             {hasRichGM && !isUserScrimmage && opponent && (
               <>
-                {(opponent.logoUrl || (opponent as any).imgURL) && (
+                {logoFor(opponent) && (
                   <img
-                    src={opponent.logoUrl || (opponent as any).imgURL}
+                    src={logoFor(opponent)}
                     alt={opponent.name}
                     referrerPolicy="no-referrer"
                     onError={e => { e.currentTarget.style.display = 'none'; }}
@@ -451,9 +462,9 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
             {!hasRichGM && featureCompetitionGame && featureAway && featureHome && (
               <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 pointer-events-none">
                 <div className="flex items-center justify-center gap-1.5">
-                  {(featureAway.logoUrl || (featureAway as any).imgURL) && (
+                  {logoFor(featureAway) && (
                     <img
-                      src={featureAway.logoUrl || (featureAway as any).imgURL}
+                      src={logoFor(featureAway)}
                       alt={featureAway.abbrev}
                       referrerPolicy="no-referrer"
                       onError={e => { e.currentTarget.style.display = 'none'; }}
@@ -461,9 +472,9 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
                     />
                   )}
                   <span className="hidden md:block text-[8px] font-black text-white/35">v</span>
-                  {(featureHome.logoUrl || (featureHome as any).imgURL) && (
+                  {logoFor(featureHome) && (
                     <img
-                      src={featureHome.logoUrl || (featureHome as any).imgURL}
+                      src={logoFor(featureHome)}
                       alt={featureHome.abbrev}
                       referrerPolicy="no-referrer"
                       onError={e => { e.currentTarget.style.display = 'none'; }}
@@ -472,9 +483,7 @@ export const CalendarMonthGrid: React.FC<CalendarMonthGridProps> = ({
                   )}
                 </div>
                 <span className="hidden md:block max-w-[90%] truncate text-[7px] font-black uppercase tracking-widest text-white/40">
-                  {String(featureCompetitionGame.competitionId ?? '').startsWith('pba-')
-                    ? String(featureCompetitionGame.competitionId).replace('pba-', '').replace(/-/g, ' ')
-                    : featureCompetitionGame.competitionId === 'euroleague' ? 'EuroLeague' : 'Endesa'}
+                  {competitionLabel(featureCompetitionGame.competitionId)}
                   {games.length > 1 ? ` +${games.length - 1}` : ''}
                 </span>
               </div>

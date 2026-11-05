@@ -1,5 +1,4 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import { SaveManager } from '../../services/SaveManager';
 
 interface Props {
   children: ReactNode;
@@ -31,21 +30,6 @@ export class ErrorBoundary extends Component<Props, State> {
     console.error('Uncaught error:', error, errorInfo);
   }
 
-  private handleReset = async () => {
-    try {
-      // Clear all data
-      const metadata = await SaveManager.getMetadata();
-      for (const meta of metadata) {
-        await SaveManager.deleteSave(meta.id);
-      }
-      window.location.reload();
-    } catch (e) {
-      console.error('Failed to clear data:', e);
-      // Force reload anyway
-      window.location.reload();
-    }
-  };
-
   public render() {
     if (this.state.hasError) {
       return (
@@ -60,18 +44,12 @@ export class ErrorBoundary extends Component<Props, State> {
                 {this.state.error?.message || 'Unknown error'}
               </code>
             </div>
-            <div className="flex gap-3">
+            <div>
               <button
                 onClick={() => window.location.reload()}
-                className="flex-1 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-white rounded-lg font-medium transition-colors"
+                className="w-full px-4 py-2 bg-indigo-500 hover:bg-indigo-400 text-white rounded-lg font-medium transition-colors"
               >
                 Reload Page
-              </button>
-              <button
-                onClick={this.handleReset}
-                className="flex-1 px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Reset Data
               </button>
             </div>
           </div>

@@ -42,7 +42,7 @@ const PrefBar = ({ left, right, val, tooltip }: { left: string, right: string, v
 };
 
 const SliderRow = ({ label, val, tooltip }: { label: string, val: number, tooltip: string }) => (
-  <div className="flex justify-between group relative cursor-help py-0.5">
+  <div className="flex justify-between group relative cursor-default py-0.5">
     <span>{label}</span>
     <span className="text-[#58a6ff]">{val}</span>
     
@@ -100,26 +100,7 @@ export default function TeamCard({ teamName, bestSystem, avgK2, sortedProfs, top
                   {p.name || `${(p as any).firstName || ''} ${(p as any).lastName || ''}`.trim()} - {p.pos}
                 </div>
                 
-                <div className="text-[10px] text-[#8b949e] mb-1">BBGM Attributes</div>
-                <div className="grid grid-cols-4 gap-1 text-[10px] mb-2 text-white">
-                  <div><span className="text-[#8b949e]">HGT:</span> {p.currentRating.hgt}</div>
-                  <div><span className="text-[#8b949e]">STR:</span> {p.currentRating.stre}</div>
-                  <div><span className="text-[#8b949e]">SPD:</span> {p.currentRating.spd}</div>
-                  <div><span className="text-[#8b949e]">JMP:</span> {p.currentRating.jmp}</div>
-                  <div><span className="text-[#8b949e]">END:</span> {p.currentRating.endu}</div>
-                  <div><span className="text-[#8b949e]">INS:</span> {p.currentRating.ins}</div>
-                  <div><span className="text-[#8b949e]">DNK:</span> {p.currentRating.dnk}</div>
-                  <div><span className="text-[#8b949e]">FT:</span> {p.currentRating.ft}</div>
-                  <div><span className="text-[#8b949e]">FG:</span> {p.currentRating.fg}</div>
-                  <div><span className="text-[#8b949e]">3PT:</span> {p.currentRating.tp}</div>
-                  <div><span className="text-[#8b949e]">OIQ:</span> {p.currentRating.oiq}</div>
-                  <div><span className="text-[#8b949e]">DIQ:</span> {p.currentRating.diq}</div>
-                  <div><span className="text-[#8b949e]">DRB:</span> {p.currentRating.drb}</div>
-                  <div><span className="text-[#8b949e]">PSS:</span> {p.currentRating.pss}</div>
-                  <div><span className="text-[#8b949e]">REB:</span> {p.currentRating.reb}</div>
-                </div>
-
-                <div className="text-[10px] text-[#8b949e] mb-1 border-t border-[#30363d] pt-2">2K Categories</div>
+                <div className="text-[10px] text-[#8b949e] mb-1">Rating Attributes</div>
                 <div className="grid grid-cols-3 gap-1 text-[10px] text-white">
                   <div><span className="text-[#8b949e]">OUT:</span> {getAvg(p.k2.OS)}</div>
                   <div><span className="text-[#8b949e]">ATH:</span> {getAvg(p.k2.AT)}</div>

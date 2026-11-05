@@ -1,13 +1,24 @@
 import { GameState, UserAction } from '../../../types';
 import { calculateOutcome } from '../../../services/logic/outcomeDecider';
 import { advanceDay } from '../../../services/llm/llm';
-import { convertTo2KRating } from '../../../utils/helpers';
-import { LOTTERY_PRESETS, DEFAULT_DRAFT_TYPE, computeTopKOdds } from '../../../lib/lotteryPresets';
+import { convertTo2KRating, normalizeDate } from '../../../utils/helpers';
+import { getInsiderHandle } from '../../../data/social/handles';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { buildPerformanceAnnouncementEvent } from '../../../services/news/nativeLeagueAnnouncements';
+import { getLeagueEventSponsorName } from '../../../services/franchises/franchiseEventNaming';
+import { getLeagueLabels } from '../../../utils/leagueLabels';
+import { getPerformanceEventDate } from '../../../services/events/performanceEvents';
+import {
+    getTeamActivityChemistryGain,
+    getTeamActivityCostMillion,
+    resolveManagedTeamActivityParticipants,
+} from '../../../services/teamActivities';
 
 export const handleInvitePerformance = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const outcome = calculateOutcome('INVITE_PERFORMANCE', action.payload, stateWithSim);
     const { type, event, teamId, gameId, artists } = action.payload;
     const artistsList = artists.join(', ');
+    const labels = getLeagueLabels(stateWithSim.leagueType, stateWithSim.leagueStats.uiMode);
     let outcomeText = '';
     
     let gameText = '';
@@ -20,8 +31,8 @@ export const handleInvitePerformance = async (stateWithSim: GameState, action: U
             gameResult = simResults.find(r => r.homeTeamId === game.homeTid && r.awayTeamId === game.awayTid);
             const awayTeam = stateWithSim.teams.find(t => t.id === game.awayTid);
             if (awayTeam) {
-                awayTeamName = awayTeam.name;
-                gameText = ` against the ${awayTeam.name}`;
+                awayTeamName = getTeamFullName(awayTeam);
+                gameText = ` against the ${awayTeamName}`;
             }
         }
     }
@@ -31,10 +42,10 @@ export const handleInvitePerformance = async (stateWithSim: GameState, action: U
     if (type === 'performance') {
         if (event === 'Regular Season Halftime' && teamId) {
             const team = stateWithSim.teams.find(t => t.id === teamId);
-            if (team) homeTeamName = team.name;
-            outcomeText = `Commissioner ${commish} personally booked ${artistsList} for a halftime show at the ${team?.name} home game${gameText}. The booking was finalized today — insiders say the Commissioner pushed hard for this act specifically. Ticket demand is already spiking and social media is buzzing.`;
+            homeTeamName = team ? getTeamFullName(team) : 'selected team';
+            outcomeText = `Commissioner ${commish} personally booked ${artistsList} for a halftime show at the ${homeTeamName} home game${gameText}. The booking was finalized today — insiders say the Commissioner pushed hard for this act specifically. Ticket demand is already spiking and social media is buzzing.`;
         } else if (event === 'NBA Finals Halftime' || event?.toLowerCase().includes('finals')) {
-            outcomeText = `Commissioner ${commish} has locked in ${artistsList} for the NBA Finals Halftime Show — one of the most-watched entertainment moments of the year. Sources say negotiations were intense and the Commissioner personally sealed the deal. Expect massive viewership and a cultural moment.`;
+            outcomeText = `Commissioner ${commish} has locked in ${artistsList} for the ${labels.finalsHalftime} — one of the most-watched entertainment moments of the year. Sources say negotiations were intense and the Commissioner personally sealed the deal. Expect massive viewership and a cultural moment.`;
         } else if (event === 'All-Star Halftime' || event?.toLowerCase().includes('all-star')) {
             outcomeText = `Commissioner ${commish} has booked ${artistsList} for the All-Star Weekend Halftime Show. The announcement is already generating huge buzz online — fans are stoked. This is expected to be one of the most-streamed All-Star performances ever.`;
         } else {
@@ -42,13 +53,19 @@ export const handleInvitePerformance = async (stateWithSim: GameState, action: U
         }
     } else {
         const team = stateWithSim.teams.find(t => t.id === teamId);
-        if (team) homeTeamName = team.name;
-        outcomeText = `Commissioner ${commish} personally invited ${artistsList} to perform the National Anthem at the ${team?.name} home game${gameText}. It's a high-profile pick that's getting fans talking ahead of tip-off.`;
+        homeTeamName = team ? getTeamFullName(team) : 'selected team';
+        outcomeText = `Commissioner ${commish} personally invited ${artistsList} to perform the National Anthem at the ${homeTeamName} home game${gameText}. It's a high-profile pick that's getting fans talking ahead of tip-off.`;
     }
 
     // Build story seed for rich LLM output
+    const performanceInsider = getInsiderHandle(
+        stateWithSim.leagueType,
+        stateWithSim.date,
+        stateWithSim.leagueStats?.year,
+        stateWithSim.leagueStats?.uiMode,
+    );
     const performanceSeed = type === 'performance'
-        ? `COMMISSIONER BOOKING: Commissioner ${commish} just personally booked ${artistsList} for ${event === 'Regular Season Halftime' ? `a halftime show at the ${homeTeamName} game${gameText}` : `the ${event}`}. This is a CONFIRMED booking — the Commissioner made it happen. Generate: 4-6 social posts with fan excitement, music fans hyping it up, sports fans reacting, @ShamsCharania or @wojespn breaking the news. 1-2 news headlines. Make it feel like a real celebrity booking announcement.`
+        ? `COMMISSIONER BOOKING: Commissioner ${commish} just personally booked ${artistsList} for ${event === 'Regular Season Halftime' ? `a halftime show at the ${homeTeamName} game${gameText}` : `the ${event}`}. This is a CONFIRMED booking — the Commissioner made it happen. Generate: 4-6 social posts with fan excitement, music fans hyping it up, sports fans reacting, ${performanceInsider.atHandle} breaking the news. 1-2 news headlines. Make it feel like a real celebrity booking announcement.`
         : `NATIONAL ANTHEM BOOKING: ${artistsList} will perform the National Anthem at the ${homeTeamName} game. Generate 2-3 social posts and a news headline covering this.`;
 
     const result = await advanceDay(stateWithSim, {
@@ -73,9 +90,11 @@ export const handleInvitePerformance = async (stateWithSim: GameState, action: U
     result.consequence.statChanges.viewership = (result.consequence.statChanges.viewership || 0) + (outcome.viewership || 0);
     
     // Schedule the event for the future if it's not today
+    let scheduledPerformanceDate: string | undefined;
     if (gameId) {
         const game = stateWithSim.schedule.find(g => g.gid === gameId);
         if (game && !gameResult && game.date) {
+            scheduledPerformanceDate = game.date;
             result.newScheduledEvents = [{
                 date: game.date,
                 type: 'PERFORMANCE_DAY',
@@ -90,6 +109,39 @@ export const handleInvitePerformance = async (stateWithSim: GameState, action: U
                 }
             }];
         }
+    } else if (type === 'performance' && event) {
+        const eventDate = getPerformanceEventDate(
+            event,
+            stateWithSim.leagueStats.year,
+            stateWithSim.leagueStats,
+            stateWithSim.schedule,
+        );
+        scheduledPerformanceDate = eventDate;
+        result.newScheduledEvents = [{
+            date: eventDate,
+            type: 'PERFORMANCE_DAY',
+            payload: {
+                performanceType: type,
+                event,
+                artists
+            }
+        }];
+    }
+    if (scheduledPerformanceDate && normalizeDate(scheduledPerformanceDate) > normalizeDate(stateWithSim.date)) {
+        const sponsor = event?.toLowerCase().includes('all-star')
+            ? getLeagueEventSponsorName(stateWithSim, 'all_star_game')
+            : undefined;
+        const announcement = buildPerformanceAnnouncementEvent(
+            stateWithSim,
+            { artists, event },
+            scheduledPerformanceDate,
+            sponsor,
+        );
+        if (announcement) {
+            result.newScheduledEvents = [...(result.newScheduledEvents ?? []), announcement];
+        }
+        result.newNews = [];
+        result.newSocialPosts = [];
     }
     return result;
 };
@@ -97,16 +149,22 @@ export const handleInvitePerformance = async (stateWithSim: GameState, action: U
 export const handleGlobalGames = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { games } = action.payload;
     const gameDescriptions = games.map((g: any) => {
-        const home = stateWithSim.teams.find(t => t.id === g.homeTid)?.name;
-        const away = stateWithSim.teams.find(t => t.id === g.awayTid)?.name;
+        const homeTeam = stateWithSim.teams.find(t => t.id === g.homeTid);
+        const awayTeam = stateWithSim.teams.find(t => t.id === g.awayTid);
+        const home = homeTeam ? getTeamFullName(homeTeam) : 'Home team';
+        const away = awayTeam ? getTeamFullName(awayTeam) : 'Away team';
         return `${away} @ ${home} in ${g.city}, ${g.country}`;
     }).join(', ');
+    const labels = getLeagueLabels(stateWithSim.leagueType, stateWithSim.leagueStats.uiMode);
+    const leagueName = stateWithSim.leagueType === 'fictional'
+        ? stateWithSim.leagueStats.leagueName ?? 'The league'
+        : labels.finals.replace(/\s+Finals$/i, '');
 
     const customAction = {
         type: 'GLOBAL_GAMES',
         description: `The Commissioner has scheduled the Global Games: ${gameDescriptions}.`
     };
-    const storySeed = `The NBA is going international! The Global Games schedule has been announced: ${gameDescriptions}.`;
+    const storySeed = `${leagueName} is going international! The Global Games schedule has been announced: ${gameDescriptions}.`;
     
     const outcome = calculateOutcome('GLOBAL_GAMES', action.payload, stateWithSim);
     const result = await advanceDay(stateWithSim, customAction as any, [storySeed], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
@@ -117,69 +175,6 @@ export const handleGlobalGames = async (stateWithSim: GameState, action: UserAct
     result.consequence.statChanges.viewership = (result.consequence.statChanges.viewership || 0) + (outcome.viewership || 0);
     result.consequence.statChanges.revenue = (result.consequence.statChanges.revenue || 0) + (outcome.revenue || 0);
     result.globalGames = games;
-    return result;
-};
-
-export const handleRigLottery = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
-    const outcome = calculateOutcome('RIG_LOTTERY', action.payload, stateWithSim);
-    const { riggedTid } = action.payload ?? {};
-    const riggedTeamName = riggedTid != null
-        ? stateWithSim.teams.find(t => t.id === riggedTid)?.name ?? 'Unknown'
-        : 'Unknown';
-
-    const result = await advanceDay(stateWithSim, {
-        type: 'RIG_LOTTERY',
-        payload: {
-            outcomeText: `Quiet whispers have begun circulating in league circles about the integrity of the ${stateWithSim.leagueStats.year} Draft Lottery. Nothing confirmed. Nothing traceable.`,
-        },
-    } as any, [], simResults, stateWithSim.pendingHypnosis || [], recentDMs);
-
-    // Covert action — suppress any emails/DMs that could tip off teams
-    result.newEmails = [];
-    result.newDMs = [];
-    result.statChanges = result.statChanges || {};
-    result.statChanges.publicApproval = (result.statChanges.publicApproval || 0) + (outcome.publicApproval || 0);
-    result.statChanges.ownerApproval = (result.statChanges.ownerApproval || 0) + (outcome.ownerApproval || 0);
-
-    if (riggedTid != null) {
-        const preset = LOTTERY_PRESETS[stateWithSim.leagueStats?.draftType ?? DEFAULT_DRAFT_TYPE] ?? LOTTERY_PRESETS[DEFAULT_DRAFT_TYPE];
-        const poolSize = Math.min(14, preset.chances.length);
-        const sorted = [...stateWithSim.teams]
-            .filter(t => t.id >= 0 && t.id < 100)
-            .sort((a, b) => (a.wins / Math.max(1, a.wins + a.losses)) - (b.wins / Math.max(1, b.wins + b.losses)))
-            .slice(0, poolSize);
-
-        const lotteryTeams = sorted.map((t, i) => {
-            const chance = preset.chances[i] ?? 0;
-            const gp = t.wins + t.losses;
-            return {
-                id: String(t.id),
-                tid: t.id,
-                name: t.name,
-                city: (t as any).region ?? t.name,
-                logoUrl: (t as any).logoUrl ?? '',
-                record: `${t.wins}-${t.losses}`,
-                winPct: gp > 0 ? (t.wins / gp).toFixed(3) : '.000',
-                odds1st: parseFloat(((chance / preset.total) * 100).toFixed(1)),
-                oddsTopN: parseFloat((computeTopKOdds(preset.chances, i, preset.numToPick) * 100).toFixed(1)),
-                color: (t as any).colors?.[0] ?? '#333333',
-                originalSeed: i + 1,
-            };
-        });
-
-        const riggedTeam = lotteryTeams.find(t => t.tid === riggedTid);
-        if (riggedTeam) {
-            const rest = lotteryTeams
-                .filter(t => t.tid !== riggedTid)
-                .sort((a, b) => a.originalSeed - b.originalSeed);
-            const draftLotteryResult = [
-                { pick: 1, team: riggedTeam, change: riggedTeam.originalSeed - 1 },
-                ...rest.map((t, idx) => ({ pick: idx + 2, team: t, change: t.originalSeed - (idx + 2) })),
-            ];
-            (result as any).draftLotteryResult = draftLotteryResult;
-        }
-    }
-
     return result;
 };
 
@@ -215,7 +210,7 @@ export const handleHypnoticBroadcast = async (stateWithSim: GameState, action: U
 
 export const handleTravel = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const outcome = calculateOutcome('TRAVEL', action.payload, stateWithSim);
-    const { city, reason, invitees, gameId } = action.payload;
+    const { city, country, travelType, reason, invitees, contacts, gameId } = action.payload;
     
     let gameResult = null;
     let specificOutcomeText = '';
@@ -235,7 +230,8 @@ export const handleTravel = async (stateWithSim: GameState, action: UserAction, 
             }
         }
     } else {
-         specificOutcomeText = `The Commissioner traveled to ${city} for ${reason}.`;
+         const destination = country ? `${city}, ${country}` : city;
+         specificOutcomeText = `The Commissioner traveled to ${destination} for ${reason}.`;
          if (invitees && invitees.length > 0) {
              specificOutcomeText += ` Guests included: ${invitees.join(', ')}.`;
          }
@@ -258,8 +254,11 @@ export const handleTravel = async (stateWithSim: GameState, action: UserAction, 
         payload: {
             outcomeText: specificOutcomeText,
             city,
+            country,
+            travelType,
             reason,
             invitees,
+            contacts,
             gameResult,
             isSpecificEvent: true
         }
@@ -275,10 +274,11 @@ export const handleTravel = async (stateWithSim: GameState, action: UserAction, 
 
 export const handleVisitNonNbaTeam = async (stateWithSim: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { team, agenda } = action.payload;
+    const teamName = getTeamFullName(team);
     return await advanceDay(stateWithSim, {
         type: 'VISIT_NON_NBA_TEAM',
         payload: {
-            outcomeText: `The Commissioner traveled to ${team.region} to visit the ${team.name} (${team.league}) for a ${agenda}.`,
+            outcomeText: `The Commissioner traveled to visit ${teamName} (${team.league}) for a ${agenda}.`,
             team,
             agenda
         }
@@ -288,11 +288,32 @@ export const handleVisitNonNbaTeam = async (stateWithSim: GameState, action: Use
 export const handleInviteDinner = async (state: GameState, action: UserAction, simResults: any[], recentDMs: any[]) => {
     const { reason, location, subType, count, contacts } = action.payload;
     const isMovie = subType === 'movie';
+    const managedTeamId = Number(action.payload?.managedTeamId ?? action.payload?.teamId);
+    const isManagedTeamActivity = state.gameMode === 'gm'
+        && action.payload?.teamActivity === true
+        && Number.isFinite(managedTeamId)
+        && managedTeamId === state.userTeamId;
+    const requestedContacts = Array.isArray(contacts) ? contacts : [];
+    const participants = isManagedTeamActivity
+        ? resolveManagedTeamActivityParticipants(state, managedTeamId, requestedContacts)
+        : { contacts: requestedContacts, playerCount: 0, staffCount: 0 };
+    const activityContacts = participants.contacts;
+    const eligibleParticipantCount = isManagedTeamActivity ? activityContacts.length : 0;
+    const activityCostMillion = isManagedTeamActivity
+        ? getTeamActivityCostMillion(isMovie ? 'movie' : 'dinner', eligibleParticipantCount)
+        : isMovie ? 0.01 : 0.05;
+    if (isManagedTeamActivity && (eligibleParticipantCount === 0 || state.stats.personalWealth < activityCostMillion)) {
+        throw new Error(eligibleParticipantCount === 0
+            ? 'Select at least one player or staff member from your club.'
+            : 'You do not have enough personal funds for this team activity.');
+    }
     const actionLabel = isMovie ? 'movie night' : 'private dinner';
-    const commish = state.commissionerName || 'The Commissioner';
+    const actor = isManagedTeamActivity
+        ? (state.commissionerName ? `General Manager ${state.commissionerName}` : 'The General Manager')
+        : (state.commissionerName ? `Commissioner ${state.commissionerName}` : 'The Commissioner');
 
-    const guestNames = contacts?.length > 0
-        ? contacts.map((c: any) => c.name).join(', ')
+    const guestNames = activityContacts.length > 0
+        ? activityContacts.map((contact: any) => contact.name).join(', ')
         : action.payload.targetName || 'unknown guest';
 
     // Strip appended " at [location]" from reason so we get the pure discussion topic
@@ -302,10 +323,10 @@ export const handleInviteDinner = async (state: GameState, action: UserAction, s
         : (isMovie ? 'casual bonding' : 'general league matters');
 
     const locationText = location ? ` at ${location}` : '';
-    const isGroup = (count || 1) > 1;
+    const isGroup = (isManagedTeamActivity ? activityContacts.length : count || 1) > 1;
 
     // Build rich player context for HOF/retirement-age players if available
-    const guestContextLines = (contacts || []).map((c: any) => {
+    const guestContextLines = activityContacts.map((c: any) => {
         const player = state.players.find((p: any) => p.internalId === (c.id || c.internalId));
         if (!player) return null;
         const team = state.teams.find(t => t.id === player.tid);
@@ -317,13 +338,13 @@ export const handleInviteDinner = async (state: GameState, action: UserAction, s
     const guestContext = guestContextLines.length > 0 ? `\nGuest info: ${guestContextLines.join('; ')}` : '';
 
     const outcomeText = isMovie
-        ? `Commissioner ${commish} took ${guestNames} to a movie${locationText}. Side agenda: ${discussionTopic}.`
-        : `Commissioner ${commish} hosted a private ${isGroup ? 'group dinner' : 'one-on-one dinner'} with ${guestNames}${locationText}. ` +
+        ? `${actor} took ${guestNames} to a movie${locationText}. Side agenda: ${discussionTopic}.`
+        : `${actor} hosted a private ${isGroup ? 'group dinner' : 'one-on-one dinner'} with ${guestNames}${locationText}. ` +
           `The meeting specifically addressed: ${discussionTopic}. Word has leaked to NBA insiders.${guestContext}`;
 
     // Seed 1: mandatory player DM after the event
     const playerDMSeed =
-        `REQUIRED OUTPUT: ${guestNames} MUST send a personal DM/chat to Commissioner ${commish} after this ${actionLabel}. ` +
+        `REQUIRED OUTPUT: ${guestNames} MUST send a personal DM/chat to ${actor} after this ${actionLabel}. ` +
         `Put it in newEmails with senderRole: 'Player' (routes to CHAT, not inbox). ` +
         `Write it like an iMessage — casual, no formal greeting, no sign-off, use natural speech, emojis OK. ` +
         `The message MUST specifically reference the actual discussion topic: "${discussionTopic}". ` +
@@ -331,11 +352,11 @@ export const handleInviteDinner = async (state: GameState, action: UserAction, s
 
     // Seed 2: social media coverage with specifics
     const socialSeed = isMovie
-        ? `Paparazzi caught Commissioner ${commish} at a movie with ${guestNames}${locationText}. ` +
+        ? `Paparazzi caught ${actor} at a movie with ${guestNames}${locationText}. ` +
           `Generate 4-6 social posts — fan jokes, speculation about hidden agenda, meme reactions.`
-        : `BREAKING (insider scoop): Commissioner ${commish} had a private dinner with ${guestNames}${locationText}. ` +
+        : `BREAKING (insider scoop): ${actor} had a private dinner with ${guestNames}${locationText}. ` +
           `The meeting was specifically about: "${discussionTopic}". ` +
-          `@ShamsCharania should report this as an insider tip. ` +
+          `${getInsiderHandle(state.leagueType, state.date, state.leagueStats?.year, state.leagueStats?.uiMode).atHandle} should report this as an insider tip. ` +
           `Generate 4-6 varied social posts — some with "inside info" about the topic, fans reacting, one conspiracy take. ` +
           `CRITICAL: Posts MUST reference the actual discussion topic ("${discussionTopic}"). ` +
           `Do NOT write vague "sparking curiosity" or "what could they have discussed" language — insiders KNOW what it was about.`;
@@ -350,7 +371,9 @@ export const handleInviteDinner = async (state: GameState, action: UserAction, s
                 location,
                 discussionTopic,
                 subType,
-                contacts,
+                contacts: activityContacts,
+                teamActivity: isManagedTeamActivity,
+                managedTeamId: isManagedTeamActivity ? managedTeamId : undefined,
             }
         } as any,
         [playerDMSeed, socialSeed],
@@ -359,10 +382,28 @@ export const handleInviteDinner = async (state: GameState, action: UserAction, s
         recentDMs
     );
 
+    if (isManagedTeamActivity) {
+        const chemistryGain = getTeamActivityChemistryGain(eligibleParticipantCount);
+        const updateChemistry = <T extends { id?: number; tid?: number; teamChemistry?: number; chemistry?: number; Chemistry?: number }>(team: T): T => {
+            const teamId = Number(team.id ?? team.tid);
+            if (teamId !== managedTeamId) return team;
+            const current = Number(team.teamChemistry ?? team.chemistry ?? team.Chemistry ?? 50);
+            return {
+                ...team,
+                teamChemistry: Number(Math.min(100, Math.max(0, current) + chemistryGain).toFixed(1)),
+            };
+        };
+        if (state.teams.some(team => team.id === managedTeamId)) {
+            result.teams = (result.teams ?? state.teams).map(updateChemistry);
+        } else {
+            result.nonNBATeams = ((result as any).nonNBATeams ?? state.nonNBATeams ?? []).map(updateChemistry);
+        }
+    }
+
     const outcomeChanges = calculateOutcome('INVITE_DINNER', action.payload, state);
     result.statChanges = {
         ...result.statChanges,
-        personalWealth: (result.statChanges?.personalWealth || 0) - 0.05,
+        personalWealth: (result.statChanges?.personalWealth || 0) - activityCostMillion,
         playerApproval: (result.statChanges?.playerApproval || 0) + (outcomeChanges.playerApproval || 0),
         morale: (result.statChanges?.morale || 0) + (outcomeChanges.morale || 0),
     };

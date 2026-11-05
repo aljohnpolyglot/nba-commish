@@ -26,8 +26,12 @@ export interface EuroCareerSeed {
   staff: StaffMember[];
   owner: OwnerProfile;
   sponsors: SponsorSlot[];
+  economyScale?: number;
+  currentYear: number;
   manualOverrides: EuroCareerManualOverrides;
 }
+
+const scaleMoney = (value: number, economyScale: number): number => Math.round(value * economyScale);
 
 function subSeed(master: number, key: CardKey): number {
   const tag = { tier: 0x11, staff: 0x22, owner: 0x33, sponsors: 0x44 }[key];
@@ -61,25 +65,30 @@ export function seedEuroCareer(
   state: Pick<GameState, 'players' | 'nonNBATeams'>,
   leagueId: string,
   masterSeed: number,
+  economyScale = 1,
+  currentYear = 2026,
 ): EuroCareerSeed {
   const tierBudget = seedTierAndBudget({
     teamAbbrev: team.abbrev,
     leagueId,
     subSeed: subSeed(masterSeed, 'tier'),
   });
-  const staff = seedStaffSix(team, state, leagueId, tierBudget.tier, subSeed(masterSeed, 'staff'));
+  const staff = seedStaffSix(team, state, leagueId, tierBudget.tier, subSeed(masterSeed, 'staff'), currentYear);
   const owner = seedOwner(team, state, leagueId, tierBudget.tier, subSeed(masterSeed, 'owner'));
-  const sponsors = seedSponsors(leagueId, mapSetupTierToTycoonTier(tierBudget.tier), subSeed(masterSeed, 'sponsors'));
+  const sponsors = seedSponsors(leagueId, mapSetupTierToTycoonTier(tierBudget.tier), subSeed(masterSeed, 'sponsors'), team)
+    .map(sponsor => ({ ...sponsor, amountEUR: scaleMoney(sponsor.amountEUR, economyScale) }));
   return {
     masterSeed,
     leagueId,
     team,
     state,
     tier: tierBudget.tier,
-    budget: tierBudget.budget,
+    budget: scaleMoney(tierBudget.budget, economyScale),
     staff,
     owner,
     sponsors,
+    economyScale,
+    currentYear,
     manualOverrides: {},
   };
 }
@@ -91,17 +100,18 @@ export function rerollCard(
 ): EuroCareerSeed {
   const next: EuroCareerSeed = { ...seed, manualOverrides: { ...seed.manualOverrides } };
   const { team, state, leagueId } = seed;
+  const economyScale = seed.economyScale ?? 1;
   switch (card) {
     case 'tier': {
       const tierBudget = seedTierAndBudget({ teamAbbrev: team.abbrev, leagueId, subSeed: newSubSeed });
       next.tier = tierBudget.tier;
-      next.budget = tierBudget.budget;
+      next.budget = scaleMoney(tierBudget.budget, economyScale);
       delete next.manualOverrides.tier;
       delete next.manualOverrides.budget;
       break;
     }
     case 'staff':
-      next.staff = seedStaffSix(team, state, leagueId, next.tier, newSubSeed);
+      next.staff = seedStaffSix(team, state, leagueId, next.tier, newSubSeed, seed.currentYear);
       delete next.manualOverrides.staff;
       break;
     case 'owner':
@@ -109,7 +119,8 @@ export function rerollCard(
       delete next.manualOverrides.owner;
       break;
     case 'sponsors':
-      next.sponsors = seedSponsors(leagueId, mapSetupTierToTycoonTier(next.tier), newSubSeed);
+      next.sponsors = seedSponsors(leagueId, mapSetupTierToTycoonTier(next.tier), newSubSeed, team)
+        .map(sponsor => ({ ...sponsor, amountEUR: scaleMoney(sponsor.amountEUR, economyScale) }));
       delete next.manualOverrides.sponsors;
       break;
   }

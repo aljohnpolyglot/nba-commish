@@ -1,0 +1,3526 @@
+{
+  "champions": [
+    {
+      "season": "1957",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 1,
+      "runner_up": "C.F. Barcelona",
+      "third": "Orillo Verde Sabadell",
+      "fourth": "CB Aismalíbar",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1958",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 2,
+      "runner_up": "Club Juventud Badalona",
+      "third": "CB Aismalíbar",
+      "fourth": "Orillo Verde Sabadell",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1958–59",
+      "league": "Liga Española de Baloncesto",
+      "champion": "C.F. Barcelona",
+      "titles_count": 1,
+      "runner_up": "Real Madrid C.F.",
+      "third": "Club Juventud Badalona",
+      "fourth": "Orillo Verde Sabadell",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1959–60",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 3,
+      "runner_up": "Club Juventud Badalona",
+      "third": "Orillo Verde Sabadell",
+      "fourth": "CB Aismalíbar",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1960–61",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 4,
+      "runner_up": "Orillo Verde Sabadell",
+      "third": "C.F. Barcelona",
+      "fourth": "Club Juventud Badalona",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1961–62",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 5,
+      "runner_up": "Club Juventud Badalona",
+      "third": "Estudiantes Madrid",
+      "fourth": "CB Aismalíbar",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1962–63",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 6,
+      "runner_up": "Estudiantes Madrid",
+      "third": "Club Juventud Badalona",
+      "fourth": "Picadero J.C. Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1963–64",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 7,
+      "runner_up": "Picadero J.C. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "CB Aismalíbar",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": true
+    },
+    {
+      "season": "1964–65",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 8,
+      "runner_up": "Picadero J.C. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "Estudiantes Madrid",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": true
+    },
+    {
+      "season": "1965–66",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 9,
+      "runner_up": "Picadero J.C. Barcelona",
+      "third": "C.D. Mataró",
+      "fourth": "Club Juventud Badalona",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1966–67",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Club Juventud Badalona",
+      "titles_count": 1,
+      "runner_up": "Real Madrid C.F.",
+      "third": "Estudiantes Madrid",
+      "fourth": "Picadero J.C. Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1967–68",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 10,
+      "runner_up": "Estudiantes Madrid",
+      "third": "Club Juventud Badalona",
+      "fourth": "S.D. Kas Vitoria",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": true
+    },
+    {
+      "season": "1968–69",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 11,
+      "runner_up": "Club Juventud Badalona",
+      "third": "Picadero J.C. Barcelona",
+      "fourth": "S.D. Kas Bilbao",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1969–70",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 12,
+      "runner_up": "Picadero J.C. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "S.D. Kas Bilbao",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1970–71",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 13,
+      "runner_up": "Club Juventud Badalona",
+      "third": "Picadero J.C. Barcelona",
+      "fourth": "C.D. Manresa",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1971–72",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 14,
+      "runner_up": "C.F. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "Picadero J.C. Barcelona",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1972–73",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 15,
+      "runner_up": "Club Juventud Badalona",
+      "third": "C.F. Barcelona",
+      "fourth": "Estudiantes Madrid",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1973–74",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 16,
+      "runner_up": "C.F. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "Estudiantes Madrid",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": true
+    },
+    {
+      "season": "1974–75",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 17,
+      "runner_up": "F.C. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "YMCA Madrid",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1975–76",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 18,
+      "runner_up": "F.C. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "Estudiantes Madrid",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1976–77",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 19,
+      "runner_up": "F.C. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "U.D.R. Pineda",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1977–78",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Club Juventud Badalona",
+      "titles_count": 2,
+      "runner_up": "Real Madrid C.F.",
+      "third": "F.C. Barcelona",
+      "fourth": "C.B. Círculo Católico Badalona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1978–79",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 20,
+      "runner_up": "F.C. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "Estudiantes Madrid",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1979–80",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 21,
+      "runner_up": "F.C. Barcelona",
+      "third": "Club Juventud Badalona",
+      "fourth": "C.B. Círculo Católico Badalona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": true
+    },
+    {
+      "season": "1980–81",
+      "league": "Liga Española de Baloncesto",
+      "champion": "F.C. Barcelona",
+      "titles_count": 2,
+      "runner_up": "Estudiantes Madrid",
+      "third": "Real Madrid C.F.",
+      "fourth": "C.B. Círculo Católico Badalona",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1981–82",
+      "league": "Liga Española de Baloncesto",
+      "champion": "Real Madrid C.F.",
+      "titles_count": 22,
+      "runner_up": "F.C. Barcelona",
+      "third": "C.B. Círculo Católico Badalona",
+      "fourth": "C.B. Valladolid",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1982–83",
+      "league": "Liga Española de Baloncesto",
+      "champion": "F.C. Barcelona",
+      "titles_count": 3,
+      "runner_up": "Real Madrid C.F.",
+      "third": "C.B. Granollers",
+      "fourth": "C.B. Zaragoza",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1983–84",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 23,
+      "runner_up": "FC Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1984–85",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 24,
+      "runner_up": "Ron Negrita Joventut",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1985–86",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 25,
+      "runner_up": "FC Barcelona",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1986–87",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona",
+      "titles_count": 4,
+      "runner_up": "Ron Negrita Joventut",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1987–88",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona",
+      "titles_count": 5,
+      "runner_up": "Real Madrid",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1988–89",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona",
+      "titles_count": 6,
+      "runner_up": "Real Madrid",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1989–90",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona",
+      "titles_count": 7,
+      "runner_up": "RAM Joventut Badalona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1990–91",
+      "league": "Liga ACB",
+      "champion": "Montigalà Joventut",
+      "titles_count": 3,
+      "runner_up": "FC Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1991–92",
+      "league": "Liga ACB",
+      "champion": "Montigalà Joventut",
+      "titles_count": 4,
+      "runner_up": "Real Madrid Asegurator",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1992–93",
+      "league": "Liga ACB",
+      "champion": "Real Madrid Teka",
+      "titles_count": 26,
+      "runner_up": "Marbella Joventut",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1993–94",
+      "league": "Liga ACB",
+      "champion": "Real Madrid Teka",
+      "titles_count": 27,
+      "runner_up": "FC Barcelona Banca Catalana",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1994–95",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona Banca Catalana",
+      "titles_count": 8,
+      "runner_up": "Unicaja",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1995–96",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona Banca Catalana",
+      "titles_count": 9,
+      "runner_up": "Caja San Fernando",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1996–97",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona Banca Catalana",
+      "titles_count": 10,
+      "runner_up": "Real Madrid Teka",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1997–98",
+      "league": "Liga ACB",
+      "champion": "TDK Manresa",
+      "titles_count": 1,
+      "runner_up": "TAU Cerámica",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1998–99",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona",
+      "titles_count": 11,
+      "runner_up": "Caja San Fernando",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "1999–00",
+      "league": "Liga ACB",
+      "champion": "Real Madrid Teka",
+      "titles_count": 28,
+      "runner_up": "FC Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2000–01",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona",
+      "titles_count": 12,
+      "runner_up": "Real Madrid",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2001–02",
+      "league": "Liga ACB",
+      "champion": "TAU Cerámica",
+      "titles_count": 1,
+      "runner_up": "Unicaja",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2002–03",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona",
+      "titles_count": 13,
+      "runner_up": "Pamesa Valencia",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": true
+    },
+    {
+      "season": "2003–04",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona",
+      "titles_count": 14,
+      "runner_up": "Adecco Estudiantes",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2004–05",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 29,
+      "runner_up": "TAU Cerámica",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2005–06",
+      "league": "Liga ACB",
+      "champion": "Unicaja",
+      "titles_count": 1,
+      "runner_up": "TAU Cerámica",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2006–07",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 30,
+      "runner_up": "Winterthur FC Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2007–08",
+      "league": "Liga ACB",
+      "champion": "TAU Cerámica",
+      "titles_count": 2,
+      "runner_up": "AXA FC Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2008–09",
+      "league": "Liga ACB",
+      "champion": "Regal FC Barcelona",
+      "titles_count": 15,
+      "runner_up": "TAU Cerámica",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2009–10",
+      "league": "Liga ACB",
+      "champion": "Caja Laboral",
+      "titles_count": 3,
+      "runner_up": "Regal FC Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2010–11",
+      "league": "Liga ACB",
+      "champion": "Regal FC Barcelona",
+      "titles_count": 16,
+      "runner_up": "Bizkaia Bilbao Basket",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2011–12",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona Regal",
+      "titles_count": 17,
+      "runner_up": "Real Madrid",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2012–13",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 31,
+      "runner_up": "FC Barcelona Regal",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2013–14",
+      "league": "Liga ACB",
+      "champion": "FC Barcelona",
+      "titles_count": 18,
+      "runner_up": "Real Madrid",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2014–15",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 32,
+      "runner_up": "FC Barcelona",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": true
+    },
+    {
+      "season": "2015–16",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 33,
+      "runner_up": "FC Barcelona Lassa",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2016–17",
+      "league": "Liga ACB",
+      "champion": "Valencia Basket",
+      "titles_count": 1,
+      "runner_up": "Real Madrid",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2017–18",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 34,
+      "runner_up": "Kirolbet Baskonia",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": true
+    },
+    {
+      "season": "2018–19",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 35,
+      "runner_up": "Barcelona Lassa",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2019–20",
+      "league": "Liga ACB",
+      "champion": "Kirolbet Baskonia",
+      "titles_count": 4,
+      "runner_up": "Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false,
+      "note": "Season shortened/modified"
+    },
+    {
+      "season": "2020–21",
+      "league": "Liga ACB",
+      "champion": "Barcelona",
+      "titles_count": 19,
+      "runner_up": "Real Madrid",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2021–22",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 36,
+      "runner_up": "Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2022–23",
+      "league": "Liga ACB",
+      "champion": "Barcelona",
+      "titles_count": 20,
+      "runner_up": "Real Madrid",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2023–24",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 37,
+      "runner_up": "UCAM Murcia",
+      "copa_del_rey_winner": true,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2024–25",
+      "league": "Liga ACB",
+      "champion": "Real Madrid",
+      "titles_count": 38,
+      "runner_up": "Valencia Basket",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    },
+    {
+      "season": "2025–26",
+      "league": "Liga ACB",
+      "champion": "Valencia Basket",
+      "titles_count": 2,
+      "runner_up": "Barcelona",
+      "copa_del_rey_winner": false,
+      "euroleague_winner": false
+    }
+  ],
+  "acb_finals_mvp": [
+    {
+      "season": "1990–91",
+      "player": "Corny Thompson",
+      "nationality": "United States",
+      "team": "Montigalá Joventut"
+    },
+    {
+      "season": "1991–92",
+      "player": "Mike Smith",
+      "nationality": "Spain",
+      "team": "Montigalá Joventut"
+    },
+    {
+      "season": "1992–93",
+      "player": "Arvydas Sabonis",
+      "nationality": "Lithuania",
+      "team": "Real Madrid Teka"
+    },
+    {
+      "season": "1993–94",
+      "player": "Arvydas Sabonis",
+      "nationality": "Lithuania",
+      "team": "Real Madrid Teka"
+    },
+    {
+      "season": "1994–95",
+      "player": "Michael Ansley",
+      "nationality": "United States",
+      "team": "Unicaja"
+    },
+    {
+      "season": "1995–96",
+      "player": "Xavi Fernández",
+      "nationality": "Spain",
+      "team": "FC Barcelona Banca Catalana"
+    },
+    {
+      "season": "1996–97",
+      "player": "Roberto Dueñas",
+      "nationality": "Spain",
+      "team": "FC Barcelona Banca Catalana"
+    },
+    {
+      "season": "1997–98",
+      "player": "Joan Creus",
+      "nationality": "Spain",
+      "team": "TDK Manresa"
+    },
+    {
+      "season": "1998–99",
+      "player": "Derrick Alston",
+      "nationality": "United States",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "1999–00",
+      "player": "Alberto Angulo",
+      "nationality": "Spain",
+      "team": "Real Madrid Teka"
+    },
+    {
+      "season": "2000–01",
+      "player": "Pau Gasol",
+      "nationality": "Spain",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "2001–02",
+      "player": "Elmer Bennett",
+      "nationality": "United States",
+      "team": "TAU Cerámica"
+    },
+    {
+      "season": "2002–03",
+      "player": "Šarūnas Jasikevičius",
+      "nationality": "Lithuania",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "2003–04",
+      "player": "Dejan Bodiroga",
+      "nationality": "Serbia and Montenegro",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "2004–05",
+      "player": "Lou Bullock",
+      "nationality": "United States",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2005–06",
+      "player": "Jorge Garbajosa",
+      "nationality": "Spain",
+      "team": "Unicaja"
+    },
+    {
+      "season": "2006–07",
+      "player": "Felipe Reyes",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2007–08",
+      "player": "Pete Mickeal",
+      "nationality": "United States",
+      "team": "TAU Cerámica"
+    },
+    {
+      "season": "2008–09",
+      "player": "Juan Carlos Navarro",
+      "nationality": "Spain",
+      "team": "Regal FC Barcelona"
+    },
+    {
+      "season": "2009–10",
+      "player": "Tiago Splitter",
+      "nationality": "Brazil",
+      "team": "Caja Laboral Baskonia"
+    },
+    {
+      "season": "2010–11",
+      "player": "Juan Carlos Navarro",
+      "nationality": "Spain",
+      "team": "Regal FC Barcelona"
+    },
+    {
+      "season": "2011–12",
+      "player": "Erazem Lorbek",
+      "nationality": "Slovenia",
+      "team": "FC Barcelona Regal"
+    },
+    {
+      "season": "2012–13",
+      "player": "Felipe Reyes",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2013–14",
+      "player": "Juan Carlos Navarro",
+      "nationality": "Spain",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "2014–15",
+      "player": "Sergio Llull",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2015–16",
+      "player": "Sergio Llull",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2016–17",
+      "player": "Bojan Dubljević",
+      "nationality": "Montenegro",
+      "team": "Valencia Basket"
+    },
+    {
+      "season": "2017–18",
+      "player": "Rudy Fernández",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2018–19",
+      "player": "Facundo Campazzo",
+      "nationality": "Argentina",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2019–20",
+      "player": "Luca Vildoza",
+      "nationality": "Argentina",
+      "team": "KirolBet Baskonia"
+    },
+    {
+      "season": "2020–21",
+      "player": "Nikola Mirotić",
+      "nationality": "Spain",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "2021–22",
+      "player": "Edy Tavares",
+      "nationality": "Cape Verde",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2022–23",
+      "player": "Nikola Mirotić",
+      "nationality": "Spain",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "2023–24",
+      "player": "Džanan Musa",
+      "nationality": "Bosnia and Herzegovina",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2024–25",
+      "player": "Facundo Campazzo",
+      "nationality": "Argentina",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2025–26",
+      "player": "Jean Montero",
+      "nationality": "Dominican Republic",
+      "team": "Valencia Basket"
+    }
+  ],
+  "top_scorers": [
+    {
+      "season": "1957",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Alfonso Martínez",
+          "nationality": "Spain",
+          "club": "Real Madrid",
+          "scoring_average": 18
+        }
+      ]
+    },
+    {
+      "season": "1958",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Alfonso Martínez",
+          "nationality": "Spain",
+          "club": "Real Madrid",
+          "scoring_average": 17.2
+        }
+      ]
+    },
+    {
+      "season": "1958–59",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Johnny Báez",
+          "nationality": "Puerto Rico",
+          "club": "Real Madrid",
+          "scoring_average": 19.9
+        }
+      ]
+    },
+    {
+      "season": "1959–60",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Alfonso Martínez",
+          "nationality": "Spain",
+          "club": "Barcelona",
+          "scoring_average": 20.2,
+          "metric": "average"
+        },
+        {
+          "player": "Johnny Báez",
+          "nationality": "Puerto Rico",
+          "club": "Real Madrid",
+          "total_points": 439,
+          "metric": "total points"
+        }
+      ]
+    },
+    {
+      "season": "1960–61",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Francisco Llobet",
+          "nationality": "Spain",
+          "club": "Orillo Verde",
+          "scoring_average": 20.4
+        }
+      ]
+    },
+    {
+      "season": "1961–62",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Wayne Hightower",
+          "nationality": "United States",
+          "club": "Real Madrid",
+          "scoring_average": 19.7
+        }
+      ]
+    },
+    {
+      "season": "1962–63",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Emiliano Rodríguez",
+          "nationality": "Spain",
+          "club": "Real Madrid",
+          "scoring_average": 19.9
+        }
+      ]
+    },
+    {
+      "season": "1963–64",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Emiliano Rodríguez",
+          "nationality": "Spain",
+          "club": "Real Madrid",
+          "scoring_average": 22.7
+        }
+      ]
+    },
+    {
+      "season": "1964–65",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Lorenzo Alocén",
+          "nationality": "Spain",
+          "club": "Helios",
+          "scoring_average": 24.2
+        }
+      ]
+    },
+    {
+      "season": "1965–66",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Miles Aiken",
+          "nationality": "United States",
+          "club": "Águilas Bilbao",
+          "scoring_average": 23.9
+        }
+      ]
+    },
+    {
+      "season": "1966–67",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Alfonso Martínez",
+          "nationality": "Spain",
+          "club": "Joventut",
+          "scoring_average": 22.1
+        }
+      ]
+    },
+    {
+      "season": "1967–68",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Clifford Luyk",
+          "nationality": "Spain",
+          "club": "Real Madrid",
+          "scoring_average": 24.3
+        }
+      ]
+    },
+    {
+      "season": "1968–69",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Charles Thomas",
+          "nationality": "United States",
+          "club": "San José Irpen",
+          "scoring_average": 25.6
+        }
+      ]
+    },
+    {
+      "season": "1969–70",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Charles Thomas",
+          "nationality": "United States",
+          "club": "San José Irpen",
+          "scoring_average": 24.1
+        }
+      ]
+    },
+    {
+      "season": "1970–71",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Alfredo Pérez Gómez",
+          "nationality": "Spain",
+          "club": "Breogán",
+          "scoring_average": 27.1
+        }
+      ]
+    },
+    {
+      "season": "1971–72",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Gonzalo Sagi-Vela",
+          "nationality": "Spain",
+          "club": "Estudiantes",
+          "scoring_average": 21.6
+        }
+      ]
+    },
+    {
+      "season": "1972–73",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Alfredo Pérez Gómez",
+          "nationality": "Spain",
+          "club": "Breogán",
+          "scoring_average": 23.2
+        }
+      ]
+    },
+    {
+      "season": "1973–74",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "John Coughran",
+          "nationality": "United States",
+          "club": "YMCA",
+          "scoring_average": 31.7
+        }
+      ]
+    },
+    {
+      "season": "1974–75",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Ray Price",
+          "nationality": "United States",
+          "club": "Baskonia",
+          "scoring_average": 32.2
+        }
+      ]
+    },
+    {
+      "season": "1975–76",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Walter Szczerbiak Sr.",
+          "nationality": "United States",
+          "club": "Real Madrid",
+          "scoring_average": 30.9,
+          "metric": "average"
+        },
+        {
+          "player": "Bob Fullarton",
+          "nationality": "United States",
+          "club": "Breogán",
+          "total_points": 968,
+          "metric": "total points"
+        }
+      ]
+    },
+    {
+      "season": "1976–77",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Bob Guyette",
+          "nationality": "United States",
+          "club": "Barcelona",
+          "scoring_average": 32
+        }
+      ]
+    },
+    {
+      "season": "1977–78",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Essie Hollis",
+          "nationality": "United States",
+          "club": "Askatuak",
+          "scoring_average": 41
+        }
+      ]
+    },
+    {
+      "season": "1978–79",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Nate Davis",
+          "nationality": "United States",
+          "club": "Askatuak",
+          "scoring_average": 34.5,
+          "metric": "average"
+        },
+        {
+          "player": "Webb Williams",
+          "nationality": "United States",
+          "club": "Baskonia",
+          "total_points": 730,
+          "metric": "total points"
+        }
+      ]
+    },
+    {
+      "season": "1979–80",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Nate Davis",
+          "nationality": "United States",
+          "club": "Valladolid",
+          "scoring_average": 29.7
+        }
+      ]
+    },
+    {
+      "season": "1980–81",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Lars Hansen",
+          "nationality": "Canada",
+          "club": "OAR Ferrol",
+          "scoring_average": 27.4
+        }
+      ]
+    },
+    {
+      "season": "1981–82",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Larry McNeill",
+          "nationality": "United States",
+          "club": "Canarias",
+          "scoring_average": 34.4
+        }
+      ]
+    },
+    {
+      "season": "1982–83",
+      "league": "Liga Nacional Primera División",
+      "recipients": [
+        {
+          "player": "Claude Gregory",
+          "nationality": "United States",
+          "club": "Baskonia",
+          "scoring_average": 30.6
+        }
+      ]
+    },
+    {
+      "season": "1983–84",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Nate Davis",
+          "nationality": "United States",
+          "club": "OAR Ferrol",
+          "scoring_average": 28.2
+        }
+      ]
+    },
+    {
+      "season": "1984–85",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "David Russell",
+          "nationality": "United States",
+          "club": "Estudiantes",
+          "scoring_average": 31.7,
+          "metric": "average"
+        },
+        {
+          "player": "Nate Davis",
+          "nationality": "United States",
+          "club": "OAR Ferrol",
+          "total_points": 822,
+          "metric": "total points"
+        }
+      ]
+    },
+    {
+      "season": "1985–86",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "David Russell",
+          "nationality": "United States",
+          "club": "Estudiantes",
+          "scoring_average": 27
+        }
+      ]
+    },
+    {
+      "season": "1986–87",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Eddie Phillips",
+          "nationality": "United States",
+          "club": "Canarias",
+          "scoring_average": 32.6
+        }
+      ]
+    },
+    {
+      "season": "1987–88",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Kenny Simpson",
+          "nationality": "United States",
+          "club": "Manresa",
+          "scoring_average": 29.5
+        }
+      ]
+    },
+    {
+      "season": "1988–89",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Dražen Petrović",
+          "nationality": "Yugoslavia",
+          "club": "Real Madrid",
+          "scoring_average": 28
+        }
+      ]
+    },
+    {
+      "season": "1989–90",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Ray Smith",
+          "nationality": "United States",
+          "club": "Maristas Málaga",
+          "scoring_average": 27.6
+        }
+      ]
+    },
+    {
+      "season": "1990–91",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Walter Berry",
+          "nationality": "United States",
+          "club": "Atlético Madrid",
+          "scoring_average": 32.9
+        }
+      ]
+    },
+    {
+      "season": "1991–92",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Jeff Lamp",
+          "nationality": "United States",
+          "club": "Oximesa",
+          "scoring_average": 29
+        }
+      ]
+    },
+    {
+      "season": "1992–93",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Velimir Perasović",
+          "nationality": "Croatia",
+          "club": "Breogán",
+          "scoring_average": 24.5
+        }
+      ]
+    },
+    {
+      "season": "1993–94",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Oscar Schmidt",
+          "nationality": "Brazil",
+          "club": "Valladolid",
+          "scoring_average": 33.3
+        }
+      ]
+    },
+    {
+      "season": "1994–95",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Darrell Armstrong",
+          "nationality": "United States",
+          "club": "Ourense",
+          "scoring_average": 24.6
+        }
+      ]
+    },
+    {
+      "season": "1995–96",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "John Morton",
+          "nationality": "United States",
+          "club": "Gran Canaria",
+          "scoring_average": 26.3
+        }
+      ]
+    },
+    {
+      "season": "1996–97",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "John Morton",
+          "nationality": "United States",
+          "club": "Gran Canaria",
+          "scoring_average": 23.6
+        }
+      ]
+    },
+    {
+      "season": "1997–98",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Tony White",
+          "nationality": "United States",
+          "club": "Valladolid",
+          "scoring_average": 21.2
+        }
+      ]
+    },
+    {
+      "season": "1998–99",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Velimir Perasović",
+          "nationality": "Croatia",
+          "club": "Fuenlabrada",
+          "scoring_average": 22.5
+        }
+      ]
+    },
+    {
+      "season": "1999–00",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Velimir Perasović",
+          "nationality": "Croatia",
+          "club": "Fuenlabrada",
+          "scoring_average": 22.4
+        }
+      ]
+    },
+    {
+      "season": "2000–01",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Velimir Perasović",
+          "nationality": "Croatia",
+          "club": "Fuenlabrada",
+          "scoring_average": 22.9
+        }
+      ]
+    },
+    {
+      "season": "2001–02",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Velimir Perasović",
+          "nationality": "Croatia",
+          "club": "Fuenlabrada",
+          "scoring_average": 22.4
+        }
+      ]
+    },
+    {
+      "season": "2002–03",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Walter Herrmann",
+          "nationality": "Argentina",
+          "club": "Fuenlabrada",
+          "scoring_average": 22.3
+        }
+      ]
+    },
+    {
+      "season": "2003–04",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Lou Roe",
+          "nationality": "United States",
+          "club": "Lucentum",
+          "scoring_average": 20.9
+        }
+      ]
+    },
+    {
+      "season": "2004–05",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Charlie Bell",
+          "nationality": "United States",
+          "club": "Breogán",
+          "scoring_average": 27
+        }
+      ]
+    },
+    {
+      "season": "2005–06",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Lou Roe",
+          "nationality": "United States",
+          "club": "Sevilla",
+          "scoring_average": 19.7
+        }
+      ]
+    },
+    {
+      "season": "2006–07",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Juan Carlos Navarro",
+          "nationality": "Spain",
+          "club": "Barcelona",
+          "scoring_average": 17.3
+        }
+      ]
+    },
+    {
+      "season": "2007–08",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Rudy Fernández",
+          "nationality": "Spain",
+          "club": "Joventut",
+          "scoring_average": 21.2
+        }
+      ]
+    },
+    {
+      "season": "2008–09",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Igor Rakočević",
+          "nationality": "Serbia",
+          "club": "Baskonia",
+          "scoring_average": 19.8
+        }
+      ]
+    },
+    {
+      "season": "2009–10",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Jaycee Carroll",
+          "nationality": "United States",
+          "club": "Gran Canaria",
+          "scoring_average": 19.1
+        }
+      ]
+    },
+    {
+      "season": "2010–11",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Jaycee Carroll",
+          "nationality": "United States",
+          "club": "Gran Canaria",
+          "scoring_average": 19.6
+        }
+      ]
+    },
+    {
+      "season": "2011–12",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Andy Panko",
+          "nationality": "United States",
+          "club": "GBC",
+          "scoring_average": 18.9
+        }
+      ]
+    },
+    {
+      "season": "2012–13",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Carl English",
+          "nationality": "Canada",
+          "club": "Estudiantes",
+          "scoring_average": 17.2
+        }
+      ]
+    },
+    {
+      "season": "2013–14",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Andy Panko",
+          "nationality": "United States",
+          "club": "Fuenlabrada",
+          "scoring_average": 17.9
+        }
+      ]
+    },
+    {
+      "season": "2014–15",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Andy Panko",
+          "nationality": "United States",
+          "club": "Fuenlabrada",
+          "scoring_average": 18.6
+        }
+      ]
+    },
+    {
+      "season": "2015–16",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Darius Adams",
+          "nationality": "Bulgaria",
+          "club": "Baskonia",
+          "scoring_average": 17.2
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Edwin Jackson",
+          "nationality": "France",
+          "club": "Estudiantes",
+          "scoring_average": 21.8
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Gary Neal",
+          "nationality": "United States",
+          "club": "Zaragoza",
+          "scoring_average": 20.6
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Nicolás Laprovíttola",
+          "nationality": "Argentina",
+          "club": "Joventut",
+          "scoring_average": 17.2
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Klemen Prepelič",
+          "nationality": "Slovenia",
+          "club": "Joventut",
+          "scoring_average": 22.3
+        }
+      ]
+    },
+    {
+      "season": "2020–21",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Giorgi Shermadini",
+          "nationality": "Georgia",
+          "club": "Canarias",
+          "scoring_average": 17
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Džanan Musa",
+          "nationality": "Bosnia and Herzegovina",
+          "club": "Breogán",
+          "scoring_average": 20.1
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Kassius Robertson",
+          "nationality": "Canada",
+          "club": "Obradoiro",
+          "scoring_average": 17.4
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Markus Howard",
+          "nationality": "United States",
+          "club": "Baskonia",
+          "scoring_average": 19.4
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Jerrick Harding",
+          "nationality": "United States",
+          "club": "Andorra",
+          "scoring_average": 20
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "league": "Liga ACB",
+      "recipients": [
+        {
+          "player": "Timothé Luwawu-Cabarrot",
+          "nationality": "France",
+          "club": "Baskonia",
+          "scoring_average": 18.7
+        }
+      ]
+    }
+  ],
+  "all_liga_acb_teams": [
+    {
+      "season": "2003–04",
+      "first_team": [
+        {
+          "player": "Elmer Bennett",
+          "team": "Real Madrid",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Dejan Bodiroga",
+          "team": "FC Barcelona",
+          "nationality": "Serbia and Montenegro",
+          "is_mvp": false
+        },
+        {
+          "player": "Andrés Nocioni",
+          "team": "TAU Cerámica",
+          "nationality": "Argentina",
+          "is_mvp": true
+        },
+        {
+          "player": "Lou Roe",
+          "team": "Etosa Alicante",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Luis Scola",
+          "team": "TAU Cerámica",
+          "nationality": "Argentina",
+          "is_mvp": false
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2004–05",
+      "first_team": [
+        {
+          "player": "José Manuel Calderón",
+          "team": "TAU Cerámica",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Charlie Bell",
+          "team": "Leche Río Breogán",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Carlos Jiménez",
+          "team": "Adecco Estudiantes",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Jorge Garbajosa",
+          "team": "Unicaja",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Luis Scola",
+          "team": "TAU Cerámica",
+          "nationality": "Argentina",
+          "is_mvp": true
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2005–06",
+      "first_team": [
+        {
+          "player": "Pablo Prigioni",
+          "team": "TAU Cerámica",
+          "nationality": "Argentina",
+          "is_mvp": false
+        },
+        {
+          "player": "Juan Carlos Navarro",
+          "team": "Winterthur FC Barcelona",
+          "nationality": "Spain",
+          "is_mvp": true
+        },
+        {
+          "player": "Carlos Jiménez",
+          "team": "Adecco Estudiantes",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Jorge Garbajosa",
+          "team": "Unicaja",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Luis Scola",
+          "team": "TAU Cerámica",
+          "nationality": "Argentina",
+          "is_mvp": false
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2006–07",
+      "first_team": [
+        {
+          "player": "Pablo Prigioni",
+          "team": "TAU Cerámica",
+          "nationality": "Argentina",
+          "is_mvp": false
+        },
+        {
+          "player": "Juan Carlos Navarro",
+          "team": "Winterthur FC Barcelona",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Rudy Fernández",
+          "team": "DKV Joventut",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Felipe Reyes",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Luis Scola",
+          "team": "TAU Cerámica",
+          "nationality": "Argentina",
+          "is_mvp": true
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2007–08",
+      "first_team": [
+        {
+          "player": "Ricky Rubio",
+          "team": "DKV Joventut",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Marcelinho Huertas",
+          "team": "Iurbentia Bilbao Basket",
+          "nationality": "Brazil",
+          "is_mvp": false
+        },
+        {
+          "player": "Rudy Fernández",
+          "team": "DKV Joventut",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Felipe Reyes",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Marc Gasol",
+          "team": "Akasvayu Girona",
+          "nationality": "Spain",
+          "is_mvp": true
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2008–09",
+      "first_team": [
+        {
+          "player": "Pablo Prigioni",
+          "team": "TAU Cerámica",
+          "nationality": "Argentina",
+          "is_mvp": false
+        },
+        {
+          "player": "Igor Rakočević",
+          "team": "TAU Cerámica",
+          "nationality": "Serbia",
+          "is_mvp": false
+        },
+        {
+          "player": "Juan Carlos Navarro",
+          "team": "FC Barcelona Regal",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Fran Vázquez",
+          "team": "FC Barcelona Regal",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Felipe Reyes",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": true
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2009–10",
+      "first_team": [
+        {
+          "player": "Ricky Rubio",
+          "team": "Regal FC Barcelona",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Juan Carlos Navarro",
+          "team": "Regal FC Barcelona",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Carlos Suárez",
+          "team": "Asefa Estudiantes",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Erazem Lorbek",
+          "team": "Regal FC Barcelona",
+          "nationality": "Slovenia",
+          "is_mvp": false
+        },
+        {
+          "player": "Tiago Splitter",
+          "team": "Caja Laboral",
+          "nationality": "Brazil",
+          "is_mvp": true
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2010–11",
+      "first_team": [
+        {
+          "player": "Marcelinho Huertas",
+          "team": "Caja Laboral",
+          "nationality": "Brazil",
+          "is_mvp": false
+        },
+        {
+          "player": "Jaycee Carroll",
+          "team": "Gran Canaria 2014",
+          "nationality": "Azerbaijan",
+          "is_mvp": false
+        },
+        {
+          "player": "Fernando San Emeterio",
+          "team": "Caja Laboral",
+          "nationality": "Spain",
+          "is_mvp": true
+        },
+        {
+          "player": "Nik Caner-Medley",
+          "team": "Asefa Estudiantes",
+          "nationality": "Azerbaijan",
+          "is_mvp": false
+        },
+        {
+          "player": "Ante Tomić",
+          "team": "Real Madrid",
+          "nationality": "Croatia",
+          "is_mvp": false
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2011–12",
+      "first_team": [
+        {
+          "player": "Sergio Llull",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Sergi Vidal",
+          "team": "Lagun Aro GBC",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Andy Panko",
+          "team": "Lagun Aro GBC",
+          "nationality": "United States",
+          "is_mvp": true
+        },
+        {
+          "player": "Mirza Teletović",
+          "team": "Caja Laboral",
+          "nationality": "Bosnia and Herzegovina",
+          "is_mvp": false
+        },
+        {
+          "player": "Erazem Lorbek",
+          "team": "FC Barcelona Regal",
+          "nationality": "Slovenia",
+          "is_mvp": false
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2012–13",
+      "first_team": [
+        {
+          "player": "Sergio Rodríguez",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Rudy Fernández",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Andrés Nocioni",
+          "team": "Laboral Kutxa",
+          "nationality": "Argentina",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikola Mirotić",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": true
+        },
+        {
+          "player": "Ante Tomić",
+          "team": "FC Barcelona Regal",
+          "nationality": "Croatia",
+          "is_mvp": false
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2013–14",
+      "first_team": [
+        {
+          "player": "Sergio Rodríguez",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Rudy Fernández",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Romain Sato",
+          "team": "Valencia Basket",
+          "nationality": "Central African Republic",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikola Mirotić",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Justin Doellman",
+          "team": "Valencia Basket",
+          "nationality": "Kosovo",
+          "is_mvp": true
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2014–15",
+      "first_team": [
+        {
+          "player": "Jayson Granger",
+          "team": "Unicaja",
+          "nationality": "Uruguay",
+          "is_mvp": false
+        },
+        {
+          "player": "Sergio Llull",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Pau Ribas",
+          "team": "Valencia Basket",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Felipe Reyes",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": true
+        },
+        {
+          "player": "Marko Todorović",
+          "team": "Dominion Bilbao Basket",
+          "nationality": "Montenegro",
+          "is_mvp": false
+        }
+      ],
+      "second_team": []
+    },
+    {
+      "season": "2015–16",
+      "first_team": [
+        {
+          "player": "Sergio Rodríguez",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Darius Adams",
+          "team": "Laboral Kutxa Baskonia",
+          "nationality": "Bulgaria",
+          "is_mvp": false
+        },
+        {
+          "player": "Álex Mumbrú",
+          "team": "Dominion Bilbao Basket",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Justin Hamilton",
+          "team": "Valencia Basket",
+          "nationality": "Croatia",
+          "is_mvp": false
+        },
+        {
+          "player": "Ioannis Bourousis",
+          "team": "Laboral Kutxa Baskonia",
+          "nationality": "Greece",
+          "is_mvp": true
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Tomáš Satoranský",
+          "team": "FC Barcelona Lassa",
+          "nationality": "Czech Republic"
+        },
+        {
+          "player": "Marko Popović",
+          "team": "Montakit Fuenlabrada",
+          "nationality": "Croatia"
+        },
+        {
+          "player": "Ádám Hanga",
+          "team": "Laboral Kutxa Baskonia",
+          "nationality": "Hungary"
+        },
+        {
+          "player": "Gustavo Ayón",
+          "team": "Real Madrid",
+          "nationality": "Mexico"
+        },
+        {
+          "player": "Dejan Musli",
+          "team": "ICL Manresa",
+          "nationality": "Serbia"
+        }
+      ]
+    },
+    {
+      "season": "2016–17",
+      "first_team": [
+        {
+          "player": "Sergio Llull",
+          "team": "Real Madrid",
+          "nationality": "Spain",
+          "is_mvp": true
+        },
+        {
+          "player": "Edwin Jackson",
+          "team": "Movistar Estudiantes",
+          "nationality": "France",
+          "is_mvp": false
+        },
+        {
+          "player": "Ádám Hanga",
+          "team": "Baskonia",
+          "nationality": "Hungary",
+          "is_mvp": false
+        },
+        {
+          "player": "Bojan Dubljević",
+          "team": "Valencia Basket",
+          "nationality": "Montenegro",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgi Shermadini",
+          "team": "MoraBanc Andorra",
+          "nationality": "Georgia",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Shane Larkin",
+          "team": "Baskonia",
+          "nationality": "United States"
+        },
+        {
+          "player": "Facundo Campazzo",
+          "team": "UCAM Murcia",
+          "nationality": "Argentina"
+        },
+        {
+          "player": "Nemanja Nedović",
+          "team": "Unicaja",
+          "nationality": "Serbia"
+        },
+        {
+          "player": "Anthony Randolph",
+          "team": "Real Madrid",
+          "nationality": "Slovenia"
+        },
+        {
+          "player": "Ante Tomić",
+          "team": "FC Barcelona Lassa",
+          "nationality": "Croatia"
+        }
+      ]
+    },
+    {
+      "season": "2017–18",
+      "first_team": [
+        {
+          "player": "Gary Neal",
+          "team": "Tecnyconta Zaragoza",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Luka Dončić",
+          "team": "Real Madrid",
+          "nationality": "Slovenia",
+          "is_mvp": true
+        },
+        {
+          "player": "Sylven Landesberg",
+          "team": "Movistar Estudiantes",
+          "nationality": "Israel",
+          "is_mvp": false
+        },
+        {
+          "player": "Tornike Shengelia",
+          "team": "Baskonia",
+          "nationality": "Georgia",
+          "is_mvp": false
+        },
+        {
+          "player": "Henk Norel",
+          "team": "Delteco GBC",
+          "nationality": "Netherlands",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Thomas Heurtel",
+          "team": "FC Barcelona Lassa",
+          "nationality": "France"
+        },
+        {
+          "player": "Facundo Campazzo",
+          "team": "Real Madrid",
+          "nationality": "Argentina"
+        },
+        {
+          "player": "Mateusz Ponitka",
+          "team": "Iberostar Tenerife",
+          "nationality": "Poland"
+        },
+        {
+          "player": "Bojan Dubljević",
+          "team": "Valencia Basket",
+          "nationality": "Montenegro"
+        },
+        {
+          "player": "Ante Tomić",
+          "team": "FC Barcelona Lassa",
+          "nationality": "Croatia"
+        }
+      ]
+    },
+    {
+      "season": "2018–19",
+      "first_team": [
+        {
+          "player": "Facundo Campazzo",
+          "team": "Real Madrid",
+          "nationality": "Argentina",
+          "is_mvp": false
+        },
+        {
+          "player": "Nicolás Laprovíttola",
+          "team": "Divina Seguros Joventut",
+          "nationality": "Argentina",
+          "is_mvp": true
+        },
+        {
+          "player": "Stan Okoye",
+          "team": "Tecnyconta Zaragoza",
+          "nationality": "Nigeria",
+          "is_mvp": false
+        },
+        {
+          "player": "Bojan Dubljević",
+          "team": "Valencia Basket",
+          "nationality": "Montenegro",
+          "is_mvp": false
+        },
+        {
+          "player": "Edy Tavares",
+          "team": "Real Madrid",
+          "nationality": "Cape Verde",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Thomas Heurtel",
+          "team": "FC Barcelona Lassa",
+          "nationality": "France"
+        },
+        {
+          "player": "Jaime Fernández",
+          "team": "Unicaja",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Javier Beirán",
+          "team": "Iberostar Tenerife",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Tornike Shengelia",
+          "team": "Baskonia",
+          "nationality": "Georgia"
+        },
+        {
+          "player": "Vincent Poirier",
+          "team": "Baskonia",
+          "nationality": "France"
+        }
+      ]
+    },
+    {
+      "season": "2019–20",
+      "first_team": [
+        {
+          "player": "Facundo Campazzo",
+          "team": "Real Madrid",
+          "nationality": "Argentina",
+          "is_mvp": false
+        },
+        {
+          "player": "Klemen Prepelič",
+          "team": "Joventut Badalona",
+          "nationality": "Slovenia",
+          "is_mvp": false
+        },
+        {
+          "player": "Axel Bouteille",
+          "team": "Unicaja",
+          "nationality": "France",
+          "is_mvp": false
+        },
+        {
+          "player": "Nikola Mirotić",
+          "team": "FC Barcelona",
+          "nationality": "Spain",
+          "is_mvp": true
+        },
+        {
+          "player": "Giorgi Shermadini",
+          "team": "Iberostar Tenerife",
+          "nationality": "Georgia",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Marcelinho Huertas",
+          "team": "Iberostar Tenerife",
+          "nationality": "Brazil"
+        },
+        {
+          "player": "Ádám Hanga",
+          "team": "FC Barcelona",
+          "nationality": "Hungary"
+        },
+        {
+          "player": "Alberto Abalde",
+          "team": "Valencia Basket",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Tornike Shengelia",
+          "team": "Baskonia",
+          "nationality": "Georgia"
+        },
+        {
+          "player": "Edy Tavares",
+          "team": "Real Madrid",
+          "nationality": "Cape Verde"
+        }
+      ]
+    },
+    {
+      "season": "2020–21",
+      "first_team": [
+        {
+          "player": "Marcelinho Huertas",
+          "team": "Lenovo Tenerife",
+          "nationality": "Brazil",
+          "is_mvp": false
+        },
+        {
+          "player": "Pierriá Henry",
+          "team": "TD Systems Baskonia",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Xabier López-Arostegui",
+          "team": "Joventut Badalona",
+          "nationality": "Spain",
+          "is_mvp": false
+        },
+        {
+          "player": "Edy Tavares",
+          "team": "Real Madrid",
+          "nationality": "Cape Verde",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgi Shermadini",
+          "team": "Lenovo Tenerife",
+          "nationality": "Georgia",
+          "is_mvp": true
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Melo Trimble",
+          "team": "Urbas Fuenlabrada",
+          "nationality": "United States"
+        },
+        {
+          "player": "Cory Higgins",
+          "team": "FC Barcelona",
+          "nationality": "United States"
+        },
+        {
+          "player": "Rokas Giedraitis",
+          "team": "TD Systems Baskonia",
+          "nationality": "Lithuania"
+        },
+        {
+          "player": "Nikola Mirotić",
+          "team": "FC Barcelona",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Jasiel Rivero",
+          "team": "Hereda San Pablo Burgos",
+          "nationality": "Cuba"
+        }
+      ]
+    },
+    {
+      "season": "2021–22",
+      "first_team": [
+        {
+          "player": "Marcelinho Huertas",
+          "team": "Lenovo Tenerife",
+          "nationality": "Brazil",
+          "is_mvp": false
+        },
+        {
+          "player": "Nicolás Laprovíttola",
+          "team": "FC Barcelona",
+          "nationality": "Argentina",
+          "is_mvp": false
+        },
+        {
+          "player": "Džanan Musa",
+          "team": "Río Breogán",
+          "nationality": "Bosnia and Herzegovina",
+          "is_mvp": true
+        },
+        {
+          "player": "Chima Moneke",
+          "team": "BAXI Manresa",
+          "nationality": "Nigeria",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgi Shermadini",
+          "team": "Lenovo Tenerife",
+          "nationality": "Georgia",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Shannon Evans",
+          "team": "Coosur Real Betis",
+          "nationality": "United States"
+        },
+        {
+          "player": "Isaiah Taylor",
+          "team": "UCAM Murcia",
+          "nationality": "United States"
+        },
+        {
+          "player": "Joe Thomasson",
+          "team": "BAXI Manresa",
+          "nationality": "United States"
+        },
+        {
+          "player": "Nikola Mirotić",
+          "team": "FC Barcelona",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Edy Tavares",
+          "team": "Real Madrid",
+          "nationality": "Cape Verde"
+        }
+      ]
+    },
+    {
+      "season": "2022–23",
+      "first_team": [
+        {
+          "player": "Darius Thompson",
+          "team": "Cazoo Baskonia",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Markus Howard",
+          "team": "Cazoo Baskonia",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Džanan Musa",
+          "team": "Real Madrid",
+          "nationality": "Bosnia and Herzegovina",
+          "is_mvp": false
+        },
+        {
+          "player": "Edy Tavares",
+          "team": "Real Madrid",
+          "nationality": "Cape Verde",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgi Shermadini",
+          "team": "Lenovo Tenerife",
+          "nationality": "Georgia",
+          "is_mvp": true
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Marcelinho Huertas",
+          "team": "Lenovo Tenerife",
+          "nationality": "Brazil"
+        },
+        {
+          "player": "Nicolás Laprovíttola",
+          "team": "FC Barcelona",
+          "nationality": "Argentina"
+        },
+        {
+          "player": "Joel Parra",
+          "team": "Joventut Badalona",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Nikola Mirotić",
+          "team": "FC Barcelona",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Ante Tomić",
+          "team": "Joventut Badalona",
+          "nationality": "Croatia"
+        }
+      ]
+    },
+    {
+      "season": "2023–24",
+      "first_team": [
+        {
+          "player": "Facundo Campazzo",
+          "team": "Real Madrid",
+          "nationality": "Argentina",
+          "is_mvp": true
+        },
+        {
+          "player": "Markus Howard",
+          "team": "Cazoo Baskonia",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Andrés Feliz",
+          "team": "Joventut Badalona",
+          "nationality": "Dominican Republic",
+          "is_mvp": false
+        },
+        {
+          "player": "Dylan Osetkowski",
+          "team": "Unicaja",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Giorgi Shermadini",
+          "team": "Lenovo Tenerife",
+          "nationality": "Georgia",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Marcelinho Huertas",
+          "team": "Lenovo Tenerife",
+          "nationality": "Brazil"
+        },
+        {
+          "player": "Jean Montero",
+          "team": "Morabanc Andorra",
+          "nationality": "Dominican Republic"
+        },
+        {
+          "player": "Brancou Badio",
+          "team": "Baxi Manresa",
+          "nationality": "Senegal"
+        },
+        {
+          "player": "Nicolás Brussino",
+          "team": "Dreamland Gran Canaria",
+          "nationality": "Argentina"
+        },
+        {
+          "player": "Chima Moneke",
+          "team": "Baskonia",
+          "nationality": "Nigeria"
+        }
+      ]
+    },
+    {
+      "season": "2024–25",
+      "first_team": [
+        {
+          "player": "Marcelinho Huertas",
+          "team": "La Laguna Tenerife",
+          "nationality": "Brazil",
+          "is_mvp": true
+        },
+        {
+          "player": "Jean Montero",
+          "team": "Valencia Basket",
+          "nationality": "Dominican Republic",
+          "is_mvp": false
+        },
+        {
+          "player": "Mario Hezonja",
+          "team": "Real Madrid",
+          "nationality": "Croatia",
+          "is_mvp": false
+        },
+        {
+          "player": "Derrick Alston Jr.",
+          "team": "Baxi Manresa",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Ante Tomić",
+          "team": "Joventut Badalona",
+          "nationality": "Croatia",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Kendrick Perry",
+          "team": "Unicaja",
+          "nationality": "Montenegro"
+        },
+        {
+          "player": "Jerrick Harding",
+          "team": "MoraBanc Andorra",
+          "nationality": "United States"
+        },
+        {
+          "player": "Kameron Taylor",
+          "team": "Unicaja",
+          "nationality": "United States"
+        },
+        {
+          "player": "Jabari Parker",
+          "team": "FC Barcelona",
+          "nationality": "United States"
+        },
+        {
+          "player": "Giorgi Shermadini",
+          "team": "La Laguna Tenerife",
+          "nationality": "Georgia"
+        }
+      ]
+    },
+    {
+      "season": "2025–26",
+      "first_team": [
+        {
+          "player": "David DeJulius",
+          "team": "UCAM Murcia",
+          "nationality": "United States",
+          "is_mvp": false
+        },
+        {
+          "player": "Jean Montero",
+          "team": "Valencia Basket",
+          "nationality": "Dominican Republic",
+          "is_mvp": false
+        },
+        {
+          "player": "Mario Hezonja",
+          "team": "Real Madrid",
+          "nationality": "Croatia",
+          "is_mvp": true
+        },
+        {
+          "player": "Timothé Luwawu-Cabarrot",
+          "team": "Kosner Baskonia",
+          "nationality": "France",
+          "is_mvp": false
+        },
+        {
+          "player": "Luka Božić",
+          "team": "Covirán Granada",
+          "nationality": "Croatia",
+          "is_mvp": false
+        }
+      ],
+      "second_team": [
+        {
+          "player": "Marcelinho Huertas",
+          "team": "La Laguna Tenerife",
+          "nationality": "Brazil"
+        },
+        {
+          "player": "Ricky Rubio",
+          "team": "Joventut Badalona",
+          "nationality": "Spain"
+        },
+        {
+          "player": "Gonzalo Corbalán",
+          "team": "San Pablo Burgos",
+          "nationality": "Argentina"
+        },
+        {
+          "player": "Giorgi Shermadini",
+          "team": "La Laguna Tenerife",
+          "nationality": "Georgia"
+        },
+        {
+          "player": "Edy Tavares",
+          "team": "Real Madrid",
+          "nationality": "Cape Verde"
+        }
+      ]
+    }
+  ],
+  "acb_most_spectacular_player": [
+    {
+      "season": "2008–09",
+      "player": "Marcus Haislip",
+      "nationality": "United States",
+      "team": "Málaga"
+    },
+    {
+      "season": "2009–10",
+      "player": "Ricky Rubio",
+      "nationality": "Spain",
+      "team": "Barcelona"
+    },
+    {
+      "season": "2010–11",
+      "player": "Marcus Slaughter",
+      "nationality": "United States",
+      "team": "CB Valladolid"
+    },
+    {
+      "season": "2011–12",
+      "player": "Latavious Williams",
+      "nationality": "United States",
+      "team": "Joventut"
+    },
+    {
+      "season": "2012–13",
+      "player": "Rudy Fernández",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2013–14",
+      "player": "Sergio Rodríguez",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2014–15",
+      "player": "Latavious Williams",
+      "nationality": "United States",
+      "team": "Bilbao"
+    },
+    {
+      "season": "2015–16",
+      "player": "Tomáš Satoranský",
+      "nationality": "Czech Republic",
+      "team": "Barcelona"
+    },
+    {
+      "season": "2016–17",
+      "player": "Facundo Campazzo",
+      "nationality": "Argentina",
+      "team": "Murcia"
+    },
+    {
+      "season": "2017–18",
+      "player": "Christian Eyenga",
+      "nationality": "Democratic Republic of the Congo",
+      "team": "Montakit Fuenlabrada"
+    },
+    {
+      "season": "2018–19",
+      "player": "Tornike Shengelia",
+      "nationality": "Georgia",
+      "team": "Baskonia"
+    },
+    {
+      "season": "2019–20",
+      "player": "Josh Adams",
+      "nationality": "United States",
+      "team": "Unicaja Málaga"
+    },
+    {
+      "season": "2020–21",
+      "player": "Leandro Bolmaro",
+      "nationality": "Argentina",
+      "team": "Barcelona"
+    }
+  ],
+  "best_young_player": [
+    {
+      "season": "2004–05",
+      "player": "Sergio Rodríguez",
+      "nationality": "Spain",
+      "team": "Adecco Estudiantes",
+      "award_type": "Rising Star"
+    },
+    {
+      "season": "2005–06",
+      "player": "Carlos Suárez",
+      "nationality": "Spain",
+      "team": "Adecco Estudiantes",
+      "award_type": "Rising Star"
+    },
+    {
+      "season": "2006–07",
+      "player": "Ricky Rubio",
+      "nationality": "Spain",
+      "team": "DKV Joventut",
+      "award_type": "Rising Star"
+    },
+    {
+      "season": "2007–08",
+      "player": "Mirza Teletović",
+      "nationality": "Bosnia and Herzegovina",
+      "team": "TAU Cerámica",
+      "award_type": "Rising Star"
+    },
+    {
+      "season": "2008–09",
+      "player": "Brad Oleson",
+      "nationality": "Spain",
+      "team": "Alta Gestión Fuenlabrada",
+      "award_type": "Rising Star"
+    },
+    {
+      "season": "2009–10",
+      "player": "Richard Hendrix",
+      "nationality": "North Macedonia",
+      "team": "CB Granada",
+      "award_type": "Rising Star"
+    },
+    {
+      "season": "2010–11",
+      "player": "Gustavo Ayón",
+      "nationality": "Mexico",
+      "team": "Baloncesto Fuenlabrada",
+      "award_type": "Rising Star"
+    },
+    {
+      "season": "2011–12",
+      "player": "Micah Downs",
+      "nationality": "United States",
+      "team": "Assignia Manresa",
+      "award_type": "Rising Star"
+    },
+    {
+      "season": "2012–13",
+      "player": "Salah Mejri",
+      "nationality": "Tunisia",
+      "team": "Blu:sens Monbús",
+      "award_type": "Rising Star"
+    },
+    {
+      "season": "2013–14",
+      "player": "Guillem Vives",
+      "nationality": "Spain",
+      "team": "FIATC Joventut",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2014–15",
+      "player": "Dani Díez",
+      "nationality": "Spain",
+      "team": "Gipuzkoa Basket",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2015–16",
+      "player": "Juancho Hernangómez",
+      "nationality": "Spain",
+      "team": "Movistar Estudiantes",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2016–17",
+      "player": "Luka Dončić",
+      "nationality": "Slovenia",
+      "team": "Real Madrid",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2017–18",
+      "player": "Luka Dončić",
+      "nationality": "Slovenia",
+      "team": "Real Madrid",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2018–19",
+      "player": "Carlos Alocén",
+      "nationality": "Spain",
+      "team": "Tecnyconta Zaragoza",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2019–20",
+      "player": "Carlos Alocén",
+      "nationality": "Spain",
+      "team": "Casademont Zaragoza",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2020–21",
+      "player": "Usman Garuba",
+      "nationality": "Spain",
+      "team": "Real Madrid",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2021–22",
+      "player": "Joel Parra",
+      "nationality": "Spain",
+      "team": "Joventut Badalona",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2022–23",
+      "player": "Jean Montero",
+      "nationality": "Dominican Republic",
+      "team": "Real Betis",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2023–24",
+      "player": "Jean Montero",
+      "nationality": "Dominican Republic",
+      "team": "MoraBanc Andorra",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2024–25",
+      "player": "Jean Montero",
+      "nationality": "Dominican Republic",
+      "team": "Valencia Basket",
+      "award_type": "Best Young Player"
+    },
+    {
+      "season": "2025–26",
+      "player": "Sergio de Larrea",
+      "nationality": "Spain",
+      "team": "Valencia Basket",
+      "award_type": "Best Young Player"
+    }
+  ],
+  "acb_best_coach": [
+    {
+      "season": "2007–08",
+      "coach": "Joan Plaza",
+      "nationality": "Spain",
+      "team": "Real Madrid",
+      "record": "29–5"
+    },
+    {
+      "season": "2008–09",
+      "coach": "Duško Ivanović",
+      "nationality": "Montenegro",
+      "team": "Baskonia",
+      "record": "28–4"
+    },
+    {
+      "season": "2009–10",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "team": "Barcelona",
+      "record": "31–3"
+    },
+    {
+      "season": "2010–11",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "team": "Barcelona",
+      "record": "27–7"
+    },
+    {
+      "season": "2011–12",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "team": "Barcelona",
+      "record": "29–5"
+    },
+    {
+      "season": "2012–13",
+      "coach": "Pablo Laso",
+      "nationality": "Spain",
+      "team": "Real Madrid",
+      "record": "30–4"
+    },
+    {
+      "season": "2013–14",
+      "coach": "Pablo Laso",
+      "nationality": "Spain",
+      "team": "Real Madrid",
+      "record": "32–2"
+    },
+    {
+      "season": "2014–15",
+      "coach": "Pablo Laso",
+      "nationality": "Spain",
+      "team": "Real Madrid",
+      "record": "27–7"
+    },
+    {
+      "season": "2015–16",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "team": "Barcelona",
+      "record": "29–5"
+    },
+    {
+      "season": "2016–17",
+      "coach": "Txus Vidorreta",
+      "nationality": "Spain",
+      "team": "CB Canarias",
+      "record": "22–10"
+    },
+    {
+      "season": "2017–18",
+      "coach": "Pablo Laso",
+      "nationality": "Spain",
+      "team": "Real Madrid",
+      "record": "30–4"
+    },
+    {
+      "season": "2018–19",
+      "coach": "Svetislav Pešić",
+      "nationality": "Serbia",
+      "team": "Barcelona",
+      "record": "27–7"
+    },
+    {
+      "season": "2020–21",
+      "coach": "Pablo Laso",
+      "nationality": "Spain",
+      "team": "Real Madrid",
+      "record": "34–2"
+    },
+    {
+      "season": "2021–22",
+      "coach": "Šarūnas Jasikevičius",
+      "nationality": "Lithuania",
+      "team": "Barcelona",
+      "record": "27–7"
+    },
+    {
+      "season": "2022–23",
+      "coach": "Šarūnas Jasikevičius",
+      "nationality": "Lithuania",
+      "team": "Barcelona",
+      "record": "28–5"
+    },
+    {
+      "season": "2023–24",
+      "coach": "Sito Alonso",
+      "nationality": "Spain",
+      "team": "UCAM Murcia",
+      "record": "21–13"
+    }
+  ],
+  "aeeb_coach_of_the_year": [
+    {
+      "season": "1974–75",
+      "coach": "Pedro Ferrándiz",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "1975–76",
+      "coach": "Aíto García Reneses",
+      "nationality": "Spain",
+      "team": "Cotonificio Badalona"
+    },
+    {
+      "season": "1976–77",
+      "coach": "Lolo Sainz",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "1977–78",
+      "coach": "Antoni Serra",
+      "nationality": "Spain",
+      "team": "Joventut Badalona"
+    },
+    {
+      "season": "1978–79",
+      "coach": "Rafael Peyró",
+      "nationality": "Spain",
+      "team": null
+    },
+    {
+      "season": "1979–80",
+      "coaches": [
+        {
+          "name": "Ángel Palmi",
+          "nationality": "Spain"
+        },
+        {
+          "name": "Luis Rodrigo",
+          "nationality": "Spain"
+        }
+      ]
+    },
+    {
+      "season": "1980–81",
+      "coach": "Antonio Díaz-Miguel",
+      "nationality": "Spain",
+      "team": null
+    },
+    {
+      "season": "1981–82",
+      "coach": "Ignacio Pinedo",
+      "nationality": "Spain",
+      "team": null
+    },
+    {
+      "season": "1982–83",
+      "coach": "Antonio Díaz-Miguel",
+      "nationality": "Spain",
+      "team": null
+    },
+    {
+      "season": "1983–84",
+      "coach": "Manuel Coloma",
+      "nationality": "Spain",
+      "team": null
+    },
+    {
+      "season": "1984–85",
+      "coach": "Lolo Sainz",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "1985–86",
+      "coach": "Juan Jiménez",
+      "nationality": "Spain",
+      "team": "TDK Manresa"
+    },
+    {
+      "season": "1986–87",
+      "coach": "José Antonio Figueroa",
+      "nationality": "Spain",
+      "team": "Cajabilbao"
+    },
+    {
+      "season": "1987–88",
+      "coach": "Alfred Julbe",
+      "nationality": "Spain",
+      "team": "RAM Joventut"
+    },
+    {
+      "season": "1988–89",
+      "coach": "Mario Pesquera",
+      "nationality": "Spain",
+      "team": "Caja Ronda"
+    },
+    {
+      "season": "1989–90",
+      "coach": "Aíto García Reneses",
+      "nationality": "Spain",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "1990–91",
+      "coach": "Lolo Sainz",
+      "nationality": "Spain",
+      "team": "Montigalà Joventut"
+    },
+    {
+      "season": "1991–92",
+      "coach": "Miguel Ángel Martín",
+      "nationality": "Spain",
+      "team": "Estudiantes Caja Postal"
+    },
+    {
+      "season": "1992–93",
+      "coach": "Gustavo Aranzana",
+      "nationality": "Spain",
+      "team": "Elosúa León"
+    },
+    {
+      "season": "1993–94",
+      "coach": "Pedro Martínez",
+      "nationality": "Spain",
+      "team": "TDK Manresa"
+    },
+    {
+      "season": "1994–95",
+      "coach": "Javier Imbroda",
+      "nationality": "Spain",
+      "team": "Unicaja"
+    },
+    {
+      "season": "1995–96",
+      "coach": "Salva Maldonado",
+      "nationality": "Spain",
+      "team": "TDK Manresa"
+    },
+    {
+      "season": "1996–97",
+      "coach": "Alfred Julbe",
+      "nationality": "Spain",
+      "team": "Festina Joventut"
+    },
+    {
+      "season": "1997–98",
+      "coach": "Luis Casimiro",
+      "nationality": "Spain",
+      "team": "TDK Manresa"
+    },
+    {
+      "season": "1998–99",
+      "coach": "Javier Imbroda",
+      "nationality": "Spain",
+      "team": "Caja San Fernando"
+    },
+    {
+      "season": "1999–00",
+      "coach": "Sergio Scariolo",
+      "nationality": "Italy",
+      "team": "Real Madrid Teka"
+    },
+    {
+      "season": "2000–01",
+      "coach": "Duško Ivanović",
+      "nationality": "Montenegro",
+      "team": "TAU Cerámica"
+    },
+    {
+      "season": "2001–02",
+      "coach": "Edu Torres",
+      "nationality": "Spain",
+      "team": "Caprabo Lleida"
+    },
+    {
+      "season": "2002–03",
+      "coach": "Paco Olmos",
+      "nationality": "Spain",
+      "team": "Pamesa Valencia"
+    },
+    {
+      "season": "2003–04",
+      "coach": "Pepu Hernández",
+      "nationality": "Spain",
+      "team": "Adecco Estudiantes"
+    },
+    {
+      "season": "2004–05",
+      "coach": "Trifón Poch",
+      "nationality": "Spain",
+      "team": "Etosa Alicante"
+    },
+    {
+      "season": "2005–06",
+      "coach": "Aíto García Reneses",
+      "nationality": "Spain",
+      "team": "DKV Joventut"
+    },
+    {
+      "season": "2006–07",
+      "coach": "Joan Plaza",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2007–08",
+      "coach": "Aíto García Reneses",
+      "nationality": "Spain",
+      "team": "DKV Joventut"
+    },
+    {
+      "season": "2008–09",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "2009–10",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "2010–11",
+      "coach": "Xavi Pascual",
+      "nationality": "Spain",
+      "team": "FC Barcelona"
+    },
+    {
+      "season": "2011–12",
+      "coach": "Sito Alonso",
+      "nationality": "Spain",
+      "team": "Lagun Aro GBC"
+    },
+    {
+      "season": "2012–13",
+      "coach": "Pablo Laso",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2013–14",
+      "coach": "Velimir Perasović",
+      "nationality": "Croatia",
+      "team": "Valencia Basket"
+    },
+    {
+      "season": "2014–15",
+      "coach": "Pablo Laso",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2015–16",
+      "coach": "Pablo Laso",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2016–17",
+      "coach": "Pedro Martínez",
+      "nationality": "Spain",
+      "team": "Valencia Basket"
+    },
+    {
+      "season": "2017–18",
+      "coach": "Pablo Laso",
+      "nationality": "Spain",
+      "team": "Real Madrid"
+    },
+    {
+      "season": "2018–19",
+      "coach": "Svetislav Pešić",
+      "nationality": "Serbia",
+      "team": "FC Barcelona"
+    }
+  ]
+}

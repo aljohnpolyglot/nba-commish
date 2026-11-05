@@ -4,7 +4,6 @@ import { ChevronLeft, ChevronRight, Crown, Star, X } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { SettingsManager } from '../../../services/SettingsManager';
 import { computeAge } from '../../../utils/helpers';
-import { parseGameDate } from '../../../utils/dateUtils';
 import {
   careerWinShares,
   getHOFTierInfo,
@@ -15,8 +14,11 @@ import {
 } from '../../../services/playerDevelopment/jerseyRetirementChecker';
 import type { NBAPlayer, NBATeam, RetiredJerseyRecord } from '../../../types';
 import { PlayerPortrait } from '../../shared/PlayerPortrait';
-import { PlayerBioView } from '../../central/view/PlayerBioView';
 import FarewellTourReviewView, { type FarewellRow } from './FarewellTourReviewView';
+import { EURO_BASKETBALL_SOURCE_ARCHIVES, EUROLEAGUE_2026_SOURCE } from '../../../data/euroBasketballSources';
+import { usePlayerQuickActions } from '../../../hooks/usePlayerQuickActions';
+import { getRetirementClassYear, isPlayerInRetirementClass } from '../aufgabenShared';
+import { isCareerStatCompatibleWithMode } from '../../../services/retirement/retirementEventIdentity';
 
 interface PlannedJersey {
   teamId: number;
@@ -50,6 +52,18 @@ const TIER_BADGE_COLOR: Record<'first_ballot' | 'regular' | 'borderline', string
   regular:      'bg-sky-400/15 text-sky-300 border-sky-400/40',
   borderline:   'bg-rose-400/15 text-rose-300 border-rose-400/40',
 };
+const EURO_RETIREMENT_COMPETITIONS = new Set([
+  EUROLEAGUE_2026_SOURCE.competitionId,
+  ...EURO_BASKETBALL_SOURCE_ARCHIVES.map(source => source.competitionId),
+  'endesa',
+  'eurocup',
+]);
+const EURO_RETIREMENT_LEAGUES = new Set([
+  EUROLEAGUE_2026_SOURCE.leagueStatus,
+  ...EURO_BASKETBALL_SOURCE_ARCHIVES.map(source => source.leagueStatus),
+  'Endesa',
+  'EuroCup',
+]);
 function countAward(p: NBAPlayer, type: string): number {
   return (p.awards ?? []).filter(a => a.type === type).length;
 }
@@ -64,14 +78,16 @@ function isScopedTeamTid(tid: number, teamsById: Map<number, NBATeam>, uiMode?: 
   }
   if (uiMode === 'euro_isolated') {
     const league = String((teamsById.get(tid) as any)?.league ?? '');
-    return (tid >= 1000 && tid < 1100) || (tid >= 5000 && tid < 5100) || league === 'Euroleague' || league === 'Endesa';
+    return EURO_RETIREMENT_LEAGUES.has(league);
   }
   return tid >= 0 && tid < 100;
 }
 function getScopedRegularSeasonStats(player: NBAPlayer, teamsById: Map<number, NBATeam>, uiMode?: string): any[] {
   return ((player.stats ?? []) as any[]).filter(s => {
     const tid = Number(s.tid);
-    return !s.playoffs && (s.gp ?? 0) > 0 && isScopedTeamTid(tid, teamsById, uiMode);
+    if (s.playoffs || (s.gp ?? 0) <= 0) return false;
+    return isCareerStatCompatibleWithMode(s, uiMode, teamsById as Map<number, NBATeam | any>)
+      && isScopedTeamTid(tid, teamsById, uiMode);
   });
 }
 function getPlayerYearsPro(player: NBAPlayer, regs: any[], classYear: number): number {
@@ -170,17 +186,16 @@ function PostCareerCell({ role }: { role: string | null }) {
 interface Props {
   isOpen: boolean;
   onClose: () => void;
+  onDone?: () => void;
 }
-export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
+export default function RetiredPlayersReviewModal({ isOpen, onClose, onDone }: Props) {
   const { state, dispatchAction } = useGame();
-  const [drillPlayer, setDrillPlayer] = useState<NBAPlayer | null>(null);
+  const playerActions = usePlayerQuickActions();
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [farewellSelectedId, setFarewellSelectedId] = useState<string | null>(null);
   const [slide, setSlide] = useState<'retirees' | 'farewells'>('retirees');
 
-  const classYear = state.date
-    ? parseGameDate(state.date).getUTCFullYear()
-    : state.leagueStats?.year ?? new Date().getFullYear();
+  const classYear = getRetirementClassYear(state);
   const hofThreshold = SettingsManager.getSettings().hofWSThreshold ?? 50;
   const leagueStartYear = useMemo(
     () => deriveLeagueStartYearFromHistory(state.history as any, classYear),
@@ -222,19 +237,47 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
 
   const retirees = useMemo<RetireeRow[]>(() => {
     if (!isOpen) return [];
-    const list = (state.players ?? [])
-      .filter(p => (p as any).status === 'Retired' && p.retiredYear === classYear)
+    const endorsedPlayerIds = new Set(state.endorsedPlayers ?? []);
+    const announcedPlayerIds = new Set(
+      (state.retirementAnnouncements ?? []).map(record => record.playerId),
+    );
+    const visibleClassYears = new Set([classYear]);
+    if (
+      uiMode === 'pba_isolated'
+      && Number((state as any).pbaStartYear) === classYear - 1
+    ) visibleClassYears.add(classYear - 1);
+    const candidates = (state.players ?? [])
+      .filter(p =>
+        (p as any).status === 'Retired'
+        && isPlayerInRetirementClass(p, announcedPlayerIds, visibleClassYears),
+      )
       .filter(p => getScopedRegularSeasonStats(p, teamsById, uiMode).length > 0);
+    const byIdentity = new Map<string, NBAPlayer>();
+    for (const player of candidates) {
+      const key = `${player.name.toLowerCase().replace(/[^a-z0-9]+/g, '')}|${player.born?.year ?? ''}`;
+      const existing = byIdentity.get(key);
+      if (!existing || (player.stats?.length ?? 0) > (existing.stats?.length ?? 0)) byIdentity.set(key, player);
+    }
+    const list = [...byIdentity.values()];
 
     return list.map(p => {
       const regs = getScopedRegularSeasonStats(p, teamsById, uiMode);
-      const yearsPro = getPlayerYearsPro(p, regs, classYear);
-      const age = computeAge(p, classYear);
+      const retirementYear = Number(p.retiredYear ?? classYear);
+      const yearsPro = getPlayerYearsPro(p, regs, retirementYear);
+      const age = computeAge(p, retirementYear);
       const teamLogos = rankedTeamLogos(regs, teamsById);
 
-      const tierInfo = getHOFTierInfo(p, hofThreshold);
-      const hofTier = tierInfo?.tier ?? null;
-      const hofEligibleYear = tierInfo?.eligibleYear ?? null;
+      const tierInfo = uiMode === 'euro_isolated' ? null : getHOFTierInfo(p, hofThreshold);
+      const isHallOfFameBound = uiMode !== 'euro_isolated' && (p.hof === true
+        || (p.hofInductionYear != null && Number.isFinite(Number(p.hofInductionYear)))
+        || (p.scheduledHofInductionYear != null && Number.isFinite(Number(p.scheduledHofInductionYear)))
+        || endorsedPlayerIds.has(p.internalId));
+      const hofTier = isHallOfFameBound ? 'regular' : tierInfo?.tier ?? null;
+      const hofEligibleYear = Number(
+        p.hofInductionYear
+        ?? p.scheduledHofInductionYear
+        ?? tierInfo?.eligibleYear,
+      ) || null;
 
       const planned: PlannedJersey[] = [];
       const already = retiredJerseysByPlayer.get(p.internalId) ?? [];
@@ -274,7 +317,7 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
       return { player: p, yearsPro, age, teamLogos, hofTier, hofEligibleYear, plannedJerseys: planned, staffJoinRole };
     })
     .sort((a, b) => careerWinShares(b.player) - careerWinShares(a.player));
-  }, [isOpen, state.players, classYear, hofThreshold, teamsById, retiredJerseysByPlayer, jerseyExplain, uiMode]);
+  }, [isOpen, state.players, state.endorsedPlayers, state.retirementAnnouncements, (state as any).pbaStartYear, classYear, hofThreshold, teamsById, retiredJerseysByPlayer, jerseyExplain, uiMode]);
 
   const selected = useMemo<RetireeRow | null>(() => {
     if (!retirees.length) return null;
@@ -296,7 +339,7 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
           age: computeAge(p, classYear),
           teamLogos,
           allStars: countAward(p, 'All-Star'),
-          championships: countAward(p, 'Won Championship') + countAward(p, 'Champion'),
+          championships: countAward(p, 'Won Championship') + countAward(p, 'Champion') + countAward(p, 'NBA Champion'),
         };
       })
       .sort((a, b) => careerWinShares(b.player) - careerWinShares(a.player));
@@ -307,8 +350,9 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
     return farewells.find(r => r.player.internalId === farewellSelectedId) ?? farewells[0];
   }, [farewells, farewellSelectedId]);
 
-  const handleDone = () => {
-    dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'retiredPlayersReview' } } as any);
+  const handleDone = async () => {
+    if (onDone) await onDone();
+    else await dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'retiredPlayersReview' } } as any);
     onClose();
   };
 
@@ -318,25 +362,32 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
       setFarewellSelectedId(prev => prev ?? farewells[0]?.player.internalId ?? null);
       return;
     }
-    handleDone();
+    void handleDone();
   };
 
-  if (drillPlayer) {
-    return (
-      <AnimatePresence>
-        {isOpen && (
-          <div className="fixed inset-0 z-[120] bg-zinc-950 overflow-y-auto">
-            <PlayerBioView player={drillPlayer} onBack={() => setDrillPlayer(null)} />
-          </div>
-        )}
-      </AnimatePresence>
-    );
+  const handleRetireeSelect = (row: RetireeRow) => {
+    if (selectedId === row.player.internalId) {
+      playerActions.openFor(row.player, 'retirement-review');
+      return;
+    }
+    setSelectedId(row.player.internalId);
+  };
+
+  const handleRetireeKeyDown = (event: React.KeyboardEvent, row: RetireeRow) => {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    handleRetireeSelect(row);
+  };
+
+  if (playerActions.isOverlayOpen && !playerActions.fullPageView) {
+    return <>{playerActions.portals}</>;
   }
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[115] flex items-center justify-center p-0 sm:p-2 md:p-6">
+    <>
+      <AnimatePresence>
+        {isOpen && (
+          <div className="fixed inset-0 z-[115] flex items-center justify-center p-0 sm:p-2 md:p-6">
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -365,14 +416,14 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
             {slide === 'retirees' ? (
               <>
                 {selected ? (
-                  <DetailHeader row={selected} onOpenBio={() => setDrillPlayer(selected.player)} />
+                  <DetailHeader row={selected} />
                 ) : (
                   <div className="shrink-0 border-b border-zinc-800 bg-zinc-900/50 px-4 sm:px-6 py-10 text-center text-sm italic text-zinc-500">
                     No players retired after the {classYear} season.
                   </div>
                 )}
 
-                <div className="flex-1 overflow-y-auto" style={{ scrollbarWidth: 'thin' }}>
+                <div className="no-scrollbar flex-1 overflow-y-auto">
                   <div className="hidden md:grid sticky top-0 z-10 grid-cols-[1fr_140px_170px_72px_56px_124px] gap-3 border-b border-zinc-800 bg-zinc-950 px-6 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
                     <span>Name</span>
                     <span>Career Teams</span>
@@ -383,15 +434,18 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
                   </div>
                   <div className="md:hidden divide-y divide-zinc-900">
                     {retirees.map(row => {
-                      const isSel = row.player.internalId === (selected?.player.internalId ?? '');
+                      const isSel = row.player.internalId === selectedId;
                       return (
                         <div
                           key={row.player.internalId}
-                          onClick={() => setSelectedId(row.player.internalId)}
-                          onDoubleClick={() => setDrillPlayer(row.player)}
+                          role="button"
+                          tabIndex={0}
+                          aria-selected={isSel}
+                          onClick={() => handleRetireeSelect(row)}
+                          onKeyDown={event => handleRetireeKeyDown(event, row)}
                           className={`cursor-pointer px-4 py-3 transition-colors ${
                             isSel ? 'bg-gradient-to-r from-rose-500/25 to-transparent ring-1 ring-rose-400/40' : 'hover:bg-zinc-900/50'
-                          }`}
+                          } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rose-400`}
                         >
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
                             <div className="truncate text-sm font-semibold text-slate-100">{row.player.name}</div>
@@ -419,15 +473,18 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
                   </div>
                   <div className="hidden md:block">
                     {retirees.map(row => {
-                      const isSel = row.player.internalId === (selected?.player.internalId ?? '');
+                      const isSel = row.player.internalId === selectedId;
                       return (
                         <div
                           key={row.player.internalId}
-                          onClick={() => setSelectedId(row.player.internalId)}
-                          onDoubleClick={() => setDrillPlayer(row.player)}
+                          role="button"
+                          tabIndex={0}
+                          aria-selected={isSel}
+                          onClick={() => handleRetireeSelect(row)}
+                          onKeyDown={event => handleRetireeKeyDown(event, row)}
                           className={`grid cursor-pointer grid-cols-[1fr_140px_170px_72px_56px_124px] items-center gap-3 border-b border-zinc-900 px-6 py-2.5 transition-colors ${
                             isSel ? 'bg-gradient-to-r from-rose-500/25 to-transparent ring-1 ring-rose-400/40' : 'hover:bg-zinc-900/50'
-                          }`}
+                          } focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-rose-400`}
                         >
                           <div className="flex min-w-0 flex-wrap items-center gap-2">
                             <div className="truncate text-sm font-semibold text-slate-100">{row.player.name}</div>
@@ -453,7 +510,7 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
                 rows={farewells}
                 selected={selectedFarewell}
                 onSelect={setFarewellSelectedId}
-                onOpenBio={p => setDrillPlayer(p)}
+                onOpenBio={p => playerActions.openFor(p)}
                 classYear={classYear}
               />
             )}
@@ -461,7 +518,7 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
             <div className="flex shrink-0 flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4 border-t border-zinc-800 bg-zinc-950 px-4 sm:px-6 py-3">
               <span className="text-xs text-zinc-500 text-center sm:text-left">
                 {slide === 'retirees'
-                  ? 'Double-click a name to open the full player card.'
+                  ? 'Select a player to review his retirement summary. Select him again for Player Actions.'
                   : 'These players have announced this will be their final season.'}
               </span>
               <div className="flex items-center gap-2">
@@ -484,16 +541,37 @@ export default function RetiredPlayersReviewModal({ isOpen, onClose }: Props) {
               </div>
             </div>
           </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+          </div>
+        )}
+        {playerActions.fullPageView && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[145] flex items-center justify-center bg-black/85 p-0 backdrop-blur-md sm:p-3 md:p-6"
+            onClick={() => playerActions.openBio(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.97, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.97, y: 12 }}
+              className="h-[100dvh] w-full max-w-[1500px] overflow-hidden bg-[#0a0a0a] shadow-2xl sm:h-[94dvh] sm:rounded-[2.5rem]"
+              onClick={event => event.stopPropagation()}
+            >
+              {playerActions.fullPageView}
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      {playerActions.portals}
+    </>
   );
 }
 
-function DetailHeader({ row, onOpenBio }: { row: RetireeRow; onOpenBio: () => void }) {
+function DetailHeader({ row }: { row: RetireeRow }) {
   const p = row.player;
   const allStars = countAward(p, 'All-Star');
-  const champs = countAward(p, 'Won Championship') + countAward(p, 'Champion');
+  const champs = countAward(p, 'Won Championship') + countAward(p, 'Champion') + countAward(p, 'NBA Champion');
   const mvps = countAward(p, 'Most Valuable Player');
   const ws = careerWinShares(p);
   const heightInches = (p as any).hgt;
@@ -504,7 +582,7 @@ function DetailHeader({ row, onOpenBio }: { row: RetireeRow; onOpenBio: () => vo
 
   return (
     <div className="grid shrink-0 grid-cols-1 lg:grid-cols-[auto_1fr_auto] items-start lg:items-center gap-4 lg:gap-6 border-b border-zinc-800 bg-gradient-to-r from-zinc-900 to-zinc-950 px-4 sm:px-6 py-4">
-      <div onClick={onOpenBio} className="cursor-pointer mx-auto lg:mx-0">
+      <div className="mx-auto lg:mx-0">
         <PlayerPortrait
           imgUrl={(p as any).imgURL}
           playerName={p.name}
@@ -516,7 +594,7 @@ function DetailHeader({ row, onOpenBio }: { row: RetireeRow; onOpenBio: () => vo
         <div className="text-[10px] font-bold uppercase tracking-[0.2em] text-amber-300/80">
           {(p as any).pos ?? ''} · Retired {row.player.retiredYear}
         </div>
-        <div onClick={onOpenBio} className="cursor-pointer break-words font-display text-2xl sm:text-3xl font-black uppercase tracking-wide text-slate-100 hover:text-amber-200">
+        <div className="break-words font-display text-2xl sm:text-3xl font-black uppercase tracking-wide text-slate-100">
           {p.name}
         </div>
         <div className="mt-2 grid grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
@@ -526,10 +604,11 @@ function DetailHeader({ row, onOpenBio }: { row: RetireeRow; onOpenBio: () => vo
           <BioCell label="Years Pro" value={String(row.yearsPro)} />
         </div>
       </div>
-      <div className="flex shrink-0 flex-col items-start lg:items-end gap-1.5">
+      <div className="flex shrink-0 flex-col items-start lg:items-end gap-1.5 min-w-0">
         {row.hofTier && (
           <span className={`inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[10px] font-bold tracking-wider ${TIER_BADGE_COLOR[row.hofTier]}`}>
-            <Star size={11} /> {TIER_LABEL[row.hofTier]} · CLASS OF {row.hofEligibleYear ?? '?'}
+            <Star size={11} /> {TIER_LABEL[row.hofTier]}
+            {row.hofEligibleYear ? ` · CLASS OF ${row.hofEligibleYear}` : ''}
           </span>
         )}
         {row.plannedJerseys.map(j => (
@@ -549,7 +628,7 @@ function DetailHeader({ row, onOpenBio }: { row: RetireeRow; onOpenBio: () => vo
             Joined staff list
           </span>
         )}
-        <div className="mt-1 text-[10px] uppercase tracking-wider text-zinc-500">
+        <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1 text-[10px] uppercase tracking-wider text-zinc-500">
           {mvps > 0 && <span className="mr-2 text-amber-300">{mvps}× MVP</span>}
           {champs > 0 && <span className="mr-2 text-emerald-300">{champs}× CHAMP</span>}
           {allStars > 0 && <span className="mr-2 text-sky-300">{allStars}× ALL-STAR</span>}

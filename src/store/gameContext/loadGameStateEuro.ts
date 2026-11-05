@@ -2,13 +2,21 @@ import { migrateAllEuroTeams } from '../../services/tycoon/migrate';
 import { getStaffMarketSalary } from '../../services/tycoon/economyScale';
 import { seedEuroCareer } from '../../services/euro/careerSeed';
 import { EURO_ISOLATED_SALARY_CAP_USD, EURO_PLAYER_WAGE_SCALE, scaleEuroPlayerContracts } from '../../services/euro/payrollScale';
-import { ensureStaffPoolDepth } from '../../services/euro/staffPool';
-import { tickTransferMarket } from '../../services/transfer/transferMarketTicker';
+import { ensureStaffPoolDepth, hasStaffPoolDepth } from '../../services/euro/staffPool';
+import { FICTIONAL_STAFF_LEAGUE_ID } from '../../services/fictionalStaffGenerator';
 import { ensureEuroUserAcademyProspects } from '../../services/externalLeagueSustainer';
 import { initialEuroOffseasonChecklist } from '../../services/offseason/offseasonState';
 import { mapSetupTierToTycoonTier } from '../../utils/tierMapping';
+import { hasTwoWayContractMarker } from '../../utils/contractTypes';
+import { normalizePositionLabel } from '../../utils/positionUtils';
+import { isExternalLeagueStatus } from '../../constants';
+import { EURO_BASKETBALL_SOURCE_ARCHIVES } from '../../data/euroBasketballSources';
+import { sanitizeEuroJerseyHistory } from '../../services/euro/jerseyHistory';
+import { getEuroHistoricalEconomyFactor } from '../../services/euro/historicalEconomy';
+import { getStaffImageUrl } from '../../utils/staffPortrait';
 import {
   EURO_TRANSFER_MARKET_DEFAULTS,
+  EURO_LOAN_MARKET_DEFAULTS,
   buildSetupSponsorships,
   getClubId,
   getClubLabel,
@@ -16,6 +24,8 @@ import {
 } from './loadGameStateShared';
 
 function externalOffsetForStatus(status?: string): number | null {
+  const euroSource = EURO_BASKETBALL_SOURCE_ARCHIVES.find(source => source.leagueStatus === status);
+  if (euroSource) return euroSource.teamTidOffset;
   if (status === 'Euroleague') return 1000;
   if (status === 'PBA') return 2000;
   if (status === 'B-League') return 4000;
@@ -26,6 +36,8 @@ function externalOffsetForStatus(status?: string): number | null {
 }
 
 function externalStatusForTid(tid: number): string | null {
+  const euroSource = EURO_BASKETBALL_SOURCE_ARCHIVES.find(source => tid >= source.teamTidOffset && tid < source.teamTidOffset + 1000);
+  if (euroSource) return euroSource.leagueStatus;
   if (tid >= 1000 && tid < 2000) return 'Euroleague';
   if (tid >= 2000 && tid < 3000) return 'PBA';
   if (tid >= 4000 && tid < 5000) return 'B-League';
@@ -33,6 +45,20 @@ function externalStatusForTid(tid: number): string | null {
   if (tid >= 7000 && tid < 8000) return 'China CBA';
   if (tid >= 8000 && tid < 9000) return 'NBL Australia';
   return null;
+}
+
+function isExternalPlayerRecord(player: any): boolean {
+  return isExternalLeagueStatus(player?.status)
+    || externalOffsetForStatus(player?.status) != null
+    || externalStatusForTid(Number(player?.tid ?? -1)) != null;
+}
+
+function normalizeExternalPlayerPosition(player: any): boolean {
+  if (!isExternalPlayerRecord(player)) return false;
+  const normalized = normalizePositionLabel(player?.pos, Number(player?.hgt ?? player?.finalHgt));
+  if (!normalized || normalized === player?.pos) return false;
+  player.pos = normalized;
+  return true;
 }
 
 function dedupeOneTimePayouts(team: any) {
@@ -48,13 +74,25 @@ function dedupeOneTimePayouts(team: any) {
   return unique.length === payouts.length ? team : { ...team, tycoon: { ...team.tycoon, oneTimePayouts: unique } };
 }
 
+function getEuroStaffLeagueId(team: { league?: string } | null | undefined): string {
+  const league = String(team?.league ?? '');
+  if (league === 'Endesa') return 'endesa';
+  if (league === 'Euroleague') return 'euroleague';
+  return EURO_BASKETBALL_SOURCE_ARCHIVES.find(source => source.leagueStatus === league)?.leagueId ?? 'euroleague';
+}
+
 function healEuroUserTeamId(loaded: any, healedNonNBATeams: any[], healedUserTeamId: any) {
   if (loaded.gameMode !== 'gm') return healedUserTeamId;
   const pointsAtEuroClub = healedNonNBATeams.some((team: any) => team.tid === healedUserTeamId);
   if (pointsAtEuroClub) return healedUserTeamId;
   const seededTeamId = (loaded as any).euroSetupSeed?.teamId;
   const seededTeam = healedNonNBATeams.find((team: any) => team.tid === seededTeamId);
+  const primaryTeamIds = (loaded.euroCompetitionTeamTids?.[loaded.euroPrimaryCompetitionId] ?? []) as number[];
+  const primarySource = EURO_BASKETBALL_SOURCE_ARCHIVES.find(source => source.competitionId === loaded.euroPrimaryCompetitionId);
   const fallbackTeam = seededTeam
+    ?? healedNonNBATeams.find((team: any) => primaryTeamIds.includes(team.tid))
+    ?? healedNonNBATeams.find((team: any) => team.league === primarySource?.leagueStatus)
+    ?? healedNonNBATeams.find((team: any) => EURO_BASKETBALL_SOURCE_ARCHIVES.some(source => source.leagueStatus === team.league))
     ?? healedNonNBATeams.find((team: any) => team.league === 'Endesa')
     ?? healedNonNBATeams.find((team: any) => team.league === 'Euroleague')
     ?? healedNonNBATeams[0];
@@ -93,21 +131,34 @@ export function applyEuroLoadHeals(params: {
   let strippedTwoWay = 0;
   let normalizedExternalTids = 0;
   let fixedExternalStatuses = 0;
+  let normalizedExternalPositions = 0;
   let scaledEuroContracts = 0;
+  if (!Number.isFinite(Number((migratedLeagueStats as any).historicalEconomyScale))) {
+    const branchSeason = Number(
+      loaded.euroStartSeason
+      ?? (loaded.endesaStartYear != null ? Number(loaded.endesaStartYear) + 1 : undefined)
+      ?? migratedLeagueStats.year,
+    );
+    (migratedLeagueStats as any).historicalEconomyScale = getEuroHistoricalEconomyFactor(branchSeason);
+  }
+  const teamLeagueByTid = new Map(healedNonNBATeams.map((team: any) => [Number(team.tid), String(team.league ?? '')] as const));
   for (const player of (loaded.players ?? [])) {
     const offset = externalOffsetForStatus((player as any).status);
     if (offset != null && player.tid >= 0 && player.tid < 100) {
       player.tid += offset;
       normalizedExternalTids++;
     }
-    const expectedStatus = externalStatusForTid(player.tid);
+    const expectedStatus = teamLeagueByTid.get(Number(player.tid)) || externalStatusForTid(player.tid);
     if (expectedStatus && (player as any).status !== expectedStatus) {
       (player as any).status = expectedStatus;
       fixedExternalStatuses++;
     }
-    if ((player.twoWay || (player as any).nonGuaranteed) && player.tid >= 100) {
-      if (player.twoWay) {
+    if (normalizeExternalPlayerPosition(player)) normalizedExternalPositions++;
+    const hasTwoWay = hasTwoWayContractMarker(player);
+    if ((hasTwoWay || (player as any).nonGuaranteed) && player.tid >= 100) {
+      if (hasTwoWay) {
         player.twoWay = false;
+        if (player.contract?.type === 'TWO_WAY') delete player.contract.type;
         strippedTwoWay++;
       }
       if ((player as any).nonGuaranteed) (player as any).nonGuaranteed = false;
@@ -115,10 +166,24 @@ export function applyEuroLoadHeals(params: {
   }
   if (normalizedExternalTids > 0) console.log(`[LOAD_GAME] [euro] normalized ${normalizedExternalTids} legacy external player tids`);
   if (fixedExternalStatuses > 0) console.log(`[LOAD_GAME] [euro] fixed ${fixedExternalStatuses} external player status tags`);
+  playersWithAISetup = playersWithAISetup.map((player: any) => {
+    const before = player?.pos;
+    const next = { ...player };
+    if (normalizeExternalPlayerPosition(next) && next.pos !== before) normalizedExternalPositions++;
+    return next;
+  });
+  loaded.players = (loaded.players ?? []).map((player: any) => ({ ...player }));
+  const jerseyHeal = sanitizeEuroJerseyHistory(playersWithAISetup as any);
+  if (jerseyHeal.strippedRows > 0) {
+    playersWithAISetup = jerseyHeal.players;
+    loaded.players = jerseyHeal.players;
+    console.log(`[LOAD_GAME] [euro] removed ${jerseyHeal.strippedRows} table-rank values from Euro jersey history`);
+  }
+  if (normalizedExternalPositions > 0) console.log(`[LOAD_GAME] [euro] normalized ${normalizedExternalPositions} external player position labels`);
   if (strippedTwoWay > 0) console.log(`[LOAD_GAME] [euro] stripped twoWay flag from ${strippedTwoWay} roster players`);
 
   if (!(migratedLeagueStats as any).euroPayrollScaleHealed) {
-    const scaled = scaleEuroPlayerContracts(playersWithAISetup as any);
+    const scaled = scaleEuroPlayerContracts(playersWithAISetup as any, Number(migratedLeagueStats.year));
     playersWithAISetup = scaled.players;
     loaded.players = scaled.players;
     scaledEuroContracts = scaled.scaledCount;
@@ -139,25 +204,6 @@ export function applyEuroLoadHeals(params: {
     console.log(`[LOAD_GAME] [euro] rescaled ${scaledEuroContracts} external player contracts for the Euro economy`);
   }
 
-  const activeListings = ((loaded as any).transferListings ?? []).filter((listing: any) => listing.status === 'active').length;
-  if (activeListings === 0) {
-    try {
-      const seedState = { ...loaded, leagueStats: migratedLeagueStats, players: loaded.players, nonNBATeams: healedNonNBATeams } as any;
-      const tick = tickTransferMarket(seedState);
-      (loaded as any).transferListings = tick.transferListings;
-      (loaded as any).transferBids = tick.transferBids;
-      (loaded as any).transferActivity = tick.transferActivity;
-      loaded.players = tick.players;
-      healedNonNBATeams = tick.nonNBATeams;
-      if (tick.historyEntries.length > 0) {
-        (loaded as any).history = [...((loaded as any).history ?? []), ...tick.historyEntries];
-      }
-      console.log(`[LOAD_GAME] [euro] seeded ${tick.transferListings.filter((listing: any) => listing.status === 'active').length} initial transfer listings.`);
-    } catch (error) {
-      console.warn('[LOAD_GAME] [euro] initial transfer market seed failed', error);
-    }
-  }
-
   healedUserTeamId = healEuroUserTeamId(loaded, healedNonNBATeams, healedUserTeamId);
 
   const migrated = migrateAllEuroTeams({
@@ -175,6 +221,11 @@ export function applyEuroLoadHeals(params: {
   (migratedLeagueStats as any).transferMarket = {
     ...EURO_TRANSFER_MARKET_DEFAULTS,
     ...((migratedLeagueStats as any).transferMarket ?? {}),
+    enabled: true,
+  };
+  (migratedLeagueStats as any).loanMarket = {
+    ...EURO_LOAN_MARKET_DEFAULTS,
+    ...((migratedLeagueStats as any).loanMarket ?? {}),
     enabled: true,
   };
 
@@ -200,13 +251,8 @@ export function applyEuroLoadHeals(params: {
     const checklist = healedOffseasonChecklist;
     if (checklist.freeAgency === 'pending' || checklist.trainingCamp === 'in-progress' || checklist.transferMarket !== 'done') {
       healedOffseasonChecklist = {
-        ...initialEuroOffseasonChecklist(),
-        transferMarket: checklist.transferMarket === 'done' || checklist.transferMarket === 'in-progress' ? checklist.transferMarket : 'pending',
-        sponsorRenewals: checklist.sponsorRenewals === 'done' || checklist.sponsorRenewals === 'in-progress' ? checklist.sponsorRenewals : 'pending',
-        facilityUpgrades: checklist.facilityUpgrades === 'done' || checklist.facilityUpgrades === 'in-progress' ? checklist.facilityUpgrades : 'pending',
-        budgetLock: checklist.budgetLock === 'done' || checklist.budgetLock === 'in-progress' ? checklist.budgetLock : 'pending',
-        preseasonFriendlies: checklist.preseasonFriendlies === 'done' || checklist.preseasonFriendlies === 'in-progress' ? checklist.preseasonFriendlies : 'pending',
-        trainingCamp: checklist.trainingCamp === 'done' ? 'done' : 'pending',
+        ...initialEuroOffseasonChecklist(true),
+        ...checklist,
       };
     }
   }
@@ -218,9 +264,7 @@ export function applyEuroLoadHeals(params: {
       teamsWithFreshTraining.find((team: any) => getClubId(team) === teamId);
     if (targetTeam) {
       const teamName = getClubLabel(targetTeam);
-      const leagueId = String((targetTeam as any).league ?? 'endesa').toLowerCase().includes('euro')
-        ? 'euroleague'
-        : 'endesa';
+      const leagueId = getEuroStaffLeagueId(targetTeam as any);
       const masterSeed = (healedEuroSetupSeed as any)?.masterSeed
         ?? (((teamId || 1) * 2654435761) ^ ((migratedLeagueStats as any).year || 2026)) >>> 0;
       const seed = seedEuroCareer(
@@ -228,6 +272,8 @@ export function applyEuroLoadHeals(params: {
         { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams },
         leagueId,
         masterSeed || 1,
+        Number((migratedLeagueStats as any).historicalEconomyScale ?? 1),
+        Number((migratedLeagueStats as any).year ?? 2026),
       );
       const signedYear = ((migratedLeagueStats as any).year ?? 2026) - 1;
       const seededSponsorships = buildSetupSponsorships(seed, signedYear);
@@ -244,7 +290,7 @@ export function applyEuroLoadHeals(params: {
         team: teamName,
         position: 'Owner',
         jobTitle: 'Owner',
-        playerPortraitUrl: (targetTeam as any)?.logoUrl ?? (targetTeam as any)?.imgURL,
+        playerPortraitUrl: getStaffImageUrl(seed.owner.staffImageId),
         teamLogoUrl: (targetTeam as any)?.logoUrl ?? (targetTeam as any)?.imgURL,
         nationality: seed.owner.nationality,
         face: seed.owner.face,
@@ -255,7 +301,7 @@ export function applyEuroLoadHeals(params: {
         role: member.position ?? member.jobTitle ?? 'Staff',
         name: member.name,
         nationality: member.nationality,
-        salary: getStaffMarketSalary(
+        salary: Math.round(getStaffMarketSalary(
           mapSetupTierToTycoonTier(seed.tier),
           member.position ?? member.jobTitle ?? 'Staff',
           (member as any).reputation ?? 65,
@@ -264,11 +310,14 @@ export function applyEuroLoadHeals(params: {
             yearsExperience: (member as any).yearsExperience ?? member.yearsWithTeam ?? 1,
             yearsWithTeam: member.yearsWithTeam ?? 1,
           },
-        ),
+        ) * Number((migratedLeagueStats as any).historicalEconomyScale ?? 1)),
         contractYears: Math.max(1, 4 - Math.min(3, member.yearsWithTeam ?? 1)),
         rating: (member as any).reputation ?? 65,
         hiredYear: signedYear,
         face: member.face,
+        staffImageId: member.staffImageId,
+        playerPortraitUrl: member.playerPortraitUrl,
+        leagueId,
       }));
       const applySetup = (team: any) => {
         if (getClubId(team) !== teamId) return team;
@@ -319,15 +368,19 @@ export function applyEuroLoadHeals(params: {
 
   if (loaded.gameMode === 'gm' && !(migratedLeagueStats as any).staffPoolSeeded) {
     const teamId = (healedEuroSetupSeed as any)?.teamId ?? healedUserTeamId;
+    const poolTeam = healedNonNBATeams.find((team: any) => team.tid === teamId)
+      ?? teamsWithFreshTraining.find((team: any) => team.id === teamId);
     const leagueId = (healedEuroSetupSeed as any)?.leagueId
-      ?? (teamId >= 1000 && teamId < 1100 ? 'euroleague' : (teamId >= 5000 && teamId < 5100 ? 'endesa' : 'nba'));
-    const seededState = ensureStaffPoolDepth(
-      { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams, teams: teamsWithFreshTraining ?? [], staffFreeAgents: [], saveId: loaded.saveId } as any,
-      leagueId,
-    );
-    healedStaffFreeAgents = seededState.staffFreeAgents ?? [];
+      ?? getEuroStaffLeagueId(poolTeam as any);
+    if (!hasStaffPoolDepth(healedStaffFreeAgents, leagueId)) {
+      const seededState = ensureStaffPoolDepth(
+        { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams, teams: teamsWithFreshTraining ?? [], staffFreeAgents: healedStaffFreeAgents, saveId: loaded.saveId } as any,
+        leagueId,
+      );
+      healedStaffFreeAgents = seededState.staffFreeAgents ?? [];
+    }
     (migratedLeagueStats as any).staffPoolSeeded = true;
-    console.log(`[LOAD_GAME] seeded ${healedStaffFreeAgents.length} staff free agents (min 10/position) for league=${leagueId}`);
+    console.log(`[LOAD_GAME] confirmed ${healedStaffFreeAgents.length} staff free agents for league=${leagueId}`);
   }
 
   return {
@@ -344,21 +397,23 @@ export function applyEuroLoadHeals(params: {
 
 export function ensureStandardStaffPool(loaded: any, migratedLeagueStats: any, healedNonNBATeams: any[], teamsWithFreshTraining: any[], healedStaffFreeAgents: any[]) {
   const uiMode = migratedLeagueStats?.uiMode;
-  const leagueId = uiMode === 'pba_isolated' ? 'pba' : 'nba';
-  const hasLeaguePool = (healedStaffFreeAgents ?? []).some((member: any) => member?.leagueId === leagueId);
+  const leagueId = loaded.leagueType === 'fictional'
+    ? FICTIONAL_STAFF_LEAGUE_ID
+    : uiMode === 'pba_isolated' ? 'pba' : 'nba';
+  const hasLeaguePool = hasStaffPoolDepth(healedStaffFreeAgents, leagueId);
   if (
     loaded.gameMode !== 'gm' ||
     uiMode === 'euro_isolated' ||
-    (
-      leagueId === 'pba'
-        ? (migratedLeagueStats as any).pbaStaffPoolSeeded && hasLeaguePool
-        : (migratedLeagueStats as any).staffPoolSeeded
-    )
+    hasLeaguePool
   ) {
+    if (hasLeaguePool) {
+      (migratedLeagueStats as any).staffPoolSeeded = true;
+      if (leagueId === 'pba') (migratedLeagueStats as any).pbaStaffPoolSeeded = true;
+    }
     return healedStaffFreeAgents;
   }
   const seededState = ensureStaffPoolDepth(
-    { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams, teams: teamsWithFreshTraining ?? [], staffFreeAgents: healedStaffFreeAgents ?? [], saveId: loaded.saveId } as any,
+    { players: loaded.players ?? [], nonNBATeams: healedNonNBATeams, teams: teamsWithFreshTraining ?? [], staffFreeAgents: healedStaffFreeAgents ?? [], saveId: loaded.saveId, leagueStats: migratedLeagueStats } as any,
     leagueId,
   );
   (migratedLeagueStats as any).staffPoolSeeded = true;

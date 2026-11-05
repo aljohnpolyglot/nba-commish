@@ -2,13 +2,10 @@ import React from 'react';
 import { createPortal } from 'react-dom';
 import { GraduationCap, X } from 'lucide-react';
 import { YouthPromotionPanel } from '../central/view/FrontOffice/sections/AcademySection';
-
-type OffseasonConfirmSpec = {
-  eyebrow: string;
-  title: string;
-  body: string;
-  confirmLabel: string;
-};
+import type { LeagueStats } from '../../types';
+import type { OffseasonConfirmSpec } from './offseasonStepSpecs';
+import { getLeagueCalendarDates } from '../../services/leagueCalendar';
+import { formatGameDateShort } from '../../utils/dateUtils';
 
 type OffseasonBriefingSpec = {
   eyebrow: string;
@@ -30,8 +27,10 @@ type YouthPromotionPlayer = {
 type RookieRow = {
   internalId: string;
   name: string;
+  imgURL?: string;
   round?: number;
   pick?: number;
+  eurostashClub?: string;
 };
 
 type FriendlyRow = {
@@ -44,18 +43,20 @@ export const OffseasonStepConfirmModal: React.FC<{
   spec: OffseasonConfirmSpec | null;
   onCancel: () => void;
   onConfirm: () => void;
-}> = ({ spec, onCancel, onConfirm }) => {
+  onSecondary?: () => void;
+}> = ({ spec, onCancel, onConfirm, onSecondary }) => {
+  const titleId = React.useId();
   if (!spec) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl">
+      <div role="dialog" aria-modal="true" aria-labelledby={titleId} className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl">
         <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
           <p className="text-[10px] font-black uppercase tracking-[0.35em] text-amber-300 mb-2">{spec.eyebrow}</p>
-          <h2 className="text-xl font-black uppercase tracking-tight text-white">{spec.title}</h2>
+          <h2 id={titleId} className="text-xl font-black uppercase tracking-tight text-white">{spec.title}</h2>
         </div>
         <div className="p-5 space-y-4">
-          <p className="text-sm text-slate-300 leading-relaxed">
+          <p className="whitespace-pre-line text-sm text-slate-300 leading-relaxed">
             {spec.body}
           </p>
           <div className="flex flex-col sm:flex-row gap-3">
@@ -65,6 +66,14 @@ export const OffseasonStepConfirmModal: React.FC<{
             >
               Cancel
             </button>
+            {spec.secondaryLabel && onSecondary && (
+              <button
+                onClick={onSecondary}
+                className="flex-1 rounded-xl border border-sky-500/40 bg-sky-500/10 hover:bg-sky-500/20 text-sky-200 font-black uppercase tracking-widest text-xs py-3 transition-colors"
+              >
+                {spec.secondaryLabel}
+              </button>
+            )}
             <button
               onClick={onConfirm}
               className="flex-1 rounded-xl bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs py-3 transition-colors"
@@ -87,7 +96,7 @@ export const OffseasonAutoResolveConfirmModal: React.FC<{
 }> = ({ open, isPba, onCancel, onConfirm }) => {
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onCancel} />
       <div className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl">
         <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
@@ -146,7 +155,7 @@ export const OffseasonBriefingModal: React.FC<{
 }> = ({ spec, onConfirm, onDismissForever }) => {
   if (!spec) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[121] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onConfirm} />
       <div className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl">
         <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
@@ -181,39 +190,79 @@ export const OffseasonBriefingModal: React.FC<{
 export const RookieContractsDisclaimerModal: React.FC<{
   open: boolean;
   rookies: RookieRow[];
+  isPba?: boolean;
+  leagueStats?: LeagueStats;
   onDismiss: () => void;
-}> = ({ open, rookies, onDismiss }) => {
+  onSelectRookie?: (playerId: string) => void;
+}> = ({ open, rookies, isPba = false, leagueStats, onDismiss, onSelectRookie }) => {
   if (!open) return null;
+  const signedRookies = rookies.filter(p => Number(p.round) > 0 && Number(p.pick) > 0);
+  const guaranteeDate = leagueStats
+    ? getLeagueCalendarDates(leagueStats.year, leagueStats).nonGuaranteedGuaranteeDate
+    : undefined;
+  const guaranteeLabel = guaranteeDate ? formatGameDateShort(guaranteeDate) : null;
+  const secondRoundNonGuaranteed = (leagueStats as any)?.r2ContractsNonGuaranteed !== false;
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onDismiss} />
       <div className="relative w-full max-w-md max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-amber-500/30 bg-slate-950 shadow-2xl">
         <div className="px-5 py-4 border-b border-white/10 bg-amber-500/[0.06]">
           <h2 className="text-lg font-black uppercase tracking-tight text-white">Rookie Contracts Signed</h2>
         </div>
         <div className="p-5 space-y-4">
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Per the NBA CBA, your <span className="font-black text-amber-300">first-round picks</span> are signed automatically to the standard rookie scale — guaranteed contracts, 2 years + 2 team option years. There's no decline option.
-          </p>
-          <p className="text-sm text-slate-300 leading-relaxed">
-            Your <span className="font-black text-amber-300">second-round picks</span> are signed to non-guaranteed deals by default. They count against the roster but you can waive them before the <span className="font-black text-amber-300">January 10 NG guarantee deadline</span> for a free release — no dead money.
-          </p>
-          {rookies.length > 0 && (
+          {isPba ? (
+            <>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Your <span className="font-black text-amber-300">PBA draft picks</span> have been signed to local rookie contracts.
+              </p>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                These deals follow PBA roster rules without an NBA rookie-scale or automatic guarantee deadline.
+              </p>
+            </>
+          ) : (
+            <>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                Your <span className="font-black text-amber-300">first-round picks</span> have been signed automatically under this league's rookie-contract rules.
+              </p>
+              <p className="text-sm text-slate-300 leading-relaxed">
+                {secondRoundNonGuaranteed
+                  ? guaranteeLabel
+                    ? <>Your <span className="font-black text-amber-300">second-round picks</span> are non-guaranteed. They can be waived before <span className="font-black text-amber-300">{guaranteeLabel}</span> without guaranteed dead money.</>
+                    : <>Your <span className="font-black text-amber-300">second-round picks</span> are non-guaranteed, and this league has no automatic guarantee deadline.</>
+                  : <>Your <span className="font-black text-amber-300">second-round picks</span> follow the saved rookie-contract settings.</>}
+              </p>
+            </>
+          )}
+          {!isPba && signedRookies.some(player => player.eurostashClub) && (
+            <p className="rounded-xl border border-sky-400/20 bg-sky-400/[0.06] p-3 text-sm leading-relaxed text-sky-50/90">
+              <span className="font-black text-sky-300">International option:</span> Open an eligible rookie below, then choose <span className="font-black text-white">Eurostash</span> in Player Actions to return him to his European club. He leaves your roster and payroll while you retain his NBA draft rights.
+            </p>
+          )}
+          {signedRookies.length > 0 && (
             <div className="rounded-xl border border-white/10 bg-white/[0.03] divide-y divide-white/10 max-h-40 overflow-y-auto">
-              {rookies.map(p => {
+              {signedRookies.map(p => {
                 const isR1 = p.round === 1;
+                const tag = isPba ? 'PBA rookie deal' : (isR1 ? 'Guaranteed (rookie scale)' : 'Non-guaranteed');
                 return (
-                  <div key={p.internalId} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
+                  <button type="button" key={p.internalId} onClick={() => onSelectRookie?.(p.internalId)} className="w-full px-3 py-2 flex items-center justify-between gap-3 text-sm text-left hover:bg-white/[0.05] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400">
+                    {p.imgURL ? (
+                      <img src={p.imgURL} alt="" loading="lazy" referrerPolicy="no-referrer" className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-slate-800 object-cover object-top" />
+                    ) : (
+                      <div className="h-9 w-9 shrink-0 rounded-full border border-white/10 bg-slate-800 flex items-center justify-center text-xs font-black text-slate-300">
+                        {p.name.charAt(0)}
+                      </div>
+                    )}
                     <div className="flex-1 min-w-0">
                       <div className="font-bold text-white truncate">{p.name}</div>
                       <div className="text-[10px] text-slate-500">
-                        R{p.round} #{p.pick} · {isR1 ? 'Guaranteed (rookie scale)' : 'Non-guaranteed'}
+                        R{p.round} #{p.pick} · {tag}
                       </div>
+                      {p.eurostashClub && <div className="mt-0.5 text-[9px] font-black uppercase tracking-wider text-sky-300">Eurostash eligible · {p.eurostashClub}</div>}
                     </div>
-                    <span className={`shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded ${isR1 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}`}>
-                      {isR1 ? 'GUARANTEED' : 'NG'}
+                    <span className={`shrink-0 text-[9px] font-black uppercase tracking-widest px-2 py-1 rounded ${isPba ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40' : isR1 ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40' : 'bg-amber-500/20 text-amber-300 border border-amber-500/40'}`}>
+                      {isPba ? 'PBA' : isR1 ? 'GUARANTEED' : 'NG'}
                     </span>
-                  </div>
+                  </button>
                 );
               })}
             </div>
@@ -236,12 +285,13 @@ export const YouthPromotionModal: React.FC<{
   teamName: string;
   youthPlayers: YouthPromotionPlayer[];
   seniorRosterSize: number;
+  maxRosterSize: number;
   onClose: () => void;
   onPromote: (ids: Array<string | number>) => void;
-}> = ({ open, teamName, youthPlayers, seniorRosterSize, onClose, onPromote }) => {
+}> = ({ open, teamName, youthPlayers, seniorRosterSize, maxRosterSize, onClose, onPromote }) => {
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-4xl max-h-[calc(100vh-2rem)] overflow-y-auto scrollbar-hide bg-slate-900 rounded-2xl border border-slate-700 p-4 sm:p-6">
         <div className="flex items-start justify-between gap-3 mb-5">
@@ -258,9 +308,9 @@ export const YouthPromotionModal: React.FC<{
         </div>
         <YouthPromotionPanel
           youthPlayers={youthPlayers as any}
-          slotsAvailable={Math.max(0, 15 - seniorRosterSize)}
+          slotsAvailable={Math.max(0, maxRosterSize - seniorRosterSize)}
           seniorRosterSize={seniorRosterSize}
-          maxRosterSize={15}
+          maxRosterSize={maxRosterSize}
           onPromote={onPromote as any}
         />
       </div>
@@ -277,7 +327,7 @@ export const PreseasonFriendliesModal: React.FC<{
 }> = ({ open, games, onClose, onDone }) => {
   if (!open) return null;
   return createPortal(
-    <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[180] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/85 backdrop-blur-sm" onClick={onClose} />
       <div className="relative w-full max-w-2xl max-h-[calc(100vh-2rem)] overflow-y-auto rounded-2xl border border-sky-500/30 bg-slate-950 shadow-2xl">
         <div className="px-5 py-4 border-b border-white/10 bg-sky-500/[0.06] flex items-start justify-between gap-3">

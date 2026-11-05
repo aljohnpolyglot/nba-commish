@@ -9,8 +9,11 @@ import { TournamentBracket } from '../../throne/components/TheThroneGame/Bracket
 import { toThronePlayer } from '../../services/allStar/throneOrchestrator';
 import type { Match as ThroneMatch } from '../../throne/types/throne';
 import { getAllStarWeekendDates } from '../../services/allStar/AllStarWeekendOrchestrator';
-import { parseGameDate } from '../../utils/dateUtils';
+import { formatGameDateShort, parseGameDate } from '../../utils/dateUtils';
 import { HeroHeader, KingCallout, type VoteRowData, VoteTable, VoterPie } from './ThroneContestViewShared';
+
+const initialsFromName = (name: unknown) =>
+  String(name ?? '').trim().split(/\s+/).filter(Boolean).map((part) => part[0]).join('') || '?';
 
 interface ThroneContestViewProps {
   allStar: any;
@@ -23,7 +26,7 @@ interface ThroneContestViewProps {
 export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, players, ownTid, onWatch, isSimulating }) => {
   const { state } = useGame();
   const teams = state.teams;
-  const dates = getAllStarWeekendDates(state.leagueStats.year);
+  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
   const currentDate = parseGameDate(state.date);
 
   const throne = allStar?.throne;
@@ -39,6 +42,7 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
   const signupSchedule: Array<{ playerId: string; date: string }> = allStar?.throneSignupSchedule ?? [];
   const inSignupEra = currentDate >= dates.throneSignupOpens && currentDate < dates.throneVotingOpens;
   const inVotingEra = currentDate >= dates.throneVotingOpens && currentDate < dates.throneFieldReveal;
+  const fieldRevealLabel = formatGameDateShort(dates.throneFieldReveal);
 
   // ─────────────────────────────────────
   // PHASE 5 — POST-TOURNAMENT (champion + bracket)
@@ -47,6 +51,7 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
     const champPlayer = players.find(p => p.internalId === throne.champion.playerId);
     const champPortrait = champPlayer ? getPlayerImage(champPlayer) : null;
     const totalPD = throne.cumulativePDs?.[throne.champion.playerId] ?? 0;
+    const champName = typeof throne.champion.playerName === 'string' && throne.champion.playerName.trim() ? throne.champion.playerName : 'TBD';
 
     // Adapt persisted BracketMatch → ThroneMatch (the shape TournamentBracket expects).
     // Each persisted match has player1Id/player2Id/winnerId; resolve to Player objects.
@@ -87,10 +92,10 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
             <div className="relative mb-4">
               <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-yellow-400 shadow-[0_0_60px_rgba(250,204,21,0.5)]">
                 {champPortrait ? (
-                  <img src={champPortrait} alt={throne.champion.playerName} className="w-full h-full object-cover object-top" />
+                  <img src={champPortrait} alt={champName} className="w-full h-full object-cover object-top" />
                 ) : (
                   <div className="w-full h-full bg-zinc-800 flex items-center justify-center text-zinc-400 font-black text-3xl">
-                    {throne.champion.playerName.split(' ').map((n: string) => n[0]).join('')}
+                    {initialsFromName(champName)}
                   </div>
                 )}
               </div>
@@ -99,7 +104,7 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
               </div>
             </div>
             <h2 className="text-4xl font-black italic tracking-tighter text-white mt-4">
-              {champPlayer ? <PlayerNameWithHover player={champPlayer}>{throne.champion.playerName}</PlayerNameWithHover> : throne.champion.playerName}
+              {champPlayer ? <PlayerNameWithHover player={champPlayer}>{champName}</PlayerNameWithHover> : champName}
             </h2>
             <p className="text-xs text-yellow-400/80 mt-1 mb-4 tracking-wider font-bold">CHAMPION · CUMULATIVE PD +{totalPD}</p>
             <div className="flex items-center gap-3 text-[10px] font-bold text-zinc-400 uppercase tracking-widest">
@@ -188,7 +193,7 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
   }
 
   // ─────────────────────────────────────
-  // PHASE 3 — VOTING ERA (Jan 16 → Jan 30)
+  // PHASE 3 — VOTING ERA
   // ─────────────────────────────────────
   if (inVotingEra) {
     const tally = allStar?.throneVoteTally ?? {};
@@ -209,7 +214,7 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
       <div className="space-y-8">
         <HeroHeader
           phaseLabel="COMPOSITE VOTE · LIVE TALLY"
-          sub={`Voting closes January 30 · field of 16 locked at close`}
+          sub={`Voting closes ${fieldRevealLabel} · field of 16 locked at close`}
         />
 
         {/* Voting progress bar */}
@@ -229,7 +234,7 @@ export const ThroneContestView: React.FC<ThroneContestViewProps> = ({ allStar, p
               transition={{ duration: 1.0, ease: 'easeOut' }}
             />
           </div>
-          <p className="text-[10px] text-zinc-500 mt-2 text-center">Standings shift daily as ballots come in. Top 16 lock on January 30.</p>
+          <p className="text-[10px] text-zinc-500 mt-2 text-center">Standings shift daily as ballots come in. Top 16 lock on {fieldRevealLabel}.</p>
         </div>
 
         {beltHolderPlayer && <KingCallout king={beltHolderPlayer} vacated={isVacated} />}

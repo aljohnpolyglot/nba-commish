@@ -9,6 +9,7 @@ const EURO_SETUP_SPONSOR_SLOT: Record<string, 'kit' | 'sleeve' | 'stadium'> = {
 };
 
 export const EURO_TRANSFER_MARKET_DEFAULTS = EURO_ISOLATED_DEFAULTS.transferMarket as NonNullable<GameState['leagueStats']['transferMarket']>;
+export const EURO_LOAN_MARKET_DEFAULTS = EURO_ISOLATED_DEFAULTS.loanMarket as NonNullable<GameState['leagueStats']['loanMarket']>;
 
 export function getClubId(team: any): number | undefined {
   return team?.tid ?? team?.id;
@@ -31,6 +32,7 @@ export function buildSetupSponsorships(seed: EuroCareerSeed, signedYear: number)
       valuePerYear: slot.amountEUR,
       yearsRemaining: slot.years,
       signedYear,
+      contractEndYear: signedYear + slot.years,
     };
     return acc;
   }, {} as Record<'kit' | 'sleeve' | 'stadium', any>);

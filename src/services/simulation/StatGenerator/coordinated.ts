@@ -18,13 +18,22 @@ export function generateCoordinatedStats(
   orbRateMult: number = 1.0,
   quarterLength: number = 12,
   overtimeDuration: number = 5,
-  numQuarters: number = 4
+  numQuarters: number = 4,
+  playersOnCourt: number = 5,
+  foulOutLimit: number = 6,
+  assistRateMult: number = 1,
+  reboundDistributionExponent?: number,
+  assistDistributionExponent?: number,
+  personalFoulRateMult: number = 1,
 ): PlayerGameStats[] {
   const stats    = teamStats.map(s => ({ ...s }));
   const baselineMinById = new Map<string, number>(teamStats.map(s => [s.playerId, Number(s.min ?? 0)]));
   const isEuroClubGame =
     quarterLength <= 10 &&
     ((team.id >= 1000 && team.id < 2000) || (team.id >= 5000 && team.id < 6000));
+  const isInternationalGame = quarterLength <= 10 && team.conference === 'International';
+  const isPbaGame = team.id >= 2000 && team.id < 3000;
+  const isTeamBasketballGame = isEuroClubGame || isInternationalGame || isPbaGame;
   const rotation = stats.map(s =>
     players.find(p => p.internalId === s.playerId)
   ).filter((p): p is Player => p !== undefined);
@@ -42,9 +51,13 @@ export function generateCoordinatedStats(
 
   const finalSteals = Math.round(availableSteals * (1.0 + stlAura));
   const finalBlocks = Math.round(availableBlocks * (1.0 + blkAura));
-  const assistRatio = isEuroClubGame
-    ? Math.max(0.44, 0.58 - passAura)
-    : Math.max(0.48, 0.68 - passAura);
+  const assistRatio = isInternationalGame
+    ? Math.max(0.44, 0.56 - passAura)
+    : isEuroClubGame
+      ? Math.max(0.44, 0.58 - passAura)
+      : isPbaGame
+        ? Math.max(0.44, 0.60 - passAura)
+      : Math.max(0.48, 0.68 - passAura);
 
   const ownMisses = stats.reduce((s, p) => s + Math.max(0, p.fga - p.fgm), 0);
 
@@ -114,7 +127,7 @@ export function generateCoordinatedStats(
   distributePie(
     Math.round(availableRebounds),
     (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 2.0 + rHelper(p, 'oiq') * 0.5 + rHelper(p, 'diq') * 0.5) * minFrac(p) * reboundNightMult(p, 'drb'),
-    'drb', 2.75, rotation, stats, 0.22
+    'drb', reboundDistributionExponent ?? 2.75, rotation, stats, 0.22
   );
 
   // ── Offensive Rebounds
@@ -123,7 +136,7 @@ export function generateCoordinatedStats(
   distributePie(
     Math.round(ownMisses * 0.20 * orbRateMult),
     (p) => (rHelper(p, 'reb') * 2.0 + rHelper(p, 'hgt') * 1.0 + rHelper(p, 'jmp') * 0.5) * minFrac(p) * reboundNightMult(p, 'orb'),
-    'orb', 2.35, rotation, stats, 0.22
+    'orb', reboundDistributionExponent == null ? 2.35 : Math.max(1.15, reboundDistributionExponent - 0.35), rotation, stats, 0.22
   );
 
   applyReboundSpecialistFloor('drb');
@@ -151,33 +164,51 @@ export function generateCoordinatedStats(
   // ── Assists (pool shrinks vs elite pass-disruptors, grows vs bad ones)
   const totalFgm = stats.reduce((s, p) => s + p.fgm, 0);
   distributePie(
-    Math.round(totalFgm * assistRatio),
+    Math.round(totalFgm * assistRatio * assistRateMult),
     (p) => {
       const drb = rHelper(p, 'drb');
       const pss = rHelper(p, 'pss');
       const oiq = rHelper(p, 'oiq');
       const line = getNight(p);
       const eliteCreatorBoost = pss >= 95 ? 1.58 : pss >= 92 ? 1.34 : pss >= 88 ? 1.16 : 1.0;
-      const scorerTax = isEuroClubGame
+      const scorerTax = isTeamBasketballGame
         ? Math.max(0.52, 1 - Math.max(0, (line?.pts ?? 0) - 16) * 0.035)
         : 1.0;
       return Math.pow(
         Math.max(0.1, drb * 0.15 + pss * 3.15 + oiq * 0.70),
-        isEuroClubGame ? 4.45 : 5.35
+        isInternationalGame ? 3.55 : isEuroClubGame ? 4.45 : isPbaGame ? 3.85 : 5.35
       ) * assistMinFrac(p) * (getNight(p)?._nightAssistMult ?? 1) * scorerTax * eliteCreatorBoost;
     },
-    'ast', 1.0,
+    'ast', assistDistributionExponent ?? 1.0,
     rotation, stats
   );
 
   // Soft-cap assists above 11
   stats.forEach(s => {
+    if (isInternationalGame) {
+      if (s.ast > 9) {
+        s.ast = Math.min(11, Math.round(9 + (s.ast - 9) * 0.12));
+      }
+      if (s.pts >= 20 && s.ast > 7) {
+        s.ast = Math.round(7 + (s.ast - 7) * 0.15);
+      }
+      return;
+    }
     if (isEuroClubGame) {
       if (s.ast > 9) {
         s.ast = Math.round(9 + (s.ast - 9) * 0.20);
       }
       if (s.pts >= 20 && s.ast > 7) {
         s.ast = Math.round(7 + (s.ast - 7) * 0.20);
+      }
+      return;
+    }
+    if (isPbaGame) {
+      if (s.ast > 10) {
+        s.ast = Math.round(10 + (s.ast - 10) * 0.20);
+      }
+      if (s.pts >= 22 && s.ast > 8) {
+        s.ast = Math.round(8 + (s.ast - 8) * 0.20);
       }
       return;
     }
@@ -209,7 +240,7 @@ export function generateCoordinatedStats(
   // chain produced NaN/Infinity the team Fouls field rendered as "NaN". Fall back to
   // league-avg 18 instead of letting the NaN propagate through pfPool → share → s.pf.
   const safeOppFTA = Number.isFinite(oppFTA) ? Math.max(0, oppFTA) : 18;
-  const pfPool = Math.round(safeOppFTA * 0.78);
+  const pfPool = Math.round(safeOppFTA * 0.78 * personalFoulRateMult);
   // PF uses LINEAR min-weighting (not sqrt like other stats). Reason: NBA fouls scale
   // ~linearly with court time per player profile (PF/48 ~stable). sqrt-minFrac dampened
   // the minutes-correction so a 18-min role-player big still got 95% of a starter's share
@@ -243,7 +274,7 @@ export function generateCoordinatedStats(
     const intPart = Math.floor(raw);
     const frac = raw - intPart;
     const rounded = Math.random() < frac ? intPart + 1 : intPart;
-    s.pf = Math.min(6, Math.max(0, Number.isFinite(rounded) ? rounded : 0));
+    s.pf = Math.min(foulOutLimit, Math.max(0, Number.isFinite(rounded) ? rounded : 0));
   });
 
   // Garbage-time cutoff: defensive stats rounding noise hands a sub-3-min sub
@@ -260,17 +291,17 @@ export function generateCoordinatedStats(
   });
 
   // ── Minute redistribution — foul-plagued players lose time, redistributed proportionally
-  // 5 players × configured regulation periods × QL minutes.
+  // Configured court size × regulation periods × quarter length.
   // OT periods add the configured OT duration for each player-minute slot.
-  const regulationMinutes = quarterLength * numQuarters * 5;
-  const totalTarget = regulationMinutes + otCount * overtimeDuration * 5;
+  const regulationMinutes = quarterLength * numQuarters * playersOnCourt;
+  const totalTarget = regulationMinutes + otCount * overtimeDuration * playersOnCourt;
   let stolenMins = 0;
   stats.forEach(s => {
-    if (s.pf >= 6 && s.min > 28) {
+    if (s.pf >= foulOutLimit && s.min > 28) {
       const reduced = Math.round(s.min * 0.75);
       stolenMins += s.min - reduced;
       s.min = reduced;
-    } else if (s.pf >= 5 && s.min > 32) {
+    } else if (s.pf >= Math.max(1, foulOutLimit - 1) && s.min > 32) {
       const reduced = Math.round(s.min * 0.88);
       stolenMins += s.min - reduced;
       s.min = reduced;
@@ -309,7 +340,7 @@ export function generateCoordinatedStats(
   for (const { s, base } of coreCandidates) {
     const player = rotation.find(p => p.internalId === s.playerId);
     const injuryGames = player?.injury?.gamesRemaining ?? 0;
-    const foulTrouble = (s.pf ?? 0) >= 5;
+    const foulTrouble = (s.pf ?? 0) >= Math.max(1, foulOutLimit - 1);
     if (injuryGames > 0 || foulTrouble) continue;
 
     const minFloor = Math.max(20, Math.min(base * 0.72, base - 2));

@@ -1,16 +1,49 @@
 import type { AllStarPlayer, AllStarVoteCount, GameState, NBAPlayer } from '../../types';
-import { bucketRoster } from '../allStar/AllStarSelectionService';
 import { getAllStarWeekendDates } from '../allStar/allStarWeekendDates';
 import { convertTo2KRating, extractNbaId, extractTeamId, normalizeDate } from '../../utils/helpers';
+import { daysBetweenGameDates, formatGameDateShort } from '../../utils/dateUtils';
+import { normalizePlayerAwardType } from '../../utils/playerAwardNormalizer';
 import {
   selectExternalDunkContestants,
   selectExternalSkillsContestants,
   selectExternalThreePointContestants,
   type ExternalAllStarContestProfile,
 } from '../externalLeague/allStarContestSelection';
+import {
+  isAllStarGameEnabled,
+  isCelebrityGameEnabled,
+  isDanceContestEnabled,
+  isDunkContestEnabled,
+  isRisingStarsEnabled,
+  isShootingStarsEnabled,
+  isSkillsChallengeEnabled,
+  isThreePointContestEnabled,
+} from '../allStar/allStarEventAvailability';
 import { isPbaRosterLocal } from './importManager';
 
 const isGuard = (pos?: string) => pos === 'G' || pos === 'PG' || pos === 'SG';
+
+const bucketPbaRoster = (roster: AllStarPlayer[], votes: AllStarVoteCount[]): AllStarPlayer[] => {
+  const voteRank = new Map([...votes].sort((a, b) => b.votes - a.votes).map((vote, index) => [vote.playerId, index]));
+  const ordered = [...roster].sort((left, right) =>
+    (voteRank.get(left.playerId) ?? Number.MAX_SAFE_INTEGER) - (voteRank.get(right.playerId) ?? Number.MAX_SAFE_INTEGER),
+  );
+  const captainIds = new Set(ordered.slice(0, 2).map(player => player.playerId));
+  const assign = (pool: AllStarPlayer[], offset: number) => pool.map((player, index) => {
+    const round = Math.floor(index / 2);
+    const slot = round % 2 === 0 ? index % 2 : 1 - (index % 2);
+    return { ...player, conference: (slot + offset) % 2 === 0 ? 'East' : 'West' };
+  });
+  const captains = ordered.slice(0, 2).map((player, index) => ({
+    ...player,
+    conference: index === 0 ? 'East' : 'West',
+    isCaptain: true,
+  }));
+  const remaining = ordered.filter(player => !captainIds.has(player.playerId));
+  const starters = assign(remaining.filter(player => player.isStarter), 0);
+  const reserves = assign(remaining.filter(player => !player.isStarter), starters.length % 2);
+  return [...captains, ...starters, ...reserves];
+};
 
 const PBA_ALL_STAR_CONTEST_PROFILE: ExternalAllStarContestProfile = {
   guardSkillsBoost: 3,
@@ -32,10 +65,77 @@ const isAllStarWeekendEventGame = (game: any): boolean =>
 
 const isPbaAllStarWindowDate = (state: GameState, date?: string): boolean => {
   if (!date) return false;
-  const dates = getAllStarWeekendDates(state.leagueStats.year, { uiMode: 'pba_isolated' });
+  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
   const value = normalizeDate(date);
   return value >= normalizeDate(dates.breakStart.toISOString()) && value <= normalizeDate(dates.breakEnd.toISOString());
 };
+
+type PbaAllStarWeekendDay = 'friday' | 'saturday' | 'sunday';
+
+const getPbaAllStarEventDay = (game: any): PbaAllStarWeekendDay | null => {
+  if (game?.isCelebrityGame || game?.isRisingStars) return 'friday';
+  if (
+    game?.isDunkContest ||
+    game?.isThreePointContest ||
+    game?.isShootingStars ||
+    game?.isSkillsChallenge ||
+    game?.isHorseContest ||
+    game?.isThroneEvent
+  ) return 'saturday';
+  return game?.isAllStar ? 'sunday' : null;
+};
+
+const getScheduledPbaAllStarEvents = (state: GameState): any[] =>
+  (state.schedule ?? [])
+    .filter(game => isAllStarWeekendEventGame(game) && isPbaAllStarWindowDate(state, game.date))
+    .sort((left, right) => normalizeDate(left.date).localeCompare(normalizeDate(right.date)));
+
+export const getPbaAllStarWeekendSimulationFlags = (
+  state: GameState,
+): { friday: boolean; saturday: boolean; sunday: boolean } => {
+  const scheduled = getScheduledPbaAllStarEvents(state);
+  if (scheduled.length > 0) {
+    const days = new Set(scheduled.map(getPbaAllStarEventDay).filter(Boolean));
+    return {
+      friday: days.has('friday'),
+      saturday: days.has('saturday'),
+      sunday: days.has('sunday'),
+    };
+  }
+  const leagueStats = state.leagueStats;
+  return {
+    friday: isCelebrityGameEnabled(leagueStats) || isRisingStarsEnabled(leagueStats),
+    saturday:
+      isDunkContestEnabled(leagueStats) ||
+      isThreePointContestEnabled(leagueStats) ||
+      isShootingStarsEnabled(leagueStats) ||
+      isSkillsChallengeEnabled(leagueStats) ||
+      leagueStats.allStarHorse === true ||
+      leagueStats.allStarThroneEnabled === true,
+    sunday: isDanceContestEnabled(leagueStats) || isAllStarGameEnabled(leagueStats),
+  };
+};
+
+const getPbaAllStarEventDates = (state: GameState): string[] => {
+  const scheduled = getScheduledPbaAllStarEvents(state);
+  if (scheduled.length > 0) {
+    const unplayed = scheduled.filter(game => game.played !== true);
+    return [...new Set((unplayed.length > 0 ? unplayed : scheduled).map(game => normalizeDate(game.date)))];
+  }
+  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
+  const flags = getPbaAllStarWeekendSimulationFlags(state);
+  return [
+    flags.friday ? normalizeDate(dates.risingStars.toISOString()) : null,
+    flags.saturday ? normalizeDate(dates.saturday.toISOString()) : null,
+    flags.sunday ? normalizeDate(dates.allStarGame.toISOString()) : null,
+  ].filter((date): date is string => date != null);
+};
+
+export const getPbaAllStarFirstEventDate = (state: GameState): string | null =>
+  getPbaAllStarEventDates(state)[0] ?? null;
+
+export const getPbaAllStarLastEventDate = (state: GameState): string | null =>
+  getPbaAllStarEventDates(state).at(-1) ?? null;
 
 export const emptyPbaAllStarState = (season: number) => ({
   season,
@@ -61,31 +161,73 @@ export const emptyPbaAllStarState = (season: number) => ({
   skillsChallengeContestants: undefined,
   dunkContest: undefined,
   threePointContest: undefined,
+  danceContest: undefined,
   skillsChallenge: undefined,
   bracket: undefined,
   allStarGameId: undefined,
   gameMvp: undefined,
 });
 
+export const isPbaAllStarWeekendPending = (state: GameState): boolean => {
+  if (state.leagueStats?.uiMode !== 'pba_isolated') return false;
+  if (state.allStar?.weekendComplete === true) return false;
+  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
+  const branchStart = state.pbaStartDate ? normalizeDate(state.pbaStartDate) : null;
+  return !branchStart || branchStart < normalizeDate(dates.breakStart.toISOString());
+};
+
 export const hasReachedPbaAllStarRosterAnnouncement = (state: GameState): boolean => {
   if (state.leagueStats?.uiMode !== 'pba_isolated') return true;
   if (!state.date) return false;
-  const dates = getAllStarWeekendDates(state.leagueStats.year, { uiMode: 'pba_isolated' });
+  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
   return normalizeDate(state.date) >= normalizeDate(dates.reservesAnnounced.toISOString());
 };
 
 export const hasReachedPbaAllStarContestAnnouncement = (state: GameState): boolean => {
   if (state.leagueStats?.uiMode !== 'pba_isolated') return true;
   if (!state.date) return false;
-  const dates = getAllStarWeekendDates(state.leagueStats.year, { uiMode: 'pba_isolated' });
+  const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
   return normalizeDate(state.date) >= normalizeDate(dates.dunkContestAnnounced.toISOString());
 };
 
 export const hasReachedPbaAllStarWeekend = (state: GameState): boolean => {
   if (state.leagueStats?.uiMode !== 'pba_isolated') return true;
   if (!state.date) return false;
-  const dates = getAllStarWeekendDates(state.leagueStats.year, { uiMode: 'pba_isolated' });
-  return normalizeDate(state.date) >= normalizeDate(dates.saturday.toISOString());
+  const firstEventDate = getPbaAllStarFirstEventDate(state);
+  return firstEventDate != null && normalizeDate(state.date) >= firstEventDate;
+};
+
+export const getPbaAllStarTaskSimulationTarget = (
+  state: GameState,
+): { targetDate: string; stopBefore: true } | null => {
+  const targetDate = getPbaAllStarFirstEventDate(state);
+  if (!targetDate) return null;
+  return normalizeDate(state.date) < targetDate
+    ? { targetDate, stopBefore: true }
+    : null;
+};
+
+export const getPbaAllStarTaskCompletionTarget = (
+  state: GameState,
+): { targetDate: string; stopBefore: true } | null => {
+  const targetDate = getPbaAllStarLastEventDate(state);
+  if (!targetDate) return null;
+  return normalizeDate(state.date) < targetDate
+    ? { targetDate, stopBefore: true }
+    : null;
+};
+
+export const advancePbaAllStarTaskCalendar = (state: GameState, targetDate: string): GameState => {
+  const currentDate = normalizeDate(state.date);
+  const normalizedTarget = normalizeDate(targetDate);
+  if (!currentDate || !normalizedTarget || normalizedTarget <= currentDate) return state;
+  const elapsedDays = daysBetweenGameDates(currentDate, normalizedTarget);
+  if (!Number.isFinite(elapsedDays) || elapsedDays <= 0) return state;
+  return {
+    ...state,
+    date: formatGameDateShort(normalizedTarget),
+    day: state.day + Math.round(elapsedDays),
+  };
 };
 
 export function sanitizePbaAllStarForDate(state: GameState, allStar: any = state.allStar): any {
@@ -113,6 +255,7 @@ export function sanitizePbaAllStarForDate(state: GameState, allStar: any = state
       skillsChallengeContestants: undefined,
       dunkContest: undefined,
       threePointContest: undefined,
+      danceContest: undefined,
       skillsChallenge: undefined,
     };
   }
@@ -176,10 +319,17 @@ export const isPbaLocalAllStarEligible = (player: NBAPlayer, state: GameState): 
 
 const pbaPlayers = (state: GameState, players: NBAPlayer[]): NBAPlayer[] => {
   const tids = new Set(pbaTeams(state).map(team => team.id));
-  return players.filter(player =>
+  const local = players.filter(player =>
     tids.has(player.tid) &&
     isPbaLocalAllStarEligible(player, state)
   );
+  if (local.length >= 10) return local;
+  const activeNonImports = players.filter(player =>
+    tids.has(Number(player.tid)) &&
+    player.status !== 'Retired' &&
+    !isPbaImportLike(player)
+  );
+  return activeNonImports.length > local.length ? activeNonImports : local;
 };
 
 const allStarPlayerIdsAreLocal = (allStar: any, localIds: Set<string>): boolean => {
@@ -214,6 +364,18 @@ const contestResultIsLocal = (result: any, localIds: Set<string>, localNames: Se
   });
 };
 
+const danceResultIsLocal = (result: any, localIds: Set<string>, localNames: Set<string>): boolean => {
+  if (!result) return true;
+  if (!Array.isArray(result.teams) || result.teams.length !== 2) return false;
+  return result.teams.every((team: any) => {
+    if (!Array.isArray(team.playerIds) || team.playerIds.length !== 12) return false;
+    return team.playerIds.every((playerId: string, index: number) => {
+      if (localIds.has(String(playerId))) return true;
+      return localNames.has(String(team.playerNames?.[index] ?? '').toLowerCase());
+    });
+  });
+};
+
 export const isPbaAllStarStateLocal = (state: GameState, allStar: any = state.allStar): boolean => {
   const localPlayers = pbaPlayers(state, state.players ?? []);
   const localIds = new Set(localPlayers.map(player => player.internalId));
@@ -224,7 +386,8 @@ export const isPbaAllStarStateLocal = (state: GameState, allStar: any = state.al
     (!allStar?.skillsChallengeAnnounced || contestantIdsAreLocal(allStar?.skillsChallengeContestants, localIds)) &&
     contestResultIsLocal(allStar?.dunkContest, localIds, localNames) &&
     contestResultIsLocal(allStar?.threePointContest, localIds, localNames) &&
-    contestResultIsLocal(allStar?.skillsChallenge, localIds, localNames);
+    contestResultIsLocal(allStar?.skillsChallenge, localIds, localNames) &&
+    danceResultIsLocal(allStar?.danceContest, localIds, localNames);
 };
 
 const playerOvr = (player: NBAPlayer): number =>
@@ -246,9 +409,12 @@ const seasonScore = (player: NBAPlayer, season: number, teamWinPct: number): num
 
 export const buildPbaAllStarLeagueStats = (leagueStats: any) => ({
   ...leagueStats,
+  uiMode: 'pba_isolated',
   allStarGameEnabled: true,
   allStarFormat: 'captains_draft',
   allStarTeams: 2,
+  allStarCaptainType: leagueStats.allStarCaptainType ?? 'player',
+  allStarPlayerCaptainNameStyle: leagueStats.allStarPlayerCaptainNameStyle ?? 'first_name',
   allStarMirrorLeagueRules: false,
   allStarGameFormat: 'timed',
   allStarQuarterLength: 12,
@@ -256,6 +422,7 @@ export const buildPbaAllStarLeagueStats = (leagueStats: any) => ({
   allStarOvertimeDuration: 5,
   risingStarsEnabled: false,
   celebrityGameEnabled: false,
+  pbaAllStarDanceContestEnabled: leagueStats.pbaAllStarDanceContestEnabled ?? true,
   allStarDunkContest: true,
   allStarThreePointContest: true,
   allStarShootingStars: false,
@@ -307,12 +474,13 @@ export const buildPbaAllStarPatch = (
     playerName: player.name,
     teamAbbrev: team.abbrev ?? '',
     teamNbaId: extractTeamId(team.logoUrl || '', team.abbrev ?? ''),
+    teamLogoUrl: team.logoUrl ?? team.imgURL ?? team.imgURLSmall,
     conference: '',
     isStarter: starterIds.has(player.internalId),
     position: player.pos ?? 'F',
     category: isGuard(player.pos) ? 'Guard' : 'Frontcourt',
     ovr,
-  }));
+  } as AllStarPlayer & { teamLogoUrl?: string }));
   const votes: AllStarVoteCount[] = selected.map(({ player, team }, index) => ({
     playerId: player.internalId,
     nbaId: extractNbaId(player.imgURL || '', player.name),
@@ -323,7 +491,7 @@ export const buildPbaAllStarPatch = (
     category: isGuard(player.pos) ? 'Guard' : 'Frontcourt',
     votes: (selected.length - index) * 100000,
   }));
-  const bucketedRoster = bucketRoster(roster, players, votes, 'captains_draft', 2);
+  const bucketedRoster = bucketPbaRoster(roster, votes);
   const allStarIds = new Set(bucketedRoster.map(entry => entry.playerId));
   const playersWithAwards = players.map(player => {
     if (!allStarIds.has(player.internalId)) return player;
@@ -501,11 +669,17 @@ export const backfillPbaAllStarAwards = (
   if (allStar?.threePointContest?.winnerId || allStar?.threePointContest?.winnerName) {
     entries.push({ internalId: allStar.threePointContest.winnerId, name: allStar.threePointContest.winnerName, type: 'Three-Point Contest Winner' });
   }
+  if (allStar?.danceContest?.winnerTeamId) {
+    const winnerTeam = allStar.danceContest.teams?.find((team: any) => team.teamId === allStar.danceContest.winnerTeamId);
+    (winnerTeam?.playerIds ?? []).forEach((playerId: string, index: number) => {
+      entries.push({ internalId: playerId, name: winnerTeam.playerNames?.[index], type: 'All-Star Dance Contest Champion' });
+    });
+  }
   if (allStar?.skillsChallenge?.winnerId || allStar?.skillsChallenge?.winnerName) {
     entries.push({ internalId: allStar.skillsChallenge.winnerId, name: allStar.skillsChallenge.winnerName, type: 'Skills Challenge Winner' });
   }
   if (allStar?.gameMvp?.name) {
-    entries.push({ name: allStar.gameMvp.name, type: 'All-Star Game MVP' });
+    entries.push({ name: allStar.gameMvp.name, type: 'All-Star MVP' });
   }
   if (entries.length === 0) return players;
 
@@ -517,7 +691,7 @@ export const backfillPbaAllStarAwards = (
     if (playerEntries.length === 0) return player;
     const awards = [...(player.awards ?? [])];
     for (const entry of playerEntries) {
-      if (!awards.some(award => award.type === entry.type && award.season === season)) {
+      if (!awards.some(award => normalizePlayerAwardType(award.type) === entry.type && award.season === season)) {
         awards.push({ type: entry.type, season });
       }
     }

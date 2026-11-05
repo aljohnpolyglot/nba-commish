@@ -15,16 +15,26 @@ import {
 import type { SponsorOfferModalData } from './SponsorOfferModal';
 import type { StartNegotiationModalData } from './StartNegotiationModal';
 import { formatCurrencyWithCode } from '../../utils/helpers';
-import { getSponsorPool, getBrandMeta } from '../../data/sponsorCatalogFetcher';
+import {
+  getEndorsementOpportunities,
+  getSponsorOpportunities,
+  getSponsorPool,
+  getBrandMeta,
+  getSponsorTierWeight,
+  type LeagueKey,
+} from '../../data/sponsorCatalogFetcher';
 import { classifySponsor } from '../../services/tycoon/sponsorshipEngine';
-import { ALL_SLOTS, type SponsorshipSlot, type SponsorIndustry, type TycoonTier } from '../../types/tycoon';
+import { ALL_SLOTS, type SponsorBenefitPackage, type SponsorPerk, type SponsorshipSlot, type SponsorIndustry, type TycoonTier } from '../../types/tycoon';
+import { createSponsorBenefitPackage, sponsorCashValueAfterServices } from '../../services/tycoon/sponsorBenefits';
+import { SPONSOR_SLOT_PAYMENT_MULTIPLIER } from '../../services/tycoon/sponsorOfferConstants';
+import { resolveSponsorPerk } from '../../services/tycoon/sponsorPerkLibrary';
+import { applySponsorOfferValueModifier } from '../../services/tycoon/sponsorPerkEngine';
 
 export type InterestLevel = 'very-interested' | 'interested' | 'neutral' | 'not-interested';
-export type MarketFit = 'excellent' | 'very-good' | 'good' | 'fair' | 'poor';
 export type DealCategory = 'kit-apparel' | 'arena-venue' | 'broadcast' | 'financial' | 'automotive' | 'technology' | 'beverage' | 'travel' | 'gambling' | 'local-business' | 'other';
 export type OfferStatus = 'interested' | 'negotiation' | 'neutral' | 'not-interested';
 export type DealType = 'sponsorship' | 'endorsement';
-export type SortKey = 'potential-high' | 'potential-low' | 'value-high' | 'value-low' | 'fit-best';
+export type SortKey = 'potential-high' | 'potential-low' | 'value-high' | 'value-low';
 export const ENDORSEMENT_SLOT_CAP = 4;
 
 export interface MockOffer {
@@ -42,11 +52,20 @@ export interface MockOffer {
   slotLabel: string;
   valuePerYear: number;
   contractYears: number;
+  minContractYears?: number;
+  maxContractYears?: number;
   oneTime?: boolean;
-  marketFit: MarketFit;
   brandGets?: string[];
   clubGets?: string[];
   pitch?: string;
+  benefitPackage?: SponsorBenefitPackage;
+  perk?: SponsorPerk;
+  headquartersCity?: string;
+  headquartersCountry?: string;
+  headquartersIso2?: string;
+  poolWeight?: number;
+  bonusProfileId?: string;
+  aspirational?: boolean;
 }
 
 export const CATEGORY_LABEL: Record<DealCategory, string> = {
@@ -105,22 +124,6 @@ export const INTEREST_LABEL: Record<InterestLevel, string> = {
   'not-interested': 'Not Interested',
 };
 
-export const FIT_TINT: Record<MarketFit, { bar: string; text: string; pct: number }> = {
-  excellent: { bar: 'bg-emerald-400', text: 'text-emerald-300', pct: 95 },
-  'very-good': { bar: 'bg-emerald-400', text: 'text-emerald-300', pct: 80 },
-  good: { bar: 'bg-emerald-500', text: 'text-emerald-400', pct: 65 },
-  fair: { bar: 'bg-amber-400', text: 'text-amber-300', pct: 45 },
-  poor: { bar: 'bg-rose-500', text: 'text-rose-400', pct: 25 },
-};
-
-export const FIT_LABEL: Record<MarketFit, string> = {
-  excellent: 'Excellent',
-  'very-good': 'Very Good',
-  good: 'Good',
-  fair: 'Fair',
-  poor: 'Poor',
-};
-
 const SLOT_OFFER_LABEL: Record<SponsorshipSlot, string> = {
   kit: 'Kit Sponsor',
   sleeve: 'Sleeve Sponsor',
@@ -137,7 +140,6 @@ export const SORT_LABEL: Record<SortKey, string> = {
   'potential-low': 'Potential Value (Low)',
   'value-high': 'Annual Value (High)',
   'value-low': 'Annual Value (Low)',
-  'fit-best': 'Market Fit (Best)',
 };
 
 function industryToCategory(ind: SponsorIndustry | 'generic'): DealCategory {
@@ -278,10 +280,223 @@ const ENDORSEMENT_CATALOGUE: EndorsementSpec[] = [
   },
 ];
 
-export function generateMockOffers(tier: TycoonTier, league: 'spain', seed: number): MockOffer[] {
+function endorsementPresentationSlot(activationType: string): SponsorshipSlot {
+  if (activationType === 'academy' || activationType === 'performance') return 'practice';
+  if (activationType === 'community' || activationType === 'matchday') return 'court';
+  if (activationType === 'merchandise') return 'kit';
+  if (activationType === 'regional-tour') return 'stadium';
+  return 'sleeve';
+}
+
+function interestStatus(level: InterestLevel): OfferStatus {
+  if (level === 'not-interested') return 'not-interested';
+  return level === 'neutral' ? 'neutral' : 'interested';
+}
+
+function interestCopy(level: InterestLevel): string {
+  if (level === 'very-interested') return 'Actively pursuing';
+  if (level === 'interested') return 'Open to discussion';
+  return level === 'neutral' ? 'Not enough info' : 'Not a focus';
+}
+
+function offerPerk(
+  id: string,
+  label: string | undefined,
+  description: string | undefined,
+  benefitPackage?: SponsorBenefitPackage,
+  value?: number,
+  productId?: string,
+): SponsorPerk {
+  const template = resolveSponsorPerk(id, value, productId);
+  return {
+    ...template,
+    id,
+    label: label ?? template?.label ?? benefitPackage?.label ?? 'Partner support',
+    description: description ?? template?.description ?? benefitPackage?.label ?? 'Partner support for the club.',
+    value: value ?? template?.value,
+  };
+}
+
+export function generateMockOffers(
+  tier: TycoonTier,
+  league: LeagueKey,
+  seed: number,
+  commercialTrust: number = 100,
+  economyIndex: number = 1,
+): MockOffer[] {
+  const sponsorships = getSponsorOpportunities(league, tier);
+  const endorsements = getEndorsementOpportunities(league, tier);
+  if (sponsorships.length === 0 && endorsements.length === 0) {
+    return generateLegacyOffers(tier, league, seed, commercialTrust, economyIndex);
+  }
+
   const rand = seedRand(seed);
+  const safeTrust = Math.max(0, Math.min(100, commercialTrust));
+  const valueTrustFactor = 0.65 + safeTrust * 0.0035;
+  const reluctanceChance = (1 - safeTrust / 100) * 0.45;
+  const inflationFactor = Math.max(0.05, Number.isFinite(economyIndex) ? economyIndex : 1);
   const interestLevels: InterestLevel[] = ['very-interested', 'very-interested', 'interested', 'interested', 'interested', 'neutral', 'not-interested'];
-  const fits: MarketFit[] = ['excellent', 'very-good', 'good', 'good', 'fair', 'poor'];
+  const nextInterest = () => rand() < reluctanceChance
+    ? 'not-interested' as const
+    : interestLevels[Math.floor(rand() * interestLevels.length)];
+
+  const sponsorOffers: MockOffer[] = sponsorships
+    .filter(opportunity => !opportunity.eligibleDealTypes || opportunity.eligibleDealTypes.includes('core'))
+    .flatMap(opportunity => opportunity.eligibleSlots.map<MockOffer>(slot => {
+    const interestLevel = nextInterest();
+    const grossValuePerYear = Math.max(1_000, Math.round(
+      opportunity.baseAnnualValueEUR * SPONSOR_SLOT_PAYMENT_MULTIPLIER[slot] * inflationFactor * valueTrustFactor * (0.88 + rand() * 0.24) / 1_000,
+    ) * 1_000);
+    const contractRange = opportunity.maxContractYears - opportunity.minContractYears + 1;
+    const perk = offerPerk(
+      opportunity.perkId ?? `${opportunity.id}-perk`,
+      opportunity.perkLabel,
+      opportunity.perkDescription ?? opportunity.shortDescription,
+      undefined,
+      opportunity.perkValueOverride ?? opportunity.perkValue,
+      opportunity.perkProductId,
+    );
+    return {
+      id: opportunity.id,
+      brand: opportunity.brand,
+      slot,
+      category: industryToCategory(opportunity.industry),
+      industry: opportunity.industry,
+      archetype: opportunity.archetype,
+      interestLevel,
+      interestSub: interestCopy(interestLevel),
+      status: interestStatus(interestLevel),
+      dealType: 'sponsorship' as const,
+      offerLabel: 'Sponsorship',
+      slotLabel: SLOT_OFFER_LABEL[slot],
+      valuePerYear: applySponsorOfferValueModifier(grossValuePerYear, perk),
+      contractYears: opportunity.minContractYears + Math.floor(rand() * contractRange),
+      minContractYears: opportunity.minContractYears,
+      maxContractYears: opportunity.maxContractYears,
+      pitch: opportunity.shortDescription,
+      brandGets: [`Exclusive ${SLOT_OFFER_LABEL[slot].toLowerCase()} visibility`, `${opportunity.marketScope} market presence`],
+      clubGets: ['Annual partner revenue'],
+      perk,
+      headquartersCity: opportunity.headquartersCity,
+      headquartersCountry: opportunity.headquartersCountry,
+      headquartersIso2: opportunity.headquartersIso2,
+      poolWeight: getSponsorTierWeight(opportunity, tier),
+      bonusProfileId: opportunity.bonusProfileId,
+      aspirational: opportunity.aspirationalEligible === true && !opportunity.eligibleTiers.includes(tier),
+    };
+  }));
+
+  const sharedPoolEndorsements: MockOffer[] = sponsorships
+    .filter(opportunity => opportunity.eligibleDealTypes?.includes('endorsement'))
+    .map<MockOffer>(opportunity => {
+      const interestLevel = nextInterest();
+      const slot = opportunity.eligibleSlots[0] ?? 'sleeve';
+      const grossValuePerYear = Math.max(1_000, Math.round(
+        opportunity.baseAnnualValueEUR * inflationFactor * valueTrustFactor * (0.9 + rand() * 0.2) / 1_000,
+      ) * 1_000);
+      const perk = offerPerk(
+        opportunity.perkId ?? `${opportunity.id}-perk`,
+        opportunity.perkLabel,
+        opportunity.perkDescription ?? opportunity.shortDescription,
+        undefined,
+        opportunity.perkValueOverride ?? opportunity.perkValue,
+        opportunity.perkProductId,
+      );
+      return {
+        id: `${opportunity.id}-endorsement`,
+        brand: opportunity.brand,
+        slot,
+        category: industryToCategory(opportunity.industry),
+        industry: opportunity.industry,
+        archetype: opportunity.archetype,
+        interestLevel,
+        interestSub: interestCopy(interestLevel),
+        status: interestStatus(interestLevel),
+        dealType: 'endorsement' as const,
+        offerLabel: 'One-Year Endorsement',
+        slotLabel: 'One-Year Endorsement',
+        valuePerYear: applySponsorOfferValueModifier(grossValuePerYear, perk),
+        contractYears: 1,
+        minContractYears: 1,
+        maxContractYears: 1,
+        oneTime: true,
+        pitch: opportunity.shortDescription,
+        brandGets: ['One-season club partnership'],
+        clubGets: ['One-year partner revenue'],
+        perk,
+        headquartersCity: opportunity.headquartersCity,
+        headquartersCountry: opportunity.headquartersCountry,
+        headquartersIso2: opportunity.headquartersIso2,
+        poolWeight: getSponsorTierWeight(opportunity, tier),
+        bonusProfileId: opportunity.bonusProfileId,
+        aspirational: opportunity.aspirationalEligible === true && !opportunity.eligibleTiers.includes(tier),
+      };
+    });
+
+  const endorsementOffers: MockOffer[] = endorsements
+    .filter(opportunity => !opportunity.eligibleDealTypes || opportunity.eligibleDealTypes.includes('endorsement'))
+    .map<MockOffer>(opportunity => {
+    const interestLevel = nextInterest();
+    const payout = Math.max(1_000, Math.round(
+      opportunity.basePayoutEUR * inflationFactor * valueTrustFactor * (0.9 + rand() * 0.2) / 1_000,
+    ) * 1_000);
+    const slot = endorsementPresentationSlot(opportunity.activationType);
+    const perk = offerPerk(
+      opportunity.perkId ?? `${opportunity.id}-perk`,
+      opportunity.perkLabel ?? opportunity.offerLabel,
+      opportunity.perkDescription ?? opportunity.shortDescription,
+      undefined,
+      opportunity.perkValueOverride ?? opportunity.perkValue,
+      opportunity.perkProductId,
+    );
+    return {
+      id: opportunity.id,
+      brand: opportunity.brand,
+      slot,
+      category: industryToCategory(opportunity.industry),
+      industry: opportunity.industry,
+      archetype: opportunity.archetype,
+      interestLevel,
+      interestSub: interestCopy(interestLevel),
+      status: interestStatus(interestLevel),
+      dealType: 'endorsement' as const,
+      offerLabel: opportunity.offerLabel,
+      slotLabel: `One-season ${opportunity.activationType.replace('-', ' ')}`,
+      valuePerYear: applySponsorOfferValueModifier(payout, perk),
+      contractYears: opportunity.contractYears,
+      minContractYears: 1,
+      maxContractYears: 1,
+      oneTime: opportunity.oneTime,
+      pitch: opportunity.shortDescription,
+      brandGets: [`Club participation in the ${opportunity.offerLabel.toLowerCase()}`, `${opportunity.marketScope} campaign visibility`],
+      clubGets: ['One-time campaign payout'],
+      perk,
+      headquartersCity: opportunity.headquartersCity,
+      headquartersCountry: opportunity.headquartersCountry,
+      headquartersIso2: opportunity.headquartersIso2,
+      poolWeight: getSponsorTierWeight(opportunity, tier),
+      bonusProfileId: opportunity.bonusProfileId,
+      aspirational: opportunity.aspirationalEligible === true && !opportunity.eligibleTiers.includes(tier),
+    };
+  });
+
+  return [...sponsorOffers, ...sharedPoolEndorsements, ...endorsementOffers]
+    .sort((left, right) => (right.valuePerYear * (right.oneTime ? 1 : right.contractYears)) - (left.valuePerYear * (left.oneTime ? 1 : left.contractYears)));
+}
+
+function generateLegacyOffers(
+  tier: TycoonTier,
+  league: LeagueKey,
+  seed: number,
+  commercialTrust: number,
+  economyIndex: number,
+): MockOffer[] {
+  const rand = seedRand(seed);
+  const safeTrust = Math.max(0, Math.min(100, commercialTrust));
+  const valueTrustFactor = 0.65 + safeTrust * 0.0035;
+  const inflationFactor = Math.max(0.05, Number.isFinite(economyIndex) ? economyIndex : 1);
+  const reluctanceChance = (1 - safeTrust / 100) * 0.45;
+  const interestLevels: InterestLevel[] = ['very-interested', 'very-interested', 'interested', 'interested', 'interested', 'neutral', 'not-interested'];
   const offers: MockOffer[] = [];
   let idCounter = 0;
   for (const slot of ALL_SLOTS) {
@@ -291,12 +506,9 @@ export function generateMockOffers(tier: TycoonTier, league: 'spain', seed: numb
       const classified = classifySponsor(brand);
       const industry = meta?.industry ?? classified.industry ?? 'generic';
       const archetype = (classified.archetype ?? 'generic') as 'premium' | 'gambling' | 'tech' | 'local' | 'generic';
-      const interestLevel = interestLevels[Math.floor(rand() * interestLevels.length)];
-      const fit = interestLevel === 'not-interested'
-        ? fits[3 + Math.floor(rand() * 3)]
-        : interestLevel === 'neutral'
-          ? fits[2 + Math.floor(rand() * 3)]
-          : fits[Math.floor(rand() * 4)];
+      const interestLevel = rand() < reluctanceChance
+        ? 'not-interested'
+        : interestLevels[Math.floor(rand() * interestLevels.length)];
       const status: OfferStatus = interestLevel === 'not-interested'
         ? 'not-interested'
         : interestLevel === 'neutral'
@@ -304,7 +516,9 @@ export function generateMockOffers(tier: TycoonTier, league: 'spain', seed: numb
           : 'interested';
       const baseValue = slot === 'kit' ? 1_000_000 : slot === 'stadium' ? 600_000 : slot === 'sleeve' ? 700_000 : slot === 'back' ? 450_000 : 250_000;
       const tierMult = tier === 'S' ? 1.4 : tier === 'A' ? 0.9 : tier === 'B' ? 0.45 : tier === 'C' ? 0.22 : 0.1;
-      const valuePerYear = Math.round((baseValue * tierMult * (0.7 + rand() * 0.9)) / 10_000) * 10_000;
+      const grossValuePerYear = Math.round((baseValue * inflationFactor * tierMult * valueTrustFactor * (0.7 + rand() * 0.9)) / 10_000) * 10_000;
+      const benefitPackage = createSponsorBenefitPackage({ sponsor: brand, industry, slot, valuePerYear: grossValuePerYear });
+      const valuePerYear = sponsorCashValueAfterServices(grossValuePerYear, benefitPackage);
       const contractYears = 2 + Math.floor(rand() * 4);
       offers.push({
         id: `${slot}-${brand}-${idCounter++}`,
@@ -327,7 +541,13 @@ export function generateMockOffers(tier: TycoonTier, league: 'spain', seed: numb
         slotLabel: SLOT_OFFER_LABEL[slot],
         valuePerYear,
         contractYears,
-        marketFit: fit,
+      benefitPackage,
+      perk: offerPerk(
+        `${slot}-${brand}-perk`,
+        benefitPackage?.label,
+        benefitPackage?.label,
+        benefitPackage,
+      ),
       });
     }
   }
@@ -335,13 +555,10 @@ export function generateMockOffers(tier: TycoonTier, league: 'spain', seed: numb
   for (const spec of ENDORSEMENT_CATALOGUE) {
     if (!spec.tiers.includes(tier)) continue;
     const noise = 0.85 + rand() * 0.3;
-    const valuePerYear = Math.round((spec.baseValuePerYear * noise) / 1_000) * 1_000;
-    const interestLevel = interestLevels[Math.floor(rand() * interestLevels.length)];
-    const fit = interestLevel === 'not-interested'
-      ? fits[3 + Math.floor(rand() * 3)]
-      : interestLevel === 'neutral'
-        ? fits[2 + Math.floor(rand() * 3)]
-        : fits[Math.floor(rand() * 4)];
+    const valuePerYear = Math.round((spec.baseValuePerYear * inflationFactor * valueTrustFactor * noise) / 1_000) * 1_000;
+    const interestLevel = rand() < reluctanceChance
+      ? 'not-interested'
+      : interestLevels[Math.floor(rand() * interestLevels.length)];
     const status: OfferStatus = interestLevel === 'not-interested'
       ? 'not-interested'
       : interestLevel === 'neutral'
@@ -372,17 +589,21 @@ export function generateMockOffers(tier: TycoonTier, league: 'spain', seed: numb
       valuePerYear,
       contractYears: spec.oneTime ? 1 : spec.years,
       oneTime: spec.oneTime,
-      marketFit: fit,
       brandGets: spec.brandGets,
       clubGets: spec.clubGets,
       pitch: spec.pitch,
+      perk: offerPerk(
+        `endorsement-${spec.brand}-perk`,
+        spec.clubGets[0],
+        spec.clubGets.join(' · '),
+      ),
     });
   }
 
   return offers.sort((a, b) => (b.valuePerYear * (b.oneTime ? 1 : b.contractYears)) - (a.valuePerYear * (a.oneTime ? 1 : a.contractYears)));
 }
 
-export function buildStartNegotiationData(offer: MockOffer, leagueYear: number, tycoon: any): StartNegotiationModalData {
+export function buildStartNegotiationData(offer: MockOffer, leagueYear: number, tycoon: any, sponsorLeague?: StartNegotiationModalData['sponsorLeague']): StartNegotiationModalData {
   const now = new Date();
   const expires = new Date(now.getTime() + 12 * 24 * 3600_000);
   const expiresOn = expires.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
@@ -406,6 +627,7 @@ export function buildStartNegotiationData(offer: MockOffer, leagueYear: number, 
   }
   return {
     brand: offer.brand,
+    sponsorLeague,
     industry: offer.industry,
     slot: offer.slot,
     baseValuePerYear,
@@ -415,25 +637,17 @@ export function buildStartNegotiationData(offer: MockOffer, leagueYear: number, 
     negotiationDaysLeft: 12,
     currentSeasonYear: leagueYear,
     occupiedSlots,
+    benefitPackage: offer.benefitPackage,
     oneTime: offer.oneTime,
     dealTypeLabel: offer.offerLabel,
   };
 }
 
-export function buildSponsorOfferData(offer: MockOffer, tycoon: any, leagueYear: number): SponsorOfferModalData {
+export function buildSponsorOfferData(offer: MockOffer, tycoon: any, leagueYear: number, sponsorLeague?: SponsorOfferModalData['sponsorLeague']): SponsorOfferModalData {
   const startYear = leagueYear;
   const endYear = startYear + offer.contractYears;
   const startSeason = `${startYear}/${String(startYear + 1).slice(-2)}`;
   const endSeason = `${endYear - 1}/${String(endYear).slice(-2)}`;
-  const fitGrade = offer.marketFit === 'excellent'
-    ? 'A+'
-    : offer.marketFit === 'very-good'
-      ? 'A'
-      : offer.marketFit === 'good'
-        ? 'B'
-        : offer.marketFit === 'fair'
-          ? 'C'
-          : 'D';
   const interestLabel = offer.interestLevel === 'very-interested'
     ? 'Very Interested'
     : offer.interestLevel === 'interested'
@@ -447,6 +661,7 @@ export function buildSponsorOfferData(offer: MockOffer, tycoon: any, leagueYear:
   const expiresOn = expires.toLocaleDateString('en-US', { month: 'short', day: '2-digit', year: 'numeric' });
   return {
     brand: offer.brand,
+    sponsorLeague,
     industry: offer.industry,
     archetype: offer.archetype,
     slot: offer.slot,
@@ -455,7 +670,7 @@ export function buildSponsorOfferData(offer: MockOffer, tycoon: any, leagueYear:
     pitch: offer.pitch,
     dealTypeLabel: offer.offerLabel,
     brandGets: offer.brandGets,
-    clubGets: offer.clubGets,
+    clubGets: offer.benefitPackage ? [offer.benefitPackage.label, ...(offer.clubGets ?? [])] : offer.clubGets,
     valuePerYear: offer.valuePerYear,
     contractYears: offer.contractYears,
     contractStartSeason: startSeason,
@@ -464,7 +679,6 @@ export function buildSponsorOfferData(offer: MockOffer, tycoon: any, leagueYear:
     exclusivityScope: offer.dealType === 'endorsement' ? (offer.slotLabel ?? 'Player Endorsement') : offer.slotLabel,
     interestLabel,
     interestSub: offer.interestSub,
-    strategicFit: fitGrade,
     negotiationDaysLeft: 12,
     expiresOn,
     currentSponsorRevenue: currentRevenue,

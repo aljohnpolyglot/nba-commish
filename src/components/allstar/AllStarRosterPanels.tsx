@@ -3,6 +3,7 @@ import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { getPlayerImage } from '../central/view/bioCache';
 import { ALL_STAR_ASSETS } from '../../services/allStar/AllStarSelectionService';
+import { CountryFlag } from '../shared/CountryFlag';
 
 const EAST_LOGO = ALL_STAR_ASSETS.eastLogo;
 const WEST_LOGO = ALL_STAR_ASSETS.westLogo;
@@ -23,11 +24,12 @@ interface AllStarRosterPanelsProps {
   buildPlayerData: (player: any) => {
     allStarCount: number;
     country: string;
-    flagUrl: string | null;
     fullPlayer: any;
     imgUrl?: string;
     team: any;
     teamColor: string;
+    teamLogoUrl?: string;
+    displayOverall?: number;
   };
   isCaptainsDraft: boolean;
   onPlayerClick?: (player: any) => void;
@@ -44,12 +46,15 @@ export function buildAllStarRosterPanels(
   roster: any[],
   isCaptainsDraft: boolean,
   playerById: Map<string, any>,
+  legendCaptains: any[] = [],
+  savedTeamNames: string[] = [],
+  conferenceLogos: Partial<Record<'East' | 'West', string>> = {},
 ): AllStarRosterPanelsProps['panels'] {
   const presentBuckets: string[] = Array.from(new Set(roster.map((p: any) => p.conference).filter(Boolean)));
   const order = ['East', 'West', 'USA1', 'USA2', 'WORLD', 'WORLD1', 'WORLD2'];
   presentBuckets.sort((a, b) => order.indexOf(a) - order.indexOf(b));
 
-  return presentBuckets.map((bucket) => {
+  return presentBuckets.map((bucket, bucketIndex) => {
     const baseAccent = ALL_STAR_ROSTER_ACCENTS[bucket] ?? {
       text: 'text-slate-300',
       border: 'border-slate-500/20',
@@ -59,17 +64,20 @@ export function buildAllStarRosterPanels(
     };
     const players = roster.filter((p: any) => p.conference === bucket);
     let label = baseAccent.label;
-    let logo = baseAccent.logo;
+    let logo = conferenceLogos[bucket as 'East' | 'West'] ?? baseAccent.logo;
     let accent = baseAccent;
 
     if (isCaptainsDraft) {
       const captain = roster.find((r: any) => r.conference === bucket && r.isCaptain);
-      if (captain?.playerName) {
-        const parts = String(captain.playerName).split(' ');
+      const legendCaptain = legendCaptains[bucketIndex];
+      const captainName = legendCaptain?.name ?? captain?.playerName;
+      if (captainName) {
+        const parts = String(captainName).split(' ');
         label = `Team ${parts[parts.length - 1]}`;
       }
+      if (savedTeamNames[bucketIndex]) label = savedTeamNames[bucketIndex];
       const captainPlayer = captain ? playerById.get(captain.playerId) : null;
-      const captainImage = captainPlayer ? getPlayerImage(captainPlayer) : null;
+      const captainImage = legendCaptain ? getPlayerImage(legendCaptain) : captainPlayer ? getPlayerImage(captainPlayer) : null;
       if (captainImage) logo = captainImage;
       accent = { text: 'text-purple-300', border: 'border-purple-500/30', from: 'from-purple-950/20', logo, label };
     }
@@ -86,7 +94,7 @@ export function AllStarRosterPanels({
   panels,
 }: AllStarRosterPanelsProps) {
   const StarterCard = ({ player }: { player: any }) => {
-    const { team, teamColor, fullPlayer, imgUrl, allStarCount, flagUrl, country } = buildPlayerData(player);
+    const { teamColor, teamLogoUrl, fullPlayer, imgUrl, allStarCount, country, displayOverall } = buildPlayerData(player);
     const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
     return (
       <div
@@ -116,22 +124,17 @@ export function AllStarRosterPanels({
             <span className="text-[7px] font-black text-amber-400 uppercase tracking-wide">Starter</span>
           </div>
         )}
-        {flagUrl && (
-          <img
-            src={flagUrl}
-            className="absolute top-2 left-2 w-4 h-3 object-cover rounded-[1px] shadow-sm"
-            alt={country}
-            title={country}
-            referrerPolicy="no-referrer"
-          />
+        {country !== 'Unknown' && (
+          <CountryFlag country={country} className="absolute top-2 left-2 inline-flex h-3 w-4 rounded-[1px] shadow-sm" />
         )}
         <div className="mt-1">
           <PlayerPortrait
             imgUrl={imgUrl}
             face={fullPlayer?.face}
             playerName={player.playerName}
-            teamLogoUrl={team?.logoUrl}
+            teamLogoUrl={teamLogoUrl}
             overallRating={fullPlayer?.overallRating}
+            ovrLabel={displayOverall != null ? String(displayOverall) : undefined}
             ratings={fullPlayer?.ratings}
             size={56}
           />
@@ -151,7 +154,7 @@ export function AllStarRosterPanels({
   };
 
   const ReserveRow = ({ player }: { player: any }) => {
-    const { team, fullPlayer, imgUrl, allStarCount, flagUrl, country } = buildPlayerData(player);
+    const { teamLogoUrl, fullPlayer, imgUrl, allStarCount, country, displayOverall } = buildPlayerData(player);
     const isOwn = ownTid !== null && ownTid !== undefined && fullPlayer?.tid === ownTid;
     return (
       <div
@@ -164,21 +167,16 @@ export function AllStarRosterPanels({
           imgUrl={imgUrl}
           face={fullPlayer?.face}
           playerName={player.playerName}
-          teamLogoUrl={team?.logoUrl}
+          teamLogoUrl={teamLogoUrl}
           overallRating={fullPlayer?.overallRating}
+          ovrLabel={displayOverall != null ? String(displayOverall) : undefined}
           ratings={fullPlayer?.ratings}
           size={40}
         />
         <div className="flex-1 min-w-0">
           <div className="text-xs font-bold text-white truncate flex items-center gap-1.5">
-            {flagUrl && (
-              <img
-                src={flagUrl}
-                className="w-3.5 h-2.5 object-cover rounded-[1px] flex-shrink-0"
-                alt={country}
-                title={country}
-                referrerPolicy="no-referrer"
-              />
+            {country !== 'Unknown' && (
+              <CountryFlag country={country} className="inline-flex h-2.5 w-3.5 rounded-[1px]" />
             )}
             {fullPlayer ? <PlayerNameWithHover player={fullPlayer}>{player.playerName}</PlayerNameWithHover> : player.playerName}
           </div>
@@ -234,4 +232,3 @@ export function AllStarRosterPanels({
     </div>
   );
 }
-

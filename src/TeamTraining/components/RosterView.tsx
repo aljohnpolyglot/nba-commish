@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { DevArchetype, Player, IndividualIntensity, Staffing, Team, TrainingParadigm, Allocations } from '../types';
 import { AlertCircle, ChevronRight, GraduationCap } from 'lucide-react';
 import { Tooltip } from './ToolTip';
@@ -9,6 +9,8 @@ import { PlayerRatingsModal } from '../../components/modals/PlayerRatingsModal';
 import { MyFace, isRealFaceConfig } from '../../components/shared/MyFace';
 import type { NBAPlayer } from '../../types';
 import { getFatigueBarColor, getFatigueTextColor, getInjuryRisk, getMoodBarColor } from '../../components/shared/playerWellness';
+import { ensurePortraitLookupsLoaded } from '../../data/realPlayerDataFetcher';
+import { getPlayerImage } from '../../utils/playerImage';
 
 interface Props {
   roster: Player[];
@@ -19,6 +21,7 @@ interface Props {
   /** Current league year — passed through to PlayerProgressionModal for real history. */
   currentYear?: number;
   currentDate?: string;
+  allowSourcePortraits?: boolean;
   trainingCalendar?: Record<string, { intensity: number; paradigm: TrainingParadigm; allocations: Allocations; auto?: boolean }>;
   updateDevFocus: (playerId: string, focus: DevArchetype) => void;
   updateIndividualIntensity: (playerId: string, intensity: IndividualIntensity) => void;
@@ -26,12 +29,78 @@ interface Props {
   logs: string[];
 }
 
-export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYear, currentDate, trainingCalendar, updateDevFocus, updateIndividualIntensity, updateMentor, logs }: Props) {
+export function resolveTrainingRosterPortraitSources(
+  player: Pick<Player, 'imgURL'>,
+  nbaPlayer: NBAPlayer | undefined,
+  portraitSeason: number | undefined,
+  photosReady: boolean,
+): string[] {
+  return Array.from(new Set([
+    photosReady && nbaPlayer ? getPlayerImage(nbaPlayer, { portraitSeason }) : null,
+    player.imgURL,
+    nbaPlayer?.imgURL,
+  ].filter((url): url is string => Boolean(url))));
+}
+
+function RosterPlayerAvatar({ player, nbaPlayer, portraitSeason, photosReady }: { player: Player; nbaPlayer?: NBAPlayer; portraitSeason?: number; photosReady: boolean }) {
+  const [sourceIndex, setSourceIndex] = useState(0);
+  const photoSources = useMemo(
+    () => resolveTrainingRosterPortraitSources(player, nbaPlayer, portraitSeason, photosReady),
+    [nbaPlayer, photosReady, player, portraitSeason],
+  );
+  useEffect(() => {
+    setSourceIndex(0);
+  }, [player.id, photoSources.length]);
+  const photo = photoSources[sourceIndex] ?? null;
+
+  if (photo) {
+    return (
+      <img
+        src={photo}
+        alt=""
+        className="w-8 h-8 md:w-12 md:h-12 aspect-square rounded-full object-cover bg-slate-800 border border-slate-700 shadow-lg"
+        referrerPolicy="no-referrer"
+        onError={() => setSourceIndex(index => index + 1)}
+      />
+    );
+  }
+
+  if (isRealFaceConfig(player.face)) {
+    return (
+      <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-slate-700 border border-slate-600 overflow-hidden relative shrink-0">
+        <div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}>
+          <MyFace face={player.face} style={{ width: '100%', height: '100%' }} />
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="w-8 h-8 md:w-12 md:h-12 aspect-square rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 font-black text-sm md:text-xl shrink-0 group-hover/avatar:text-blue-400 transition-colors">
+      {player.name.charAt(0)}
+    </div>
+  );
+}
+
+export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYear, currentDate, allowSourcePortraits = true, trainingCalendar, updateDevFocus, updateIndividualIntensity, updateMentor, logs }: Props) {
   const [focusModalPlayerId, setFocusModalPlayerId] = useState<string | null>(null);
   const [mentorshipModalPlayerId, setMentorshipModalPlayerId] = useState<string | null>(null);
   const [progressionModalPlayerId, setProgressionModalPlayerId] = useState<string | null>(null);
   const [sortCol, setSortCol] = useState<'ovr' | 'pot' | 'ywt'>('ovr');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('desc');
+  const [photosReady, setPhotosReady] = useState(false);
+
+  useEffect(() => {
+    if (!allowSourcePortraits) {
+      setPhotosReady(false);
+      return;
+    }
+    let cancelled = false;
+    ensurePortraitLookupsLoaded().then(() => {
+      if (!cancelled) setPhotosReady(true);
+    });
+    return () => { cancelled = true; };
+  }, [allowSourcePortraits]);
 
   const baseFuzz = 20;
   const scoutPA = staffing.chiefScout?.attributes.judgingPlayerPotential || 0;
@@ -128,30 +197,18 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
             <tbody className="divide-y divide-slate-800/30">
               {sortedRoster.map((player) => {
                 const effOvr = getEffectiveOvr(player);
+                const nbaP = nbaPlayersById?.get(player.id);
 
                  return (
                  <tr key={player.id} className="group hover:bg-white/[0.02] transition-colors cursor-pointer" onClick={() => setProgressionModalPlayerId(player.id)}>
                   <td className="px-3 py-3 md:px-6 md:py-4 md:pb-5 sticky left-0 bg-slate-900 group-hover:bg-slate-800/50 z-10 transition-colors border-r border-slate-800/30">
                     <div className="flex items-center gap-2 md:gap-4">
                       <div className="relative group/avatar">
-                        {player.imgURL ? (
-                          <img src={player.imgURL} alt="" className="w-8 h-8 md:w-12 md:h-12 aspect-square rounded-full object-cover bg-slate-800 border border-slate-700 shadow-lg" />
-                        ) : isRealFaceConfig(player.face) ? (
-                          <div className="w-8 h-8 md:w-12 md:h-12 rounded-full bg-slate-700 border border-slate-600 overflow-hidden relative shrink-0">
-                            <div className="absolute left-1/2 top-1/2" style={{ width: '85%', height: '127.5%', transform: 'translate(-50%, -50%)' }}>
-                              <MyFace face={player.face} style={{ width: '100%', height: '100%' }} />
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="w-8 h-8 md:w-12 md:h-12 aspect-square rounded-full bg-slate-800 border border-slate-700 flex items-center justify-center text-slate-500 font-black text-sm md:text-xl shrink-0 group-hover/avatar:text-blue-400 transition-colors">
-                            {player.name.charAt(0)}
-                          </div>
-                        )}
+                        <RosterPlayerAvatar player={player} nbaPlayer={nbaP} portraitSeason={currentYear} photosReady={photosReady} />
                       </div>
                       <div className="min-w-0">
                         <div className="font-black text-xs md:text-sm text-white tracking-tight flex items-center gap-1 md:gap-2 truncate">
                           {(() => {
-                            const nbaP = nbaPlayersById?.get(player.id);
                             return nbaP ? (
                               <PlayerNameWithHover player={nbaP} className="group-hover:text-blue-400 transition-colors truncate">
                                 {player.name}
@@ -263,19 +320,20 @@ export function RosterView({ roster, staffing, teams, nbaPlayersById, currentYea
                         const mentor = roster.find(p => p.id === player.mentorId);
                         return (
                           <button
+                            aria-label={mentor ? `Change mentor ${mentor.name}` : 'Choose mentor'}
                             onClick={(e) => {
                                e.stopPropagation();
                                setMentorshipModalPlayerId(player.id);
                             }}
                             className={`group/mbtn flex items-center justify-between w-full p-2.5 md:p-4 rounded-xl md:rounded-[1.5rem] border text-[9px] md:text-[11px] font-black uppercase tracking-tight transition-all duration-300 ${
-                              player.mentorId
+                              mentor
                                ? 'bg-emerald-600/10 border-emerald-500/40 text-emerald-400 hover:bg-emerald-600/20 hover:border-emerald-500 shadow-xl shadow-black/20'
                                : 'bg-slate-950 border-slate-800 text-slate-500 hover:border-slate-600 hover:text-white'
                             }`}
                           >
                             <div className="flex flex-col items-start truncate text-left">
                                <span className="text-[8px] opacity-40 mb-0.5 tracking-[0.2em]">Mentor</span>
-                               <span className="truncate">{mentor ? mentor.name : 'Unassigned'}</span>
+                               <span className="min-h-[1em] truncate">{mentor?.name ?? ''}</span>
                             </div>
                             <GraduationCap size={14} className="opacity-40 group-hover/mbtn:opacity-100 transition-all" />
                           </button>

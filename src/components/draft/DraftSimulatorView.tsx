@@ -1,31 +1,37 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../../store/GameContext';
+import { UNDRAFTED_OVR_CAP } from '../../constants';
 import { normalizeDate } from '../../utils/helpers';
 import { getDraftCombineStartDate, getDraftDate, isDraftBlockedByUnresolvedPlayoffs, toISODateString } from '../../utils/dateUtils';
 import { getLsYear } from '../../utils/leagueYear';
 import { normalizeTeamJerseyNumbers, pickJerseyNumber } from '../../utils/jerseyUtils';
 import type { NBAPlayer } from '../../types';
 import { DraftScoutingModal } from './DraftScoutingModal';
+import { ConfirmationModal } from '../modals/ConfirmationModal';
 import { buildDraftOrderFromState, type DraftOrderTeam } from '../../services/draft/draftOrder';
 import {
   batchComparisonsDeduped,
   computeSkillScores,
-  getClassAverages,
-  getClassPercentiles,
-  type ClassPercentileMaps,
   type SkillAxis,
 } from '../../services/scoutingReport';
 import { ensureDraftScouting, getCachedDraftScouting, matchProspectToGist, type GistProspect } from '../../services/draftScoutingGist';
-import { PlayerBioView } from '../central/view/PlayerBioView';
+import { PlayerActionsModal } from '../shared/PlayerActionsModal';
 import { computeDraftPickFields, getOrdinalSuffix, MAX_DRAFT_POOL_SIZE } from './simulator/helpers';
-import { FullDraftTable } from './simulator/FullDraftTable';
 import { isPbaIsolatedMode } from '../../utils/uiMode';
-import { buildDraftProspects, buildPbaDraftOrderTeams, type DraftSimulatorProspect } from './DraftSimulatorView.helpers';
+import { buildDraftProspects, buildFantasyDraftProspects, buildPbaDraftOrderTeams, type DraftSimulatorProspect } from './DraftSimulatorView.helpers';
 import { DraftBoardSection, PreDraftProspectsPanel } from './DraftSimulatorViewSections';
 import { fuzzDraftRatingValue } from '../../utils/scoutingFuzz';
 import { isOnRoster } from '../../utils/teamLookup';
+import { isExternalLeaguePlayer } from '../../utils/playerLeagueScope';
 import { getTeamFullName } from '../../utils/teamNames';
 import { getPbaComparisonPool, getPbaDraftPool, tunePbaDraftProspects } from '../../services/pba/draftRules';
+import { selectAiDraftProspect } from '../../services/draft/aiDraftBoard';
+import { isCurrentDraftClassComplete } from '../../services/draft/DraftPickGenerator';
+import { appendLiveDraftSelection } from '../../services/draft/draftHistoryLiveState';
+import { isPrimaryNbaComparisonCandidate } from './DraftScoutingModalShared';
+import { getDraftSeasonYearForState } from '../../services/offseason/offseasonState';
+import { lifecycleWithDraftProgress } from '../../services/lifecycle/leagueSeasonLifecycle';
+import { buildDraftSelectionPatch } from '../../services/draft/draftSelection';
 
 interface DraftSimulatorViewProps {
   onViewChange?: (view: string) => void;
@@ -37,18 +43,27 @@ const teamIdOf = (team: any): number | null => {
 };
 
 export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewChange }) => {
-  const { state, dispatchAction: dispatch } = useGame();
+  const { state, dispatchAction: dispatch, navigateToPlayer } = useGame();
+  const [pendingAdvance, setPendingAdvance] = useState<'end' | 'auto' | 'pass' | null>(null);
   const pbaMode = isPbaIsolatedMode(state);
+  const isFictional = state.leagueType === 'fictional';
+  const initialFantasyDraft = isFictional
+    && state.leagueStats.fictionalRosterMode === 'fantasy_draft';
+  const fantasyDraftMode = initialFantasyDraft
+    && state.leagueStats.fictionalFantasyDraftCompleted !== true;
   const savedDraftOrder = (state as any).activeDraftOrder as DraftOrderTeam[] | undefined;
-  const leagueYear = getLsYear(state);
+  const leagueYear = fantasyDraftMode ? getLsYear(state) : getDraftSeasonYearForState(state);
   const draftDate = toISODateString(getDraftDate(leagueYear, state.leagueStats));
   const combineDate = toISODateString(getDraftCombineStartDate(leagueYear, state.leagueStats as any));
   const today = normalizeDate(state.date);
-  const draftLabel = pbaMode ? 'PBA Draft' : 'NBA Draft';
-  const isDraftTime = pbaMode
+  const draftLabel = fantasyDraftMode ? 'Association Fantasy Draft' : pbaMode ? 'PBA Draft' : 'NBA Draft';
+  const allowDraftPickPasses = !fantasyDraftMode && (pbaMode || (state.leagueStats as any)?.draftPickPassesEnabled === true);
+  const isDraftTime = fantasyDraftMode || (pbaMode
     ? (state.leagueStats as any)?.pbaConferencePhase === 'offseason'
-    : today >= draftDate && !isDraftBlockedByUnresolvedPlayoffs(state);
-  const isDraftDone = !!(state as any).draftComplete;
+      && state.offseasonChecklist?.pbaDraft === 'in-progress'
+      && today >= draftDate
+    : today >= draftDate && !isDraftBlockedByUnresolvedPlayoffs(state));
+  const isDraftDone = isCurrentDraftClassComplete(state);
   const showCombineTab = today >= combineDate;
 
   const pbaDraftPoolCount = useMemo(
@@ -57,11 +72,12 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   );
 
   const computedDraftOrder = useMemo(() => {
+    if (fantasyDraftMode) return savedDraftOrder ?? [];
     if (pbaMode) {
-      return buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], leagueYear, pbaDraftPoolCount);
+      return buildPbaDraftOrderTeams((state as any).nonNBATeams ?? [], state.boxScores ?? [], leagueYear, pbaDraftPoolCount, state.draftPicks);
     }
     return buildDraftOrderFromState(state);
-  }, [leagueYear, pbaDraftPoolCount, pbaMode, state.boxScores, state.draftLotteryResult, state.draftPicks, state.teams, (state as any).nonNBATeams]);
+  }, [fantasyDraftMode, leagueYear, pbaDraftPoolCount, pbaMode, savedDraftOrder, state.boxScores, state.draftLotteryResult, state.draftPicks, state.seasonLifecycle, state.teams, (state as any).nonNBATeams]);
 
   const draftJerseyTeams = useMemo(() => {
     if (!pbaMode) return state.teams as any[];
@@ -74,39 +90,43 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     return [...(state.teams as any[]), ...pbaTeams];
   }, [pbaMode, state.teams, (state as any).nonNBATeams]);
 
+  const scopedPlayers = useMemo(
+    () => isFictional ? state.players.filter(player => !isExternalLeaguePlayer(player)) : state.players,
+    [isFictional, state.players],
+  );
+  const draftPoolLimit = Math.max(MAX_DRAFT_POOL_SIZE, computedDraftOrder.length + 20);
+
+  const draftClassProspects = useMemo(
+    () => fantasyDraftMode
+      ? buildFantasyDraftProspects(scopedPlayers, leagueYear)
+      : buildDraftProspects(scopedPlayers, leagueYear, pbaMode, state.leagueStats),
+    [fantasyDraftMode, scopedPlayers, leagueYear, pbaMode, state.leagueStats],
+  );
   const allProspects = useMemo(
-    () => buildDraftProspects(state.players, leagueYear, pbaMode, state.leagueStats).slice(0, MAX_DRAFT_POOL_SIZE),
-    [state.players, leagueYear, pbaMode, state.leagueStats],
+    () => fantasyDraftMode
+      ? draftClassProspects
+      : draftClassProspects.slice(0, draftPoolLimit),
+    [draftClassProspects, draftPoolLimit, fantasyDraftMode],
   );
 
   const activePlayers = useMemo(
     () =>
       (pbaMode
-        ? getPbaComparisonPool(state.players)
-        : state.players.filter(
+        ? getPbaComparisonPool(scopedPlayers)
+        : scopedPlayers.filter(
             player =>
-              player.tid >= 0 &&
+              isPrimaryNbaComparisonCandidate(player) &&
               isOnRoster(player) &&
               player.status !== 'Draft Prospect' &&
               player.status !== 'Prospect' &&
               ((player as any).draft?.year ?? 0) < leagueYear,
           )),
-    [state.players, leagueYear, pbaMode],
+    [scopedPlayers, leagueYear, pbaMode],
   );
 
-  const classAverages = useMemo(() => getClassAverages(allProspects), [allProspects]);
-  const percentilesByPos = useMemo(() => {
-    const maps = new Map<string, ClassPercentileMaps>();
-    maps.set('Guard', getClassPercentiles(allProspects, 'Guard'));
-    maps.set('Forward', getClassPercentiles(allProspects, 'Forward'));
-    maps.set('Center', getClassPercentiles(allProspects, 'Center'));
-    maps.set('Class', getClassPercentiles(allProspects, 'Class'));
-    return maps;
-  }, [allProspects]);
-
   const batchComps = useMemo(
-    () => batchComparisonsDeduped(allProspects as unknown as NBAPlayer[], activePlayers),
-    [allProspects, activePlayers],
+    () => batchComparisonsDeduped(allProspects as unknown as NBAPlayer[], activePlayers, 3, 3, pbaMode ? 'pba' : 'nba'),
+    [allProspects, activePlayers, pbaMode],
   );
 
   const savedDraftPicks: Record<number, DraftSimulatorProspect> = (state as any).activeDraftPicks ?? {};
@@ -115,32 +135,36 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     ...Object.keys(savedDraftPicks).map(Number),
     ...Object.keys(savedPassedPicks).map(Number),
   ].filter(Number.isFinite);
-  const [currentPick, setCurrentPick] = useState<number>(() =>
-    savedProgressSlots.length > 0 ? Math.max(...savedProgressSlots) + 1 : 1,
-  );
+  const [currentPick, setCurrentPick] = useState<number>(() => {
+    let slot = 1;
+    while (slot <= computedDraftOrder.length && (savedDraftPicks[slot] || savedPassedPicks[slot] || computedDraftOrder[slot - 1]._forfeited)) slot++;
+    return slot;
+  });
   const [drafted, setDrafted] = useState<Record<number, DraftSimulatorProspect>>(() => savedDraftPicks);
   const [passedPicks, setPassedPicks] = useState<Record<number, true>>(() => savedPassedPicks);
+  const draftedRef = useRef<Record<number, DraftSimulatorProspect>>(savedDraftPicks);
+  const passedPicksRef = useRef<Record<number, true>>(savedPassedPicks);
   const [posFilter, setPosFilter] = useState('ALL');
   const [sortBy, setSortBy] = useState<'ovr' | 'pot' | SkillAxis>('ovr');
   const [isSimulating, setIsSimulating] = useState(false);
   const [simSpeed, setSimSpeed] = useState('normal');
   const [hasStarted, setHasStarted] = useState<boolean>(() => savedProgressSlots.length > 0);
   const [scoutingPlayer, setScoutingPlayer] = useState<DraftSimulatorProspect | null>(null);
-  const [viewingBioPlayer, setViewingBioPlayer] = useState<NBAPlayer | null>(null);
+  const [actionsPlayer, setActionsPlayer] = useState<DraftSimulatorProspect | null>(null);
+  const [pendingCommissionerPick, setPendingCommissionerPick] = useState<DraftSimulatorProspect | null>(null);
   const [draftFinalized, setDraftFinalized] = useState(false);
   const [simTarget, setSimTarget] = useState<number | null>(null);
-  const [gistByYear, setGistByYear] = useState<GistProspect[] | null>(() => pbaMode ? null : getCachedDraftScouting(leagueYear) ?? null);
+  const [gistByYear, setGistByYear] = useState<GistProspect[] | null>(() => pbaMode || isFictional ? null : getCachedDraftScouting(leagueYear) ?? null);
 
   const draftOrder = useMemo(() => {
     if ((savedDraftOrder?.length ?? 0) === 0) return computedDraftOrder;
     return savedDraftOrder!.map((team, index) => {
       const pickSlot = index + 1;
-      return pickSlot < currentPick ? team : (computedDraftOrder[index] ?? team);
+      return pickSlot < currentPick && !computedDraftOrder[index]?._forfeited ? team : (computedDraftOrder[index] ?? team);
     });
   }, [computedDraftOrder, currentPick, savedDraftOrder]);
 
   const draftedSet = useMemo(() => new Set(Object.values(drafted).map(player => player.internalId)), [drafted]);
-  const passedPickSet = useMemo(() => new Set(Object.keys(passedPicks).map(Number)), [passedPicks]);
 
   const sortedPool = useMemo(() => {
     const pool = allProspects.filter(player => !draftedSet.has(player.internalId));
@@ -174,16 +198,25 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     [posFilter, sortedPool],
   );
 
+  const selectAiProspect = useCallback(
+    (pickSlot: number, pool: DraftSimulatorProspect[]): DraftSimulatorProspect | undefined => {
+      const teamId = teamIdOf(draftOrder[pickSlot - 1]);
+      if (teamId == null || pool.length === 0) return pool[0];
+      return selectAiDraftProspect({ state, teamId, pickSlot, season: leagueYear, pool });
+    },
+    [draftOrder, leagueYear, state],
+  );
+
   const teamOnClock = draftOrder[currentPick - 1];
   const nextTeam = draftOrder[currentPick];
   const isDraftComplete = currentPick > draftOrder.length;
   const isGM = state.gameMode === 'gm';
   const userTeamId = state.userTeamId;
-  const isUserOnClock = isGM && userTeamId != null && teamIdOf(teamOnClock) === Number(userTeamId);
+  const isUserOnClock = isGM && !teamOnClock?._forfeited && userTeamId != null && teamIdOf(teamOnClock) === Number(userTeamId);
   const userPickSlots = useMemo(() => {
     if (!isGM || userTeamId == null) return [] as number[];
     return draftOrder
-      .map((team, index) => (teamIdOf(team) === Number(userTeamId) ? index + 1 : -1))
+      .map((team, index) => (!team._forfeited && teamIdOf(team) === Number(userTeamId) ? index + 1 : -1))
       .filter(slot => slot > 0);
   }, [draftOrder, isGM, userTeamId]);
   const userRemainingPicks = useMemo(
@@ -193,8 +226,10 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   const nextUserPick = userRemainingPicks[0] ?? null;
   const userHasMorePicks = nextUserPick != null;
   const getDraftRoundForPick = useCallback(
-    (pickSlot: number, team?: DraftOrderTeam) => pbaMode ? ((team as any)?._round ?? ((team as any)?._r2 ? 2 : 1)) : (pickSlot <= 30 ? 1 : 2),
-    [pbaMode],
+    (pickSlot: number, team?: DraftOrderTeam) => fantasyDraftMode
+      ? ((team as any)?._round ?? Math.ceil(pickSlot / Math.max(1, state.teams.length)))
+      : (Number((team as any)?._round) || ((team as any)?._r2 ? 2 : (pickSlot <= (Number((team as any)?._roundSize) || 30) ? 1 : 2))),
+    [fantasyDraftMode, pbaMode, state.teams.length],
   );
 
   const shouldEndDraftAfterPass = useCallback(
@@ -215,16 +250,17 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
 
   const shouldAiPassPick = useCallback(
     (pickSlot: number, player?: DraftSimulatorProspect) => {
+      if (!allowDraftPickPasses) return false;
       if (!player) return true;
       if (!pbaMode) return false;
       const round = getDraftRoundForPick(pickSlot, draftOrder[pickSlot - 1]);
       return round >= 2 && (player.displayOvr ?? 0) < 50 && (player.displayPot ?? 0) < 55;
     },
-    [draftOrder, getDraftRoundForPick, pbaMode],
+    [allowDraftPickPasses, draftOrder, getDraftRoundForPick, pbaMode],
   );
 
   useEffect(() => {
-    if (pbaMode) {
+    if (pbaMode || isFictional) {
       setGistByYear(null);
       return;
     }
@@ -233,34 +269,50 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
       if (!cancelled) setGistByYear(data);
     });
     return () => { cancelled = true; };
-  }, [leagueYear, pbaMode]);
+  }, [isFictional, leagueYear, pbaMode]);
 
   const buildDraftedPlayerUpdate = useCallback(
-    (pickSlot: number) => computeDraftPickFields(pickSlot, draftOrder[pickSlot - 1], state.leagueStats),
-    [draftOrder, state.leagueStats],
+    (pickSlot: number) => {
+      const team = draftOrder[pickSlot - 1];
+      const teamId = teamIdOf(team);
+      if (fantasyDraftMode) return teamId == null ? null : { tid: teamId, status: 'Active' as const };
+      return computeDraftPickFields(pickSlot, team, state.leagueStats, leagueYear);
+    },
+    [draftOrder, fantasyDraftMode, leagueYear, state.leagueStats],
   );
 
   const commitPassToState = useCallback(
     (pickSlot: number, passedAfter: Record<number, true>) => {
+      if (!allowDraftPickPasses) return;
       const team = draftOrder[pickSlot - 1];
       if (!team) return;
-      const allPicksDone = shouldEndDraftAfterPass(pickSlot, passedAfter);
-      const draftSeason = state.leagueStats?.year ?? leagueYear;
+      const draftSeason = leagueYear;
       const round = getDraftRoundForPick(pickSlot, team);
       const teamId = teamIdOf(team);
       const originalTid = (team as any)?._originalTid ?? teamId ?? -1;
-      const draftPicksAfter = (state.draftPicks ?? []).filter(
-        draftPick => !(draftPick.season === draftSeason && draftPick.round === round && draftPick.originalTid === originalTid),
-      );
+      const draftPicksAfter = fantasyDraftMode
+        ? state.draftPicks ?? []
+        : (state.draftPicks ?? []).filter(
+          draftPick => !(draftPick.season === draftSeason && draftPick.round === round && draftPick.originalTid === originalTid),
+        );
 
       dispatch({
         type: 'UPDATE_STATE',
         payload: {
           draftPicks: draftPicksAfter,
-          activeDraftPicks: drafted,
+          activeDraftPicks: draftedRef.current,
           activeDraftPassedPicks: passedAfter,
           activeDraftOrder: draftOrder,
-          ...(allPicksDone ? { draftComplete: true } : {}),
+          seasonLifecycle: lifecycleWithDraftProgress(
+            state,
+            Object.fromEntries(Object.entries(draftedRef.current).map(([slot, draftedPlayer]) => [
+              Number(slot),
+              draftedPlayer.internalId,
+            ])),
+            Object.keys(passedAfter).map(Number),
+            draftOrder.length,
+            true,
+          ),
           history: [
             ...(state.history ?? []),
             {
@@ -273,101 +325,59 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         },
       } as any);
     },
-    [dispatch, draftLabel, draftOrder, drafted, getDraftRoundForPick, leagueYear, shouldEndDraftAfterPass, state.date, state.draftPicks, state.history, state.leagueStats?.year],
+    [allowDraftPickPasses, dispatch, draftLabel, draftOrder, fantasyDraftMode, getDraftRoundForPick, leagueYear, state.date, state.draftPicks, state.history, state.leagueStats?.year],
   );
 
   const commitPickToState = useCallback(
-    (pickSlot: number, player: DraftSimulatorProspect) => {
-      const update = buildDraftedPlayerUpdate(pickSlot);
-      if (!update) return;
-
-      const activeDraftPicksAfter: Record<number, DraftSimulatorProspect> = { ...drafted, [pickSlot]: player };
+    (pickSlot: number, player: DraftSimulatorProspect, activeDraftPicksAfter: Record<number, DraftSimulatorProspect>) => {
       const team = draftOrder[pickSlot - 1];
-      const teamId = teamIdOf(team);
-      if (teamId == null) return;
-      const allPicksDone = pickSlot >= draftOrder.length;
-      const draftSeason = state.leagueStats?.year ?? leagueYear;
-      const retired = new Set<string>(((team as any)?.retiredJerseyNumbers ?? []).map((entry: any) => String(entry.number)));
-      const taken = new Set<string>(
-        state.players
-          .filter(entry => entry.tid === teamId && entry.jerseyNumber && entry.internalId !== player.internalId)
-          .map(entry => String(entry.jerseyNumber)),
-      );
-      const existingNumber = player.jerseyNumber ? String(player.jerseyNumber) : '';
-      const jerseyNumber = !existingNumber || retired.has(existingNumber)
-        ? pickJerseyNumber(new Set([...retired, ...taken]))
-        : existingNumber;
-      const updatedPlayers = state.players.map(entry => {
-        if (entry.internalId !== player.internalId) return entry;
-        const existingTx = (entry as any).transactions ?? [];
-        const hasDraftTx = existingTx.some((tx: any) => tx?.type === 'draft' && tx?.season === draftSeason);
-        const nextTransactions = hasDraftTx
-          ? existingTx
-          : [...existingTx, { season: draftSeason, tid: teamId, type: 'draft', phase: 0, pickNum: pickSlot }];
-        return {
-          ...entry,
-          overallRating: player.overallRating,
-          potential: player.potential,
-          ratings: player.ratings,
-          pbaDraftTunedVersion: (player as any).pbaDraftTunedVersion,
-          ...update,
-          jerseyNumber,
-          signedDate: state.date,
-          transactions: nextTransactions,
-        };
+      const patch = buildDraftSelectionPatch({
+        activeDraftPicksAfter,
+        draftLabel,
+        draftOrderLength: draftOrder.length,
+        draftSeason: leagueYear,
+        fantasyDraftMode,
+        jerseyTeams: draftJerseyTeams as any,
+        passedSlots: Object.keys(passedPicksRef.current).map(Number),
+        pickSlot,
+        player,
+        state,
+        team,
       });
-      const round = getDraftRoundForPick(pickSlot, team);
-      const originalTid = (team as any)?._originalTid ?? teamId;
-      const draftPicksAfter = (state.draftPicks ?? []).filter(
-        draftPick => !(draftPick.season === draftSeason && draftPick.round === round && draftPick.originalTid === originalTid),
-      );
+      if (!patch) return;
 
       dispatch({
         type: 'UPDATE_STATE',
-        payload: {
-          players: normalizeTeamJerseyNumbers(updatedPlayers as any, draftJerseyTeams as any, leagueYear, {
-            history: state.history,
-            targetTeamIds: [teamId],
-          }),
-          draftPicks: draftPicksAfter,
-          activeDraftPicks: activeDraftPicksAfter,
-          activeDraftPassedPicks: passedPicks,
-          activeDraftOrder: draftOrder,
-          ...(allPicksDone ? { draftComplete: true } : {}),
-          history: [
-            ...(state.history ?? []),
-            {
-              text: `The ${getTeamFullName(team as any) || team.name} select ${player.name} as the ${pickSlot}${getOrdinalSuffix(pickSlot)} overall pick of the ${draftSeason} ${draftLabel}.`,
-              date: state.date,
-              type: 'Draft',
-              playerIds: [player.internalId],
-            },
-          ],
-        },
+        payload: { ...patch, activeDraftOrder: draftOrder },
       } as any);
     },
-    [buildDraftedPlayerUpdate, dispatch, draftJerseyTeams, draftLabel, draftOrder, drafted, getDraftRoundForPick, leagueYear, passedPicks, state.date, state.draftPicks, state.history, state.leagueStats?.year, state.players],
+    [dispatch, draftJerseyTeams, draftLabel, draftOrder, fantasyDraftMode, leagueYear, state],
   );
 
   const draftPlayer = useCallback(
     (player: DraftSimulatorProspect) => {
+      if (!draftOrder[currentPick - 1] || draftOrder[currentPick - 1]._forfeited) return;
       setHasStarted(true);
-      setDrafted(previous => ({ ...previous, [currentPick]: player }));
-      commitPickToState(currentPick, player);
+      const nextDrafted = appendLiveDraftSelection(draftedRef.current, currentPick, player);
+      draftedRef.current = nextDrafted;
+      setDrafted(nextDrafted);
+      commitPickToState(currentPick, player, nextDrafted);
       if (currentPick >= draftOrder.length) {
         setIsSimulating(false);
         setSimTarget(null);
       }
       setCurrentPick(previous => previous + 1);
     },
-    [commitPickToState, currentPick, draftOrder.length],
+    [commitPickToState, currentPick, draftOrder],
   );
 
   const passCurrentPick = useCallback(() => {
-    if (isDraftComplete || !teamOnClock) return;
-    const nextPassed = { ...passedPicks, [currentPick]: true as const };
+    if (!allowDraftPickPasses) return;
+    if (isDraftComplete || !teamOnClock || teamOnClock._forfeited) return;
+    const nextPassed = { ...passedPicksRef.current, [currentPick]: true as const };
     const endsDraft = shouldEndDraftAfterPass(currentPick, nextPassed);
     setHasStarted(true);
+    passedPicksRef.current = nextPassed;
     setPassedPicks(nextPassed);
     commitPassToState(currentPick, nextPassed);
     if (endsDraft) {
@@ -375,7 +385,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
       setSimTarget(null);
     }
     setCurrentPick(previous => endsDraft ? draftOrder.length + 1 : previous + 1);
-  }, [commitPassToState, currentPick, draftOrder.length, isDraftComplete, passedPicks, shouldEndDraftAfterPass, teamOnClock]);
+  }, [allowDraftPickPasses, commitPassToState, currentPick, draftOrder.length, isDraftComplete, shouldEndDraftAfterPass, teamOnClock]);
 
   const simToPickInstant = useCallback(
     (targetPick: number) => {
@@ -383,17 +393,21 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
       setSimTarget(null);
       setHasStarted(true);
 
-      const newPicks: Record<number, DraftSimulatorProspect> = { ...drafted };
-      const newPassedPicks: Record<number, true> = { ...passedPicks };
+      const newPicks: Record<number, DraftSimulatorProspect> = { ...draftedRef.current };
+      const newPassedPicks: Record<number, true> = { ...passedPicksRef.current };
       const usedIds = new Set(Object.values(newPicks).map(player => player.internalId));
       const pool = allProspects.filter(player => !usedIds.has(player.internalId));
-      let poolIndex = 0;
       let pickNum = currentPick;
       const freshPicks: Array<{ slot: number; player: DraftSimulatorProspect }> = [];
       const freshPasses: number[] = [];
 
       while (pickNum < targetPick) {
-        const top = pool[poolIndex++];
+        if (draftOrder[pickNum - 1]?._forfeited) {
+          pickNum++;
+          continue;
+        }
+        const remaining = pool.filter(player => !usedIds.has(player.internalId));
+        const top = selectAiProspect(pickNum, remaining);
         if (shouldAiPassPick(pickNum, top)) {
           newPassedPicks[pickNum] = true;
           freshPasses.push(pickNum);
@@ -406,10 +420,13 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         }
         if (!top) break;
         newPicks[pickNum] = top;
+        usedIds.add(top.internalId);
         freshPicks.push({ slot: pickNum, player: top });
         pickNum++;
       }
 
+      draftedRef.current = newPicks;
+      passedPicksRef.current = newPassedPicks;
       setDrafted(newPicks);
       setPassedPicks(newPassedPicks);
       setCurrentPick(pickNum);
@@ -452,7 +469,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         updateMap.set(player.internalId, { ...update, jerseyNumber });
       }
 
-      const draftSeason = state.leagueStats?.year ?? leagueYear;
+      const draftSeason = leagueYear;
       const updatedPlayers = state.players.map(player => {
         const patch = updateMap.get(player.internalId);
         if (!patch) return player;
@@ -460,11 +477,12 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         const teamForPick = slot ? draftOrder[slot - 1] : null;
         const teamForPickId = teamIdOf(teamForPick);
         const existingTx = (player as any).transactions ?? [];
-        const hasDraftTx = existingTx.some((tx: any) => tx?.type === 'draft' && tx?.season === draftSeason);
+        const transactionType = fantasyDraftMode ? 'fantasy_draft' : 'draft';
+        const hasDraftTx = existingTx.some((tx: any) => tx?.type === transactionType && tx?.season === draftSeason);
         const nextTransactions = hasDraftTx || !slot || teamForPickId == null
           ? existingTx
-          : [...existingTx, { season: draftSeason, tid: teamForPickId, type: 'draft', phase: 0, pickNum: slot }];
-        return { ...player, ...patch, signedDate: state.date, transactions: nextTransactions };
+          : [...existingTx, { season: draftSeason, tid: teamForPickId, type: transactionType, phase: 0, pickNum: slot }];
+        return { ...player, ...patch, ...(fantasyDraftMode ? {} : { signedDate: state.date }), transactions: nextTransactions };
       });
       const consumedKeys = new Set(
         [...freshPicks.map(pick => pick.slot), ...freshPasses].map(slot => {
@@ -474,11 +492,11 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           return `${draftSeason}|${round}|${originalTid}`;
         }),
       );
-      const draftPicksAfter = (state.draftPicks ?? []).filter(
-        draftPick => !consumedKeys.has(`${draftPick.season}|${draftPick.round}|${draftPick.originalTid}`),
-      );
-      const allPicksDone = pickNum > draftOrder.length || targetPick > draftOrder.length;
-
+      const draftPicksAfter = fantasyDraftMode
+        ? state.draftPicks ?? []
+        : (state.draftPicks ?? []).filter(
+          draftPick => draftPick.forfeiture || !consumedKeys.has(`${draftPick.season}|${draftPick.round}|${draftPick.originalTid}`),
+        );
       dispatch({
         type: 'UPDATE_STATE',
         payload: {
@@ -490,6 +508,16 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           activeDraftPicks: newPicks,
           activeDraftPassedPicks: newPassedPicks,
           activeDraftOrder: draftOrder,
+          seasonLifecycle: lifecycleWithDraftProgress(
+            { ...state, players: updatedPlayers as NBAPlayer[] },
+            Object.fromEntries(Object.entries(newPicks).map(([slot, draftedPlayer]) => [
+              Number(slot),
+              draftedPlayer.internalId,
+            ])),
+            Object.keys(newPassedPicks).map(Number),
+            draftOrder.length,
+            true,
+          ),
           history: [
             ...(state.history ?? []),
             ...freshPasses.map(slot => {
@@ -511,11 +539,10 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
                 };
             }),
           ],
-          ...(allPicksDone ? { draftComplete: true } : {}),
         },
       } as any);
     },
-    [allProspects, buildDraftedPlayerUpdate, currentPick, dispatch, draftJerseyTeams, draftLabel, draftOrder, drafted, getDraftRoundForPick, leagueYear, passedPicks, shouldAiPassPick, shouldEndDraftAfterPass, state.date, state.draftPicks, state.history, state.leagueStats?.year, state.players],
+    [allProspects, buildDraftedPlayerUpdate, currentPick, dispatch, draftJerseyTeams, draftLabel, draftOrder, fantasyDraftMode, getDraftRoundForPick, leagueYear, selectAiProspect, shouldAiPassPick, shouldEndDraftAfterPass, state.date, state.draftPicks, state.history, state.leagueStats?.year, state.players],
   );
 
   const onToggleAutoSim = useCallback(() => {
@@ -534,7 +561,18 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   }, [isGM, isSimulating, nextUserPick, userHasMorePicks]);
 
   useEffect(() => {
+    if (isDraftTime && draftOrder.length > 0 && draftOrder.every(team => team._forfeited)) setHasStarted(true);
+    if (!teamOnClock?._forfeited) return;
+    setCurrentPick(previous => {
+      let next = previous;
+      while (draftOrder[next - 1]?._forfeited) next++;
+      return next;
+    });
+  }, [draftOrder, isDraftTime, teamOnClock]);
+
+  useEffect(() => {
     if (!isSimulating || isDraftComplete || scoutingPlayer) return;
+    if (draftOrder[currentPick - 1]?._forfeited) return;
     if (simTarget != null && currentPick >= simTarget) {
       setIsSimulating(false);
       setSimTarget(null);
@@ -549,7 +587,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
       dramatic: 5000,
     };
     const timer = setTimeout(() => {
-      const top = available[0];
+      const top = selectAiProspect(currentPick, allProspects.filter(player => !draftedSet.has(player.internalId)));
       if (shouldAiPassPick(currentPick, top)) {
         passCurrentPick();
       } else if (top) {
@@ -558,57 +596,119 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
     }, speedMs[simSpeed] ?? 800);
 
     return () => clearTimeout(timer);
-  }, [available, currentPick, draftPlayer, isDraftComplete, isSimulating, passCurrentPick, scoutingPlayer, shouldAiPassPick, simSpeed, simTarget]);
+  }, [allProspects, currentPick, draftOrder, draftPlayer, draftedSet, isDraftComplete, isSimulating, passCurrentPick, scoutingPlayer, selectAiProspect, shouldAiPassPick, simSpeed, simTarget]);
+
+  const completeScoutingPick = useCallback((player: DraftSimulatorProspect) => {
+    if (!draftOrder[currentPick - 1] || draftOrder[currentPick - 1]._forfeited) return;
+    const pick = currentPick;
+    setHasStarted(true);
+    const nextDrafted = appendLiveDraftSelection(draftedRef.current, pick, player);
+    draftedRef.current = nextDrafted;
+    setDrafted(nextDrafted);
+    commitPickToState(pick, player, nextDrafted);
+    setCurrentPick(pick + 1);
+    setScoutingPlayer(null);
+    setPendingCommissionerPick(null);
+  }, [commitPickToState, currentPick, draftOrder]);
 
   const onConfirmPickForScouting = useCallback(() => {
     if (!scoutingPlayer) return;
-    const pick = currentPick;
-    setHasStarted(true);
-    setDrafted(previous => ({ ...previous, [pick]: scoutingPlayer }));
-    commitPickToState(pick, scoutingPlayer);
-    setCurrentPick(pick + 1);
-    setScoutingPlayer(null);
-  }, [commitPickToState, currentPick, scoutingPlayer]);
+    if (!isGM && !fantasyDraftMode) {
+      setPendingCommissionerPick(scoutingPlayer);
+      return;
+    }
+    completeScoutingPick(scoutingPlayer);
+  }, [completeScoutingPick, fantasyDraftMode, isGM, scoutingPlayer]);
 
   const finalizeDraft = useCallback(() => {
     const leagueStats = state.leagueStats ?? {};
-    const season = getLsYear({ leagueStats } as any);
+    const season = leagueYear;
+    if (fantasyDraftMode) {
+      const draftedIds = new Set(Object.values(drafted).map(player => player.internalId));
+      const finalPlayers = state.players.map(player => {
+        if (!player.fictionalFantasyDraftEligible) return player;
+        return {
+          ...player,
+          fictionalFantasyDraftEligible: undefined,
+          fictionalOriginalTid: undefined,
+          ...(draftedIds.has(player.internalId)
+            ? { status: 'Active' as const }
+            : { tid: -1, status: 'Free Agent' as const }),
+        };
+      });
+      dispatch({
+        type: 'UPDATE_STATE',
+        payload: {
+          players: finalPlayers,
+          draftComplete: false,
+          activeDraftPicks: undefined,
+          activeDraftPassedPicks: undefined,
+          activeDraftOrder: undefined,
+          leagueStats: { ...state.leagueStats, fictionalFantasyDraftCompleted: true },
+        },
+      } as any);
+      onViewChange?.('Schedule');
+      setDraftFinalized(true);
+      return;
+    }
     const tunedPlayers = pbaMode
       ? getPbaDraftPool(tunePbaDraftProspects(state.players, season, leagueStats as any), season, leagueStats as any)
       : state.players;
-    const pbaDraftPoolIds = pbaMode
-      ? new Set(tunedPlayers.map(player => player.internalId))
-      : null;
+    const currentDraftPoolIds = new Set(draftClassProspects.map(player => player.internalId));
     const updatedPlayers = state.players.map(player => {
       const pickEntry = Object.entries(drafted).find(([, draftedPlayer]) => draftedPlayer.internalId === player.internalId);
       if (!pickEntry) return player;
       const pickSlot = Number(pickEntry[0]);
       const draftedPlayer = pickEntry[1];
-      const fields = computeDraftPickFields(pickSlot, draftOrder[pickSlot - 1], leagueStats);
+      const fields = computeDraftPickFields(pickSlot, draftOrder[pickSlot - 1], leagueStats, season);
       return fields ? {
         ...player,
+        pos: draftedPlayer.pos,
         overallRating: draftedPlayer.overallRating,
         potential: draftedPlayer.potential,
         ratings: draftedPlayer.ratings,
+        ovrHistory: (draftedPlayer as any).ovrHistory ?? (player as any).ovrHistory,
+        ovrTimeline: (draftedPlayer as any).ovrTimeline ?? (player as any).ovrTimeline,
         pbaDraftTunedVersion: (draftedPlayer as any).pbaDraftTunedVersion,
         ...fields,
       } : player;
     });
     const draftedIds = new Set(Object.values(drafted).map(player => player.internalId));
+    const tunedById = new Map(tunedPlayers.map(player => [player.internalId, player]));
     const finalPlayers = updatedPlayers.map(player => {
-      const draftYear = (player as any).draft?.year;
-      const isCurrentClass = !draftYear || Number(draftYear) === season;
       if (
-        isCurrentClass &&
+        currentDraftPoolIds.has(player.internalId) &&
         (player.tid === -2 || player.status === 'Draft Prospect' || player.status === 'Prospect') &&
-        (!pbaDraftPoolIds || pbaDraftPoolIds.has(player.internalId)) &&
         !draftedIds.has(player.internalId)
       ) {
-        return { ...player, tid: -1, status: 'Free Agent' as const };
+        const tuned = tunedById.get(player.internalId);
+        const transactions = (player as any).transactions ?? [];
+        const hasUndraftedTx = transactions.some((tx: any) =>
+          tx?.type === 'draft' &&
+          Number(tx?.season) === season &&
+          Number(tx?.pickNum ?? -1) === 0
+        );
+        return {
+          ...player,
+          pos: tuned?.pos ?? player.pos,
+          overallRating: Math.min(tuned?.overallRating ?? player.overallRating ?? 99, UNDRAFTED_OVR_CAP),
+          potential: tuned?.potential ?? player.potential,
+          ratings: tuned?.ratings ?? player.ratings,
+          ovrHistory: (tuned as any)?.ovrHistory ?? (player as any).ovrHistory,
+          ovrTimeline: (tuned as any)?.ovrTimeline ?? (player as any).ovrTimeline,
+          pbaDraftTunedVersion: (tuned as any)?.pbaDraftTunedVersion ?? (player as any).pbaDraftTunedVersion,
+          tid: -1,
+          status: 'Free Agent' as const,
+          transactions: hasUndraftedTx
+            ? transactions
+            : [...transactions, { season, tid: -1, type: 'draft', phase: 0, pickNum: 0 }],
+          draft: { round: 0, pick: 0, year: season, tid: -1, originalTid: -1 },
+        };
       }
       return player;
     });
-    const draftPicksAfter = (state.draftPicks ?? []).filter(pick => pick.season !== season);
+    const draftPicksAfter = (state.draftPicks ?? []).filter(pick => pick.forfeiture || pick.season !== season
+      || !draftOrder.some(team => (team._originalTid ?? team.id) === pick.originalTid));
 
     dispatch({
       type: 'UPDATE_STATE',
@@ -616,13 +716,30 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         players: finalPlayers,
         draftPicks: draftPicksAfter,
         draftComplete: true,
+        seasonLifecycle: lifecycleWithDraftProgress(
+          { ...state, players: finalPlayers },
+          Object.fromEntries(Object.entries(drafted).map(([slot, draftedPlayer]) => [
+            Number(slot),
+            draftedPlayer.internalId,
+          ])),
+          Object.keys(passedPicks).map(Number),
+          draftOrder.length,
+          true,
+        ),
+        ...(pbaMode ? {
+          leagueStats: {
+            ...state.leagueStats,
+            pbaDraftComplete: true,
+            pbaDraftCompleteSeason: season,
+          },
+        } : {}),
         activeDraftPicks: undefined,
         activeDraftPassedPicks: undefined,
         activeDraftOrder: undefined,
       },
     } as any);
     setDraftFinalized(true);
-  }, [dispatch, draftOrder, drafted, pbaMode, state.draftPicks, state.leagueStats, state.players]);
+  }, [dispatch, draftClassProspects, draftOrder, drafted, fantasyDraftMode, leagueYear, onViewChange, pbaMode, state.draftPicks, state.leagueStats, state.players]);
 
   useEffect(() => {
     if (isDraftComplete && hasStarted && !draftFinalized) {
@@ -631,18 +748,23 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
   }, [draftFinalized, finalizeDraft, hasStarted, isDraftComplete]);
 
   useEffect(() => {
-    if (isDraftDone && onViewChange) {
+    if (isDraftDone && onViewChange && !initialFantasyDraft) {
       onViewChange('Draft History');
     }
-  }, [isDraftDone, onViewChange]);
+  }, [initialFantasyDraft, isDraftDone, onViewChange]);
 
-  if (viewingBioPlayer) {
-    return <PlayerBioView player={viewingBioPlayer} onBack={() => setViewingBioPlayer(null)} />;
-  }
+  const handleProspectAction = (action: string) => {
+    const player = actionsPlayer;
+    if (!player) return;
+    setActionsPlayer(null);
+    if (action === 'view_bio') navigateToPlayer(player);
+    else if (action === 'view_scouting') setScoutingPlayer(player);
+  };
 
   const canConfirmScoutingPick =
     ((!isGM || isUserOnClock) &&
       !isDraftComplete &&
+      !teamOnClock?._forfeited &&
       !Object.values(drafted).some(player => player?.internalId === scoutingPlayer?.internalId)) ||
     false;
   const draftDateLabel = getDraftDate(leagueYear, state.leagueStats).toLocaleDateString('en-US', {
@@ -661,7 +783,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           rankById={rankById}
           draftedSet={draftedSet}
           currentPick={currentPick}
-          draftYear={state.leagueStats?.year ?? ''}
+          draftYear={leagueYear}
           draftLabel={draftLabel}
           teamOnClock={teamOnClock}
           nextTeam={nextTeam}
@@ -669,6 +791,7 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           hasStarted={hasStarted}
           isGM={isGM}
           isUserOnClock={isUserOnClock}
+          allowPassPick={allowDraftPickPasses}
           userHasMorePicks={userHasMorePicks}
           nextUserPick={nextUserPick}
           isSimulating={isSimulating}
@@ -676,14 +799,15 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           posFilter={posFilter}
           sortBy={sortBy}
           userTeamId={userTeamId}
-          players={state.players}
+          players={scopedPlayers}
           onSetPosFilter={setPosFilter}
           onSetSortBy={setSortBy}
+          onOpenPlayerActions={setActionsPlayer}
           onOpenScoutingPlayer={setScoutingPlayer}
           onSimToMyPick={() => simToPickInstant(nextUserPick ?? currentPick)}
-          onSimToEnd={() => simToPickInstant(draftOrder.length + 1)}
-          onPassPick={passCurrentPick}
-          onToggleAutoSim={onToggleAutoSim}
+          onSimToEnd={() => setPendingAdvance('end')}
+          onPassPick={() => setPendingAdvance('pass')}
+          onToggleAutoSim={() => isSimulating ? onToggleAutoSim() : setPendingAdvance('auto')}
           onSetSimSpeed={setSimSpeed}
           state={state}
         />
@@ -695,20 +819,8 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
           draftDateLabel={draftDateLabel}
           draftLabel={draftLabel}
           leagueYear={leagueYear}
-          onViewPlayer={setViewingBioPlayer}
+          onViewPlayer={navigateToPlayer}
           state={state}
-        />
-      )}
-
-      {isDraftTime && !isDraftDone && draftOrder.length > 0 && (
-        <FullDraftTable
-          drafted={drafted}
-          passedPicks={passedPickSet}
-          draftOrder={draftOrder}
-          onReview={player => setScoutingPlayer(player)}
-          currentPick={currentPick}
-          userTeamId={userTeamId ?? null}
-          isGM={isGM}
         />
       )}
 
@@ -717,19 +829,77 @@ export const DraftSimulatorView: React.FC<DraftSimulatorViewProps> = ({ onViewCh
         onClose={() => setScoutingPlayer(null)}
         classProspects={allProspects as unknown as NBAPlayer[]}
         activePlayers={activePlayers}
-        percentilesByPos={percentilesByPos}
-        classAverages={classAverages}
         draftYear={leagueYear}
         gistData={scoutingPlayer && gistByYear ? matchProspectToGist(scoutingPlayer, gistByYear) : null}
         onViewPlayerBio={player => {
           setScoutingPlayer(null);
-          setViewingBioPlayer(player);
+          navigateToPlayer(player);
         }}
         onConfirmPick={canConfirmScoutingPick ? onConfirmPickForScouting : undefined}
         pickLabel={`Pick #${currentPick}`}
         preComputedComps={scoutingPlayer ? batchComps.get((scoutingPlayer as NBAPlayer).internalId) : undefined}
         showCombineTab={showCombineTab}
       />
+      {actionsPlayer && (
+        <PlayerActionsModal
+          player={actionsPlayer}
+          context="draft-scouting"
+          onClose={() => setActionsPlayer(null)}
+          onActionSelect={handleProspectAction}
+        />
+      )}
+      {pendingAdvance && (
+        <ConfirmationModal
+          title={pendingAdvance === 'end'
+            ? 'Sim the Rest of the Draft?'
+            : pendingAdvance === 'pass'
+              ? 'Pass This Pick?'
+              : 'Start Auto Sim?'}
+          message={pendingAdvance === 'end'
+            ? 'Your Assistant GM will make every remaining selection. This cannot be undone.'
+            : pendingAdvance === 'pass'
+              ? `This will pass pick ${currentPick} without selecting a player and cannot be undone.`
+              : 'Auto Sim will begin making selections until you pause it or your team is on the clock.'}
+          onCancel={() => setPendingAdvance(null)}
+          onConfirm={() => {
+            const action = pendingAdvance;
+            setPendingAdvance(null);
+            if (action === 'end') simToPickInstant(draftOrder.length + 1);
+            else if (action === 'pass') passCurrentPick();
+            else onToggleAutoSim();
+          }}
+        />
+      )}
+
+      {pendingCommissionerPick && (
+        <div className="fixed inset-0 z-[140] flex items-center justify-center bg-black/85 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-md rounded-3xl border border-amber-400/30 bg-slate-950 p-6 shadow-2xl">
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-amber-300">Commissioner override</p>
+            <h2 className="mt-2 text-2xl font-black uppercase text-white">Override this team’s pick?</h2>
+            <p className="mt-3 text-sm leading-relaxed text-slate-400">
+              You are selecting <span className="font-black text-white">{pendingCommissionerPick.name}</span> for{' '}
+              <span className="font-black text-white">{teamOnClock ? getTeamFullName(teamOnClock as any) : 'the team on the clock'}</span> at pick #{currentPick}.
+            </p>
+            <p className="mt-3 rounded-xl border border-white/10 bg-white/[0.03] p-3 text-xs text-slate-500">
+              This bypasses the team’s normal draft operation and is recorded as the official selection.
+            </p>
+            <div className="mt-6 grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setPendingCommissionerPick(null)}
+                className="rounded-2xl border border-white/10 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-300 hover:bg-white/5"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => completeScoutingPick(pendingCommissionerPick)}
+                className="rounded-2xl bg-amber-400 px-4 py-3 text-xs font-black uppercase tracking-wider text-slate-950 hover:bg-amber-300"
+              >
+                Confirm Override
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

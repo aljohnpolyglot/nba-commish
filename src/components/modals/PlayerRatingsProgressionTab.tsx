@@ -4,8 +4,11 @@ import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YA
 import type { NBAPlayer } from '../../types';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
 import { K2_CATS, getRadarValues, type K2Data } from '../../services/simulation/convert2kAttributes';
-import { convertTo2KRating } from '../../utils/helpers';
+import { getTimelineK2Rating } from '../../utils/helpers';
+import { useGame } from '../../store/GameContext';
+import { fuzzRatingValue } from '../../utils/scoutingFuzz';
 import { formatMentorDate, getRatingColor, RadarCompareChart } from './PlayerRatingsModalShared';
+import { alignCurrentDisplayOverall, buildRatingProgressionSeries } from '../../services/playerDevelopment/progressionTimeline';
 
 type MentorEntry = {
   mentorId: string;
@@ -47,8 +50,9 @@ export const PlayerRatingsProgressionTab: React.FC<{
   radarValues,
   mentorEntries,
 }) => {
+  const { state } = useGame();
   const monthAbbrevs = ['', 'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-  const weeklyData = (player.ovrTimeline ?? [])
+  const weeklyDataRaw = buildRatingProgressionSeries(player, state.date)
     .filter((snapshot: { date: string; ovr: number }) => {
       if (!player.retiredYear) return true;
       const dateYear = parseInt(snapshot.date.split('-')[0]);
@@ -58,9 +62,17 @@ export const PlayerRatingsProgressionTab: React.FC<{
       const [, month, day] = snapshot.date.split('-');
       return {
         season: `${monthAbbrevs[parseInt(month)]} ${parseInt(day)}`,
-        ovr: convertTo2KRating(snapshot.ovr, currentRatings.hgt ?? 50, currentRatings.tp ?? 50),
+        ovr: fuzzRatingValue(
+          getTimelineK2Rating(snapshot, currentRatings.hgt ?? 50, currentRatings.tp ?? 50),
+          state,
+          player,
+          'ovr',
+        ),
       };
     });
+  const weeklyData = player.retiredYear
+    ? weeklyDataRaw
+    : alignCurrentDisplayOverall(weeklyDataRaw, overall2k);
 
   const rawChartData = progressPeriod === 'Career'
     ? ratingHistory
@@ -146,7 +158,7 @@ export const PlayerRatingsProgressionTab: React.FC<{
       <div className="space-y-2">
         <div className="flex items-center justify-between px-1">
           <span className="text-[10px] font-black uppercase tracking-widest text-emerald-400">
-            K2 Deltas · vs {snapshotInfo.label}
+            Rating Changes · vs {snapshotInfo.label}
           </span>
           <span className="text-[9px] font-bold uppercase tracking-widest text-slate-500">Now − Then</span>
         </div>

@@ -1,0 +1,1626 @@
+{
+  "version": 66,
+  "startingSeason": 2027,
+  "players": [
+    {
+      "name": "JuJu Watkins",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 73,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "USC",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 26,
+          "stre": 50,
+          "spd": 62,
+          "jmp": 62,
+          "endu": 86,
+          "ins": 51,
+          "dnk": 49,
+          "fg": 51,
+          "tp": 54,
+          "ft": 59,
+          "pss": 51,
+          "reb": 49,
+          "drb": 54,
+          "oiq": 60,
+          "diq": 65,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175946.png&w=350&h=254"
+    },
+    {
+      "name": "Madison Booker",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 73,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Texas",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 26,
+          "stre": 51,
+          "spd": 62,
+          "jmp": 59,
+          "endu": 83,
+          "ins": 55,
+          "dnk": 51,
+          "fg": 55,
+          "tp": 44,
+          "ft": 62,
+          "pss": 52,
+          "reb": 50,
+          "drb": 58,
+          "oiq": 61,
+          "diq": 60,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175792.png&w=350&h=254"
+    },
+    {
+      "name": "Hannah Hidalgo",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 66,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Notre Dame",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 0,
+          "stre": 39,
+          "spd": 73,
+          "jmp": 52,
+          "endu": 86,
+          "ins": 47,
+          "dnk": 38,
+          "fg": 50,
+          "tp": 39,
+          "ft": 58,
+          "pss": 66,
+          "reb": 35,
+          "drb": 66,
+          "oiq": 65,
+          "diq": 68,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174674.png&w=350&h=254"
+    },
+    {
+      "name": "S'Mya Nichols",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 72,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "Kansas",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 22,
+          "stre": 36,
+          "spd": 66,
+          "jmp": 54,
+          "endu": 77,
+          "ins": 43,
+          "dnk": 40,
+          "fg": 52,
+          "tp": 65,
+          "ft": 62,
+          "pss": 67,
+          "reb": 26,
+          "drb": 66,
+          "oiq": 63,
+          "diq": 45,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175749.png&w=350&h=254"
+    },
+    {
+      "name": "Mikaylah Williams",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 72,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "LSU",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 22,
+          "stre": 47,
+          "spd": 58,
+          "jmp": 55,
+          "endu": 75,
+          "ins": 50,
+          "dnk": 49,
+          "fg": 53,
+          "tp": 63,
+          "ft": 59,
+          "pss": 49,
+          "reb": 44,
+          "drb": 55,
+          "oiq": 54,
+          "diq": 49,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174267.png&w=350&h=254"
+    },
+    {
+      "name": "Talaysia Cooper",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 72,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "Ole Miss",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 22,
+          "stre": 47,
+          "spd": 61,
+          "jmp": 55,
+          "endu": 71,
+          "ins": 47,
+          "dnk": 47,
+          "fg": 50,
+          "tp": 54,
+          "ft": 47,
+          "pss": 53,
+          "reb": 42,
+          "drb": 54,
+          "oiq": 56,
+          "diq": 56,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/4682955.png&w=350&h=254"
+    },
+    {
+      "name": "Clara Strack",
+      "tid": -2,
+      "pos": "C",
+      "hgt": 77,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Kentucky",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 41,
+          "stre": 69,
+          "spd": 39,
+          "jmp": 58,
+          "endu": 77,
+          "ins": 67,
+          "dnk": 64,
+          "fg": 44,
+          "tp": 20,
+          "ft": 40,
+          "pss": 28,
+          "reb": 78,
+          "drb": 29,
+          "oiq": 49,
+          "diq": 71,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174442.png&w=350&h=254"
+    },
+    {
+      "name": "MiLaysia Fulwiley",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 70,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "LSU",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 15,
+          "stre": 33,
+          "spd": 66,
+          "jmp": 54,
+          "endu": 65,
+          "ins": 42,
+          "dnk": 39,
+          "fg": 50,
+          "tp": 48,
+          "ft": 51,
+          "pss": 56,
+          "reb": 24,
+          "drb": 61,
+          "oiq": 58,
+          "diq": 64,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174285.png&w=350&h=254"
+    },
+    {
+      "name": "Ashlyn Watkins",
+      "tid": -2,
+      "pos": "C",
+      "hgt": 75,
+      "born": {
+        "year": 2003,
+        "loc": "USA"
+      },
+      "college": "South Carolina",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 33,
+          "stre": 68,
+          "spd": 43,
+          "jmp": 59,
+          "endu": 62,
+          "ins": 65,
+          "dnk": 66,
+          "fg": 47,
+          "tp": 7,
+          "ft": 46,
+          "pss": 28,
+          "reb": 71,
+          "drb": 34,
+          "oiq": 52,
+          "diq": 77,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/4565516.png&w=350&h=254"
+    },
+    {
+      "name": "Tessa Johnson",
+      "tid": -2,
+      "pos": "SG",
+      "hgt": 72,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "South Carolina",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 22,
+          "stre": 35,
+          "spd": 63,
+          "jmp": 53,
+          "endu": 75,
+          "ins": 40,
+          "dnk": 38,
+          "fg": 50,
+          "tp": 69,
+          "ft": 59,
+          "pss": 53,
+          "reb": 26,
+          "drb": 63,
+          "oiq": 54,
+          "diq": 43,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174284.png&w=350&h=254"
+    },
+    {
+      "name": "Chloe Kitts",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 74,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "South Carolina",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 30,
+          "stre": 60,
+          "spd": 48,
+          "jmp": 55,
+          "endu": 66,
+          "ins": 58,
+          "dnk": 55,
+          "fg": 51,
+          "tp": 41,
+          "ft": 55,
+          "pss": 37,
+          "reb": 65,
+          "drb": 43,
+          "oiq": 53,
+          "diq": 52,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5121055.png&w=350&h=254"
+    },
+    {
+      "name": "Oluchi Okananwa",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 70,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "Maryland",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 15,
+          "stre": 47,
+          "spd": 59,
+          "jmp": 56,
+          "endu": 71,
+          "ins": 54,
+          "dnk": 49,
+          "fg": 54,
+          "tp": 44,
+          "ft": 48,
+          "pss": 42,
+          "reb": 44,
+          "drb": 48,
+          "oiq": 58,
+          "diq": 53,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174408.png&w=350&h=254"
+    },
+    {
+      "name": "Kymora Johnson",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 67,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Virginia",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 4,
+          "stre": 34,
+          "spd": 65,
+          "jmp": 50,
+          "endu": 86,
+          "ins": 37,
+          "dnk": 34,
+          "fg": 47,
+          "tp": 58,
+          "ft": 57,
+          "pss": 67,
+          "reb": 26,
+          "drb": 67,
+          "oiq": 54,
+          "diq": 46,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174436.png&w=350&h=254"
+    },
+    {
+      "name": "Audi Crooks",
+      "tid": -2,
+      "pos": "C",
+      "hgt": 75,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "Oklahoma State",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 33,
+          "stre": 66,
+          "spd": 38,
+          "jmp": 53,
+          "endu": 75,
+          "ins": 80,
+          "dnk": 67,
+          "fg": 51,
+          "tp": 4,
+          "ft": 48,
+          "pss": 29,
+          "reb": 71,
+          "drb": 29,
+          "oiq": 64,
+          "diq": 54,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175491.png&w=350&h=254"
+    },
+    {
+      "name": "Khamil Pierre",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 74,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "North Carolina State",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 30,
+          "stre": 66,
+          "spd": 48,
+          "jmp": 56,
+          "endu": 80,
+          "ins": 61,
+          "dnk": 55,
+          "fg": 50,
+          "tp": 17,
+          "ft": 46,
+          "pss": 33,
+          "reb": 76,
+          "drb": 38,
+          "oiq": 51,
+          "diq": 51,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174309.png&w=350&h=254"
+    },
+    {
+      "name": "Addy Brown",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 74,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "UCLA",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 30,
+          "stre": 56,
+          "spd": 45,
+          "jmp": 50,
+          "endu": 70,
+          "ins": 48,
+          "dnk": 48,
+          "fg": 44,
+          "tp": 40,
+          "ft": 48,
+          "pss": 48,
+          "reb": 62,
+          "drb": 51,
+          "oiq": 47,
+          "diq": 47,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175490.png&w=350&h=254"
+    },
+    {
+      "name": "Zoe Brooks",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 70,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "North Carolina State",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 15,
+          "stre": 34,
+          "spd": 63,
+          "jmp": 50,
+          "endu": 80,
+          "ins": 37,
+          "dnk": 34,
+          "fg": 47,
+          "tp": 32,
+          "ft": 60,
+          "pss": 59,
+          "reb": 27,
+          "drb": 64,
+          "oiq": 51,
+          "diq": 45,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174356.png&w=350&h=254"
+    },
+    {
+      "name": "Kaylene Smikle",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 72,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "Tennessee",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 22,
+          "stre": 44,
+          "spd": 54,
+          "jmp": 53,
+          "endu": 56,
+          "ins": 44,
+          "dnk": 45,
+          "fg": 48,
+          "tp": 50,
+          "ft": 64,
+          "pss": 40,
+          "reb": 39,
+          "drb": 46,
+          "oiq": 58,
+          "diq": 46,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/4618080.png&w=350&h=254"
+    },
+    {
+      "name": "Nunu Agara",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 74,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Maryland",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 30,
+          "stre": 59,
+          "spd": 48,
+          "jmp": 54,
+          "endu": 78,
+          "ins": 57,
+          "dnk": 52,
+          "fg": 48,
+          "tp": 20,
+          "ft": 53,
+          "pss": 31,
+          "reb": 64,
+          "drb": 38,
+          "oiq": 48,
+          "diq": 51,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175934.png&w=350&h=254"
+    },
+    {
+      "name": "Timea Gardiner",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 75,
+      "born": {
+        "year": 2003,
+        "loc": "USA"
+      },
+      "college": "UCLA",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 33,
+          "stre": 52,
+          "spd": 46,
+          "jmp": 52,
+          "endu": 58,
+          "ins": 49,
+          "dnk": 51,
+          "fg": 47,
+          "tp": 52,
+          "ft": 58,
+          "pss": 31,
+          "reb": 49,
+          "drb": 39,
+          "oiq": 46,
+          "diq": 46,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5105734.png&w=350&h=254"
+    },
+    {
+      "name": "Sayvia Sellers",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 67,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Washington",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 4,
+          "stre": 30,
+          "spd": 62,
+          "jmp": 51,
+          "endu": 78,
+          "ins": 44,
+          "dnk": 39,
+          "fg": 51,
+          "tp": 53,
+          "ft": 54,
+          "pss": 58,
+          "reb": 20,
+          "drb": 59,
+          "oiq": 53,
+          "diq": 47,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175965.png&w=350&h=254"
+    },
+    {
+      "name": "Skylar Forbes",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 75,
+      "born": {
+        "year": 2004,
+        "loc": "CAN"
+      },
+      "college": "West Virginia",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 33,
+          "stre": 49,
+          "spd": 44,
+          "jmp": 52,
+          "endu": 73,
+          "ins": 51,
+          "dnk": 50,
+          "fg": 45,
+          "tp": 41,
+          "ft": 47,
+          "pss": 33,
+          "reb": 48,
+          "drb": 35,
+          "oiq": 42,
+          "diq": 51,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175019.png&w=350&h=254"
+    },
+    {
+      "name": "Donovyn Hunter",
+      "tid": -2,
+      "pos": "SG",
+      "hgt": 72,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "UCLA",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 22,
+          "stre": 31,
+          "spd": 60,
+          "jmp": 49,
+          "endu": 81,
+          "ins": 43,
+          "dnk": 40,
+          "fg": 52,
+          "tp": 49,
+          "ft": 47,
+          "pss": 47,
+          "reb": 21,
+          "drb": 57,
+          "oiq": 43,
+          "diq": 43,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175915.png&w=350&h=254"
+    },
+    {
+      "name": "Delaney Thomas",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 75,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Duke",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 33,
+          "stre": 55,
+          "spd": 48,
+          "jmp": 53,
+          "endu": 70,
+          "ins": 61,
+          "dnk": 56,
+          "fg": 53,
+          "tp": 3,
+          "ft": 48,
+          "pss": 28,
+          "reb": 57,
+          "drb": 36,
+          "oiq": 49,
+          "diq": 55,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174409.png&w=350&h=254"
+    },
+    {
+      "name": "Grace Slaughter",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 74,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Missouri",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 30,
+          "stre": 44,
+          "spd": 50,
+          "jmp": 51,
+          "endu": 82,
+          "ins": 44,
+          "dnk": 42,
+          "fg": 46,
+          "tp": 53,
+          "ft": 48,
+          "pss": 36,
+          "reb": 43,
+          "drb": 43,
+          "oiq": 46,
+          "diq": 34,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174274.png&w=350&h=254"
+    },
+    {
+      "name": "KK Arnold",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 69,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Connecticut",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 11,
+          "stre": 26,
+          "spd": 61,
+          "jmp": 45,
+          "endu": 62,
+          "ins": 40,
+          "dnk": 38,
+          "fg": 51,
+          "tp": 42,
+          "ft": 38,
+          "pss": 56,
+          "reb": 14,
+          "drb": 70,
+          "oiq": 48,
+          "diq": 50,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174491.png&w=350&h=254"
+    },
+    {
+      "name": "Sahara Williams",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 71,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Oklahoma",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 18,
+          "stre": 48,
+          "spd": 55,
+          "jmp": 54,
+          "endu": 70,
+          "ins": 46,
+          "dnk": 46,
+          "fg": 48,
+          "tp": 36,
+          "ft": 44,
+          "pss": 48,
+          "reb": 49,
+          "drb": 51,
+          "oiq": 47,
+          "diq": 47,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175754.png&w=350&h=254"
+    },
+    {
+      "name": "Courtney Ogden",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 73,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "Michigan",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 26,
+          "stre": 40,
+          "spd": 51,
+          "jmp": 50,
+          "endu": 73,
+          "ins": 47,
+          "dnk": 46,
+          "fg": 49,
+          "tp": 49,
+          "ft": 57,
+          "pss": 37,
+          "reb": 34,
+          "drb": 45,
+          "oiq": 46,
+          "diq": 42,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175936.png&w=350&h=254"
+    },
+    {
+      "name": "Avery Koenen",
+      "tid": -2,
+      "pos": "C",
+      "hgt": 75,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "North Dakota State",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 33,
+          "stre": 62,
+          "spd": 30,
+          "jmp": 44,
+          "endu": 64,
+          "ins": 66,
+          "dnk": 57,
+          "fg": 40,
+          "tp": 32,
+          "ft": 35,
+          "pss": 23,
+          "reb": 72,
+          "drb": 23,
+          "oiq": 55,
+          "diq": 55,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5178463.png&w=350&h=254"
+    },
+    {
+      "name": "Jada Williams",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 68,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "LSU",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 7,
+          "stre": 29,
+          "spd": 60,
+          "jmp": 47,
+          "endu": 72,
+          "ins": 34,
+          "dnk": 31,
+          "fg": 45,
+          "tp": 43,
+          "ft": 51,
+          "pss": 75,
+          "reb": 20,
+          "drb": 69,
+          "oiq": 49,
+          "diq": 36,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175867.png&w=350&h=254"
+    },
+    {
+      "name": "Elif Istanbulluoglu",
+      "tid": -2,
+      "pos": "C",
+      "hgt": 75,
+      "born": {
+        "year": 2005,
+        "loc": "TUR"
+      },
+      "college": "Louisville",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 33,
+          "stre": 61,
+          "spd": 37,
+          "jmp": 49,
+          "endu": 69,
+          "ins": 64,
+          "dnk": 61,
+          "fg": 45,
+          "tp": 32,
+          "ft": 42,
+          "pss": 27,
+          "reb": 62,
+          "drb": 29,
+          "oiq": 43,
+          "diq": 53,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174420.png&w=350&h=254"
+    },
+    {
+      "name": "Essence Cody",
+      "tid": -2,
+      "pos": "C",
+      "hgt": 76,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "Texas A&M",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 37,
+          "stre": 57,
+          "spd": 34,
+          "jmp": 48,
+          "endu": 62,
+          "ins": 64,
+          "dnk": 61,
+          "fg": 44,
+          "tp": 31,
+          "ft": 45,
+          "pss": 18,
+          "reb": 55,
+          "drb": 21,
+          "oiq": 44,
+          "diq": 57,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174249.png&w=350&h=254"
+    },
+    {
+      "name": "Carys Baker",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 74,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Louisville",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 30,
+          "stre": 51,
+          "spd": 41,
+          "jmp": 50,
+          "endu": 75,
+          "ins": 48,
+          "dnk": 46,
+          "fg": 41,
+          "tp": 46,
+          "ft": 44,
+          "pss": 27,
+          "reb": 53,
+          "drb": 34,
+          "oiq": 41,
+          "diq": 45,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5174440.png&w=350&h=254"
+    },
+    {
+      "name": "McKinna Brackens",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 73,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Arizona State",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 26,
+          "stre": 41,
+          "spd": 49,
+          "jmp": 48,
+          "endu": 73,
+          "ins": 37,
+          "dnk": 38,
+          "fg": 42,
+          "tp": 40,
+          "ft": 40,
+          "pss": 35,
+          "reb": 39,
+          "drb": 41,
+          "oiq": 40,
+          "diq": 43,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5178157.png&w=350&h=254"
+    },
+    {
+      "name": "Grace Grocholski",
+      "tid": -2,
+      "pos": "SG",
+      "hgt": 70,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Minnesota",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 15,
+          "stre": 29,
+          "spd": 55,
+          "jmp": 46,
+          "endu": 75,
+          "ins": 35,
+          "dnk": 31,
+          "fg": 44,
+          "tp": 57,
+          "ft": 40,
+          "pss": 47,
+          "reb": 23,
+          "drb": 56,
+          "oiq": 44,
+          "diq": 35,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175701.png&w=350&h=254"
+    },
+    {
+      "name": "Sa'Myah Smith",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 74,
+      "born": {
+        "year": 2004,
+        "loc": "USA"
+      },
+      "college": "Oklahoma",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 30,
+          "stre": 54,
+          "spd": 44,
+          "jmp": 51,
+          "endu": 68,
+          "ins": 50,
+          "dnk": 50,
+          "fg": 46,
+          "tp": 20,
+          "ft": 38,
+          "pss": 29,
+          "reb": 57,
+          "drb": 36,
+          "oiq": 37,
+          "diq": 46,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/4565520.png&w=350&h=254"
+    },
+    {
+      "name": "Stailee Heard",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 71,
+      "born": {
+        "year": 2005,
+        "loc": "USA"
+      },
+      "college": "Oklahoma State",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 18,
+          "stre": 39,
+          "spd": 50,
+          "jmp": 48,
+          "endu": 70,
+          "ins": 39,
+          "dnk": 40,
+          "fg": 44,
+          "tp": 39,
+          "ft": 47,
+          "pss": 35,
+          "reb": 37,
+          "drb": 42,
+          "oiq": 38,
+          "diq": 43,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://a.espncdn.com/combiner/i?img=/i/headshots/womens-college-basketball/players/full/5175757.png&w=350&h=254"
+    },
+    {
+      "name": "Aïnhoa Risacher",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 74,
+      "born": {
+        "year": 2007,
+        "loc": "France"
+      },
+      "college": "Lyon ASVEL",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 30,
+          "stre": 52,
+          "spd": 62,
+          "jmp": 60,
+          "endu": 66,
+          "ins": 42,
+          "dnk": 47,
+          "fg": 46,
+          "tp": 29,
+          "ft": 57,
+          "pss": 49,
+          "reb": 44,
+          "drb": 55,
+          "oiq": 47,
+          "diq": 51,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://assets.fiba.basketball/image/upload/w_800/f_auto/q_auto/.headshot--person_320371?buster=24"
+    },
+    {
+      "name": "Ziyu Zhang",
+      "tid": -2,
+      "pos": "C",
+      "hgt": 87,
+      "born": {
+        "year": 2007,
+        "loc": "China"
+      },
+      "college": "Shandong",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 78,
+          "stre": 58,
+          "spd": 33,
+          "jmp": 45,
+          "endu": 50,
+          "ins": 71,
+          "dnk": 59,
+          "fg": 51,
+          "tp": 26,
+          "ft": 42,
+          "pss": 26,
+          "reb": 63,
+          "drb": 25,
+          "oiq": 43,
+          "diq": 50,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://assets.fiba.basketball/image/upload/w_800/f_auto/q_auto/.headshot--person_342510?buster=24"
+    },
+    {
+      "name": "Sarah Cisse",
+      "tid": -2,
+      "pos": "C",
+      "hgt": 75,
+      "born": {
+        "year": 2007,
+        "loc": "France"
+      },
+      "college": "BLMA",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 33,
+          "stre": 64,
+          "spd": 42,
+          "jmp": 52,
+          "endu": 67,
+          "ins": 64,
+          "dnk": 59,
+          "fg": 45,
+          "tp": 28,
+          "ft": 58,
+          "pss": 32,
+          "reb": 66,
+          "drb": 32,
+          "oiq": 45,
+          "diq": 60,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://assets.fiba.basketball/image/upload/w_800/f_auto/q_auto/.headshot--person_322588?buster=24"
+    },
+    {
+      "name": "Emma Giacchetti",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 70,
+      "born": {
+        "year": 2007,
+        "loc": "Italy"
+      },
+      "college": "Campobasso",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 15,
+          "stre": 30,
+          "spd": 58,
+          "jmp": 44,
+          "endu": 51,
+          "ins": 34,
+          "dnk": 28,
+          "fg": 45,
+          "tp": 39,
+          "ft": 37,
+          "pss": 45,
+          "reb": 16,
+          "drb": 53,
+          "oiq": 36,
+          "diq": 42,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://assets.fiba.basketball/image/upload/w_800/f_auto/q_auto/.headshot--person_317415?buster=24"
+    },
+    {
+      "name": "Jessica Petrie",
+      "tid": -2,
+      "pos": "PF",
+      "hgt": 74,
+      "born": {
+        "year": 2005,
+        "loc": "Australia"
+      },
+      "college": "Indiana",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 30,
+          "stre": 47,
+          "spd": 39,
+          "jmp": 44,
+          "endu": 62,
+          "ins": 42,
+          "dnk": 40,
+          "fg": 35,
+          "tp": 33,
+          "ft": 51,
+          "pss": 31,
+          "reb": 48,
+          "drb": 32,
+          "oiq": 33,
+          "diq": 42,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://assets.fiba.basketball/image/upload/w_800/f_auto/q_auto/.headshot--person_314268?buster=24"
+    },
+    {
+      "name": "Diana Collins",
+      "tid": -2,
+      "pos": "PG",
+      "hgt": 69,
+      "born": {
+        "year": 2004,
+        "loc": "SWE"
+      },
+      "college": "Kentucky",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 11,
+          "stre": 29,
+          "spd": 57,
+          "jmp": 43,
+          "endu": 73,
+          "ins": 32,
+          "dnk": 27,
+          "fg": 33,
+          "tp": 34,
+          "ft": 45,
+          "pss": 45,
+          "reb": 19,
+          "drb": 48,
+          "oiq": 36,
+          "diq": 42,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://storage.googleapis.com/ukathletics-com/2026/05/amt-e721fcde9fb3c1dbe83ace4640726b172893d952-8dd3074a-dianacollins-scaled.jpg"
+    },
+    {
+      "name": "Claire Dalstra",
+      "tid": -2,
+      "pos": "C",
+      "hgt": 78,
+      "born": {
+        "year": 2007,
+        "loc": "France"
+      },
+      "college": "Charnay Basket",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 44,
+          "stre": 54,
+          "spd": 32,
+          "jmp": 43,
+          "endu": 47,
+          "ins": 49,
+          "dnk": 49,
+          "fg": 34,
+          "tp": 25,
+          "ft": 54,
+          "pss": 23,
+          "reb": 51,
+          "drb": 23,
+          "oiq": 32,
+          "diq": 46,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://assets.fiba.basketball/image/upload/w_800/f_auto/q_auto/.headshot--person_345043?buster=24"
+    },
+    {
+      "name": "Nene Ndiaye",
+      "tid": -2,
+      "pos": "SF",
+      "hgt": 73,
+      "born": {
+        "year": 2004,
+        "loc": "Senegal"
+      },
+      "college": "Oklahoma State",
+      "draft": {
+        "year": 2027
+      },
+      "ratings": [
+        {
+          "season": 2027,
+          "hgt": 26,
+          "stre": 40,
+          "spd": 48,
+          "jmp": 47,
+          "endu": 57,
+          "ins": 29,
+          "dnk": 33,
+          "fg": 32,
+          "tp": 35,
+          "ft": 46,
+          "pss": 36,
+          "reb": 30,
+          "drb": 43,
+          "oiq": 35,
+          "diq": 38,
+          "fuzz": 0
+        }
+      ],
+      "imgURL": "https://assets.fiba.basketball/image/upload/w_800/f_auto/q_auto/.headshot--person_248686?buster=24"
+    }
+  ]
+}

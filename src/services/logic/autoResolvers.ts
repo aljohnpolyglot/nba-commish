@@ -9,10 +9,13 @@ export {
   autoSimVotes,
   autoAnnounceStarters,
   autoAnnounceReserves,
+  autoAnnounceRisingStars,
+  autoAnnounceCelebrityRoster,
   autoSelectDunkContestants,
   autoSelectThreePointContestants,
   autoSelectShootingStarsContestants,
   autoSelectSkillsChallengeContestants,
+  autoSelectHorseContestants,
   autoSimBackgroundNbaVotes,
   autoAnnounceBackgroundNbaStarters,
   autoAnnounceBackgroundNbaReserves,
@@ -43,4 +46,10 @@ export {
 } from './autoResolversParts/awardResolvers';
 
 export { autoInductHOFClass } from './autoResolversParts/hofResolvers';
-export { autoRunLottery, autoRunDraft } from './autoResolversParts/draftResolvers';
+export {
+  autoReviewDraftOrder,
+  completeDraftedRookieContracts,
+  autoRunDraft,
+  autoRunLottery,
+  autoRunRookieContracts,
+} from './autoResolversParts/draftResolvers';

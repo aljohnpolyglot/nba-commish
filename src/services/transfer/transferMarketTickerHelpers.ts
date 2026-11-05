@@ -1,4 +1,6 @@
 import type { GameState, NBAPlayer, TransferBid, TransferListing } from '../../types';
+import type { TycoonState } from '../../types/tycoon';
+import { postClubTransaction, releaseClubReservation } from '../tycoon/clubFinance';
 
 export const GLOBAL_WINDOW_CAP = {
   summer: 70,
@@ -89,14 +91,119 @@ export interface TickResult {
   teams: any[];
   nonNBATeams: any[];
   inboxNotices: Array<{ playerName: string; bidderName: string; amount: number }>;
-  userBidResolutions: Array<{ playerName: string; accepted: boolean; sellerTeamName: string; feeEUR: number; reason?: string; userInitiated?: boolean }>;
-  historyEntries: Array<{ text: string; date: string; type: string; playerIds: string[]; tid?: number; league?: string }>;
+  userBidResolutions: Array<{ playerId?: string; playerName: string; accepted: boolean; sellerTid?: number; sellerTeamName: string; feeEUR: number; reason?: string; userInitiated?: boolean }>;
+  historyEntries: Array<{
+    text: string;
+    date: string;
+    type: string;
+    playerIds: string[];
+    eventType?: 'transaction';
+    personId?: string;
+    sourceIds?: Record<string, string | string[]>;
+    tid?: number;
+    teamIds?: number[];
+    fromTid?: number;
+    toTid?: number;
+    league?: string;
+    season?: number;
+    transactionId?: string;
+  }>;
 }
 
-export function adjustCash(teamsArr: any[], tid: number, deltaEUR: number): any[] {
+export function buildTransferHistoryEntry(input: {
+  activityId: string;
+  date: string;
+  season: number;
+  player?: NBAPlayer;
+  sellerTid: number;
+  sellerName: string;
+  buyerTid: number;
+  buyerName: string;
+  feeText: string;
+  signingBonusText: string;
+  league?: string;
+}): TickResult['historyEntries'][number] {
+  return {
+    text: `${input.player?.name ?? '—'} transferred from ${input.sellerName} to ${input.buyerName} for €${input.feeText}M${input.signingBonusText}`,
+    date: input.date,
+    type: 'Transfer',
+    playerIds: input.player ? [input.player.internalId] : [],
+    eventType: 'transaction',
+    personId: input.player?.personId,
+    sourceIds: input.player?.sourceIds,
+    tid: input.buyerTid,
+    teamIds: [input.sellerTid, input.buyerTid],
+    fromTid: input.sellerTid,
+    toTid: input.buyerTid,
+    league: input.league,
+    season: input.season,
+    transactionId: input.activityId,
+  };
+}
+
+export interface TransferCashPosting {
+  bidId: string;
+  date: string;
+  season: number;
+  label: string;
+  side: 'purchase' | 'sale';
+  playerId: string;
+  sellerTid: number;
+  sellerName: string;
+  buyerTid: number;
+  buyerName: string;
+}
+
+function cloneFinanceState(tycoon: TycoonState): TycoonState {
+  return {
+    ...tycoon,
+    transactions: [...(tycoon.transactions ?? [])],
+    commitments: [...(tycoon.commitments ?? [])],
+    activeReservations: [...(tycoon.activeReservations ?? [])],
+  };
+}
+
+export function adjustCash(
+  teamsArr: any[],
+  tid: number,
+  deltaEUR: number,
+  posting: TransferCashPosting,
+): any[] {
   return teamsArr.map(t => {
     const id = t.id ?? t.tid;
     if (id !== tid || !t.tycoon) return t;
-    return { ...t, tycoon: { ...t.tycoon, cashOnHand: (t.tycoon.cashOnHand ?? 0) + deltaEUR } };
+    const tycoon = cloneFinanceState(t.tycoon);
+    releaseClubReservation(tycoon, `transfer-bid:${posting.bidId}`);
+    postClubTransaction(tycoon, {
+      sourceId: `transfer-${posting.side}:${posting.bidId}`,
+      date: posting.date,
+      season: posting.season,
+      category: 'transfer',
+      label: posting.label,
+      amountEUR: deltaEUR,
+      playerId: posting.playerId,
+      counterpartyTid: posting.side === 'sale' ? posting.buyerTid : posting.sellerTid,
+      counterpartyName: posting.side === 'sale' ? posting.buyerName : posting.sellerName,
+      transactionType: 'Permanent transfer',
+    });
+    return { ...t, tycoon };
+  });
+}
+
+export function releaseInactiveTransferBidReservations(teamsArr: any[], bids: TransferBid[]): any[] {
+  const activeBidIds = new Set(
+    bids.filter(bid => bid.status === 'active' || bid.status === 'highest').map(bid => bid.id),
+  );
+  return teamsArr.map(team => {
+    if (!team.tycoon?.activeReservations?.some((reservation: { sourceId: string }) => (
+      reservation.sourceId.startsWith('transfer-bid:')
+      && !activeBidIds.has(reservation.sourceId.slice('transfer-bid:'.length))
+    ))) return team;
+    const tycoon = cloneFinanceState(team.tycoon);
+    tycoon.activeReservations = tycoon.activeReservations?.filter(reservation => (
+      !reservation.sourceId.startsWith('transfer-bid:')
+      || activeBidIds.has(reservation.sourceId.slice('transfer-bid:'.length))
+    ));
+    return { ...team, tycoon };
   });
 }

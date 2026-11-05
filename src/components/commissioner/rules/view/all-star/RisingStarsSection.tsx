@@ -1,11 +1,20 @@
 import React from 'react';
 import { Zap, Settings2 } from 'lucide-react';
+import { useGame } from '../../../../../store/GameContext';
+import {
+    getCaptainTeamName,
+    getLeagueFormerPlayerCaptainCandidates,
+} from '../../../../../services/allStar/captainPool';
 
 interface RisingStarsSectionProps {
     risingStarsEnabled: boolean;
     setRisingStarsEnabled: (val: boolean) => void;
     risingStarsFormat: string;
     setRisingStarsFormat: (val: string) => void;
+    risingStarsCaptainType: 'player' | 'legend';
+    setRisingStarsCaptainType: (val: 'player' | 'legend') => void;
+    risingStarsLegendCaptainIds: string[];
+    setRisingStarsLegendCaptainIds: (val: string[]) => void;
     risingStarsMirrorLeagueRules: boolean;
     setRisingStarsMirrorLeagueRules: (val: boolean) => void;
     risingStarsQuarterLength: number;
@@ -23,6 +32,11 @@ const FORMAT_META: Record<string, { label: string; desc: string; teams: string }
     usa_vs_world: {
         label: 'USA vs World',
         desc: 'Rookies & sophomores divided by nationality — American-born vs international.',
+        teams: '2 teams',
+    },
+    captains_draft: {
+        label: 'Former Player Captains Draft',
+        desc: 'Two former players draft balanced teams from the rookie and sophomore pool.',
         teams: '2 teams',
     },
     '4team_tournament': {
@@ -45,7 +59,22 @@ const FORMAT_META: Record<string, { label: string; desc: string; teams: string }
 const isTournament = (fmt: string) => fmt === '4team_tournament' || fmt === 'random_4team';
 
 export const RisingStarsSection: React.FC<RisingStarsSectionProps> = (props) => {
+    const { state } = useGame();
     const meta = FORMAT_META[props.risingStarsFormat] ?? FORMAT_META['rookies_vs_sophomores'];
+    const formerPlayerCandidates = getLeagueFormerPlayerCaptainCandidates(
+        state.players,
+        state.teams,
+        state.leagueStats,
+    );
+    const setFormerPlayerCaptain = (index: number, playerId: string) => {
+        const next = [...props.risingStarsLegendCaptainIds];
+        next[index] = playerId;
+        props.setRisingStarsLegendCaptainIds(next.slice(0, 2));
+    };
+    const handleFormatChange = (format: string) => {
+        props.setRisingStarsFormat(format);
+        if (format === 'captains_draft') props.setRisingStarsCaptainType('legend');
+    };
 
     return (
         <div className="bg-slate-800/40 p-6 rounded-3xl border border-slate-800/50 space-y-6">
@@ -69,7 +98,7 @@ export const RisingStarsSection: React.FC<RisingStarsSectionProps> = (props) => 
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Format</span>
                         <select
                             value={props.risingStarsFormat}
-                            onChange={(e) => props.setRisingStarsFormat(e.target.value)}
+                            onChange={(e) => handleFormatChange(e.target.value)}
                             className="w-full bg-slate-950 border border-slate-700 rounded-xl text-white text-[10px] py-2 px-3 focus:outline-none focus:border-indigo-500 appearance-none uppercase font-bold"
                         >
                             {Object.entries(FORMAT_META).map(([val, m]) => (
@@ -81,6 +110,46 @@ export const RisingStarsSection: React.FC<RisingStarsSectionProps> = (props) => 
                             <span className="text-[9px] font-bold text-sky-600 uppercase tracking-wider ml-2 shrink-0">{meta.teams}</span>
                         </div>
                     </div>
+
+                    {props.risingStarsFormat === 'captains_draft' && (
+                        <div className="space-y-3 rounded-2xl border border-slate-700 bg-slate-950/60 p-4">
+                            <div>
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Former Player Captains</span>
+                                <p className="mt-1 text-[9px] italic text-slate-500">
+                                    Captains come from retired players with a career in this league.
+                                </p>
+                            </div>
+                            {formerPlayerCandidates.length >= 2 ? (
+                                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                                    {[0, 1].map(index => (
+                                        <label key={index} className="flex flex-col gap-2">
+                                            <span className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Captain {index + 1}</span>
+                                            <select
+                                                value={props.risingStarsLegendCaptainIds[index] ?? ''}
+                                                onChange={event => setFormerPlayerCaptain(index, event.target.value)}
+                                                className="min-h-11 w-full rounded-xl border border-slate-700 bg-slate-900 px-3 text-xs font-bold text-white"
+                                            >
+                                                <option value="">Select former player</option>
+                                                {formerPlayerCandidates.map(player => (
+                                                    <option
+                                                        key={player.internalId}
+                                                        value={player.internalId}
+                                                        disabled={props.risingStarsLegendCaptainIds[1 - index] === player.internalId}
+                                                    >
+                                                        {getCaptainTeamName(player, player.name)}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </label>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-xs font-medium text-amber-300">
+                                    Two retired players from this league are required for this format.
+                                </p>
+                            )}
+                        </div>
+                    )}
 
                     {/* Tournament-only options */}
                     {isTournament(props.risingStarsFormat) && (

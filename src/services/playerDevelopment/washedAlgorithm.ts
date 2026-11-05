@@ -1,13 +1,16 @@
 import { NBAPlayer } from '../../types';
-import { calculatePlayerOverallForYear } from '../../utils/playerRatings';
+import { calculatePlayerOverallForYear, resolvePotentialBbgm } from '../../utils/playerRatings';
 import { calculateLeagueOverall } from '../logic/leagueOvr';
-const EXTERNAL_LEAGUE_STATUSES = new Set([
-  'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa',
-]);
+import { EXTERNAL_MENS_LEAGUE_STATUSES } from '../../constants';
+import { simDebug } from '../../utils/simDebug';
+const EXTERNAL_LEAGUE_STATUSES = new Set(EXTERNAL_MENS_LEAGUE_STATUSES);
 function isNBAActive(p: NBAPlayer): boolean {
   const s = p.status ?? 'Active';
   return s !== 'Free Agent' && !EXTERNAL_LEAGUE_STATUSES.has(s) && s !== 'WNBA'
       && s !== 'Draft Prospect' && s !== 'Prospect' && s !== 'Retired';
+}
+function isHistoricalRealPlayer(p: NBAPlayer): boolean {
+  return typeof (p as any).srID === 'string' || typeof (p as any).slug === 'string';
 }
 function seededHash(seed: string): number {
   let hash = 0;
@@ -184,7 +187,14 @@ export function markFatherTimeInjections(
       const playerDueDate = spreadDueDate(player.internalId);
       const injected: NBAPlayer = {
         ...player,
-        pendingFatherTime: { changes: pendingChanges, dueDate: playerDueDate, age, ovrBefore },
+        pendingFatherTime: {
+          changes: pendingChanges,
+          appliedChanges: {},
+          startDate: dueDateWindowStart ?? injectionDate,
+          dueDate: playerDueDate,
+          age,
+          ovrBefore,
+        },
       } as any;
       playerMap.set(player.internalId, injected);
       events.push({
@@ -192,14 +202,14 @@ export function markFatherTimeInjections(
         playerName: player.name,
         age,
         injectionDate,
-        dueDate,
+        dueDate: playerDueDate,
         pendingChanges,
         ovrBefore,
       });
-      console.log(
+      simDebug('development', () => (
         `[FatherTime INJECT] ${player.name} (age ${age}) | OVR ${ovrBefore} | due ${playerDueDate}` +
         ` | pending: ${pendingChanges.map(c => `${c.attr}${c.delta}`).join(', ')}`
-      );
+      ), { playerId: player.internalId, event: 'father-time-inject' });
     }
   }
   const result = players.map(p => playerMap.get(p.internalId) ?? p);
@@ -214,37 +224,68 @@ export function resolveFatherTimeInjections(
   let changed = false;
   const result = players.map(player => {
     const pending = (player as any).pendingFatherTime as
-      | { changes: { attr: string; delta: number }[]; dueDate: string; age: number; ovrBefore: number }
+      | {
+          changes: { attr: string; delta: number }[];
+          appliedChanges?: Record<string, number>;
+          startDate?: string;
+          dueDate: string;
+          age: number;
+          ovrBefore: number;
+        }
       | undefined;
     if (!pending) return player;
-    if (pending.dueDate > currentDate) return player;
+    const startDate = pending.startDate ?? pending.dueDate;
+    if (startDate > currentDate) return player;
+    const startMs = Date.parse(`${startDate}T00:00:00Z`);
+    const dueMs = Date.parse(`${pending.dueDate}T00:00:00Z`);
+    const currentMs = Date.parse(`${currentDate}T00:00:00Z`);
+    const dayMs = 86_400_000;
+    const progress = dueMs <= startMs
+      ? (currentMs >= dueMs ? 1 : 0)
+      : Math.max(0, Math.min(1, (currentMs - startMs + dayMs) / (dueMs - startMs + dayMs)));
     const ratingIdx = getLastRatingIdx(player, currentYear);
     const rating: any = { ...(player.ratings as any[])[ratingIdx] };
+    const previousApplied = pending.appliedChanges ?? {};
+    const nextApplied = { ...previousApplied };
     const applied: { attr: string; delta: number }[] = [];
     for (const { attr, delta } of pending.changes) {
       if (rating[attr] == null) continue;
-      rating[attr] = Math.max(15, rating[attr] + delta); // delta is negative
-      applied.push({ attr, delta });
+      const targetDelta = delta < 0
+        ? -Math.floor(Math.abs(delta) * progress)
+        : Math.floor(delta * progress);
+      const incrementalDelta = targetDelta - (previousApplied[attr] ?? 0);
+      nextApplied[attr] = targetDelta;
+      if (incrementalDelta === 0) continue;
+      rating[attr] = Math.max(15, rating[attr] + incrementalDelta);
+      applied.push({ attr, delta: incrementalDelta });
     }
+    const complete = currentDate >= pending.dueDate;
+    if (applied.length === 0 && !complete) return player;
     const newRatings = (player.ratings as any[]).map((r: any, i: number) =>
       i === ratingIdx ? rating : r
     );
-    const updated: NBAPlayer = { ...player, ratings: newRatings };
-    delete (updated as any).pendingFatherTime;
+    const updated: NBAPlayer = {
+      ...player,
+      ratings: newRatings,
+      pendingFatherTime: complete
+        ? undefined
+        : { ...pending, startDate, appliedChanges: nextApplied },
+    } as any;
     updated.overallRating = recomputeOvr(updated, rating, currentYear);
     const ovrAfter = updated.overallRating ?? pending.ovrBefore;
-    events.push({
-      playerId: player.internalId,
-      playerName: player.name,
-      age: pending.age,
-      changes: applied,
-      ovrBefore: pending.ovrBefore,
-      ovrAfter,
-    });
-    console.log(
-      `[FatherTime RESOLVE] ${player.name} (age ${pending.age}) | OVR ${pending.ovrBefore} → ${ovrAfter}` +
-      ` | applied: ${applied.map(c => `${c.attr}${c.delta}`).join(', ')}`
-    );
+    if (complete) {
+      events.push({
+        playerId: player.internalId,
+        playerName: player.name,
+        age: pending.age,
+        changes: pending.changes,
+        ovrBefore: pending.ovrBefore,
+        ovrAfter,
+      });
+      simDebug('development', () => (
+        `[FatherTime COMPLETE] ${player.name} (age ${pending.age}) | OVR ${pending.ovrBefore} → ${ovrAfter}`
+      ), { playerId: player.internalId, event: 'father-time-complete' });
+    }
     changed = true;
     return updated;
   });
@@ -274,8 +315,12 @@ export function applyMiddleClassBoosts(
   const nbaCandidates = allCandidates.filter(isNBAActive);
   const extCandidates = allCandidates.filter(p => !isNBAActive(p));
   const getPotWeights = (pool: NBAPlayer[]) => pool.map(p => {
-    const lastRating = (p as any).ratings?.[(p as any).ratings.length - 1];
-    const pot: number = lastRating?.pot ?? 70;
+    const ratings = ((p as any).ratings ?? []) as any[];
+    const rating = ratings.find(r => Number(r?.season ?? 0) === currentYear) ?? ratings[ratings.length - 1];
+    const age = getPlayerAge(p, currentYear);
+    const ovr = Number(rating?.ovr ?? p.overallRating ?? 60);
+    const storedPot = Number(rating?.pot ?? (p as any).potential ?? 70);
+    const pot = resolvePotentialBbgm(ovr, age, isHistoricalRealPlayer(p) ? undefined : storedPot);
     return Math.pow(pot, 1.5);
   });
   const nbaBuffPicks = weightedPickN(getPotWeights(nbaCandidates), Math.min(NBA_BUFF, nbaCandidates.length), `mc-boost-${saveSeed}-${currentYear}-b${batch}-nba`);
@@ -340,7 +385,9 @@ export function applyMiddleClassBoosts(
     up.overallRating = recomputeOvr(up, rating, currentYear);
     playerMap.set(player.internalId, up);
     events.push({ playerId: player.internalId, playerName: player.name, age, batch, boosts, ovrBefore, ovrAfter: up.overallRating ?? ovrBefore });
-    console.log(`[MC BUFF B${batch}] ${player.name} (age ${age}) | OVR ${ovrBefore} → ${up.overallRating ?? ovrBefore} | ${boosts.map(b => `${b.attr}+${b.delta}`).join(', ')}`);
+    simDebug('development', () => (
+      `[MC BUFF B${batch}] ${player.name} (age ${age}) | OVR ${ovrBefore} → ${up.overallRating ?? ovrBefore} | ${boosts.map(b => `${b.attr}+${b.delta}`).join(', ')}`
+    ), { playerId: player.internalId, event: 'middle-class-buff', batch });
   }
   for (const { candidates: pool, idx: localIdx } of nerfPicksLocal) {
     const player  = pool[localIdx];
@@ -374,7 +421,9 @@ export function applyMiddleClassBoosts(
     up.overallRating = recomputeOvr(up, rating, currentYear);
     playerMap.set(player.internalId, up);
     events.push({ playerId: player.internalId, playerName: player.name, age, batch, boosts: changes, ovrBefore, ovrAfter: up.overallRating ?? ovrBefore });
-    console.log(`[MC NERF B${batch}] ${player.name} (age ${age}) | OVR ${ovrBefore} → ${up.overallRating ?? ovrBefore} | ${changes.map(c => `${c.attr}${c.delta > 0 ? '+' : ''}${c.delta}`).join(', ')}`);
+    simDebug('development', () => (
+      `[MC NERF B${batch}] ${player.name} (age ${age}) | OVR ${ovrBefore} → ${up.overallRating ?? ovrBefore} | ${changes.map(c => `${c.attr}${c.delta > 0 ? '+' : ''}${c.delta}`).join(', ')}`
+    ), { playerId: player.internalId, event: 'middle-class-nerf', batch });
   }
   const result = players.map(p => playerMap.get(p.internalId) ?? p);
   return { players: result, events };

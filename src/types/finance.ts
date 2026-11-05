@@ -8,6 +8,13 @@ export interface Payslip {
   cityTax: number;
   netPay: number;
   daysPaid: number;
+  employer?: string;
+  jurisdiction?: string;
+  currency?: string;
+  paySchedule?: 'monthly' | 'semi-monthly';
+  federalTaxRate?: number;
+  stateTaxRate?: number;
+  cityTaxRate?: number;
 }
 
 export interface BetLeg {

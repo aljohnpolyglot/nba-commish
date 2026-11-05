@@ -6,6 +6,7 @@ import { isPbaRegularPhase, makeCountedPbaRegularBoxSet, pbaBoxIdentity } from '
 
 type TotalRow = {
   NAME: string;
+  _playerId: string;
   GP: string;
   GS: string;
   MIN: string;
@@ -50,55 +51,117 @@ const STAT_KEY: Record<string, keyof TotalRow> = {
 
 const toNumber = (value: unknown) => Number(value ?? 0) || 0;
 
-export function buildPbaTeamLiveTotals(state: GameState, teamId: number): TotalRow[] {
+export function buildPbaTeamLiveTotals(state: GameState, teamId: number | null): TotalRow[] {
   const names = new Map<string, string>();
   for (const player of state.players) names.set(player.internalId, player.name);
   const totals = new Map<string, Record<string, number>>();
+  const sourcePlayerSeasons = new Set<string>();
   const countedRegularBoxes = makeCountedPbaRegularBoxSet((state.boxScores ?? []) as any[], PBA_COMPETITIONS);
+  const ensure = (pid: string) => {
+    const row = totals.get(pid) ?? {
+      gp: 0, gs: 0, min: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0,
+      fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, orb: 0, drb: 0, tov: 0, pf: 0,
+    };
+    totals.set(pid, row);
+    return row;
+  };
+  const addSourceStat = (row: Record<string, number>, stat: Record<string, unknown>) => {
+    row.gp += toNumber(stat.gp);
+    row.gs += toNumber(stat.gs);
+    row.min += toNumber(stat.min);
+    row.pts += toNumber(stat.pts);
+    row.reb += toNumber(stat.trb) || toNumber(stat.orb) + toNumber(stat.drb);
+    row.ast += toNumber(stat.ast);
+    row.stl += toNumber(stat.stl);
+    row.blk += toNumber(stat.blk);
+    row.fgm += toNumber(stat.fg ?? stat.fgm);
+    row.fga += toNumber(stat.fga);
+    row.tpm += toNumber(stat.tp ?? stat.threePm);
+    row.tpa += toNumber(stat.tpa ?? stat.threePa);
+    row.ftm += toNumber(stat.ft ?? stat.ftm);
+    row.fta += toNumber(stat.fta);
+    row.orb += toNumber(stat.orb);
+    row.drb += toNumber(stat.drb);
+    row.tov += toNumber(stat.tov);
+    row.pf += toNumber(stat.pf);
+  };
+
+  for (const player of state.players) {
+    const rowsBySeason = new Map<number, Record<string, unknown>[]>();
+    for (const stat of (player.stats ?? []) as unknown as Array<Record<string, unknown>>) {
+      const season = Number(stat.season);
+      const tid = Number(stat.tid);
+      const competitionId = String(stat.competitionId ?? '').toLowerCase();
+      const belongsToPba = competitionId === 'pba'
+        || competitionId.startsWith('pba-')
+        || (Number.isFinite(tid) && tid >= 2000 && tid < 2100);
+      if (
+        stat.playoffs
+        || (teamId == null ? !belongsToPba : tid !== teamId)
+        || !Number.isFinite(season)
+        || season > state.leagueStats.year
+        || toNumber(stat.gp) <= 0
+      ) continue;
+      if (competitionId && competitionId !== 'pba' && !competitionId.startsWith('pba-')) continue;
+      const rows = rowsBySeason.get(season) ?? [];
+      rows.push(stat);
+      rowsBySeason.set(season, rows);
+    }
+    for (const [season, rows] of rowsBySeason) {
+      const aggregate = rows.find(stat => String(stat.competitionId ?? '').toLowerCase() === 'pba');
+      const selectedRows = aggregate ? [aggregate] : rows;
+      const total = ensure(player.internalId);
+      selectedRows.forEach(stat => addSourceStat(total, stat));
+      sourcePlayerSeasons.add(`${player.internalId}|${season}`);
+    }
+  }
 
   for (const box of (state.boxScores ?? []) as any[]) {
     if (!String(box?.competitionId ?? '').startsWith('pba-')) continue;
     if (isPbaRegularPhase(box?.competitionPhase) && !countedRegularBoxes.has(pbaBoxIdentity(box))) continue;
     const meta = classifyBoxScoreGame(box, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, state.leagueStats);
     if (meta.isPreseason || meta.isPlayIn || meta.excludeFromRecord || meta.isAllStar) continue;
-    const side = Number(box.homeTeamId) === teamId
-      ? box.homeStats
-      : Number(box.awayTeamId) === teamId
-        ? box.awayStats
-        : null;
-    if (!Array.isArray(side)) continue;
+    const sides = teamId == null
+      ? [box.homeStats, box.awayStats]
+      : Number(box.homeTeamId) === teamId
+        ? [box.homeStats]
+        : Number(box.awayTeamId) === teamId
+          ? [box.awayStats]
+          : [];
 
-    for (const line of side) {
-      const pid = String(line?.playerId ?? '');
-      if (!pid) continue;
-      const row = totals.get(pid) ?? {
-        gp: 0, gs: 0, min: 0, pts: 0, reb: 0, ast: 0, stl: 0, blk: 0,
-        fgm: 0, fga: 0, tpm: 0, tpa: 0, ftm: 0, fta: 0, orb: 0, drb: 0, tov: 0, pf: 0,
-      };
-      row.gp += 1;
-      row.gs += toNumber(line.gs) > 0 ? 1 : 0;
-      row.min += toNumber(line.min);
-      row.pts += toNumber(line.pts);
-      row.reb += toNumber(line.reb ?? line.trb ?? (toNumber(line.orb) + toNumber(line.drb)));
-      row.ast += toNumber(line.ast);
-      row.stl += toNumber(line.stl);
-      row.blk += toNumber(line.blk);
-      row.fgm += toNumber(line.fgm);
-      row.fga += toNumber(line.fga);
-      row.tpm += toNumber(line.threePm);
-      row.tpa += toNumber(line.threePa);
-      row.ftm += toNumber(line.ftm);
-      row.fta += toNumber(line.fta);
-      row.orb += toNumber(line.orb);
-      row.drb += toNumber(line.drb);
-      row.tov += toNumber(line.tov);
-      row.pf += toNumber(line.pf);
-      totals.set(pid, row);
+    for (const side of sides) {
+      if (!Array.isArray(side)) continue;
+      for (const line of side) {
+        const pid = String(line?.playerId ?? '');
+        if (!pid) continue;
+        const season = Number(box.season ?? state.leagueStats.year);
+        if (sourcePlayerSeasons.has(`${pid}|${season}`)) continue;
+        const row = ensure(pid);
+        row.gp += 1;
+        row.gs += toNumber(line.gs) > 0 ? 1 : 0;
+        row.min += toNumber(line.min);
+        row.pts += toNumber(line.pts);
+        row.reb += toNumber(line.reb ?? line.trb ?? (toNumber(line.orb) + toNumber(line.drb)));
+        row.ast += toNumber(line.ast);
+        row.stl += toNumber(line.stl);
+        row.blk += toNumber(line.blk);
+        row.fgm += toNumber(line.fgm);
+        row.fga += toNumber(line.fga);
+        row.tpm += toNumber(line.threePm);
+        row.tpa += toNumber(line.threePa);
+        row.ftm += toNumber(line.ftm);
+        row.fta += toNumber(line.fta);
+        row.orb += toNumber(line.orb);
+        row.drb += toNumber(line.drb);
+        row.tov += toNumber(line.tov);
+        row.pf += toNumber(line.pf);
+      }
     }
   }
 
   return Array.from(totals.entries()).map(([pid, row]) => ({
     NAME: names.get(pid) ?? pid,
+    _playerId: pid,
     GP: String(row.gp),
     GS: String(row.gs),
     MIN: String(Math.round(row.min)),
@@ -146,6 +209,7 @@ export function buildPbaAverageLeaders(liveTotals: TotalRow[]): any[] {
       const tpa = toNumber(row['3PA']);
       const fta = toNumber(row.FTA);
       return {
+        ...row,
         NAME: row.NAME,
         GP: row.GP,
         _live: true,

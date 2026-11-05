@@ -4,15 +4,16 @@ import { useLeagueLabels } from '../../../utils/leagueLabels';
 import { useHubScope } from '../../../hooks/useHubScope';
 import { NBAPlayer, Contact, Game } from '../../../types';
 import { PlayerActionsModal } from './PlayerActionsModal';
-import { PlayerBioView } from './PlayerBioView';
 import { PlayerRatingsModal } from '../../modals/PlayerRatingsModal';
-import ContactModal from '../../ContactModal';
 import { PersonSelectorModal } from '../../modals/PersonSelectorModal';
 import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { format, addDays } from 'date-fns';
 import { getOwnTeamId, normalizeDate } from '../../../utils/helpers';
 import { resolveAnyTeam } from '../../../utils/teamLookup';
 import { getTeamFullName } from '../../../utils/teamNames';
+import { findBoxScoreForScheduledGame } from '../../../utils/boxScoreLookup';
+import { formatInjuryRecoveryWindow } from '../../../services/injuryService';
+import { usePlayerPersonActions } from '../../../hooks/usePlayerPersonActions';
 
 interface InjuriesViewProps {
   filteredTeamId?: number;  // pre-filter to a single team (used in TeamDetailView)
@@ -20,7 +21,7 @@ interface InjuriesViewProps {
 }
 
 export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embedded }) => {
-  const { state, navigateToTeam, healPlayer, dispatchAction } = useGame();
+  const { state, navigateToPlayer, navigateToTeam, healPlayer, dispatchAction, injuriesTeamFilter, setInjuriesTeamFilter } = useGame();
   const labels = useLeagueLabels();
   const ownTid = getOwnTeamId(state);
   const { hubTab, teams: scopedTeams, tids: scopedTids, isScoped, euroIsolated } = useHubScope();
@@ -28,13 +29,24 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
   const injurySubtitle = euroIsolated ? 'Current injury report across the selected clubs' : 'Current injury report across the league';
   const allTeamsLabel = euroIsolated ? 'All Clubs' : 'All Teams';
   const [actionsPlayer, setActionsPlayer] = React.useState<NBAPlayer | null>(null);
-  const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>(filteredTeamId ?? 'all');
-  const [viewingBioPlayer, setViewingBioPlayer] = React.useState<NBAPlayer | null>(null);
+  const [selectedTeamId, setSelectedTeamId] = React.useState<number | 'all'>(filteredTeamId ?? injuriesTeamFilter ?? 'all');
   const [viewingRatingsPlayer, setViewingRatingsPlayer] = React.useState<NBAPlayer | null>(null);
   const [selectedPlayerContact, setSelectedPlayerContact] = React.useState<Contact | null>(null);
   const [personSelectorOpen, setPersonSelectorOpen] = React.useState(false);
-  const [personSelectorType, setPersonSelectorType] = React.useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'waive'>('general');
+  const [personSelectorType, setPersonSelectorType] = React.useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'movie' | 'give_money' | 'sabotage' | 'waive'>('general');
   const [boxScoreGame, setBoxScoreGame] = React.useState<Game | null>(null);
+  const playerPersonActions = usePlayerPersonActions();
+
+  React.useEffect(() => {
+    if (filteredTeamId != null) {
+      setSelectedTeamId(filteredTeamId);
+      return;
+    }
+    if (injuriesTeamFilter != null) {
+      setSelectedTeamId(injuriesTeamFilter);
+      setInjuriesTeamFilter(null);
+    }
+  }, [filteredTeamId, injuriesTeamFilter, setInjuriesTeamFilter]);
 
   // Whitelist the two real date formats the sim produces. Labels like "Summer 2025"
   // are partially parseable in some browsers (V8 rejects but WebKit returns Jan 1,
@@ -88,7 +100,7 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
   const handleActionSelect = (actionType: string) => {
     if (!actionsPlayer) return;
     if (actionType === 'view_bio') {
-      setViewingBioPlayer(actionsPlayer);
+      navigateToPlayer(actionsPlayer);
       setActionsPlayer(null);
       return;
     }
@@ -97,34 +109,15 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
       setActionsPlayer(null);
       return;
     }
+    if (playerPersonActions.open(actionsPlayer, actionType)) {
+      setActionsPlayer(null);
+      return;
+    }
     const contact = getContactFromPlayer(actionsPlayer);
     setActionsPlayer(null);
-    if (actionType === 'contact') {
-      setSelectedPlayerContact(contact);
-    } else {
-      setPersonSelectorType(actionType as any);
-      setSelectedPlayerContact(contact);
-      setPersonSelectorOpen(true);
-    }
-  };
-
-  const handleSendMessage = async (params: { message: string }) => {
-    if (selectedPlayerContact) {
-      const chat = state.chats.find(c => c.participants.includes(selectedPlayerContact.id));
-      await dispatchAction({
-        type: 'SEND_CHAT_MESSAGE',
-        payload: {
-          chatId: chat?.id,
-          text: params.message,
-          targetId: selectedPlayerContact.id,
-          targetName: selectedPlayerContact.name,
-          targetRole: selectedPlayerContact.title,
-          targetOrg: (selectedPlayerContact as any).teamId || 'Unknown',
-          avatarUrl: selectedPlayerContact.playerPortraitUrl
-        }
-      });
-      setSelectedPlayerContact(null);
-    }
+    setPersonSelectorType(actionType as any);
+    setSelectedPlayerContact(contact);
+    setPersonSelectorOpen(true);
   };
 
   const handlePersonSelected = async (contacts: Contact[], reason?: string, amount?: number, location?: string, duration?: string) => {
@@ -132,10 +125,10 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
     setSelectedPlayerContact(null);
     let actionType = '';
     if (personSelectorType === 'suspension') actionType = 'SUSPEND_PLAYER';
+    if (personSelectorType === 'drug_test') actionType = 'DRUG_TEST_PERSON';
     if (personSelectorType === 'dinner') actionType = 'INVITE_DINNER';
     if (personSelectorType === 'movie') actionType = 'INVITE_DINNER';
     if (personSelectorType === 'fine') actionType = 'FINE_PERSON';
-    if (personSelectorType === 'bribe') actionType = 'BRIBE_PERSON';
     if (personSelectorType === 'sabotage') actionType = 'SABOTAGE_PLAYER';
     if (personSelectorType === 'waive') actionType = 'WAIVE_PLAYER';
     if (!actionType) return;
@@ -252,11 +245,11 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
         ];
         comment = templates[seed % templates.length];
       } else if (gamesOut <= 15) {
-        const weeks = Math.ceil(gamesOut / 3);
+        const recoveryWindow = formatInjuryRecoveryWindow(gamesOut);
         const templates = [
-          `${dateStr}: ${lastName} (${injuryType}) will be re-evaluated in ${weeks} weeks, ${reporter} reports.`,
-          `${dateStr}: An MRI confirmed a ${injuryType} for ${lastName} and he will be re-evaluated in ${weeks} weeks.`,
-          `${dateStr}: ${lastName} (${injuryType}) will miss ${getTeamFullName(team)}'s next ${gamesOut} games.`
+          `${dateStr}: ${lastName} (${injuryType}) will be re-evaluated in ${recoveryWindow}, ${reporter} reports.`,
+          `${dateStr}: An MRI confirmed a ${injuryType} for ${lastName} and he will be re-evaluated in ${recoveryWindow}.`,
+          `${dateStr}: ${lastName} (${injuryType}) is expected to remain out for ${recoveryWindow}.`
         ];
         comment = templates[seed % templates.length];
       } else {
@@ -278,15 +271,6 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
   // Comments only regenerate when injury status changes (out → day-to-day)
   }, [injuredPlayersByTeam, scopedTeams]);
 
-  if (viewingBioPlayer) {
-    return (
-      <PlayerBioView
-        player={viewingBioPlayer}
-        onBack={() => setViewingBioPlayer(null)}
-      />
-    );
-  }
-
   return (
     <div className="h-full overflow-hidden p-4 md:p-8">
       {actionsPlayer && (
@@ -294,19 +278,11 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
           player={actionsPlayer}
           onClose={() => setActionsPlayer(null)}
           onActionSelect={handleActionSelect}
-          onHeal={() => { healPlayer(actionsPlayer.internalId); setActionsPlayer(null); }}
+          onHeal={() => healPlayer(actionsPlayer.internalId)}
         />
       )}
       {viewingRatingsPlayer && (
         <PlayerRatingsModal player={viewingRatingsPlayer} season={state.leagueStats?.year ?? new Date().getFullYear()} onClose={() => setViewingRatingsPlayer(null)} />
-      )}
-      {selectedPlayerContact && !personSelectorOpen && (
-        <ContactModal
-          contact={selectedPlayerContact}
-          onClose={() => setSelectedPlayerContact(null)}
-          onSend={handleSendMessage}
-          isLoading={state.isProcessing}
-        />
       )}
       {personSelectorOpen && (
         <PersonSelectorModal
@@ -315,10 +291,13 @@ export const InjuriesView: React.FC<InjuriesViewProps> = ({ filteredTeamId, embe
           onClose={() => { setPersonSelectorOpen(false); setSelectedPlayerContact(null); }}
           onSelect={handlePersonSelected}
           preSelectedContact={selectedPlayerContact || undefined}
+          skipPersonSelection={!!selectedPlayerContact && personSelectorType !== 'dinner' && personSelectorType !== 'movie'}
+          showInviteMorePrompt={personSelectorType === 'dinner' || personSelectorType === 'movie'}
         />
       )}
+      {playerPersonActions.portals}
       {boxScoreGame && (() => {
-        const bsResult = state.boxScores.find((b: any) => b.gameId === boxScoreGame.gid);
+        const bsResult = findBoxScoreForScheduledGame(state.boxScores, boxScoreGame);
         const homeTeam = resolveAnyTeam(boxScoreGame.homeTid, state.teams, state.nonNBATeams ?? []);
         const awayTeam = resolveAnyTeam(boxScoreGame.awayTid, state.teams, state.nonNBATeams ?? []);
         if (!homeTeam || !awayTeam) return null;

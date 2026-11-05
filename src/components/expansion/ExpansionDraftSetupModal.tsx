@@ -1,8 +1,8 @@
 // ExpansionDraftSetupModal — ZenGM-style Setup-Wizard für den Expansion Draft.
 //
 // Drei Tabs:
-//   1. Teams       — Add aus Pool A (ZenGM teamInfos), Pool B (lokaler Logo-Pool),
-//                    oder Blank Team. Pro Team Karte mit editierbaren Feldern.
+//   1. Teams       — Add aus dem generierten Template-Katalog, NBA-Vorlagen
+//                    oder als Blank Team. Pro Team Karte mit editierbaren Feldern.
 //   2. Realignment — Pro Bestandsteam Conference/Division-Dropdown. 1-Klick-
 //                    Apply für ZenGM 2029-Realignment (SEA→NW, LV→Pacific,
 //                    MIN→East, …).
@@ -16,12 +16,11 @@
 
 import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Trash2, ImagePlus, Sparkles, Calendar, Users, Map } from 'lucide-react';
+import { X, Plus, Trash2, Sparkles, Calendar, Users, Map } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import type { ExpansionTeamSpec } from '../../types';
-import { ZENGM_EXPANSION_POOL } from '../../data/expansionTeamPool';
-import { getExpansionLogoPool, type ParsedLogoTeam } from '../../data/expansionLogoPool';
 import { ZENGM_2029_REALIGNMENT } from '../../data/expansion2029';
+import { ExpansionTeamPicker } from './ExpansionTeamPicker';
 
 interface Props {
   onClose: () => void;
@@ -83,19 +82,6 @@ const DIVISION_GROUPS: Array<{
 
 // ─── Defaults ───────────────────────────────────────────────────────────────
 
-function blankTeam(): ExpansionTeamSpec {
-  return {
-    region: '',
-    name: '',
-    abbrev: '',
-    pop: 2.0,
-    colors: ['#1d428a', '#c8102e', '#ffffff'],
-    conference: 'West',
-    cid: 1,
-    did: 5, // Pacific (8-Div Schema)
-  };
-}
-
 // ZenGM-2029-Realignment-Vorlage: jetzt zentral in src/data/expansion2029.ts.
 
 // Division-Labels für Dropdown + Display. Reihenfolge identisch zu cid/did:
@@ -113,28 +99,6 @@ const DIVISION_LABELS: Record<number, string> = {
 };
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
-
-/** Auto-Abbrev aus Region (erste 3 Buchstaben des ersten Region-Worts).
- *  "Anaheim" → "ANA", "Kansas City" → "KAN", "Ann Arbor" → "ANN". */
-function deriveAbbrevFromRegion(region: string): string {
-  const firstWord = region.trim().split(/\s+/)[0] ?? '';
-  return firstWord.slice(0, 3).toUpperCase();
-}
-
-function logoToSpec(logo: ParsedLogoTeam): ExpansionTeamSpec {
-  return {
-    region: logo.region,
-    name: logo.name,
-    abbrev: deriveAbbrevFromRegion(logo.region),
-    pop: 2.0,
-    colors: [logo.primary, logo.secondary, '#ffffff'],
-    imgURL: logo.logoUrl,
-    imgURLSmall: logo.smallUrl,
-    conference: 'West',
-    cid: 1,
-    did: 5, // Pacific (8-Div Schema)
-  };
-}
 
 function getConferenceCid(conference: Conference): 0 | 1 {
   return conference === 'East' ? 0 : 1;
@@ -215,14 +179,14 @@ export const ExpansionDraftSetupModal: React.FC<Props> = ({ onClose, onConfirm }
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-3 md:p-4"
+        className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-stretch sm:items-center justify-center overflow-y-auto p-0 sm:p-3 md:p-4"
         onClick={onClose}
       >
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.95, opacity: 0 }}
-          className="bg-zinc-900 text-white rounded-xl shadow-2xl w-full max-w-5xl max-h-[calc(100vh-1.5rem)] md:max-h-[calc(100vh-2rem)] flex flex-col"
+          className="bg-zinc-900 text-white rounded-none sm:rounded-xl shadow-2xl w-full max-w-5xl h-[100dvh] sm:h-auto sm:max-h-[calc(100dvh-1.5rem)] md:max-h-[calc(100dvh-2rem)] flex flex-col overflow-hidden"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Header */}
@@ -383,7 +347,7 @@ const TeamsTab: React.FC<{
       </div>
 
       {showAddPicker && (
-        <AddTeamPicker
+        <ExpansionTeamPicker
           onPick={(spec) => {
             setTeams(prev => [...prev, spec]);
             setShowAddPicker(false);
@@ -432,7 +396,7 @@ const TeamCard: React.FC<{
         </button>
       </div>
 
-      <div className="grid grid-cols-3 gap-1.5 text-xs">
+      <div className="grid grid-cols-2 gap-1.5 text-xs sm:grid-cols-4">
         <input
           value={team.abbrev}
           onChange={(e) => onUpdate({ abbrev: e.target.value.toUpperCase().slice(0, 3) })}
@@ -445,6 +409,16 @@ const TeamCard: React.FC<{
           step="0.1"
           onChange={(e) => onUpdate({ pop: parseFloat(e.target.value) || 0 })}
           placeholder="Pop (M)"
+          className="bg-zinc-800 px-2 py-1 rounded"
+        />
+        <input
+          type="number"
+          value={team.stadiumCapacity ?? 18_000}
+          step="250"
+          min="1"
+          onChange={(e) => onUpdate({ stadiumCapacity: Math.max(1, parseInt(e.target.value, 10) || 1) })}
+          placeholder="Capacity"
+          title="Arena capacity"
           className="bg-zinc-800 px-2 py-1 rounded"
         />
         <select
@@ -472,130 +446,6 @@ const TeamCard: React.FC<{
             className="w-8 h-6 rounded cursor-pointer bg-transparent border border-zinc-700"
           />
         ))}
-      </div>
-    </div>
-  );
-};
-
-// ─── Add-Team-Picker (Pool A / B / C) ──────────────────────────────────────
-
-const AddTeamPicker: React.FC<{
-  onPick: (spec: ExpansionTeamSpec) => void;
-  onClose: () => void;
-}> = ({ onPick, onClose }) => {
-  const [source, setSource] = useState<'zengm' | 'logos' | 'blank'>('zengm');
-  const [search, setSearch] = useState('');
-
-  const logoPool = useMemo(() => getExpansionLogoPool(), []);
-  const filteredLogos = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return logoPool;
-    return logoPool.filter(l =>
-      l.region.toLowerCase().includes(q) || l.name.toLowerCase().includes(q)
-    );
-  }, [logoPool, search]);
-
-  return (
-    <div className="fixed inset-0 z-60 bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-3xl max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-3 border-b border-zinc-800">
-          <h3 className="font-semibold">Add Expansion Team</h3>
-          <button onClick={onClose}><X className="w-4 h-4 text-zinc-400" /></button>
-        </div>
-        <div className="flex border-b border-zinc-800 px-5">
-          {([
-            { id: 'zengm', label: 'NBA Defaults', desc: 'Seattle, Vegas, Vancouver, …' },
-            { id: 'logos', label: 'Logo Pool', desc: '205 fictional teams' },
-            { id: 'blank', label: 'Blank Team', desc: 'Manual entry' },
-          ] as const).map(s => (
-            <button
-              key={s.id}
-              onClick={() => setSource(s.id)}
-              className={`px-4 py-2.5 text-sm border-b-2 transition-colors ${
-                source === s.id ? 'border-emerald-500 text-white' : 'border-transparent text-zinc-400 hover:text-zinc-200'
-              }`}
-              title={s.desc}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-4">
-          {source === 'zengm' && (
-            <div className="grid grid-cols-2 gap-2">
-              {ZENGM_EXPANSION_POOL.map(t => (
-                <button
-                  key={t.abbrev}
-                  onClick={() => onPick({ ...t })}
-                  className="flex items-center gap-3 p-2 border border-zinc-700 hover:border-emerald-500 rounded text-left"
-                >
-                  <div className="w-8 h-8 rounded relative overflow-hidden" style={{ background: t.colors[0], color: '#fff' }}>
-                    <span className="absolute inset-0 flex items-center justify-center text-xs font-bold pointer-events-none">
-                      {t.abbrev}
-                    </span>
-                    {t.imgURL && (
-                      <img
-                        src={t.imgURL}
-                        alt=""
-                        loading="lazy"
-                        className="absolute inset-0 w-full h-full object-contain"
-                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                      />
-                    )}
-                  </div>
-                  <div className="flex-1">
-                    <div className="text-sm font-semibold">{t.region} {t.name}</div>
-                    <div className="text-xs text-zinc-500">{t.conference} · {t.pop}M</div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-
-          {source === 'logos' && (
-            <div className="space-y-3">
-              <input
-                autoFocus
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search 205 logos by region or name…"
-                className="w-full bg-zinc-800 px-3 py-2 rounded text-sm"
-              />
-              <div className="grid grid-cols-3 gap-2">
-                {filteredLogos.map(logo => (
-                  <button
-                    key={logo.slug}
-                    onClick={() => onPick(logoToSpec(logo))}
-                    className="flex items-center gap-2 p-2 border border-zinc-700 hover:border-emerald-500 rounded text-left"
-                  >
-                    <img src={logo.logoUrl} alt="" loading="lazy" className="w-8 h-8 object-contain" onError={(e) => { (e.target as HTMLImageElement).style.opacity = '0.2'; }} />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-semibold truncate">{logo.region}</div>
-                      <div className="text-xs text-zinc-500 truncate">{logo.name}</div>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              {filteredLogos.length === 0 && (
-                <p className="text-center text-sm text-zinc-500 py-8">No logos match "{search}"</p>
-              )}
-            </div>
-          )}
-
-          {source === 'blank' && (
-            <div className="text-center py-12">
-              <ImagePlus className="w-10 h-10 mx-auto mb-3 text-zinc-600" />
-              <p className="text-sm text-zinc-400 mb-4">Start with empty fields and fill in everything yourself.</p>
-              <button
-                onClick={() => onPick(blankTeam())}
-                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded text-sm font-semibold"
-              >
-                Create Blank Team
-              </button>
-            </div>
-          )}
-        </div>
       </div>
     </div>
   );

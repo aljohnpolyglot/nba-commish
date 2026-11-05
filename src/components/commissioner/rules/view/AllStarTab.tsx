@@ -29,6 +29,7 @@ function bind<K extends keyof LeagueStats>(
 
 export const AllStarTab: React.FC<AllStarTabProps> = ({ rules, setRule }) => {
     const b = <K extends keyof LeagueStats>(key: K) => bind(rules, setRule, key);
+    const wnbaMode = rules.uiMode === 'wnba_isolated';
 
     return (
         <div className="space-y-12">
@@ -45,6 +46,10 @@ export const AllStarTab: React.FC<AllStarTabProps> = ({ rules, setRule }) => {
                         allStarGameEnabled={b('allStarGameEnabled').value as boolean}              setAllStarGameEnabled={b('allStarGameEnabled').set as any}
                         allStarFormat={b('allStarFormat').value as string}                          setAllStarFormat={b('allStarFormat').set as any}
                         allStarTeams={b('allStarTeams').value as number}                            setAllStarTeams={b('allStarTeams').set as any}
+                        allStarCaptainType={b('allStarCaptainType').value as any}                  setAllStarCaptainType={b('allStarCaptainType').set as any}
+                        allStarPlayerCaptainNameStyle={b('allStarPlayerCaptainNameStyle').value as any} setAllStarPlayerCaptainNameStyle={b('allStarPlayerCaptainNameStyle').set as any}
+                        allStarLegendCaptainIds={b('allStarLegendCaptainIds').value as string[]}   setAllStarLegendCaptainIds={b('allStarLegendCaptainIds').set as any}
+                        allStarTeamNames={b('allStarTeamNames').value as string[]}                 setAllStarTeamNames={b('allStarTeamNames').set as any}
                         allStarMirrorLeagueRules={b('allStarMirrorLeagueRules').value as boolean}  setAllStarMirrorLeagueRules={b('allStarMirrorLeagueRules').set as any}
                         allStarGameFormat={b('allStarGameFormat').value as any}                    setAllStarGameFormat={b('allStarGameFormat').set as any}
                         allStarGameTargetScore={b('allStarGameTargetScore').value as number}      setAllStarGameTargetScore={b('allStarGameTargetScore').set as any}
@@ -58,21 +63,27 @@ export const AllStarTab: React.FC<AllStarTabProps> = ({ rules, setRule }) => {
                         allStarMaxOvertimes={b('allStarMaxOvertimes').value as number}              setAllStarMaxOvertimes={b('allStarMaxOvertimes').set as any}
                         allStarOvertimeTieBreaker={b('allStarOvertimeTieBreaker').value as string}  setAllStarOvertimeTieBreaker={b('allStarOvertimeTieBreaker').set as any}
                     />
-                    <RisingStarsSection
+                    {!wnbaMode && <RisingStarsSection
                         risingStarsEnabled={b('risingStarsEnabled').value as boolean}              setRisingStarsEnabled={b('risingStarsEnabled').set as any}
                         risingStarsFormat={b('risingStarsFormat').value as string}                  setRisingStarsFormat={b('risingStarsFormat').set as any}
+                        risingStarsCaptainType={b('risingStarsCaptainType').value as any}           setRisingStarsCaptainType={b('risingStarsCaptainType').set as any}
+                        risingStarsLegendCaptainIds={b('risingStarsLegendCaptainIds').value as string[]} setRisingStarsLegendCaptainIds={b('risingStarsLegendCaptainIds').set as any}
                         risingStarsMirrorLeagueRules={b('risingStarsMirrorLeagueRules').value as boolean} setRisingStarsMirrorLeagueRules={b('risingStarsMirrorLeagueRules').set as any}
                         risingStarsQuarterLength={b('risingStarsQuarterLength').value as number}    setRisingStarsQuarterLength={b('risingStarsQuarterLength').set as any}
                         risingStarsEliminationEndings={b('risingStarsEliminationEndings').value as boolean} setRisingStarsEliminationEndings={b('risingStarsEliminationEndings').set as any}
-                    />
-                    <CelebrityGameSection
+                    />}
+                    {!wnbaMode && <CelebrityGameSection
                         celebrityGameEnabled={b('celebrityGameEnabled').value as boolean}          setCelebrityGameEnabled={b('celebrityGameEnabled').set as any}
                         celebrityGameMirrorLeagueRules={b('celebrityGameMirrorLeagueRules').value as boolean} setCelebrityGameMirrorLeagueRules={b('celebrityGameMirrorLeagueRules').set as any}
-                    />
+                    />}
                 </div>
 
                 <div className="space-y-8">
                     <AllStarEventsSection
+                        pbaMode={rules.uiMode === 'pba_isolated'}
+                        wnbaMode={wnbaMode}
+                        allStarDanceContestEnabled={b('allStarDanceContestEnabled').value as boolean} setAllStarDanceContestEnabled={b('allStarDanceContestEnabled').set as any}
+                        pbaAllStarDanceContestEnabled={b('pbaAllStarDanceContestEnabled').value as boolean} setPbaAllStarDanceContestEnabled={b('pbaAllStarDanceContestEnabled').set as any}
                         allStarDunkContest={b('allStarDunkContest').value as boolean}              setAllStarDunkContest={b('allStarDunkContest').set as any}
                         allStarDunkContestPlayers={b('allStarDunkContestPlayers').value as number}  setAllStarDunkContestPlayers={b('allStarDunkContestPlayers').set as any}
                         allStarThreePointContest={b('allStarThreePointContest').value as boolean}  setAllStarThreePointContest={b('allStarThreePointContest').set as any}
@@ -92,7 +103,7 @@ export const AllStarTab: React.FC<AllStarTabProps> = ({ rules, setRule }) => {
                         allStarHorseNoPlayerRepeat={b('allStarHorseNoPlayerRepeat').value as boolean} setAllStarHorseNoPlayerRepeat={b('allStarHorseNoPlayerRepeat').set as any}
                         allStarHorseNoGlobalRepeat={b('allStarHorseNoGlobalRepeat').value as boolean} setAllStarHorseNoGlobalRepeat={b('allStarHorseNoGlobalRepeat').set as any}
                     />
-                    <ThroneSection
+                    {!wnbaMode && <ThroneSection
                         enabled={b('allStarThroneEnabled').value as boolean}                       setEnabled={b('allStarThroneEnabled').set as any}
                         fieldSize={b('allStarThroneFieldSize').value as number}                    setFieldSize={b('allStarThroneFieldSize').set as any}
                         firstPossession={b('allStarThroneFirstPossession').value as any}           setFirstPossession={b('allStarThroneFirstPossession').set as any}
@@ -102,7 +113,7 @@ export const AllStarTab: React.FC<AllStarTabProps> = ({ rules, setRule }) => {
                         hardCap={b('allStarThroneHardCap').value as number}                        setHardCap={b('allStarThroneHardCap').set as any}
                         prizePool={b('allStarThronePrizePool').value as number}                    setPrizePool={b('allStarThronePrizePool').set as any}
                         mandatoryDefense={b('allStarThroneMandatoryDefense').value as boolean}     setMandatoryDefense={b('allStarThroneMandatoryDefense').set as any}
-                    />
+                    />}
                 </div>
             </div>
         </div>

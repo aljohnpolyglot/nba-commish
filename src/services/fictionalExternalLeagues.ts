@@ -10,11 +10,12 @@
 // data. No deep career history — just current-season ratings + minimal stats.
 
 import type { NBAPlayer, NonNBATeam } from '../types';
-import { generateDraftClassForGame } from './genDraftPlayers';
+import { generateDraftClassForGame, type GeneratedPlayerGender } from './genDraftPlayers';
 import { PHILIPPINE_COLLEGE_POOL } from '../data/philippineCollegePool';
 import { getNameData } from '../data/nameDataFetcher';
 import { EUROLEAGUE_TEAMS, ENDESA_TEAMS, NBL_TEAMS, BLEAGUE_TEAMS } from '../genplayersconstants';
 import type { Player } from '../genplayersconstants';
+import { createPortraitUsageSet } from '../utils/newgenPortrait';
 
 interface LeagueResult {
   players: NBAPlayer[];
@@ -191,6 +192,8 @@ function generateLeague(
   teams: NonNBATeam[],
   startYear: number,
   rng: () => number,
+  gender: GeneratedPlayerGender,
+  usedPortraitUrls: Set<string>,
 ): LeagueResult {
   const nameData = getNameData();
   const playersPerTeam = 12;
@@ -205,8 +208,9 @@ function generateLeague(
     nameData,
     startYear,
     undefined,
-    undefined,
-    'legacy_newgen',
+    gender,
+    'regen_pack',
+    'normal',
     league === 'PBA'
       ? {
           collegePool: PHILIPPINE_COLLEGE_POOL,
@@ -214,6 +218,7 @@ function generateLeague(
           forceCollegePath: true,
         }
       : undefined,
+    usedPortraitUrls,
   );
   const players = distributePlayersToTeams(raw, teams, status, startYear, rng);
   return { players, teams };
@@ -235,6 +240,7 @@ export function generateFictionalExternalLeagues(
   startYear: number,
   rng: () => number,
 ): FictionalExternalLeagues {
+  const usedPortraitUrls = createPortraitUsageSet();
   const euroTeams    = makeTeamsFromObject(EUROLEAGUE_TEAMS as any, 'Euroleague',     1000);
   const pbaTeams     = makeTeamsFromList(PBA_TEAMS,                 'PBA',            2000);
   const wnbaTeams    = makeTeamsFromList(WNBA_TEAMS,                'WNBA',           3000);
@@ -245,13 +251,13 @@ export function generateFictionalExternalLeagues(
   const nblTeams     = makeTeamsFromObject(NBL_TEAMS as any,        'NBL Australia',  8000);
 
   return {
-    euroleague: generateLeague('Euroleague',     'Euroleague'    as any, 'Europe',   euroTeams,    startYear, rng),
-    pba:        generateLeague('PBA',            'PBA'           as any, 'College',  pbaTeams,     startYear, rng),
-    wnba:       generateLeague('WNBA',           'WNBA'          as any, 'College',  wnbaTeams,    startYear, rng),
-    bleague:    generateLeague('B-League',       'B-League'      as any, 'B-League', bleagueTeams, startYear, rng),
-    gleague:    generateLeague('G-League',       'G-League'      as any, 'G-League', gleagueTeams, startYear, rng),
-    endesa:     generateLeague('Endesa',         'Endesa'        as any, 'Endesa',   endesaTeams,  startYear, rng),
-    chinaCBA:   generateLeague('China CBA',      'China CBA'     as any, 'College',  chinaTeams,   startYear, rng),
-    nblAus:     generateLeague('NBL Australia',  'NBL Australia' as any, 'NBL',      nblTeams,     startYear, rng),
+    euroleague: generateLeague('Euroleague',     'Euroleague'    as any, 'Europe',   euroTeams,    startYear, rng, 'male', usedPortraitUrls),
+    pba:        generateLeague('PBA',            'PBA'           as any, 'College',  pbaTeams,     startYear, rng, 'male', usedPortraitUrls),
+    wnba:       generateLeague('WNBA',           'WNBA'          as any, 'College',  wnbaTeams,    startYear, rng, 'female', usedPortraitUrls),
+    bleague:    generateLeague('B-League',       'B-League'      as any, 'B-League', bleagueTeams, startYear, rng, 'male', usedPortraitUrls),
+    gleague:    generateLeague('G-League',       'G-League'      as any, 'G-League', gleagueTeams, startYear, rng, 'male', usedPortraitUrls),
+    endesa:     generateLeague('Endesa',         'Endesa'        as any, 'Endesa',   endesaTeams,  startYear, rng, 'male', usedPortraitUrls),
+    chinaCBA:   generateLeague('China CBA',      'China CBA'     as any, 'College',  chinaTeams,   startYear, rng, 'male', usedPortraitUrls),
+    nblAus:     generateLeague('NBL Australia',  'NBL Australia' as any, 'NBL',      nblTeams,     startYear, rng, 'male', usedPortraitUrls),
   };
 }

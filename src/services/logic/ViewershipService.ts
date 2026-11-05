@@ -74,12 +74,12 @@ export class ViewershipService {
     }
 
     static calculateDailyViewership(state: GameState, action?: UserAction): number {
-        const phase = getGamePhase(state.date);
+        const phase = getGamePhase(state.date, state.leagueStats);
         let baseMean = VIEWERSHIP_MEANS[phase] || 1.8;
 
         // Check for Christmas Day (Month is 0-indexed, so 11 is December)
         const dateParts = getGameDateParts(state.date);
-        if (dateParts.month === 12 && dateParts.day === 25) {
+        if ((state.christmasGames?.length ?? 0) > 0 && dateParts.month === 12 && dateParts.day === 25) {
             baseMean = 5.5; // Christmas Day tentpole event
         }
 

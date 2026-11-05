@@ -9,9 +9,12 @@ interface RankedPersonCardProps {
   rank: number;
   /** Portrait image URL */
   portraitUrl?: string;
+  portraitSeason?: number;
+  disableNameFallback?: boolean;
   /** facesjs face descriptor for generated prospects */
   face?: any;
   name: string;
+  nameContent?: React.ReactNode;
   /** Secondary line: position, team, record, etc. */
   subtitle?: string;
   /** Optional pill text next to name (e.g. position abbreviation) */
@@ -71,8 +74,11 @@ const ACCENT_RANK: Record<NonNullable<RankedPersonCardProps['accentColor']>, str
 export const RankedPersonCard: React.FC<RankedPersonCardProps> = ({
   rank,
   portraitUrl,
+  portraitSeason,
+  disableNameFallback = false,
   face,
   name,
+  nameContent,
   subtitle,
   badge,
   teamLogoUrl,
@@ -103,6 +109,8 @@ export const RankedPersonCard: React.FC<RankedPersonCardProps> = ({
       {/* Portrait */}
       <PlayerPortrait
         imgUrl={portraitUrl}
+        portraitSeason={portraitSeason}
+        disableNameFallback={disableNameFallback}
         face={face}
         playerName={name}
         teamLogoUrl={teamLogoUrl}
@@ -113,7 +121,7 @@ export const RankedPersonCard: React.FC<RankedPersonCardProps> = ({
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <h4 className={`font-bold text-white transition-colors ${ACCENT_HOVER[accentColor].split(' ')[1]}`}>
-            {name}
+            {nameContent ?? name}
           </h4>
           {badge && (
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-800 text-slate-400 uppercase">

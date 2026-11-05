@@ -14,6 +14,12 @@ interface SigningModalFinancesTabProps {
     limit: number;
     blocked: boolean;
   };
+  bae: {
+    available: number;
+    limit: number;
+    blocked: boolean;
+    reason: string;
+  };
   money: (value: number) => string;
   playerOverallRating?: number;
   teamPayroll: number;
@@ -27,6 +33,7 @@ interface SigningModalFinancesTabProps {
 
 export default function SigningModalFinancesTab({
   initialOffer,
+  bae,
   mle,
   money,
   playerOverallRating,
@@ -42,6 +49,7 @@ export default function SigningModalFinancesTab({
   const mleValue = `${money(mle.available)} / ${money(mle.limit)}`;
   const mleAccent = mle.blocked ? 'text-rose-400' : 'text-emerald-400';
   const capSpace = thresholds.salaryCap - teamPayroll;
+  const baeValue = `${money(bae.available)} / ${money(bae.limit)}`;
 
   return (
     <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 sm:gap-8">
@@ -56,12 +64,24 @@ export default function SigningModalFinancesTab({
             { label: 'Luxury Tax Line', value: money(thresholds.luxuryTax), accent: 'text-white' },
             { label: 'First Apron', value: money(thresholds.firstApron), accent: 'text-amber-400' },
             ...(showMleRow ? [{ label: mleLabel, value: mleValue, accent: mleAccent }] : []),
+            ...(bae.limit > 0 ? [{
+              label: 'Bi-Annual Exception Remaining',
+              value: baeValue,
+              accent: bae.blocked ? 'text-rose-400' : 'text-indigo-300',
+            }] : []),
           ].map(({ label, value, accent }) => (
             <div key={label} className="flex justify-between items-center py-3 border-b border-white/[0.04] last:border-0">
               <span className="text-[10px] font-bold uppercase text-white/40 tracking-wide">{label}</span>
               <span className={`text-sm font-black italic ${accent}`}>{value}</span>
             </div>
           ))}
+          {bae.limit > 0 && (
+            <p className="pt-3 text-[9px] leading-relaxed text-white/35">
+              {bae.blocked
+                ? bae.reason
+                : 'Maximum two seasons. Any use removes next season’s BAE and hard-caps the team at the first apron.'}
+            </p>
+          )}
         </div>
 
         <div className="bg-white/[0.04] p-4 sm:p-7 rounded-sm border border-white/5">

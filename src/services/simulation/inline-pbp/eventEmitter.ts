@@ -237,7 +237,7 @@ export function emitQuarter(
       lineupAWAY: startAway,
       player: tipW,
       pts: 0,
-      desc: tipW && tipL ? `Jumpball! ${tipW.n} wins the tip over ${tipL.n}.` : 'Jumpball!',
+      desc: tipW && tipL ? `Jump ball! ${tipW.n} wins the tip over ${tipL.n}.` : 'Jump ball!',
     });
   }
 
@@ -279,7 +279,7 @@ export function emitQuarter(
       lineupHOME: [],
       lineupAWAY: [],
       pts: 0,
-      desc: isOT ? `Overtime ${otNum}! Here we go!!` : `${period} quarter underway.`,
+      desc: isOT ? `Overtime ${otNum} is underway.` : `${period} quarter begins.`,
       isOT,
       otNum,
     });

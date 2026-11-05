@@ -4,6 +4,7 @@ import { ChallengeEmptyState, ChallengePlayerChip } from './AllStarChallengeCard
 import { PlayerNameWithHover } from '../shared/PlayerNameWithHover';
 import { getPlayerImage } from '../../utils/playerImage';
 import { getTeamFullName } from '../../utils/teamNames';
+import { getResolvedTeamLogoUrl } from '../../utils/teamAssets';
 
 interface HorseViewProps {
   allStar: any;
@@ -99,7 +100,7 @@ export const HorseView: React.FC<HorseViewProps> = ({ allStar, players, teams, o
             <h2 className="truncate text-5xl font-black tracking-tight text-white md:text-7xl">{result.winnerName}</h2>
             {winnerTeam && (
               <div className="mt-5 flex items-center gap-4 text-2xl font-semibold text-slate-300">
-                {(winnerTeam.logoUrl || winnerTeam.imgURL) && <img src={winnerTeam.logoUrl ?? winnerTeam.imgURL} alt={winnerTeam.abbrev} className="h-12 w-16 object-contain" referrerPolicy="no-referrer" />}
+                {getResolvedTeamLogoUrl(winnerTeam) && <img src={getResolvedTeamLogoUrl(winnerTeam)} alt={winnerTeam.abbrev} className="h-12 w-16 object-contain" referrerPolicy="no-referrer" />}
                 <span>{getTeamFullName(winnerTeam)}</span>
               </div>
             )}
@@ -140,7 +141,7 @@ export const HorseView: React.FC<HorseViewProps> = ({ allStar, players, teams, o
                   </div>
                 </div>
                 <div className="flex items-center gap-4">
-                  {(team?.logoUrl || team?.imgURL) && <img src={team.logoUrl ?? team.imgURL} alt={team?.abbrev} className="h-14 w-16 object-contain" referrerPolicy="no-referrer" />}
+                  {getResolvedTeamLogoUrl(team) && <img src={getResolvedTeamLogoUrl(team)} alt={team?.abbrev} className="h-14 w-16 object-contain" referrerPolicy="no-referrer" />}
                   <span className="text-2xl font-semibold text-slate-200">{team?.abbrev ?? 'NBA'}</span>
                 </div>
                 <div className={`text-center text-2xl font-black tracking-[0.2em] ${isWinner ? 'text-yellow-400' : 'text-slate-300'}`}>

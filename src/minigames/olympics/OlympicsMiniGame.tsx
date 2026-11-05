@@ -11,8 +11,11 @@ import { SumoMatch } from './components/SumoMatch';
 import { MarathonView } from './components/MarathonView';
 import { RockClimbingView } from './components/RockClimbingView';
 import { EventIcon } from './components/EventIcon';
-
-const DEFAULT_URL = 'https://raw.githubusercontent.com/alexnoob/BasketBall-GM-Rosters/master/2025-26.NBA.Roster.json';
+import {
+  DEFAULT_NBA_MINIGAME_ROSTER_URL,
+  parseBbgmMiniGamePlayers,
+} from './bbgmPlayers';
+import { PlayerPortrait } from '../../components/shared/PlayerPortrait';
 
 type AppStage = 'setup' | 'loading' | 'selection' | 'combat_mode_selection' | 'player_selection' | 'map_selection' | 'competition';
 
@@ -38,54 +41,7 @@ export default function App() {
 
   const parseBBGMJSON = (data: any) => {
     try {
-      if (!data || !data.players || !Array.isArray(data.players)) {
-        throw new Error('Invalid JSON format: missing or invalid players array');
-      }
-
-      const teamAbbrevs = new Map<number, string>();
-      const teamNames = new Map<number, string>();
-      if (data.teams && Array.isArray(data.teams)) {
-        for (const t of data.teams) {
-          if (t.tid !== undefined) {
-             if (t.abbrev) teamAbbrevs.set(t.tid, t.abbrev);
-             const fullName = [t.region, t.name].filter(Boolean).join(' ');
-             if (fullName) teamNames.set(t.tid, fullName);
-          }
-        }
-      }
-
-      const parsedPlayers: Player[] = [];
-      const currentYear = data.startingSeason || new Date().getFullYear();
-
-      for (const p of data.players) {
-        if (!p.ratings || !Array.isArray(p.ratings) || p.ratings.length === 0) continue;
-        
-        const latestRating = p.ratings[p.ratings.length - 1];
-        const weightLbs = p.weight || 215; 
-        const wtRating = Math.max(0, Math.min(99, ((weightLbs - 150) / (330 - 150)) * 99));
-        
-        parsedPlayers.push({
-            pid: p.pid ?? Math.random(),
-            firstName: p.firstName || p.name?.split(' ')[0] || 'Unknown',
-            lastName: p.lastName || p.name?.split(' ').slice(1).join(' ') || '',
-            tid: p.tid,
-            teamAbbrev: teamAbbrevs.get(p.tid) || 'FA',
-            teamName: teamNames.get(p.tid) || teamAbbrevs.get(p.tid) || 'Free Agent',
-            age: p.born ? currentYear - p.born.year : 25,
-            ovr: latestRating.ovr || 50,
-            hgt: latestRating.hgt || 0,
-            spd: latestRating.spd || 0,
-            jmp: latestRating.jmp || 0,
-            str: latestRating.stre || 0,
-            end: latestRating.endu || 0,
-            pss: latestRating.pss || 0,
-            wtRating: wtRating,
-            weightLbs: weightLbs,
-            imgURL: p.imgURL || '',
-          });
-      }
-      
-      setPlayers(parsedPlayers);
+      setPlayers(parseBbgmMiniGamePlayers(data));
     } catch (e: any) {
       setError(`Failed to parse BBGM data: ${e.message}`);
       throw e;
@@ -101,7 +57,7 @@ export default function App() {
     setStage('loading');
     setError(null);
     try {
-      const response = await fetch(DEFAULT_URL);
+      const response = await fetch(DEFAULT_NBA_MINIGAME_ROSTER_URL);
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const data = await response.json();
       parseBBGMJSON(data);
@@ -826,8 +782,12 @@ export default function App() {
                                 <input type="checkbox" className="hidden" disabled={isDisabled} checked={isSelected} onChange={() => {
                                     setParticipantIds(prev => prev.includes(p.pid) ? prev.filter(id => id !== p.pid) : [...prev, p.pid]);
                                 }} />
-                                <div className={`w-10 h-10 rounded-full overflow-hidden shrink-0 border ${isSelected ? `${selectBorder} ${selectImgBg}` : 'border-zinc-700 bg-zinc-950'}`}>
-                                    {p.imgURL ? <img src={p.imgURL} alt={p.lastName} className="w-full h-full object-cover" /> : <User className="w-5 h-5 m-auto text-zinc-600 mt-2.5" />}
+                                <div className={`h-11 w-11 shrink-0 rounded-full border p-px ${isSelected ? `${selectBorder} ${selectImgBg}` : 'border-zinc-700 bg-zinc-950'}`}>
+                                    <PlayerPortrait
+                                      imgUrl={p.imgURL}
+                                      playerName={`${p.firstName} ${p.lastName}`.trim()}
+                                      size={40}
+                                    />
                                 </div>
                                 <div className="flex-1 min-w-0">
                                     <div className="text-sm font-medium truncate font-sans tracking-wide">

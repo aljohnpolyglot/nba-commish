@@ -3,10 +3,9 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Zap, ChevronRight } from 'lucide-react';
 import { NBAPlayer } from '../../types';
 import { DunkContest } from '../../components/allstar/allstarevents/dunk/DunkContest';
-import { useDunkPicker, DUNK_MAX_PICKS, DUNK_MIN_PICKS } from './useDunkPicker';
-import { getPlayerRealK2 } from '../../data/NBA2kRatings';
-
-const FALLBACK_HEADSHOT = 'https://www.nba.com/assets/img/default-headshot.png';
+import { useDunkPicker, DUNK_MAX_PICKS, DUNK_MIN_PICKS, getDunkPickerRating } from './useDunkPicker';
+import { PlayerPortrait } from '../../components/shared/PlayerPortrait';
+import { getPlayerImage } from '../../utils/playerImage';
 
 function PickerGrid({
   players, selectedIds, onToggle,
@@ -31,7 +30,6 @@ function PickerGrid({
       />
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
         {(search ? filtered : filtered.slice(0, visible)).map(p => {
-          const r: any = Array.isArray(p.ratings) ? p.ratings[p.ratings.length - 1] : {};
           const sel = selectedIds.has(p.internalId);
           const lastName = p.name;
           return (
@@ -43,18 +41,18 @@ function PickerGrid({
                 sel ? 'border-yellow-500 bg-yellow-500/10' : 'border-zinc-800 bg-zinc-900/50 hover:border-zinc-700'
               }`}
             >
-              <img
-                src={(p as any).imgURL ?? ''}
-                alt={p.name}
-                className="w-14 h-14 rounded-lg bg-zinc-800 object-cover"
-                onError={e => (e.currentTarget.src = FALLBACK_HEADSHOT)}
+              <PlayerPortrait
+                imgUrl={getPlayerImage(p)}
+                face={(p as any).face}
+                playerName={p.name}
+                size={56}
               />
               <div className="text-center min-w-0 w-full">
                 <div className="font-black text-[10px] uppercase italic truncate">{lastName}</div>
                 <div className="text-[9px] text-zinc-500">{(p as any).pos ?? ''}</div>
                 <div className="flex justify-center gap-2 mt-1">
                   <span className="text-[9px] text-yellow-500 font-bold">
-                    DNK {getPlayerRealK2(p.name)?.IS?.[2] ?? r?.dnk ?? '--'}
+                    DNK {getDunkPickerRating(p) ?? '--'}
                   </span>
                 </div>
               </div>
@@ -132,11 +130,11 @@ export default function DunkContestMiniGame() {
                       key={p.internalId}
                       className="flex items-center gap-2 bg-yellow-500/10 border border-yellow-500/40 rounded-full px-3 py-1.5 shrink-0"
                     >
-                      <img
-                        src={(p as any).imgURL ?? ''}
-                        className="w-6 h-6 rounded-full object-cover bg-zinc-800"
-                        alt=""
-                        onError={e => (e.currentTarget.src = FALLBACK_HEADSHOT)}
+                      <PlayerPortrait
+                        imgUrl={getPlayerImage(p)}
+                        face={(p as any).face}
+                        playerName={p.name}
+                        size={24}
                       />
                       <span className="text-[10px] font-black uppercase">{lastName}</span>
                       <button

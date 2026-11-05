@@ -1,414 +1,281 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { CheckCircle2, Globe2, MapPin, Plane, Search, Send, Users } from 'lucide-react';
+import type { Contact } from '../../types';
+import { loadGlobalGameCities, type GlobalGameCity } from '../../services/globalGamesRecommendations';
 import { useGame } from '../../store/GameContext';
-import { X, Search, Globe, User, CheckCircle2, MapPin, AlertCircle } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
-import { NBAPlayer, Contact } from '../../types';
 import { getGamePhase } from '../../utils/helpers';
+import { CountryFlag } from '../shared/CountryFlag';
+import { ActionInfoPanel } from '../shared/actions/ActionInfoPanel';
+import { ActionModalShell } from '../shared/actions/ActionModalShell';
+import { ActionTextField } from '../shared/actions/ActionTextField';
+import { PersonSelectorModal } from './PersonSelectorModal';
 
-interface City {
-  name: string;
-  lat: number;
-  lng: number;
-  country?: string;
+type TravelType = 'domestic' | 'international';
+type TravelStep = 'type' | 'city' | 'people' | 'reason' | 'confirm';
+
+interface TravelCity extends GlobalGameCity {
   state?: string;
 }
 
 interface TravelModalProps {
   onClose: () => void;
-  onConfirm: (payload: { city: string, reason: string, invitees: string[], inviteeRoles: string[] }) => void;
+  onConfirm: (payload: {
+    city: string;
+    country: string;
+    travelType: TravelType;
+    reason: string;
+    invitees: string[];
+    inviteeRoles: string[];
+    contacts: Contact[];
+  }) => void;
 }
 
-const GLOBAL_CITIES_URL = 'https://gist.githubusercontent.com/randymeech/e9398d4f6fb827e2294a/raw/22925b92339f0f4c005159ae4d36f8f3988e9d39/top-1000-cities.json';
 const US_CITIES_URL = 'https://gist.githubusercontent.com/ahmu83/38865147cf3727d221941a2ef8c22a77/raw/c647f74643c0b3f8407c28ddbb599e9f594365ca/US_States_and_Cities.json';
 
-const TravelTypeSelectionStep: React.FC<{
-    onSelect: (type: 'domestic' | 'international') => void;
-}> = ({ onSelect }) => (
-    <div className="grid h-full grid-cols-1 gap-4 sm:grid-cols-2">
-        <button
-            onClick={() => onSelect('domestic')}
-            className="group flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-slate-700 bg-slate-800/50 p-6 transition-all hover:border-blue-500 hover:bg-blue-500/10 sm:min-h-[256px] sm:p-8"
-        >
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-700 transition-colors group-hover:bg-blue-500/20 sm:mb-6 sm:h-20 sm:w-20">
-                <MapPin size={40} className="text-slate-400 group-hover:text-blue-400" />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">Domestic</h3>
-            <p className="text-sm text-slate-400 text-center max-w-[200px]">Travel within the US. Visit expansion candidates.</p>
-        </button>
-        <button
-            onClick={() => onSelect('international')}
-            className="group flex min-h-[220px] flex-col items-center justify-center rounded-2xl border-2 border-slate-700 bg-slate-800/50 p-6 transition-all hover:border-emerald-500 hover:bg-emerald-500/10 sm:min-h-[256px] sm:p-8"
-        >
-            <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-slate-700 transition-colors group-hover:bg-emerald-500/20 sm:mb-6 sm:h-20 sm:w-20">
-                <Globe size={40} className="text-slate-400 group-hover:text-emerald-400" />
-            </div>
-            <h3 className="text-xl font-bold text-white mb-2">International</h3>
-            <p className="text-sm text-slate-400 text-center max-w-[200px]">Travel abroad. Build global relations.</p>
-        </button>
-    </div>
-);
+async function loadDomesticCities(): Promise<TravelCity[]> {
+  const response = await fetch(US_CITIES_URL);
+  if (!response.ok) throw new Error(`Domestic cities request failed (${response.status})`);
+  const data = await response.json();
+  if (!data || typeof data !== 'object') return [];
+  return Object.entries(data as Record<string, unknown>).flatMap(([state, cityList]) => {
+    if (!Array.isArray(cityList)) return [];
+    return cityList.flatMap((cityName): TravelCity[] => typeof cityName === 'string'
+      ? [{ name: cityName, country: 'United States', state }]
+      : []);
+  });
+}
 
-const CitySelectionStep: React.FC<{
-  searchTerm: string;
-  setSearchTerm: (term: string) => void;
-  filteredCities: City[];
-  selectedCity: City | null;
-  setSelectedCity: (city: City) => void;
-  travelType: 'domestic' | 'international';
-  loading: boolean;
-}> = ({ searchTerm, setSearchTerm, filteredCities, selectedCity, setSelectedCity, travelType, loading }) => (
-  <>
-    <div className={`rounded-2xl border p-4 ${travelType === 'domestic' ? 'bg-blue-500/10 border-blue-500/20' : 'bg-emerald-500/10 border-emerald-500/20'}`}>
-        <p className={`text-sm leading-relaxed ${travelType === 'domestic' ? 'text-blue-200' : 'text-emerald-200'}`}>
-            Select a {travelType} city for your trip. Travel will take <strong>2 days</strong> and may influence relations.
-        </p>
-    </div>
-    <div className="relative">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-        <input
-            type="text"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            placeholder={`Search ${travelType} cities...`}
-            className={`w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm font-medium text-slate-200 outline-none placeholder:text-slate-700 transition-all focus:ring-2 ${travelType === 'domestic' ? 'focus:ring-blue-500/50 focus:border-blue-500' : 'focus:ring-emerald-500/50 focus:border-emerald-500'}`}
-            autoFocus
-        />
-        {loading && (
-            <div className="absolute right-4 top-1/2 -translate-y-1/2">
-                <div className="w-4 h-4 border-2 border-slate-600 border-t-transparent rounded-full animate-spin"></div>
-            </div>
-        )}
-    </div>
-    <div className="grid max-h-[320px] grid-cols-1 gap-3 overflow-y-auto pr-2 custom-scrollbar sm:max-h-[400px] sm:grid-cols-2">
-        {filteredCities.map((city, idx) => (
-            <button
-                key={`${city.name}-${idx}`}
-                onClick={() => setSelectedCity(city)}
-                className={`flex items-center justify-between p-4 rounded-xl border text-left transition-all duration-200 ${
-                    selectedCity?.name === city.name 
-                        ? travelType === 'domestic' 
-                            ? 'bg-blue-600/20 border-blue-500/50 shadow-lg shadow-blue-500/10' 
-                            : 'bg-emerald-600/20 border-emerald-500/50 shadow-lg shadow-emerald-500/10'
-                        : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800 hover:border-slate-700'
-                }`}
-            >
-                <div className="flex items-center gap-3">
-                    <MapPin size={16} className="text-slate-500" />
-                    <div>
-                        <span className="text-sm font-bold text-white block">{city.name}</span>
-                        <span className="text-[10px] text-slate-500 uppercase tracking-wide">
-                            {travelType === 'domestic' ? city.state : city.country}
-                        </span>
-                    </div>
-                </div>
-                {selectedCity?.name === city.name && <CheckCircle2 size={16} className={travelType === 'domestic' ? "text-blue-400" : "text-emerald-400"} />}
-            </button>
-        ))}
-        {!loading && filteredCities.length === 0 && (
-            <div className="text-center p-8 text-slate-500 text-sm sm:col-span-2">
-                No cities found matching "{searchTerm}"
-            </div>
-        )}
-    </div>
-  </>
-);
-
-const TravelDetailsStep: React.FC<{
-  reason: string;
-  setReason: (reason: string) => void;
-  isSeason: boolean;
-  inviteeSearch: string;
-  setInviteeSearch: (term: string) => void;
-  filteredInvitees: Contact[];
-  selectedInvitees: Contact[];
-  setSelectedInvitees: (invitees: Contact[]) => void;
-  travelType: 'domestic' | 'international';
-}> = ({ reason, setReason, isSeason, inviteeSearch, setInviteeSearch, filteredInvitees, selectedInvitees, setSelectedInvitees, travelType }) => (
-  <div className="space-y-6">
-      <div className="space-y-2">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Reason for Travel <span className="text-rose-500">*</span></label>
-          <input
-              type="text"
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g., Scouting talent, business meeting, vacation..."
-              className={`w-full bg-slate-950 border border-slate-800 rounded-xl px-4 py-3 text-sm font-medium text-slate-200 outline-none placeholder:text-slate-700 transition-all focus:ring-2 ${travelType === 'domestic' ? 'focus:ring-blue-500/50 focus:border-blue-500' : 'focus:ring-emerald-500/50 focus:border-emerald-500'}`}
-          />
-      </div>
-
-      <div className="space-y-4">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Invite Guests (Optional)</label>
-              {isSeason && (
-                  <div className="flex items-center gap-1.5 text-amber-500">
-                      <AlertCircle size={12} />
-                      <span className="text-[10px] font-bold uppercase tracking-tight">Season: Players/Coaches Unavailable</span>
-                  </div>
-              )}
-          </div>
-          <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={16} />
-              <input
-                  type="text"
-                  value={inviteeSearch}
-                  onChange={(e) => setInviteeSearch(e.target.value)}
-                  placeholder="Search contacts to invite..."
-                  className={`w-full bg-slate-950 border border-slate-800 rounded-xl pl-10 pr-4 py-3 text-sm font-medium text-slate-200 outline-none placeholder:text-slate-700 transition-all focus:ring-2 ${travelType === 'domestic' ? 'focus:ring-blue-500/50 focus:border-blue-500' : 'focus:ring-emerald-500/50 focus:border-emerald-500'}`}
-              />
-          </div>
-          <div className="grid max-h-48 grid-cols-1 gap-3 overflow-y-auto pr-2 custom-scrollbar sm:grid-cols-2">
-              {filteredInvitees.map(contact => {
-                  const isSelected = selectedInvitees.some(i => i.id === contact.id);
-                  return (
-                      <button
-                          key={contact.id}
-                          onClick={() => {
-                              if (isSelected) setSelectedInvitees(selectedInvitees.filter(i => i.id !== contact.id));
-                              else setSelectedInvitees([...selectedInvitees, contact]);
-                          }}
-                          className={`flex items-center gap-3 p-3 rounded-xl border text-left transition-all duration-200 ${
-                              isSelected 
-                                  ? travelType === 'domestic' 
-                                      ? 'bg-blue-600/20 border-blue-500/50 shadow-lg shadow-blue-500/10' 
-                                      : 'bg-emerald-600/20 border-emerald-500/50 shadow-lg shadow-emerald-500/10'
-                                  : 'bg-slate-900/50 border-slate-800 hover:bg-slate-800 hover:border-slate-700'
-                          }`}
-                      >
-                          <div className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center overflow-hidden">
-                              {contact.playerPortraitUrl ? <img src={contact.playerPortraitUrl} alt={contact.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <User size={14} className="text-slate-600" />}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                              <div className="text-xs font-bold truncate text-white">{contact.name}</div>
-                              <div className="text-[10px] text-slate-500 truncate">{contact.title}</div>
-                          </div>
-                          {isSelected && <CheckCircle2 size={14} className={travelType === 'domestic' ? "text-blue-400" : "text-emerald-400"} />}
-                      </button>
-                  );
-              })}
-              {filteredInvitees.length === 0 && (
-                  <div className="text-center p-4 text-slate-500 text-xs sm:col-span-2">
-                      No contacts found
-                  </div>
-              )}
-          </div>
-      </div>
-  </div>
-);
-
-export const TravelModal: React.FC<TravelModalProps> = ({ onClose, onConfirm }) => {
+export function TravelModal({ onClose, onConfirm }: TravelModalProps) {
   const { state } = useGame();
-  const [step, setStep] = useState<'type' | 'city' | 'details'>('type');
-  const [travelType, setTravelType] = useState<'domestic' | 'international' | null>(null);
-  const [cities, setCities] = useState<City[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedCity, setSelectedCity] = useState<City | null>(null);
+  const [step, setStep] = useState<TravelStep>('type');
+  const [travelType, setTravelType] = useState<TravelType | null>(null);
+  const [cities, setCities] = useState<TravelCity[]>([]);
+  const [loadingCities, setLoadingCities] = useState(false);
+  const [citySearch, setCitySearch] = useState('');
+  const [selectedCity, setSelectedCity] = useState<TravelCity | null>(null);
+  const [selectedContacts, setSelectedContacts] = useState<Contact[]>([]);
   const [reason, setReason] = useState('');
-  const [selectedInvitees, setSelectedInvitees] = useState<Contact[]>([]);
-  const [inviteeSearch, setInviteeSearch] = useState('');
 
-  const gamePhase = getGamePhase(state.date);
-  const isSeason = gamePhase.includes('Regular Season') || gamePhase.includes('Playoffs');
+  const phase = getGamePhase(state.date, state.leagueStats);
+  const inSeason = phase.includes('Regular Season') || phase.includes('Playoffs');
+  const filteredCities = useMemo(() => {
+    const query = citySearch.trim().toLowerCase();
+    if (!query) return [];
+    return cities
+      .filter(city => `${city.name} ${city.state ?? ''} ${city.country}`.toLowerCase().includes(query))
+      .slice(0, 60);
+  }, [cities, citySearch]);
 
   useEffect(() => {
     if (!travelType) return;
-
-    setLoading(true);
+    let active = true;
+    setLoadingCities(true);
     setCities([]);
-    const url = travelType === 'domestic' ? US_CITIES_URL : GLOBAL_CITIES_URL;
-
-    fetch(url)
-      .then(res => res.json())
-      .then(data => {
-        const parsedCities: City[] = [];
-        
-        if (travelType === 'domestic') {
-             // Parse US States and Cities (Object with state keys)
-             Object.entries(data).forEach(([state, cityList]) => {
-                if (Array.isArray(cityList)) {
-                    cityList.forEach((cityName: any) => {
-                        if (typeof cityName === 'string') {
-                            parsedCities.push({
-                                name: cityName,
-                                lat: 0, 
-                                lng: 0,
-                                country: 'USA',
-                                state: state
-                            });
-                        }
-                    });
-                }
-            });
-        } else {
-            if (Array.isArray(data)) {
-                parsedCities.push(...data.map((c: any) => ({ name: c.name, lat: c.lat, lng: c.lng })));
-            }
-        }
-        setCities(parsedCities);
-        setLoading(false);
+    const request = travelType === 'domestic' ? loadDomesticCities() : loadGlobalGameCities();
+    request
+      .then(result => {
+        if (active) setCities(result);
       })
-      .catch(err => {
-        console.error(err);
-        setLoading(false);
+      .catch(error => console.error('Failed to load travel cities', error))
+      .finally(() => {
+        if (active) setLoadingCities(false);
       });
+    return () => {
+      active = false;
+    };
   }, [travelType]);
 
-  const filteredCities = useMemo(() => {
-    if (!searchTerm) return [];
-    return cities.filter(c => 
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (c.state && c.state.toLowerCase().includes(searchTerm.toLowerCase())) ||
-        (c.country && c.country.toLowerCase().includes(searchTerm.toLowerCase()))
-    ).slice(0, 50);
-  }, [cities, searchTerm]);
-
-  const allInvitees = useMemo(() => {
-    const contactsMap = new Map<string, Contact>();
-    const { staff, players, teams } = state;
-
-    if (staff) {
-        staff.gms.forEach(gm => contactsMap.set(`gm-${gm.name}`, { 
-            id: `gm-${gm.name}`, name: gm.name, title: 'General Manager', organization: gm.team || 'NBA', type: 'gm' as const, playerPortraitUrl: gm.playerPortraitUrl 
-        }));
-        staff.owners.forEach(o => contactsMap.set(`owner-${o.name}`, { 
-            id: `owner-${o.name}`, name: o.name, title: 'Owner', organization: o.team || 'NBA', type: 'owner' as const, playerPortraitUrl: o.playerPortraitUrl 
-        }));
-        
-        // Season restriction for coaches
-        if (!isSeason) {
-            staff.coaches.forEach(c => contactsMap.set(`coach-${c.name}`, { 
-                id: `coach-${c.name}`, name: c.name, title: 'Head Coach', organization: c.team || 'NBA', type: 'coach' as const, playerPortraitUrl: c.playerPortraitUrl 
-            }));
-        }
-    }
-    
-    // Season restriction for players
-    if (!isSeason) {
-        players.filter(p => p.status !== 'Retired').forEach(p => {
-            contactsMap.set(p.internalId, {
-                id: p.internalId, name: p.name, title: 'Player', organization: p.tid >= 0 ? teams.find(t => t.id === p.tid)?.name || 'NBA' : 'Free Agent', type: 'player' as const, playerPortraitUrl: p.imgURL
-            });
-        });
-    }
-    
-    // Include WNBA players regardless of season (assuming different schedule or just available)
-    // This will overwrite existing entries if they exist (e.g. if !isSeason included them), which is fine.
-    // We want to ensure they are marked as WNBA if they are WNBA.
-    players.filter(p => p.status === 'WNBA' || p.tid === -100).forEach(p => {
-        contactsMap.set(p.internalId, {
-            id: p.internalId, name: p.name, title: 'WNBA', organization: 'WNBA', type: 'player' as const, playerPortraitUrl: p.imgURL
-        });
-    });
-    
-    return Array.from(contactsMap.values()).sort((a,b) => a.name.localeCompare(b.name));
-  }, [state, isSeason]);
-
-  const filteredInvitees = useMemo(() => {
-    return allInvitees.filter(c => 
-        c.name.toLowerCase().includes(inviteeSearch.toLowerCase()) ||
-        c.organization.toLowerCase().includes(inviteeSearch.toLowerCase())
-    ).slice(0, 50);
-  }, [allInvitees, inviteeSearch]);
-
-  const handleConfirm = () => {
-    if (selectedCity && reason.trim()) {
-      onConfirm({
-        city: selectedCity.name,
-        reason: reason,
-        invitees: selectedInvitees.map(i => i.name),
-        inviteeRoles: selectedInvitees.map(i => i.title)
-      });
-    }
+  const chooseType = (type: TravelType) => {
+    setTravelType(type);
+    setSelectedCity(null);
+    setCitySearch('');
+    setStep('city');
   };
 
-  const handleTypeSelect = (type: 'domestic' | 'international') => {
-      setTravelType(type);
-      setStep('city');
+  const goBack = () => {
+    if (step === 'city') setStep('type');
+    if (step === 'people') setStep('city');
+    if (step === 'reason') setStep('people');
+    if (step === 'confirm') setStep('reason');
   };
+
+  if (step === 'type') {
+    return (
+      <ActionModalShell
+        title="Select Travel Type"
+        icon={<Globe2 size={24} />}
+        accent="emerald"
+        compact
+        onClose={onClose}
+      >
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          {([
+            ['domestic', 'Domestic', 'Travel within the US. Visit expansion candidates.', MapPin],
+            ['international', 'International', 'Travel abroad. Build global relations.', Globe2],
+          ] as const).map(([type, label, copy, Icon]) => (
+            <button
+              key={type}
+              type="button"
+              onClick={() => chooseType(type)}
+              className="group flex min-h-52 flex-col items-center justify-center rounded-2xl border border-slate-600/60 bg-slate-800/35 p-6 text-center transition hover:border-emerald-400/70 hover:bg-emerald-500/[0.06]"
+            >
+              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-slate-700/80 text-slate-400 transition group-hover:bg-emerald-500/15 group-hover:text-emerald-300">
+                <Icon size={32} />
+              </span>
+              <span className="mt-5 text-lg font-black text-white">{label}</span>
+              <span className="mt-2 max-w-48 text-xs leading-relaxed text-slate-400">{copy}</span>
+            </button>
+          ))}
+        </div>
+      </ActionModalShell>
+    );
+  }
+
+  if (step === 'city') {
+    return (
+      <ActionModalShell
+        title={travelType === 'international' ? 'Select International Destination' : 'Select Domestic Destination'}
+        description="Choose where the trip will take place."
+        icon={<MapPin size={28} />}
+        accent={travelType === 'international' ? 'emerald' : 'sky'}
+        onClose={onClose}
+        onBack={goBack}
+        primaryLabel="Next: Select Travelers"
+        primaryDisabled={!selectedCity}
+        onPrimary={() => setStep('people')}
+      >
+        <div className="space-y-4">
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-600" size={17} />
+            <input
+              value={citySearch}
+              onChange={event => setCitySearch(event.target.value)}
+              placeholder={travelType === 'international' ? 'Search city or country...' : 'Search city or state...'}
+              autoFocus
+              className="h-12 w-full rounded-xl border border-slate-700 bg-slate-950/55 pl-11 pr-12 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/70"
+            />
+            {loadingCities && <span className="absolute right-4 top-1/2 h-4 w-4 -translate-y-1/2 animate-spin rounded-full border-2 border-slate-600 border-t-emerald-300" />}
+          </div>
+          <div className="custom-scrollbar grid max-h-[48vh] grid-cols-1 gap-3 overflow-y-auto pr-1 sm:grid-cols-2">
+            {filteredCities.map(city => {
+              const selected = selectedCity?.name === city.name && selectedCity.country === city.country;
+              return (
+                <button
+                  type="button"
+                  key={`${city.name}-${city.state ?? city.country}`}
+                  onClick={() => setSelectedCity(city)}
+                  className={`flex items-center gap-3 rounded-2xl border p-4 text-left transition ${
+                    selected ? 'border-emerald-400/70 bg-emerald-500/10' : 'border-slate-700 bg-slate-950/25 hover:border-slate-500'
+                  }`}
+                >
+                  <CountryFlag country={city.country} className="inline-flex h-7 w-10 rounded-sm" imageClassName="h-full w-full rounded-sm object-cover" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-bold text-white">{city.name}</p>
+                    <p className="truncate text-xs text-slate-500">{city.state ?? city.country}</p>
+                  </div>
+                  {selected && <CheckCircle2 size={18} className="shrink-0 text-emerald-300" />}
+                </button>
+              );
+            })}
+            {!loadingCities && citySearch && filteredCities.length === 0 && (
+              <p className="col-span-full rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-500">No matching destination found.</p>
+            )}
+            {!citySearch && (
+              <p className="col-span-full rounded-2xl border border-dashed border-slate-700 p-8 text-center text-sm text-slate-500">Search by city, {travelType === 'international' ? 'country' : 'or state'}.</p>
+            )}
+          </div>
+        </div>
+      </ActionModalShell>
+    );
+  }
+
+  if (step === 'people') {
+    return (
+      <PersonSelectorModal
+        title="Select Travelers"
+        actionType="general"
+        onClose={onClose}
+        onSelectionBack={goBack}
+        initialSelectedContacts={selectedContacts}
+        allowEmptySelection
+        selectionTitle="Select Travelers"
+        selectionDescription={`Choose who will join the trip to ${selectedCity?.name}. You may continue alone.${inSeason ? ' Active players and head coaches are unavailable during the season.' : ''}`}
+        peoplePrimaryLabel="Next: Add Reason"
+        contactFilter={contact => {
+          if (contact.title === 'Prospect' || contact.title === 'Retired') return false;
+          if (!inSeason) return true;
+          return contact.title !== 'Player' && contact.title !== 'Head Coach';
+        }}
+        onSelect={contacts => {
+          setSelectedContacts(contacts);
+          setStep('reason');
+        }}
+      />
+    );
+  }
+
+  if (step === 'reason') {
+    return (
+      <ActionModalShell
+        title="Reason for Travel"
+        description={`Set the purpose of the ${travelType} trip to ${selectedCity?.name}.`}
+        icon={<Plane size={28} />}
+        accent={travelType === 'international' ? 'emerald' : 'sky'}
+        onClose={onClose}
+        onBack={goBack}
+        selectedCount={selectedContacts.length}
+        primaryLabel="Review Trip"
+        primaryDisabled={!reason.trim()}
+        onPrimary={() => setStep('confirm')}
+      >
+        <ActionTextField
+          label="Reason"
+          value={reason}
+          onChange={setReason}
+          placeholder="Scouting talent, league business, relationship building..."
+          required
+          multiline
+          minRowsClassName="min-h-36"
+        />
+      </ActionModalShell>
+    );
+  }
 
   return (
-    <AnimatePresence>
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-[60] flex items-center justify-center p-4"
-      >
-        <motion.div 
-          initial={{ scale: 0.95, y: 20 }}
-          animate={{ scale: 1, y: 0 }}
-          exit={{ scale: 0.95, y: 20 }}
-          className="bg-slate-900 border border-slate-800 w-full max-w-2xl rounded-3xl shadow-2xl overflow-hidden flex max-h-[calc(100vh-2rem)] flex-col"
-        >
-          <div className="border-b border-slate-800 bg-slate-900/50 p-4 sm:p-6">
-            <div className="flex items-start justify-between gap-3">
-            <div className={`flex min-w-0 items-start gap-3 ${travelType === 'domestic' ? 'text-blue-400' : 'text-emerald-400'}`}>
-                {travelType === 'domestic' ? <MapPin size={24} /> : <Globe size={24} />}
-                <h3 className="text-lg font-black uppercase tracking-tight text-white sm:text-xl">
-                    {step === 'type' ? 'Select Travel Type' : step === 'city' ? 'Select Destination' : `Travel to ${selectedCity?.name}`}
-                </h3>
-            </div>
-            <button onClick={onClose} className="p-2 hover:bg-slate-800 rounded-full text-slate-400 hover:text-white transition-colors">
-              <X size={20} />
-            </button>
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto p-4 space-y-6 custom-scrollbar sm:p-6">
-            {step === 'type' ? (
-                <TravelTypeSelectionStep onSelect={handleTypeSelect} />
-            ) : step === 'city' ? (
-                <CitySelectionStep 
-                    searchTerm={searchTerm}
-                    setSearchTerm={setSearchTerm}
-                    filteredCities={filteredCities}
-                    selectedCity={selectedCity}
-                    setSelectedCity={setSelectedCity}
-                    travelType={travelType!}
-                    loading={loading}
-                />
-            ) : (
-                <TravelDetailsStep 
-                    reason={reason}
-                    setReason={setReason}
-                    isSeason={isSeason}
-                    inviteeSearch={inviteeSearch}
-                    setInviteeSearch={setInviteeSearch}
-                    filteredInvitees={filteredInvitees}
-                    selectedInvitees={selectedInvitees}
-                    setSelectedInvitees={setSelectedInvitees}
-                    travelType={travelType!}
-                />
-            )}
-          </div>
-
-          <div className="flex flex-col-reverse gap-3 border-t border-slate-800 bg-slate-900/50 p-4 sm:flex-row sm:justify-end sm:p-6">
-            <button onClick={onClose} className="w-full rounded-xl px-4 py-2 text-xs font-bold uppercase tracking-wider text-slate-500 transition-colors hover:bg-slate-800 hover:text-white sm:w-auto">
-                Cancel
-            </button>
-            {step === 'type' ? (
-                // No next button, selection moves to next step
-                null
-            ) : step === 'city' ? (
-                <button 
-                    onClick={() => setStep('details')}
-                    disabled={!selectedCity}
-                    className={`w-full rounded-xl px-6 py-2 text-xs font-black uppercase tracking-wider text-white transition-all disabled:opacity-50 sm:w-auto ${travelType === 'domestic' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-emerald-600 hover:bg-emerald-500'}`}
-                >
-                    Next: Trip Details
-                </button>
-            ) : (
-                <button 
-                    onClick={handleConfirm}
-                    disabled={!reason.trim()}
-                    className={`w-full rounded-xl px-6 py-2 text-xs font-black uppercase tracking-wider text-white transition-all disabled:opacity-50 sm:w-auto ${travelType === 'domestic' ? 'bg-blue-600 hover:bg-blue-500' : 'bg-emerald-600 hover:bg-emerald-500'}`}
-                >
-                    Confirm Trip
-                </button>
-            )}
-          </div>
-        </motion.div>
-      </motion.div>
-    </AnimatePresence>
+    <ActionModalShell
+      title="Confirm Travel"
+      description="Review the trip before it is scheduled."
+      icon={<Send size={28} />}
+      accent={travelType === 'international' ? 'emerald' : 'sky'}
+      onClose={onClose}
+      onBack={goBack}
+      selectedCount={selectedContacts.length}
+      primaryLabel="Confirm Trip"
+      primaryIcon={<Plane size={17} />}
+      onPrimary={() => onConfirm({
+        city: selectedCity!.name,
+        country: selectedCity!.country,
+        travelType: travelType!,
+        reason: reason.trim(),
+        invitees: selectedContacts.map(contact => contact.name),
+        inviteeRoles: selectedContacts.map(contact => contact.title),
+        contacts: selectedContacts,
+      })}
+    >
+      <div className="space-y-4">
+        <ActionInfoPanel icon={<MapPin size={24} />} title="Destination" accent={travelType === 'international' ? 'emerald' : 'sky'}>
+          <span className="inline-flex items-center gap-3">
+            <CountryFlag country={selectedCity?.country} className="inline-flex h-5 w-8 rounded-sm" imageClassName="h-full w-full rounded-sm object-cover" />
+            {selectedCity?.name}, {selectedCity?.country}
+          </span>
+        </ActionInfoPanel>
+        <ActionInfoPanel icon={<Users size={24} />} title="Travel Party" accent="violet">
+          {selectedContacts.length > 0 ? selectedContacts.map(contact => contact.name).join(', ') : 'Commissioner traveling alone'}
+        </ActionInfoPanel>
+        <ActionInfoPanel icon={<Plane size={24} />} title="Purpose" accent="cyan">
+          {reason}
+        </ActionInfoPanel>
+      </div>
+    </ActionModalShell>
   );
-};
+}

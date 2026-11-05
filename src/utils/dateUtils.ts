@@ -3,6 +3,10 @@
  * No hardcoded year literals outside this file.
  */
 
+import type { LeagueCalendar } from '../types';
+import { getLeagueCalendar, getLeagueCalendarDates, getLeagueSeasonForDate, leagueCalendarDate } from '../services/leagueCalendar';
+import { getPbaAllStarWeekendStartIso } from '../services/pba/calendar';
+
 type DayAbbr = 'Sun' | 'Mon' | 'Tue' | 'Wed' | 'Thu' | 'Fri' | 'Sat';
 
 /**
@@ -33,12 +37,21 @@ export function resolveSeasonDate(
   return new Date(Date.UTC(year, month - 1, nthDay));
 }
 
-/**
- * The simulation start date: Aug 6 of the pre-season calendar year.
- * e.g. seasonYear=2026 → 2025-08-06
- */
-export function getSeasonSimStartDate(seasonYear: number): Date {
-  return new Date(Date.UTC(seasonYear - 1, 7, 6)); // month index 7 = August
+/** Opens the save with enough lead time before the configured training camp. */
+export function getSeasonSimStartDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const calendar = getActiveLeagueCalendar(stats) ?? getLeagueCalendar(stats as any);
+  const camp = calendar.trainingCampStart
+    ? leagueCalendarDate(seasonYear, calendar.trainingCampStart)
+    : calendar.preseasonStart
+      ? leagueCalendarDate(seasonYear, calendar.preseasonStart)
+      : leagueCalendarDate(seasonYear, calendar.regularSeasonStart);
+  return addGameDays(camp, -54);
+}
+
+export function getCommissionerBootstrapDate(cycleYear: number, stats?: TxnCalendar): Date {
+  const afterDraft = addGameDays(getDraftDate(cycleYear, stats), 1);
+  const afterOpeningFreeAgency = addGameDays(getRolloverDate(cycleYear, stats), 20);
+  return afterOpeningFreeAgency > afterDraft ? afterOpeningFreeAgency : afterDraft;
 }
 
 /**
@@ -59,6 +72,10 @@ export function getRegularSeasonStartDate(
       .filter(d => d >= lowerBound)
       .sort()[0];
     return first ? toDate(first) : new Date(Date.UTC(seasonYear - 1, 8, 28));
+  }
+  const calendar = getActiveLeagueCalendar(stats);
+  if (calendar?.regularSeasonStart) {
+    return leagueCalendarDate(seasonYear, calendar.regularSeasonStart);
   }
   return resolveSeasonDate(seasonYear, 10, 4, 'Tue', -1);
 }
@@ -104,6 +121,8 @@ type TxnCalendar = {
   allStarMonth?: number;
   allStarOrdinal?: number;
   allStarDayOfWeek?: DayAbbr;
+  pbaAllStarWeekendStart?: string;
+  leagueCalendar?: LeagueCalendar;
 };
 
 type ScheduleDateLike = {
@@ -115,6 +134,11 @@ type ScheduleDateLike = {
   competitionId?: string;
 };
 
+function getActiveLeagueCalendar(stats?: TxnCalendar): LeagueCalendar | undefined {
+  if (!stats?.leagueCalendar && stats?.uiMode !== 'wnba_isolated') return undefined;
+  return getLeagueCalendar(stats as any);
+}
+
 /**
  * NBA trade deadline — Thursday of the first full week of February
  * (first Thursday whose entire Mon-Sun week falls in February).
@@ -125,14 +149,23 @@ export function getTradeDeadlineDate(seasonYear: number, stats?: TxnCalendar): D
   const month = stats?.tradeDeadlineMonth ?? 2;
   const ordinal = stats?.tradeDeadlineOrdinal ?? 1;
   const day = (stats?.tradeDeadlineDayOfWeek ?? 'Thu') as DayAbbr;
-  return resolveSeasonDate(seasonYear, month, ordinal, day, 0);
+  const calendar = getActiveLeagueCalendar(stats);
+  if (!calendar) return resolveSeasonDate(seasonYear, month, ordinal, day, 0);
+  const { regularSeasonStart, regularSeasonEnd } = getLeagueCalendarDates(seasonYear, stats as any);
+  const candidates = [seasonYear - 1, seasonYear, seasonYear + 1]
+    .map(calendarYear => resolveSeasonDate(calendarYear, month, ordinal, day, 0));
+  return candidates.find(candidate => candidate >= regularSeasonStart && candidate <= regularSeasonEnd)
+    ?? resolveSeasonDate(seasonYear, month, ordinal, day, 0);
 }
 
 /**
- * Free agency start — fixed day of month (no weekday resolution; NBA is always Jul 1).
- * Returns a UTC Date in the current seasonYear.
+ * Free agency start from the saved league calendar, with legacy month/day fallback.
  */
 export function getFreeAgencyStartDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const calendar = getActiveLeagueCalendar(stats);
+  if (calendar?.freeAgencyStart) {
+    return leagueCalendarDate(seasonYear, calendar.freeAgencyStart);
+  }
   const month = stats?.faStartMonth ?? 7;
   const day = stats?.faStartDay ?? 1;
   return new Date(Date.UTC(seasonYear, month - 1, day));
@@ -142,16 +175,7 @@ export function getFreeAgencyStartDate(seasonYear: number, stats?: TxnCalendar):
  *  If the current date is already past this year's FA window (i.e. past Oct 1),
  *  returns next calendar year's FA start instead. */
 export function getCurrentOffseasonFAStart(current: Date | string, stats?: TxnCalendar): Date {
-  const c = toDate(current);
-  const month = stats?.faStartMonth ?? 7;
-  const day = stats?.faStartDay ?? 1;
-  const thisYearStart = new Date(Date.UTC(c.getUTCFullYear(), month - 1, day));
-  // FA window is considered closed after Oct 1 of the same calendar year.
-  const thisYearEnd = new Date(Date.UTC(c.getUTCFullYear(), 9, 1)); // Oct 1
-  if (c >= thisYearEnd) {
-    return new Date(Date.UTC(c.getUTCFullYear() + 1, month - 1, day));
-  }
-  return thisYearStart;
+  return resolveFreeAgencyWindow(current, stats).nominalStart;
 }
 
 /** FA cannot truly open before season rollover has expired old contracts. */
@@ -161,7 +185,9 @@ export function getEffectiveFreeAgencyStartDate(
   schedule?: ScheduleDateLike[],
 ): Date {
   const faStart = getFreeAgencyStartDate(seasonYear, stats);
-  const rollover = getRolloverDate(seasonYear, stats, schedule);
+  const regularSeasonStart = getRegularSeasonStartDate(seasonYear, stats, schedule);
+  const rolloverSeasonYear = faStart < regularSeasonStart ? seasonYear - 1 : seasonYear;
+  const rollover = getRolloverDate(rolloverSeasonYear, stats, schedule);
   return rollover > faStart ? rollover : faStart;
 }
 
@@ -170,8 +196,7 @@ export function getCurrentOffseasonEffectiveFAStart(
   stats?: TxnCalendar,
   schedule?: ScheduleDateLike[],
 ): Date {
-  const nominal = getCurrentOffseasonFAStart(current, stats);
-  return getEffectiveFreeAgencyStartDate(nominal.getUTCFullYear(), stats, schedule);
+  return resolveFreeAgencyWindow(current, stats, schedule).effectiveStart;
 }
 
 export function getCurrentOffseasonFAMoratoriumEnd(current: Date | string, stats?: TxnCalendar, schedule?: ScheduleDateLike[]): Date {
@@ -241,20 +266,74 @@ export function daysBetweenGameDates(start: Date | string, end: Date | string): 
   return (endTime - startTime) / 86_400_000;
 }
 
-export function isPastTradeDeadline(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
-  return toDate(current) > getTradeDeadlineDate(seasonYear, stats);
+interface FreeAgencyWindow {
+  seasonYear: number;
+  nominalStart: Date;
+  effectiveStart: Date;
+  end: Date;
 }
 
-/** FA window = faStart (inclusive) → Oct 1 same year (exclusive).
- *  Calendar-year based (uses current date's UTC year) so it survives season
- *  rollovers — `ls.year` advances to the upcoming season on Jun 30, but the
- *  FA we're actually in still lives in the calendar year of `current`. The
- *  `seasonYear` arg is kept for backwards compatibility but ignored. */
+function resolveFreeAgencyWindow(
+  current: Date | string,
+  stats?: TxnCalendar,
+  schedule?: ScheduleDateLike[],
+): FreeAgencyWindow {
+  const c = toDate(current);
+  const dateStr = Number.isFinite(c.getTime()) ? toISODateString(c) : '';
+  const derivedSeason = getLeagueSeasonForDate(dateStr, stats as any) || c.getUTCFullYear();
+  const seasons = [...new Set([
+    derivedSeason - 2,
+    derivedSeason - 1,
+    derivedSeason,
+    derivedSeason + 1,
+    derivedSeason + 2,
+    c.getUTCFullYear() - 1,
+    c.getUTCFullYear(),
+    c.getUTCFullYear() + 1,
+  ])].filter(Number.isFinite);
+  const windows = seasons.map(seasonYear => {
+    const nominalStart = getFreeAgencyStartDate(seasonYear, stats);
+    const effectiveStart = getEffectiveFreeAgencyStartDate(seasonYear, stats, schedule);
+    const sameSeasonOpening = getOpeningNightDate(seasonYear, stats, schedule);
+    const end = sameSeasonOpening > nominalStart
+      ? sameSeasonOpening
+      : getOpeningNightDate(seasonYear + 1, stats, schedule);
+    return { seasonYear, nominalStart, effectiveStart, end };
+  }).sort((left, right) => left.effectiveStart.getTime() - right.effectiveStart.getTime());
+  return windows.find(window => c >= window.effectiveStart && c < window.end)
+    ?? windows.find(window => c < window.effectiveStart)
+    ?? windows[windows.length - 1];
+}
+
+export function isPastTradeDeadline(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
+  const c = toDate(current);
+  const derivedSeason = getLeagueSeasonForDate(toISODateString(c), stats as any);
+  return c > getTradeDeadlineDate(derivedSeason || seasonYear, stats);
+}
+
+/** FA window = effective saved FA start (inclusive) → opening day (exclusive).
+ *  The current date resolves the owning league season; the explicit season-year
+ *  argument remains for backwards-compatible callers but is not authoritative. */
 export function isInFreeAgencyWindow(current: Date | string, _seasonYear: number, stats?: TxnCalendar, schedule?: ScheduleDateLike[]): boolean {
   const c = toDate(current);
-  const start = getCurrentOffseasonEffectiveFAStart(c, stats, schedule);
-  const end = new Date(Date.UTC(c.getUTCFullYear(), 9, 1));
-  return c >= start && c < end;
+  const window = resolveFreeAgencyWindow(c, stats, schedule);
+  return c >= window.effectiveStart && c < window.end;
+}
+
+export function isInPreFreeAgencyBlackout(
+  current: Date | string,
+  activeSeasonYear: number,
+  stats?: TxnCalendar,
+  schedule?: ScheduleDateLike[],
+): boolean {
+  const c = toDate(current);
+  if (!Number.isFinite(c.getTime())) return false;
+  const transition = getRolloverDate(activeSeasonYear, stats, schedule);
+  const nextFAStart = [activeSeasonYear, activeSeasonYear + 1, activeSeasonYear + 2]
+    .map(seasonYear => getEffectiveFreeAgencyStartDate(seasonYear, stats, schedule))
+    .filter(candidate => candidate >= transition)
+    .sort((left, right) => left.getTime() - right.getTime())[0];
+  return !!nextFAStart && c >= transition && c < nextFAStart;
 }
 
 /** Moratorium = faStart → faStart + moratoriumDays (signings locked, negotiations only).
@@ -274,10 +353,25 @@ export function isInMoratorium(current: Date | string, _seasonYear: number, stat
 export function isRegularSeasonSigningOpen(current: Date | string, seasonYear: number, stats?: TxnCalendar): boolean {
   if (stats?.regularSeasonFAEnabled === false) return false;
   const c = toDate(current);
-  // Regular season window: after opening night (Oct) → before next FA start (Jul 1)
-  const openingNight = getOpeningNightDate(seasonYear, stats);
-  const nextFAStart = getFreeAgencyStartDate(seasonYear, stats);
+  const activeSeasonYear = getLeagueSeasonForDate(toISODateString(c), stats as any) || seasonYear;
+  const openingNight = getOpeningNightDate(activeSeasonYear, stats);
+  const nextFAStart = [activeSeasonYear, activeSeasonYear + 1, activeSeasonYear + 2]
+    .map(candidate => getEffectiveFreeAgencyStartDate(candidate, stats))
+    .filter(candidate => candidate > openingNight)
+    .sort((left, right) => left.getTime() - right.getTime())[0];
+  if (!nextFAStart) return false;
   return c >= openingNight && c < nextFAStart;
+}
+
+export function isFreeAgentMarketAccessible(
+  current: Date | string,
+  seasonYear: number,
+  stats?: TxnCalendar,
+  schedule?: ScheduleDateLike[],
+): boolean {
+  return isInFreeAgencyWindow(current, seasonYear, stats, schedule)
+    || isRegularSeasonSigningOpen(current, seasonYear, stats)
+    || isInPreFreeAgencyBlackout(current, seasonYear, stats, schedule);
 }
 
 /**
@@ -289,11 +383,7 @@ export function isRegularSeasonSigningOpen(current: Date | string, seasonYear: n
 export function isInPostDeadlinePreFAWindow(current: Date | string, seasonYear: number, stats?: TxnCalendar, schedule?: ScheduleDateLike[]): boolean {
   const c = toDate(current);
   if (!Number.isFinite(c.getTime())) return false;
-  const month = c.getUTCMonth() + 1;
-  const calendarSeasonYear = month >= 10 ? c.getUTCFullYear() + 1 : c.getUTCFullYear();
-  const activeSeasonYear = Number.isFinite(seasonYear)
-    ? (Math.abs(seasonYear - calendarSeasonYear) <= 1 ? calendarSeasonYear : seasonYear)
-    : calendarSeasonYear;
+  const activeSeasonYear = getLeagueSeasonForDate(toISODateString(c), stats as any) || seasonYear;
   const deadline = getTradeDeadlineDate(activeSeasonYear, stats);
   const faStart = getCurrentOffseasonEffectiveFAStart(c, stats, schedule);
   return c > deadline && c < faStart;
@@ -315,8 +405,15 @@ export function canSignMultiYear(current: Date | string, seasonYear: number, sta
 // Defaults match lazySimRunner hardcoded dates. When leagueStats grows support
 // for configurable event scheduling these will read from stats automatically.
 
-/** Draft Lottery: May 14 by default. */
+/** Draft Lottery: saved league date, defaulting to May 14. */
 export function getDraftLotteryDate(seasonYear: number, stats?: TxnCalendar): Date {
+  if (
+    stats?.uiMode === 'wnba_isolated'
+    && stats.draftLotteryMonth == null
+    && stats.draftLotteryDay == null
+  ) {
+    return new Date(Date.UTC(seasonYear - 1, 10, 23));
+  }
   const m = stats?.draftLotteryMonth ?? 5;
   const d = stats?.draftLotteryDay ?? 14;
   return new Date(Date.UTC(seasonYear, m - 1, d));
@@ -327,6 +424,10 @@ export function getDraftLotteryDate(seasonYear: number, stats?: TxnCalendar): Da
  *  - Each extra round at LeagueSettings pushes the draft one month later
  *  - Explicit stats.draftMonth/draftDay overrides the computed date entirely. */
 export function getDraftDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const calendar = getActiveLeagueCalendar(stats);
+  if (calendar?.draftDate) {
+    return leagueCalendarDate(seasonYear, calendar.draftDate);
+  }
   if (stats?.draftMonth != null && stats?.draftDay != null) {
     return new Date(Date.UTC(seasonYear, stats.draftMonth - 1, stats.draftDay));
   }
@@ -343,7 +444,22 @@ export function getDraftDate(seasonYear: number, stats?: TxnCalendar): Date {
 export function isDraftBlockedByUnresolvedPlayoffs(state: any): boolean {
   const playoffs = state?.playoffs;
   if (!playoffs) return false;
-  if (playoffs.bracketComplete === true) return false;
+  // A stale convenience boolean cannot authorize Draft entry. A real champion,
+  // completed real Finals, and fully resolved graph are required.
+  const champion = Number(playoffs.champion);
+  const finalSeries = (playoffs.series ?? [])
+    .filter((series: any) => series?.conference === 'Finals')
+    .sort((left: any, right: any) => Number(right?.round ?? 0) - Number(left?.round ?? 0))[0];
+  const graphComplete = (playoffs.nodes ?? []).every((node: any) => node?.status === 'complete');
+  const finalComplete = Number.isInteger(champion) && champion >= 0
+    && finalSeries?.status === 'complete'
+    && Number(finalSeries?.winnerId) === champion
+    && Number.isInteger(finalSeries?.higherSeedTid)
+    && Number(finalSeries?.higherSeedTid) >= 0
+    && Number.isInteger(finalSeries?.lowerSeedTid)
+    && Number(finalSeries?.lowerSeedTid) >= 0
+    && graphComplete;
+  if (finalComplete) return false;
   const activeSeries = (playoffs.series ?? []).some((s: any) => s?.status !== 'complete');
   const unplayedPlayoffGame = (state?.schedule ?? []).some((g: any) =>
     (g.isPlayoff || g.playoffs) && !g.played
@@ -375,6 +491,10 @@ export function getDraftCombineEndDate(seasonYear: number, stats?: TxnCalendar):
  * e.g. NBA seasonYear=2026 → 2025-09-29; Euro → 2025-08-15
  */
 export function getTrainingCampDate(seasonYear: number, stats?: TxnCalendar): Date {
+  const calendar = getActiveLeagueCalendar(stats);
+  if (calendar?.trainingCampStart) {
+    return leagueCalendarDate(seasonYear, calendar.trainingCampStart);
+  }
   const defaultMonth = stats?.uiMode === 'euro_isolated' ? 8 : 9;
   const defaultDay = stats?.uiMode === 'euro_isolated' ? 15 : 29;
   const m = stats?.trainingCampMonth ?? defaultMonth;
@@ -388,7 +508,19 @@ export function getTrainingCampDate(seasonYear: number, stats?: TxnCalendar): Da
  */
 export function getAllStarGameDate(seasonYear: number, stats?: TxnCalendar): Date {
   if (stats?.uiMode === 'pba_isolated') {
-    return new Date(Date.UTC(seasonYear, 2, 8));
+    const savedFriday = stats.pbaAllStarWeekendStart
+      ? new Date(`${stats.pbaAllStarWeekendStart.slice(0, 10)}T00:00:00.000Z`)
+      : null;
+    const friday = savedFriday && !Number.isNaN(savedFriday.getTime())
+      ? savedFriday
+      : new Date(`${getPbaAllStarWeekendStartIso(seasonYear)}T00:00:00.000Z`);
+    const sunday = new Date(friday);
+    sunday.setUTCDate(friday.getUTCDate() + 2);
+    return sunday;
+  }
+  const calendar = getActiveLeagueCalendar(stats);
+  if (calendar?.allStarGame) {
+    return leagueCalendarDate(seasonYear, calendar.allStarGame);
   }
   const month   = stats?.allStarMonth   ?? 2;
   const ordinal = stats?.allStarOrdinal ?? 3;
@@ -403,20 +535,31 @@ export function getAllStarWeekendStartDate(seasonYear: number, stats?: TxnCalend
   return new Date(getAllStarGameDate(seasonYear, stats).getTime() - 2 * 86_400_000);
 }
 
-/** Season rollover defaults to Jun 30, but slides later when scheduled
- *  playoff/play-in games run into July under custom playoff lengths. */
+/** Season transition follows the saved calendar and slides later when scheduled
+ *  playoff/play-in games run past it under custom playoff lengths. */
 export function getRolloverDate(
   seasonYear: number,
-  _stats?: TxnCalendar,
+  stats?: TxnCalendar,
   schedule?: ScheduleDateLike[],
 ): Date {
-  const defaultRollover = new Date(Date.UTC(seasonYear, 5, 30));
+  const calendar = getActiveLeagueCalendar(stats);
+  const configuredRollover = calendar?.rollover
+    ? leagueCalendarDate(seasonYear, calendar.rollover)
+    : new Date(Date.UTC(seasonYear, 5, 30));
+  const regularSeasonEnd = calendar
+    ? leagueCalendarDate(seasonYear, calendar.regularSeasonEnd)
+    : new Date(Date.UTC(seasonYear, 3, 30));
+  const scheduleUpperBound = addGameDays(configuredRollover, 180);
   const playoffDates = (schedule ?? [])
-    .filter(g => (g.isPlayoff || g.isPlayIn) && g.date)
-    .map(g => new Date(g.date as string))
-    .filter(d => !isNaN(d.getTime()) && d.getUTCFullYear() === seasonYear);
-  if (playoffDates.length === 0) return defaultRollover;
+    .filter(g => !g.competitionId && (g.isPlayoff || g.isPlayIn) && g.date)
+    .filter(g => Number.isFinite(g.season)
+      ? g.season === seasonYear
+      : toDate(String(g.date)) >= regularSeasonEnd && toDate(String(g.date)) <= scheduleUpperBound)
+    .map(g => toDate(String(g.date)))
+    .filter(d => !isNaN(d.getTime()));
+  if (playoffDates.length === 0) return configuredRollover;
   const lastPlayoffMs = Math.max(...playoffDates.map(d => d.getTime()));
-  const slid = new Date(lastPlayoffMs + 7 * 86_400_000);
-  return slid > defaultRollover ? slid : defaultRollover;
+  const graceDays = Math.max(0, Math.round(calendar?.rolloverGraceDays ?? 7));
+  const slid = new Date(lastPlayoffMs + graceDays * 86_400_000);
+  return slid > configuredRollover ? slid : configuredRollover;
 }

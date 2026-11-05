@@ -5,13 +5,16 @@ import { NBAPlayer, Contact } from '../../types';
 import { PlayerActionsModal } from '../central/view/PlayerActionsModal';
 import { PlayerBioView } from '../central/view/PlayerBioView';
 import { PlayerRatingsModal } from '../modals/PlayerRatingsModal';
-import ContactModal from '../ContactModal';
 import { PersonSelectorModal } from '../modals/PersonSelectorModal';
 import { usePlayerQuickActions } from '../../hooks/usePlayerQuickActions';
 import { resolveAnyTeam } from '../../utils/teamLookup';
+import { getPreloadedExternalPlayers, getPreloadedExternalTeams } from '../../services/playerBioPreload';
 
 export const PlayersView: React.FC = () => {
-  const { state, dispatchAction, navigateToTeam, healPlayer } = useGame();
+  const { state, dispatchAction, navigateToTeam, navigateToPlayer, healPlayer } = useGame();
+  const euroMode = state.leagueStats?.uiMode === 'euro_isolated';
+  const externalReferencePlayers = euroMode ? getPreloadedExternalPlayers(state.saveId) : [];
+  const externalReferenceTeams = euroMode ? getPreloadedExternalTeams(state.saveId) : [];
 
   // Modals State
   const [selectedPlayerForActions, setSelectedPlayerForActions] = useState<NBAPlayer | null>(null);
@@ -20,12 +23,16 @@ export const PlayersView: React.FC = () => {
   const [selectedPlayerContact, setSelectedPlayerContact] = useState<Contact | null>(null);
   
   const [personSelectorOpen, setPersonSelectorOpen] = useState(false);
-  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'bribe' | 'movie' | 'leak_scandal' | 'give_money' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire'>('general');
+  const [personSelectorType, setPersonSelectorType] = useState<'suspension' | 'drug_test' | 'dinner' | 'general' | 'fine' | 'movie' | 'give_money' | 'sabotage' | 'club' | 'endorse_hof' | 'waive' | 'fire'>('general');
 
   // Sign / re-sign / waive are delegated to the shared quick-actions hook.
   const quick = usePlayerQuickActions();
 
   const handlePlayerClick = (player: NBAPlayer) => {
+    if ((player as any).externalArchiveOnly === true) {
+      setViewingBioPlayer(player);
+      return;
+    }
     setSelectedPlayerForActions(player);
   };
 
@@ -55,7 +62,7 @@ export const PlayersView: React.FC = () => {
     if (!selectedPlayerForActions) return;
 
     if (actionType === 'view_bio') {
-      setViewingBioPlayer(selectedPlayerForActions);
+      navigateToPlayer(selectedPlayerForActions);
       setSelectedPlayerForActions(null);
       return;
     }
@@ -75,32 +82,9 @@ export const PlayersView: React.FC = () => {
     const contact = getContactFromPlayer(selectedPlayerForActions);
     setSelectedPlayerForActions(null); // Close actions modal
 
-    if (actionType === 'contact') {
-      setSelectedPlayerContact(contact);
-    } else {
-      setPersonSelectorType(actionType as typeof personSelectorType);
-      setSelectedPlayerContact(contact); // Temporarily store to pass as preSelected
-      setPersonSelectorOpen(true);
-    }
-  };
-
-  const handleSendMessage = async (params: { message: string }) => {
-    if (selectedPlayerContact) {
-      const chat = state.chats.find(c => c.participants.includes(selectedPlayerContact.id));
-      await dispatchAction({
-        type: 'SEND_CHAT_MESSAGE',
-        payload: {
-          chatId: chat?.id,
-          text: params.message,
-          targetId: selectedPlayerContact.id,
-          targetName: selectedPlayerContact.name,
-          targetRole: selectedPlayerContact.title,
-          targetOrg: selectedPlayerContact.organization,
-          targetPortraitUrl: selectedPlayerContact.playerPortraitUrl
-        }
-      });
-      setSelectedPlayerContact(null);
-    }
+    setPersonSelectorType(actionType as typeof personSelectorType);
+    setSelectedPlayerContact(contact);
+    setPersonSelectorOpen(true);
   };
 
   const handlePersonSelected = async (contacts: Contact[], reason?: string, amount?: number, location?: string, duration?: string) => {
@@ -113,8 +97,6 @@ export const PlayersView: React.FC = () => {
     if (personSelectorType === 'dinner') actionType = 'INVITE_DINNER';
     if (personSelectorType === 'movie') actionType = 'INVITE_DINNER';
     if (personSelectorType === 'fine') actionType = 'FINE_PERSON';
-    if (personSelectorType === 'bribe') actionType = 'BRIBE_PERSON';
-    if (personSelectorType === 'leak_scandal') actionType = 'LEAK_SCANDAL';
     if (personSelectorType === 'give_money') actionType = 'GIVE_MONEY';
     if (personSelectorType === 'sabotage') actionType = 'SABOTAGE_PLAYER';
     if (personSelectorType === 'club') actionType = 'GO_TO_CLUB';
@@ -133,6 +115,7 @@ export const PlayersView: React.FC = () => {
         duration,
         location,
         count: contacts.length,
+        subType: personSelectorType,
         contacts,
       },
     });
@@ -155,8 +138,8 @@ export const PlayersView: React.FC = () => {
       </div>
       <div className="flex-1 overflow-y-auto custom-scrollbar">
         <UniversalPlayerSearcher
-          players={state.players}
-          teams={state.teams}
+          players={[...state.players, ...externalReferencePlayers]}
+          teams={[...state.teams, ...externalReferenceTeams]}
           nonNBATeams={state.nonNBATeams}
           onActionClick={handlePlayerClick}
           onTeamClick={navigateToTeam}
@@ -168,22 +151,11 @@ export const PlayersView: React.FC = () => {
           player={selectedPlayerForActions}
           onClose={() => setSelectedPlayerForActions(null)}
           onActionSelect={handleActionSelect}
-          onHeal={() => { healPlayer(selectedPlayerForActions.internalId); setSelectedPlayerForActions(null); }}
+          onHeal={() => healPlayer(selectedPlayerForActions.internalId)}
         />
       )}
 
       {quick.portals}
-
-      {selectedPlayerContact && !personSelectorOpen && (
-        <ContactModal 
-          contact={selectedPlayerContact}
-          onClose={() => {
-            setSelectedPlayerContact(null);
-          }}
-          onSend={handleSendMessage}
-          isLoading={state.isProcessing}
-        />
-      )}
 
       {personSelectorOpen && (
         <PersonSelectorModal
@@ -195,6 +167,8 @@ export const PlayersView: React.FC = () => {
             setSelectedPlayerContact(null);
           }}
           preSelectedContact={selectedPlayerContact || undefined}
+          skipPersonSelection={!!selectedPlayerContact && personSelectorType !== 'dinner' && personSelectorType !== 'movie'}
+          showInviteMorePrompt={personSelectorType === 'dinner' || personSelectorType === 'movie'}
         />
       )}
 

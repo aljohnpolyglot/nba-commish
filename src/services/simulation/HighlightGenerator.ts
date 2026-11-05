@@ -30,11 +30,11 @@
  *  ankle_breaker → mid / post make (Ankle Assassin badge) + perimeter victim
  *  limitless_3   → deep 3 made (Limitless Range badge)
  *
- * ── Cosmetics (stored, not yet surfaced in UI) ───────────────────────────
- *  tech_foul, timeout, coach_challenge
+ * ── Cosmetics ─────────────────────────────────────────────────────────────
+ *  tech_foul, timeout
  */
 
-import { PlayerGameStats, GameHighlight } from './types';
+import { PlayerGameStats, GameHighlight, type GameRuleConfig } from './types';
 import { NBAPlayer as Player } from '../../types';
 import { getBadgeProb } from '../../data/NBA2kBadges';
 import { getRawTeams } from '../../data/NBA2kRatings';
@@ -57,6 +57,15 @@ interface CachedBadgeProbs {
   breakStarter: number;
   versatileVisionary: number;
 }
+
+export interface HighlightSimulationProfile {
+  dunks: DunkRatings;
+  badges: CachedBadgeProbs;
+}
+
+export type HighlightSimulationProfiles = Record<string, HighlightSimulationProfile>;
+
+let activeSimulationProfiles: HighlightSimulationProfiles | null = null;
 
 let _dunkMapCache: Map<string, DunkRatings> | null = null;
 
@@ -88,7 +97,15 @@ function buildDunkMap(): Map<string, DunkRatings> {
 /** Same normalization as DunkContestModal — strips non-alpha chars */
 const norm = (s: string) => s.toLowerCase().replace(/[^a-z]/g, '');
 
-function getDunks(name: string, map: Map<string, DunkRatings>): DunkRatings {
+function getDunks(name: string, map: Map<string, DunkRatings>, player?: Player): DunkRatings {
+  const drivingDunk = Number((player as any)?.drivingDunk);
+  const standingDunk = Number((player as any)?.standingDunk);
+  if (Number.isFinite(drivingDunk) || Number.isFinite(standingDunk)) {
+    return {
+      drivingDunk: Number.isFinite(drivingDunk) ? drivingDunk : 50,
+      standingDunk: Number.isFinite(standingDunk) ? standingDunk : 50,
+    };
+  }
   return map.get(norm(name)) ?? { drivingDunk: 50, standingDunk: 50 };
 }
 
@@ -109,18 +126,39 @@ function standingP(r: number) {
   return 0.04;
 }
 
-function buildBadgeProbCache(stats: PlayerGameStats[]): Map<string, CachedBadgeProbs> {
+function savedBadgeProb(player: Player | undefined, badgeName: string, baseProb: number): number {
+  const badge = player?.badges?.find(value => value === badgeName || value.startsWith(`${badgeName} `));
+  const level = badge?.slice(badgeName.length).trim();
+  if (level === 'HOF') return baseProb * 1.5;
+  if (level === 'Gold') return baseProb * 1.2;
+  if (level === 'Silver') return baseProb;
+  if (level === 'Bronze') return baseProb * 0.6;
+  return 0;
+}
+
+function badgeProbsForPlayer(player: Player | undefined, name: string): CachedBadgeProbs {
+  const badgeProb = (badgeName: string, baseProb: number) =>
+    Math.max(savedBadgeProb(player, badgeName, baseProb), getBadgeProb(name, badgeName, baseProb));
+  return {
+    aerialWizard: badgeProb('Aerial Wizard', 0.15),
+    posterizer: badgeProb('Posterizer', 0.15),
+    layupMixmaster: badgeProb('Layup Mixmaster', 0.15),
+    limitlessRange: badgeProb('Limitless Range', 0.15),
+    ankleAssassin: badgeProb('Ankle Assassin', 0.12),
+    breakStarter: badgeProb('Break Starter', 0.20),
+    versatileVisionary: badgeProb('Versatile Visionary', 0.12),
+  };
+}
+
+function buildBadgeProbCache(stats: PlayerGameStats[], playerMap: Map<string, Player>): Map<string, CachedBadgeProbs> {
   const cache = new Map<string, CachedBadgeProbs>();
   for (const player of stats) {
-    cache.set(player.playerId, {
-      aerialWizard: getBadgeProb(player.name, 'Aerial Wizard', 0.15),
-      posterizer: getBadgeProb(player.name, 'Posterizer', 0.15),
-      layupMixmaster: getBadgeProb(player.name, 'Layup Mixmaster', 0.15),
-      limitlessRange: getBadgeProb(player.name, 'Limitless Range', 0.15),
-      ankleAssassin: getBadgeProb(player.name, 'Ankle Assassin', 0.12),
-      breakStarter: getBadgeProb(player.name, 'Break Starter', 0.20),
-      versatileVisionary: getBadgeProb(player.name, 'Versatile Visionary', 0.12),
-    });
+    const saved = playerMap.get(player.playerId);
+    cache.set(
+      player.playerId,
+      activeSimulationProfiles?.[String(player.playerId)]?.badges
+        ?? badgeProbsForPlayer(saved, player.name),
+    );
   }
   return cache;
 }
@@ -173,12 +211,38 @@ function buildTopLookup(
 // ─────────────────────────────────────────────────────────────────────────────
 
 export class HighlightGenerator {
+  static captureSimulationProfiles(players: Player[]): HighlightSimulationProfiles {
+    const playerMap = new Map(players.map(player => [player.internalId, player] as const));
+    const dunkMap = buildDunkMap();
+    return Object.fromEntries([...playerMap.entries()].map(([playerId, player]) => [
+      String(playerId),
+      {
+        dunks: getDunks(player.name, dunkMap, player),
+        badges: badgeProbsForPlayer(player, player.name),
+      },
+    ]));
+  }
+
+  static withSimulationProfiles<T>(profiles: HighlightSimulationProfiles, run: () => T): T {
+    const previous = activeSimulationProfiles;
+    activeSimulationProfiles = profiles;
+    try {
+      return run();
+    } finally {
+      activeSimulationProfiles = previous;
+    }
+  }
+
   static processGame(
     homeStats:  PlayerGameStats[],
     awayStats:  PlayerGameStats[],
     homeTeamId: number,
     awayTeamId: number,
     allPlayers: Player[],
+    timeoutRules: Pick<GameRuleConfig, 'maxTimeouts' | 'clutchTimeoutLimit'> = {
+      maxTimeouts: 7,
+      clutchTimeoutLimit: 2,
+    },
   ): GameHighlight[] {
     const highlights: GameHighlight[] = [];
     const dunkMap = buildDunkMap();
@@ -192,7 +256,7 @@ export class HighlightGenerator {
     for (const { stats, teamId, oppStats } of sides) {
       const teamStls = stats.reduce((sum, s) => sum + (s.stl ?? 0), 0);
       const totalPf  = stats.reduce((sum, s) => sum + (s.pf  ?? 0), 0);
-      const badgeProbCache = buildBadgeProbCache(stats);
+      const badgeProbCache = buildBadgeProbCache(stats, playerMap);
       const topAssisterByPlayer = buildTopLookup(stats, stat => stat.ast ?? 0);
       const breakStarterByPlayer = buildTopLookup(stats, stat => stat.stl ?? 0);
       const breakFinisherByPlayer = buildTopLookup(stats, stat => stat.fgAtRim ?? 0);
@@ -207,7 +271,8 @@ export class HighlightGenerator {
 
         // ── RIM FINISHES (dunks, layups) ─────────────────────────────────
         if (rimFgm > 0) {
-          const { drivingDunk, standingDunk } = getDunks(p.name, dunkMap);
+          const { drivingDunk, standingDunk } = activeSimulationProfiles?.[String(p.playerId)]?.dunks
+            ?? getDunks(p.name, dunkMap, playerMap.get(p.playerId));
           const dp = drivingP(drivingDunk);
           const sp = standingP(standingDunk);
 
@@ -410,28 +475,22 @@ export class HighlightGenerator {
       }
 
       // ── TIMEOUTS (cosmetic) ─────────────────────────────────────────────
-      const timeoutsUsed = 4 + Math.floor(Math.random() * 4); // 4-7
-      highlights.push({
-        type:        'timeout',
-        playerId:    '',
-        playerName:  'Team',
-        teamId,
-        description: `${timeoutsUsed} timeout${timeoutsUsed !== 1 ? 's' : ''} used`,
-      });
+      const maximumTimeouts = Math.max(0, Math.round(timeoutRules.maxTimeouts));
+      if (maximumTimeouts > 0) {
+        const timeoutsUsed = Math.min(
+          maximumTimeouts,
+          Math.max(1, Math.round(maximumTimeouts * (0.55 + Math.random() * 0.45))),
+        );
+        highlights.push({
+          type:        'timeout',
+          playerId:    '',
+          playerName:  'Team',
+          teamId,
+          count: timeoutsUsed,
+          description: `${timeoutsUsed} timeout${timeoutsUsed !== 1 ? 's' : ''} used`,
+        });
+      }
     } // end per-side loop
-
-    // ── COACH CHALLENGE (cosmetic) — ~15% per game ────────────────────────
-    if (Math.random() < 0.15) {
-      const side    = sides[Math.floor(Math.random() * 2)];
-      const outcome = Math.random() < 0.40 ? 'overturned' : 'upheld';
-      highlights.push({
-        type:        'coach_challenge',
-        playerId:    '',
-        playerName:  'Coach',
-        teamId:      side.teamId,
-        description: `Coach challenge — call ${outcome}`,
-      });
-    }
 
     return highlights;
   }

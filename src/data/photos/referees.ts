@@ -1,11 +1,26 @@
-const REFEREE_DATA_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/4d8d8447ec12377ce79914c3a8b9eacb/raw/a1b303d26892cb21652ace96c7c3bedabecac579/referee_data";
-const REFEREE_PICS_GIST = "https://gist.githubusercontent.com/aljohnpolyglot/39217471bf53cc1f6f5673823e0e2da1/raw/22b6f73155a3e6a8f4b652d41ab0738f1891189c/referee_pics";
+const REFEREE_DATA_PATH = '/data/referees/nba-referees-merged.json';
 
 export interface RefereeData {
   id: string;
   name: string;
   slug: string;
   photo_url?: string;
+  officialNumber?: number;
+  league?: 'NBA' | 'PBA' | 'fictional';
+  nationality?: string;
+  countryCode?: string;
+  birthDate?: string;
+  debutYear?: number;
+  careerEndYear?: number;
+  sourceRetirementYear?: number;
+  retirementYear?: number;
+  isFictional?: boolean;
+  source?: 'nba-merged' | 'fictional-referee-pool' | 'fictional-pba-referee-pool' | 'legacy-static';
+  bioUrl?: string;
+  brefUrl?: string;
+  bioText?: string;
+  ratings?: Record<string, number | null>;
+  riggingProfile?: Record<string, unknown>;
 }
 
 // Static fallback — always available synchronously for modals that import REFS directly.
@@ -93,16 +108,38 @@ let _fetched = false;
 export const fetchRefereeData = async (): Promise<void> => {
   if (_fetched) return;
   try {
-    const [dataRes, picsRes] = await Promise.all([
-      fetch(REFEREE_DATA_GIST),
-      fetch(REFEREE_PICS_GIST),
-    ]);
-    if (dataRes.ok) _refs = await dataRes.json();
-    if (picsRes.ok) {
-      const pics: { name: string; photo_url: string }[] = await picsRes.json();
-      const photoMap = new Map(pics.map(p => [p.name, p.photo_url]));
-      _refs = _refs.map(r => ({ ...r, photo_url: photoMap.get(r.name) ?? r.photo_url }));
-    }
+    const response = await fetch(REFEREE_DATA_PATH);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const payload = await response.json() as {
+      referees?: Array<{
+        name?: string;
+        officialNumber?: number;
+        jerseyNumber?: number;
+        imageUrl?: string;
+        bioUrl?: string;
+        brefUrl?: string;
+        startSeason?: string;
+        endSeason?: string;
+      }>;
+    };
+    const rows = payload.referees ?? [];
+    const latestEndSeason = rows
+      .map(row => row.endSeason ?? '')
+      .sort()
+      .at(-1);
+    _refs = rows
+      .filter(row => row.name && row.endSeason === latestEndSeason)
+      .map((row, index) => ({
+        id: String(row.officialNumber ?? row.jerseyNumber ?? `nba-${index}`),
+        name: row.name!,
+        slug: row.name!.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''),
+        photo_url: row.imageUrl,
+        officialNumber: row.officialNumber ?? row.jerseyNumber,
+        league: 'NBA',
+        source: 'nba-merged',
+        bioUrl: row.bioUrl,
+        brefUrl: row.brefUrl,
+      }));
     _fetched = true;
   } catch (e) {
     console.error('[RefereeData] fetch failed', e);

@@ -15,7 +15,9 @@ function ratingsToStats(r: any, hgtIn: number, pos: string, mpg: number) {
   else stl = (spd - 22 - valueWeight * 5) / 3;
   stl = clamp(stl, 0.1, 3.5);
 
-  const blk = clamp(((r.diq ?? 50) - 22 - stl * 16) / 22, 0.0, 4.0);
+  const heightBlockBoost = clamp((hgtIn - 74) / 8, 0, 2.2);
+  const positionBlockBoost = pos.includes('C') ? 0.65 : pos.includes('F') ? 0.25 : 0;
+  const blk = clamp(((r.diq ?? 50) - 35) / 28 + heightBlockBoost + positionBlockBoost - stl * 0.12, 0.05, 4.5);
   const apg = clamp((r.pss ?? 50) / 10.5, 0.3, 12);
   const trb = clamp(((r.reb ?? 50) - hgtRating * 0.18) / 5.2, 1, 16);
   const ppg = clamp(((r.oiq ?? 50) - 22 - apg * 2) / 2.4, 1, 36);
@@ -66,7 +68,7 @@ export function fakeCareerStats(
     const noise = () => 1 + (rng() - 0.5) * 0.10;
 
     return {
-      season: draftYear + i,
+      season: draftYear + i + 1,
       tid: tidArc[i] ?? tidArc[tidArc.length - 1] ?? -1,
       playoffs: false,
       gp,
@@ -90,6 +92,151 @@ export function fakeCareerStats(
       fgp: Math.round(stat.fgp * 10) / 10,
       tpp: Math.round(stat.tpp * 10) / 10,
       ftp: Math.round(stat.ftp * 10) / 10,
+      ptsMax: Math.max(1, Math.round(stat.ppg * (1.55 + rng() * 0.75))),
+      trbMax: Math.max(1, Math.round(stat.trb * (1.45 + rng() * 0.65))),
+      astMax: Math.max(1, Math.round(stat.apg * (1.5 + rng() * 0.8))),
+      blkMax: Math.max(1, Math.round(stat.blk * (1.7 + rng() * 0.9))),
+      stlMax: Math.max(1, Math.round(stat.stl * (1.7 + rng() * 0.9))),
+      fgMax: Math.max(1, Math.round(stat.fgm * (1.45 + rng() * 0.7))),
+      fgaMax: Math.max(1, Math.round(stat.fga * (1.35 + rng() * 0.5))),
+      tpMax: Math.max(0, Math.round(stat.tpm * (1.8 + rng() * 1.2))),
+      tpaMax: Math.max(1, Math.round(stat.tpa * (1.5 + rng() * 0.8))),
+      ftMax: Math.max(1, Math.round(stat.ftm * (1.6 + rng() * 0.8))),
+      ftaMax: Math.max(1, Math.round(stat.fta * (1.5 + rng() * 0.7))),
+      orbMax: Math.max(1, Math.round(stat.orb * (1.7 + rng() * 0.9))),
+      drbMax: Math.max(1, Math.round(stat.drb * (1.45 + rng() * 0.65))),
+      tovMax: Math.max(1, Math.round(stat.tov * (1.5 + rng() * 0.8))),
+      pfMax: Math.max(1, Math.min(6, Math.round(stat.pf * (1.5 + rng() * 0.6)))),
+      minMax: Math.max(mpg, Math.min(60, Math.round(mpg * (1.08 + rng() * 0.22)))),
+    };
+  });
+}
+
+export function buildFictionalPlayoffStats(
+  regularStats: any[],
+  teamSeasons: Map<number, Array<{ season: number; playoffRoundsWon: number }>>,
+  rng: () => number,
+): any[] {
+  return regularStats.flatMap(regular => {
+    if (regular.playoffs || Number(regular.gp ?? 0) <= 0) return [];
+    const teamSeason = teamSeasons.get(Number(regular.tid))
+      ?.find(row => Number(row.season) === Number(regular.season));
+    const roundsWon = Number(teamSeason?.playoffRoundsWon ?? -1);
+    if (roundsWon < 0) return [];
+    const gp = Math.max(4, Math.min(28, 4 + roundsWon * 4 + Math.floor(rng() * 4)));
+    const regularGp = Math.max(1, Number(regular.gp));
+    const productionScale = 0.9 + rng() * 0.2;
+    const total = (field: string) => Math.max(0, Math.round(Number(regular[field] ?? 0) / regularGp * gp * productionScale));
+    const max = (field: string) => Math.max(0, Math.round(Number(regular[field] ?? 0) * (0.9 + rng() * 0.2)));
+    const mpg = Number(regular.min ?? 0) / regularGp;
+    return [{
+      ...regular,
+      playoffs: true,
+      gp,
+      gs: Math.min(gp, Math.round(Number(regular.gs ?? 0) / regularGp * gp)),
+      min: Math.round(mpg * gp * (0.96 + rng() * 0.08)),
+      pts: total('pts'),
+      ast: total('ast'),
+      trb: total('trb'),
+      drb: total('drb'),
+      orb: total('orb'),
+      stl: total('stl'),
+      blk: total('blk'),
+      tov: total('tov'),
+      pf: total('pf'),
+      fg: total('fg'),
+      fga: total('fga'),
+      tp: total('tp'),
+      tpa: total('tpa'),
+      ft: total('ft'),
+      fta: total('fta'),
+      ptsMax: Math.max(1, max('ptsMax')),
+      trbMax: Math.max(1, max('trbMax')),
+      astMax: Math.max(1, max('astMax')),
+      blkMax: Math.max(1, max('blkMax')),
+      stlMax: Math.max(1, max('stlMax')),
+      fgMax: Math.max(1, max('fgMax')),
+      fgaMax: Math.max(1, max('fgaMax')),
+      tpMax: max('tpMax'),
+      tpaMax: Math.max(1, max('tpaMax')),
+      ftMax: Math.max(1, max('ftMax')),
+      ftaMax: Math.max(1, max('ftaMax')),
+      orbMax: Math.max(1, max('orbMax')),
+      drbMax: Math.max(1, max('drbMax')),
+      tovMax: Math.max(1, max('tovMax')),
+      pfMax: Math.max(1, Math.min(6, max('pfMax'))),
+      minMax: Math.max(1, Math.min(60, max('minMax'))),
+    }];
+  });
+}
+
+export function buildCareerSalaries({
+  draftYear,
+  careerYears,
+  tidArc,
+  ratingsHistory,
+  round,
+  pick,
+  currentYear,
+  salaryCapUsd,
+  minSalaryUsd,
+  rng,
+}: {
+  draftYear: number;
+  careerYears: number;
+  tidArc: number[];
+  ratingsHistory: any[];
+  round: number;
+  pick: number;
+  currentYear: number;
+  salaryCapUsd: number;
+  minSalaryUsd: number;
+  rng: () => number;
+}): Array<{ season: number; amount: number; tid: number; option?: string; type?: string }> {
+  let veteranDealStart = 0;
+  let veteranDealLength = 0;
+  let veteranDealBase = 0;
+
+  return Array.from({ length: careerYears }, (_, index) => {
+    const season = draftYear + index + 1;
+    const yearsBack = Math.max(0, currentYear - season);
+    const seasonCap = salaryCapUsd * Math.pow(0.95, yearsBack);
+    const seasonMinimum = minSalaryUsd * Math.pow(0.95, yearsBack);
+    const rookieYears = round === 1 ? 4 : 2;
+    let salaryUsd: number;
+    let option: string | undefined;
+    let type: string | undefined;
+
+    if (index < rookieYears) {
+      const firstRoundShare = 0.014 + Math.max(0, 30 - Math.max(1, pick)) / 29 * 0.07;
+      const rookieBase = round === 1 ? seasonCap * firstRoundShare : seasonMinimum * (1.05 + rng() * 0.3);
+      salaryUsd = Math.max(seasonMinimum, rookieBase * Math.pow(1.045, index));
+      type = 'rookie';
+      if (round === 1 && index >= 2) option = 'team';
+    } else {
+      const dealIndex = index - rookieYears;
+      if (veteranDealLength === 0 || dealIndex >= veteranDealStart + veteranDealLength) {
+        veteranDealStart = dealIndex;
+        const k2 = 31 + 0.88 * Number(ratingsHistory[index]?.ovr ?? 50);
+        veteranDealLength = k2 >= 84 ? 4 : k2 >= 76 ? 3 : 2;
+        const capShare = k2 >= 90 ? 0.30
+          : k2 >= 86 ? 0.24
+            : k2 >= 82 ? 0.17
+              : k2 >= 78 ? 0.11
+                : k2 >= 74 ? 0.07
+                  : k2 >= 70 ? 0.04
+                    : 0.018;
+        veteranDealBase = Math.max(seasonMinimum, seasonCap * capShare * (0.9 + rng() * 0.2));
+      }
+      salaryUsd = veteranDealBase * Math.pow(1.05, dealIndex - veteranDealStart);
+    }
+
+    return {
+      season,
+      amount: Math.max(1, Math.round(salaryUsd / 1000)),
+      tid: tidArc[index] ?? tidArc[tidArc.length - 1] ?? -1,
+      ...(option ? { option } : {}),
+      ...(type ? { type } : {}),
     };
   });
 }

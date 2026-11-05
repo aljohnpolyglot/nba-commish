@@ -1,9 +1,13 @@
-import type { ReactElement } from 'react';
+import { useEffect, useMemo, useState, type ReactElement } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../utils/scoutingFuzz';
 import { getNonNBAGistData } from '../../central/view/nonNBACache';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
 import type { GameState, NBAPlayer, NBATeam } from '../../../types';
+import { isExternalLeagueStatus } from '../../../constants';
+import { PLAYER_SILHOUETTE_DATA_URI } from '../../../utils/playerSilhouette';
+import { Loader2 } from 'lucide-react';
+import { useConnectedBlackPortrait } from '../../../utils/portraitBackground';
 
 const formatPos = (pos = '') => {
   const p = pos.toUpperCase().trim();
@@ -21,8 +25,8 @@ interface SigningModalPlayerPanelProps {
   fullBodyRender?: string | null;
   imgAllFailed: boolean;
   limits: {
+    isRookieExtEligible: boolean;
     isSupermaxEligible: boolean;
-    maxPct: number;
   };
   money: (value: number) => string;
   onAllImagesFailed: () => void;
@@ -51,8 +55,49 @@ export default function SigningModalPlayerPanel({
   team,
   teamColors,
 }: SigningModalPlayerPanelProps): ReactElement {
-  const primarySrc = fullBodyRender || portraitFallback;
+  const portraitCandidates = useMemo(
+    () => [...new Set([fullBodyRender, portraitFallback].filter((source): source is string => !!source))],
+    [fullBodyRender, portraitFallback],
+  );
+  const [rankedPortraits, setRankedPortraits] = useState(portraitCandidates);
+  const [portraitIndex, setPortraitIndex] = useState(0);
+  useEffect(() => {
+    let active = true;
+    setRankedPortraits(portraitCandidates);
+    setPortraitIndex(0);
+    if (portraitCandidates.length < 2) return () => { active = false; };
+
+    void Promise.all(portraitCandidates.map(source => new Promise<{ source: string; pixels: number }>(resolve => {
+      const image = new Image();
+      image.onload = () => resolve({ source, pixels: image.naturalWidth * image.naturalHeight });
+      image.onerror = () => resolve({ source, pixels: 0 });
+      image.src = source;
+    }))).then(measured => {
+      if (!active) return;
+      const ranked = measured
+        .filter(candidate => candidate.pixels > 0)
+        .sort((left, right) => right.pixels - left.pixels)
+        .map(candidate => candidate.source);
+      setRankedPortraits(ranked.length > 0 ? ranked : portraitCandidates);
+      setPortraitIndex(0);
+    });
+
+    return () => { active = false; };
+  }, [portraitCandidates]);
+  const primarySrc = imgAllFailed ? undefined : (rankedPortraits[portraitIndex] ?? portraitCandidates[0]);
+  const { src: displayPrimarySrc, preparing: isPreparingPortrait } = useConnectedBlackPortrait(primarySrc);
+  const usingFullBodyRender = !!fullBodyRender && primarySrc === fullBodyRender;
   const hasFace = isRealFaceConfig(playerFace);
+  const extensionBadgeLabel = limits.isSupermaxEligible
+    ? 'Supermax Eligible'
+    : limits.isRookieExtEligible
+      ? 'Rookie Extension Eligible'
+      : null;
+  const visibleRating = getScoutedDisplayOverall(state, player, seasonYear);
+  const visiblePotential = Math.max(
+    visibleRating,
+    getScoutedDisplayPotential(state, player, seasonYear, seasonYear),
+  );
 
   return (
     <div className="w-full lg:w-[38%] xl:w-[35%] shrink-0 relative flex flex-col border-b lg:border-b-0 lg:border-r border-white/5 bg-[#090909]">
@@ -66,11 +111,11 @@ export default function SigningModalPlayerPanel({
         <h2 className="text-3xl sm:text-4xl xl:text-5xl font-black italic uppercase tracking-tighter leading-[0.88] text-white drop-shadow-2xl break-words">
           {player.name}
         </h2>
-        {limits.maxPct >= 0.3 && (
+        {extensionBadgeLabel && (
           <div className="inline-flex mt-3 items-center gap-1.5 bg-amber-500/20 border border-amber-500/40 px-3 py-1 rounded-sm">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
             <span className="text-[8px] font-black uppercase tracking-widest text-amber-300">
-              {limits.isSupermaxEligible ? 'Supermax Eligible' : 'Max Extension Eligible'}
+              {extensionBadgeLabel}
             </span>
           </div>
         )}
@@ -78,7 +123,11 @@ export default function SigningModalPlayerPanel({
 
       <div className="relative z-50 flex-1 flex items-end justify-center overflow-visible min-h-[220px] sm:min-h-[280px] lg:min-h-[400px]">
         <AnimatePresence mode="wait">
-          {(imgAllFailed || !primarySrc) && hasFace ? (
+          {isPreparingPortrait ? (
+            <div className="absolute inset-0 flex items-center justify-center" role="status" aria-label="Preparing player portrait">
+              <Loader2 className="animate-spin text-white/70" size={28} />
+            </div>
+          ) : (imgAllFailed || !displayPrimarySrc) && hasFace ? (
             <motion.div
               key="face"
               initial={{ opacity: 0, scale: 1.05, y: 20 }}
@@ -90,43 +139,33 @@ export default function SigningModalPlayerPanel({
             </motion.div>
           ) : (
             <motion.img
-              key={primarySrc ?? 'fallback'}
+              key={displayPrimarySrc ?? 'fallback'}
               initial={{ opacity: 0, scale: 1.05, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               transition={{ duration: 0.5, ease: 'easeOut' }}
-              src={primarySrc || `https://picsum.photos/seed/${encodeURIComponent(player.name ?? 'p')}/600/900`}
-              onError={e => {
-                const img = e.target as HTMLImageElement;
-                if (fullBodyRender && !img.dataset.triedPortrait && portraitFallback && portraitFallback !== img.src) {
-                  img.dataset.triedPortrait = '1';
-                  img.src = portraitFallback;
-                } else if (hasFace) {
-                  onAllImagesFailed();
+              src={displayPrimarySrc || PLAYER_SILHOUETTE_DATA_URI}
+              onError={() => {
+                if (portraitIndex + 1 < rankedPortraits.length) {
+                  setPortraitIndex(index => index + 1);
                 } else {
-                  img.removeAttribute('src');
+                  onAllImagesFailed();
                 }
               }}
               referrerPolicy="no-referrer"
               className={
-                fullBodyRender
+                usingFullBodyRender
                   ? 'absolute inset-x-[10%] sm:inset-x-[6%] lg:inset-0 bottom-0 w-[80%] sm:w-[88%] lg:w-full h-full object-contain lg:object-cover object-top drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none'
                   : 'absolute inset-x-[10%] sm:inset-x-[6%] lg:inset-x-0 bottom-0 w-[80%] sm:w-[88%] lg:w-full h-[88%] sm:h-full object-contain object-bottom drop-shadow-[0_0_80px_rgba(226,29,55,0.15)] select-none pointer-events-none scale-100 sm:scale-[1.02] lg:scale-[1.05]'
               }
-              style={fullBodyRender ? undefined : { transformOrigin: 'bottom center' }}
+              style={usingFullBodyRender ? undefined : { transformOrigin: 'bottom center' }}
             />
           )}
         </AnimatePresence>
 
         <div className="relative z-20 w-full px-4 sm:px-6 pb-5 sm:pb-8 flex justify-center gap-2 items-end">
           {[
-            (() => {
-              const ovr2K = getScoutedDisplayOverall(state, player, seasonYear);
-              return { label: 'Rating', value: ovr2K, accent: '#e21d37' };
-            })(),
-            (() => {
-              const pot2K = getScoutedDisplayPotential(state, player, seasonYear, seasonYear);
-              return { label: 'Potential', value: pot2K, accent: null as string | null };
-            })(),
+            { label: 'Rating', value: visibleRating, accent: '#e21d37' },
+            { label: 'Potential', value: visiblePotential, accent: null as string | null },
           ].map(({ label, value, accent }) => (
             <div
               key={label}
@@ -161,8 +200,8 @@ export default function SigningModalPlayerPanel({
               const raw = (player as any).weight;
               const num = typeof raw === 'number' ? raw : typeof raw === 'string' ? parseInt(raw, 10) : 0;
               if (num > 0) return `${num}lb`;
-              const isExternal = ['B-League', 'PBA', 'Euroleague', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA'].includes(player.status || '');
-              if (isExternal) {
+              const isExternal = isExternalLeagueStatus(player.status);
+              if (state.leagueType !== 'fictional' && isExternal) {
                 const gist = getNonNBAGistData(player.status!, player.name);
                 const gw = gist?.w ? parseInt(gist.w, 10) : 0;
                 if (gw > 0) return `${gw}lb`;

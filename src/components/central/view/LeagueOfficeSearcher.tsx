@@ -12,9 +12,12 @@ import {
 } from '../../../data/photos';
 import { isNonNbaIsolatedMode } from '../../../utils/uiMode';
 import { getTeamFullName } from '../../../utils/teamNames';
+import { isHistoricalNbaWhatIfTimeline, timelineInputFromState } from '../../../utils/historicalTimeline';
+import { buildHistoricalStaffCandidatesForTeam } from '../../../services/staff/historicalNbaCoaches';
+import { getStaffCareerSnapshot } from '../../../services/staffService';
+import { attrsForCoach, seedForStaff } from '../../../services/staff/displayAttributes';
+import { displayStaffRole } from '../../../services/staff/staffCareerRows';
 
-// Re-export REFS so existing modal imports remain unbroken
-export { REFS } from '../../../data/photos';
 // ─────────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────────
@@ -29,8 +32,23 @@ export interface Personnel {
   conf?: string;     // coach conference
   div?: string;      // coach division
   slug?: string;     // for worker fetch
-playerPortraitUrl?: string;
+  playerPortraitUrl?: string;
   teamLogoUrl?: string;
+  bornYear?: number;
+  careerStartYear?: number;
+  hiredYear?: number;
+  yearsWithTeam?: number;
+  careerHistory?: string;
+  basketballReferenceUrl?: string;
+  bioText?: string;
+  debutYear?: number;
+  careerEndYear?: number;
+  nationality?: string;
+  honors?: string[];
+  careerRows?: Array<{ years: string; organization: string; role: string }>;
+  refereeRatings?: Record<string, number | null>;
+  attributes?: Record<string, number | null | undefined>;
+  profileDetails?: Array<{ label: string; value: string }>;
 }
 
 
@@ -50,9 +68,8 @@ const TYPES = [
 type FilterType = typeof TYPES[number]['id'];
 
 function teamNameKeys(team: any): string[] {
-  const region = String(team?.region ?? '').trim();
   const name = String(team?.name ?? '').trim();
-  const fullName = region && name && !name.startsWith(`${region} `) ? `${region} ${name}` : name;
+  const fullName = getTeamFullName(team);
   return [name, fullName].filter(Boolean).map(v => v.toLowerCase());
 }
 
@@ -66,6 +83,48 @@ function nonNbaLeagueMatches(team: any, mode: string | null | undefined): boolea
 function isHeadCoachRole(member: any): boolean {
   const role = String(member?.role ?? member?.position ?? member?.jobTitle ?? '').trim().toLowerCase();
   return role === 'head coach';
+}
+
+function executiveProfileDetails(member: StaffMember): Array<{ label: string; value: string }> {
+  const bio = member.executiveBio ?? {};
+  const citizenship = Array.isArray(bio.citizenship) ? bio.citizenship.join(', ') : '';
+  const occupations = Array.isArray(bio.occupations) ? bio.occupations.join(', ') : '';
+  return [
+    { label: 'Born', value: String(bio.birthDate ?? member.bornYear ?? '') },
+    { label: 'Birthplace', value: String(bio.birthPlace ?? '') },
+    { label: 'Nationality', value: citizenship || String(member.nationality ?? '') },
+    { label: 'Background', value: occupations },
+  ].filter(row => row.value.trim().length > 0);
+}
+
+function executiveCareerHistory(member: StaffMember): string | undefined {
+  if (member.career_history) return member.career_history;
+  const rows = member.tenures ?? member.executiveCareerRecords ?? [];
+  const text = rows.map(row => {
+    const team = String(row.team ?? row.teamName ?? row.franchise ?? '').trim();
+    const tenure = String(row.tenure ?? row.years ?? row.seasons ?? '').trim();
+    return [tenure, team].filter(Boolean).join(' — ');
+  }).filter(Boolean);
+  return text.length > 0 ? text.join('\n') : undefined;
+}
+
+function coachHonors(member: any): string[] | undefined {
+  const labels = [
+    ...(Array.isArray(member?.awardsSummary) ? member.awardsSummary : []),
+    ...(Array.isArray(member?.coachAchievements)
+      ? member.coachAchievements.map((achievement: any) => achievement?.label ?? achievement?.type)
+      : []),
+  ].map(value => String(value ?? '').trim()).filter(Boolean);
+  return labels.length > 0 ? Array.from(new Set(labels)) : undefined;
+}
+
+function coachCareerRows(member: any): Personnel['careerRows'] {
+  if (!Array.isArray(member?.playingCareerRows)) return undefined;
+  return member.playingCareerRows.map((row: any) => ({
+    years: String(row?.years ?? ''),
+    organization: String(row?.team ?? row?.organization ?? ''),
+    role: row?.role ?? (row?.position && row.position !== '—' ? `Player · ${row.position}` : 'Player'),
+  }));
 }
 
 // ─────────────────────────────────────────────────────────────────
@@ -124,7 +183,7 @@ const PersonnelCard: React.FC<{ person: Personnel; onClick: () => void }> = ({ p
             {person.name}
           </h4>
           <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mt-0.5">
-            {person.jobTitle}
+            {displayStaffRole(person.jobTitle ?? '')}
           </p>
           {person.team && (
             <p className="text-[10px] font-bold text-slate-600 mt-1 truncate">{person.team}</p>
@@ -172,7 +231,17 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
   // ── Build master list from gist data + state.staff ──────────
   const allPersonnel = useMemo<Personnel[]>(() => {
     const isFictional = state.leagueType === 'fictional';
+    const historicalNba = isHistoricalNbaWhatIfTimeline(timelineInputFromState(state));
     const mode = state.leagueStats?.uiMode;
+    const dismissedPeople = new Set(
+      (state.history ?? [])
+        .filter((entry: any) => entry?.personnelAction === 'dismissed')
+        .flatMap((entry: any) => [entry.personId, entry.personName])
+        .filter(Boolean)
+        .map((value: unknown) => String(value).trim().toLowerCase()),
+    );
+    const isDismissed = (id: string, name: string) =>
+      dismissedPeople.has(id.trim().toLowerCase()) || dismissedPeople.has(name.trim().toLowerCase());
     const visibleTeamNames = new Set(
       (nonNbaIsolated
         ? (state.nonNBATeams ?? []).filter(t => nonNbaLeagueMatches(t, mode))
@@ -184,25 +253,32 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
       return !team || visibleTeamNames.has(team);
     };
 
-    const refs: Personnel[] = nonNbaIsolated
-      ? []
-      : isFictional
-      ? (state.staff?.referees || []).map((r, i) => ({
-          id:      `ref-${r.id ?? i}`,
-          name:    r.name,
-          type:    'referee' as const,
-          jobTitle: 'League Official',
-          number:  r.id,
-        }))
-      : getAllReferees().map(r => ({
-          id:               `ref-${r.id}`,
-          name:             r.name,
-          type:             'referee' as const,
-          jobTitle:         'League Official',
-          number:           r.id,
-          slug:             r.slug,
-          playerPortraitUrl: r.photo_url,
-        }));
+    const activeYear = state.leagueStats?.year ?? new Date().getFullYear();
+    const savedReferees = state.staff?.referees?.length
+      ? state.staff.referees
+      : getAllReferees();
+    const refs: Personnel[] = savedReferees
+      .filter(referee =>
+        Number(referee.debutYear ?? 0) <= activeYear
+        && Number(referee.retirementYear ?? Number.POSITIVE_INFINITY) > activeYear
+      )
+      .map((referee, index) => ({
+        id: `ref-${referee.id ?? index}`,
+        name: referee.name,
+        type: 'referee' as const,
+        jobTitle: state.leagueStats?.uiMode === 'pba_isolated' ? 'PBA Official' : 'League Official',
+        number: String(referee.officialNumber ?? referee.id),
+        slug: referee.slug,
+        playerPortraitUrl: referee.photo_url,
+        basketballReferenceUrl: referee.brefUrl,
+        bioText: referee.bioText,
+        debutYear: referee.debutYear,
+        careerEndYear: referee.careerEndYear,
+        nationality: referee.nationality,
+        refereeRatings: referee.ratings,
+        attributes: referee.ratings,
+      }))
+      .filter(referee => !isDismissed(referee.id, referee.name));
 
     const coaches: Personnel[] = isFictional || nonNbaIsolated
       ? (state.staff?.coaches || []).filter(isVisibleStaffTeam).map((m, i) => ({
@@ -212,8 +288,24 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
           jobTitle: 'Head Coach',
           team:     m.team,
           teamLogoUrl: m.teamLogoUrl || state.teams.find(t => t.name === m.team)?.logoUrl,
+          playerPortraitUrl: m.playerPortraitUrl,
+          bornYear: m.bornYear,
+          careerStartYear: m.careerStartYear,
+          hiredYear: m.hiredYear,
+          yearsWithTeam: getStaffCareerSnapshot(m, activeYear).yearsWithTeam,
+          careerHistory: m.career_history ?? m.coaching_career,
+          basketballReferenceUrl: m.basketballReferenceUrl,
+          bioText: m.bioText,
+          nationality: m.nationality,
+          honors: coachHonors(m),
+          careerRows: coachCareerRows(m),
+          attributes: attrsForCoach(m.name, seedForStaff(m), {
+            role: m.role ?? m.position ?? m.jobTitle ?? 'Head Coach',
+            attributeProfile: m.attributeProfile,
+            attributeOverrides: m.attributeOverrides,
+          }),
         }))
-      : state.teams.flatMap((team, i) => {
+      : state.teams.flatMap<Personnel>((team, i) => {
           const teamFullName = getTeamFullName(team);
           const teamPattern = teamFullName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
           const hireRe = new RegExp(`${teamPattern}\\s+hired\\s+(.+?)\\s+as\\s+Head Coach\\.?$`, 'i');
@@ -238,10 +330,33 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
             }
           }
           const liveHeadCoach = ((team as any).tycoon?.staffMembers ?? []).find((member: any) => isHeadCoachRole(member));
-          const effectiveHeadCoach = historyHireName && historyHireName !== liveHeadCoach?.name
-            ? { ...(liveHeadCoach ?? {}), name: historyHireName }
-            : liveHeadCoach;
+          const savedTeamCoaches = (state.staff?.coaches ?? []).filter(member =>
+            teamNameKeys(team).includes(String(member.team ?? '').trim().toLowerCase()),
+          );
+          const savedHeadCoach = savedTeamCoaches.find(isHeadCoachRole) ?? savedTeamCoaches[0];
+          const historicalHeadCoach = historicalNba
+            ? buildHistoricalStaffCandidatesForTeam(
+                team,
+                state.nbaStartYear ?? state.leagueStats?.year ?? new Date().getFullYear(),
+              )
+                .find(member => member.role === 'Head Coach')
+            : undefined;
+          const availableLiveHeadCoach = liveHeadCoach?.name
+            && !unavailable.has(String(liveHeadCoach.name).trim().toLowerCase())
+            ? liveHeadCoach
+            : undefined;
+          const sourceCandidates = [historicalHeadCoach, historicalNba ? undefined : savedHeadCoach]
+            .filter(coach => coach?.name && !unavailable.has(String(coach.name).trim().toLowerCase()));
+          const historySource = historyHireName
+            ? sourceCandidates.find(coach => String(coach?.name).trim().toLowerCase() === historyHireName.toLowerCase())
+            : undefined;
+          const effectiveHeadCoach = availableLiveHeadCoach
+            ?? (historyHireName ? { ...(historySource ?? {}), name: historyHireName } : sourceCandidates[0]);
           if (effectiveHeadCoach) {
+            const directoryCoach = historicalNba
+              ? undefined
+              : getAllCoaches().find(coach => coach.name === effectiveHeadCoach.name);
+            const career = getStaffCareerSnapshot(effectiveHeadCoach, activeYear);
             return [{
               id: `coach-live-${team.id ?? i}`,
               name: effectiveHeadCoach.name,
@@ -250,10 +365,27 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
               team: teamFullName,
               conf: team.conference,
               div: (team as any).division,
-              playerPortraitUrl: effectiveHeadCoach.playerPortraitUrl,
+              slug: directoryCoach?.slug,
+              playerPortraitUrl: effectiveHeadCoach.playerPortraitUrl ?? effectiveHeadCoach.image,
               teamLogoUrl: team.logoUrl,
+              bornYear: effectiveHeadCoach.bornYear,
+              careerStartYear: effectiveHeadCoach.careerStartYear,
+              hiredYear: career.hiredYear ?? effectiveHeadCoach.hiredYear,
+              yearsWithTeam: career.yearsWithTeam,
+              careerHistory: effectiveHeadCoach.career_history ?? effectiveHeadCoach.coaching_career,
+              basketballReferenceUrl: effectiveHeadCoach.basketballReferenceUrl ?? effectiveHeadCoach.url,
+              bioText: effectiveHeadCoach.bioText,
+              nationality: effectiveHeadCoach.nationality,
+              honors: coachHonors(effectiveHeadCoach),
+              careerRows: coachCareerRows(effectiveHeadCoach),
+              attributes: attrsForCoach(effectiveHeadCoach.name, seedForStaff(effectiveHeadCoach), {
+                role: effectiveHeadCoach.role ?? effectiveHeadCoach.position ?? 'Head Coach',
+                attributeProfile: effectiveHeadCoach.attributeProfile,
+                attributeOverrides: effectiveHeadCoach.attributeOverrides,
+              }),
             }];
           }
+          if (historicalNba) return [];
           const externalCoach = getAllCoaches().find(c => teamNameKeys(team).includes(String(c.team ?? '').toLowerCase()));
           if (!externalCoach) return [];
           return [{
@@ -267,6 +399,7 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
             slug: externalCoach.slug,
             playerPortraitUrl: externalCoach.img,
             teamLogoUrl: team.logoUrl,
+            attributes: attrsForCoach(externalCoach.name, seedForStaff(externalCoach), { role: 'Head Coach' }),
           }];
         });
 
@@ -278,28 +411,84 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
       team:             m.team,
       playerPortraitUrl: m.playerPortraitUrl,
       teamLogoUrl:      m.teamLogoUrl || state.teams.find(t => t.name === m.team)?.logoUrl,
+      bornYear:         m.bornYear ?? (Number(m.executiveBio?.birthYear) || undefined),
+      careerStartYear:  m.careerStartYear,
+      hiredYear:        m.hiredYear,
+      yearsWithTeam:    getStaffCareerSnapshot(m, activeYear).yearsWithTeam,
+      careerHistory:    executiveCareerHistory(m),
+      basketballReferenceUrl: m.basketballReferenceUrl,
+      bioText:          String(m.executiveBio?.summary ?? m.executiveBio?.description ?? '').trim() || undefined,
+      nationality:      m.nationality,
+      honors:           coachHonors(m),
+      attributes:       m.attributes,
+      profileDetails:   executiveProfileDetails(m),
     }));
 
-    const owners: Personnel[] = (state.staff?.owners || []).filter(isVisibleStaffTeam).map((m: StaffMember, i: number) => ({
-      id:               `owner-${i}`,
-      name:             m.name,
-      type:             'owner',
-      jobTitle:         m.jobTitle || 'Team Owner',
-      team:             m.team,
-      playerPortraitUrl: m.playerPortraitUrl,
-      teamLogoUrl:      m.teamLogoUrl || state.teams.find(t => t.name === m.team)?.logoUrl,
-    }));
+    const owners: Personnel[] = historicalNba
+      ? state.teams.map((team, i) => {
+          const teamFullName = getTeamFullName(team);
+          const savedOwner = (state.staff?.owners ?? []).find(member =>
+            teamNameKeys(team).includes(String(member.team ?? '').trim().toLowerCase())
+            && /historical|branch/i.test(String(member.source ?? '')),
+          );
+          const ownerProfile = (team as any).ownerProfile;
+          const name = ownerProfile?.name ?? savedOwner?.name ?? `${teamFullName} Ownership Group`;
+          return {
+            id: `owner-${team.id ?? i}`,
+            name,
+            type: 'owner' as const,
+            jobTitle: 'Team Owner',
+            team: teamFullName,
+            playerPortraitUrl: ownerProfile?.playerPortraitUrl ?? savedOwner?.playerPortraitUrl,
+            teamLogoUrl: team.logoUrl,
+          };
+        }).filter(owner => !isDismissed(owner.id, owner.name))
+      : (state.staff?.owners || []).filter(isVisibleStaffTeam).map((m: StaffMember, i: number) => ({
+          id:               `owner-${i}`,
+          name:             m.name,
+          type:             'owner',
+          jobTitle:         m.jobTitle || 'Team Owner',
+          team:             m.team,
+          playerPortraitUrl: m.playerPortraitUrl,
+          teamLogoUrl:      m.teamLogoUrl || state.teams.find(t => t.name === m.team)?.logoUrl,
+        }));
 
-    const lo: Personnel[] = nonNbaIsolated ? [] : (state.staff?.leagueOffice || []).map((m: StaffMember, i: number) => ({
-      id:               `lo-${i}`,
-      name:             m.name,
-      type:             'league_office',
-      jobTitle:         m.jobTitle || 'League Executive',
-      playerPortraitUrl: m.playerPortraitUrl,
-    }));
+    const lo: Personnel[] = (state.staff?.leagueOffice || [])
+      .filter(member => {
+        const retiredYear = Number(member.retiredYear ?? String(member.retiredDate ?? '').slice(0, 4));
+        const diedYear = Number(member.diedYear ?? String(member.diedDate ?? '').slice(0, 4));
+        return (!Number.isFinite(retiredYear) || retiredYear <= 0 || retiredYear > activeYear)
+          && (!Number.isFinite(diedYear) || diedYear <= 0 || diedYear > activeYear);
+      })
+      .map((member: StaffMember, index: number) => ({
+        id: `lo-${member.id ?? index}`,
+        name: member.name,
+        type: 'league_office' as const,
+        jobTitle: member.jobTitle || 'League Executive',
+        playerPortraitUrl: member.playerPortraitUrl,
+        bornYear: member.bornYear,
+        careerStartYear: member.careerStartYear,
+        hiredYear: member.hiredYear,
+        yearsWithTeam: getStaffCareerSnapshot(member, activeYear).yearsWithTeam,
+        careerHistory: executiveCareerHistory(member),
+        basketballReferenceUrl: member.basketballReferenceUrl,
+        bioText: String(member.executiveBio?.summary ?? member.executiveBio?.description ?? '').trim() || undefined,
+        nationality: member.nationality,
+        attributes: member.attributes,
+        profileDetails: executiveProfileDetails(member),
+      }))
+      .filter(executive => !isDismissed(executive.id, executive.name));
 
     return [...refs, ...coaches, ...gms, ...owners, ...lo];
-  }, [state.staff, state.teams, state.nonNBATeams, state.leagueType, state.leagueStats?.uiMode, nonNbaIsolated, photosReady]);
+  }, [state.staff, state.teams, state.nonNBATeams, state.history, state.leagueType, state.moddedLeagueBase, state.nbaStartYear, state.leagueStats?.year, state.leagueStats?.uiMode, nonNbaIsolated, photosReady]);
+  const visibleTypes = useMemo(
+    () => TYPES.filter(type => type.id === 'all' || allPersonnel.some(person => person.type === type.id)),
+    [allPersonnel],
+  );
+
+  useEffect(() => {
+    if (!visibleTypes.some(type => type.id === typeFilter)) setTypeFilter('all');
+  }, [typeFilter, visibleTypes]);
 
   // ── Filter & Sort ───────────────────────────────────────────
   const filtered = useMemo(() => {
@@ -339,7 +528,7 @@ export const LeagueOfficeSearcher: React.FC<LeagueOfficeSearcherProps> = ({ onPe
 
         {/* Type tabs */}
         <div className="flex lg:flex-col gap-2 overflow-x-auto pb-1 lg:pb-0 lg:space-y-1.5">
-          {TYPES.map(({ id, label, Icon }) => (
+          {visibleTypes.map(({ id, label, Icon }) => (
             <button
               key={id}
               onClick={() => setTypeFilter(id)}

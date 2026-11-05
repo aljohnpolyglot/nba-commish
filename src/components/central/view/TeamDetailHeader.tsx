@@ -4,33 +4,46 @@ import { NBATeam, Game, NBAPlayer } from '../../../types';
 import { calculateDisplayTeamOverall } from '../../../utils/playerRatings';
 import { useGame } from '../../../store/GameContext';
 import { isOnRoster } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { useLeagueLabels } from '../../../utils/leagueLabels';
 
 interface TeamDetailHeaderProps {
   team: NBATeam;
-  players: NBAPlayer[]; // Added this prop
+  players: NBAPlayer[];
   gameToday: Game | undefined;
   opponent: NBATeam | null | undefined;
   onBack: () => void;
   onVisit: (team: NBATeam) => void;
   onTeamClick?: (teamId: number) => void;
+  wins: number;
+  losses: number;
 }
 
 export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
   team,
-  players, // Add this line here
+  players,
   gameToday,
   opponent,
   onBack,
   onVisit,
-  onTeamClick
+  onTeamClick,
+  wins,
+  losses,
 }) => {
   const { state } = useGame();
+  const labels = useLeagueLabels();
   const isGM = state.gameMode === 'gm';
-  const isNonNBA = team.id >= 100;
+  const isNonNBA = !state.teams.some(candidate => candidate.id === team.id);
   const teamPlayers = players.filter(p => p.tid === team.id && (isNonNBA ? isOnRoster(p) : true));
   const rawStrength = calculateDisplayTeamOverall(team.id, players, teamPlayers.length > 0 ? teamPlayers : undefined);
   const strength = Number.isFinite(rawStrength) ? rawStrength : 40;
-  const leagueLabel = isNonNBA ? team.conference : `${team.conference}ern Conf`;
+  const conference = String(team.conference ?? '').trim();
+  const leagueLabel = isNonNBA
+    ? conference || labels.leagueName
+    : conference === 'East' || conference === 'West'
+      ? `${conference}ern Conference`
+      : conference || labels.leagueName;
   return (
     <div className="p-4 md:p-10 border-b border-slate-800 bg-slate-900/50 flex flex-col md:flex-row items-start md:items-center justify-between backdrop-blur-md gap-4">
       <div className="flex items-center gap-4 md:gap-6">
@@ -42,14 +55,14 @@ export const TeamDetailHeader: React.FC<TeamDetailHeaderProps> = ({
         </button>
         <div className="flex items-center gap-4 md:gap-6">
           <div className="w-16 h-16 md:w-20 md:h-20 bg-slate-950 rounded-2xl md:rounded-[2rem] border border-slate-800 flex items-center justify-center p-3 md:p-4 shadow-2xl shrink-0">
-            <img src={team.logoUrl} alt={team.abbrev} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+            <img src={getResolvedTeamLogoUrl(team)} alt={team.abbrev} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
           </div>
           <div>
-            <h2 className="text-xl md:text-3xl font-black text-white tracking-tighter uppercase">{team.name}</h2>
+            <h2 className="text-xl md:text-3xl font-black text-white tracking-tighter uppercase">{getTeamFullName(team)}</h2>
             <div className="flex items-center gap-2 md:gap-3 mt-1 flex-wrap">
               <span className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em] bg-indigo-500/10 px-2 py-1 rounded-lg">{leagueLabel}</span>
               <div className="w-1 h-1 rounded-full bg-slate-700 hidden md:block"></div>
-              <span className="text-xs font-bold text-slate-500">{team.wins}W - {team.losses}L</span>
+              <span className="text-xs font-bold text-slate-500">{wins}W - {losses}L</span>
             </div>
           </div>
         </div>

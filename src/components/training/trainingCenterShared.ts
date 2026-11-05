@@ -22,6 +22,23 @@ export function toIsoDay(dateStr: string | undefined | null): string {
   return parseSimDate(dateStr).toISOString().slice(0, 10);
 }
 
+export function isTrainingCalendarDormant(
+  currentDate: string | Date,
+  trainingCampStart: Date,
+  rollover: Date,
+): boolean {
+  const current = typeof currentDate === 'string' ? parseSimDate(currentDate) : currentDate;
+  return current < trainingCampStart || current >= rollover;
+}
+
+export function isTrainingChecklistBlockingWindow(
+  currentDate: string | Date,
+  regularSeasonStart: Date,
+): boolean {
+  const current = typeof currentDate === 'string' ? parseSimDate(currentDate) : currentDate;
+  return current < regularSeasonStart;
+}
+
 export function getPracticeLabel(paradigm: TrainingParadigm): string {
   switch (paradigm) {
     case 'Balanced':

@@ -4,6 +4,7 @@ import { TeamOptionGateModal } from '../components/modals/TeamOptionGateModal';
 import { getCurrentOffseasonEffectiveFAStart, getGameDateParts } from '../utils/dateUtils';
 import { normalizeDate } from '../utils/helpers';
 import { isEuroIsolatedMode } from '../utils/uiMode';
+import { getPendingTeamOptions } from '../components/offseason/offseasonSidebarData';
 
 interface TeamOptionGateOptions {
   onNavigateManual?: () => void;
@@ -23,15 +24,8 @@ export function useTeamOptionGate(options: TeamOptionGateOptions = {}) {
     // mechanic — Euro deals are straight multi-year guarantees or option-on-both-sides
     // buyouts. Suppress the gate entirely in Euro-Isolated mode.
     if (isEuroIsolatedMode(state as any)) return [];
-    const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
-    const nextYear = currentYear + 1;
-    return state.players.filter((p: any) => {
-      if (p.tid !== state.userTeamId || p.status !== 'Active') return false;
-      if (!p.contract?.hasTeamOption) return false;
-      const teamOptionExp = Number(p.contract?.teamOptionExp ?? p.contract?.exp ?? 0);
-      return teamOptionExp === nextYear;
-    });
-  }, [state.gameMode, state.userTeamId, state.players, state.leagueStats?.year, state.leagueStats?.uiMode]);
+    return getPendingTeamOptions(state);
+  }, [state]);
 
   const wouldCrossOptionDeadline = (targetDate?: string) => {
     if (!state.date || pendingTeamOptions.length === 0) return false;

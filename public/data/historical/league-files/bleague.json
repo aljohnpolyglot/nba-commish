@@ -1,0 +1,801 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "bleague-league-file.4466742127579829",
+  "competitionKey": "bleague",
+  "competitionName": "B.League",
+  "leagueKey": "bleague",
+  "generatedAt": "2026-07-24T07:51:44.801Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "japanese-bleague-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/105/Japanese-BLeague/stats/2026/Averages/All/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/bleague/japanese-bleague-2026-bbgm.json",
+        "sourceHash": "d03871771263218d7dd7f28120a45e6da759bc0ba408eb2408dcd6d8faf924fb",
+        "fetchedAt": "2026-07-24T07:51:44.801Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Fazekas",
+                "canonicalKey": "person:nick-fazekas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Kawasaki Brave Thunders",
+                "canonicalKey": "bleague:kawasaki-brave-thunders"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Takatoshi Furukawa",
+                "canonicalKey": "person:takatoshi-furukawa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Link Tochigi Brex",
+                "canonicalKey": "bleague:link-tochigi-brex"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Makoto Hiejima",
+                "canonicalKey": "person:makoto-hiejima"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aishin Sea Horses",
+                "canonicalKey": "bleague:aishin-sea-horses"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daiki Tanaka",
+                "canonicalKey": "person:daiki-tanaka"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Toyota Alvark",
+                "canonicalKey": "bleague:toyota-alvark"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ryoma Hashimoto",
+                "canonicalKey": "person:ryoma-hashimoto"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aishin Sea Horses",
+                "canonicalKey": "bleague:aishin-sea-horses"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ryoma Hashimoto",
+                "canonicalKey": "person:ryoma-hashimoto"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aishin Sea Horses",
+                "canonicalKey": "bleague:aishin-sea-horses"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuki Togashi",
+                "canonicalKey": "person:yuki-togashi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chiba Jets",
+                "canonicalKey": "bleague:chiba-jets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yudai Baba",
+                "canonicalKey": "person:yudai-baba"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Toyota Alvark",
+                "canonicalKey": "bleague:toyota-alvark"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuseke Endo",
+                "canonicalKey": "person:yuseke-endo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Link Tochigi Brex",
+                "canonicalKey": "bleague:link-tochigi-brex"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuseke Endo",
+                "canonicalKey": "person:yuseke-endo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Link Tochigi Brex",
+                "canonicalKey": "bleague:link-tochigi-brex"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      }
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kosuke Kanamaru",
+                "canonicalKey": "person:kosuke-kanamaru"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Aishin Sea Horses",
+                "canonicalKey": "bleague:aishin-sea-horses"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuma Fujii",
+                "canonicalKey": "person:yuma-fujii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Kawasaki Brave Thunders",
+                "canonicalKey": "bleague:kawasaki-brave-thunders"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuma Fujii",
+                "canonicalKey": "person:yuma-fujii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Kawasaki Brave Thunders",
+                "canonicalKey": "bleague:kawasaki-brave-thunders"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuma Fujii",
+                "canonicalKey": "person:yuma-fujii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Kawasaki Brave Thunders",
+                "canonicalKey": "bleague:kawasaki-brave-thunders"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Makoto Hiejima",
+                "canonicalKey": "person:makoto-hiejima"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Link Tochigi Brex",
+                "canonicalKey": "bleague:link-tochigi-brex"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuma Fujii",
+                "canonicalKey": "person:yuma-fujii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Kawasaki Brave Thunders",
+                "canonicalKey": "bleague:kawasaki-brave-thunders"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuma Fujii",
+                "canonicalKey": "person:yuma-fujii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Kawasaki Brave Thunders",
+                "canonicalKey": "bleague:kawasaki-brave-thunders"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yuki Kawamura",
+                "canonicalKey": "person:yuki-kawamura"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Yokohama B-Corsairs",
+                "canonicalKey": "bleague:yokohama-b-corsairs"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shuta Hara",
+                "canonicalKey": "person:shuta-hara"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chiba Jets",
+                "canonicalKey": "bleague:chiba-jets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shuta Hara",
+                "canonicalKey": "person:shuta-hara"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chiba Jets",
+                "canonicalKey": "bleague:chiba-jets"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Newbill",
+                "canonicalKey": "person:d-j-newbill"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Link Tochigi Brex",
+                "canonicalKey": "bleague:link-tochigi-brex"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Takuto Nakamura",
+                "canonicalKey": "person:takuto-nakamura"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hiroshima Dragonflies",
+                "canonicalKey": "bleague:hiroshima-dragonflies"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yudai Baba",
+                "canonicalKey": "person:yudai-baba"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nagasaki Velca",
+                "canonicalKey": "bleague:nagasaki-velca"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yudai Baba",
+                "canonicalKey": "person:yudai-baba"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nagasaki Velca",
+                "canonicalKey": "bleague:nagasaki-velca"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Newbill",
+                "canonicalKey": "person:d-j-newbill"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Link Tochigi Brex",
+                "canonicalKey": "bleague:link-tochigi-brex"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Newbill",
+                "canonicalKey": "person:d-j-newbill"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Link Tochigi Brex",
+                "canonicalKey": "bleague:link-tochigi-brex"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shuta Hara",
+                "canonicalKey": "person:shuta-hara"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chiba Jets",
+                "canonicalKey": "bleague:chiba-jets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shuta Hara",
+                "canonicalKey": "person:shuta-hara"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chiba Jets",
+                "canonicalKey": "bleague:chiba-jets"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Aishin Sea Horses",
+          "canonicalKey": "bleague:aishin-sea-horses"
+        },
+        "won": 0,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "D.J. Newbill",
+                "canonicalKey": "person:d-j-newbill"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Link Tochigi Brex",
+                "canonicalKey": "bleague:link-tochigi-brex"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yudai Baba",
+                "canonicalKey": "person:yudai-baba"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nagasaki Velca",
+                "canonicalKey": "bleague:nagasaki-velca"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yudai Baba",
+                "canonicalKey": "person:yudai-baba"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nagasaki Velca",
+                "canonicalKey": "bleague:nagasaki-velca"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

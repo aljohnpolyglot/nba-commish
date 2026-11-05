@@ -2,6 +2,7 @@ import type { ReactElement } from 'react';
 import { getGameDateParts } from '../../../utils/dateUtils';
 import type { NBAPlayer, NBATeam } from '../../../types';
 import { OverlayShell, PlayerThumb } from './SigningModalOverlayShared';
+import { getWnbaDevelopmentalContractLabel } from '../../../services/wnba/developmentalContracts';
 
 interface OverLimitOverlayProps {
   action: 'showResponse' | 'sign';
@@ -24,7 +25,7 @@ export function SigningModalOverLimitOverlay({
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-amber-300 mb-2">Roster Limit</p>
         <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-white">{guaranteedCount}/{maxGuaranteed} Guaranteed</h2>
         <p className="text-white/80 italic mb-8 leading-relaxed text-sm">
-          You're at {guaranteedCount}/{maxGuaranteed} guaranteed. Signing this player will require an immediate waive. Continue?
+          You're at {guaranteedCount}/{maxGuaranteed} guaranteed. This deal will put the roster over the limit, and games cannot continue until you waive a player. Continue?
         </p>
         <div className="flex flex-col gap-2 w-full">
           <button
@@ -57,6 +58,34 @@ interface CapWarningOverlayProps {
   projectedPayroll: number;
   salary: number;
   team: NBATeam;
+  availableBae: number;
+  availableMle: number;
+  hasOwnTeamBirdRights: boolean;
+  mleType: string | null;
+}
+
+export function buildCapWarningCopy(input: {
+  availableBae: number;
+  availableMle: number;
+  hasOwnTeamBirdRights: boolean;
+  mleType: string | null;
+}): { coverage: string; options: string } {
+  const pathways: string[] = [];
+  if (input.mleType && input.availableMle > 0) pathways.push('the available mid-level exception');
+  if (input.availableBae > 0) pathways.push('the available bi-annual exception');
+  if (input.hasOwnTeamBirdRights) pathways.push('the team’s Bird Rights');
+  if (pathways.length === 0) {
+    return {
+      coverage: 'No cap exception is available for this signing.',
+      options: 'Reduce the offer to a permitted minimum contract, create cap room, or end the deal.',
+    };
+  }
+  const finalPath = pathways.length > 1 ? pathways.pop() : null;
+  const label = finalPath ? `${pathways.join(', ')} or ${finalPath}` : pathways[0];
+  return {
+    coverage: `The submitted salary is not covered by ${label}.`,
+    options: 'Lower the offer to fit an available exception, create cap room, or end the deal.',
+  };
 }
 
 export function SigningModalCapWarningOverlay({
@@ -71,7 +100,12 @@ export function SigningModalCapWarningOverlay({
   projectedPayroll,
   salary,
   team,
+  availableBae,
+  availableMle,
+  hasOwnTeamBirdRights,
+  mleType,
 }: CapWarningOverlayProps): ReactElement {
+  const copy = buildCapWarningCopy({ availableBae, availableMle, hasOwnTeamBirdRights, mleType });
   return (
     <OverlayShell borderClass="border-rose-500/40">
       <div className="w-full bg-gradient-to-b from-rose-600/20 to-transparent p-5 sm:p-8">
@@ -82,10 +116,10 @@ export function SigningModalCapWarningOverlay({
       </div>
       <div className="px-5 sm:px-8 pb-5 sm:pb-8 w-full flex flex-col items-center">
         <p className="text-white/80 italic mb-4 leading-relaxed text-sm">
-          Signing {player.name} at {moneyPrecise(salary, 2)} takes the {team.name} to {money(projectedPayroll)} — {money(overBy)} over the cap, with no MLE or Bird Rights to cover it.
+          Signing {player.name} at {moneyPrecise(salary, 2)} takes the {team.name} to {money(projectedPayroll)} — {money(overBy)} over the cap. {copy.coverage}
         </p>
         <p className="text-[10px] text-white/40 mb-6 leading-relaxed">
-          Options: drop the salary so an MLE fits, restructure around Bird Rights by re-signing a different player, or walk away.
+          {copy.options}
         </p>
         <div className="flex flex-col gap-2 w-full">
           <button
@@ -176,6 +210,7 @@ interface RosterFullOverlayProps {
     twoWayCount: number;
   };
   stateDate?: string;
+  leagueStats?: unknown;
   team: NBATeam;
 }
 
@@ -186,11 +221,13 @@ export function SigningModalRosterFullOverlay({
   player,
   roster,
   stateDate,
+  leagueStats,
   team,
 }: RosterFullOverlayProps): ReactElement {
   const { month: mo, day: dy } = stateDate ? getGameDateParts(stateDate) : getGameDateParts(new Date());
   const isCamp = (mo >= 7 && mo <= 9) || (mo === 10 && dy <= 21);
   const total = roster.standardCount + roster.twoWayCount;
+  const secondaryLabel = getWnbaDevelopmentalContractLabel(leagueStats).toLowerCase();
 
   return (
     <OverlayShell borderClass="border-rose-500/30">
@@ -202,8 +239,12 @@ export function SigningModalRosterFullOverlay({
         <h2 className="text-2xl font-black italic uppercase tracking-wider mb-4 text-rose-400">Roster Full</h2>
         <p className="text-white/80 italic mb-2 leading-relaxed text-sm">
           {isCamp
-            ? <>The {team.name} have {total}/{roster.maxStandard} players in their training-camp pool ({roster.standardCount} standard + {roster.twoWayCount} two-way) — every slot is filled.</>
-            : <>The {team.name} have {roster.standardCount}/{roster.maxStandard} standard and {roster.twoWayCount}/{roster.maxTwoWay} two-way players — every slot is filled.</>}
+            ? roster.maxTwoWay > 0
+              ? <>The {team.name} have {total}/{roster.maxStandard} players in their training-camp pool ({roster.standardCount} standard + {roster.twoWayCount} {secondaryLabel}) — every slot is filled.</>
+              : <>The {team.name} have {total}/{roster.maxStandard} players in their training-camp pool — every slot is filled.</>
+            : roster.maxTwoWay > 0
+              ? <>The {team.name} have {roster.standardCount}/{roster.maxStandard} standard and {roster.twoWayCount}/{roster.maxTwoWay} {secondaryLabel} players — every slot is filled.</>
+              : <>The {team.name} have {roster.standardCount}/{roster.maxStandard} standard players — every slot is filled.</>}
         </p>
         <p className="text-white/60 text-xs mb-8">Waive a player first to clear a roster spot, then come back to sign {player.name}.</p>
         <div className="flex flex-col gap-2 w-full">

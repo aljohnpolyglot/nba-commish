@@ -1,7 +1,15 @@
-import { NBATeam, NBAPlayer, GameResult, NewsItem, PlayoffBracket, Game } from '../../types';
+import { NBATeam, NBAPlayer, GameResult, NewsItem, PlayoffBracket, Game, type LeagueStats } from '../../types';
 import { NewsGenerator } from './NewsGenerator';
 import { convertTo2KRating } from '../../utils/helpers';
 import { getOpeningNightDate } from '../../utils/dateUtils';
+import { didHomeTeamWin, getWinningTeamId } from '../../utils/gameOutcome';
+import { getTeamFullName } from '../../utils/teamNames';
+import { getTeamCountry } from '../../utils/teamCountry';
+import { getPbaConferenceNewsName } from './pbaEcosystemNews';
+import { getLeagueLabels } from '../../utils/leagueLabels';
+import { resolveFinalsRound } from '../playoffs/playoffRounds';
+import { buildPreseasonLeadStoryFacts } from './preseasonRecapFacts';
+import { recordMediaRuntimeCall } from '../media/mediaRuntimeDiagnostics';
 
 const get2KOvr = (p: NBAPlayer) =>
   convertTo2KRating(p.overallRating ?? p.ratings?.[0]?.ovr ?? 0, p.ratings?.[p.ratings.length - 1]?.hgt ?? 50, p.ratings?.[p.ratings.length - 1]?.tp);
@@ -56,11 +64,44 @@ export const generateLazySimNews = (
   prevTeams?: NBATeam[],
   playoffs?: PlayoffBracket | null,
   schedule?: Game[],
-  seasonYear = 2026
+  seasonYear = 2026,
+  leagueStats?: LeagueStats,
 ): NewsItem[] => {
-  const OPENING_NIGHT = getOpeningNightDate(seasonYear, undefined, schedule).getTime();
+  recordMediaRuntimeCall('newsPresentationCalls');
+  const OPENING_NIGHT = getOpeningNightDate(seasonYear, leagueStats, schedule).getTime();
   const news: NewsItem[] = [];
   const isPreseason = dateIsPreseason(currentDate, OPENING_NIGHT);
+  const isPba = leagueStats?.uiMode === 'pba_isolated';
+  const isEuro = leagueStats?.uiMode === 'euro_isolated';
+  const isWnba = leagueStats?.uiMode === 'wnba_isolated';
+  const leagueLabels = getLeagueLabels(undefined, leagueStats?.uiMode, leagueStats?.leagueName);
+  const finalsRound = resolveFinalsRound(leagueStats, playoffs);
+  const finalizeNews = (): NewsItem[] => {
+    if (!isEuro) return news;
+    const competitionByGameId = new Map(
+      [
+        ...(schedule ?? []).filter(game => game.competitionId).map(game => [Number(game.gid), game.competitionId] as const),
+        ...allSimResults.filter(result => result.competitionId).map(result => [Number(result.gameId), result.competitionId] as const),
+      ],
+    );
+    const countryByTeamId = new Map(teams.map(team => [team.id, getTeamCountry(team, { nonNBATeams: [] })]));
+    return news.map(item => {
+      const competitionId = item.gameId == null
+        ? undefined
+        : competitionByGameId.get(Number(item.gameId));
+      const teamIds = [...new Set([...(item.teamIds ?? []), item.tid, item.homeTeamId, item.awayTeamId]
+        .filter((tid): tid is number => typeof tid === 'number' && Number.isFinite(tid)))];
+      const countries = [...new Set([...(item.countries ?? []), ...teamIds.map(tid => countryByTeamId.get(tid) ?? '')].filter(Boolean))];
+      return {
+        ...item,
+        league: 'euro',
+        leagueId: 'euro',
+        teamIds,
+        countries,
+        ...(competitionId ? { competitionId } : {}),
+      };
+    });
+  };
   // Suppress standings/season-narrative items during playoffs — series news is generated separately
   const isPlayoffs = !!playoffs && (playoffs.series.some(s => s.status !== 'pending') || playoffs.playInComplete);
 
@@ -103,7 +144,7 @@ export const generateLazySimNews = (
     }
     const cur = runningSeriesWins.get(sid)!;
     const homeIsHigher = r.homeTeamId === series.higherSeedTid;
-    const homeWon = r.homeScore > r.awayScore;
+    const homeWon = didHomeTeamWin(r);
     if ((homeWon && homeIsHigher) || (!homeWon && !homeIsHigher)) cur.hW++;
     else cur.lW++;
     runningSeriesWins.set(sid, { ...cur });
@@ -161,14 +202,33 @@ export const generateLazySimNews = (
       );
       if (team) {
         const player = players.find(p => p.internalId === top.stat.playerId);
-        const category = isPreseason ? 'preseason_recap' : 'batch_recap';
-        const item = withPortrait(NewsGenerator.generate(category, currentDate, {
-          playerName: top.stat.name,
-          teamName: team.name,
-          pts: top.stat.pts,
-          reb: top.stat.reb,
-          ast: top.stat.ast,
-        }), player?.imgURL);
+        const preseasonFacts = isPreseason
+          ? buildPreseasonLeadStoryFacts(top.stat.playerId, allSimResults)
+          : null;
+        const singleGamePreseason = preseasonFacts?.kind === 'single-game';
+        const category = singleGamePreseason
+          ? 'preseason_performance'
+          : isPreseason ? 'preseason_recap' : 'batch_recap';
+        const opponentId = topGame
+          ? (topGame.homeTeamId === top.teamId ? topGame.awayTeamId : topGame.homeTeamId)
+          : null;
+        const opponent = opponentId == null ? null : teams.find(candidate => candidate.id === opponentId);
+        const facts = singleGamePreseason
+          ? {
+              playerName: top.stat.name,
+              teamName: team.name,
+              opponentName: opponent?.name ?? 'the opposition',
+              statValue: preseasonFacts.pointsPerGame,
+              statType: 'points',
+            }
+          : {
+              playerName: top.stat.name,
+              teamName: team.name,
+              pts: preseasonFacts?.pointsPerGame ?? top.stat.pts,
+              reb: preseasonFacts?.reboundsPerGame ?? top.stat.reb,
+              ast: preseasonFacts?.assistsPerGame ?? top.stat.ast,
+            };
+        const item = withPortrait(NewsGenerator.generate(category, currentDate, facts), player?.imgURL);
         if (item) {
           if (topGame) { item.gameId = topGame.gameId; item.homeTeamId = topGame.homeTeamId; item.awayTeamId = topGame.awayTeamId; }
           const topGameSched = topGame && schedule?.find(sg => sg.gid === topGame.gameId);
@@ -182,8 +242,8 @@ export const generateLazySimNews = (
               ? playoffs?.series.find(s => s.id === topGameSched.playoffSeriesId)
               : undefined;
             const seriesRound = topSeries?.round ?? 0;
-            const roundLabel = seriesRound === 4 ? 'NBA Finals'
-              : seriesRound === 3 ? 'Conference Finals'
+            const roundLabel = seriesRound === finalsRound ? leagueLabels.finals
+              : seriesRound === finalsRound - 1 ? (isWnba ? 'Semifinals' : 'Conference Finals')
               : seriesRound === 2 ? 'Conference Semifinals'
               : playInGame ? 'Play-In Tournament' : 'First Round';
             const playInCtx = playInGame ? 'Play-In Tournament' : null;
@@ -191,7 +251,7 @@ export const generateLazySimNews = (
             const isElimination = seriesCtx?.includes('advance') ?? false;
             // Determine if top performer's team actually won this game
             const topTeamWon = topGame
-              ? (topGame.homeTeamId === top.teamId ? topGame.homeScore > topGame.awayScore : topGame.awayScore > topGame.homeScore)
+              ? Number(getWinningTeamId(topGame)) === top.teamId
               : true;
             const playoffTitles = contextLabel
               ? (isElimination && topTeamWon ? [
@@ -352,7 +412,7 @@ export const generateLazySimNews = (
       const homeTeam = teams.find(t => t.id === game.homeTeamId)!;
       const awayTeam = teams.find(t => t.id === game.awayTeamId)!;
       if (!homeTeam || !awayTeam) continue;
-      const homeWon = game.homeScore > game.awayScore;
+      const homeWon = didHomeTeamWin(game);
       const winner = homeWon ? homeTeam : awayTeam;
       const loser = homeWon ? awayTeam : homeTeam;
       const winnerScore = homeWon ? game.homeScore : game.awayScore;
@@ -370,21 +430,28 @@ export const generateLazySimNews = (
 
       // Pass team logo as image (static, no enrichment) and player portrait as
       // playerPortraitUrl (triggers Imagn enrichment fallback in NewsFeed)
-      let item = NewsGenerator.generate('game_result', game.date, {
-        winnerName: winner.name,
-        loserName: loser.name,
+      const pbaCategory = Math.abs(winnerScore - loserScore) <= 3 ? 'pba_close_game' : 'pba_game_recap';
+      let item = NewsGenerator.generate(isPba ? pbaCategory : 'game_result', game.date, {
+        winnerName: isPba || isEuro || isWnba ? getTeamFullName(winner) : winner.name,
+        loserName: isPba || isEuro || isWnba ? getTeamFullName(loser) : loser.name,
         winnerScore,
         loserScore,
+        margin: Math.abs(winnerScore - loserScore),
+        conferenceName: getPbaConferenceNewsName(leagueStats?.pbaConference),
         winnerRecord: seriesCtx ?? `${winner.wins}-${winner.losses}`,
         loserRecord: `${loser.wins}-${loser.losses}`,
         gameType: gameIsPlayoff ? 'playoff' : 'regular season',
         topPerformer: topStat?.name ?? 'The leading scorer',
         topPts: topStat?.pts ?? 0,
-      }, undefined); // no static image — let Imagn enrichment run
+        topReb: topStat?.reb ?? 0,
+        topAst: topStat?.ast ?? 0,
+      }, undefined, undefined, isPba ? { uiMode: 'pba_isolated', seed: `pba-game-${game.gameId}` } : undefined); // no static image — let Imagn enrichment run
       if (item && topPlayer?.imgURL) item.playerPortraitUrl = topPlayer.imgURL;
+      if (item && isPba) item.id = `pba-game-${game.gameId}`;
+      if (item && isEuro) item.id = `euro-game-${game.gameId}`;
 
       // Rewrite headline for playoff games to feel like postseason
-      if (item && gameIsPlayoff && seriesCtx && topStat) {
+      if (item && !isPba && gameIsPlayoff && seriesCtx && topStat) {
         const lastName = topStat.name.split(' ').pop() ?? topStat.name;
         const clinched = seriesCtx.includes('advance');
         const tied = seriesCtx.includes('tied');
@@ -447,7 +514,7 @@ export const generateLazySimNews = (
         const isTripleDouble = stat.pts >= 10 && stat.reb >= 10 && stat.ast >= 10;
 
         if (!isModestScorer && !isTripleDouble) continue;
-        if (Math.random() > 0.55) continue; // 55% chance — keeps it sparse enough
+        if (Math.random() > 0.18) continue;
 
         const item = withPortrait(NewsGenerator.generate('team_feat', game.date, {
           playerName: stat.name,
@@ -485,7 +552,7 @@ export const generateLazySimNews = (
         .filter(s => (s.gameScore ?? 0) >= 20)
         .sort((a, b) => (b.gameScore ?? 0) - (a.gameScore ?? 0));
       if (stars.length < 2) continue;
-      if (Math.random() > 0.65) continue; // 65% chance to generate
+      if (Math.random() > 0.25) continue;
       const s1 = stars[0];
       const s2 = stars[1];
       const p1 = players.find(p => p.internalId === s1.playerId);
@@ -555,7 +622,13 @@ export const generateLazySimNews = (
       let headline: string;
       let body: string;
 
-      if (pig.gameType === 'loserGame') {
+      if (pig.gameType === '8v9' && Number(pig.winnerId) === Number(pig.team2Tid)) {
+        headline = `${winner.name} Force Second Play-In Game`;
+        body = `${winner.name} defeated ${loser.name} ${winnerScore}–${loserScore} in the Play-In. The final playoff spot will be decided in a second 8-vs-9 game.${topNote}`;
+      } else if (pig.gameType === '8v9' || pig.gameType === '8v9Game2') {
+        headline = `${winner.name} Claim the 8-Seed`;
+        body = `${winner.name} defeated ${loser.name} ${winnerScore}–${loserScore} in the Play-In to claim the final playoff spot.${topNote}`;
+      } else if (pig.gameType === 'loserGame') {
         headline = `${winner.name} Punch Their Ticket to the Playoffs — ${loser.name} Eliminated`;
         body = `${winner.name} edged out ${loser.name} ${winnerScore}–${loserScore} in the Play-In eliminator to claim the 8-seed.${topNote}`;
       } else if (pig.gameType === '7v8') {
@@ -582,8 +655,8 @@ export const generateLazySimNews = (
   }
 
   // ── 3f. CHAMPIONSHIP NEWS — when Finals clinch game is in this batch ───────
-  if (playoffs?.champion && playoffs.bracketComplete && schedule) {
-    const finals = playoffs.series.find(s => s.round === 4 && s.status === 'complete');
+  if (playoffs?.champion != null && playoffs.bracketComplete && schedule) {
+    const finals = playoffs.series.find(s => s.round === finalsRound && s.status === 'complete');
     if (finals) {
       const champResult = allSimResults.find(r => {
         const g = schedule.find(sg => sg.gid === r.gameId);
@@ -607,21 +680,23 @@ export const generateLazySimNews = (
           const mvpStat = allStats[0];
           const mvpPlayer = mvpStat ? players.find(p => p.internalId === mvpStat.playerId) : null;
 
+          const championName = champTeam ? getTeamFullName(champTeam) : 'Champions';
+          const loserName = loserTeam ? getTeamFullName(loserTeam) : 'Opponents';
           const headlines = [
-            `${champTeam?.name ?? 'Champions'} Win the NBA Title — ${year} NBA Champions`,
-            `${champTeam?.abbrev ?? '???'} Are NBA Champions! Historic Run Ends With ${totalGames}-Game Finals`,
-            `${champTeam?.name ?? 'Champions'} Defeat ${loserTeam?.name ?? 'Opponents'} in ${totalGames} Games, Claim ${year} Championship`,
+            `${championName} Win the ${leagueLabels.leagueName} Title — ${year} ${leagueLabels.leagueName} Champions`,
+            `${championName} Are ${leagueLabels.leagueName} Champions! Historic Run Ends With ${totalGames}-Game Finals`,
+            `${championName} Defeat ${loserName} in ${totalGames} Games, Claim ${year} Championship`,
           ];
           const headline = headlines[Math.floor(Math.random() * headlines.length)];
 
           const mvpNote = mvpPlayer ? ` ${mvpPlayer.name} led the way with ${mvpStat.pts} points, ${mvpStat.reb} rebounds, and ${mvpStat.ast} assists to earn the Finals MVP.` : '';
-          const body = `The ${champTeam?.name ?? 'Champions'} are ${year} NBA Champions after defeating the ${loserTeam?.name ?? 'opponent'} ${winnerScore}–${loserScore} in Game ${totalGames} to win the series ${champWins}–${loserWins}.${mvpNote} The city of ${champTeam?.region ?? champTeam?.name} erupts in celebration as the confetti falls.`;
+          const content = `${championName} are ${year} ${leagueLabels.leagueName} Champions after defeating ${loserName} ${winnerScore}–${loserScore} in Game ${totalGames} to win the series ${champWins}–${loserWins}.${mvpNote} The city of ${champTeam?.region ?? championName} erupts in celebration as the confetti falls.`;
 
           news.push({
             id: stableId,
             headline,
-            body,
-            category: 'game_result',
+            content,
+            category: 'nba_champion',
             date: currentDate,
             image: champTeam?.logoUrl,
             isNew: true,
@@ -637,7 +712,7 @@ export const generateLazySimNews = (
   // ── 4. INJURIES — only newly-injured players from this sim batch ──────────
   // Pre-existing (BBGM/initial) injuries are NOT in allSimResults.injuries,
   // so they won't be re-reported on every batch. Stable IDs prevent duplicates.
-  if (skipInjuries) return news;
+  if (skipInjuries) return finalizeNews();
 
   // Map playerId → the actual game date when the injury occurred
   const newlyInjuredIds = new Set<string>();
@@ -807,5 +882,5 @@ export const generateLazySimNews = (
     }
   }
 
-  return news;
+  return finalizeNews();
 };

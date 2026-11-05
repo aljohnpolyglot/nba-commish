@@ -1,9 +1,10 @@
 import { DUNK_PROPS, PropDefinition, SelectedProp, selectLeapoverTarget, SANDBOX_ASSIST_NAMES } from './dunkCommentary';
 import { buildDunkContestPlays } from './dunkContestEngine';
-import { selectJudges } from './judges';
+import { JudgeCandidate, selectJudges } from './judges';
 import { isValidCombo, TIERS } from './allStarDunkContestConfig';
-import { buildIntroText, calcComposite, calcProb, calcScore, compositionProbMod, getDrivingDunk, isLegendaryMove, legendaryMoveProb, selectMove, selectToss } from './allStarDunkContestHelpers';
+import { buildIntroText, calcComposite, calcProb, calcScore, compositionProbMod, isLegendaryMove, legendaryMoveProb, selectMove, selectToss } from './allStarDunkContestHelpers';
 import { ApproachType, DeliveryType, DunkAttempt, DunkComposition, DunkContestResult, DunkPlayer, NBAPlayer, ObstacleType, PlayerRound } from './allStarDunkContestTypes';
+import { isCurrentNbaPlayer } from './allStarSelectionHelpers';
 
 export type { NBAPlayer } from './allStarDunkContestTypes';
 export * from './allStarDunkContestTypes';
@@ -21,22 +22,23 @@ export class AllStarDunkContestSim {
   }
 
   static selectContestants(players: DunkPlayer[], num = 4): DunkPlayer[] {
-    const withComposite = players
-      .filter(p => getDrivingDunk(p.name) !== undefined && (getDrivingDunk(p.name) || 0) >= 40)
+    const activePool = players
+      .filter(p => isCurrentNbaPlayer(p))
       .map(p => ({ player: p, composite: calcComposite(p) }))
-      .filter(c => c.player.pos !== 'C' || c.composite >= 90)
       .sort((a, b) => b.composite - a.composite);
+    const withComposite = activePool.filter(c => c.composite >= 58 && (c.player.pos !== 'C' || c.composite >= 82));
+    const pool = withComposite.length >= Math.min(num, 4) ? withComposite : activePool;
 
-    if (withComposite.length <= num) return withComposite.map(entry => entry.player);
-    const elite = withComposite.filter(entry => entry.composite >= 90);
-    const acrobat = withComposite.filter(entry => entry.composite >= 83 && entry.composite < 90);
-    const athletic = withComposite.filter(entry => entry.composite >= 76 && entry.composite < 83);
+    if (pool.length <= num) return pool.map(entry => entry.player);
+    const elite = pool.filter(entry => entry.composite >= 90);
+    const acrobat = pool.filter(entry => entry.composite >= 83 && entry.composite < 90);
+    const athletic = pool.filter(entry => entry.composite >= 76 && entry.composite < 83);
     const picks: DunkPlayer[] = [];
 
     if (elite.length) picks.push(elite[0].player);
     const categories = [acrobat, athletic, elite];
     let catIdx = 0;
-    while (picks.length < num - 1 && picks.length < withComposite.length) {
+    while (picks.length < num - 1 && picks.length < pool.length) {
       const currentCat = categories[catIdx % categories.length];
       const available = currentCat.filter(entry => !picks.find(p => p.internalId === entry.player.internalId));
       if (available.length) picks.push(pick(available).player);
@@ -44,19 +46,19 @@ export class AllStarDunkContestSim {
       if (catIdx > 100) break;
     }
 
-    const pastWinners = withComposite.filter(entry => entry.player.awards?.some(a => a.type === 'Slam Dunk Contest Winner') && !picks.find(picked => picked.internalId === entry.player.internalId));
+    const pastWinners = pool.filter(entry => entry.player.awards?.some(a => a.type === 'Slam Dunk Contest Winner') && !picks.find(picked => picked.internalId === entry.player.internalId));
     if (pastWinners.length && picks.length < num) picks.push(pick(pastWinners).player);
     if (picks.length < num) {
-      const remaining = withComposite.filter(entry => !picks.find(picked => picked.internalId === entry.player.internalId));
+      const remaining = pool.filter(entry => !picks.find(picked => picked.internalId === entry.player.internalId));
       for (let i = 0; i < remaining.length && picks.length < num; i++) picks.push(remaining[i].player);
     }
 
     return picks.slice(0, num);
   }
 
-  static simulate(contestants: DunkPlayer[]): DunkContestResult {
+  static simulate(contestants: DunkPlayer[], judgeCandidates: JudgeCandidate[] = []): DunkContestResult {
     const log: string[] = [];
-    const judges = selectJudges(contestants.map(c => c.name));
+    const judges = selectJudges(contestants.map(c => c.name), judgeCandidates);
     const compositeCache = new Map<string, number>();
     contestants.forEach(player => compositeCache.set(player.name, calcComposite(player)));
     const playerUsedMoves = new Map<string, Set<string>>();

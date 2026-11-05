@@ -369,6 +369,8 @@ export function generateMadeNarrative(scorer: any, pts: number, assister: any, i
     }
   }
 
+  if (!desc.includes(scorer.n)) desc = `${scorer.n} ${desc}`;
+
   // Assist flavor
   if (assister) {
     if (Math.random() < 0.60) {

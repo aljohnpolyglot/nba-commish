@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Contact } from '../../types';
 import { Club } from '../../data/clubs';
 import { convertTo2KRating } from '../../utils/helpers';
@@ -7,17 +7,31 @@ import { InjurySystem } from '../../services/simulation/InjurySystem';
 import { getAllReferees, fetchRefereeData, getRefereePhoto } from '../../data/photos';
 import { PERSON_ACTION_MAP } from '../../data/personActionDefs';
 import { useGame } from '../../store/GameContext';
-import { Restaurant, RESTAURANT_DATA_URL, Movie, MOVIE_DATA_URL } from './PersonSelector/types';
+import { Restaurant, RESTAURANT_DATA_URL, Movie } from './PersonSelector/types';
+import { loadAvailableMovies } from './PersonSelector/movieAvailability';
 import { resolveAnyTeam } from '../../utils/teamLookup';
+import { isExternalLeaguePlayer } from '../../utils/playerLeagueScope';
+import type { DisciplineTemplateSelection } from '../../services/disciplinePolicy';
+import { useFineAmountControl } from './PersonSelector/useFineAmountControl';
+import { isPersonSelectorFormValid } from './PersonSelector/isPersonSelectorFormValid';
 import type {
   PersonSelectorActionType,
   PersonSelectorModalProps,
   PersonSelectorStep,
 } from './personSelectorModalShared';
+import { getPlayerImage } from '../../utils/playerImage';
+import { ensurePortraitLookupsLoaded } from '../../data/realPlayerDataFetcher';
 
 type UsePersonSelectorModalModelArgs = Pick<
   PersonSelectorModalProps,
-  'actionType' | 'onClose' | 'onSelect' | 'preSelectedContact' | 'skipPersonSelection'
+  | 'actionType'
+  | 'allowEmptySelection'
+  | 'contactFilter'
+  | 'initialSelectedContacts'
+  | 'onClose'
+  | 'onSelect'
+  | 'preSelectedContact'
+  | 'skipPersonSelection'
 >;
 
 export function usePersonSelectorModalModel({
@@ -25,16 +39,37 @@ export function usePersonSelectorModalModel({
   onClose,
   onSelect,
   preSelectedContact,
+  initialSelectedContacts,
   skipPersonSelection,
+  allowEmptySelection,
+  contactFilter,
 }: UsePersonSelectorModalModelArgs) {
   const { state } = useGame();
-  const [step, setStep] = useState<PersonSelectorStep>(actionType === 'club' ? 'club_choice' : 'people');
+  const isFictional = state.leagueType === 'fictional';
+  const leagueLabel = isFictional ? 'Association' : 'NBA';
+  const [step, setStep] = useState<PersonSelectorStep>(() => {
+    if (actionType === 'club') return 'club_choice';
+    if (actionType === 'movie') return 'movie';
+    if (
+      skipPersonSelection
+      && preSelectedContact
+      && ['fine', 'drug_test', 'suspension', 'sabotage', 'give_money', 'hypnotize', 'retire_now'].includes(actionType)
+    ) return 'details';
+    return 'people';
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [activeFilter, setActiveFilter] = useState('All');
   const [reason, setReason] = useState('');
   const [duration, setDuration] = useState('');
-  const [amount, setAmount] = useState('');
-  const [selectedContacts, setSelectedContacts] = useState<Contact[]>(preSelectedContact ? [preSelectedContact] : []);
+  const [includeFine, setIncludeFine] = useState(false);
+  const [disciplineTemplate, setDisciplineTemplate] = useState<DisciplineTemplateSelection>();
+  const [selectedContacts, setSelectedContacts] = useState<Contact[]>(
+    initialSelectedContacts?.length
+      ? initialSelectedContacts
+      : preSelectedContact
+        ? [preSelectedContact]
+        : [],
+  );
   const [injurySort, setInjurySort] = useState<'name' | 'games-asc' | 'games-desc'>('name');
   const [selectedInjuryName, setSelectedInjuryName] = useState('');
   const [restaurants, setRestaurants] = useState<Restaurant[]>([]);
@@ -45,12 +80,25 @@ export function usePersonSelectorModalModel({
   const [movieSearch, setMovieSearch] = useState('');
   const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
   const [loadingMovies, setLoadingMovies] = useState(false);
-  const [useMovieDatabase, setUseMovieDatabase] = useState<boolean | null>(null);
+  const [useMovieDatabase, setUseMovieDatabase] = useState<boolean | null>(actionType === 'movie' ? true : null);
   const [clubSearch, setClubSearch] = useState('');
   const [selectedClub, setSelectedClub] = useState<Club | null>(null);
   const [refsLoaded, setRefsLoaded] = useState(false);
+  const [portraitLookupVersion, setPortraitLookupVersion] = useState(0);
+  const appliedDisciplineCaseKey = useRef<string | null>(null);
+  const fineAmount = useFineAmountControl(actionType, selectedContacts, state);
+  const openDisciplineCase = useMemo(() => {
+    if (selectedContacts.length !== 1) return undefined;
+    return state.inbox.find(email =>
+      email.action?.type === 'discipline-case'
+      && email.action.status === 'open'
+      && email.action.playerIds.includes(selectedContacts[0].id),
+    );
+  }, [selectedContacts, state.inbox]);
+  const isDisciplineReasonLocked = openDisciplineCase?.action?.type === 'discipline-case'
+    && actionType === 'drug_test';
 
-  const isMultiSelect = ['dinner', 'movie', 'bribe', 'drug_test', 'suspension', 'sabotage', 'club', 'endorse_hof'].includes(actionType);
+  const isMultiSelect = ['dinner', 'movie', 'drug_test', 'suspension', 'sabotage', 'club', 'endorse_hof'].includes(actionType);
   const maxSelections = isMultiSelect ? 100 : 1;
   const requiresLocation = actionType === 'dinner';
   const requiresClub = actionType === 'club';
@@ -61,16 +109,36 @@ export function usePersonSelectorModalModel({
   }, []);
 
   useEffect(() => {
-    if (isMovieAction && useMovieDatabase === null && step === 'people') {
-      setStep('movie_prompt');
-    }
-  }, [isMovieAction, step, useMovieDatabase]);
+    let active = true;
+    ensurePortraitLookupsLoaded()
+      .then(() => { if (active) setPortraitLookupVersion(version => version + 1); })
+      .catch(() => {});
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     if (skipPersonSelection && preSelectedContact && actionType === 'contact') {
       onSelect([preSelectedContact]);
     }
   }, [actionType, onSelect, preSelectedContact, skipPersonSelection]);
+
+  useEffect(() => {
+    if (openDisciplineCase?.action?.type !== 'discipline-case') {
+      appliedDisciplineCaseKey.current = null;
+      return;
+    }
+    const caseKey = `${actionType}:${openDisciplineCase.action.incidentId}`;
+    if (appliedDisciplineCaseKey.current === caseKey) return;
+    appliedDisciplineCaseKey.current = caseKey;
+    if (['fine', 'suspension', 'drug_test'].includes(actionType)) {
+      setReason(openDisciplineCase.action.reason);
+      setDisciplineTemplate(undefined);
+    }
+    if (actionType === 'suspension') {
+      setDuration(String(Math.max(1, openDisciplineCase.action.recommendedGames)));
+      setIncludeFine(openDisciplineCase.action.recommendedSanction === 'fine_and_suspension');
+    }
+  }, [actionType, openDisciplineCase]);
 
   useEffect(() => {
     if (!requiresLocation || step !== 'location' || restaurants.length > 0) return;
@@ -101,17 +169,16 @@ export function usePersonSelectorModalModel({
   useEffect(() => {
     if (!isMovieAction || step !== 'movie' || movies.length > 0) return;
     setLoadingMovies(true);
-    fetch(MOVIE_DATA_URL)
-      .then(res => res.json())
-      .then(data => {
-        setMovies(data.data || []);
+    loadAvailableMovies(state.date, state.leagueStats.year)
+      .then(available => {
+        setMovies(available);
         setLoadingMovies(false);
       })
       .catch(err => {
         console.error('Failed to fetch movies', err);
         setLoadingMovies(false);
       });
-  }, [isMovieAction, movies.length, step]);
+  }, [isMovieAction, movies.length, state.date, state.leagueStats.year, step]);
 
   const allContacts = useMemo(() => {
     const contactsMap = new Map<string, Contact>();
@@ -125,14 +192,14 @@ export function usePersonSelectorModalModel({
           id: `team-${team.id}`,
           name: team.name,
           title: 'Franchise',
-          organization: 'NBA',
+          organization: leagueLabel,
           type: 'team' as const,
           teamLogoUrl: team.logoUrl,
         });
       });
     }
 
-    if (eligibility.includesNonNBATeams) {
+    if (eligibility.includesNonNBATeams && !isFictional) {
       nonNBATeams.forEach(team => {
         contactsMap.set(`non-nba-team-${team.tid}`, {
           id: `non-nba-team-${team.tid}`,
@@ -190,7 +257,7 @@ export function usePersonSelectorModalModel({
           id: `league-office-${executive.name}`,
           name: executive.name,
           title: executive.jobTitle || 'Executive',
-          organization: 'NBA League Office',
+          organization: `${leagueLabel} Office`,
           type: 'league_office' as const,
           playerPortraitUrl: executive.playerPortraitUrl,
         });
@@ -217,6 +284,7 @@ export function usePersonSelectorModalModel({
 
     const filteredPlayers = players.filter(player => {
       if (player.diedYear) return false;
+      if (isFictional && isExternalLeaguePlayer(player)) return false;
       if (player.tid === -2 || player.status === 'Prospect' || player.status === 'Draft Prospect') return false;
       if (eligibility.excludeHOF) {
         return (player.status === 'Retired' || player.tid === -3) && !player.hof;
@@ -238,9 +306,9 @@ export function usePersonSelectorModalModel({
       if (actionType === 'endorse_hof' && (player.hof || state.endorsedPlayers.includes(player.internalId))) return;
       processedPlayerNames.add(player.name);
 
-      let organization = 'NBA';
+      let organization = leagueLabel;
       let title = 'Player';
-      let league = 'NBA';
+      let league = leagueLabel;
       const resolvedTeam = player.tid >= 0
         ? resolveAnyTeam(player.tid, teams, nonNBATeams)
         : null;
@@ -257,7 +325,7 @@ export function usePersonSelectorModalModel({
         league = 'WNBA';
       } else if (resolvedTeam) {
         organization = resolvedTeam.name;
-        league = player.status || 'International';
+        league = player.tid < 100 ? leagueLabel : player.status || 'International';
       } else if (player.tid === -1 && player.status === 'Free Agent') {
         organization = 'Free Agent';
         league = 'Free Agent';
@@ -280,7 +348,7 @@ export function usePersonSelectorModalModel({
         title,
         organization,
         type: 'player' as const,
-        playerPortraitUrl: player.imgURL,
+        playerPortraitUrl: getPlayerImage(player),
         teamLogoUrl: nbaTeam?.logoUrl || (nonNBATeam as any)?.imgURL || (resolvedTeam as any)?.logoUrl,
         ovr: Math.round(rating2K),
         league,
@@ -294,16 +362,20 @@ export function usePersonSelectorModalModel({
       if (!aIsStaff && !bIsStaff) return (b.ovr || 0) - (a.ovr || 0);
       return aIsStaff ? 1 : -1;
     });
-  }, [actionType, refsLoaded, state]);
+  }, [actionType, portraitLookupVersion, refsLoaded, state]);
 
   const availableFilters = useMemo(() => {
-    const filters = ['All', 'NBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Referee', 'Free Agent', 'Retired'];
+    const filters = isFictional
+      ? ['All', 'Association', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Referee', 'Free Agent', 'Retired']
+      : ['All', 'NBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA', 'Draft Prospect', 'Owner', 'GM', 'Coach', 'Referee', 'Free Agent', 'Retired'];
     return filters.filter(filter => {
       if (filter === 'All') return true;
       if (actionType === 'endorse_hof' && ['Owner', 'GM', 'Coach', 'Referee'].includes(filter)) return false;
-      return allContacts.some(contact => contact.league === filter);
+      return allContacts.some(contact =>
+        contact.league === filter && (!contactFilter || contactFilter(contact)),
+      );
     });
-  }, [actionType, allContacts]);
+  }, [actionType, allContacts, contactFilter, isFictional]);
 
   useEffect(() => {
     if (!availableFilters.includes(activeFilter)) {
@@ -320,11 +392,12 @@ export function usePersonSelectorModalModel({
             contact.organization?.toLowerCase().includes(searchTerm.toLowerCase());
           if (!matchesSearch) return false;
           if (actionType === 'endorse_hof' && contact.type !== 'player') return false;
+          if (contactFilter && !contactFilter(contact)) return false;
           if (activeFilter === 'All') return true;
           return contact.league === activeFilter;
         })
         .slice(0, 50),
-    [actionType, activeFilter, allContacts, searchTerm],
+    [actionType, activeFilter, allContacts, contactFilter, searchTerm],
   );
 
   const filteredRestaurants = useMemo(
@@ -373,21 +446,19 @@ export function usePersonSelectorModalModel({
 
   const handleSubmit = () => {
     let finalReason = reason;
-    if (actionType === 'suspension' && duration) {
-      finalReason = `${reason} (Duration: ${duration})`;
-    }
     if (actionType === 'movie' && selectedMovie) {
       finalReason = `${reason ? `${reason} - ` : ''}Watching ${selectedMovie.title}`;
     }
     const locationName = selectedRestaurant ? selectedRestaurant.name : selectedClub ? selectedClub.name : undefined;
-    onSelect(selectedContacts, finalReason, amount ? parseFloat(amount) : undefined, locationName, duration);
+    const selectedAmount = actionType === 'suspension' && !includeFine
+      ? undefined
+      : fineAmount.amount
+        ? parseFloat(fineAmount.amount)
+        : undefined;
+    onSelect(selectedContacts, finalReason, selectedAmount, locationName, duration, disciplineTemplate);
   };
 
   const handleNext = () => {
-    if (step === 'movie_prompt') {
-      setStep(useMovieDatabase ? 'movie' : 'people');
-      return;
-    }
     if (step === 'movie') {
       setStep('people');
       return;
@@ -396,14 +467,35 @@ export function usePersonSelectorModalModel({
       setStep('location');
       return;
     }
+    if (step === 'people' && actionType === 'movie') {
+      setStep('note');
+      return;
+    }
     if (step === 'people' && requiresClub) {
       setStep('club');
+      return;
+    }
+    if (step === 'people' && ['fine', 'drug_test', 'suspension', 'sabotage', 'give_money', 'hypnotize', 'retire_now'].includes(actionType)) {
+      setStep('details');
+      return;
+    }
+    if (step === 'location') {
+      setStep('note');
       return;
     }
     handleSubmit();
   };
 
   const goBack = () => {
+    if (step === 'details') {
+      if (skipPersonSelection && preSelectedContact) onClose();
+      else setStep('people');
+      return;
+    }
+    if (step === 'note') {
+      setStep(actionType === 'dinner' ? 'location' : 'people');
+      return;
+    }
     if (step === 'location') {
       setStep('people');
       return;
@@ -417,10 +509,10 @@ export function usePersonSelectorModalModel({
       return;
     }
     if (step === 'movie') {
-      setStep('movie_prompt');
+      onClose();
       return;
     }
-    if (step === 'people' && isMovieAction && useMovieDatabase) {
+    if (step === 'people' && isMovieAction) {
       setStep('movie');
       return;
     }
@@ -429,23 +521,12 @@ export function usePersonSelectorModalModel({
     }
   };
 
-  const isFormValid = () => {
-    if (step === 'movie_prompt') return useMovieDatabase !== null;
-    if (step === 'movie') return !!selectedMovie;
-    if (step === 'club_choice') return true;
-    if (step === 'people' && selectedContacts.length === 0) return false;
-    if (actionType !== 'club' && selectedContacts.length === 0) return false;
-    if (actionType === 'club' && step !== 'club' && selectedContacts.length === 0) return false;
-    if (actionType === 'suspension' && !reason.trim()) return false;
-    if (actionType === 'sabotage' && (!reason.trim() || !duration.trim())) return false;
-    if (actionType === 'drug_test' && !reason.trim()) return false;
-    if (actionType === 'leak_scandal' && !reason.trim()) return false;
-    if (actionType === 'hypnotize' && !reason.trim()) return false;
-    if ((actionType === 'fine' || actionType === 'bribe' || actionType === 'give_money') && (!amount || !reason.trim())) return false;
-    if (requiresLocation && step === 'location' && !selectedRestaurant) return false;
-    if (requiresClub && step === 'club' && !selectedClub) return false;
-    return true;
-  };
+  const isFormValid = () => isPersonSelectorFormValid({
+    actionType, step, selectedCount: selectedContacts.length, reason, duration, amount: fineAmount.amount,
+    requiresLocation, hasRestaurant: !!selectedRestaurant, requiresClub, hasClub: !!selectedClub,
+    useMovieDatabase, hasMovie: !!selectedMovie,
+    allowEmptySelection,
+  });
 
   return {
     step,
@@ -458,8 +539,15 @@ export function usePersonSelectorModalModel({
     setReason,
     duration,
     setDuration,
-    amount,
-    setAmount,
+    includeFine,
+    setIncludeFine,
+    disciplineTemplate,
+    setDisciplineTemplate,
+    amount: fineAmount.amount,
+    setAmount: fineAmount.setAmount,
+    fineAmountStep: fineAmount.step,
+    recommendedFineAmount: fineAmount.recommendedAmount,
+    fineCurrencyCode: fineAmount.currencyCode,
     selectedContacts,
     setSelectedContacts,
     injurySort,
@@ -487,12 +575,14 @@ export function usePersonSelectorModalModel({
     requiresLocation,
     requiresClub,
     isMovieAction,
+    isDisciplineReasonLocked,
     availableFilters,
     filteredContacts,
     sortedInjuries,
     handleInjurySelect,
     handleContactToggle,
     handleNext,
+    handleSubmit,
     goBack,
     isFormValid,
   };

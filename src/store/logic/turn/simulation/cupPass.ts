@@ -6,9 +6,12 @@ import {
     rebuildCupGroupStandingsFromSchedule,
     resolveCupGroupStage,
 } from '../../../../services/nbaCup/resolveGroupStage';
-import { buildKnockoutGames, trimAndPairReplacements, hasCupTBDPlaceholders, materializeTBDSlots } from '../../../../services/nbaCup/scheduleInjector';
+import { buildKnockoutGames, getNbaCupScheduleDates, trimAndPairReplacements, hasCupTBDPlaceholders, materializeTBDSlots } from '../../../../services/nbaCup/scheduleInjector';
 import { computeCupAwards, applyPrizePool, applyCupAwardsToPlayers } from '../../../../services/nbaCup/awards';
-import { isNbaCupEnabled } from '../../../../utils/ruleFlags';
+import { applyGenericCupSimulationResults } from '../../../../services/competition/cup';
+import { usesLegacyNbaCupState } from '../../../../utils/ruleFlags';
+import { getLeagueCalendarDates } from '../../../../services/leagueCalendar';
+import { getSimulationSeed } from '../../../../services/saveIdentity';
 
 type SimulationPatchBase = {
     schedule: Game[];
@@ -19,12 +22,49 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
     stateWithSim: GameState;
     simPatch: TPatch;
 } {
-    if (!(isNbaCupEnabled(stateWithSim.leagueStats) && stateWithSim.nbaCup && simPatch.results.length > 0)) {
+    const genericCupBoxScores = [...new Map(
+        [...(stateWithSim.boxScores ?? []), ...simPatch.results]
+            .map(result => [result.gameId, result]),
+    ).values()];
+    const genericCupPass = applyGenericCupSimulationResults({
+        states: stateWithSim.cupCompetitions,
+        schedule: simPatch.schedule,
+        results: simPatch.results,
+        boxScores: genericCupBoxScores,
+        players: stateWithSim.players,
+    });
+    if (genericCupPass.states !== stateWithSim.cupCompetitions
+        || genericCupPass.schedule !== simPatch.schedule
+        || genericCupPass.players !== stateWithSim.players) {
+        stateWithSim = {
+            ...stateWithSim,
+            cupCompetitions: genericCupPass.states,
+            schedule: genericCupPass.schedule,
+            players: genericCupPass.players ?? stateWithSim.players,
+        };
+        simPatch = {
+            ...simPatch,
+            schedule: genericCupPass.schedule,
+        } as TPatch;
+    }
+
+    if (!(usesLegacyNbaCupState(stateWithSim.leagueStats) && stateWithSim.nbaCup && simPatch.results.length > 0)) {
         return { stateWithSim, simPatch };
     }
 
     let cup = stateWithSim.nbaCup;
     let schedule = simPatch.schedule;
+    const cupHost = stateWithSim.leagueStats.nbaCupHosts
+        ?.find(host => host.year === stateWithSim.leagueStats.year);
+    const leagueCalendar = getLeagueCalendarDates(stateWithSim.leagueStats.year, stateWithSim.leagueStats);
+    const legacyCupDates = getNbaCupScheduleDates(stateWithSim.leagueStats.year - 1, {
+        cupStart: leagueCalendar.cupStart,
+        cupFinal: leagueCalendar.cupFinal,
+    });
+    const legacyCupDateOptions = {
+        cupStart: leagueCalendar.cupStart,
+        cupFinal: leagueCalendar.cupFinal,
+    };
 
     for (const res of simPatch.results) {
         const game = schedule.find(g => g.gid === res.gameId);
@@ -36,7 +76,7 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
     if (cup.status === 'group') {
         cup = rebuildCupGroupStandingsFromSchedule(cup, schedule);
         if (isCupGroupStageScheduleComplete(cup, schedule)) {
-            cup = resolveCupGroupStage(cup, schedule, stateWithSim.saveId ?? 'default', stateWithSim.teams);
+            cup = resolveCupGroupStage(cup, schedule, getSimulationSeed(stateWithSim), stateWithSim.teams);
             const prevYr = stateWithSim.leagueStats.year - 1;
             const qfMatchups = cup.knockout
                 .filter(k => k.round === 'QF' && k.tid1 >= 0 && k.tid2 >= 0)
@@ -53,8 +93,9 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
                     qfMatchups,
                     nonKOTeams,
                     prevYr,
-                    stateWithSim.saveId ?? 'default',
+                    getSimulationSeed(stateWithSim),
                     startGid,
+                    legacyCupDateOptions,
                 );
                 schedule = materialized.schedule;
                 for (const ko of cup.knockout) {
@@ -65,7 +106,7 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
                 }
             } else {
                 const maxGid = Math.max(0, ...schedule.map(g => g.gid));
-                const newGames = buildKnockoutGames(cup.knockout, maxGid, prevYr);
+                const newGames = buildKnockoutGames(cup.knockout, maxGid, prevYr, cupHost, legacyCupDateOptions);
                 schedule = [...schedule, ...newGames].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
                 for (const ng of newGames) {
                     const ko = cup.knockout.find(k => k.round === ng.nbaCupRound && k.gameId === undefined && ng.homeTid === k.tid1);
@@ -73,7 +114,7 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
                 }
                 if (qfTeams.length > 0) {
                     const nextGid = Math.max(0, ...schedule.map(g => g.gid)) + 1;
-                    const trimmed = trimAndPairReplacements(schedule, qfTeams, `${prevYr}-12-09`, nextGid);
+                    const trimmed = trimAndPairReplacements(schedule, qfTeams, legacyCupDates.quarterfinal.toISOString().slice(0, 10), nextGid);
                     schedule = trimmed.schedule;
                 }
             }
@@ -87,7 +128,7 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
         const prevYr = stateWithSim.leagueStats.year - 1;
         for (const ko of cup.knockout) {
             if (ko.tid1 >= 0 && ko.tid2 >= 0 && !ko.gameId) {
-                const injected = buildKnockoutGames([ko], runningMaxGid, prevYr);
+                const injected = buildKnockoutGames([ko], runningMaxGid, prevYr, cupHost, legacyCupDateOptions);
                 if (injected[0]) {
                     newKOGames.push(...injected);
                     ko.gameId = injected[0].gid;
@@ -102,7 +143,7 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
                 .flatMap((g: any) => [g.homeTid, g.awayTid]);
             if (sfJustInjected.length > 0) {
                 const nextGid = Math.max(0, ...schedule.map(g => g.gid)) + 1;
-                const trimmed = trimAndPairReplacements(schedule, sfJustInjected, `${prevYr}-12-13`, nextGid);
+                const trimmed = trimAndPairReplacements(schedule, sfJustInjected, legacyCupDates.semifinal.toISOString().slice(0, 10), nextGid);
                 schedule = trimmed.schedule;
             }
         }
@@ -118,7 +159,7 @@ export function applyCupSimulationPass<TPatch extends SimulationPatchBase>(state
             semi: stateWithSim.leagueStats.cupPrizeSemi ?? 100_000,
             quarter: stateWithSim.leagueStats.cupPrizeQuarter ?? 50_000,
         } : undefined);
-        cupPlayersPatch = applyCupAwardsToPlayers(cup, stateWithSim.players);
+        cupPlayersPatch = applyCupAwardsToPlayers(cup, stateWithSim.players, stateWithSim.leagueStats);
     }
 
     const nextState = {

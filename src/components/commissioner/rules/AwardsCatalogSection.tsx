@@ -10,16 +10,23 @@
  *   - Announce date (read-only for now; edit modal planned)
  */
 import React, { useState } from 'react';
-import { Award, ChevronDown, Trophy, Shield, Sparkles, Flame, Target, Circle, Share2, Zap, Users, UserCheck, Crown, Medal } from 'lucide-react';
+import { Award, ChevronDown, Trophy, Shield, Sparkles, Flame, Target, Circle, Share2, Zap, Users, UserCheck, Crown, Medal, Clock } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
-import { resolveAwardsForState, defaultAwardSettings } from '../../../services/awards/AwardEngine';
+import { resolveAwardsForState, defaultAwardSettings, isAwardDefaultActive } from '../../../services/awards/AwardEngine';
+import { getAwardUIMode } from '../../../services/awards/awardEraProgression';
+import { getAwardDefinition } from '../../../services/awards/AwardRegistry';
 import type { ResolvedAward, AwardSettings, UIMode } from '../../../services/awards/types';
+import type { LeagueStats } from '../../../types';
 
 const ICON_MAP: Record<string, any> = {
   star: Award, trophy: Trophy, shield: Shield, sparkles: Sparkles,
   flame: Flame, circle: Circle, 'share-2': Share2, zap: Zap, target: Target,
   award: Award, users: Users, 'user-check': UserCheck, crown: Crown,
   medal: Medal, baby: Sparkles, 'trending-up': Zap,
+  clock: Clock,
+  cpu: Target, 'rotate-ccw': Zap, handshake: Users, activity: Zap,
+  'heart-handshake': Users, 'shield-check': Shield, 'users-round': Users,
+  'briefcase-business': Trophy,
 };
 
 const COLOR_MAP: Record<string, string> = {
@@ -33,6 +40,8 @@ const COLOR_MAP: Record<string, string> = {
   sky: 'text-sky-400',
   pink: 'text-pink-400',
   indigo: 'text-indigo-400',
+  rose: 'text-rose-400',
+  violet: 'text-violet-400',
   silver: 'text-slate-300',
 };
 
@@ -43,6 +52,7 @@ const CATEGORY_ORDER: Array<{ id: string; label: string }> = [
   { id: 'rising',      label: 'Rising / Young' },
   { id: 'stat-leader', label: 'Stat Leaders' },
   { id: 'coach',       label: 'Coaching' },
+  { id: 'executive',   label: 'Front Office' },
   { id: 'all-team',    label: 'All-Teams' },
   { id: 'postseason',  label: 'Postseason (Auto-Assigned)' },
 ];
@@ -52,30 +62,77 @@ const formatMonthDay = (md: { month: number; day: number }): string => {
   return `${monthNames[md.month - 1]} ${md.day}`;
 };
 
-export const AwardsCatalogSection: React.FC = () => {
-  const { state, dispatchAction } = useGame();
-  const resolved = resolveAwardsForState(state as any);
-  const [expandedCategory, setExpandedCategory] = useState<string | null>('season');
+interface AwardsCatalogSectionProps {
+  leagueStats?: LeagueStats;
+  uiMode?: UIMode;
+  onAwardSettingsChange?: (settings: AwardSettings) => void;
+}
 
-  const uiMode = ((state.leagueStats as any)?.uiMode ?? 'nba') as UIMode;
-  const settings: AwardSettings = (state.leagueStats as any)?.awardSettings
-    ?? defaultAwardSettings(uiMode === 'euro_isolated' || uiMode === 'fictional' ? uiMode : 'nba');
+export const AwardsCatalogSection: React.FC<AwardsCatalogSectionProps> = ({ leagueStats, uiMode: uiModeOverride, onAwardSettingsChange }) => {
+  const { state, dispatchAction } = useGame();
+  const effectiveLeagueStats = leagueStats ?? state.leagueStats;
+  const uiMode = uiModeOverride ?? (state.leagueType === 'fictional' ? 'fictional' : ((effectiveLeagueStats as any)?.uiMode ?? 'nba')) as UIMode;
+  const resolved = resolveAwardsForState({
+    ...state,
+    ...(uiModeOverride === 'fictional' ? { leagueType: 'fictional' } : {}),
+    leagueStats: { ...effectiveLeagueStats, uiMode },
+  } as any);
+  const [expandedCategory, setExpandedCategory] = useState<string | null>('season');
+  const settings: AwardSettings = (effectiveLeagueStats as any)?.awardSettings
+    ?? defaultAwardSettings(['euro_isolated', 'pba_isolated', 'wnba_isolated', 'fictional'].includes(uiMode) ? uiMode : 'nba', effectiveLeagueStats.year);
+
+  const nbaAwardIds = new Set([
+    'mvp', 'dpoy', 'roy', 'mip', 'smoy', 'clutch-player', 'coy',
+    'ibm-award', 'comeback-player', 'sportsmanship', 'hustle-award', 'teammate-award',
+    'ironman-award', 'sidekick-award', 'nba-young-player', 'playoff-mvp',
+    'least-valuable-player', 'performance-of-the-year', 'mr-consistency',
+    'sharpshooter-of-the-year', 'two-way-player-of-the-year',
+    'executive-of-year',
+    'all-league', 'all-defensive', 'all-rookie', 'finals-mvp', 'conf-finals-mvp',
+    'nba-cup-mvp', 'nba-cup-all-tournament', 'nba-cup-champion',
+    'summer-league-champion', 'summer-league-championship-mvp',
+    'summer-league-mvp', 'summer-league-first-team', 'summer-league-second-team',
+  ]);
+  const commissionerOptionalAwardIds = new Set([
+    'clutch-player', 'ibm-award', 'comeback-player', 'sportsmanship', 'hustle-award', 'teammate-award',
+    'ironman-award', 'sidekick-award', 'nba-young-player', 'playoff-mvp',
+  ]);
+  const visibleAwards = uiMode === 'nba' || uiMode === 'fictional'
+    ? resolved.filter(award => nbaAwardIds.has(award.id) && (uiMode === 'nba' || award.id !== 'conf-finals-mvp'))
+    : resolved.filter(award => award.defaultActiveIn.includes(uiMode) || commissionerOptionalAwardIds.has(award.id) || award.enabled);
 
   const toggleAward = (id: string, next: boolean) => {
     const newEnabled = { ...settings.enabled, [id]: next };
+    const nextSettings = { ...settings, enabled: newEnabled };
+    if (onAwardSettingsChange) {
+      onAwardSettingsChange(nextSettings);
+      return;
+    }
+    const definition = getAwardDefinition(id);
+    const defaultActive = definition
+      ? isAwardDefaultActive(definition, getAwardUIMode(effectiveLeagueStats), effectiveLeagueStats.year)
+      : false;
+    const commissionerOverrides = {
+      ...(effectiveLeagueStats.awardSettingsCommissionerOverrides ?? {}),
+    };
+    if (next === defaultActive) delete commissionerOverrides[id];
+    else commissionerOverrides[id] = next;
     dispatchAction({
       type: 'UPDATE_RULES',
-      payload: { awardSettings: { ...settings, enabled: newEnabled } },
+      payload: {
+        awardSettings: nextSettings,
+        awardSettingsCommissionerOverrides: commissionerOverrides,
+      },
     } as any);
   };
 
   const grouped: Record<string, ResolvedAward[]> = {};
-  for (const a of resolved) {
+  for (const a of visibleAwards) {
     (grouped[a.category] ??= []).push(a);
   }
 
-  const total = resolved.length;
-  const active = resolved.filter(a => a.enabled).length;
+  const total = visibleAwards.length;
+  const active = visibleAwards.filter(a => a.enabled).length;
 
   return (
     <div className="bg-slate-900/40 border border-slate-800 rounded-2xl p-5">
@@ -83,7 +140,7 @@ export const AwardsCatalogSection: React.FC = () => {
         <div className="flex items-center gap-3">
           <Award className="text-yellow-400" size={20} />
           <div>
-            <h3 className="text-base font-black text-white uppercase tracking-tight">Award Catalog</h3>
+            <h3 className="text-base font-black text-white uppercase tracking-tight">Awards &amp; Honors</h3>
             <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">
               {active} of {total} awards enabled
             </p>

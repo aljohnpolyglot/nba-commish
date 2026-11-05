@@ -2,19 +2,44 @@ import type { GameState, NewsItem } from '../../../types';
 import { NewsGenerator } from '../../news/NewsGenerator';
 import { logPlanEvent } from '../../offseason/offseasonPlan';
 import { backfillAllStarAwards } from './allStarSelectionResolvers';
+import { normalizePlayerAwardType } from '../../../utils/playerAwardNormalizer';
+import { didHomeTeamWin } from '../../../utils/gameOutcome';
 import {
   backfillPbaAllStarAwards,
   buildPbaAllStarLeagueStats,
   buildPbaAllStarPatch,
   buildPbaContestPatch,
+  getPbaAllStarWeekendSimulationFlags,
   hasReachedPbaAllStarWeekend,
   isPbaAllStarStateLocal,
   pbaAllStarGameNeedsFullLengthRepair,
   resetPbaAllStarGameForResim,
 } from '../../pba/allStar';
+import { simulateDanceContest, type DanceContestResult } from '../../pba/danceContest';
+import { isDanceContestEnabled } from '../../allStar/allStarEventAvailability';
+import { buildContestResultNews } from '../../allStar/contestResultNews';
+import { getAllStarPlayerEligibility } from '../../allStar/allStarSelectionHelpers';
+import { withDeterministicRandom } from '../../simulation/deterministicRandom';
+import { buildAllStarEventSeed } from '../../allStar/allStarDeterminism';
+import { getAllStarWeekendCompletion } from '../../allStar/allStarCompletion';
+import { getAllStarWeekendDates } from '../../allStar/allStarWeekendDates';
+import { formatGameDateShort } from '../../../utils/dateUtils';
+import { normalizeDate } from '../../../utils/helpers';
 
 const skipIsolatedNonNbaAllStar = (state: GameState) =>
   state.leagueStats?.uiMode === 'euro_isolated';
+
+const withDanceContestNews = (
+  state: GameState,
+  patch: Partial<GameState>,
+  danceContest: DanceContestResult | undefined,
+): Partial<GameState> => {
+  const item = buildContestResultNews(state, 'dance', danceContest);
+  if (!item) return patch;
+  const currentNews = patch.news ?? state.news ?? [];
+  if (currentNews.some(existing => existing.id === item.id)) return patch;
+  return { ...patch, news: [item, ...currentNews].slice(0, 200) };
+};
 
 export const autoOpenThroneSignups = async (state: GameState): Promise<Partial<GameState>> => {
   logPlanEvent('autoResolvers.autoOpenThroneSignups', 'fire', `date=${state.date}`);
@@ -25,8 +50,11 @@ export const autoOpenThroneSignups = async (state: GameState): Promise<Partial<G
   try {
     const { getAllStarWeekendDates } = await import('../../allStar/AllStarWeekendOrchestrator');
     const { initThroneSignups } = await import('../../allStar/throneOrchestrator');
-    const dates = getAllStarWeekendDates(state.leagueStats.year);
-    return initThroneSignups(state, dates.throneSignupOpens, dates.throneSignupCloses);
+    const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
+    return withDeterministicRandom(
+      buildAllStarEventSeed(state, 'allstar-throne-signups'),
+      () => initThroneSignups(state, dates.throneSignupOpens, dates.throneSignupCloses),
+    );
   } catch (err) {
     console.warn('autoOpenThroneSignups failed:', err);
     return {};
@@ -41,7 +69,10 @@ export const autoCloseThroneSignups = async (state: GameState): Promise<Partial<
   if ((state.allStar as any).throneSignupComplete) return {};
   try {
     const { closeThroneSignups } = await import('../../allStar/throneOrchestrator');
-    return closeThroneSignups(state);
+    return withDeterministicRandom(
+      buildAllStarEventSeed(state, 'allstar-throne-signups-close'),
+      () => closeThroneSignups(state),
+    );
   } catch (err) {
     console.warn('autoCloseThroneSignups failed:', err);
     return {};
@@ -57,8 +88,11 @@ export const autoOpenThroneVoting = async (state: GameState): Promise<Partial<Ga
   try {
     const { getAllStarWeekendDates } = await import('../../allStar/AllStarWeekendOrchestrator');
     const { tickThroneVoting } = await import('../../allStar/throneOrchestrator');
-    const dates = getAllStarWeekendDates(state.leagueStats.year);
-    return tickThroneVoting(state, dates.throneVotingOpens, dates.throneVotingOpens, dates.throneFieldReveal);
+    const dates = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats);
+    return withDeterministicRandom(
+      buildAllStarEventSeed(state, 'allstar-throne-voting'),
+      () => tickThroneVoting(state, dates.throneVotingOpens, dates.throneVotingOpens, dates.throneFieldReveal),
+    );
   } catch (err) {
     console.warn('autoOpenThroneVoting failed:', err);
     return {};
@@ -73,7 +107,10 @@ export const autoLockThroneField = async (state: GameState): Promise<Partial<Gam
   if ((state.allStar as any).throneAnnounced) return {};
   try {
     const { lockThroneField } = await import('../../allStar/throneOrchestrator');
-    return lockThroneField(state);
+    return withDeterministicRandom(
+      buildAllStarEventSeed(state, 'allstar-throne-field'),
+      () => lockThroneField(state),
+    );
   } catch (err) {
     console.warn('autoLockThroneField failed:', err);
     return {};
@@ -100,11 +137,21 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
     if ((pbaState.allStar as any)?.weekendComplete &&
       isPbaAllStarStateLocal(pbaState, pbaState.allStar) &&
       !pbaAllStarGameNeedsFullLengthRepair(pbaState, pbaState.allStar)) {
-      return {
-        ...backfillAllStarAwards(pbaState),
+      const danceContest = isDanceContestEnabled(leagueStats)
+        ? pbaState.allStar?.danceContest ?? withDeterministicRandom(
+            buildAllStarEventSeed(pbaState, 'allstar-dance-contest'),
+            () => simulateDanceContest(pbaState.allStar?.roster ?? []),
+          )
+        : undefined;
+      const completedState = danceContest
+        ? { ...pbaState, allStar: { ...pbaState.allStar!, danceContest } }
+        : pbaState;
+      return withDanceContestNews(completedState, {
+        ...backfillAllStarAwards(completedState),
         leagueStats,
         schedule: cleanedSchedule,
-      };
+        ...(danceContest ? { allStar: completedState.allStar } : {}),
+      }, danceContest);
     }
     try {
       const { AllStarWeekendOrchestrator } = await import('../../allStar/AllStarWeekendOrchestrator');
@@ -137,6 +184,7 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
           leagueStats.year,
           allStar.roster ?? [],
           leagueStats,
+          players,
         );
         allStar = { ...allStar, gamesInjected: true };
       }
@@ -151,33 +199,64 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
           leagueStats,
           allStar,
         } as GameState,
-        { friday: false, saturday: true, sunday: true },
+        getPbaAllStarWeekendSimulationFlags(stateForSim),
       );
-      const finalAllStar = patch.allStar ?? allStar;
-      return {
+      const simulatedAllStar = patch.allStar ?? allStar;
+      const danceContest = isDanceContestEnabled(leagueStats)
+        ? simulatedAllStar.danceContest ?? withDeterministicRandom(
+            buildAllStarEventSeed(stateForSim, 'allstar-dance-contest'),
+            () => simulateDanceContest(simulatedAllStar.roster ?? []),
+          )
+        : undefined;
+      const finalAllStar = danceContest
+        ? { ...simulatedAllStar, danceContest }
+        : simulatedAllStar;
+      const completedState = {
+        ...stateForSim,
+        leagueStats,
+        players,
+        allStar: finalAllStar,
+      } as GameState;
+      return withDanceContestNews(completedState, {
         ...patch,
         leagueStats,
         schedule: patch.schedule ?? schedule,
         allStar: finalAllStar,
         players: backfillPbaAllStarAwards(
-          { ...stateForSim, leagueStats, players, allStar: finalAllStar } as GameState,
+          completedState,
           players,
           finalAllStar,
         ),
-      };
+      }, danceContest);
     } catch (err) {
       console.warn('autoSimPbaAllStarWeekend failed:', err);
-      return {};
+      return { _deferred: true } as any;
     }
   }
   if (skipIsolatedNonNbaAllStar(state)) return {};
-  if ((state.allStar as any)?.weekendComplete) {
-    return backfillAllStarAwards(state);
+  if (getAllStarWeekendCompletion(state).complete) {
+    const danceContest = isDanceContestEnabled(state.leagueStats)
+      ? state.allStar?.danceContest ?? withDeterministicRandom(
+          buildAllStarEventSeed(state, 'allstar-dance-contest'),
+          () => simulateDanceContest(state.allStar?.roster ?? []),
+        )
+      : undefined;
+    const completedState = danceContest
+      ? { ...state, allStar: { ...state.allStar!, danceContest } }
+      : state;
+    return withDanceContestNews(completedState, {
+      ...backfillAllStarAwards(completedState),
+      ...(danceContest ? { allStar: completedState.allStar } : {}),
+    }, danceContest);
   }
   try {
     const { AllStarWeekendOrchestrator } = await import('../../allStar/AllStarWeekendOrchestrator');
 
-    let stateForSim = state;
+    const canonicalWeekendDate = getAllStarWeekendDates(state.leagueStats.year, state.leagueStats).risingStars;
+    const canonicalWeekendIso = canonicalWeekendDate.toISOString().slice(0, 10);
+    let stateForSim = normalizeDate(state.date) > canonicalWeekendIso
+      ? { ...state, date: formatGameDateShort(canonicalWeekendDate) }
+      : state;
     if (stateForSim.allStar?.roster && stateForSim.allStar.roster.length > 0) {
       const updatedRoster = [...stateForSim.allStar.roster];
       let rosterChanged = false;
@@ -195,6 +274,7 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
         const format = stateForSim.leagueStats?.allStarFormat ?? 'east_vs_west';
         const { getCountryFromLoc } = await import('../../../utils/helpers');
         const bucketMatch = (p: any): boolean => {
+          if (stateForSim.leagueStats.uiMode === 'wnba_isolated') return true;
           if (format === 'captains_draft') return true;
           if (conf === 'East' || conf === 'West') {
             return stateForSim.teams.find(t => t.id === p.tid)?.conference === conf;
@@ -205,12 +285,11 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
           if (conf === 'WORLD' || conf === 'WORLD1' || conf === 'WORLD2') return !isUsa;
           return true;
         };
-        const INELIGIBLE_STATUSES = new Set(['Retired', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
+        const isEligiblePlayer = getAllStarPlayerEligibility(stateForSim.leagueStats, stateForSim.teams);
         const eligible = [...stateForSim.players].filter(p =>
           !rosterIds.has(p.internalId) &&
           (!p.injury || p.injury.gamesRemaining <= 0) &&
-          !INELIGIBLE_STATUSES.has(p.status ?? '') &&
-          p.tid >= 0
+          isEligiblePlayer(p)
         );
         const preferred = eligible.filter(bucketMatch);
         const pool = preferred.length > 0 ? preferred : eligible;
@@ -249,7 +328,8 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
         stateForSim.teams,
         stateForSim.leagueStats.year,
         stateForSim.allStar?.roster ?? [],
-        stateForSim.leagueStats
+        stateForSim.leagueStats,
+        stateForSim.players,
       );
       const win = AllStarWeekendOrchestrator.getBreakWindowStrings(stateForSim.leagueStats.year, stateForSim.leagueStats);
       stateForSim = {
@@ -277,10 +357,19 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
     const year = state.leagueStats.year;
     const allStarData = patch.allStar as any;
     const awardEntries: Array<{ internalId?: string; name?: string; awardType: string }> = [];
+    for (const rosterEntry of allStarData?.roster ?? []) {
+      awardEntries.push({ internalId: rosterEntry.playerId, name: rosterEntry.playerName, awardType: 'All-Star' });
+    }
     if (allStarData?.dunkContest?.winnerId)
       awardEntries.push({ internalId: allStarData.dunkContest.winnerId, name: allStarData.dunkContest.winnerName, awardType: 'Slam Dunk Contest Winner' });
     if (allStarData?.threePointContest?.winnerId)
       awardEntries.push({ internalId: allStarData.threePointContest.winnerId, name: allStarData.threePointContest.winnerName, awardType: 'Three-Point Contest Winner' });
+    if (allStarData?.danceContest?.winnerTeamId) {
+      const winnerTeam = allStarData.danceContest.teams?.find((team: any) => team.teamId === allStarData.danceContest.winnerTeamId);
+      (winnerTeam?.playerIds ?? []).forEach((playerId: string, index: number) => {
+        awardEntries.push({ internalId: playerId, name: winnerTeam.playerNames?.[index], awardType: 'All-Star Dance Contest Champion' });
+      });
+    }
     if (allStarData?.shootingStars?.winnerTeamId) {
       const winnerTeam = allStarData.shootingStars.teams?.find((team: any) => team.teamId === allStarData.shootingStars.winnerTeamId);
       (winnerTeam?.playerIds ?? []).forEach((playerId: string, index: number) => {
@@ -289,8 +378,18 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
     }
     if (allStarData?.skillsChallenge?.winnerId)
       awardEntries.push({ internalId: allStarData.skillsChallenge.winnerId, name: allStarData.skillsChallenge.winnerName, awardType: 'Skills Challenge Winner' });
+    if (allStarData?.horseTournament?.winnerId)
+      awardEntries.push({ internalId: allStarData.horseTournament.winnerId, name: allStarData.horseTournament.winnerName, awardType: 'H-O-R-S-E Winner' });
     if (allStarData?.gameMvp?.name)
-      awardEntries.push({ name: allStarData.gameMvp.name, awardType: 'All-Star Game MVP' });
+      awardEntries.push({ internalId: allStarData.gameMvp.playerId, name: allStarData.gameMvp.name, awardType: 'All-Star MVP' });
+    if (allStarData?.risingStarsMvp?.name)
+      awardEntries.push({ internalId: allStarData.risingStarsMvp.playerId, name: allStarData.risingStarsMvp.name, awardType: 'Rising Stars MVP' });
+    const finalAllStarGame = allStarData?.bracket?.games?.find((game: any) => game.round === 'final' && game.played && game.mvpName);
+    if (!allStarData?.gameMvp?.name && finalAllStarGame?.mvpName)
+      awardEntries.push({ internalId: finalAllStarGame.mvpId, name: finalAllStarGame.mvpName, awardType: 'All-Star MVP' });
+    const finalRisingStarsGame = allStarData?.risingStarsBracket?.games?.find((game: any) => game.round === 'final' && game.played && game.mvpName);
+    if (!allStarData?.risingStarsMvp?.name && finalRisingStarsGame?.mvpName)
+      awardEntries.push({ internalId: finalRisingStarsGame.mvpId, name: finalRisingStarsGame.mvpName, awardType: 'Rising Stars MVP' });
     if (allStarData?.throne?.champion?.playerId)
       awardEntries.push({
         internalId: allStarData.throne.champion.playerId,
@@ -300,17 +399,27 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
 
     if (awardEntries.length > 0) {
       patch.players = state.players.map(p => {
-        const entry = awardEntries.find(e =>
+        const entries = awardEntries.filter(e =>
           (e.internalId && p.internalId === e.internalId) ||
           (!e.internalId && e.name && p.name?.toLowerCase() === e.name.toLowerCase())
         );
-        if (!entry) return p;
-        if (p.awards?.some(a => a.type === entry.awardType && a.season === year)) return p;
-        return { ...p, awards: [...(p.awards ?? []), { type: entry.awardType, season: year }] };
+        const missing = entries.filter(entry =>
+          !(p.awards ?? []).some(a => normalizePlayerAwardType(a.type) === entry.awardType && a.season === year)
+        );
+        return missing.length > 0
+          ? { ...p, awards: [...(p.awards ?? []), ...missing.map(entry => ({ type: entry.awardType, season: year }))] }
+          : p;
       });
     }
 
     const newNewsItems: NewsItem[] = [];
+    const contestNews = [
+      buildContestResultNews(stateForSim, 'dance', allStarData?.danceContest),
+      buildContestResultNews(stateForSim, 'shooting-stars', allStarData?.shootingStars),
+      buildContestResultNews(stateForSim, 'skills', allStarData?.skillsChallenge),
+      buildContestResultNews(stateForSim, 'horse', allStarData?.horseTournament),
+    ].filter((item): item is NewsItem => item !== null);
+    newNewsItems.push(...contestNews);
     const bracket = allStarData?.bracket;
     const playedBracketGames = (bracket?.games ?? []).filter((g: any) => g.played);
     if (bracket && playedBracketGames.length > 1) {
@@ -318,7 +427,7 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
         const homeT = bracket.teams.find((t: any) => t.tid === g.homeTid);
         const awayT = bracket.teams.find((t: any) => t.tid === g.awayTid);
         if (!homeT || !awayT) continue;
-        const homeWon = g.homeScore > g.awayScore;
+        const homeWon = didHomeTeamWin(g);
         const winnerName = homeWon ? homeT.name : awayT.name;
         const loserName = homeWon ? awayT.name : homeT.name;
         const winnerScore = Math.max(g.homeScore, g.awayScore);
@@ -326,7 +435,7 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
         const roundLabel = g.round === 'final' ? 'Championship' : g.round === 'sf' ? 'Semifinal' : 'Round Robin';
         const news = NewsGenerator.generate(
           'all_star_bracket',
-          state.date,
+          stateForSim.date,
           {
             winner: winnerName,
             loser: loserName,
@@ -354,7 +463,7 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
       })();
       const mvpNews = NewsGenerator.generate(
         'all_star_mvp',
-        state.date,
+        stateForSim.date,
         {
           playerName: allStarData.gameMvp.name,
           year,
@@ -371,10 +480,16 @@ export const autoSimAllStarWeekend = async (state: GameState): Promise<Partial<G
       patch.news = [...newNewsItems, ...(state.news ?? [])].slice(0, 200);
     }
 
+    const resolvedState = { ...stateForSim, ...patch } as GameState;
+    const completion = getAllStarWeekendCompletion(resolvedState);
+    if (!completion.complete) {
+      throw new Error(`All-Star Weekend canonical resolution incomplete: ${completion.missing.join(', ') || 'completion marker'}`);
+    }
+
     return patch;
   } catch (err) {
     console.warn('autoSimAllStarWeekend failed:', err);
-    return {};
+    throw err;
   }
 };
 

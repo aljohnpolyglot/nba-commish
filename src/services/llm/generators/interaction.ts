@@ -6,12 +6,30 @@ import {
   generateDirectMessagePrompt,
   generateSocialThreadPrompt,
   generateLeagueContext,
-  generateChatPrompt
+  generateChatPrompt,
+  sanitizeChatReply,
 } from "../prompts";
 import { OUTCOME_SCHEMA, SOCIAL_THREAD_SCHEMA } from "../../schemas";
 import { fetchAvatarData, getAvatarByHandle, getAvatarByName } from "../../avatarService";
 import { SettingsManager } from "../../SettingsManager";
-import { buildGMChatContext, GMChatContext } from "../../aiChat";
+import { buildGMChatContext } from "../../aiChat";
+import {
+  buildManagedStaffChatContext,
+  findManagedStaffMember,
+  getManagedStaffFallbackReply,
+} from "../staffChatContext";
+import {
+  buildPlayerChatContext,
+  findChatPlayer,
+  findManagedChatPlayer,
+} from "../playerChatContext";
+import {
+  buildFreeAgentAgentChatContext,
+  buildFreeAgentAgentGMSystemInstruction,
+  appendFreeAgentAgentGrounding,
+  findFreeAgentForAgentChat,
+  getFreeAgentAgentFactualReply,
+} from "../freeAgentAgentChatContext";
 
 function cleanLLMJson(raw: string): string {
   return raw
@@ -24,6 +42,24 @@ function cleanLLMJson(raw: string): string {
     .trim();
 }
 
+function needsFactualStaffFallback(message: string, reply: string): boolean {
+  if (!/\?|who|what|where|when|how|report|assignment|mission|available|injur|medical|academy|youth|roster|fixture|schedule|result|status|focus|develop/i.test(message)) return false;
+  return /^(?:thanks(?: for (?:the|your) message)?|thank you|i appreciate that|message received|got it)[.!]*$/i.test(reply.trim());
+}
+
+export function isGenericAcknowledgement(reply: string): boolean {
+  return /^(?:thanks(?: for (?:the|your) message| for reaching out)?|thank you|i appreciate that|message received|got it)[.!]*$/i.test(reply.trim());
+}
+
+function normalizeChatRole(role: string): string {
+  const label = role.split('•', 1)[0].trim();
+  if (/^(?:player|retired player|hall of famer|prospect)$/i.test(label)) return 'Player';
+  if (/coach$/i.test(label)) return 'Coach';
+  if (/^owner$/i.test(label)) return 'Owner';
+  if (/^(?:referee|league referee|league official)$/i.test(label)) return 'Referee';
+  return label;
+}
+
 export async function sendChatMessage(
   state: GameState,
   targetName: string,
@@ -33,18 +69,37 @@ export async function sendChatMessage(
   isHypnotized: boolean = false,
   recipientId?: string
 ): Promise<string> {
-  // GM mode: check if recipient is in allowlist (owner/coach/own-team player)
+  const canonicalRole = normalizeChatRole(targetRole);
+  const freeAgentPlayer = findFreeAgentForAgentChat(state, recipientId);
+  const factualAgentReply = freeAgentPlayer
+    ? getFreeAgentAgentFactualReply(freeAgentPlayer, history.at(-1)?.text ?? '')
+    : null;
+  if (factualAgentReply) return factualAgentReply;
+
   if (state.gameMode === 'gm' && recipientId) {
-    const isAllowlisted = isGMModeChatAllowlisted(state, recipientId, targetRole);
-
-    if (!isAllowlisted) {
-      return getTemplatedGMReply(targetRole, targetName);
-    }
-
-    // Allowlisted: build rich context for LLM
+    const managedStaff = canonicalRole === 'Player'
+      ? undefined
+      : findManagedStaffMember(state, recipientId, targetName);
+    const managedPlayer = canonicalRole === 'Player'
+      ? findManagedChatPlayer(state, recipientId, targetName)
+      : null;
     try {
-      const gmContext = buildGMChatContext(state, recipientId);
-      const prompt = generateChatPrompt(targetName, targetRole, targetOrg, history, state, isHypnotized, gmContext);
+      const contextRecipientId = managedPlayer?.internalId ?? freeAgentPlayer?.internalId ?? recipientId;
+      const hasNativeUserTeam = state.teams.some(team => team.id === state.userTeamId);
+      const gmContext = managedStaff || managedPlayer || !hasNativeUserTeam
+        ? undefined
+        : buildGMChatContext(state, contextRecipientId);
+      const roleContext = managedStaff
+        ? buildManagedStaffChatContext(state, managedStaff)
+        : freeAgentPlayer
+          ? buildFreeAgentAgentChatContext(state, freeAgentPlayer)
+        : managedPlayer
+          ? buildPlayerChatContext(state, managedPlayer)
+          : undefined;
+      const basePrompt = generateChatPrompt(targetName, canonicalRole, targetOrg, history, state, isHypnotized, gmContext, roleContext);
+      const prompt = freeAgentPlayer && roleContext
+        ? appendFreeAgentAgentGrounding(basePrompt, roleContext)
+        : basePrompt;
 
       let contents: any = prompt;
 
@@ -75,19 +130,34 @@ export async function sendChatMessage(
         model: SettingsManager.getModelForTask('interaction'),
         contents: contents,
         config: {
-          systemInstruction: `You are a realistic NBA personality chatting with ${gmName}, the team's General Manager. Be concise and conversational. Use the provided game context to give informed, specific replies.`,
+          systemInstruction: freeAgentPlayer
+            ? buildFreeAgentAgentGMSystemInstruction(state, freeAgentPlayer, gmName)
+            : `You are a realistic basketball personality chatting with ${gmName}, the managed club's General Manager. Do not call them Commissioner. Be concise and conversational. Use only the provided facts for informed, specific replies, and never mention numerical ratings, OVR, POT, rating scales, game mechanics, or simulation terminology.`,
         },
       }, 2, 800, true);
 
-      return response.text || "";
+      const latestMessage = history.at(-1)?.text ?? '';
+      const reply = sanitizeChatReply(response.text ?? '');
+      const groundedReply = managedStaff && needsFactualStaffFallback(latestMessage, reply)
+        ? sanitizeChatReply(getManagedStaffFallbackReply(state, managedStaff, latestMessage))
+        : reply;
+      return isGenericAcknowledgement(groundedReply) ? '' : groundedReply;
     } catch (error) {
       console.error("Error generating GM chat response:", error);
-      return "";
+      const latestMessage = history.at(-1)?.text ?? '';
+      if (managedStaff) return sanitizeChatReply(getManagedStaffFallbackReply(state, managedStaff, latestMessage));
+      return '';
     }
   }
 
   // Commissioner mode: original flow
-  const prompt = generateChatPrompt(targetName, targetRole, targetOrg, history, state, isHypnotized);
+  const player = canonicalRole === 'Player' ? findChatPlayer(state, recipientId, targetName) : null;
+  const roleContext = freeAgentPlayer
+    ? buildFreeAgentAgentChatContext(state, freeAgentPlayer)
+    : player
+      ? buildPlayerChatContext(state, player)
+      : undefined;
+  const prompt = generateChatPrompt(targetName, canonicalRole, targetOrg, history, state, isHypnotized, undefined, roleContext);
 
   let contents: any = prompt;
 
@@ -119,62 +189,18 @@ export async function sendChatMessage(
       model: SettingsManager.getModelForTask('interaction'),
       contents: contents,
       config: {
-        systemInstruction: "You are a realistic NBA personality chatting with the Commissioner. Be concise and conversational.",
+        systemInstruction: freeAgentPlayer
+          ? `You are ${freeAgentPlayer.name}'s professional basketball agent chatting with the league Commissioner. The Commissioner is a neutral league official, not a General Manager, team owner, or club representative. Do not solicit, negotiate, accept, or counter a contract offer with them; club negotiations belong with team front offices. Be concise and conversational. Use normal basketball language and never mention numerical ratings, OVR, POT, rating scales, game mechanics, or simulation terminology. The supplied facts are authoritative and your words cannot create a transaction.`
+          : "You are a realistic basketball personality chatting with the league Commissioner, who represents the league office rather than a club. Never treat them as a General Manager or team representative. Be concise and conversational, and never mention numerical ratings, OVR, POT, rating scales, game mechanics, or simulation terminology.",
       },
     }, 2, 800, true); // bypass enableLLM — chat always works
 
-    return response.text || "";
+    const reply = sanitizeChatReply(response.text || "");
+    return isGenericAcknowledgement(reply) ? '' : reply;
   } catch (error) {
     console.error("Error generating chat response:", error);
     return "";
   }
-}
-
-function isGMModeChatAllowlisted(state: GameState, recipientId: string, role: string): boolean {
-  // Owner is always allowlisted
-  if (role === 'Owner') return true;
-
-  // Coach of user's team is allowlisted
-  // recipientId may be "coach-Name" (from selector) or just "Name" (from sim-initiated chat)
-  if (role === 'Coach') {
-    const userTeam = state.teams.find(t => t.id === state.userTeamId);
-    if (!userTeam) return false;
-    const nameKey = recipientId.replace(/^coach-/, '');
-    const coach = state.staff?.coaches.find(c => c.name === nameKey && c.team === userTeam.name);
-    return !!coach;
-  }
-
-  // Own-team player is allowlisted
-  if (role === 'Player') {
-    const player = state.players.find(p => p.internalId === recipientId);
-    return !!(player && player.tid === state.userTeamId && player.status === 'Active');
-  }
-
-  // All others (GMs, agents, refs, etc.) are not allowlisted
-  return false;
-}
-
-function getTemplatedGMReply(role: string, name: string): string {
-  const templates: { [key: string]: string[] } = {
-    'GM': [
-      `Sorry, can't engage on this one right now.`,
-      `Might chat about this later.`,
-      `Not sure we have much to discuss right now.`,
-    ],
-    'Referee': [
-      `Message received.`,
-      `Thanks for reaching out.`,
-      `Got it.`,
-    ],
-    'Default': [
-      `Thanks for the message.`,
-      `I appreciate that.`,
-      `Thanks.`,
-    ]
-  };
-
-  const candidates = templates[role] || templates['Default'];
-  return candidates[Math.floor(Math.random() * candidates.length)];
 }
 
 export async function sendDirectMessage(

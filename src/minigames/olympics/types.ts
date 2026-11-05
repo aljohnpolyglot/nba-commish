@@ -14,8 +14,12 @@ export interface Player {
   pss: number;
   teamAbbrev?: string;
   teamName?: string;
+  teamColors?: string[];
   weightLbs: number;
   imgURL?: string;
+  pos?: string;
+  jerseyNumber?: string;
+  bornYear?: number;
 }
 
 export interface EventResult {

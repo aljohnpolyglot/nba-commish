@@ -1,0 +1,3360 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "summer-league-league-file.4395734522135160",
+  "competitionKey": "summer-league",
+  "competitionName": "NBA Summer League",
+  "leagueKey": "summer-league",
+  "generatedAt": "2026-07-30T01:21:41.021Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "nba-summer-league-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/nba/summer/1/2026-NBA-Summer-League/60/stats",
+        "sourcePath": "public/data/external/summer-league/nba-summer-league-2026-bbgm.json",
+        "sourceHash": "ce5c0bad68189ac1436efa86e32f68ae9066cb8e4ba7f097e4803af28bddb23f",
+        "fetchedAt": "2026-07-30T01:21:41.021Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2004,
+      "seasonLabel": "2004",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Phoenix Suns",
+          "canonicalKey": "summer-league:phoenix-suns"
+        },
+        "won": 3,
+        "lost": 0
+      }
+    },
+    {
+      "season": 2005,
+      "seasonLabel": "2005",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Cleveland Cavaliers",
+          "canonicalKey": "summer-league:cleveland-cavaliers"
+        },
+        "won": 6,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Kaman",
+                "canonicalKey": "person:chris-kaman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Clippers",
+                "canonicalKey": "summer-league:los-angeles-clippers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ike Diogu",
+                "canonicalKey": "person:ike-diogu"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Warriors",
+                "canonicalKey": "summer-league:golden-state-warriors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nate Robinson",
+                "canonicalKey": "person:nate-robinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jason Maxiell",
+                "canonicalKey": "person:jason-maxiell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Pistons",
+                "canonicalKey": "summer-league:detroit-pistons"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dwight Howard",
+                "canonicalKey": "person:dwight-howard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Orlando Magic",
+                "canonicalKey": "summer-league:orlando-magic"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luke Jackson",
+                "canonicalKey": "person:luke-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sebastian Telfair",
+                "canonicalKey": "person:sebastian-telfair"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "J.R. Smith",
+                "canonicalKey": "person:j-r-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Orleans Pelicans",
+                "canonicalKey": "summer-league:new-orleans-pelicans"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tony Allen",
+                "canonicalKey": "person:tony-allen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boston Celtics",
+                "canonicalKey": "summer-league:boston-celtics"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Travis Outlaw",
+                "canonicalKey": "person:travis-outlaw"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Paul",
+                "canonicalKey": "person:chris-paul"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Orleans Pelicans",
+                "canonicalKey": "summer-league:new-orleans-pelicans"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Channing Frye",
+                "canonicalKey": "person:channing-frye"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Monta Ellis",
+                "canonicalKey": "person:monta-ellis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Warriors",
+                "canonicalKey": "summer-league:golden-state-warriors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ryan Gomes",
+                "canonicalKey": "person:ryan-gomes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boston Celtics",
+                "canonicalKey": "summer-league:boston-celtics"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alex Acker",
+                "canonicalKey": "person:alex-acker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Pistons",
+                "canonicalKey": "summer-league:detroit-pistons"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "David Lee",
+                "canonicalKey": "person:david-lee"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antoine Wright",
+                "canonicalKey": "person:antoine-wright"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Jersey Nets",
+                "canonicalKey": "summer-league:new-jersey-nets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Justin Reed",
+                "canonicalKey": "person:justin-reed"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boston Celtics",
+                "canonicalKey": "summer-league:boston-celtics"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Linas Kleiza",
+                "canonicalKey": "person:linas-kleiza"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Denver Nuggets",
+                "canonicalKey": "summer-league:denver-nuggets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Martin",
+                "canonicalKey": "person:kevin-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luis Flores",
+                "canonicalKey": "person:luis-flores"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Denver Nuggets",
+                "canonicalKey": "summer-league:denver-nuggets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Leandro Barbosa",
+                "canonicalKey": "person:leandro-barbosa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Olumide Oyedeji",
+                "canonicalKey": "person:olumide-oyedeji"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Powell",
+                "canonicalKey": "person:josh-powell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Mavericks",
+                "canonicalKey": "summer-league:dallas-mavericks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Eddie Basden",
+                "canonicalKey": "person:eddie-basden"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gerald Fitch",
+                "canonicalKey": "person:gerald-fitch"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ron Slay",
+                "canonicalKey": "person:ron-slay"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Houston Rockets",
+          "canonicalKey": "summer-league:houston-rockets"
+        },
+        "won": 5,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Randy Foye",
+                "canonicalKey": "person:randy-foye"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Timberwolves",
+                "canonicalKey": "summer-league:minnesota-timberwolves"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brandon Roy",
+                "canonicalKey": "person:brandon-roy"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Randy Foye",
+                "canonicalKey": "person:randy-foye"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Timberwolves",
+                "canonicalKey": "summer-league:minnesota-timberwolves"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ryan Gomes",
+                "canonicalKey": "person:ryan-gomes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boston Celtics",
+                "canonicalKey": "summer-league:boston-celtics"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Lucas",
+                "canonicalKey": "person:john-lucas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Martin",
+                "canonicalKey": "person:kevin-martin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Amar'e Stoudemire",
+                "canonicalKey": "person:amar-e-stoudemire"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Martell Webster",
+                "canonicalKey": "person:martell-webster"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrea Bargnani",
+                "canonicalKey": "person:andrea-bargnani"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Toronto Raptors",
+                "canonicalKey": "summer-league:toronto-raptors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shannon Brown",
+                "canonicalKey": "person:shannon-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Maurice Ager",
+                "canonicalKey": "person:maurice-ager"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Mavericks",
+                "canonicalKey": "summer-league:dallas-mavericks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Steve Novak",
+                "canonicalKey": "person:steve-novak"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Ewing",
+                "canonicalKey": "person:daniel-ewing"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Clippers",
+                "canonicalKey": "summer-league:los-angeles-clippers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andray Blatche",
+                "canonicalKey": "person:andray-blatche"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nate Robinson",
+                "canonicalKey": "person:nate-robinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "David Lee",
+                "canonicalKey": "person:david-lee"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jason Maxiell",
+                "canonicalKey": "person:jason-maxiell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Pistons",
+                "canonicalKey": "summer-league:detroit-pistons"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sebastian Telfair",
+                "canonicalKey": "person:sebastian-telfair"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boston Celtics",
+                "canonicalKey": "summer-league:boston-celtics"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kelenna Azubuike",
+                "canonicalKey": "person:kelenna-azubuike"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Denver Nuggets",
+                "canonicalKey": "summer-league:denver-nuggets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "James Singleton",
+                "canonicalKey": "person:james-singleton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Clippers",
+                "canonicalKey": "summer-league:los-angeles-clippers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ronnie Price",
+                "canonicalKey": "person:ronnie-price"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Dallas Mavericks",
+          "canonicalKey": "summer-league:dallas-mavericks"
+        },
+        "won": 3,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nate Robinson",
+                "canonicalKey": "person:nate-robinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Durant",
+                "canonicalKey": "person:kevin-durant"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Al Thornton",
+                "canonicalKey": "person:al-thornton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Clippers",
+                "canonicalKey": "summer-league:los-angeles-clippers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rodney Stuckey",
+                "canonicalKey": "person:rodney-stuckey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Pistons",
+                "canonicalKey": "summer-league:detroit-pistons"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marco Belinelli",
+                "canonicalKey": "person:marco-belinelli"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Warriors",
+                "canonicalKey": "summer-league:golden-state-warriors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Javaris Crittenton",
+                "canonicalKey": "person:javaris-crittenton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "canonicalKey": "summer-league:los-angeles-lakers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Aaron Brooks",
+                "canonicalKey": "person:aaron-brooks"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rudy Gay",
+                "canonicalKey": "person:rudy-gay"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Lowry",
+                "canonicalKey": "person:kyle-lowry"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Randy Foye",
+                "canonicalKey": "person:randy-foye"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Timberwolves",
+                "canonicalKey": "summer-league:minnesota-timberwolves"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Craig Smith",
+                "canonicalKey": "person:craig-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Timberwolves",
+                "canonicalKey": "summer-league:minnesota-timberwolves"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Von Wafer",
+                "canonicalKey": "person:von-wafer"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Denver Nuggets",
+                "canonicalKey": "summer-league:denver-nuggets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lou Williams",
+                "canonicalKey": "person:lou-williams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Philadelphia Sixers",
+                "canonicalKey": "summer-league:philadelphia-sixers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nate Robinson",
+                "canonicalKey": "person:nate-robinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "J.J. Barea",
+                "canonicalKey": "person:j-j-barea"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Mavericks",
+                "canonicalKey": "summer-league:dallas-mavericks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Spencer Hawes",
+                "canonicalKey": "person:spencer-hawes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Denver Nuggets",
+          "canonicalKey": "summer-league:denver-nuggets"
+        },
+        "won": 4,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jerryd Bayless",
+                "canonicalKey": "person:jerryd-bayless"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Houston Rockets",
+          "canonicalKey": "summer-league:houston-rockets"
+        },
+        "won": 5,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Blake Griffin",
+                "canonicalKey": "person:blake-griffin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Clippers",
+                "canonicalKey": "summer-league:los-angeles-clippers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "San Antonio Spurs",
+          "canonicalKey": "summer-league:san-antonio-spurs"
+        },
+        "won": 5,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Wall",
+                "canonicalKey": "person:john-wall"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "JaVale McGee",
+                "canonicalKey": "person:javale-mcgee"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "J.J. Hickson",
+                "canonicalKey": "person:j-j-hickson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeMar DeRozan",
+                "canonicalKey": "person:demar-derozan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Toronto Raptors",
+                "canonicalKey": "summer-league:toronto-raptors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ty Lawson",
+                "canonicalKey": "person:ty-lawson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Denver Nuggets",
+                "canonicalKey": "summer-league:denver-nuggets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sam Young",
+                "canonicalKey": "person:sam-young"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jermaine Taylor",
+                "canonicalKey": "person:jermaine-taylor"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alonzo Gee",
+                "canonicalKey": "person:alonzo-gee"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Spurs",
+                "canonicalKey": "summer-league:san-antonio-spurs"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Reggie Williams",
+                "canonicalKey": "person:reggie-williams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Warriors",
+                "canonicalKey": "summer-league:golden-state-warriors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gani Lawal",
+                "canonicalKey": "person:gani-lawal"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "DeMarcus Cousins",
+                "canonicalKey": "person:demarcus-cousins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Wall",
+                "canonicalKey": "person:john-wall"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Larry Sanders",
+                "canonicalKey": "person:larry-sanders"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Milwaukee Bucks",
+                "canonicalKey": "summer-league:milwaukee-bucks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Derrick Caracter",
+                "canonicalKey": "person:derrick-caracter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "canonicalKey": "summer-league:los-angeles-lakers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dominique Jones",
+                "canonicalKey": "person:dominique-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Mavericks",
+                "canonicalKey": "summer-league:dallas-mavericks"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Golden State Warriors",
+          "canonicalKey": "summer-league:golden-state-warriors"
+        },
+        "won": 5,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Selby",
+                "canonicalKey": "person:josh-selby"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Golden State Warriors",
+          "canonicalKey": "summer-league:golden-state-warriors"
+        },
+        "won": 7,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ian Clark",
+                "canonicalKey": "person:ian-clark"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Warriors",
+                "canonicalKey": "summer-league:golden-state-warriors"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Sacramento Kings",
+          "canonicalKey": "summer-league:sacramento-kings"
+        },
+        "won": 6,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Glen Rice",
+                "canonicalKey": "person:glen-rice"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Donatas Motiejunas",
+                "canonicalKey": "person:donatas-motiejunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Glen Rice",
+                "canonicalKey": "person:glen-rice"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tony Snell",
+                "canonicalKey": "person:tony-snell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Doug McDermott",
+                "canonicalKey": "person:doug-mcdermott"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Otto Porter",
+                "canonicalKey": "person:otto-porter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jordan McRae",
+                "canonicalKey": "person:jordan-mcrae"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Philadelphia Sixers",
+                "canonicalKey": "summer-league:philadelphia-sixers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tim Hardaway Jr.",
+                "canonicalKey": "person:tim-hardaway-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Russ Smith",
+                "canonicalKey": "person:russ-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Orleans Pelicans",
+                "canonicalKey": "summer-league:new-orleans-pelicans"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Warren",
+                "canonicalKey": "person:t-j-warren"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rudy Gobert",
+                "canonicalKey": "person:rudy-gobert"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Utah Jazz",
+                "canonicalKey": "summer-league:utah-jazz"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "San Antonio Spurs",
+          "canonicalKey": "summer-league:san-antonio-spurs"
+        },
+        "won": 6,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Anderson",
+                "canonicalKey": "person:kyle-anderson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Spurs",
+                "canonicalKey": "summer-league:san-antonio-spurs"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Seth Curry",
+                "canonicalKey": "person:seth-curry"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Orleans Pelicans",
+                "canonicalKey": "summer-league:new-orleans-pelicans"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Doug McDermott",
+                "canonicalKey": "person:doug-mcdermott"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Norman Powell",
+                "canonicalKey": "person:norman-powell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Toronto Raptors",
+                "canonicalKey": "summer-league:toronto-raptors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Anderson",
+                "canonicalKey": "person:kyle-anderson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Spurs",
+                "canonicalKey": "summer-league:san-antonio-spurs"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Warren",
+                "canonicalKey": "person:t-j-warren"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Larry Drew",
+                "canonicalKey": "person:larry-drew"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Orleans Pelicans",
+                "canonicalKey": "summer-league:new-orleans-pelicans"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dwight Powell",
+                "canonicalKey": "person:dwight-powell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Mavericks",
+                "canonicalKey": "summer-league:dallas-mavericks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Noah Vonleh",
+                "canonicalKey": "person:noah-vonleh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Emmanuel Mudiay",
+                "canonicalKey": "person:emmanuel-mudiay"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Denver Nuggets",
+                "canonicalKey": "summer-league:denver-nuggets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alan Williams",
+                "canonicalKey": "person:alan-williams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Chicago Bulls",
+          "canonicalKey": "summer-league:chicago-bulls"
+        },
+        "won": 7,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jerian Grant",
+                "canonicalKey": "person:jerian-grant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jordan McRae",
+                "canonicalKey": "person:jordan-mcrae"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyus Jones",
+                "canonicalKey": "person:tyus-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Timberwolves",
+                "canonicalKey": "summer-league:minnesota-timberwolves"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alan Williams",
+                "canonicalKey": "person:alan-williams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ben Simmons",
+                "canonicalKey": "person:ben-simmons"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Philadelphia Sixers",
+                "canonicalKey": "summer-league:philadelphia-sixers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bobby Portis",
+                "canonicalKey": "person:bobby-portis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Norman Powell",
+                "canonicalKey": "person:norman-powell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Toronto Raptors",
+                "canonicalKey": "summer-league:toronto-raptors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Thon Maker",
+                "canonicalKey": "person:thon-maker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Milwaukee Bucks",
+                "canonicalKey": "summer-league:milwaukee-bucks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kelly Oubre, Jr.",
+                "canonicalKey": "person:kelly-oubre-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jaylen Brown",
+                "canonicalKey": "person:jaylen-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boston Celtics",
+                "canonicalKey": "summer-league:boston-celtics"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyler Ulis",
+                "canonicalKey": "person:tyler-ulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Dallas Mavericks",
+          "canonicalKey": "summer-league:dallas-mavericks"
+        },
+        "won": 5,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lonzo Ball",
+                "canonicalKey": "person:lonzo-ball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "canonicalKey": "summer-league:los-angeles-lakers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Jackson",
+                "canonicalKey": "person:josh-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lonzo Ball",
+                "canonicalKey": "person:lonzo-ball"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "canonicalKey": "summer-league:los-angeles-lakers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dennis Smith",
+                "canonicalKey": "person:dennis-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dallas Mavericks",
+                "canonicalKey": "summer-league:dallas-mavericks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Caleb Swanigan",
+                "canonicalKey": "person:caleb-swanigan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Collins",
+                "canonicalKey": "person:john-collins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Hawks",
+                "canonicalKey": "summer-league:atlanta-hawks"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Wayne Selden",
+                "canonicalKey": "person:wayne-selden"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryn Forbes",
+                "canonicalKey": "person:bryn-forbes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Spurs",
+                "canonicalKey": "summer-league:san-antonio-spurs"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cheick Diallo",
+                "canonicalKey": "person:cheick-diallo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Orleans Pelicans",
+                "canonicalKey": "summer-league:new-orleans-pelicans"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jayson Tatum",
+                "canonicalKey": "person:jayson-tatum"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boston Celtics",
+                "canonicalKey": "summer-league:boston-celtics"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Kuzma",
+                "canonicalKey": "person:kyle-kuzma"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "canonicalKey": "summer-league:los-angeles-lakers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Portland Trail Blazers",
+          "canonicalKey": "summer-league:portland-trail-blazers"
+        },
+        "won": 7,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Hart",
+                "canonicalKey": "person:josh-hart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "canonicalKey": "summer-league:los-angeles-lakers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Josh Hart",
+                "canonicalKey": "person:josh-hart"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "canonicalKey": "summer-league:los-angeles-lakers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Christian Wood",
+                "canonicalKey": "person:christian-wood"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Milwaukee Bucks",
+                "canonicalKey": "summer-league:milwaukee-bucks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Wendell Carter, Jr.",
+                "canonicalKey": "person:wendell-carter-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Knox II",
+                "canonicalKey": "person:kevin-knox-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Collin Sexton",
+                "canonicalKey": "person:collin-sexton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Svi Mykhailiuk",
+                "canonicalKey": "person:svi-mykhailiuk"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "canonicalKey": "summer-league:los-angeles-lakers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Deandre Ayton",
+                "canonicalKey": "person:deandre-ayton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Wade Baldwin IV",
+                "canonicalKey": "person:wade-baldwin-iv"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jaren Jackson, Jr.",
+                "canonicalKey": "person:jaren-jackson-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Trae Young",
+                "canonicalKey": "person:trae-young"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Hawks",
+                "canonicalKey": "summer-league:atlanta-hawks"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Memphis Grizzlies",
+          "canonicalKey": "summer-league:memphis-grizzlies"
+        },
+        "won": 6,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brandon Clarke",
+                "canonicalKey": "person:brandon-clarke"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kendrick Nunn",
+                "canonicalKey": "person:kendrick-nunn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Miami Heat",
+                "canonicalKey": "summer-league:miami-heat"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brandon Clarke",
+                "canonicalKey": "person:brandon-clarke"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jarrett Allen",
+                "canonicalKey": "person:jarrett-allen"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brooklyn Nets",
+                "canonicalKey": "summer-league:brooklyn-nets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mitchell Robinson",
+                "canonicalKey": "person:mitchell-robinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nickeil Alexander-Walker",
+                "canonicalKey": "person:nickeil-alexander-walker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Orleans Pelicans",
+                "canonicalKey": "summer-league:new-orleans-pelicans"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rui Hachimura",
+                "canonicalKey": "person:rui-hachimura"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lonnie Walker",
+                "canonicalKey": "person:lonnie-walker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Spurs",
+                "canonicalKey": "summer-league:san-antonio-spurs"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chris Boucher",
+                "canonicalKey": "person:chris-boucher"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Toronto Raptors",
+                "canonicalKey": "summer-league:toronto-raptors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anfernee Simons",
+                "canonicalKey": "person:anfernee-simons"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jaxson Hayes",
+                "canonicalKey": "person:jaxson-hayes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Orleans Pelicans",
+                "canonicalKey": "summer-league:new-orleans-pelicans"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "New Orleans Pelicans",
+          "canonicalKey": "summer-league:new-orleans-pelicans"
+        },
+        "won": 5,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Davion Mitchell",
+                "canonicalKey": "person:davion-mitchell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Payton Pritchard",
+                "canonicalKey": "person:payton-pritchard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Boston Celtics",
+                "canonicalKey": "summer-league:boston-celtics"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Davion Mitchell",
+                "canonicalKey": "person:davion-mitchell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jalen Smith",
+                "canonicalKey": "person:jalen-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jalen Johnson",
+                "canonicalKey": "person:jalen-johnson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Atlanta Hawks",
+                "canonicalKey": "summer-league:atlanta-hawks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Obi Toppin",
+                "canonicalKey": "person:obi-toppin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cam Thomas",
+                "canonicalKey": "person:cam-thomas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brooklyn Nets",
+                "canonicalKey": "summer-league:brooklyn-nets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Trey Murphy III",
+                "canonicalKey": "person:trey-murphy-iii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New Orleans Pelicans",
+                "canonicalKey": "summer-league:new-orleans-pelicans"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luka Garza",
+                "canonicalKey": "person:luka-garza"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Pistons",
+                "canonicalKey": "summer-league:detroit-pistons"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jalen Green",
+                "canonicalKey": "person:jalen-green"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paul Reed, Jr.",
+                "canonicalKey": "person:paul-reed-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Philadelphia Sixers",
+                "canonicalKey": "summer-league:philadelphia-sixers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cade Cunningham",
+                "canonicalKey": "person:cade-cunningham"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Pistons",
+                "canonicalKey": "summer-league:detroit-pistons"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Patrick Williams",
+                "canonicalKey": "person:patrick-williams"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Chicago Bulls",
+          "canonicalKey": "summer-league:chicago-bulls"
+        },
+        "won": 4,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Trendon Watford",
+                "canonicalKey": "person:trendon-watford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sandro Mamukelashvili",
+                "canonicalKey": "person:sandro-mamukelashvili"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Milwaukee Bucks",
+                "canonicalKey": "summer-league:milwaukee-bucks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Quentin Grimes",
+                "canonicalKey": "person:quentin-grimes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "New York Knicks",
+                "canonicalKey": "summer-league:new-york-knicks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tari Eason",
+                "canonicalKey": "person:tari-eason"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cam Thomas",
+                "canonicalKey": "person:cam-thomas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brooklyn Nets",
+                "canonicalKey": "summer-league:brooklyn-nets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Keegan Murray",
+                "canonicalKey": "person:keegan-murray"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lindell Wigginton",
+                "canonicalKey": "person:lindell-wigginton"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Milwaukee Bucks",
+                "canonicalKey": "summer-league:milwaukee-bucks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marko Simonovic",
+                "canonicalKey": "person:marko-simonovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Trendon Watford",
+                "canonicalKey": "person:trendon-watford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Santi Aldama",
+                "canonicalKey": "person:santi-aldama"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bennedict Mathurin",
+                "canonicalKey": "person:bennedict-mathurin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Pacers",
+                "canonicalKey": "summer-league:indiana-pacers"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Cleveland Cavaliers",
+          "canonicalKey": "summer-league:cleveland-cavaliers"
+        },
+        "won": 6,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaiah Mobley",
+                "canonicalKey": "person:isaiah-mobley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sam Merrill",
+                "canonicalKey": "person:sam-merrill"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Hunter Tyson",
+                "canonicalKey": "person:hunter-tyson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Denver Nuggets",
+                "canonicalKey": "summer-league:denver-nuggets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Orlando Robinson",
+                "canonicalKey": "person:orlando-robinson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Miami Heat",
+                "canonicalKey": "summer-league:miami-heat"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Keyonte George",
+                "canonicalKey": "person:keyonte-george"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Utah Jazz",
+                "canonicalKey": "summer-league:utah-jazz"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cam Whitmore",
+                "canonicalKey": "person:cam-whitmore"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Xavier Moon",
+                "canonicalKey": "person:xavier-moon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Clippers",
+                "canonicalKey": "summer-league:los-angeles-clippers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jalen Wilson",
+                "canonicalKey": "person:jalen-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brooklyn Nets",
+                "canonicalKey": "summer-league:brooklyn-nets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Emoni Bates",
+                "canonicalKey": "person:emoni-bates"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Javon Freeman-Liberty",
+                "canonicalKey": "person:javon-freeman-liberty"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Max Christie",
+                "canonicalKey": "person:max-christie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Lakers",
+                "canonicalKey": "summer-league:los-angeles-lakers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jabari Smith, Jr.",
+                "canonicalKey": "person:jabari-smith-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Miami Heat",
+          "canonicalKey": "summer-league:miami-heat"
+        },
+        "won": 6,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jalen Wilson",
+                "canonicalKey": "person:jalen-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brooklyn Nets",
+                "canonicalKey": "summer-league:brooklyn-nets"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Scotty Pippen, Jr.",
+                "canonicalKey": "person:scotty-pippen-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jordan Miller",
+                "canonicalKey": "person:jordan-miller"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Clippers",
+                "canonicalKey": "summer-league:los-angeles-clippers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kel'el Ware",
+                "canonicalKey": "person:kel-el-ware"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Miami Heat",
+                "canonicalKey": "summer-league:miami-heat"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Reed Sheppard",
+                "canonicalKey": "person:reed-sheppard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Houston Rockets",
+                "canonicalKey": "summer-league:houston-rockets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "G.G. Jackson",
+                "canonicalKey": "person:g-g-jackson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jaime Jaquez, Jr.",
+                "canonicalKey": "person:jaime-jaquez-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Miami Heat",
+                "canonicalKey": "summer-league:miami-heat"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jalen Wilson",
+                "canonicalKey": "person:jalen-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brooklyn Nets",
+                "canonicalKey": "summer-league:brooklyn-nets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jarace Walker",
+                "canonicalKey": "person:jarace-walker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Indiana Pacers",
+                "canonicalKey": "summer-league:indiana-pacers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Donovan Clingan",
+                "canonicalKey": "person:donovan-clingan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Portland Trail Blazers",
+                "canonicalKey": "summer-league:portland-trail-blazers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bub Carrington",
+                "canonicalKey": "person:bub-carrington"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Washington Wizards",
+                "canonicalKey": "summer-league:washington-wizards"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Charlotte Hornets",
+          "canonicalKey": "summer-league:charlotte-hornets"
+        },
+        "won": 6,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Filipowski",
+                "canonicalKey": "person:kyle-filipowski"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Utah Jazz",
+                "canonicalKey": "summer-league:utah-jazz"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "David Jones-Garcia",
+                "canonicalKey": "person:david-jones-garcia"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "San Antonio Spurs",
+                "canonicalKey": "summer-league:san-antonio-spurs"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Terrence Shannon, Jr.",
+                "canonicalKey": "person:terrence-shannon-jr"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Timberwolves",
+                "canonicalKey": "summer-league:minnesota-timberwolves"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jordan Miller",
+                "canonicalKey": "person:jordan-miller"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Los Angeles Clippers",
+                "canonicalKey": "summer-league:los-angeles-clippers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nique Clifford",
+                "canonicalKey": "person:nique-clifford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Filipowski",
+                "canonicalKey": "person:kyle-filipowski"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Utah Jazz",
+                "canonicalKey": "summer-league:utah-jazz"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ajay Mitchell",
+                "canonicalKey": "person:ajay-mitchell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Oklahoma City Thunder",
+                "canonicalKey": "summer-league:oklahoma-city-thunder"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "K.J. Simpson",
+                "canonicalKey": "person:k-j-simpson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Charlotte Hornets",
+                "canonicalKey": "summer-league:charlotte-hornets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ron Holland",
+                "canonicalKey": "person:ron-holland"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Detroit Pistons",
+                "canonicalKey": "summer-league:detroit-pistons"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaac Jones",
+                "canonicalKey": "person:isaac-jones"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sacramento Kings",
+                "canonicalKey": "summer-league:sacramento-kings"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kon Knueppel",
+                "canonicalKey": "person:kon-knueppel"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Charlotte Hornets",
+                "canonicalKey": "summer-league:charlotte-hornets"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Golden State Warriors",
+          "canonicalKey": "summer-league:golden-state-warriors"
+        },
+        "won": 5,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yaxel Lendeborg",
+                "canonicalKey": "person:yaxel-lendeborg"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Warriors",
+                "canonicalKey": "summer-league:golden-state-warriors"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yaxel Lendeborg",
+                "canonicalKey": "person:yaxel-lendeborg"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Golden State Warriors",
+                "canonicalKey": "summer-league:golden-state-warriors"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cameron Boozer",
+                "canonicalKey": "person:cameron-boozer"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Meleek Thomas",
+                "canonicalKey": "person:meleek-thomas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Cleveland Cavaliers",
+                "canonicalKey": "summer-league:cleveland-cavaliers"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brayden Burries",
+                "canonicalKey": "person:brayden-burries"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Milwaukee Bucks",
+                "canonicalKey": "summer-league:milwaukee-bucks"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Caleb Wilson",
+                "canonicalKey": "person:caleb-wilson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Chicago Bulls",
+                "canonicalKey": "summer-league:chicago-bulls"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zyon Pullin",
+                "canonicalKey": "person:zyon-pullin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Minnesota Timberwolves",
+                "canonicalKey": "summer-league:minnesota-timberwolves"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Liam McNeeley",
+                "canonicalKey": "person:liam-mcneeley"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Charlotte Hornets",
+                "canonicalKey": "summer-league:charlotte-hornets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Egor Demin",
+                "canonicalKey": "person:egor-demin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brooklyn Nets",
+                "canonicalKey": "summer-league:brooklyn-nets"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Khaman Maluach",
+                "canonicalKey": "person:khaman-maluach"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Phoenix Suns",
+                "canonicalKey": "summer-league:phoenix-suns"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Cedric Coward",
+                "canonicalKey": "person:cedric-coward"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Memphis Grizzlies",
+                "canonicalKey": "summer-league:memphis-grizzlies"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

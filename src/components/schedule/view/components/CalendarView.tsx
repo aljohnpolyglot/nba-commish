@@ -9,7 +9,7 @@ import {
 } from '../../../../utils/dateUtils';
 import { isNoDraftLeague } from '../../../../services/offseason/offseasonState';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../../utils/uiMode';
-import { isEuroVisibleScheduleGame } from '../../../../utils/euroLeagueDefaults';
+import { isEuroVisibleScheduleGame, userParticipatesInCompetition } from '../../../../utils/euroLeagueDefaults';
 import { CalendarMonthGrid } from './CalendarMonthGrid';
 import { CompetitionDetailPanel } from './CompetitionDetailPanel';
 
@@ -117,23 +117,31 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
     const d = new Date(g.date);
     return d.getUTCFullYear() === year && d.getUTCMonth() === month;
   });
-  const ownMonthGames = monthGames.filter((g: Game) => {
-    const ownTid = getOwnTeamId(state);
-    return ownTid !== null && ownTid !== undefined && (g.homeTid === ownTid || g.awayTid === ownTid);
-  });
-  const euroGames = monthGames.filter((g: Game) => g.competitionId === 'euroleague').length;
-  const domesticGames = monthGames.filter((g: Game) => g.competitionId === 'endesa').length;
-  const congestion = ownMonthGames.length >= 8 ? 'High' : ownMonthGames.length >= 5 ? 'Medium' : 'Low';
-  const competitionTabId = !euroIsolated ? null
-    : activeTab === 'EuroLeague' ? 'euroleague'
-    : activeTab === 'Endesa' ? 'endesa'
-    : activeTab === 'Copa del Rey' ? 'copa-del-rey'
-    : activeTab === 'Supercopa' ? 'supercopa'
-    : null;
+  const visibleCompetitionTabs = (state.activeCompetitions ?? [])
+    .filter((competition: any) => userParticipatesInCompetition(state, competition.id))
+    .sort((left: any, right: any) => {
+      const rank = (id: string) => id === state.euroPrimaryCompetitionId ? 0 : id === 'euroleague' ? 1 : id === 'eurocup' ? 2 : 3;
+      return rank(left.id) - rank(right.id) || String(left.displayName).localeCompare(String(right.displayName));
+    });
+  const competitionByTabLabel = new Map<string, any>();
+  for (const competition of visibleCompetitionTabs) {
+    const baseLabel = competition.shortName || competition.displayName || competition.id;
+    let label = baseLabel;
+    let suffix = 2;
+    while (competitionByTabLabel.has(label)) label = `${baseLabel} ${suffix++}`;
+    competitionByTabLabel.set(label, competition);
+  }
+  const selectedCompetition = competitionByTabLabel.get(activeTab);
+  const competitionLegend = visibleCompetitionTabs.map((competition: any) => ({
+    ...competition,
+    games: monthGames.filter((game: Game) => game.competitionId === competition.id).length,
+  }));
+  const competitionTabId = euroIsolated ? selectedCompetition?.id ?? null : null;
   const monthPicker = (
     <div className={euroIsolated ? 'flex items-center gap-2 bg-slate-950/80 p-1 rounded-xl border border-slate-800' : 'flex items-center gap-2 bg-[#111] p-1 rounded-xl border border-white/5'}>
       <button
         onClick={() => setCalendarMonth(new Date(year, month - 1, 1))}
+        aria-label="Previous month"
         disabled={isEarliestMonth}
         className={`p-2 rounded-lg transition-colors ${isEarliestMonth ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
       >
@@ -144,6 +152,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
       </div>
       <button
         onClick={() => setCalendarMonth(new Date(year, month + 1, 1))}
+        aria-label="Next month"
         disabled={isLatestMonth}
         className={`p-2 rounded-lg transition-colors ${isLatestMonth ? 'text-slate-700 cursor-not-allowed' : 'text-slate-400 hover:text-white hover:bg-white/10'}`}
       >
@@ -161,14 +170,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <h1 className="text-3xl md:text-4xl font-black text-white uppercase tracking-tight">{title === 'Season Schedule' ? 'Schedule' : title}</h1>
               <p className="text-slate-400 font-medium mt-1 text-sm">View all fixtures, results and calendar across all competitions.</p>
             </div>
-            <div className="grid sm:grid-cols-3 gap-3 w-full xl:w-auto">
+            <div className="grid sm:grid-cols-2 gap-3 w-full xl:w-auto">
               <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-5 py-3 min-w-[170px]">
                 <div className="text-xs font-black uppercase tracking-widest text-slate-500">Season</div>
-                <div className="text-lg font-black text-white">{seasonYear}-{String(seasonYear + 1).slice(-2)}</div>
-              </div>
-              <div className="rounded-xl border border-slate-800 bg-slate-900/70 px-5 py-3 min-w-[190px]">
-                <div className="text-xs font-black uppercase tracking-widest text-slate-500">Fixture Congestion</div>
-                <div className={`text-lg font-black ${congestion === 'High' ? 'text-rose-300' : congestion === 'Medium' ? 'text-amber-300' : 'text-emerald-300'}`}>{congestion}</div>
+                <div className="text-lg font-black text-white">{seasonYear - 1}-{String(seasonYear).slice(-2)}</div>
               </div>
               <button
                 onClick={() => setViewMode('day')}
@@ -193,7 +198,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           {euroIsolated && (
           <div className="px-4 pt-3 border-b border-slate-800">
             <div className="flex gap-3 overflow-x-auto">
-              {['Overview', 'Calendar', 'Endesa', 'EuroLeague', 'Copa del Rey', 'Supercopa', 'All Fixtures'].map(tab => (
+              {['Overview', 'Calendar', ...competitionByTabLabel.keys(), 'All Fixtures'].map(tab => (
                 <button
                   key={tab}
                   onClick={() => setActiveTab(tab)}
@@ -226,9 +231,12 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             <div className="flex flex-wrap items-center gap-4 text-xs">
               {euroIsolated ? (
                 <>
-                  <span className="inline-flex items-center gap-2 text-slate-300"><i className="w-3 h-3 rounded-full bg-sky-500" /> Endesa {domesticGames}</span>
-                  <span className="inline-flex items-center gap-2 text-slate-300"><i className="w-3 h-3 rounded-full bg-orange-500" /> EuroLeague {euroGames}</span>
-                  <span className="inline-flex items-center gap-2 text-slate-300"><i className="w-3 h-3 rounded-full bg-amber-400" /> Cup</span>
+                  {competitionLegend.map((competition: any) => (
+                    <span key={competition.id} className="inline-flex items-center gap-2 text-slate-300">
+                      <i className="w-3 h-3 rounded-full" style={{ backgroundColor: competition.accentColor ?? '#f59e0b' }} />
+                      {competition.shortName ?? competition.displayName} {competition.games}
+                    </span>
+                  ))}
                 </>
               ) : (
                 <span className="inline-flex items-center gap-2 text-slate-300"><i className="w-3 h-3 rounded-full bg-sky-500" /> {monthGames.length} games</span>

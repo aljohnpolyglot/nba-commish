@@ -1,517 +1,483 @@
-import React, { useMemo, useState } from 'react';
-import { X, Handshake, Search, RefreshCw, List as ListIcon, LayoutGrid } from 'lucide-react';
-import { SponsorOfferModal } from './SponsorOfferModal';
-import { StartNegotiationModal, KIT_FAMILY_SLOTS } from './StartNegotiationModal';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
-  CATEGORY_ICON,
-  CATEGORY_LABEL,
-  CATEGORY_TINT,
-  ENDORSEMENT_SLOT_CAP,
-  FIT_LABEL,
-  FIT_TINT,
-  FilterRow,
-  FilterSection,
-  INTEREST_LABEL,
-  INTEREST_TINT,
-  KpiCard,
-  SORT_LABEL,
-  buildSponsorOfferData,
-  buildStartNegotiationData,
-  formatOpenMarketCurrency,
-  generateMockOffers,
-  type DealCategory,
-  type DealType,
-  type MockOffer,
-  type OfferStatus,
-  type SortKey,
-} from './openMarketModalShared';
+  Check,
+  ChevronRight,
+  CircleDollarSign,
+  Gift,
+  Search,
+  Trophy,
+} from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { getBrandMeta } from '../../data/sponsorCatalogFetcher';
+import { getBrandMeta, resolveSponsorLeagueKey } from '../../data/sponsorCatalogFetcher';
+import { formatCurrencyWithCode } from '../../utils/helpers';
+import { getSimulationSeed } from '../../services/saveIdentity';
+import { getIndustryLabel } from '../../utils/sponsorLogos';
+import { getSeasonEconomyIndex, postClubTransaction } from '../../services/tycoon/clubFinance';
 import { applyRenewal, classifySponsor, type SponsorshipOffer } from '../../services/tycoon/sponsorshipEngine';
-import { type SponsorIndustry, type SponsorshipSlot, type TycoonTier } from '../../types/tycoon';
+import { buildSponsorPerformanceBonuses } from '../../services/tycoon/sponsorOfferConstants';
+import { SPONSOR_OFFER_POOL_RULES } from '../../services/tycoon/sponsorPerkLibrary';
+import { applySponsorPerkOnDealSigned } from '../../services/tycoon/sponsorPerkEngine';
+import type { OneTimePayout, SponsorPerformanceBonus, SponsorshipSlot, TycoonTier } from '../../types/tycoon';
 import { SponsorLogo } from './SponsorLogo';
+import { generateMockOffers, type MockOffer } from './openMarketModalShared';
+import { ENDORSEMENT_SLOT_CAP, SPONSOR_SLOT_CONFIG } from './sponsorshipRevampConfig';
+import {
+  BonusPanel,
+  ContractFact,
+  ModalFooter,
+  ModalHeader,
+  SponsorIdentity,
+  SummaryValue,
+} from './SponsorshipMarketUi';
+
+export type SponsorMarketDealType = 'core' | 'endorsement';
 
 interface Props {
   open: boolean;
   onClose: () => void;
+  initialSlot?: SponsorshipSlot | null;
+  dealType?: SponsorMarketDealType;
 }
 
-export const OpenMarketModal: React.FC<Props> = ({ open, onClose }) => {
+type FlowStep = 'offers' | 'terms' | 'success';
+type SortKey = 'payment' | 'perk' | 'name';
+
+function stableSeed(value: string): number {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function seededRandom(seed: number): () => number {
+  let value = seed >>> 0;
+  return () => {
+    value = (value * 1664525 + 1013904223) >>> 0;
+    return value / 0xffffffff;
+  };
+}
+
+function weightedOfferDraw(offers: MockOffer[], count: number, seed: number): MockOffer[] {
+  const rand = seededRandom(seed);
+  const ranked = offers
+    .filter(offer => (offer.poolWeight ?? 1) > 0)
+    .map(offer => ({
+      offer,
+      key: Math.pow(Math.max(Number.EPSILON, rand()), 1 / Math.max(0.01, offer.poolWeight ?? 1)),
+    }))
+    .sort((left, right) => right.key - left.key);
+  const selected: MockOffer[] = [];
+  let aspirationalCount = 0;
+  for (const item of ranked) {
+    if (item.offer.aspirational) {
+      if (aspirationalCount >= SPONSOR_OFFER_POOL_RULES.maxAspirationalOffers) continue;
+      aspirationalCount += 1;
+    }
+    selected.push(item.offer);
+    if (selected.length >= count) break;
+  }
+  return selected;
+}
+
+function sumBonuses(bonuses: SponsorPerformanceBonus[]): number {
+  return bonuses.reduce((sum, bonus) => sum + bonus.amountEUR, 0);
+}
+
+function perkScore(offer: MockOffer): number {
+  return offer.perk?.value ?? offer.benefitPackage?.inKindValueEUR ?? 0;
+}
+
+export const OpenMarketModal: React.FC<Props> = ({
+  open,
+  onClose,
+  initialSlot = null,
+  dealType = 'core',
+}) => {
   const { state, applyTycoonMutation } = useGame() as any;
   const userTeamId = state?.userTeamId;
-  const team = state?.teams?.find((t: any) => (t.id ?? t.tid) === userTeamId)
-    ?? state?.nonNBATeams?.find((t: any) => (t.id ?? t.tid) === userTeamId);
+  const team = state?.teams?.find((candidate: any) => (candidate.id ?? candidate.tid) === userTeamId)
+    ?? state?.nonNBATeams?.find((candidate: any) => (candidate.id ?? candidate.tid) === userTeamId);
   const tycoon = team?.tycoon;
   const tier: TycoonTier = tycoon?.tier ?? 'A';
   const currency = state?.leagueStats?.currency ?? 'EUR';
-  const fmt = (value: number) => formatOpenMarketCurrency(value, currency);
-  const activeEndorsements = ((tycoon?.oneTimePayouts ?? []) as any[]).filter((p) => p.kind === 'endorsement');
-  const activeEndorsementBrands = new Set(activeEndorsements.map((p) => p.brand).filter(Boolean));
-  const endorsementCapReached = activeEndorsements.length >= ENDORSEMENT_SLOT_CAP;
+  const currentYear = Number(state?.leagueStats?.year ?? new Date().getFullYear());
+  const sponsorLeague = resolveSponsorLeagueKey(
+    team?.country,
+    team?.league,
+    team?.region,
+    state?.euroPrimaryCompetitionId,
+  );
+  const economyIndex = getSeasonEconomyIndex(state, currentYear);
+  const fmt = (value: number) => formatCurrencyWithCode(value, currency, false);
 
+  const [step, setStep] = useState<FlowStep>('offers');
   const [search, setSearch] = useState('');
-  const [sortKey, setSortKey] = useState<SortKey>('potential-high');
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [categoryFilter, setCategoryFilter] = useState<Set<DealCategory | 'all'>>(new Set(['all']));
-  const [statusFilter, setStatusFilter] = useState<Set<OfferStatus | 'all'>>(new Set(['all']));
-  const [dealTypeFilter, setDealTypeFilter] = useState<Set<DealType>>(new Set(['sponsorship', 'endorsement']));
-  const [minValue, setMinValue] = useState(0);
+  const [sortKey, setSortKey] = useState<SortKey>('payment');
   const [selectedOffer, setSelectedOffer] = useState<MockOffer | null>(null);
-  const [negotiationOffer, setNegotiationOffer] = useState<MockOffer | null>(null);
+  const [contractYears, setContractYears] = useState(3);
 
-  const allOffers = useMemo(() => {
-    if (!open) return [];
-    return generateMockOffers(tier, 'spain', userTeamId ?? 1);
-  }, [open, tier, userTeamId]);
-
-  const categoryCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: allOffers.length };
-    for (const offer of allOffers) counts[offer.category] = (counts[offer.category] ?? 0) + 1;
-    return counts;
-  }, [allOffers]);
-
-  const statusCounts = useMemo(() => {
-    const counts: Record<string, number> = { all: allOffers.length };
-    for (const offer of allOffers) counts[offer.status] = (counts[offer.status] ?? 0) + 1;
-    return counts;
-  }, [allOffers]);
-
-  const dealTypeCounts = useMemo(() => {
-    const counts: Record<DealType, number> = { sponsorship: 0, endorsement: 0 };
-    for (const offer of allOffers) counts[offer.dealType]++;
-    return counts;
-  }, [allOffers]);
-
-  const availableCount = useMemo(() => {
-    const sponsorships = tycoon?.sponsorships ?? {};
-    const signedBrands = new Set([
-      ...Object.values(sponsorships).map((s: any) => s?.sponsor).filter(Boolean),
-      ...((tycoon?.oneTimePayouts ?? []) as any[])
-        .filter((p) => p.kind === 'endorsement')
-        .map((p) => p.brand)
-        .filter(Boolean),
-    ]);
-    const endorsementsSigned = ((tycoon?.oneTimePayouts ?? []) as any[]).filter((p) => p.kind === 'endorsement').length;
-    return allOffers.filter((offer) => {
-      if (offer.interestLevel === 'not-interested') return false;
-      if (signedBrands.has(offer.brand)) return false;
-      if (offer.dealType === 'endorsement' && endorsementsSigned >= ENDORSEMENT_SLOT_CAP) return false;
-      if (offer.dealType !== 'endorsement') {
-        const isKitFamily = (KIT_FAMILY_SLOTS as string[]).includes(offer.slot);
-        if (isKitFamily && KIT_FAMILY_SLOTS.every((slot) => sponsorships[slot])) return false;
-        if (!isKitFamily && sponsorships[offer.slot]) return false;
-      }
-      return true;
-    }).length;
-  }, [allOffers, tycoon]);
-
-  const conflictIndustries = useMemo(() => {
-    const set = new Set<SponsorIndustry | 'generic'>();
-    const sponsorships = Object.values(tycoon?.sponsorships ?? {}) as Array<{ industry?: SponsorIndustry } | null>;
-    const gambling = sponsorships.filter((s) => s?.industry === 'gambling').length;
-    const beerEnergy = sponsorships.filter((s) => s?.industry === 'beer' || s?.industry === 'energy_drink').length;
-    if (gambling >= 1) set.add('gambling');
-    if (beerEnergy >= 2) {
-      set.add('beer');
-      set.add('energy_drink');
-    }
-    return set;
-  }, [tycoon]);
-
-  const filteredOffers = useMemo(() => {
-    const query = search.trim().toLowerCase();
-    const list = allOffers
-      .filter((offer) => categoryFilter.has('all') || categoryFilter.has(offer.category))
-      .filter((offer) => statusFilter.has('all') || statusFilter.has(offer.status))
-      .filter((offer) => dealTypeFilter.has(offer.dealType))
-      .filter((offer) => offer.valuePerYear >= minValue)
-      .filter((offer) => !query || offer.brand.toLowerCase().includes(query));
-    list.sort((a, b) => {
-      const totalA = a.valuePerYear * a.contractYears;
-      const totalB = b.valuePerYear * b.contractYears;
-      switch (sortKey) {
-        case 'potential-high':
-          return totalB - totalA;
-        case 'potential-low':
-          return totalA - totalB;
-        case 'value-high':
-          return b.valuePerYear - a.valuePerYear;
-        case 'value-low':
-          return a.valuePerYear - b.valuePerYear;
-        case 'fit-best':
-          return FIT_TINT[b.marketFit].pct - FIT_TINT[a.marketFit].pct;
-      }
-    });
-    return list;
-  }, [allOffers, categoryFilter, statusFilter, dealTypeFilter, minValue, search, sortKey]);
-
-  const kpis = useMemo(() => {
-    const totalAnnual = filteredOffers.reduce((sum, offer) => sum + offer.valuePerYear, 0);
-    const totalValue = filteredOffers.reduce((sum, offer) => sum + offer.valuePerYear * offer.contractYears, 0);
-    const avg = filteredOffers.length > 0 ? totalAnnual / filteredOffers.length : 0;
-    const avgFitPct = filteredOffers.length > 0
-      ? filteredOffers.reduce((sum, offer) => sum + FIT_TINT[offer.marketFit].pct, 0) / filteredOffers.length
-      : 0;
-    const attractiveness = avgFitPct >= 85 ? 'A+'
-      : avgFitPct >= 75 ? 'A'
-      : avgFitPct >= 65 ? 'A-'
-      : avgFitPct >= 55 ? 'B+'
-      : avgFitPct >= 45 ? 'B'
-      : avgFitPct >= 35 ? 'C'
-      : 'D';
-    return { count: filteredOffers.length, totalAnnual, totalValue, avg, attractiveness };
-  }, [filteredOffers]);
-
-  if (!open) return null;
-
-  const toggleCategory = (category: DealCategory | 'all') => {
-    setCategoryFilter((prev) => {
-      const next = new Set(prev);
-      if (category === 'all') return new Set(['all']);
-      next.delete('all');
-      if (next.has(category)) next.delete(category);
-      else next.add(category);
-      if (next.size === 0) next.add('all');
-      return next;
-    });
-  };
-
-  const toggleStatus = (status: OfferStatus | 'all') => {
-    setStatusFilter((prev) => {
-      const next = new Set(prev);
-      if (status === 'all') return new Set(['all']);
-      next.delete('all');
-      if (next.has(status)) next.delete(status);
-      else next.add(status);
-      if (next.size === 0) next.add('all');
-      return next;
-    });
-  };
-
-  const toggleDealType = (dealType: DealType) => {
-    setDealTypeFilter((prev) => {
-      const next = new Set(prev);
-      if (next.has(dealType)) next.delete(dealType);
-      else next.add(dealType);
-      if (next.size === 0) {
-        next.add('sponsorship');
-        next.add('endorsement');
-      }
-      return next;
-    });
-  };
-
-  const clearFilters = () => {
-    setCategoryFilter(new Set(['all']));
-    setStatusFilter(new Set(['all']));
-    setDealTypeFilter(new Set(['sponsorship', 'endorsement']));
-    setMinValue(0);
+  useEffect(() => {
+    if (!open) return;
+    setStep('offers');
     setSearch('');
+    setSortKey('payment');
+    setSelectedOffer(null);
+    setContractYears(dealType === 'endorsement' ? 1 : 3);
+  }, [dealType, initialSlot, open]);
+
+  const activeBrands = useMemo(() => new Set<string>([
+    ...Object.values(tycoon?.sponsorships ?? {})
+      .map((deal: any) => deal?.sponsor)
+      .filter(Boolean),
+    ...((tycoon?.oneTimePayouts ?? []) as OneTimePayout[])
+      .filter(payout => (
+        payout.kind === 'endorsement'
+        && payout.year <= currentYear
+        && (payout.expiresAfterYear ?? payout.year + 1) > currentYear
+      ))
+      .map(payout => payout.brand),
+  ]), [currentYear, tycoon]);
+
+  const endorsementCount = ((tycoon?.oneTimePayouts ?? []) as OneTimePayout[])
+    .filter(payout => (
+      payout.kind === 'endorsement'
+      && payout.year <= currentYear
+      && (payout.expiresAfterYear ?? payout.year + 1) > currentYear
+    )).length;
+
+  const storefrontOffers = useMemo(() => {
+    if (!open || !tycoon) return [];
+    const marketSeed = stableSeed([
+      state ? getSimulationSeed(state) : 'unsaved-universe',
+      currentYear,
+      userTeamId ?? 'club',
+      sponsorLeague,
+      tier,
+      dealType,
+      initialSlot ?? 'endorsement',
+    ].join(':'));
+    const generated = generateMockOffers(
+      tier,
+      sponsorLeague,
+      marketSeed,
+      tycoon.commercialTrust ?? 100,
+      economyIndex,
+    );
+    const seen = new Set<string>();
+    const eligible = generated
+      .filter(offer => dealType === 'endorsement'
+        ? offer.dealType === 'endorsement'
+        : offer.dealType === 'sponsorship' && offer.slot === initialSlot)
+      .filter(offer => !activeBrands.has(offer.brand))
+      .filter(offer => {
+        if (seen.has(offer.brand)) return false;
+        seen.add(offer.brand);
+        return true;
+      });
+    return weightedOfferDraw(
+      eligible,
+      SPONSOR_OFFER_POOL_RULES.visibleOffersPerRefresh,
+      marketSeed ^ 0x9e3779b9,
+    );
+  }, [
+    activeBrands,
+    currentYear,
+    dealType,
+    economyIndex,
+    initialSlot,
+    open,
+    sponsorLeague,
+    state?.simulationSeed,
+    state?.saveId,
+    tier,
+    tycoon,
+    userTeamId,
+  ]);
+
+  const visibleOffers = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    const offers = storefrontOffers.filter(offer => (
+      !query
+      || offer.brand.toLowerCase().includes(query)
+      || getIndustryLabel(offer.industry).toLowerCase().includes(query)
+    ));
+    return [...offers].sort((left, right) => {
+      if (sortKey === 'name') return left.brand.localeCompare(right.brand);
+      if (sortKey === 'perk') return perkScore(right) - perkScore(left) || right.valuePerYear - left.valuePerYear;
+      return right.valuePerYear - left.valuePerYear;
+    });
+  }, [search, sortKey, storefrontOffers]);
+
+  if (!open || !tycoon) return null;
+
+  const slotConfig = initialSlot ? SPONSOR_SLOT_CONFIG[initialSlot] : null;
+  const title = dealType === 'endorsement' ? 'One-Year Endorsement' : slotConfig?.label ?? 'Core Partnership';
+  const performanceBonuses = selectedOffer
+    ? buildSponsorPerformanceBonuses(selectedOffer.valuePerYear, selectedOffer.archetype, selectedOffer.bonusProfileId)
+    : [];
+  const potentialBonusEUR = sumBonuses(performanceBonuses);
+  const totalContractValue = selectedOffer ? selectedOffer.valuePerYear * contractYears : 0;
+
+  const chooseOffer = (offer: MockOffer) => {
+    setSelectedOffer(offer);
+    const minimum = Math.max(1, offer.minContractYears ?? 1);
+    const maximum = Math.min(5, offer.maxContractYears ?? 5);
+    setContractYears(dealType === 'endorsement'
+      ? 1
+      : Math.max(minimum, Math.min(maximum, offer.contractYears)));
+    setStep('terms');
   };
 
-  const submitNegotiation = (submission: { slot: SponsorshipSlot; valuePerYear: number; contractYears: number }) => {
-    if (!negotiationOffer || userTeamId == null) return;
-    const year = state?.leagueStats?.year ?? new Date().getFullYear();
-    if (negotiationOffer.oneTime) {
-      if (negotiationOffer.dealType === 'endorsement' && ((tycoon?.oneTimePayouts ?? []) as any[]).filter((p) => p.kind === 'endorsement').length >= ENDORSEMENT_SLOT_CAP) return;
-      const payout = submission.valuePerYear;
-      const brand = negotiationOffer.brand;
-      applyTycoonMutation(userTeamId, (t: any) => {
-        const ledger: any[] = t.tycoon.oneTimePayouts ?? (t.tycoon.oneTimePayouts = []);
-        const alreadySigned = ledger.some((p: any) =>
-          p.year === year &&
-          p.brand === brand &&
-          p.kind === (negotiationOffer.dealType === 'endorsement' ? 'endorsement' : 'sponsorship'),
-        );
-        if (alreadySigned) return;
-        t.tycoon.cashOnHand = (t.tycoon.cashOnHand ?? 0) + payout;
-        ledger.push({
-          id: `one-time-${year}-${brand.toLowerCase().replace(/[^a-z0-9]+/g, '-')}-${Date.now()}`,
-          year,
-          brand,
-          amount: payout,
-          kind: negotiationOffer.dealType === 'endorsement' ? 'endorsement' : 'sponsorship',
-          date: new Date().toISOString().slice(0, 10),
-          expiresAfterYear: year + 1,
-          offerLabel: negotiationOffer.offerLabel,
-          slotLabel: negotiationOffer.slotLabel,
-          industry: negotiationOffer.industry,
-        });
+  const signDeal = () => {
+    if (!selectedOffer || userTeamId == null) return;
+    const frozenBonuses = buildSponsorPerformanceBonuses(
+      selectedOffer.valuePerYear,
+      selectedOffer.archetype,
+      selectedOffer.bonusProfileId,
+    );
+    if (dealType === 'core') {
+      if (!initialSlot) return;
+      const classified = classifySponsor(selectedOffer.brand);
+      const offer: SponsorshipOffer = {
+        slot: initialSlot,
+        sponsor: selectedOffer.brand,
+        industry: selectedOffer.industry === 'generic' ? undefined : selectedOffer.industry,
+        archetype: selectedOffer.archetype,
+        personality: classified.personality,
+        personalityProse: classified.personalityProse,
+        valuePerYear: selectedOffer.valuePerYear,
+        signingBonus: 0,
+        years: contractYears,
+        performanceBonuses: frozenBonuses,
+        perk: selectedOffer.perk,
+        benefitPackage: selectedOffer.benefitPackage,
+        headquartersCity: selectedOffer.headquartersCity,
+        headquartersCountry: selectedOffer.headquartersCountry,
+        headquartersIso2: selectedOffer.headquartersIso2,
+      };
+      applyTycoonMutation(userTeamId, (club: any) => {
+        if (!club.tycoon) return;
+        applyRenewal(club.tycoon, initialSlot, offer, currentYear);
+        applySponsorPerkOnDealSigned(club.tycoon, selectedOffer.brand, selectedOffer.perk, currentYear);
       });
-      return;
+    } else {
+      if (endorsementCount >= ENDORSEMENT_SLOT_CAP) return;
+      const sourceId = `one-time-sponsor:${currentYear}:${selectedOffer.brand.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`;
+      applyTycoonMutation(userTeamId, (club: any) => {
+        if (!club.tycoon) return;
+        const payouts: OneTimePayout[] = club.tycoon.oneTimePayouts ?? (club.tycoon.oneTimePayouts = []);
+        if (payouts.some(payout => payout.id === sourceId || payout.brand === selectedOffer.brand)) return;
+        postClubTransaction(club.tycoon, {
+          sourceId,
+          date: String(state?.date ?? `${currentYear}-07-01`),
+          season: currentYear,
+          category: 'sponsorship',
+          label: `${selectedOffer.brand} one-year endorsement`,
+          amountEUR: selectedOffer.valuePerYear,
+        });
+        payouts.push({
+          id: sourceId,
+          year: currentYear,
+          brand: selectedOffer.brand,
+          amount: selectedOffer.valuePerYear,
+          kind: 'endorsement',
+          date: String(state?.date ?? `${currentYear}-07-01`),
+          expiresAfterYear: currentYear + 1,
+          offerLabel: 'One-Year Endorsement',
+          slotLabel: 'One-Year Endorsement',
+          industry: selectedOffer.industry,
+          archetype: selectedOffer.archetype,
+          benefitPackage: selectedOffer.benefitPackage,
+          performanceBonuses: frozenBonuses,
+          perk: selectedOffer.perk,
+        });
+        applySponsorPerkOnDealSigned(club.tycoon, selectedOffer.brand, selectedOffer.perk, currentYear);
+      });
     }
-    const classified = classifySponsor(negotiationOffer.brand);
-    const signed: SponsorshipOffer = {
-      slot: submission.slot,
-      sponsor: negotiationOffer.brand,
-      industry: classified.industry,
-      archetype: classified.archetype,
-      personality: classified.personality,
-      personalityProse: classified.personalityProse,
-      valuePerYear: submission.valuePerYear,
-      signingBonus: Math.round(submission.valuePerYear * 0.6),
-      years: submission.contractYears,
-    };
-    applyTycoonMutation(userTeamId, (t: any) => applyRenewal(t.tycoon, submission.slot, signed, year));
+    setStep('success');
   };
 
   return (
-    <div className="fixed inset-0 bg-black/85 backdrop-blur-md z-50 flex items-center justify-center p-4">
-      <div className="flex max-h-[calc(100vh-2rem)] w-full max-w-[1600px] flex-col overflow-hidden rounded-2xl border border-slate-800 bg-slate-950 shadow-2xl">
-        <div className="flex items-start justify-between gap-3 border-b border-slate-800 px-4 py-4 sm:px-7 sm:py-5">
-          <div className="flex min-w-0 items-center gap-3 sm:gap-4">
-            <div className="w-12 h-12 rounded-xl bg-emerald-500/15 border border-emerald-500/30 flex items-center justify-center">
-              <Handshake size={22} className="text-emerald-300" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-2xl font-black text-white tracking-wide">OPEN MARKET</h2>
-              <p className="text-sm text-slate-400">Review sponsor offers from brands interested in partnering with your club.</p>
-            </div>
-          </div>
-          <button onClick={onClose} aria-label="Close"><X size={22} className="text-slate-400 hover:text-white" /></button>
-        </div>
+    <div className="fixed inset-0 z-[70] flex items-center justify-center bg-black/80 p-0 backdrop-blur-sm sm:p-4">
+      <div className="flex max-h-full w-full max-w-4xl flex-col overflow-hidden border border-slate-700 bg-slate-950 shadow-2xl sm:max-h-[calc(100vh-2rem)] sm:rounded-2xl">
+        {step === 'offers' && (
+          <>
+            <ModalHeader title="Sponsor Offers" onClose={onClose}>
+              <p className="mt-1 text-sm text-slate-400">
+                Choose a sponsor for {dealType === 'endorsement' ? 'a one-season partnership' : title}.
+              </p>
+              <p className="mt-1 text-xs text-slate-500">Payments are fixed. Compare base value, potential bonuses, and perk.</p>
+            </ModalHeader>
 
-        <div className="flex flex-wrap items-center gap-3 border-b border-slate-800 px-4 py-3 sm:px-7">
-          <span className="text-xs font-black uppercase tracking-widest text-emerald-300">Interested Sponsors</span>
-          <span className="inline-flex items-center justify-center min-w-[26px] h-[22px] rounded-full px-2 text-[11px] font-black bg-emerald-500/25 text-emerald-300">{availableCount}</span>
-          <span className={`inline-flex items-center rounded-full border px-3 py-1 text-[11px] font-black uppercase tracking-widest sm:ml-auto ${
-            endorsementCapReached ? 'border-amber-400/40 bg-amber-400/10 text-amber-200' : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
-          }`}>
-            Endorsements {Math.min(activeEndorsements.length, ENDORSEMENT_SLOT_CAP)}/{ENDORSEMENT_SLOT_CAP}
-          </span>
-          <span className="absolute left-0 right-0 bottom-0 h-[2px] bg-emerald-400 hidden" />
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 border-b border-slate-800 bg-slate-950 px-4 py-4 sm:grid-cols-2 sm:px-7 xl:grid-cols-5">
-          <KpiCard tint="text-emerald-300" label="Interested Brands" value={String(kpis.count)} />
-          <KpiCard tint="text-sky-300" label="Total Potential Value / Year" value={fmt(kpis.totalAnnual)} />
-          <KpiCard tint="text-amber-300" label="Total Potential Value" value={fmt(kpis.totalValue)} />
-          <KpiCard tint="text-violet-300" label="Avg. Market Value" value={fmt(Math.round(kpis.avg))} />
-          <KpiCard tint="text-amber-300" label="Market Attractiveness" value={kpis.attractiveness} />
-        </div>
-
-        <div className="grid flex-1 overflow-hidden lg:grid-cols-[280px_1fr]">
-          <aside className="overflow-y-auto border-b border-slate-800 p-4 space-y-6 lg:border-b-0 lg:border-r lg:p-5">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-black uppercase tracking-widest text-slate-400">Filters</div>
-              <button onClick={clearFilters} className="text-[11px] font-bold text-slate-500 hover:text-slate-300 flex items-center gap-1">
-                Clear All <RefreshCw size={11} />
-              </button>
-            </div>
-
-            <FilterSection title="Category">
-              <FilterRow label="All Categories" count={categoryCounts.all ?? 0} checked={categoryFilter.has('all')} onToggle={() => toggleCategory('all')} icon={null} />
-              {(Object.keys(CATEGORY_LABEL) as DealCategory[]).map((category) => {
-                const Icon = CATEGORY_ICON[category];
-                return (
-                  <FilterRow
-                    key={category}
-                    label={CATEGORY_LABEL[category]}
-                    count={categoryCounts[category] ?? 0}
-                    checked={categoryFilter.has(category)}
-                    onToggle={() => toggleCategory(category)}
-                    icon={<Icon size={14} className={CATEGORY_TINT[category]} />}
-                  />
-                );
-              })}
-            </FilterSection>
-
-            <FilterSection title="Offer Status">
-              <FilterRow label="All Status" count={statusCounts.all ?? 0} checked={statusFilter.has('all')} onToggle={() => toggleStatus('all')} icon={null} />
-              <FilterRow label="Interested" count={statusCounts.interested ?? 0} checked={statusFilter.has('interested')} onToggle={() => toggleStatus('interested')} icon={<span className="w-2 h-2 rounded-full bg-emerald-400" />} />
-              <FilterRow label="Negotiation" count={2} checked={statusFilter.has('negotiation')} onToggle={() => toggleStatus('negotiation')} icon={<span className="w-2 h-2 rounded-full bg-violet-400" />} />
-              <FilterRow label="Neutral" count={statusCounts.neutral ?? 0} checked={statusFilter.has('neutral')} onToggle={() => toggleStatus('neutral')} icon={<span className="w-2 h-2 rounded-full bg-slate-500" />} />
-              <FilterRow label="Not Interested" count={statusCounts['not-interested'] ?? 0} checked={statusFilter.has('not-interested')} onToggle={() => toggleStatus('not-interested')} icon={<span className="w-2 h-2 rounded-full bg-rose-500" />} />
-            </FilterSection>
-
-            <FilterSection title="Deal Type">
-              <FilterRow label="Sponsorship" count={dealTypeCounts.sponsorship} checked={dealTypeFilter.has('sponsorship')} onToggle={() => toggleDealType('sponsorship')} icon={null} />
-              <FilterRow label="Endorsement" count={dealTypeCounts.endorsement} checked={dealTypeFilter.has('endorsement')} onToggle={() => toggleDealType('endorsement')} icon={null} />
-            </FilterSection>
-
-            <div>
-              <div className="text-[11px] font-black uppercase tracking-widest text-slate-400 mb-3">Minimum Value / Year</div>
-              <input
-                type="range"
-                min={0}
-                max={2_000_000}
-                step={50_000}
-                value={minValue}
-                onChange={(e) => setMinValue(parseInt(e.target.value, 10))}
-                className="w-full accent-emerald-400"
-              />
-              <div className="flex justify-between text-[10px] text-slate-500 mt-1">
-                <span>{fmt(0)}</span>
-                <span>{fmt(2_000_000)}+</span>
-              </div>
-            </div>
-          </aside>
-
-          <main className="flex min-h-0 flex-col overflow-hidden">
-            <div className="flex flex-col gap-3 border-b border-slate-800 px-4 py-4 sm:px-6 lg:flex-row lg:items-center">
-              <div className="relative w-full max-w-none lg:max-w-[420px]">
-                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+            <div className="flex flex-col gap-3 border-b border-slate-800 p-4 sm:flex-row sm:items-center sm:justify-between">
+              <label className="relative block w-full sm:max-w-sm">
+                <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                 <input
                   value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  placeholder="Search brands..."
-                  className="w-full bg-slate-900/60 border border-slate-800 rounded-lg pl-9 pr-3 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-emerald-400/60"
+                  onChange={event => setSearch(event.target.value)}
+                  placeholder="Search sponsors..."
+                  className="h-11 w-full rounded-lg border border-slate-700 bg-slate-900 pl-9 pr-3 text-sm text-white outline-none focus:border-amber-400"
                 />
-              </div>
-              <div className="ml-auto flex items-center gap-2">
+              </label>
+              <label className="flex items-center gap-3 text-xs text-slate-500">
+                Sort by
                 <select
                   value={sortKey}
-                  onChange={(e) => setSortKey(e.target.value as SortKey)}
-                  className="bg-slate-900/60 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-300 focus:outline-none focus:border-emerald-400/60"
+                  onChange={event => setSortKey(event.target.value as SortKey)}
+                  className="h-11 rounded-lg border border-slate-700 bg-slate-900 px-3 text-sm font-bold text-white outline-none focus:border-amber-400"
                 >
-                  {(Object.keys(SORT_LABEL) as SortKey[]).map((key) => (
-                    <option key={key} value={key}>Sort by: {SORT_LABEL[key]}</option>
-                  ))}
+                  <option value="payment">Highest payment</option>
+                  <option value="perk">Best perk</option>
+                  <option value="name">Name</option>
                 </select>
-                <div className="flex border border-slate-800 rounded-lg overflow-hidden">
-                  <button onClick={() => setViewMode('list')} className={`p-2 ${viewMode === 'list' ? 'bg-violet-500/20 text-violet-300' : 'text-slate-500 hover:text-slate-300'}`}><ListIcon size={14} /></button>
-                  <button onClick={() => setViewMode('grid')} className={`p-2 ${viewMode === 'grid' ? 'bg-violet-500/20 text-violet-300' : 'text-slate-500 hover:text-slate-300'}`}><LayoutGrid size={14} /></button>
-                </div>
-              </div>
+              </label>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
-              {filteredOffers.length === 0 ? (
-                <div className="h-full flex items-center justify-center text-slate-500 text-sm">No offers match the current filters.</div>
-              ) : (
-                <table className="w-full">
-                  <thead className="sticky top-0 bg-slate-950 z-10">
-                    <tr className="border-b border-slate-800 text-[10px] font-black uppercase tracking-widest text-slate-500">
-                      <th className="text-left px-6 py-3">Brand</th>
-                      <th className="text-left px-3 py-3">Category</th>
-                      <th className="text-left px-3 py-3">Interest Level</th>
-                      <th className="text-left px-3 py-3">Offer Type</th>
-                      <th className="text-left px-3 py-3">Value / Year</th>
-                      <th className="text-left px-3 py-3">Contract Length</th>
-                      <th className="text-left px-3 py-3">Total Value</th>
-                      <th className="text-left px-3 py-3">Market Fit</th>
-                      <th className="text-left px-3 py-3">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredOffers.map((offer) => {
-                      const CatIcon = CATEGORY_ICON[offer.category];
-                      const fitMeta = FIT_TINT[offer.marketFit];
-                      const interest = INTEREST_TINT[offer.interestLevel];
-                      const isKitFamily = (KIT_FAMILY_SLOTS as string[]).includes(offer.slot);
-                      const slotOccupied = offer.dealType !== 'endorsement' && (
-                        isKitFamily
-                          ? KIT_FAMILY_SLOTS.every((slot) => Boolean(tycoon?.sponsorships?.[slot]))
-                          : Boolean(tycoon?.sponsorships?.[offer.slot])
-                      );
-                      const sponsorBrandAlreadySigned = Object.values(tycoon?.sponsorships ?? {}).some((s: any) => s?.sponsor === offer.brand);
-                      const endorsementAlreadySigned = activeEndorsementBrands.has(offer.brand);
-                      const industryConflict = conflictIndustries.has(offer.industry);
-                      const endorsementBlocked = offer.dealType === 'endorsement' && endorsementCapReached && !endorsementAlreadySigned;
-                      const unavailable = offer.interestLevel === 'not-interested' || slotOccupied || industryConflict || sponsorBrandAlreadySigned || endorsementAlreadySigned || endorsementBlocked;
-                      const unavailableReason = endorsementAlreadySigned ? 'Endorsement already signed this season'
-                        : sponsorBrandAlreadySigned ? 'Brand already partnered with club'
-                        : endorsementBlocked ? 'Endorsement cap reached'
-                        : slotOccupied ? 'Slot already filled'
-                        : industryConflict ? 'Conflicts with current sponsor'
-                        : offer.interestLevel === 'not-interested' ? 'Not interested'
-                        : '';
-                      return (
-                        <tr
-                          key={offer.id}
-                          title={unavailableReason || undefined}
-                          className={`border-b border-slate-900 transition ${unavailable ? 'opacity-50' : 'hover:bg-slate-900/30'}`}
-                        >
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-3">
-                              <SponsorLogo name={offer.brand} meta={getBrandMeta('spain', offer.brand)} industry={offer.industry} size={36} />
-                              <span className="font-bold text-white">{offer.brand}</span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-4">
-                            <div className="flex items-center gap-2">
-                              <CatIcon size={14} className={CATEGORY_TINT[offer.category]} />
-                              <span className="text-sm text-slate-300">{CATEGORY_LABEL[offer.category]}</span>
-                            </div>
-                          </td>
-                          <td className="px-3 py-4">
-                            <div className="flex items-center gap-2">
-                              <span className={`w-2 h-2 rounded-full ${interest.dot}`} />
-                              <div>
-                                <div className={`text-sm font-bold ${interest.text}`}>{INTEREST_LABEL[offer.interestLevel]}</div>
-                                <div className="text-[11px] text-slate-500">{offer.interestSub}</div>
-                              </div>
-                            </div>
-                          </td>
-                          <td className="px-3 py-4">
-                            <div className="text-sm text-slate-200">{offer.offerLabel}</div>
-                            <div className="text-[11px] text-slate-500">{offer.slotLabel}</div>
-                          </td>
-                          <td className="px-3 py-4">
-                            <div className="text-sm font-bold text-white tabular-nums">{fmt(offer.valuePerYear)}</div>
+            <div className="flex-1 overflow-y-auto p-4">
+              {visibleOffers.length > 0 ? (
+                <div className="grid gap-3 sm:grid-cols-2">
+                  {visibleOffers.map(offer => {
+                    const bonuses = buildSponsorPerformanceBonuses(offer.valuePerYear, offer.archetype, offer.bonusProfileId);
+                    return (
+                      <div key={offer.id} className="rounded-xl border border-slate-800 bg-slate-900/55 p-4">
+                        <div className="flex items-start gap-3">
+                          <SponsorLogo
+                            name={offer.brand}
+                            meta={getBrandMeta(sponsorLeague, offer.brand)}
+                            industry={offer.industry}
+                            size={48}
+                          />
+                          <div className="min-w-0 flex-1">
+                            <div className="truncate text-base font-black text-white">{offer.brand}</div>
+                            <div className="text-xs text-slate-500">{getIndustryLabel(offer.industry)}</div>
+                          </div>
+                          <div className="shrink-0 text-right">
+                            <div className="font-black tabular-nums text-emerald-300">{fmt(offer.valuePerYear)}</div>
                             <div className="text-[11px] text-slate-500">per year</div>
-                          </td>
-                          <td className="px-3 py-4 text-sm text-slate-300 tabular-nums">{offer.oneTime ? 'One-Time' : `${offer.contractYears} Years`}</td>
-                          <td className="px-3 py-4 text-sm font-bold text-white tabular-nums">{fmt(offer.oneTime ? offer.valuePerYear : offer.valuePerYear * offer.contractYears)}</td>
-                          <td className="px-3 py-4">
-                            <div className={`text-xs font-bold ${fitMeta.text}`}>{FIT_LABEL[offer.marketFit]}</div>
-                            <div className="mt-1 h-1.5 w-24 rounded-full bg-slate-800 overflow-hidden">
-                              <div className={`h-full ${fitMeta.bar}`} style={{ width: `${fitMeta.pct}%` }} />
-                            </div>
-                          </td>
-                          <td className="px-3 py-4">
-                            <button
-                              disabled={unavailable}
-                              onClick={() => !unavailable && setSelectedOffer(offer)}
-                              className={`rounded-lg border px-3 py-1.5 text-xs font-bold transition ${
-                                unavailable
-                                  ? 'border-slate-800 text-slate-600 cursor-not-allowed'
-                                  : 'border-emerald-500/40 text-emerald-300 hover:bg-emerald-500/10'
-                              }`}
-                            >
-                              {endorsementAlreadySigned ? 'Signed' : unavailable ? 'Unavailable' : offer.dealType === 'endorsement' ? 'View Details' : 'View Offer'}
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          </div>
+                        </div>
+                        <div className="mt-4 space-y-2 border-t border-slate-800 pt-3">
+                          <div className="flex items-start gap-2 text-xs text-slate-300">
+                            <Trophy size={14} className="mt-0.5 shrink-0 text-amber-300" />
+                            <span>Potential bonuses: up to <strong className="text-white">{fmt(sumBonuses(bonuses))}</strong> per season</span>
+                          </div>
+                          <div className="flex items-start gap-2 text-xs text-slate-300">
+                            <Gift size={14} className="mt-0.5 shrink-0 text-amber-300" />
+                            <span><strong className="text-white">Perk:</strong> {offer.perk?.label ?? offer.benefitPackage?.label ?? 'Partner support'}</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => chooseOffer(offer)}
+                          className="mt-4 flex h-10 w-full items-center justify-center gap-2 rounded-lg border border-amber-400/70 text-xs font-black uppercase tracking-widest text-amber-300 hover:bg-amber-400 hover:text-slate-950"
+                        >
+                          Select <ChevronRight size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="flex min-h-52 items-center justify-center rounded-xl border border-dashed border-slate-800 px-4 text-center text-sm text-slate-500">
+                  No eligible sponsors are available for this slot.
+                </div>
               )}
             </div>
-          </main>
-        </div>
+          </>
+        )}
 
-        <div className="flex items-center gap-4 px-7 py-4 border-t border-slate-800 bg-slate-950">
-          <div className="flex items-center gap-4 text-[11px] text-slate-400">
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400" /> Very Interested</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-500/80" /> Interested</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-500" /> Neutral</span>
-            <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-rose-500" /> Not Interested</span>
+        {step === 'terms' && selectedOffer && (
+          <>
+            <ModalHeader title="Contract Terms" onClose={onClose} />
+            <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-7">
+              <SponsorIdentity offer={selectedOffer} sponsorLeague={sponsorLeague} subtitle={title} />
+
+              <div className="grid gap-4 rounded-xl border border-slate-700 bg-slate-900/55 p-4 sm:grid-cols-2">
+                <div>
+                  <div className="text-xs font-bold text-slate-400">Annual Payment</div>
+                  <div className="mt-2 text-3xl font-black tabular-nums text-emerald-300">{fmt(selectedOffer.valuePerYear)} <span className="text-sm text-slate-400">/ year</span></div>
+                </div>
+                <div className="border-t border-slate-700 pt-4 sm:border-l sm:border-t-0 sm:pl-4 sm:pt-0">
+                  <div className="flex items-center gap-2 text-sm font-black text-white"><Gift size={17} className="text-amber-300" /> {selectedOffer.perk?.label ?? selectedOffer.benefitPackage?.label ?? 'Partner support'}</div>
+                  <div className="mt-2 text-sm leading-6 text-slate-400">{selectedOffer.perk?.description ?? selectedOffer.benefitPackage?.label ?? 'Partner support for the club.'}</div>
+                </div>
+              </div>
+
+              <BonusPanel bonuses={performanceBonuses} fmt={fmt} />
+
+              <div>
+                <div className="mb-3 text-sm font-black text-white">Contract Length</div>
+                {dealType === 'core' ? (
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+                    {[1, 2, 3, 4, 5]
+                      .filter(years => (
+                        years >= (selectedOffer.minContractYears ?? 1)
+                        && years <= (selectedOffer.maxContractYears ?? 5)
+                      ))
+                      .map(years => (
+                      <button
+                        key={years}
+                        type="button"
+                        onClick={() => setContractYears(years)}
+                        className={`h-14 rounded-xl border text-sm font-black ${contractYears === years ? 'border-amber-400 bg-amber-400/10 text-amber-300' : 'border-slate-700 bg-slate-900 text-white hover:border-slate-500'}`}
+                      >
+                        {years} {years === 1 ? 'Year' : 'Years'}
+                      </button>
+                      ))}
+                  </div>
+                ) : (
+                  <div className="rounded-xl border border-slate-700 bg-slate-900 p-4 text-sm font-black text-white">1 year · fixed endorsement term</div>
+                )}
+              </div>
+
+              <div className="grid gap-3 rounded-xl border border-slate-700 bg-slate-900/55 p-4 text-center sm:grid-cols-3">
+                <SummaryValue label="Total Base Value" value={fmt(totalContractValue)} tint="text-emerald-300" />
+                <SummaryValue label="Start" value={String(currentYear)} />
+                <SummaryValue label="End" value={String(currentYear + contractYears)} />
+              </div>
+              <div className="flex items-start gap-2 rounded-xl border border-slate-800 bg-slate-900/40 p-3 text-xs leading-5 text-slate-400">
+                <CircleDollarSign size={15} className="mt-0.5 shrink-0" />
+                Payments are fixed. Only contract length can be adjusted for a Core Partnership.
+              </div>
+            </div>
+            <ModalFooter
+              backLabel="Back"
+              onBack={() => setStep('offers')}
+              actionLabel="Sign Deal"
+              onAction={signDeal}
+            />
+          </>
+        )}
+
+        {step === 'success' && selectedOffer && (
+          <div className="flex min-h-[480px] flex-col items-center justify-center p-6 text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full border border-emerald-400/40 bg-emerald-400/10">
+              <Check size={30} className="text-emerald-300" />
+            </div>
+            <div className="mt-5 text-xs font-black uppercase tracking-[0.3em] text-emerald-300">Partnership Confirmed</div>
+            <h2 className="mt-3 text-3xl font-black text-white">{selectedOffer.brand}</h2>
+            <p className="mt-2 max-w-md text-sm leading-6 text-slate-400">
+              {dealType === 'core'
+                ? `${selectedOffer.brand} is now your ${title} through ${currentYear + contractYears}.`
+                : `${selectedOffer.brand} has signed a one-year endorsement.`}
+            </p>
+            <div className="mt-6 w-full max-w-sm space-y-2 rounded-xl border border-slate-800 bg-slate-900/55 p-4 text-left">
+              <ContractFact label="Base payment" value={fmt(selectedOffer.valuePerYear)} />
+              <ContractFact label="Potential bonuses" value={`${fmt(potentialBonusEUR)} / season`} />
+              <ContractFact label="Active perk" value={selectedOffer.perk?.label ?? selectedOffer.benefitPackage?.label ?? 'Partner support'} />
+            </div>
+            <button
+              type="button"
+              onClick={onClose}
+              className="mt-6 h-12 min-w-44 rounded-xl bg-amber-400 px-6 text-sm font-black uppercase tracking-widest text-slate-950 hover:bg-amber-300"
+            >
+              Done
+            </button>
           </div>
-          <div className="flex-1 text-center text-xs text-slate-500">
-            <span className="inline-flex items-center gap-1.5">ⓘ Interest level is based on brand fit, market value, and your club&apos;s current profile.</span>
-          </div>
-        </div>
+        )}
       </div>
-
-      <SponsorOfferModal
-        open={selectedOffer !== null}
-        onClose={() => setSelectedOffer(null)}
-        data={selectedOffer ? buildSponsorOfferData(selectedOffer, tycoon, state?.leagueStats?.year ?? new Date().getFullYear()) : null}
-        onDismiss={() => setSelectedOffer(null)}
-        onStartNegotiation={() => {
-          if (!selectedOffer) return;
-          setNegotiationOffer(selectedOffer);
-          setSelectedOffer(null);
-        }}
-      />
-      <StartNegotiationModal
-        open={negotiationOffer !== null}
-        onClose={() => setNegotiationOffer(null)}
-        data={negotiationOffer ? buildStartNegotiationData(negotiationOffer, state?.leagueStats?.year ?? new Date().getFullYear(), tycoon) : null}
-        onSubmit={submitNegotiation}
-      />
     </div>
   );
 };

@@ -1,9 +1,14 @@
 import type { ButtonHTMLAttributes, ReactElement } from 'react';
 import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight, TrendingUp } from 'lucide-react';
-import { spendingOfferMultiplier } from '../../../services/staff/gmAttributes';
 import type { NBAPlayer } from '../../../types';
+import { areBirdRightsEnabled, isRookieExtensionEnabled, isSalaryCapEnabled, isSupermaxEnabled } from '../../../utils/ruleFlags';
 import type { ContractOption, ContractType } from './SigningModalShared';
+import { getNbaYearsOfService } from '../../../utils/playerExperience';
+import type { TycoonState } from '../../../types/tycoon';
+import { SponsorSigningPerkPicker } from '../../tycoon/SponsorSigningPerkPicker';
+import { formatLeagueSeasonLabel } from '../../../services/leagueCalendar';
+import { getWnbaDevelopmentalContractLabel } from '../../../services/wnba/developmentalContracts';
 
 type HoldableButtonProps = Pick<
   ButtonHTMLAttributes<HTMLButtonElement>,
@@ -44,21 +49,23 @@ interface SigningModalNegotiationTabProps {
   contractType: ContractType;
   decOptionProps: HoldableButtonProps;
   decSalaryProps: HoldableButtonProps;
+  decSigningBonusProps: HoldableButtonProps;
   decYearsProps: HoldableButtonProps;
   euroIsolated: boolean;
   pbaIsolated: boolean;
   formattedYears: string;
-  gmSpending: number;
   hasOwnTeamBirdRights: boolean;
+  hideMarketFeedback: boolean;
   incOptionProps: HoldableButtonProps;
   incSalaryProps: HoldableButtonProps;
+  incSigningBonusProps: HoldableButtonProps;
   incYearsProps: HoldableButtonProps;
   interest: number;
   interestColor: string;
-  isOwnTeamGM: boolean;
   isPbaImportSigning: boolean;
   isResign: boolean;
   isTrainingCampPeriod: boolean;
+  leagueStats: any;
   leagueYear: number;
   limits: ContractLimitsLike;
   maxAllowed: number;
@@ -69,12 +76,18 @@ interface SigningModalNegotiationTabProps {
   player: NBAPlayer;
   roster: RosterInfo;
   salary: number;
+  signingBonusEUR: number;
+  signingBonusStepEUR: number;
+  selectedSponsorPerkKey: string | null;
+  setSelectedSponsorPerkKey: (value: string | null) => void;
+  recommendedSigningBonusEUR: number;
   setContractType: (value: ContractType) => void;
   setTeamBuyoutContribUSD: (value: number) => void;
   teamBuyoutContribUSD: number;
   teamHoldsBirdRights: boolean;
   totalBuyoutPaidUSD: number;
   yearsTable: YearsTableRow[];
+  tycoon?: TycoonState;
 }
 
 export default function SigningModalNegotiationTab({
@@ -84,21 +97,23 @@ export default function SigningModalNegotiationTab({
   contractType,
   decOptionProps,
   decSalaryProps,
+  decSigningBonusProps,
   decYearsProps,
   euroIsolated,
   pbaIsolated,
   formattedYears,
-  gmSpending,
   hasOwnTeamBirdRights,
+  hideMarketFeedback,
   incOptionProps,
   incSalaryProps,
+  incSigningBonusProps,
   incYearsProps,
   interest,
   interestColor,
-  isOwnTeamGM,
   isPbaImportSigning,
   isResign,
   isTrainingCampPeriod,
+  leagueStats,
   leagueYear,
   limits,
   maxAllowed,
@@ -109,27 +124,74 @@ export default function SigningModalNegotiationTab({
   player,
   roster,
   salary,
+  signingBonusEUR,
+  signingBonusStepEUR,
+  selectedSponsorPerkKey,
+  setSelectedSponsorPerkKey,
+  recommendedSigningBonusEUR,
   setContractType,
   setTeamBuyoutContribUSD,
   teamBuyoutContribUSD,
   teamHoldsBirdRights,
   totalBuyoutPaidUSD,
   yearsTable,
+  tycoon,
 }: SigningModalNegotiationTabProps): ReactElement {
   const nonNbaContractRules = euroIsolated || pbaIsolated;
-  const availableContractTypes = (
-    nonNbaContractRules
-      ? (['GUARANTEED'] as ContractType[])
-      : (['GUARANTEED', 'TWO_WAY', 'NON_GUARANTEED'] as ContractType[])
-  ).filter(type =>
-    type === 'GUARANTEED' ? (!roster.standardFull || isResign || teamHoldsBirdRights)
-      : type === 'TWO_WAY' ? canOfferTwoWay && !hasOwnTeamBirdRights && !roster.twoWayFull
-        : isTrainingCampPeriod && roster.standardCount >= 15,
-  );
+  const salaryCapActive = isSalaryCapEnabled(leagueStats);
+  const birdRightsActive = areBirdRightsEnabled(leagueStats);
+  const supermaxActive = isSupermaxEnabled(leagueStats);
+  const rookieExtensionActive = isRookieExtensionEnabled(leagueStats);
+  const secondaryContractLabel = getWnbaDevelopmentalContractLabel(leagueStats);
+  const showNbaRightsPanel = !nonNbaContractRules && (birdRightsActive || supermaxActive || rookieExtensionActive);
+  const showCapRoomProjection = !nonNbaContractRules && salaryCapActive;
+  const projectionGridClass = showCapRoomProjection ? 'grid-cols-3' : 'grid-cols-2';
+  const projectedMoney = (value: number) => {
+    if (!Number.isFinite(value)) return '—';
+    const abs = Math.abs(value);
+    if (!euroIsolated && !pbaIsolated && abs > 0 && abs < 1_000_000) {
+      return `$${Math.max(1, Math.round(abs / 1_000))}K`;
+    }
+    return abs > 0 && abs < 100_000 ? moneyPrecise(value, 2) : money(value);
+  };
+  const projectionTitle = isPbaImportSigning
+    ? 'Conference Contract'
+    : showCapRoomProjection
+      ? 'Cap Projection'
+      : 'Salary Projection';
+  const contractTypeChoices = nonNbaContractRules
+    ? [{ type: 'GUARANTEED' as ContractType, enabled: true, reason: '' }]
+    : [
+        {
+          type: 'GUARANTEED' as ContractType,
+          enabled: !roster.standardFull || isResign || teamHoldsBirdRights,
+          reason: roster.standardFull ? 'Standard roster is full' : '',
+        },
+        {
+          type: 'TWO_WAY' as ContractType,
+          enabled: canOfferTwoWay && !hasOwnTeamBirdRights && !roster.twoWayFull,
+          reason: !canOfferTwoWay
+            ? `${secondaryContractLabel} contract unavailable for this player`
+            : hasOwnTeamBirdRights
+              ? 'Use a standard deal with Bird rights'
+              : roster.twoWayFull
+                ? `${secondaryContractLabel} slots are full`
+                : '',
+        },
+        {
+          type: 'NON_GUARANTEED' as ContractType,
+          enabled: isTrainingCampPeriod && roster.standardCount >= 15,
+          reason: !isTrainingCampPeriod
+            ? 'Available during training camp'
+            : roster.standardCount < 15
+              ? 'Available after the standard roster is full'
+              : '',
+        },
+      ];
 
   return (
     <div className="space-y-5 sm:space-y-8">
-      <div className="bg-white/[0.04] border border-white/[0.06] rounded-sm p-4 sm:p-6">
+      {!hideMarketFeedback && <div className="bg-white/[0.04] border border-white/[0.06] rounded-sm p-4 sm:p-6">
         <div className="flex items-center justify-between gap-3 mb-4">
           <div className="flex items-center gap-2">
             <TrendingUp size={15} className="text-[#e21d37]" />
@@ -152,25 +214,7 @@ export default function SigningModalNegotiationTab({
         <p className="text-[9px] font-bold uppercase text-white/20 tracking-widest mt-2">
           {interest >= 70 ? 'Strong interest — player is engaged' : interest >= 40 ? 'Moderate — room to improve' : 'Low — player is unlikely to accept'}
         </p>
-      </div>
-
-      {isOwnTeamGM && (() => {
-        const mult = spendingOfferMultiplier(gmSpending);
-        const label = gmSpending >= 80 ? 'High Spender' : gmSpending >= 60 ? 'Balanced' : 'Value Hunter';
-        const color = gmSpending >= 80 ? '#f59e0b' : gmSpending >= 60 ? '#8b949e' : '#38bdf8';
-        const pctText = mult >= 1 ? `+${Math.round((mult - 1) * 100)}%` : `-${Math.round((1 - mult) * 100)}%`;
-        return (
-          <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3 px-4 py-3 bg-white/[0.03] border border-white/[0.06] rounded-sm">
-            <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
-            <p className="text-[9px] font-black uppercase tracking-widest" style={{ color }}>
-              GM Style: {label}
-            </p>
-            <p className="text-[9px] text-white/30 sm:ml-auto">
-              Opening offer {pctText} vs market · Spending {gmSpending}
-            </p>
-          </div>
-        );
-      })()}
+      </div>}
 
       {buyout.applicable && (() => {
         const neededRatio = Math.max(0.5, competingInterest / 100);
@@ -212,23 +256,27 @@ export default function SigningModalNegotiationTab({
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-5 sm:gap-8">
         <div className="space-y-5 sm:space-y-6">
-          {availableContractTypes.length > 1 && (
+          {!nonNbaContractRules && (
             <div>
               <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 mb-2">Contract Type</p>
               <div className="flex flex-wrap border border-white/5 rounded-sm p-1 bg-black/60 gap-1">
-                {availableContractTypes.map(type => (
+                {contractTypeChoices.map(({ type, enabled, reason }) => (
                   <button
                     key={type}
-                    onClick={() => setContractType(type)}
+                    disabled={!enabled}
+                    onClick={() => enabled && setContractType(type)}
+                    title={enabled ? undefined : reason}
                     className={`flex-1 min-w-[120px] py-2.5 text-[10px] font-black uppercase tracking-widest rounded-sm transition-all ${
                       contractType === type
                         ? type === 'NON_GUARANTEED'
                           ? 'bg-amber-600 text-white shadow-lg'
                           : 'bg-[#e21d37] text-white shadow-lg'
-                        : 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                        : enabled
+                          ? 'text-white/30 hover:text-white/60 hover:bg-white/5'
+                          : 'text-white/15 cursor-not-allowed'
                     }`}
                   >
-                    {type === 'NON_GUARANTEED' ? 'NG' : type.replace('_', ' ')}
+                    {type === 'NON_GUARANTEED' ? 'NG' : type === 'TWO_WAY' ? secondaryContractLabel : type.replace('_', ' ')}
                   </button>
                 ))}
               </div>
@@ -309,45 +357,97 @@ export default function SigningModalNegotiationTab({
             ))}
           </div>
 
-          {!nonNbaContractRules && (() => {
-            const hasBird = hasOwnTeamBirdRights || !!(player as any).hasBirdRights;
-            const svc = ((player as any).stats ?? []).filter((s: any) => !s.playoffs && (s.gp ?? 0) > 0).length;
+          {euroIsolated && (
+            <div>
+              <label className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 flex flex-col gap-1.5 sm:flex-row sm:justify-between sm:items-center mb-2">
+                <span>Signing Bonus</span>
+                <span className="text-[10px] text-violet-300">Recommended {money(recommendedSigningBonusEUR)}</span>
+              </label>
+              <div className="flex items-center justify-between min-h-16 bg-violet-500/[0.06] border border-violet-400/20 rounded-sm px-4">
+                <button
+                  {...decSigningBonusProps}
+                  disabled={signingBonusEUR <= 0}
+                  aria-label="Lower signing bonus"
+                  className="text-white/30 hover:text-white transition-colors p-1 disabled:opacity-30 disabled:cursor-not-allowed touch-none select-none"
+                >
+                  <ChevronLeft size={18} />
+                </button>
+                <div className="text-center px-3">
+                  <span className="text-2xl font-black italic text-white">{moneyPrecise(signingBonusEUR, 2)}</span>
+                  <p className="text-[8px] font-bold text-white/30 tracking-widest mt-0.5">
+                    Paid immediately when the deal is signed
+                  </p>
+                </div>
+                <button
+                  {...incSigningBonusProps}
+                  aria-label="Raise signing bonus"
+                  className="text-white/30 hover:text-white transition-colors p-1 touch-none select-none"
+                >
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+              <p className="mt-2 text-[9px] font-bold uppercase tracking-widest text-white/20">
+                {money(signingBonusStepEUR)} increments · strengthens the offer
+              </p>
+              <div className="mt-3">
+                <SponsorSigningPerkPicker
+                  tycoon={tycoon}
+                  currentYear={leagueYear}
+                  appliesTo="player"
+                  annualSalaryEUR={salary}
+                  selectedKey={selectedSponsorPerkKey}
+                  onSelect={choice => setSelectedSponsorPerkKey(choice?.key ?? null)}
+                  currency={leagueStats?.currency ?? 'EUR'}
+                />
+              </div>
+            </div>
+          )}
+
+          {showNbaRightsPanel && (() => {
+            const hasBird = hasOwnTeamBirdRights;
+            const svc = getNbaYearsOfService(player, leagueYear);
             const recent = ((player as any).awards ?? []).filter((a: any) => a.season && a.season >= leagueYear - 3);
             const notableAwards = recent
               .filter((a: any) => /all.nba|mvp|defensive player|dpoy/i.test(a.type ?? ''))
               .map((a: any) => a.type);
             return (
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Bird Rights</p>
-                  <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${hasBird ? 'border-emerald-500/40' : 'border-white/10'}`}>
-                    <span className={`text-sm font-black italic uppercase ${hasBird ? 'text-emerald-300' : 'text-white/40'}`}>
-                      {hasBird ? 'Yes' : 'No'}
-                    </span>
+              <div className={`grid grid-cols-1 ${[birdRightsActive, supermaxActive, rookieExtensionActive].filter(Boolean).length >= 3 ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3`}>
+                {birdRightsActive && (
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Bird Rights</p>
+                    <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${hasBird ? 'border-emerald-500/40' : 'border-white/10'}`}>
+                      <span className={`text-sm font-black italic uppercase ${hasBird ? 'text-emerald-300' : 'text-white/40'}`}>
+                        {hasBird ? 'Yes' : 'No'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Supermax</p>
-                  <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${limits.isSupermaxEligible ? 'border-amber-500/50' : 'border-white/10'}`}>
-                    <span
-                      className={`text-[10px] font-black italic uppercase text-center leading-tight px-1 ${limits.isSupermaxEligible ? 'text-amber-300' : 'text-white/40'}`}
-                      title={limits.isSupermaxEligible ? (svc >= 8 ? `${svc}yrs service` : notableAwards.slice(0, 2).join(', ') || 'Eligible') : `Needs 8+ yrs svc OR recent All-NBA/MVP/DPOY${hasBird ? '' : ' + Bird Rights'}`}
-                    >
-                      {limits.isSupermaxEligible ? (svc >= 8 ? `${svc}yr svc` : (notableAwards[0] ?? 'Eligible')) : 'Not Eligible'}
-                    </span>
+                )}
+                {supermaxActive && (
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Supermax</p>
+                    <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${limits.isSupermaxEligible ? 'border-amber-500/50' : 'border-white/10'}`}>
+                      <span
+                        className={`text-[10px] font-black italic uppercase text-center leading-tight px-1 ${limits.isSupermaxEligible ? 'text-amber-300' : 'text-white/40'}`}
+                        title={limits.isSupermaxEligible ? (svc >= 8 ? `${svc}yrs service` : notableAwards.slice(0, 2).join(', ') || 'Eligible') : `Needs 8+ yrs svc OR recent All-NBA/MVP/DPOY${hasBird ? '' : ' + Bird Rights'}`}
+                      >
+                        {limits.isSupermaxEligible ? (svc >= 8 ? `${svc}yr svc` : (notableAwards[0] ?? 'Eligible')) : 'Not Eligible'}
+                      </span>
+                    </div>
                   </div>
-                </div>
-                <div>
-                  <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Rookie Ext</p>
-                  <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${limits.isRookieExtEligible ? 'border-indigo-500/50' : 'border-white/10'}`}>
-                    <span
-                      className={`text-[10px] font-black italic uppercase text-center leading-tight px-1 ${limits.isRookieExtEligible ? 'text-indigo-300' : 'text-white/40'}`}
-                      title={limits.isRookieExtEligible ? (limits.rookieRoseQualified ? 'Rose Rule — 30% max ext' : 'Standard rookie ext — 25% max') : 'Needs Bird Rights + 3–4 yrs service'}
-                    >
-                      {limits.isRookieExtEligible ? (limits.rookieRoseQualified ? 'Rose Rule' : 'Eligible') : 'Not Eligible'}
-                    </span>
+                )}
+                {rookieExtensionActive && (
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30 mb-2">Rookie Ext</p>
+                    <div className={`flex items-center justify-center h-12 bg-white/[0.04] border rounded-sm ${limits.isRookieExtEligible ? 'border-indigo-500/50' : 'border-white/10'}`}>
+                      <span
+                        className={`text-[10px] font-black italic uppercase text-center leading-tight px-1 ${limits.isRookieExtEligible ? 'text-indigo-300' : 'text-white/40'}`}
+                        title={limits.isRookieExtEligible ? (limits.rookieRoseQualified ? 'Rose Rule - 30% max ext' : 'Standard rookie ext - 25% max') : 'Needs Bird Rights + 3-4 yrs service'}
+                      >
+                        {limits.isRookieExtEligible ? (limits.rookieRoseQualified ? 'Rose Rule' : 'Eligible') : 'Not Eligible'}
+                      </span>
+                    </div>
                   </div>
-                </div>
+                )}
               </div>
             );
           })()}
@@ -397,29 +497,29 @@ export default function SigningModalNegotiationTab({
         <div className="bg-[#0d0d0d] border border-white/5 rounded-sm overflow-hidden">
           <div className="bg-white/[0.04] px-4 sm:px-6 py-4 border-b border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <span className="text-[9px] font-black uppercase tracking-widest italic text-white/40">
-              {isPbaImportSigning ? 'Conference Contract' : pbaIsolated ? 'Salary Projection' : 'Cap Projection'}
+              {projectionTitle}
             </span>
             <span className="text-[8px] font-bold uppercase text-emerald-400">+5% Escalator</span>
           </div>
           <div className="divide-y divide-white/[0.04]">
             {yearsTable.map((row, i) => (
-              <div key={row.year} className={`grid ${pbaIsolated ? 'grid-cols-2' : 'grid-cols-3'} px-4 sm:px-6 py-4 hover:bg-white/[0.02] transition-colors gap-2`}>
+              <div key={row.year} className={`grid ${projectionGridClass} px-4 sm:px-6 py-4 hover:bg-white/[0.02] transition-colors gap-2`}>
                 <div>
                   <p className="text-[8px] font-bold text-white/20 uppercase">Season {i + 1}</p>
                   <p className="text-xs font-black italic text-white/60">
-                    {row.year - 1}–{String(row.year).slice(-2)}
+                    {formatLeagueSeasonLabel(row.year, leagueStats)}
                   </p>
                 </div>
                 <div className="text-center">
                   <p className="text-[8px] font-bold text-white/20 uppercase">Salary</p>
-                  <p className="text-xs font-black italic text-white">{money(row.salary)}</p>
+                  <p className="text-xs font-black italic text-white">{projectedMoney(row.salary)}</p>
                 </div>
-                {!pbaIsolated && (
+                {showCapRoomProjection && (
                   <div className="text-right">
                     <p className="text-[8px] font-bold text-white/20 uppercase">Cap Rm</p>
                     <p className={`text-xs font-black italic ${row.capRoom < 0 ? 'text-rose-500' : 'text-emerald-500'}`}>
                       {row.capRoom < 0 ? '-' : ''}
-                      {money(Math.abs(row.capRoom))}
+                      {projectedMoney(Math.abs(row.capRoom))}
                     </p>
                   </div>
                 )}

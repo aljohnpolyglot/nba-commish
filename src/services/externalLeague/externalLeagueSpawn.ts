@@ -8,9 +8,9 @@ import {
   YOUTH_EXTERNAL_OVR_CAP,
 } from '../../constants';
 import type { LeagueWeightEntry } from '../../constants';
-import { getNameData } from '../../data/nameDataFetcher';
+import { getGenderedNamePools, getNameData } from '../../data/nameDataFetcher';
 import { generateDraftClassForGame, pickWeighted } from '../genDraftPlayers';
-import { getNewgenPortraitUrl, getRegenPortraitUrl } from '../../utils/newgenPortrait';
+import { getNationalityPortraitRace, getRegenPortraitUrl } from '../../utils/newgenPortrait';
 import {
   ADULT_DIRECT_NATIONALITY,
   genderForLeague,
@@ -21,13 +21,13 @@ import {
   GENERATED_EXTERNAL_SCALE_ATTRS,
   GENERATED_EXTERNAL_VERSION,
   LEAGUE_OVR_CAP,
-  NEWGEN_SKIP_LEAGUES,
   pickGeneratedExternalDraftYear,
   pickNationalFeederAffiliation,
-  resolveNamePool,
   seededRandom,
 } from './externalLeagueIdentity';
 import { pickCollegeForLeague, resolveClubAffinity } from './externalLeagueRouting';
+import { getAcademyBudgetStrength } from '../tycoon/economyScale';
+import { estimatePotentialBbgm } from '../../utils/playerRatings';
 
 function deriveCollege(league: string, isYouth: boolean, team: any, country: string, seed: string): string {
   const teamName = team ? `${team.region ?? ''} ${team.name ?? ''}`.trim() : '';
@@ -37,7 +37,7 @@ function deriveCollege(league: string, isYouth: boolean, team: any, country: str
     const feederAffiliation = pickNationalFeederAffiliation(country, team, seed);
     if (feederAffiliation) return feederAffiliation;
     // Try league college tracking first; if empty, show the feeder club rather than blank.
-    return pickCollegeForLeague(league, Math.random()) || teamName;
+    return pickCollegeForLeague(league, seededRandom(seed)) || teamName;
   }
   // Youth: use team name + Youth/Development suffix
   if (!teamName) return '';
@@ -50,15 +50,8 @@ function deriveCollege(league: string, isYouth: boolean, team: any, country: str
  * Generate a single external-league NBAPlayer with correct nationality-matched bio.
  * `country` controls the name pool and born.loc — must be set for 1:1 replacement.
  */
-// Youth academy investment tier (0-5) → OVR/POT bonus for prospects spawned
-// at THIS team. 0 = team isn't investing → slightly below-average spawns.
-// 5 = world-class academy → meaningfully stronger prospects. Caps applied
-// after the standard ovrCap so this never breaks league-wide ceilings.
-const ACADEMY_TIER_OVR_BONUS: Record<number, number> = { 0: -3, 1: -1, 2: 0, 3: 2, 4: 4, 5: 6 };
-const ACADEMY_TIER_POT_BONUS: Record<number, number> = { 0: -3, 1: -1, 2: 0, 3: 3, 4: 6, 5: 9 };
-
-function academyYouthPotentialFloor(targetAge: number, academyBudget: number, targetOvr: number): number {
-  const base = 52 + academyBudget * 3;
+function academyYouthPotentialFloor(targetAge: number, academyBudgetStrength: number, targetOvr: number): number {
+  const base = 52 + academyBudgetStrength * 15;
   const ageBonus = targetAge <= 15 ? 5 : targetAge === 16 ? 4 : targetAge === 17 ? 2 : 0;
   return Math.max(targetOvr + 10, base + ageBonus);
 }
@@ -73,31 +66,53 @@ export function spawnExternalPlayer(opts: {
   salaryCap: number;
   isYouth: boolean;
   country: string; // explicit nationality — drives names, face race, born.loc
+  birthplace?: string;
+  usedPortraitUrls?: Set<string>;
+  generationBias?: {
+    talentRating: number;
+    heightRating: number;
+    athleticismRating: number;
+  };
+  openEndedGrowth?: boolean;
+  nativeYouthProfile?: boolean;
 }): NBAPlayer | null {
-  const { league, targetAge, year, rngBase, tid, team, salaryCap, isYouth, country } = opts;
-  // Read the team's academy investment — only matters for youth spawns. AI
-  // teams may not have a tycoon block (PBA/CBA placeholder), default to 2
-  // (Standard) so existing balance is preserved.
-  const academyBudget: number = isYouth
-    ? Math.max(0, Math.min(5, team?.tycoon?.academyBudget ?? 2))
-    : 2;
+  const {
+    league, targetAge, year, rngBase, tid, team, salaryCap, isYouth, country, birthplace,
+    usedPortraitUrls, generationBias, openEndedGrowth = false, nativeYouthProfile = false,
+  } = opts;
+  const academyBudgetStrength = isYouth
+    ? getAcademyBudgetStrength(team?.tycoon?.academyBudget, team?.tycoon?.tier, team?.tycoon?.currentEconomyIndex ?? 1)
+    : 0;
 
   try {
     const nameData = getNameData();
+    let randomIndex = 0;
+    const generationRandom = () => seededRandom(`${rngBase}_generation_${randomIndex++}`);
 
     // ── Generate base ratings/archetype/physical from the existing pipeline ──
     const gender = genderForLeague(league);
-    const generated = generateDraftClassForGame(year, 1, Math.random, nameData, year, undefined, gender);
+    const generated = generateDraftClassForGame(
+      year,
+      1,
+      generationRandom,
+      nameData,
+      year,
+      undefined,
+      gender,
+      'facesjs_only',
+      'normal',
+      { nationalityOverride: country, currentAgeOverride: isYouth ? targetAge : undefined },
+    );
     const base = generated[0];
     if (!base) return null;
 
     // ── Name: pull from correct country's pool ──────────────────────────────
-    const namePool = resolveNamePool(country, nameData);
+    const namePool = getGenderedNamePools(nameData, country, gender);
     const firstName = namePool?.first
-      ? pickWeighted(namePool.first)
+      ? pickWeighted(namePool.first, generationRandom)
       : (base as any).firstName ?? 'Unknown';
     const lastName = namePool?.last && Object.keys(namePool.last).length > 0
-      ? pickWeighted(namePool.last)
+      ? pickWeighted(namePool.last, generationRandom)
       : (base as any).lastName ?? 'Player';
 
     // ── OVR: skewed toward lower-mid (70% bottom half, 30% top half) ────────
@@ -105,7 +120,10 @@ export function spawnExternalPlayer(opts: {
     const ovrFloor = Math.max(35, ovrCap - 18);
     const rngOvr = seededRandom(rngBase + '_ovr');
     const rawFrac = rngOvr < 0.70 ? (rngOvr / 0.70) * 0.50 : 0.50 + ((rngOvr - 0.70) / 0.30) * 0.50;
-    let targetOvr = Math.round(ovrFloor + rawFrac * (ovrCap - ovrFloor));
+    let targetOvr = nativeYouthProfile
+      ? Math.round(Number(base.overallRating ?? base.ratings?.[base.ratings.length - 1]?.ovr ?? ovrFloor)
+        + (generationBias ? (generationBias.talentRating - 50) / 15 : 0))
+      : Math.round(ovrFloor + rawFrac * (ovrCap - ovrFloor));
 
     // Fix 6: USA imports in foreign leagues are journeymen (G-League exempt — it's the US feeder)
     if (country === 'USA' && league !== 'G-League') {
@@ -118,24 +136,25 @@ export function spawnExternalPlayer(opts: {
     }
     targetOvr = Math.max(25, Math.min(ovrCap, targetOvr - GENERATED_EXTERNAL_OVR_NERF));
 
-    // Apply academy investment bonus AFTER the league cap, but still clamp
-    // so a tier-5 academy can't push prospects past the league's own ceiling.
-    if (isYouth) {
-      targetOvr = Math.max(25, Math.min(ovrCap, targetOvr + (ACADEMY_TIER_OVR_BONUS[academyBudget] ?? 0)));
+    if (isYouth && !nativeYouthProfile) {
+      const academyOvrBonus = Math.round(-3 + academyBudgetStrength * 9);
+      targetOvr = Math.max(25, Math.min(ovrCap, targetOvr + academyOvrBonus));
     }
 
     // POT: youth has more room to grow (Fix 3 — youth POT stays high even with OVR cap)
     const potCap = isYouth ? ovrCap + 8 : ovrCap + 4;
     const potGap = Math.max(0, potCap - targetOvr);
-    let targetPot = Math.min(potCap, targetOvr + Math.round(seededRandom(rngBase + '_pot') * potGap));
-    if (isYouth) {
+    let targetPot = nativeYouthProfile
+      ? estimatePotentialBbgm(targetOvr, targetAge)
+      : Math.min(potCap, targetOvr + Math.round(seededRandom(rngBase + '_pot') * potGap));
+    if (isYouth && !nativeYouthProfile) {
       targetPot = Math.max(
         targetOvr,
         Math.min(
           potCap + 4,
           Math.max(
-            targetPot + (ACADEMY_TIER_POT_BONUS[academyBudget] ?? 0),
-            academyYouthPotentialFloor(targetAge, academyBudget, targetOvr),
+            targetPot + Math.round(-3 + academyBudgetStrength * 12),
+            academyYouthPotentialFloor(targetAge, academyBudgetStrength, targetOvr),
           ),
         ),
       );
@@ -143,9 +162,13 @@ export function spawnExternalPlayer(opts: {
 
     // ── Fix 4 + 5: Height ceiling + country multiplier ──────────────────────
     const baseHgt: number = (base as any).hgt ?? 78; // bio inches from generator
-    const hgtMult = COUNTRY_HEIGHT_MULT[country] ?? 1.0;
+    const hgtMult = nativeYouthProfile ? 1 : (COUNTRY_HEIGHT_MULT[country] ?? 1.0);
     const hgtCeil = LEAGUE_HEIGHT_CEILING[league] ?? 88;
-    const adjHgt = Math.min(Math.round(baseHgt * hgtMult), hgtCeil);
+    const regionalHeightShift = generationBias ? (generationBias.heightRating - 50) * 0.035 : 0;
+    const growthRemaining = openEndedGrowth
+      ? ({ 14: 4, 15: 2.7, 16: 1.5, 17: 0.6, 18: 0.15 }[targetAge] ?? 0)
+      : 0;
+    const adjHgt = Math.min(Math.round(baseHgt * hgtMult + regionalHeightShift - growthRemaining), hgtCeil);
     // Back-derive hgt rating attribute from adjusted bio height
     const adjHgtRating = Math.round(Math.max(0, Math.min(99, ((adjHgt - 68) / 22) * 99)));
     // Recompute weight proportionally
@@ -160,7 +183,8 @@ export function spawnExternalPlayer(opts: {
     const contractExp = year + (targetOvr >= ovrCap - 5 ? 2 : 1);
 
     const college = deriveCollege(league, isYouth, team, country, `${rngBase}_college`);
-    const uniqueId = `ext-gen-${league.replace(/[\s-]/g, '')}-${rngBase.slice(-10)}-${Date.now().toString(36)}`;
+    const idSuffix = Math.floor(seededRandom(`${rngBase}_id`) * 0x1_0000_0000).toString(36);
+    const uniqueId = `ext-gen-${league.replace(/[\s-]/g, '')}-${rngBase.slice(-10)}-${idSuffix}`;
     const bornYear = year - targetAge;
     const draftYear = pickGeneratedExternalDraftYear(targetAge, bornYear, year, `${rngBase}_draft`);
 
@@ -174,6 +198,16 @@ export function spawnExternalPlayer(opts: {
     for (const a of GENERATED_EXTERNAL_SCALE_ATTRS) {
       scaledLastRating[a] = Math.max(10, Math.min(99, Math.round((baseRatings[a] ?? 50) * scaleFactor)));
     }
+    if (generationBias) {
+      const talentDelta = Math.round((generationBias.talentRating - 50) / 14);
+      const athleticismDelta = Math.round((generationBias.athleticismRating - 50) / 14);
+      for (const attribute of ['oiq', 'diq', 'drb', 'pss', 'reb']) {
+        scaledLastRating[attribute] = Math.max(10, Math.min(99, (scaledLastRating[attribute] ?? 50) + talentDelta));
+      }
+      for (const attribute of ['stre', 'spd', 'jmp']) {
+        scaledLastRating[attribute] = Math.max(10, Math.min(99, (scaledLastRating[attribute] ?? 50) + athleticismDelta));
+      }
+    }
     const patchedRatings = Array.isArray((base as any).ratings)
       ? (base as any).ratings.map((r: any, i: number) =>
           i === (base as any).ratings.length - 1 ? scaledLastRating : r)
@@ -182,10 +216,12 @@ export function spawnExternalPlayer(opts: {
     return {
       ...base,
       internalId: uniqueId,
-      imgURL: NEWGEN_SKIP_LEAGUES.has(league)
-        ? (base as any).imgURL
-        : getRegenPortraitUrl(uniqueId, 'white', { nationality: country, bornLoc: country })
-          ?? getNewgenPortraitUrl(uniqueId, gender),
+      imgURL: getRegenPortraitUrl(uniqueId, getNationalityPortraitRace(uniqueId, country), {
+        nationality: country,
+        bornLoc: country,
+        gender,
+        usedPortraitUrls,
+      }) ?? undefined,
       name: `${firstName} ${lastName}`,
       firstName,
       lastName,
@@ -194,8 +230,10 @@ export function spawnExternalPlayer(opts: {
       overallRating: targetOvr,
       potential: targetPot,
       age: targetAge,
-      born: { year: bornYear, loc: country },
+      born: { year: bornYear, loc: birthplace ?? country },
       nationality: country,
+      nationalityTimeline: undefined,
+      nationalitySuccessorCountry: undefined,
       college,
       draft: {
         year: draftYear,
@@ -206,7 +244,7 @@ export function spawnExternalPlayer(opts: {
       },
       hgt: adjHgt,
       weight: adjWeight,
-      finalHgt: adjHgt,
+      finalHgt: openEndedGrowth ? undefined : adjHgt,
       finalWeight: adjWeight,
       ratings: patchedRatings,
       contract: {
@@ -226,7 +264,7 @@ export function spawnExternalPlayer(opts: {
 /** Pick the least-rostered team from a list. */
 export function pickUnderRosteredTeam(teams: any[], players: NBAPlayer[]): any {
   if (teams.length === 0) return null;
-  const HARD_CAP = 16;
+  const HARD_CAP = 15;
   const eligible = teams.filter(team =>
     players.filter(p => p.tid === team.tid && (p as any).status !== 'Retired').length < HARD_CAP
   );
@@ -267,7 +305,7 @@ export function sampleLeagueCountry(league: string, nonNBATeams: any[], players:
   }
 
   if (Object.keys(freq).length > 0) {
-    return pickWeighted(freq);
+    return pickWeighted(freq, () => rng);
   }
 
   // Fallback: use NATIONALITY_LEAGUE_BIAS + NATIONALITY_LEAGUE_WEIGHTS in reverse
@@ -319,7 +357,7 @@ export function sampleTeamCountry(
     weights[clubCountry] = (weights[clubCountry] ?? 0) + boost;
   }
 
-  return pickWeighted(weights) ?? clubCountry ?? leagueCountry ?? 'USA';
+  return pickWeighted(weights, () => rng) ?? clubCountry ?? leagueCountry ?? 'USA';
 }
 
 export function pickTeamForGeneratedPlayer(

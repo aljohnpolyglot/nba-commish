@@ -5,6 +5,8 @@ import { BoxScoreModal } from '../../modals/BoxScoreModal';
 import { BetSlipPanel } from './sportsbook/BetSlipPanel';
 import { EmptyState, OddsButton, StatusBadge, TabButton } from './sportsbook/SportsbookShared';
 import { decimalToAmerican, round05, type BetTab, type PropStat } from './sportsbook/sportsbookTypes';
+import { getPlayerImage } from '../../../utils/playerImage';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
 export { SportsbookMyBetsTab } from './SportsbookMyBetsTab';
 
 export const SportsbookHeader: React.FC<{
@@ -40,30 +42,44 @@ export const SportsbookHeader: React.FC<{
 
 export const SportsbookTabBar: React.FC<{
   activeTab: BetTab;
+  linesLabel: string;
   pendingCount: number;
   onChange: (tab: BetTab) => void;
-}> = ({ activeTab, pendingCount, onChange }) => (
+}> = ({ activeTab, linesLabel, pendingCount, onChange }) => (
   <div className="flex-shrink-0 flex border-b border-slate-800/60 bg-[#1a1e26] overflow-x-auto">
-    <TabButton active={activeTab === 'lines'} onClick={() => onChange('lines')} icon={BarChart2} label="Today's Lines" />
-    <TabButton active={activeTab === 'props'} onClick={() => onChange('props')} icon={Target} label="Player Props" />
+    <TabButton active={activeTab === 'lines'} onClick={() => onChange('lines')} icon={BarChart2} label={linesLabel} />
+    <TabButton active={activeTab === 'props'} onClick={() => onChange('props')} icon={Target} label="Player" />
     <TabButton active={activeTab === 'mybets'} onClick={() => onChange('mybets')} icon={Trophy} label="My Bets" badge={pendingCount} />
   </div>
 );
 
 export const SportsbookLinesTab: React.FC<{
   gameCards: any[];
+  slateDateLabel: string;
+  isToday: boolean;
   teamRecords: Record<number, { w: number; l: number }>;
   expandedGames: Set<number>;
   isInSlip: (legId: string) => boolean;
   toggleLeg: (leg: any) => void;
   toggleExpanded: (gid: number) => void;
-}> = ({ gameCards, teamRecords, expandedGames, isInSlip, toggleLeg, toggleExpanded }) => {
+}> = ({ gameCards, slateDateLabel, isToday, teamRecords, expandedGames, isInSlip, toggleLeg, toggleExpanded }) => {
   if (gameCards.length === 0) {
     return <EmptyState icon={<Clock className="w-8 h-8" />} title="No games today" body="Check back tomorrow for fresh lines." />;
   }
 
   return (
     <>
+      <div className="flex items-center justify-between gap-3 rounded-xl border border-slate-700/40 bg-[#1e232c] px-3 py-2.5 sm:px-4">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-400">
+            {isToday ? "Today's lines" : 'Next available lines'}
+          </p>
+          {!isToday && <p className="mt-0.5 text-xs font-semibold text-slate-300">{slateDateLabel}</p>}
+        </div>
+        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-500">
+          {gameCards.length} {gameCards.length === 1 ? 'game' : 'games'}
+        </span>
+      </div>
       {gameCards.map((card: any) => card && (
         <div key={card.game.gid} className="bg-[#1e232c] border border-slate-700/40 rounded-xl overflow-hidden hover:border-slate-600/60 transition-colors">
           <div className="p-3 sm:p-4">
@@ -205,9 +221,12 @@ export const SportsbookPropsTab: React.FC<{
           return (
             <div key={i} className="bg-[#1e232c] border border-slate-700/40 rounded-xl p-3 sm:p-4 hover:border-slate-600/60 transition-colors">
               <div className="flex items-center gap-2 sm:gap-3 mb-2 sm:mb-3">
-                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-slate-700/60 border border-slate-600/40 flex items-center justify-center text-sm font-black text-slate-300 flex-shrink-0 overflow-hidden">
-                  {prop.player.imgURL ? <img src={prop.player.imgURL} alt={prop.player.name} className="w-full h-full object-cover" referrerPolicy="no-referrer" /> : <span>{(prop.player.name ?? '??').split(' ').map((n: string) => n[0]).join('').slice(0, 2)}</span>}
-                </div>
+                <PlayerPortrait
+                  imgUrl={getPlayerImage(prop.player)}
+                  face={prop.player.face}
+                  playerName={prop.player.name}
+                  size={40}
+                />
                 <div className="flex-1 min-w-0">
                   <p className="font-black text-white text-xs sm:text-sm truncate">{prop.player.name ?? 'Unknown'}</p>
                   <p className="text-[10px] text-slate-500">

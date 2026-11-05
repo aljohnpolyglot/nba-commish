@@ -66,8 +66,8 @@ export function useOffseasonSidebarDecisions({
     } as any);
   };
 
-  const handleQoSubmitOne = (playerId: string) => {
-    dispatchAction({ type: 'SUBMIT_QUALIFYING_OFFER', payload: { playerId } } as any);
+  const handleQoSubmitOne = async (playerId: string) => {
+    await dispatchAction({ type: 'SUBMIT_QUALIFYING_OFFER', payload: { playerId } } as any);
     setQoSubmittedIds(prev => {
       const next = new Set(prev);
       next.add(playerId);
@@ -75,8 +75,8 @@ export function useOffseasonSidebarDecisions({
     });
   };
 
-  const handleQoSkipOne = (playerId: string) => {
-    dispatchAction({ type: 'SKIP_QUALIFYING_OFFER', payload: { playerId } } as any);
+  const handleQoSkipOne = async (playerId: string) => {
+    await dispatchAction({ type: 'SKIP_QUALIFYING_OFFER', payload: { playerId } } as any);
     setQoSkippedIds(prev => {
       const next = new Set(prev);
       next.add(playerId);
@@ -84,19 +84,19 @@ export function useOffseasonSidebarDecisions({
     });
   };
 
-  const handleQoAssistantAll = () => {
-    rfaCandidates.forEach(p => {
+  const handleQoAssistantAll = async () => {
+    for (const p of rfaCandidates) {
       const k2 = convertTo2KRating(
         p.overallRating ?? 0,
         (p as any).ratings?.[(p as any).ratings?.length - 1]?.hgt ?? 50,
         (p as any).ratings?.[(p as any).ratings?.length - 1]?.tp ?? 50,
       );
       if (k2 >= 70) {
-        handleQoSubmitOne(p.internalId);
+        await handleQoSubmitOne(p.internalId);
       } else {
-        handleQoSkipOne(p.internalId);
+        await handleQoSkipOne(p.internalId);
       }
-    });
+    }
     setQoModalOpen(false);
     dispatchAction({ type: 'OFFSEASON_COMPLETE_PHASE', payload: { row: 'qualifyingOffers' } } as any);
   };

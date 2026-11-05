@@ -1,58 +1,20 @@
-/**
- * ImagnPhotoService.ts
- * Fetches real NBA game action photos from imagn.com via Cloudflare Worker proxy.
- * Uses navigationSearchAjax when keyword IDs are known (more precise),
- * falls back to simpleSearchAjax for plain-text queries.
- */
+import {
+  buildImagnSearchUrl,
+  isImagnCandidateEligible,
+  isImagnPrimarySubject,
+  normalizeImagnKeywordEntry,
+  normalizePhotoAction,
+  resolveImagnLeagueTerm,
+  resolveImagnTeamSearchNames,
+  resolveImagnSearchWindows,
+  scoreImagnCandidate,
+  type ImagnSearchContext,
+  type ImagnSearchWindow,
+} from './imagnPhotoSearch';
 
 const PROXY            = 'https://nbagamesimages.mogatas-princealjohn-05082003.workers.dev/?url=';
-const IMAGN_SIMPLE     = 'https://imagn.com/simpleSearchAjax/';
-const IMAGN_NAV        = 'https://imagn.com/navigationSearchAjax/';
 const SEARCH_CG        = '44,45,328,129,180,164,127,143,300,192,306,312';
 const SEARCH_CG_NAV    = '44,45,180,164,127,143,192';
-const FROM_DATE_SIMPLE = '11/01/2025'; // slashes — simpleSearchAjax format
-const FROM_DATE_NAV    = '11-01-2025'; // dashes  — navigationSearchAjax format
-
-// ── Player keyword ID cache — NBA official IDs (same as imagn tag IDs) ───────
-// Source: https://raw.githubusercontent.com/bttmly/nba/refs/heads/master/data/players.json
-// Format: [{ firstName, lastName, playerId, teamId }]
-
-const playerIdCache = new Map<string, number>(); // normalized full name → playerId
-let playerCacheReady: Promise<void> | null = null;
-
-function initPlayerCache(): Promise<void> {
-  if (playerCacheReady) return playerCacheReady;
-  playerCacheReady = fetch(
-    'https://raw.githubusercontent.com/bttmly/nba/refs/heads/master/data/players.json'
-  )
-    .then(r => r.json())
-    .then((players: Array<{ firstName: string; lastName: string; playerId: number }>) => {
-      for (const p of players) {
-        const name = `${p.firstName} ${p.lastName}`.toLowerCase();
-        playerIdCache.set(name, p.playerId);
-      }
-      console.log(`[Imagn] player ID cache ready: ${playerIdCache.size} entries`);
-    })
-    .catch(err => {
-      console.warn('[Imagn] failed to load player ID cache:', err);
-    });
-  return playerCacheReady;
-}
-
-// Team IDs still come from navigation responses (30 teams, populated after first query)
-const teamIdCache = new Map<string, number>();
-
-function cacheNavigationKeywords(navigation: any): void {
-  if (!navigation) return;
-  for (const section of ['Teams', 'Locations']) {
-    const entries: any[] = navigation[section] || [];
-    for (const entry of entries) {
-      if (Array.isArray(entry) && typeof entry[0] === 'string' && typeof entry[1] === 'number') {
-        teamIdCache.set(entry[0].toLowerCase(), entry[1]);
-      }
-    }
-  }
-}
 
 // ── Interfaces ────────────────────────────────────────────────────────────────
 
@@ -72,6 +34,8 @@ export interface ImagnPhoto {
   height      : number;
   isTopPic    : boolean;
   isLandscape?: boolean;
+  source?      : 'imagn' | 'getty';
+  creditLine?  : string;
 }
 
 export interface GamePhotoResult {
@@ -150,8 +114,11 @@ function parseAsset(raw: any): ImagnPhoto {
   const w  = parseInt(raw.width)  || 0;
   const h  = parseInt(raw.height) || 0;
   const players: string[] = (raw.keywordsLimit || [])
-    .filter((k: any) => Array.isArray(k) && k[0] !== '...' && typeof k[1] === 'number')
-    .map(([name]: [string]) => name);
+    .map(normalizeImagnKeywordEntry)
+    .filter((keyword: ReturnType<typeof normalizeImagnKeywordEntry>): keyword is NonNullable<ReturnType<typeof normalizeImagnKeywordEntry>> => (
+      keyword !== null && keyword.name !== '...'
+    ))
+    .map((keyword) => keyword.name);
   return {
     id,
     setId       : raw.setId          || 0,
@@ -169,6 +136,7 @@ function parseAsset(raw: any): ImagnPhoto {
     height      : h,
     isTopPic    : (raw.tags || []).includes('TopPic'),
     isLandscape : w >= h,
+    source      : 'imagn',
   };
 }
 
@@ -184,8 +152,11 @@ function enrichPhoto(raw: any): ImagnPhoto | null {
 interface SearchParams {
   query?      : string;
   keywordIds? : number[];
+  keywordNames?: string[];
   page?       : number;
   setId?      : number;
+  leagueTerm  : string;
+  window      : ImagnSearchWindow;
 }
 
 interface SearchResult {
@@ -196,31 +167,21 @@ interface SearchResult {
 }
 
 async function searchPhotos(params: SearchParams): Promise<SearchResult> {
-  let url: string;
-
-  if (params.keywordIds?.length) {
-    // lowercase names + + for spaces + dashes in date
-    const tag = ',' + params.keywordIds
-      .map(id => [...teamIdCache.entries(), ...playerIdCache.entries()]
-        .find(([, v]) => v === id)?.[0] ?? '')
-      .filter(Boolean)
-      .map(n => n.toLowerCase().replace(/ /g, '+'))
-      .join(',');
-    const searchText = (params.query || '').toLowerCase().replace(/ /g, '+');
-    url = `https://imagn.com/navigationSearchAjax/?q=nba&tag=${tag}&orientation=&widthMin=&widthMax=&frmdate=${FROM_DATE_NAV}&todate=03-31-2026&keyWord=&keywordTypes=&searchCGOnly=${SEARCH_CG_NAV}&searchType=navigation&sort=DESC&npage=${params.page || 1}&searchWithin=searchWithin&searchText=${searchText}&isSiteSearch=&pageToken=&lastPage=`;
-  } else {
-    const q = (params.query || '').replace(/ /g, '+');  // + not %20
-    url = `https://imagn.com/simpleSearchAjax/?searchCGOnly=${SEARCH_CG}`;
-    if (q) url += `&searchtxt=${q}`;
-    if (params.setId) url += `&setId=${params.setId}`;
-    if (params.page && params.page > 1) url += `&page=${params.page}`;
-  }
+  const url = buildImagnSearchUrl({
+    query: params.query,
+    keywordNames: params.keywordIds?.length ? params.keywordNames : undefined,
+    page: params.page,
+    setId: params.setId,
+    leagueTerm: params.leagueTerm,
+    window: params.window,
+    simpleContentGroups: SEARCH_CG,
+    navigationContentGroups: SEARCH_CG_NAV,
+  });
 
   console.log('[Imagn] →', url);
   const data = await proxyFetch(url);
 
-  // Populate team ID cache from navigation
-  if (data?.results?.navigation) cacheNavigationKeywords(data.results.navigation);
+  const navigation = data?.results?.navigation ?? data?.navigation ?? {};
 
   const assets: any[] = data?.results?.content?.assetsForPage
     || data?.content?.assetsForPage
@@ -230,7 +191,7 @@ async function searchPhotos(params: SearchParams): Promise<SearchResult> {
     photos    : assets.map(enrichPhoto).filter((p): p is ImagnPhoto => p !== null),
     totalCount: data?.results?.resultCount || data?.resultCount || 0,
     pageCount : data?.results?.pageCount   || data?.pageCount   || 1,
-    navigation: data?.results?.navigation  || {},
+    navigation,
   };
 }
 
@@ -241,15 +202,15 @@ type GamePostType =
   | 'buzzer' | 'injury' | 'ejection' | 'celebration' | 'bench';
 
 const POST_TYPE_SUFFIX: Record<GamePostType, string> = {
-  recap      : 'nba basketball',
-  blowout    : 'nba dunk layup',
-  close      : 'nba basketball',
-  overtime   : 'nba basketball overtime',
-  buzzer     : 'nba shot buzzer',
-  injury     : 'nba injury',
-  ejection   : 'nba ejection technical',
-  celebration: 'nba celebration',
-  bench      : 'nba bench reaction',
+  recap      : 'basketball',
+  blowout    : 'dunk layup',
+  close      : 'basketball',
+  overtime   : 'basketball overtime',
+  buzzer     : 'shot buzzer',
+  injury     : 'injury',
+  ejection   : 'ejection technical',
+  celebration: 'celebration',
+  bench      : 'bench reaction',
 };
 
 // ── fetchGamePhotos ───────────────────────────────────────────────────────────
@@ -260,51 +221,58 @@ export async function fetchGamePhotos(opts: {
   count?   : number;
   postType?: GamePostType;
   maxPages?: number;
+  date?    : string;
+  season?  : number;
+  league?  : string;
+  competitionId?: string;
+  uiMode?  : string;
+  branchCutoffDate?: string;
 }): Promise<GamePhotoResult> {
   const empty: GamePhotoResult = { photos: [], captionStory: '', activePlayers: [], passivePlayers: [], gameNarrative: { story: '', topPerformers: [], inactivePlayers: [] } };
 
   try {
     const { homeTeam, awayTeam, count = 80, postType, maxPages = 4 } = opts;
-    const homeTeamName = homeTeam.name;
-    const awayTeamName = awayTeam.name;
+    const { homeTeamName, awayTeamName } = resolveImagnTeamSearchNames(homeTeam, awayTeam);
     const suffix = postType ? POST_TYPE_SUFFIX[postType] : '';
+    const gameDate = opts.date || new Date().toISOString().slice(0, 10);
+    const context: ImagnSearchContext = {
+      league: opts.league ?? 'NBA',
+      competitionId: opts.competitionId,
+      uiMode: opts.uiMode,
+      season: opts.season ?? Number(gameDate.slice(0, 4)),
+      gameDate,
+      branchCutoffDate: opts.branchCutoffDate,
+      homeTeamName,
+      awayTeamName,
+      action: normalizePhotoAction(postType),
+    };
+    const leagueTerm = resolveImagnLeagueTerm(context);
     console.log('[Imagn] fetchGamePhotos:', awayTeamName, '@', homeTeamName);
 
-    const homeId = teamIdCache.get(homeTeamName.toLowerCase());
-    const awayId = teamIdCache.get(awayTeamName.toLowerCase());
-
-    // Priority: keyword IDs (nav endpoint) → fallback plain text (simple endpoint)
-    const queries: SearchParams[] = [
-      // Best: both team IDs → most precise results
-      ...(homeId && awayId
-        ? [{ keywordIds: [homeId, awayId], query: `${awayTeamName} ${homeTeamName}` }]
-        : []),
-      // One team ID
-      ...(awayId ? [{ keywordIds: [awayId], query: awayTeamName }] : []),
-      ...(homeId ? [{ keywordIds: [homeId], query: homeTeamName }] : []),
-      // Plain text fallbacks
-      { query: `${awayTeamName} ${homeTeamName}${suffix ? ' ' + suffix : ''}` },
-      { query: `${awayTeamName} ${homeTeamName}` },
-    ];
-
     let allPhotos: ImagnPhoto[] = [];
-    for (const params of queries) {
-      try {
-        const pageResults = await Promise.all(
-          Array.from({ length: maxPages }, (_, i) =>
-            searchPhotos({ ...params, page: i + 1 }).catch(() => ({ photos: [], totalCount: 0, pageCount: 1, navigation: {} } as SearchResult))
-          )
-        );
-        const combined = pageResults.flatMap(r => r.photos);
-        console.log('[Imagn] got', combined.length, 'raw assets across', maxPages, 'pages',
-          params.keywordIds ? `(ids: ${params.keywordIds})` : `(text: "${params.query}")`);
-        const filtered = combined.filter(p => p.medUrl && p.width >= 1500 && !isBadCaption(p.captionClean));
-        console.log('[Imagn] after filter:', filtered.length);
-        if (filtered.length >= 3) { allPhotos = filtered; break; }
-        if (filtered.length > allPhotos.length) allPhotos = filtered;
-      } catch (err) {
-        console.warn('[Imagn] query failed:', params, err);
+    searchWindows: for (const window of resolveImagnSearchWindows(context)) {
+      const base = { leagueTerm, window };
+      const queries: SearchParams[] = [
+        { ...base, query: `${awayTeamName} ${homeTeamName}${suffix ? ` ${suffix}` : ''}` },
+      ];
+      for (const params of queries) {
+        try {
+          const pageResults = await Promise.all(Array.from({ length: maxPages }, (_, index) =>
+            searchPhotos({ ...params, page: index + 1 }).catch(() => ({ photos: [], totalCount: 0, pageCount: 1, navigation: {} } as SearchResult)),
+          ));
+          const filtered = pageResults.flatMap(result => result.photos).filter(photo =>
+            photo.medUrl && photo.width >= 1500 && !isBadCaption(photo.captionClean) && isImagnCandidateEligible(photo, context, [window]),
+          );
+          if (filtered.length >= 3) {
+            allPhotos = filtered;
+            break searchWindows;
+          }
+          if (filtered.length > allPhotos.length) allPhotos = filtered;
+        } catch (err) {
+          console.warn('[Imagn] query failed:', params, err);
+        }
       }
+      if (allPhotos.length) break;
     }
 
     if (!allPhotos.length) return empty;
@@ -361,64 +329,6 @@ export async function fetchGamePhotos(opts: {
   }
 }
 
-// ── fetchPlayerPhotos ─────────────────────────────────────────────────────────
-
-type PlayerStatType = 'shooting' | 'dunk' | 'three' | 'general';
-
-const STAT_TYPE_SUFFIX: Record<PlayerStatType, string> = {
-  shooting: 'nba shooting',
-  dunk    : 'nba dunk',
-  three   : 'nba three',
-  general : 'nba basketball',
-};
-
-export async function fetchPlayerPhotos(opts: {
-  player  : { name: string; [key: string]: any };
-  statType?: PlayerStatType;
-  count?   : number;
-}): Promise<{ photos: ImagnPhoto[] }> {
-  try {
-    const { player, statType = 'general', count = 4 } = opts;
-    const playerName = player.name;
-    const suffix     = STAT_TYPE_SUFFIX[statType];
-    await initPlayerCache();
-    const playerId = playerIdCache.get(playerName.toLowerCase());
-
-    const queries: SearchParams[] = [
-      // Best: player keyword ID
-      ...(playerId ? [{ keywordIds: [playerId], query: suffix }] : []),
-      // Plain text fallbacks
-      { query: `${playerName} ${suffix}` },
-      { query: `${playerName} nba basketball` },
-      { query: playerName },
-    ];
-
-    const nameLower = playerName.toLowerCase();
-    let best: ImagnPhoto[] = [];
-
-    for (const params of queries) {
-      try {
-        const result = await searchPhotos(params);
-        const filtered = result.photos.filter(p =>
-          p.medUrl &&
-          !isBadCaption(p.captionClean) &&
-          p.players.some(n => n.toLowerCase().includes(nameLower) || nameLower.includes(n.toLowerCase()))
-        );
-        if (filtered.length >= 2) { best = filtered; break; }
-        if (filtered.length > best.length) best = filtered;
-      } catch { continue; }
-    }
-
-    // Portrait-first, then landscape
-    const portrait  = best.filter(p => !p.isLandscape);
-    const landscape = best.filter(p =>  p.isLandscape);
-    return { photos: [...portrait, ...landscape].slice(0, count) };
-
-  } catch {
-    return { photos: [] };
-  }
-}
-
 // ── fetchGamePhotoPreview ─────────────────────────────────────────────────────
 
 export async function fetchGamePhotoPreview(opts: {
@@ -437,8 +347,15 @@ const gamePlayerPhotoCache = new Map<string, { playerName: string; photos: Imagn
 export async function fetchGamePlayerPhotos(opts: {
   homeTeam   : { name: string; abbrev: string; [key: string]: any };
   awayTeam   : { name: string; abbrev: string; [key: string]: any };
-  topPlayers : { name: string; gameScore: number }[];
+  topPlayers : { name: string; gameScore: number; [key: string]: any }[];
   gameKey    : string;
+  date       : string;
+  season     : number;
+  league     : string;
+  competitionId?: string;
+  uiMode?    : string;
+  branchCutoffDate?: string;
+  actionHint?: string;
 }): Promise<Map<string, ImagnPhoto[]>> {
   const { homeTeam, awayTeam, topPlayers, gameKey } = opts;
 
@@ -447,34 +364,79 @@ export async function fetchGamePlayerPhotos(opts: {
     return new Map(cached.map(e => [e.playerName, e.photos]));
   }
 
-  // BUG FIX: deduplicate team names — intra-squad scrimmages have homeTeam === awayTeam,
-  // which produced "Utah+Jazz+Utah+Jazz+Player" in the search URL.
-  const teamNames = homeTeam.name === awayTeam.name
-    ? homeTeam.name
-    : `${homeTeam.name} ${awayTeam.name}`;
-  const teamQuery = teamNames.replace(/ /g, '+');
+  const {
+    homeTeamName,
+    awayTeamName,
+    combinedTeamNames: teamNames,
+  } = resolveImagnTeamSearchNames(homeTeam, awayTeam);
+  const baseContext: ImagnSearchContext = {
+    league: opts.league,
+    competitionId: opts.competitionId,
+    uiMode: opts.uiMode,
+    season: opts.season,
+    gameDate: opts.date,
+    branchCutoffDate: opts.branchCutoffDate,
+    homeTeamName,
+    awayTeamName,
+    action: normalizePhotoAction(opts.actionHint),
+  };
+  const leagueTerm = resolveImagnLeagueTerm(baseContext);
+  const windows = resolveImagnSearchWindows(baseContext);
   const result = new Map<string, ImagnPhoto[]>();
 
-  await Promise.all(topPlayers.slice(0, 5).map(async ({ name }) => {
-    const playerQuery = name.replace(/ /g, '+');
-    const url = `https://imagn.com/simpleSearchAjax/?searchCGOnly=${SEARCH_CG}&searchtxt=${teamQuery}+${playerQuery}`;
-    console.log(`[Imagn] player search → ${url}`);
-    try {
-      const data = await proxyFetch(url);
-      const assets: any[] = data?.content?.assetsForPage || data?.results?.content?.assetsForPage || [];
-      const photos = assets
-        .map(enrichPhoto)
-        .filter((p): p is ImagnPhoto =>
-          p !== null &&
-          !TRUE_PASSIVE_CAPTIONS.some(w => (p.captionClean || '').toLowerCase().includes(w))
-        );
-      if (photos.length > 0) result.set(name, photos);
-    } catch { /* silent */ }
+  await Promise.all(topPlayers.slice(0, 5).map(async ({ name, teamId }) => {
+    const homeTeamId = Number(homeTeam.id ?? homeTeam.tid);
+    const awayTeamId = Number(awayTeam.id ?? awayTeam.tid);
+    const playerTeamId = Number(teamId);
+    const playerTeamName = Number.isFinite(playerTeamId) && playerTeamId === homeTeamId
+      ? homeTeamName
+      : Number.isFinite(playerTeamId) && playerTeamId === awayTeamId
+        ? awayTeamName
+        : '';
+    const context = { ...baseContext, playerName: name, playerTeamName: playerTeamName || undefined };
+    let best: ImagnPhoto[] = [];
+    for (const window of windows) {
+      const base = { leagueTerm, window };
+      const queries: SearchParams[] = [];
+      const queryKeys = new Set<string>();
+      const addQuery = (params: SearchParams): void => {
+        const key = JSON.stringify([params.keywordIds ?? [], params.query ?? '']);
+        if (!queryKeys.has(key)) {
+          queryKeys.add(key);
+          queries.push(params);
+        }
+      };
+      if (teamNames) addQuery({ ...base, query: `${teamNames} ${name}` });
+      const fallbackTeamNames = [...new Set([playerTeamName, homeTeamName, awayTeamName].filter(Boolean))];
+      for (const teamName of fallbackTeamNames) {
+        addQuery({ ...base, query: `${teamName} ${name}` });
+      }
+      addQuery({ ...base, query: name });
+      for (const params of queries) {
+        const photos = await searchPhotos(params).then(response => response.photos).catch(error => {
+          console.warn(`[Imagn] player query failed for ${name}:`, error);
+          return [];
+        });
+        const eligible = photos
+          .filter(photo => !TRUE_PASSIVE_CAPTIONS.some(word => (photo.captionClean || '').toLowerCase().includes(word)))
+          .filter(photo => isImagnCandidateEligible(photo, context, [window]))
+          .filter(photo => isImagnPrimarySubject(name, photo.captionClean || photo.caption || ''))
+          .sort((left, right) => scoreImagnCandidate(right, context) - scoreImagnCandidate(left, context));
+        if (eligible.length) {
+          best = eligible;
+          break;
+        }
+      }
+      if (best.length) break;
+    }
+    if (best.length) result.set(name, best);
   }));
 
-  gamePlayerPhotoCache.set(gameKey, [...result.entries()].map(([playerName, photos]) => ({ playerName, photos })));
+  if (result.size > 0) {
+    gamePlayerPhotoCache.set(gameKey, [...result.entries()].map(([playerName, photos]) => ({ playerName, photos })));
+  }
   return result;
 }
 
-export const ImagnPhotoService = { fetchGamePhotos, fetchGamePhotoPreview, fetchPlayerPhotos, fetchGamePlayerPhotos };
+export const ImagnPhotoService = { fetchGamePhotos, fetchGamePhotoPreview, fetchGamePlayerPhotos };
 export default ImagnPhotoService;

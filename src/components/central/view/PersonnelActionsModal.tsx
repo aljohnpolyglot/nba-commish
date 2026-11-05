@@ -4,6 +4,10 @@ import { X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ContactAvatar } from '../../common/ContactAvatar';
 import { PERSON_ACTION_DEFS, isPersonnelEligible, StaffType } from '../../../data/personActionDefs';
+import { useGame } from '../../../store/GameContext';
+import { resolveAnyTeam } from '../../../utils/teamLookup';
+import { getTeamFullName } from '../../../utils/teamNames';
+import { displayStaffRole } from '../../../services/staff/staffCareerRows';
 
 // ─────────────────────────────────────────────────────────────────
 // TYPES
@@ -11,14 +15,16 @@ import { PERSON_ACTION_DEFS, isPersonnelEligible, StaffType } from '../../../dat
 
 export type PersonnelActionType =
   | 'view_bio'
-  | 'contact'
-  | 'bribe'
+  | 'retire_now'
   | 'fine'
   | 'dinner'
   | 'movie'
   | 'suspension'
+  | 'drug_test'
+  | 'sabotage'
   | 'view_ratings'
   | 'view_candidates'
+  | 'sign_staff'
   | 'fire'
   | 'promote_to_hc'
   | 'resign_staff';
@@ -29,11 +35,12 @@ interface PersonnelActionsModalProps {
   onClose: () => void;
   onActionSelect: (actionType: PersonnelActionType) => void;
   filterActions?: PersonnelActionType[];
+  footerMessage?: string;
 }
 
 // Ordered list of actions shown in this modal.
 const MODAL_ACTION_IDS: PersonnelActionType[] = [
-  'resign_staff', 'view_ratings', 'view_candidates', 'promote_to_hc', 'view_bio', 'contact', 'bribe', 'fine', 'dinner', 'movie', 'suspension', 'fire',
+  'resign_staff', 'view_bio', 'view_ratings', 'sign_staff', 'view_candidates', 'promote_to_hc', 'retire_now', 'fine', 'dinner', 'movie', 'suspension', 'drug_test', 'sabotage', 'fire',
 ];
 
 // ─────────────────────────────────────────────────────────────────
@@ -46,14 +53,36 @@ export const PersonnelActionsModal: React.FC<PersonnelActionsModalProps> = ({
   onClose,
   onActionSelect,
   filterActions,
+  footerMessage,
 }) => {
+  const { state } = useGame();
   if (!person) return null;
+  const managedTeam = state.userTeamId == null
+    ? null
+    : resolveAnyTeam(state.userTeamId, state.teams, state.nonNBATeams);
+  const canRetireCoach = state.gameMode !== 'gm'
+    || (
+      person.type === 'coach'
+      && !!managedTeam
+      && getTeamFullName(managedTeam).toLowerCase() === String(person.team ?? '').trim().toLowerCase()
+    );
+  const commissionerTeamStaff = state.gameMode !== 'gm'
+    && ['coach', 'gm', 'owner'].includes(person.type);
+  const commissionerEmploymentActions = new Set<PersonnelActionType>([
+    'resign_staff',
+    'sign_staff',
+    'view_candidates',
+    'promote_to_hc',
+    'fire',
+  ]);
 
   const actions = MODAL_ACTION_IDS
     .filter(id => !filterActions || filterActions.includes(id))
     .map(id => PERSON_ACTION_DEFS.find(def => def.id === id))
     .filter((def): def is NonNullable<typeof def> => !!def)
-    .filter(def => isPersonnelEligible(person.type as StaffType, def.eligibility));
+    .filter(def => isPersonnelEligible(person.type as StaffType, def.eligibility))
+    .filter(def => def.id !== 'retire_now' || canRetireCoach)
+    .filter(def => !commissionerTeamStaff || !commissionerEmploymentActions.has(def.id as PersonnelActionType));
 
   return (
     <AnimatePresence>
@@ -95,7 +124,7 @@ export const PersonnelActionsModal: React.FC<PersonnelActionsModalProps> = ({
                     {person.name}
                   </h3>
                   <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-1">
-                    {person.jobTitle}
+                    {displayStaffRole(person.jobTitle ?? '')}
                     {person.number ? ` · #${person.number}` : ''}
                     {person.team ? ` · ${person.team}` : ''}
                   </p>
@@ -126,6 +155,11 @@ export const PersonnelActionsModal: React.FC<PersonnelActionsModalProps> = ({
                   </div>
                 </button>
               ))}
+              {footerMessage && (
+                <div className="rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-3 text-xs leading-relaxed text-amber-200">
+                  {footerMessage}
+                </div>
+              )}
             </div>
           </motion.div>
         </motion.div>

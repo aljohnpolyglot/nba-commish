@@ -2,10 +2,13 @@ import type { DraftPick, LeagueStats, NBAPlayer, NBATeam, TradeException } from 
 import {
   contractToUSD,
   getApronBucketAfterTrade,
+  getBiannualExceptionAvailability,
   getCapThresholds,
+  getTeamHardCapUSD,
   getTeamCapProfile,
   getTradeMatchingRatioForBucket,
   type ApronBucket,
+  seasonLabelToYear,
 } from './salaryUtils';
 import { getActiveTPEs } from './tradeExceptionUtils';
 import { isTradeEligible } from './signingMoratorium';
@@ -40,6 +43,10 @@ export interface CBATradeValidationResult {
   teamBPostBucket?: ApronBucket;
   teamAPostPayrollUSD?: number;
   teamBPostPayrollUSD?: number;
+  teamABaeUsedUSD?: number;
+  teamBBaeUsedUSD?: number;
+  teamACapRoomUsedUSD?: number;
+  teamBCapRoomUsedUSD?: number;
 }
 
 const isOverSecondApron = (bucket: ApronBucket | undefined): boolean => bucket === 'over_2nd';
@@ -52,6 +59,13 @@ const salaryRatioReason = (bucket: ApronBucket, ratio: number): string => {
   if (bucket === 'over_2nd') return 'Over 2nd apron — salary must match 1.00× outgoing';
   if (bucket === 'over_1st') return `Over 1st apron — salary must match ${ratio.toFixed(2)}× outgoing`;
   return `Salary must match ${ratio.toFixed(2)}× outgoing`;
+};
+
+const getRemainingContractSeasons = (player: NBAPlayer, currentYear: number): number => {
+  const contractYears = player.contractYears ?? [];
+  const visibleSeasons = contractYears.filter(year => seasonLabelToYear(year.season) >= currentYear).length;
+  if (visibleSeasons > 0) return visibleSeasons;
+  return Math.max(1, Number(player.contract?.exp ?? currentYear) - currentYear + 1);
 };
 
 const tpeBlockReason = (tpe: TradeException, currentYear: number): string | null => {
@@ -140,8 +154,8 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
   const thresholds = getCapThresholds(leagueStats);
   const teamAOutUSD = sumSalaryUSD(teamAPlayers);
   const teamBOutUSD = sumSalaryUSD(teamBPlayers);
-  const teamAProfile = getTeamCapProfile(players, teamAId, teamA.wins ?? 0, teamA.losses ?? 0, thresholds, teamA, currentYear);
-  const teamBProfile = getTeamCapProfile(players, teamBId, teamB.wins ?? 0, teamB.losses ?? 0, thresholds, teamB, currentYear);
+  const teamAProfile = getTeamCapProfile(players, teamAId, teamA.wins ?? 0, teamA.losses ?? 0, thresholds, teamA, currentYear, leagueStats);
+  const teamBProfile = getTeamCapProfile(players, teamBId, teamB.wins ?? 0, teamB.losses ?? 0, thresholds, teamB, currentYear, leagueStats);
   const teamAPayrollUSD = teamAProfile.payrollUSD;
   const teamBPayrollUSD = teamBProfile.payrollUSD;
   const teamAPostPayrollUSD = teamAPayrollUSD - teamAOutUSD + teamBOutUSD;
@@ -149,6 +163,10 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
   const teamAPostBucket = getApronBucketAfterTrade(teamAPayrollUSD, { outgoingSalaryUSD: teamAOutUSD, incomingSalaryUSD: teamBOutUSD }, leagueStats);
   const teamBPostBucket = getApronBucketAfterTrade(teamBPayrollUSD, { outgoingSalaryUSD: teamBOutUSD, incomingSalaryUSD: teamAOutUSD }, leagueStats);
   const resultBase = { teamAPostBucket, teamBPostBucket, teamAPostPayrollUSD, teamBPostPayrollUSD };
+  let teamABaeUsedUSD = 0;
+  let teamBBaeUsedUSD = 0;
+  let teamACapRoomUsedUSD = 0;
+  let teamBCapRoomUsedUSD = 0;
   const apronsActive = leagueStats.apronsEnabled !== false;
   const teamAReceivesSnt = input.teamAReceivesSignAndTrade || teamBPlayers.some(p => isSameDaySigning(p, currentDate));
   const teamBReceivesSnt = input.teamBReceivesSignAndTrade || teamAPlayers.some(p => isSameDaySigning(p, currentDate));
@@ -176,6 +194,14 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
 
   if (leagueStats.salaryCapEnabled === false) {
     return { ok: true, ...resultBase };
+  }
+  const teamAHardCapUSD = getTeamHardCapUSD(leagueStats, thresholds, teamAId, currentYear);
+  const teamBHardCapUSD = getTeamHardCapUSD(leagueStats, thresholds, teamBId, currentYear);
+  if (teamAPostPayrollUSD > teamAHardCapUSD) {
+    return { ok: false, reason: 'Trade would exceed the team’s hard cap.', offendingSide: 'A', offendingTeamId: teamAId, ...resultBase };
+  }
+  if (teamBPostPayrollUSD > teamBHardCapUSD) {
+    return { ok: false, reason: 'Trade would exceed the team’s hard cap.', offendingSide: 'B', offendingTeamId: teamBId, ...resultBase };
   }
 
   if (apronsActive && leagueStats.restrictCashSendOver2ndApron !== false) {
@@ -231,9 +257,34 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
     if (incomingUSD <= 0) return null;
     if (outgoingUSD <= 0) {
       const capRoomUSD = side === 'A' ? teamAProfile.capSpaceUSD : teamBProfile.capSpaceUSD;
-      if (incomingUSD <= capRoomUSD + SALARY_BUFFER_USD) return null;
+      if (incomingUSD <= capRoomUSD + SALARY_BUFFER_USD) {
+        if (side === 'A') teamACapRoomUsedUSD = incomingUSD;
+        else teamBCapRoomUsedUSD = incomingUSD;
+        return null;
+      }
       const tpe = findTPECover(team, currentDate, incomingUSD, postPayrollUSD, bucket, leagueStats, currentYear);
       if (tpe.ok) return null;
+      const incomingPlayers = side === 'A' ? teamBPlayers : teamAPlayers;
+      const contractSeasons = incomingPlayers.reduce(
+        (max, player) => Math.max(max, getRemainingContractSeasons(player, currentYear)),
+        1,
+      );
+      const bae = getBiannualExceptionAvailability({
+        teamId: team.id,
+        payrollUSD: side === 'A' ? teamAPayrollUSD : teamBPayrollUSD,
+        signingUSD: incomingUSD,
+        contractSeasons,
+        acquisitionType: 'trade',
+        season: currentYear,
+        currentDate,
+        thresholds,
+        leagueStats,
+      });
+      if (!bae.blocked) {
+        if (side === 'A') teamABaeUsedUSD = incomingUSD;
+        else teamBBaeUsedUSD = incomingUSD;
+        return null;
+      }
       return {
         ok: false,
         reason: tpe.blockedReason ?? `${team.abbrev} needs ${((incomingUSD - Math.max(0, capRoomUSD)) / 1_000_000).toFixed(1)}M more cap space to absorb this salary.`,
@@ -246,7 +297,12 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
     // using their available cap room on top of what their outgoing salary already covers.
     // Real NBA rule: total incoming ≤ outgoing + cap space.
     const capRoomUSD = side === 'A' ? teamAProfile.capSpaceUSD : teamBProfile.capSpaceUSD;
-    if (capRoomUSD > 0 && incomingUSD <= outgoingUSD + capRoomUSD + SALARY_BUFFER_USD) return null;
+    if (capRoomUSD > 0 && incomingUSD <= outgoingUSD + capRoomUSD + SALARY_BUFFER_USD) {
+      const used = Math.max(0, incomingUSD - outgoingUSD);
+      if (side === 'A') teamACapRoomUsedUSD = used;
+      else teamBCapRoomUsedUSD = used;
+      return null;
+    }
     if (incomingUSD <= outgoingUSD) return null;
     if (incomingUSD <= outgoingUSD * ratio + SALARY_BUFFER_USD) return null;
 
@@ -276,5 +332,12 @@ export const validateCBATradeRules = (input: CBATradeValidationInput): CBATradeV
   const bSalaryViolation = checkIncoming('B', teamB, teamAOutUSD, teamBOutUSD, ratioB, teamBPostBucket, teamBPostPayrollUSD, teamAPostCapRoomUSD);
   if (bSalaryViolation) return bSalaryViolation;
 
-  return { ok: true, ...resultBase };
+  return {
+    ok: true,
+    ...resultBase,
+    ...(teamABaeUsedUSD > 0 ? { teamABaeUsedUSD } : {}),
+    ...(teamBBaeUsedUSD > 0 ? { teamBBaeUsedUSD } : {}),
+    ...(teamACapRoomUsedUSD > 0 ? { teamACapRoomUsedUSD } : {}),
+    ...(teamBCapRoomUsedUSD > 0 ? { teamBCapRoomUsedUSD } : {}),
+  };
 };

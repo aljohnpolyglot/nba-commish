@@ -2,20 +2,41 @@ import React from 'react';
 import { motion } from 'motion/react';
 import { Loader, Star, Trophy, Users } from 'lucide-react';
 import { JerseyRetirementModal } from '../../modals/JerseyRetirementModal';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
+import type { NBAPlayer } from '../../../types';
+
+export type TeamHistoryPlayerReference = {
+  name: string;
+  playerId?: string | number;
+  playerRef?: any;
+  playerIdentityMatch: 'id' | 'source' | 'name';
+};
+
+const playerReference = (name: string, row?: any): TeamHistoryPlayerReference => {
+  const playerId = row?._playerId ?? row?.playerId;
+  if (playerId != null && String(playerId).trim()) {
+    return { name, playerId, playerIdentityMatch: 'id' };
+  }
+  if (row?._sourcePlayer) {
+    return { name, playerRef: row._sourcePlayer, playerIdentityMatch: 'source' };
+  }
+  return { name, playerIdentityMatch: 'name' };
+};
 
 export const TeamHistoryOverviewPanel: React.FC<{
   accent: string;
   isNBAHub: boolean;
+  isFictional: boolean;
+  allLeagueTeamLabel?: string;
   retiredJerseys: any[];
   retiredJerseyDisplayName: (jersey: any) => string;
   jerseyReasonLabel: (jersey: any) => string | null;
   canRetireForTeam: boolean;
   setShowRetireModal: React.Dispatch<React.SetStateAction<boolean>>;
-  topPlayers: Array<{ name: string; imgURL?: string; hof?: boolean }>;
-  statePlayers: Array<{ name?: string; hof?: boolean }>;
+  topPlayers: Array<{ name: string; imgURL?: string; hof?: boolean; playerId?: string | number; playerRef?: any; playerIdentityMatch?: 'id' | 'source' | 'name' }>;
   findPlayerImg: (name: string) => string;
-  onOpenPlayer: (name: string) => void;
-}> = ({ accent, isNBAHub, retiredJerseys, retiredJerseyDisplayName, jerseyReasonLabel, canRetireForTeam, setShowRetireModal, topPlayers, statePlayers, findPlayerImg, onOpenPlayer }) => (
+  onOpenPlayer: (reference: TeamHistoryPlayerReference) => void;
+}> = ({ accent, isNBAHub, isFictional, allLeagueTeamLabel, retiredJerseys, retiredJerseyDisplayName, jerseyReasonLabel, canRetireForTeam, setShowRetireModal, topPlayers, findPlayerImg, onOpenPlayer }) => (
   <motion.div key="overview" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-10">
     {retiredJerseys.length > 0 && (
       <section>
@@ -50,19 +71,19 @@ export const TeamHistoryOverviewPanel: React.FC<{
         <h2 className="flex items-center gap-2 text-sm font-black uppercase tracking-widest" style={{ color: accent }}>
           <Users className="w-4 h-4" /> {isNBAHub ? 'All-Time Top 100 Players' : 'All-Time Top Players'}
         </h2>
-        <span className="text-[10px] text-zinc-600 font-mono uppercase">MVP · Finals MVP · All-NBA · Win Shares</span>
+        <span className="text-[10px] text-zinc-600 font-mono uppercase">MVP · Finals MVP · {isFictional ? 'All-League' : allLeagueTeamLabel ?? 'All-NBA'} · Win Shares</span>
       </div>
       {topPlayers.length === 0 ? (
         <p className="text-zinc-600 text-sm italic">No player stats found for this franchise.</p>
       ) : (
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 xl:grid-cols-10 gap-4">
-          {topPlayers.map(({ name, imgURL, hof }, index) => {
-            const statePlayer = statePlayers.find(player => player.name?.toLowerCase() === name.toLowerCase());
+          {topPlayers.map((player, index) => {
+            const { name, imgURL, hof } = player;
             return (
-              <motion.div key={name} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.015 }} onClick={() => statePlayer && onOpenPlayer(name)} className={`group flex flex-col items-center text-center ${statePlayer ? 'cursor-pointer' : ''}`}>
+              <motion.div data-testid="team-history-top-player" key={name} initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: index * 0.015 }} onClick={() => onOpenPlayer({ ...player, playerIdentityMatch: player.playerIdentityMatch ?? 'name' })} className="group flex flex-col items-center text-center cursor-pointer">
                 <div className="relative mb-2">
                   <div className="w-14 h-14 rounded-full overflow-hidden border-2 border-zinc-800 group-hover:border-[var(--ta)] transition-colors">
-                    <img src={imgURL || findPlayerImg(name)} alt={name} className="w-full h-full object-cover object-top grayscale group-hover:grayscale-0 transition-all" referrerPolicy="no-referrer" />
+                    <PlayerPortrait imgUrl={imgURL || findPlayerImg(name)} playerName={name} size={56} />
                   </div>
                   <div className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-zinc-950 border border-zinc-800 flex items-center justify-center text-[8px] font-black" style={{ color: accent }}>{index + 1}</div>
                   {hof && <div className="absolute -top-1 -left-1 w-4 h-4 rounded-full bg-rose-600 flex items-center justify-center"><Star className="w-2.5 h-2.5 text-white" fill="white" /></div>}
@@ -85,12 +106,11 @@ export const TeamHistoryRecordsPanel: React.FC<{
   externalLoading: boolean;
   externalError: string | null;
   processedRecords: any[][];
-  expandedRecords: Record<string, boolean>;
-  setExpandedRecords: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   findPlayerImg: (name: string) => string;
   cleanName: (value: string) => string;
   getStatValue: (record: any, category: string) => string;
-}> = ({ accent, isNBAHub, recordType, setRecordType, externalLoading, externalError, processedRecords, expandedRecords, setExpandedRecords, findPlayerImg, cleanName, getStatValue }) => (
+  onOpenPlayer: (reference: TeamHistoryPlayerReference) => void;
+}> = ({ accent, isNBAHub, recordType, setRecordType, externalLoading, externalError, processedRecords, findPlayerImg, cleanName, getStatValue, onOpenPlayer }) => (
   <motion.div key="records" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
     <div className="flex items-center justify-between">
       <h2 className="text-lg font-black uppercase tracking-widest">{isNBAHub ? 'League Records' : 'Franchise Records'}</h2>
@@ -107,25 +127,28 @@ export const TeamHistoryRecordsPanel: React.FC<{
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {processedRecords.map((records, index) => {
           const category = records[0]?.SearchCategory;
-          const isExpanded = expandedRecords[category];
-          const displayed = isExpanded ? records.slice(0, 5) : [records[0]];
+          const displayed = records.slice(0, 10);
           return (
-            <div key={index} onClick={() => setExpandedRecords(prev => ({ ...prev, [category]: !prev[category] }))} className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-5 cursor-pointer hover:border-zinc-700 transition-all" style={isExpanded ? { borderColor: `${accent}66` } : {}}>
+            <div key={index} className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-5">
               <div className="text-[10px] font-black uppercase tracking-widest mb-3" style={{ color: accent }}>{category}</div>
               {displayed.map((record: any, recordIndex: number) => (
-                <div key={recordIndex} className={`flex items-center gap-3 ${recordIndex > 0 ? 'mt-4 pt-4 border-t border-zinc-800' : ''}`}>
+                <button key={recordIndex} onClick={() => onOpenPlayer(playerReference(cleanName(record.NAME), record))} className={`flex w-full items-center gap-3 text-left transition-colors hover:bg-zinc-800/30 ${recordIndex > 0 ? 'mt-4 border-t border-zinc-800 pt-4' : ''}`}>
                   <div className="relative w-10 h-10 shrink-0">
-                    <img src={findPlayerImg(cleanName(record.NAME))} alt={cleanName(record.NAME)} className="w-full h-full rounded-lg object-cover border border-zinc-800" referrerPolicy="no-referrer" />
+                    <PlayerPortrait imgUrl={findPlayerImg(cleanName(record.NAME))} playerName={cleanName(record.NAME)} size={40} />
                     <div className="absolute -bottom-1 -left-1 px-1 py-px text-[8px] font-black rounded-sm shadow" style={{ backgroundColor: accent, color: '#09090b' }}>#{recordIndex + 1}</div>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className={`font-black text-zinc-100 ${recordIndex === 0 ? 'text-2xl' : 'text-base'}`}>{getStatValue(record, category)}</div>
                     <div className={`font-semibold text-zinc-400 truncate ${recordIndex === 0 ? 'text-sm' : 'text-xs'}`}>{cleanName(record.NAME)}</div>
-                    {recordIndex === 0 && record.DATE && <div className="text-[10px] text-zinc-600 font-mono">{record.DATE} · vs {record.OPP}</div>}
+                    {recordIndex === 0 && record.DATE && (
+                      <div className="text-[10px] text-zinc-600 font-mono">
+                        {record.OPP ? `${record.DATE} · vs ${record.OPP}` : record.DATE}
+                      </div>
+                    )}
                   </div>
-                </div>
+                </button>
               ))}
-              <div className="mt-3 pt-3 border-t border-zinc-800/50 text-center text-[9px] font-bold text-zinc-600 uppercase tracking-widest">{isExpanded ? 'Collapse' : 'Show Top 5'}</div>
+              <div className="mt-3 pt-3 border-t border-zinc-800/50 text-center text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Top {Math.min(10, displayed.length)}</div>
             </div>
           );
         })}
@@ -145,13 +168,14 @@ export const TeamHistoryLeadersPanel: React.FC<{
   mergedAverage: any[];
   expandedLeaders: Record<string, boolean>;
   setExpandedLeaders: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
-  statePlayers: Array<{ name?: string; hof?: boolean }>;
+  statePlayers: Array<{ internalId: string; name?: string; hof?: boolean }>;
   findPlayerImg: (name: string) => string;
   cleanName: (value: string) => string;
   getStatValue: (leader: any, category: string) => string;
   categoryOrder: string[];
   categoryOrderAvg: string[];
-}> = ({ accent, isNBAHub, leaderSubTab, setLeaderSubTab, externalLoading, externalError, mergedCareer, mergedAverage, expandedLeaders, setExpandedLeaders, statePlayers, findPlayerImg, cleanName, getStatValue, categoryOrder, categoryOrderAvg }) => (
+  onOpenPlayer: (reference: TeamHistoryPlayerReference) => void;
+}> = ({ accent, isNBAHub, leaderSubTab, setLeaderSubTab, externalLoading, externalError, mergedCareer, mergedAverage, expandedLeaders, setExpandedLeaders, statePlayers, findPlayerImg, cleanName, getStatValue, categoryOrder, categoryOrderAvg, onOpenPlayer }) => (
   <motion.div key="leaders" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-6">
     <div className="flex items-center justify-between">
       <h2 className="text-lg font-black uppercase tracking-widest">{isNBAHub ? 'All-Time Leaders' : 'Career Leaders'}</h2>
@@ -192,11 +216,13 @@ export const TeamHistoryLeadersPanel: React.FC<{
                   {displayed.map((leader: any, index: number) => {
                     const rankField = leaderSubTab === 'totals' ? leader.Franchise_Rank : leader.Rank;
                     const displayName = cleanName(leader.NAME ?? '');
-                    const isHof = !!statePlayers.find(player => player.name?.toLowerCase() === displayName.toLowerCase())?.hof;
+                    const isHof = leader._playerId != null
+                      ? !!statePlayers.find(player => player.internalId === leader._playerId)?.hof
+                      : false;
                     return (
-                      <div key={index} className="flex items-center gap-3 p-2.5 bg-zinc-900/40 border border-zinc-800/50 rounded-lg hover:border-zinc-700 transition-all">
+                      <button key={index} onClick={() => onOpenPlayer(playerReference(displayName, leader))} className="flex w-full items-center gap-3 rounded-lg border border-zinc-800/50 bg-zinc-900/40 p-2.5 text-left transition-all hover:border-zinc-700">
                         <div className="relative w-9 h-9 shrink-0">
-                          <img src={findPlayerImg(displayName)} alt={displayName} className="w-full h-full rounded-lg object-cover border border-zinc-800" referrerPolicy="no-referrer" />
+                          <PlayerPortrait imgUrl={findPlayerImg(displayName)} playerName={displayName} size={36} />
                           <div className="absolute -bottom-1 -left-1 px-1 py-px text-[7px] font-black rounded-sm shadow" style={{ backgroundColor: accent, color: '#09090b' }}>#{rankField ?? index + 1}</div>
                         </div>
                         <div className="flex-1 min-w-0">
@@ -207,7 +233,7 @@ export const TeamHistoryLeadersPanel: React.FC<{
                           <span className="text-[9px] text-zinc-600 font-mono">{leader.GP} GP</span>
                         </div>
                         <span className="text-sm font-black shrink-0" style={{ color: accent }}>{getStatValue(leader, category)}</span>
-                      </div>
+                      </button>
                     );
                   })}
                 </div>
@@ -227,7 +253,9 @@ export const TeamHistorySeasonPanel: React.FC<{
   seasonHistory: any[];
   isFictional: boolean;
   championLabel?: string;
-}> = ({ accent, summaryStats, seasonHistory, isFictional, championLabel }) => (
+  playInEnabled?: boolean;
+  formatSeasonLabel: (season: number) => string;
+}> = ({ accent, summaryStats, seasonHistory, isFictional, championLabel, playInEnabled = false, formatSeasonLabel }) => (
   <motion.div key="history" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-8">
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
       {[
@@ -235,8 +263,8 @@ export const TeamHistorySeasonPanel: React.FC<{
         { label: 'Playoff Apps', value: summaryStats.playoffApps, sub: 'appearances' },
         { label: 'Finals Apps', value: summaryStats.finalsApps, sub: 'appearances' },
         { label: 'Championships', value: summaryStats.titles, sub: 'titles' },
-        { label: 'Best Season', value: summaryStats.best ? `${summaryStats.best.won}-${summaryStats.best.lost}` : '—', sub: summaryStats.best ? String(summaryStats.best.season) : '' },
-        { label: 'Worst Season', value: summaryStats.worst ? `${summaryStats.worst.won}-${summaryStats.worst.lost}` : '—', sub: summaryStats.worst ? String(summaryStats.worst.season) : '' },
+        { label: 'Best Season', value: summaryStats.best ? `${summaryStats.best.won}-${summaryStats.best.lost}` : '—', sub: summaryStats.best ? formatSeasonLabel(summaryStats.best.season) : '' },
+        { label: 'Worst Season', value: summaryStats.worst ? `${summaryStats.worst.won}-${summaryStats.worst.lost}` : '—', sub: summaryStats.worst ? formatSeasonLabel(summaryStats.worst.season) : '' },
       ].map((stat, index) => (
         <div key={index} className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-4 text-center">
           <div className="text-[9px] font-black uppercase tracking-widest text-zinc-500 mb-1">{stat.label}</div>
@@ -259,11 +287,11 @@ export const TeamHistorySeasonPanel: React.FC<{
           <tbody>
             {seasonHistory.map((row, index) => (
               <tr key={index} className={`border-b border-zinc-800/40 hover:bg-zinc-900/30 transition-colors ${row.isChamp ? 'bg-amber-950/10' : ''}`}>
-                <td className="py-3 px-4 font-mono text-sm" style={{ color: accent }}>{row.season - 1}-{String(row.season).slice(-2)}</td>
+                <td className="py-3 px-4 font-mono text-sm" style={{ color: accent }}>{formatSeasonLabel(row.season)}</td>
                 <td className="py-3 px-4 font-bold text-sm">{row.isCurrent ? <span className="text-zinc-600 italic text-xs">In Progress</span> : row.won != null ? `${row.won}-${row.lost}` : <span className="text-zinc-700">—</span>}</td>
                 <td className="py-3 px-4 text-zinc-400 font-mono text-xs">{row.isCurrent ? <span className="text-zinc-700">TBC</span> : row.won != null ? (row.won / ((row.won + row.lost) || 1)).toFixed(3) : '—'}</td>
                 <td className="py-3 px-4">
-                  {row.isCurrent ? <span className="text-xs text-zinc-600 italic">Season ongoing</span> : row.isChamp ? <span className="flex items-center gap-1.5 text-xs font-black" style={{ color: accent }}><Trophy className="w-3 h-3" /> {row.conferenceTitles?.length ? row.conferenceTitles.join(', ') : championLabel ?? (isFictional ? 'League Champions' : 'NBA Champions')}</span> : row.isRU ? <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1"><Trophy className="w-3 h-3 opacity-40" /> Runner-Up</span> : row.playoffRoundsWon === 3 ? <span className="text-xs text-zinc-400">Conf. Finals</span> : row.playoffRoundsWon === 2 ? <span className="text-xs text-zinc-500">2nd Round</span> : row.playoffRoundsWon === 1 ? <span className="text-xs text-zinc-600">1st Round</span> : row.playoffRoundsWon === 0 ? <span className="text-xs text-zinc-700">Play-In</span> : <span className="text-xs text-zinc-800">Missed Playoffs</span>}
+                  {row.isCurrent ? <span className="text-xs text-zinc-600 italic">Season ongoing</span> : row.isChamp ? <span className="flex items-center gap-1.5 text-xs font-black" style={{ color: accent }}><Trophy className="w-3 h-3" /> {row.conferenceTitles?.length ? row.conferenceTitles.join(', ') : row.isStandingsTitle ? 'League Champions' : championLabel ?? (isFictional ? 'League Champions' : 'NBA Champions')}</span> : row.isRU ? <span className="text-xs font-semibold text-zinc-400 flex items-center gap-1"><Trophy className="w-3 h-3 opacity-40" /> Runner-Up</span> : row.playoffRoundsWon === 3 ? <span className="text-xs text-zinc-400">Conf. Finals</span> : row.playoffRoundsWon === 2 ? <span className="text-xs text-zinc-500">2nd Round</span> : row.playoffRoundsWon === 1 ? <span className="text-xs text-zinc-600">1st Round</span> : row.playoffRoundsWon === 0 ? <span className="text-xs text-zinc-700">{playInEnabled ? 'Play-In' : 'Playoffs'}</span> : <span className="text-xs text-zinc-800">Missed Playoffs</span>}
                 </td>
               </tr>
             ))}
@@ -282,7 +310,8 @@ export const TeamHistoryRetireModal: React.FC<{
   setShowRetireModal: React.Dispatch<React.SetStateAction<boolean>>;
   accent: string;
   findPlayerImg: (name: string) => string;
-}> = ({ selectedTeamId, teamId, isNBAHub, showRetireModal, setShowRetireModal, accent, findPlayerImg }) => {
+  candidatePlayers?: readonly NBAPlayer[];
+}> = ({ selectedTeamId, teamId, isNBAHub, showRetireModal, setShowRetireModal, accent, findPlayerImg, candidatePlayers }) => {
   if (selectedTeamId == null || isNBAHub) return null;
   return (
     <JerseyRetirementModal
@@ -291,6 +320,7 @@ export const TeamHistoryRetireModal: React.FC<{
       onClose={() => setShowRetireModal(false)}
       accent={accent}
       findPlayerImg={findPlayerImg}
+      candidatePlayers={candidatePlayers}
     />
   );
 };

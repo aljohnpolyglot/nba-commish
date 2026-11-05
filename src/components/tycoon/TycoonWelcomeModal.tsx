@@ -3,17 +3,19 @@ import { X, ChevronRight, ChevronLeft, Building2, Handshake, Wallet } from 'luci
 
 const STORAGE_KEY = 'tycoon_welcome_seen_v1';
 
-export function hasSeenTycoonWelcome(): boolean {
+export function hasSeenTycoonWelcome(saveId?: string): boolean {
+  if (!saveId) return false;
   try {
-    return typeof window !== 'undefined' && window.localStorage.getItem(STORAGE_KEY) === '1';
+    return typeof window !== 'undefined' && window.localStorage.getItem(`${STORAGE_KEY}:${saveId}`) === '1';
   } catch {
     return true; // fail-closed: don't spam the modal if storage is blocked
   }
 }
 
-export function markTycoonWelcomeSeen(): void {
+export function markTycoonWelcomeSeen(saveId?: string): void {
+  if (!saveId) return;
   try {
-    window.localStorage.setItem(STORAGE_KEY, '1');
+    window.localStorage.setItem(`${STORAGE_KEY}:${saveId}`, '1');
   } catch {
     /* ignore */
   }
@@ -29,12 +31,12 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     icon: <Building2 size={28} className="text-amber-400" />,
-    eyebrow: 'Welcome to Spain',
+    eyebrow: 'European Club Basketball',
     title: 'Your club has a budget, not a cap.',
     body: (
       <>
         <p>European basketball doesn't run on a salary cap — it runs on <strong className="text-amber-300">cash flow</strong>. Every club has a Tier (S/A/B/C/D) that determines its baseline revenue: stadium capacity, TV deal, sponsor floor.</p>
-        <p className="mt-3 text-slate-400">Real Madrid is a Tier S club. San Pablo Burgos is Tier B. The gap shows up in the ledger, every season.</p>
+        <p className="mt-3 text-slate-400">Powerhouses begin with deeper commercial strength than underdogs. The gap shows up in the ledger every season, whatever country you manage in.</p>
       </>
     ),
   },
@@ -45,7 +47,7 @@ const SLIDES: Slide[] = [
     body: (
       <>
         <p>Each slot has a sponsor with a multi-year deal. When a deal runs out, you negotiate: <strong className="text-emerald-300">accept</strong> the market offer or <strong className="text-rose-300">decline</strong> and fall back to a default fallback (much lower).</p>
-        <p className="mt-3">Win Endesa or reach the EuroLeague Final Four and your sponsors offer mid-term bonuses. Lose 5 in a row and they pull back next renewal.</p>
+        <p className="mt-3">Win your domestic league or make a deep continental run and sponsors offer stronger renewals. Long losing runs weaken your next negotiation.</p>
       </>
     ),
   },
@@ -66,9 +68,10 @@ const SLIDES: Slide[] = [
 interface Props {
   open: boolean;
   onClose: () => void;
+  saveId?: string;
 }
 
-export const TycoonWelcomeModal: React.FC<Props> = ({ open, onClose }) => {
+export const TycoonWelcomeModal: React.FC<Props> = ({ open, onClose, saveId }) => {
   const [slideIndex, setSlideIndex] = useState(0);
 
   if (!open) return null;
@@ -76,7 +79,7 @@ export const TycoonWelcomeModal: React.FC<Props> = ({ open, onClose }) => {
   const isLast = slideIndex === SLIDES.length - 1;
 
   const handleClose = () => {
-    markTycoonWelcomeSeen();
+    markTycoonWelcomeSeen(saveId);
     setSlideIndex(0);
     onClose();
   };

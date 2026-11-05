@@ -18,10 +18,18 @@ export interface BracketTeam {
   team: string;
   score: number;
   gameId?: number;
+  roundId?: string;
+  roundLabel?: string;
 }
 
 export interface NBACupYearData {
   year: string;
+  prizePool?: {
+    winner?: number;
+    runnerUp?: number;
+    semiFinalist?: number;
+    quarterFinalist?: number;
+  };
   summary: {
     location: string;
     date: string;

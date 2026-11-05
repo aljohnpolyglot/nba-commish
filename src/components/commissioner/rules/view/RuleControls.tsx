@@ -41,9 +41,10 @@ interface RuleInputProps {
     id: string;
     value: number;
     onChange: (v: number) => void;
+    maxValue?: number;
 }
 
-export const RuleInput: React.FC<RuleInputProps> = ({ id, value, onChange }) => {
+export const RuleInput: React.FC<RuleInputProps> = ({ id, value, onChange, maxValue }) => {
     const def = RULE_DEFINITIONS[id];
     const [showTooltip, setShowTooltip] = React.useState(false);
     if (!def) return null;
@@ -73,14 +74,46 @@ export const RuleInput: React.FC<RuleInputProps> = ({ id, value, onChange }) => 
             <div className="flex items-center gap-2">
                 <input 
                     type="number" 
-                    value={value || ''} 
+                    value={Number.isFinite(value) ? value : ''} 
                     onChange={handleInputChange} 
+                    step={def.step}
                     className="w-12 bg-slate-950 border border-slate-700 rounded-lg text-center text-white font-mono text-[10px] py-1 focus:outline-none focus:border-indigo-500 transition-colors" 
                     min={def.min} 
-                    max={def.max} 
+                    max={maxValue ?? def.max}
                 />
                 {def.unit && <span className="text-[9px] text-slate-600 font-black">{def.unit}</span>}
             </div>
         </div>
+    );
+};
+
+interface RuleRangeProps {
+    id: string;
+    value: number;
+    onChange: (value: number) => void;
+}
+
+export const RuleRange: React.FC<RuleRangeProps> = ({ id, value, onChange }) => {
+    const def = RULE_DEFINITIONS[id];
+    if (!def) return null;
+    const resolved = Number.isFinite(value) ? Math.max(def.min ?? 0, Math.min(def.max ?? 100, value)) : 50;
+    return (
+        <label className="block space-y-3">
+            <span className="flex items-center justify-between gap-3 text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                {def.label}
+                <span className="rounded-lg bg-slate-950 px-2 py-1 font-mono text-white">{resolved}</span>
+            </span>
+            <input
+                aria-label={def.label}
+                type="range"
+                min={def.min ?? 0}
+                max={def.max ?? 100}
+                step={def.step ?? 1}
+                value={resolved}
+                onChange={event => onChange(Number(event.target.value))}
+                className="h-2 w-full cursor-pointer accent-indigo-500"
+            />
+            <span className="block text-xs leading-relaxed text-slate-500">{def.description}</span>
+        </label>
     );
 };

@@ -3,7 +3,8 @@ import { AnimatePresence, motion } from 'motion/react';
 import { Bot, CheckCircle, FileSignature, Sparkles, X } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import type { NBAPlayer } from '../../types';
-import { convertTo2KRating } from '../../utils/helpers';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
+import { getQualifyingOfferDisplayRatings } from '../../services/freeAgency/qualifyingOfferPresentation';
 
 interface QualifyingOfferModalProps {
   isOpen: boolean;
@@ -26,6 +27,19 @@ export const ExpansionSchedulePin: React.FC = () => {
 
   const isThisYear = schedule.year === lsYear;
   const teamCount = schedule.teams?.length ?? 0;
+  const yearsUntilExpansion = Math.max(0, schedule.year - lsYear);
+  const yearsUntilBidding = Math.max(0, schedule.year - lsYear);
+  const bidDecision = state.expansionBidDecisions?.[schedule.year];
+  const expansionTiming = isThisYear
+    ? 'Expansion this offseason'
+    : `Expansion in ${yearsUntilExpansion} season${yearsUntilExpansion === 1 ? '' : 's'}`;
+  const biddingTiming = bidDecision?.acknowledgedAt
+    ? 'Bidding complete'
+    : bidDecision
+      ? 'Decision awaiting confirmation'
+    : yearsUntilBidding === 0
+      ? 'Bidding open now'
+      : `Bidding opens in ${yearsUntilBidding} season${yearsUntilBidding === 1 ? '' : 's'}`;
 
   return (
     <div className={`w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border ${
@@ -36,10 +50,10 @@ export const ExpansionSchedulePin: React.FC = () => {
       <Sparkles size={14} className={isThisYear ? 'text-emerald-400' : 'text-amber-400'} />
       <div className="flex-1 min-w-0">
         <div className="text-[11px] font-black uppercase tracking-tight">
-          Expansion {isThisYear ? 'this offseason' : `scheduled for ${schedule.year}`}
+          {expansionTiming}
         </div>
         <div className="text-[9px] opacity-70">
-          {teamCount} new franchise{teamCount === 1 ? '' : 's'}
+          {biddingTiming} · {teamCount} {bidDecision?.acknowledgedAt ? 'new franchise' : 'application'}{teamCount === 1 ? '' : 's'}
         </div>
       </div>
       <button
@@ -57,6 +71,8 @@ export const QualifyingOfferModal: React.FC<QualifyingOfferModalProps> = ({
   isOpen, players, leagueStats, submittedIds, skippedIds,
   onSubmitOne, onSkipOne, onAssistant, onDismiss,
 }) => {
+  const { state } = useGame();
+  const currentYear = Number(leagueStats?.year ?? new Date().getFullYear());
   const computeQOAmount = (p: NBAPlayer): number => {
     const lastSalaryUSD = (p.contract?.amount ?? 0) * 1_000;
     const rawMin = leagueStats?.minContract ?? 1.273;
@@ -108,13 +124,23 @@ export const QualifyingOfferModal: React.FC<QualifyingOfferModalProps> = ({
                     const skipped = skippedIds.has(p.internalId);
                     const decided = submitted || skipped;
                     const qoUSD = computeQOAmount(p);
-                    const r = (p as any).ratings?.[(p as any).ratings?.length - 1];
-                    const k2 = convertTo2KRating(p.overallRating ?? 0, r?.hgt ?? 50, r?.tp ?? 50);
+                    const displayRatings = getQualifyingOfferDisplayRatings(state, p, currentYear);
+                    const ovr = displayRatings.overall;
+                    const pot = displayRatings.potential;
                     return (
                       <div key={p.internalId} className="px-3 py-2 flex items-center justify-between gap-3 text-sm">
+                        <PlayerPortrait
+                          imgUrl={p.imgURL}
+                          playerName={p.name}
+                          face={(p as any).face}
+                          overallRating={ovr}
+                          ovrLabel={displayRatings.portraitOvrLabel}
+                          ratings={p.ratings}
+                          size={42}
+                        />
                         <div className="flex-1 min-w-0">
                           <div className="font-bold text-white truncate">{p.name}</div>
-                          <div className="text-[10px] text-slate-500">K2 {k2} · QO {fmtUSD(qoUSD)} / 1yr</div>
+                          <div className="text-[10px] text-slate-500">OVR {ovr} · POT {pot} · QO {fmtUSD(qoUSD)} / 1yr</div>
                         </div>
                         {decided ? (
                           <span className={`shrink-0 text-[10px] font-black uppercase tracking-widest px-2 py-1 ${submitted ? 'text-fuchsia-300' : 'text-rose-400'}`}>

@@ -14,9 +14,7 @@ export interface TradingBlockEntry {
   blockIds: string[];
   targetIds: string[];
   blockPickIds: number[];
-  /** Free-agent scouting shortlist — separate from trade targets so the FA
-   *  scouting tab and the trade machine maintain distinct intent lists. */
-  faShortlistIds?: string[];
+  targetDefaultsVersion?: number;
 }
 
 const STORAGE_PREFIX = 'nba-commish-tradingblocks::';
@@ -70,6 +68,24 @@ export function saveTradingBlock(teamId: number, entry: TradingBlockEntry) {
   hydrate();
   cache.set(teamId, entry);
   persist();
+}
+
+export function updateTradingBlock(
+  teamId: number,
+  update: (entry: TradingBlockEntry) => TradingBlockEntry,
+) {
+  hydrate();
+  const current = cache.get(teamId) ?? {
+    untouchableIds: [],
+    blockIds: [],
+    targetIds: [],
+    blockPickIds: [],
+    targetDefaultsVersion: 0,
+  };
+  const next = update(current);
+  cache.set(teamId, next);
+  persist();
+  return next;
 }
 
 export function clearTradingBlock(teamId: number) {

@@ -1,0 +1,3525 @@
+{
+  "source": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players",
+  "sourceOriginalUrl": "https://www.pba.ph/players",
+  "waybackTimestamp": "20180327154938",
+  "scrapedAt": "2018-03-27T15:51:32.681Z",
+  "playerCount": 179,
+  "fields": {
+    "jerseyNumber": "string so #0/#00-style values are never damaged",
+    "position": "original PBA position text, e.g. G, F, C, C/F",
+    "positions": "position split into an array",
+    "portraitUrl": "original dashboard.pba.ph image URL when recoverable",
+    "portraitArchiveUrl": "Wayback-hosted image URL",
+    "aliases": "normalized matching keys with spaces/punctuation removed"
+  },
+  "players": [
+    {
+      "name": "Abel Galliguez",
+      "nameKey": "abelgalliguez",
+      "aliases": [
+        "abelgalliguez",
+        "agalliguez"
+      ],
+      "jerseyNumber": "23",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-galliguez18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-galliguez18.png",
+      "profileSlug": "abel-galliguez",
+      "profileUrl": "https://www.pba.ph/players/abel-galliguez",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/abel-galliguez"
+    },
+    {
+      "name": "Aldrech Ramos",
+      "nameKey": "aldrechramos",
+      "aliases": [
+        "aldrechramos",
+        "aramos"
+      ],
+      "jerseyNumber": "17",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-ramos18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-ramos18.png",
+      "profileSlug": "aldrech-ramos",
+      "profileUrl": "https://www.pba.ph/players/aldrech-ramos",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/aldrech-ramos"
+    },
+    {
+      "name": "Alex Cabagnot",
+      "nameKey": "alexcabagnot",
+      "aliases": [
+        "alexcabagnot",
+        "acabagnot"
+      ],
+      "jerseyNumber": "5",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-Cabagnot.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-Cabagnot.png",
+      "profileSlug": "alex-cabagnot",
+      "profileUrl": "https://www.pba.ph/players/alex-cabagnot",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/alex-cabagnot"
+    },
+    {
+      "name": "Alex Mallari",
+      "nameKey": "alexmallari",
+      "aliases": [
+        "alexmallari",
+        "amallari"
+      ],
+      "jerseyNumber": "11",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-mallari18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-mallari18.png",
+      "profileSlug": "alex-mallari",
+      "profileUrl": "https://www.pba.ph/players/alex-mallari",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/alex-mallari"
+    },
+    {
+      "name": "Alex Nuyles",
+      "nameKey": "alexnuyles",
+      "aliases": [
+        "alexnuyles",
+        "anuyles"
+      ],
+      "jerseyNumber": "6",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-Nuyles.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-Nuyles.png",
+      "profileSlug": "alex-nuyles",
+      "profileUrl": "https://www.pba.ph/players/alex-nuyles",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/alex-nuyles"
+    },
+    {
+      "name": "Alfonso Gotladera",
+      "nameKey": "alfonsogotladera",
+      "aliases": [
+        "alfonsogotladera",
+        "agotladera"
+      ],
+      "jerseyNumber": "21",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-gotladera18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-gotladera18.png",
+      "profileSlug": "alfonso-gotladera",
+      "profileUrl": "https://www.pba.ph/players/alfonso-gotladera",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/alfonso-gotladera"
+    },
+    {
+      "name": "Alfrancis Tamsi",
+      "nameKey": "alfrancistamsi",
+      "aliases": [
+        "alfrancistamsi",
+        "atamsi"
+      ],
+      "jerseyNumber": "25",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-tamsi.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-tamsi.png",
+      "profileSlug": "alfrancis-tamsi",
+      "profileUrl": "https://www.pba.ph/players/alfrancis-tamsi",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/alfrancis-tamsi"
+    },
+    {
+      "name": "Aljon Mariano",
+      "nameKey": "aljonmariano",
+      "aliases": [
+        "aljonmariano",
+        "amariano"
+      ],
+      "jerseyNumber": "31",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-mariano18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-mariano18.png",
+      "profileSlug": "aljon-mariano",
+      "profileUrl": "https://www.pba.ph/players/aljon-mariano",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/aljon-mariano"
+    },
+    {
+      "name": "Allein Maliksi",
+      "nameKey": "alleinmaliksi",
+      "aliases": [
+        "alleinmaliksi",
+        "amaliksi"
+      ],
+      "jerseyNumber": "18",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-maliksi18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-maliksi18.png",
+      "profileSlug": "allein-maliksi",
+      "profileUrl": "https://www.pba.ph/players/allein-maliksi",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/allein-maliksi"
+    },
+    {
+      "name": "Andy Mark Barroca",
+      "nameKey": "andymarkbarroca",
+      "aliases": [
+        "andymarkbarroca",
+        "andybarroca",
+        "abarroca",
+        "ambarroca",
+        "markbarroca"
+      ],
+      "jerseyNumber": "14",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/strBarroca14.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/strBarroca14.png",
+      "profileSlug": "andy-mark-barroca",
+      "profileUrl": "https://www.pba.ph/players/andy-mark-barroca",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/andy-mark-barroca"
+    },
+    {
+      "name": "Anthony Paul Semerad",
+      "nameKey": "anthonypaulsemerad",
+      "aliases": [
+        "anthonypaulsemerad",
+        "anthonysemerad",
+        "asemerad",
+        "apsemerad",
+        "paulsemerad"
+      ],
+      "jerseyNumber": "14",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-sumerad.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-sumerad.png",
+      "profileSlug": "anthony-paul-semerad",
+      "profileUrl": "https://www.pba.ph/players/anthony-paul-semerad",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/anthony-paul-semerad"
+    },
+    {
+      "name": "Anthony Washington",
+      "nameKey": "anthonywashington",
+      "aliases": [
+        "anthonywashington",
+        "awashington"
+      ],
+      "jerseyNumber": "23",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ros-Washington.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ros-Washington.png",
+      "profileSlug": "anthony-washington",
+      "profileUrl": "https://www.pba.ph/players/anthony-washington",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/anthony-washington"
+    },
+    {
+      "name": "Antonio Jose Caram",
+      "nameKey": "antoniojosecaram",
+      "aliases": [
+        "antoniojosecaram",
+        "antoniocaram",
+        "acaram",
+        "ajcaram",
+        "josecaram",
+        "anjocaram"
+      ],
+      "jerseyNumber": "17",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-caram.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-caram.png",
+      "profileSlug": "antonio-jose-caram",
+      "profileUrl": "https://www.pba.ph/players/antonio-jose-caram",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/antonio-jose-caram"
+    },
+    {
+      "name": "Arwind Santos",
+      "nameKey": "arwindsantos",
+      "aliases": [
+        "arwindsantos",
+        "asantos"
+      ],
+      "jerseyNumber": "29",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-Santos.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-Santos.png",
+      "profileSlug": "arwind-santos",
+      "profileUrl": "https://www.pba.ph/players/arwind-santos",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/arwind-santos"
+    },
+    {
+      "name": "Asi Taulava",
+      "nameKey": "asitaulava",
+      "aliases": [
+        "asitaulava",
+        "ataulava"
+      ],
+      "jerseyNumber": "88",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-taulava18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-taulava18.png",
+      "profileSlug": "asi-taulava",
+      "profileUrl": "https://www.pba.ph/players/asi-taulava",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/asi-taulava"
+    },
+    {
+      "name": "Baser Amer",
+      "nameKey": "baseramer",
+      "aliases": [
+        "baseramer",
+        "bamer"
+      ],
+      "jerseyNumber": "9",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-amer18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-amer18.png",
+      "profileSlug": "baser-amer",
+      "profileUrl": "https://www.pba.ph/players/baser-amer",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/baser-amer"
+    },
+    {
+      "name": "Beau Belga",
+      "nameKey": "beaubelga",
+      "aliases": [
+        "beaubelga",
+        "bbelga"
+      ],
+      "jerseyNumber": "30",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/rosBelga30.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/rosBelga30.png",
+      "profileSlug": "beau-belga",
+      "profileUrl": "https://www.pba.ph/players/beau-belga",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/beau-belga"
+    },
+    {
+      "name": "Billy Mamaril",
+      "nameKey": "billymamaril",
+      "aliases": [
+        "billymamaril",
+        "bmamaril"
+      ],
+      "jerseyNumber": "2",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-Mamaril.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-Mamaril.png",
+      "profileSlug": "billy-mamaril",
+      "profileUrl": "https://www.pba.ph/players/billy-mamaril",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/billy-mamaril"
+    },
+    {
+      "name": "Bradwyn Guinto",
+      "nameKey": "bradwynguinto",
+      "aliases": [
+        "bradwynguinto",
+        "bguinto"
+      ],
+      "jerseyNumber": "30",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-guinto18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-guinto18.png",
+      "profileSlug": "bradwyn-guinto",
+      "profileUrl": "https://www.pba.ph/players/bradwyn-guinto",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/bradwyn-guinto"
+    },
+    {
+      "name": "Brian Heruela",
+      "nameKey": "brianheruela",
+      "aliases": [
+        "brianheruela",
+        "bheruela"
+      ],
+      "jerseyNumber": "1",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-Heruela.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-Heruela.png",
+      "profileSlug": "brian-heruela",
+      "profileUrl": "https://www.pba.ph/players/brian-heruela",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/brian-heruela"
+    },
+    {
+      "name": "Bryan Faundo",
+      "nameKey": "bryanfaundo",
+      "aliases": [
+        "bryanfaundo",
+        "bfaundo"
+      ],
+      "jerseyNumber": "0",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-Faundo.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-Faundo.png",
+      "profileSlug": "bryan-faundo",
+      "profileUrl": "https://www.pba.ph/players/bryan-faundo",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/bryan-faundo"
+    },
+    {
+      "name": "Calvin Abueva",
+      "nameKey": "calvinabueva",
+      "aliases": [
+        "calvinabueva",
+        "cabueva"
+      ],
+      "jerseyNumber": "88",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-abueva18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-abueva18.png",
+      "profileSlug": "calvin-abueva",
+      "profileUrl": "https://www.pba.ph/players/calvin-abueva",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/calvin-abueva"
+    },
+    {
+      "name": "Carl Bryan Cruz",
+      "nameKey": "carlbryancruz",
+      "aliases": [
+        "carlbryancruz",
+        "carlcruz",
+        "ccruz",
+        "cbcruz",
+        "bryancruz"
+      ],
+      "jerseyNumber": "21",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-cruz18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-cruz18.png",
+      "profileSlug": "carl-bryan-cruz",
+      "profileUrl": "https://www.pba.ph/players/carl-bryan-cruz",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/carl-bryan-cruz"
+    },
+    {
+      "name": "Carlo Lastimosa",
+      "nameKey": "carlolastimosa",
+      "aliases": [
+        "carlolastimosa",
+        "clastimosa"
+      ],
+      "jerseyNumber": "9",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-Lastimosa.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-Lastimosa.png",
+      "profileSlug": "carlo-lastimosa",
+      "profileUrl": "https://www.pba.ph/players/carlo-lastimosa",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/carlo-lastimosa"
+    },
+    {
+      "name": "Chico Lanete",
+      "nameKey": "chicolanete",
+      "aliases": [
+        "chicolanete",
+        "clanete"
+      ],
+      "jerseyNumber": "26",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phxLanete26.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phxLanete26.png",
+      "profileSlug": "chico-lanete",
+      "profileUrl": "https://www.pba.ph/players/chico-lanete",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/chico-lanete"
+    },
+    {
+      "name": "Chris Banchero",
+      "nameKey": "chrisbanchero",
+      "aliases": [
+        "chrisbanchero",
+        "cbanchero"
+      ],
+      "jerseyNumber": "4",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-Banchero.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-Banchero.png",
+      "profileSlug": "chris-banchero",
+      "profileUrl": "https://www.pba.ph/players/chris-banchero",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/chris-banchero"
+    },
+    {
+      "name": "Chris Exciminiano",
+      "nameKey": "chrisexciminiano",
+      "aliases": [
+        "chrisexciminiano",
+        "cexciminiano"
+      ],
+      "jerseyNumber": "17",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-exciminiano18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-exciminiano18.png",
+      "profileSlug": "chris-exciminiano",
+      "profileUrl": "https://www.pba.ph/players/chris-exciminiano",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/chris-exciminiano"
+    },
+    {
+      "name": "Chris Javier",
+      "nameKey": "chrisjavier",
+      "aliases": [
+        "chrisjavier",
+        "cjavier"
+      ],
+      "jerseyNumber": "17",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-javier18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-javier18.png",
+      "profileSlug": "chris-javier",
+      "profileUrl": "https://www.pba.ph/players/chris-javier",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/chris-javier"
+    },
+    {
+      "name": "Chris Newsome",
+      "nameKey": "chrisnewsome",
+      "aliases": [
+        "chrisnewsome",
+        "cnewsome"
+      ],
+      "jerseyNumber": "11",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-newsome18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-newsome18.png",
+      "profileSlug": "chris-newsome",
+      "profileUrl": "https://www.pba.ph/players/chris-newsome",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/chris-newsome"
+    },
+    {
+      "name": "Chris Ross",
+      "nameKey": "chrisross",
+      "aliases": [
+        "chrisross",
+        "cross"
+      ],
+      "jerseyNumber": "6",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-Ross.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-Ross.png",
+      "profileSlug": "chris-ross",
+      "profileUrl": "https://www.pba.ph/players/chris-ross",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/chris-ross"
+    },
+    {
+      "name": "Chris Tiu",
+      "nameKey": "christiu",
+      "aliases": [
+        "christiu",
+        "ctiu"
+      ],
+      "jerseyNumber": "17",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/rosTiu17.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/rosTiu17.png",
+      "profileSlug": "chris-tiu",
+      "profileUrl": "https://www.pba.ph/players/chris-tiu",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/chris-tiu"
+    },
+    {
+      "name": "Cyrus Baguio",
+      "nameKey": "cyrusbaguio",
+      "aliases": [
+        "cyrusbaguio",
+        "cbaguio"
+      ],
+      "jerseyNumber": "8",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-Baguio.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-Baguio.png",
+      "profileSlug": "cyrus-baguio",
+      "profileUrl": "https://www.pba.ph/players/cyrus-baguio",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/cyrus-baguio"
+    },
+    {
+      "name": "Dave Marcelo",
+      "nameKey": "davemarcelo",
+      "aliases": [
+        "davemarcelo",
+        "dmarcelo"
+      ],
+      "jerseyNumber": "22",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-marcelo18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-marcelo18.png",
+      "profileSlug": "dave-marcelo",
+      "profileUrl": "https://www.pba.ph/players/dave-marcelo",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/dave-marcelo"
+    },
+    {
+      "name": "David Semerad",
+      "nameKey": "davidsemerad",
+      "aliases": [
+        "davidsemerad",
+        "dsemerad"
+      ],
+      "jerseyNumber": "33",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-Semerad.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-Semerad.png",
+      "profileSlug": "david-semerad",
+      "profileUrl": "https://www.pba.ph/players/david-semerad",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/david-semerad"
+    },
+    {
+      "name": "Dexter Maiquez",
+      "nameKey": "dextermaiquez",
+      "aliases": [
+        "dextermaiquez",
+        "dmaiquez"
+      ],
+      "jerseyNumber": "12",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ros-maiquez.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ros-maiquez.png",
+      "profileSlug": "dexter-maiquez",
+      "profileUrl": "https://www.pba.ph/players/dexter-maiquez",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/dexter-maiquez"
+    },
+    {
+      "name": "Don Trollano",
+      "nameKey": "dontrollano",
+      "aliases": [
+        "dontrollano",
+        "dtrollano"
+      ],
+      "jerseyNumber": "19",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ros-Trollano.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ros-Trollano.png",
+      "profileSlug": "don-trollano",
+      "profileUrl": "https://www.pba.ph/players/don-trollano",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/don-trollano"
+    },
+    {
+      "name": "Doug Kramer",
+      "nameKey": "dougkramer",
+      "aliases": [
+        "dougkramer",
+        "dkramer"
+      ],
+      "jerseyNumber": "18",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phx-Kramer.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phx-Kramer.png",
+      "profileSlug": "doug-kramer",
+      "profileUrl": "https://www.pba.ph/players/doug-kramer",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/doug-kramer"
+    },
+    {
+      "name": "Dylan Ababou",
+      "nameKey": "dylanababou",
+      "aliases": [
+        "dylanababou",
+        "dababou"
+      ],
+      "jerseyNumber": "33",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-ababou18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-ababou18.png",
+      "profileSlug": "dylan-ababou",
+      "profileUrl": "https://www.pba.ph/players/dylan-ababou",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/dylan-ababou"
+    },
+    {
+      "name": "Ed Daquioag",
+      "nameKey": "eddaquioag",
+      "aliases": [
+        "eddaquioag",
+        "edaquioag"
+      ],
+      "jerseyNumber": "8",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ros-Daquioag.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ros-Daquioag.png",
+      "profileSlug": "ed-daquioag",
+      "profileUrl": "https://www.pba.ph/players/ed-daquioag",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/ed-daquioag"
+    },
+    {
+      "name": "Emil Renz Palma",
+      "nameKey": "emilrenzpalma",
+      "aliases": [
+        "emilrenzpalma",
+        "emilpalma",
+        "epalma",
+        "erpalma",
+        "renzpalma"
+      ],
+      "jerseyNumber": "16",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-palma18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-palma18.png",
+      "profileSlug": "emil-renz-palma",
+      "profileUrl": "https://www.pba.ph/players/emil-renz-palma",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/emil-renz-palma"
+    },
+    {
+      "name": "Emman Monfort",
+      "nameKey": "emmanmonfort",
+      "aliases": [
+        "emmanmonfort",
+        "emonfort"
+      ],
+      "jerseyNumber": "1",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-monfort18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-monfort18.png",
+      "profileSlug": "emman-monfort",
+      "profileUrl": "https://www.pba.ph/players/emman-monfort",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/emman-monfort"
+    },
+    {
+      "name": "Eric James Camson",
+      "nameKey": "ericjamescamson",
+      "aliases": [
+        "ericjamescamson",
+        "ericcamson",
+        "ecamson",
+        "ejcamson",
+        "jamescamson"
+      ],
+      "jerseyNumber": "13",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-camson18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-camson18.png",
+      "profileSlug": "eric-james-camson",
+      "profileUrl": "https://www.pba.ph/players/eric-james-camson",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/eric-james-camson"
+    },
+    {
+      "name": "Frank Golla",
+      "nameKey": "frankgolla",
+      "aliases": [
+        "frankgolla",
+        "fgolla"
+      ],
+      "jerseyNumber": "2",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-Golla.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-Golla.png",
+      "profileSlug": "frank-golla",
+      "profileUrl": "https://www.pba.ph/players/frank-golla",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/frank-golla"
+    },
+    {
+      "name": "Gabby Espinas",
+      "nameKey": "gabbyespinas",
+      "aliases": [
+        "gabbyespinas",
+        "gespinas"
+      ],
+      "jerseyNumber": "27",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-Espinas.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-Espinas.png",
+      "profileSlug": "gabby-espinas",
+      "profileUrl": "https://www.pba.ph/players/gabby-espinas",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/gabby-espinas"
+    },
+    {
+      "name": "Gabe Norwood",
+      "nameKey": "gabenorwood",
+      "aliases": [
+        "gabenorwood",
+        "gnorwood"
+      ],
+      "jerseyNumber": "5",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/rosnorwood5.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/rosnorwood5.png",
+      "profileSlug": "gabe-norwood",
+      "profileUrl": "https://www.pba.ph/players/gabe-norwood",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/gabe-norwood"
+    },
+    {
+      "name": "Garvo Lanete",
+      "nameKey": "garvolanete",
+      "aliases": [
+        "garvolanete",
+        "glanete"
+      ],
+      "jerseyNumber": "13",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-lanete.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-lanete.png",
+      "profileSlug": "garvo-lanete",
+      "profileUrl": "https://www.pba.ph/players/garvo-lanete",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/garvo-lanete"
+    },
+    {
+      "name": "Gelo Alolino",
+      "nameKey": "geloalolino",
+      "aliases": [
+        "geloalolino",
+        "galolino"
+      ],
+      "jerseyNumber": "4",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phx-Alolino.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phx-Alolino.png",
+      "profileSlug": "gelo-alolino",
+      "profileUrl": "https://www.pba.ph/players/gelo-alolino",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/gelo-alolino"
+    },
+    {
+      "name": "Glenn Khobuntin",
+      "nameKey": "glennkhobuntin",
+      "aliases": [
+        "glennkhobuntin",
+        "gkhobuntin"
+      ],
+      "jerseyNumber": "24",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-khobuntin18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-khobuntin18.png",
+      "profileSlug": "glenn-khobuntin",
+      "profileUrl": "https://www.pba.ph/players/glenn-khobuntin",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/glenn-khobuntin"
+    },
+    {
+      "name": "Gregory Slaughter",
+      "nameKey": "gregoryslaughter",
+      "aliases": [
+        "gregoryslaughter",
+        "gslaughter"
+      ],
+      "jerseyNumber": "20",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-slaughter18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-slaughter18.png",
+      "profileSlug": "gregory-slaughter",
+      "profileUrl": "https://www.pba.ph/players/gregory-slaughter",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/gregory-slaughter"
+    },
+    {
+      "name": "Gryann Mendoza",
+      "nameKey": "gryannmendoza",
+      "aliases": [
+        "gryannmendoza",
+        "gmendoza"
+      ],
+      "jerseyNumber": "13",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/str-mendoza.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/str-mendoza.png",
+      "profileSlug": "gryann-mendoza",
+      "profileUrl": "https://www.pba.ph/players/gryann-mendoza",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/gryann-mendoza"
+    },
+    {
+      "name": "Harvey Carey",
+      "nameKey": "harveycarey",
+      "aliases": [
+        "harveycarey",
+        "hcarey"
+      ],
+      "jerseyNumber": "4",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-Carey.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-Carey.png",
+      "profileSlug": "harvey-carey",
+      "profileUrl": "https://www.pba.ph/players/harvey-carey",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/harvey-carey"
+    },
+    {
+      "name": "Ian Sangalang",
+      "nameKey": "iansangalang",
+      "aliases": [
+        "iansangalang",
+        "isangalang"
+      ],
+      "jerseyNumber": "10",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-sangalang10.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-sangalang10.png",
+      "profileSlug": "ian-sangalang",
+      "profileUrl": "https://www.pba.ph/players/ian-sangalang",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/ian-sangalang"
+    },
+    {
+      "name": "Jackson Corpuz",
+      "nameKey": "jacksoncorpuz",
+      "aliases": [
+        "jacksoncorpuz",
+        "jcorpuz"
+      ],
+      "jerseyNumber": "1",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-corpuz18_copy.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-corpuz18_copy.png",
+      "profileSlug": "jackson-corpuz",
+      "profileUrl": "https://www.pba.ph/players/jackson-corpuz",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jackson-corpuz"
+    },
+    {
+      "name": "Jake Pascual",
+      "nameKey": "jakepascual",
+      "aliases": [
+        "jakepascual",
+        "jpascual"
+      ],
+      "jerseyNumber": "11",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-jpascual18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-jpascual18.png",
+      "profileSlug": "jake-pascual",
+      "profileUrl": "https://www.pba.ph/players/jake-pascual",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jake-pascual"
+    },
+    {
+      "name": "Jam Cortes",
+      "nameKey": "jamcortes",
+      "aliases": [
+        "jamcortes",
+        "jcortes"
+      ],
+      "jerseyNumber": "21",
+      "position": "C/F",
+      "positions": [
+        "C",
+        "F"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phx-cortes18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phx-cortes18.png",
+      "profileSlug": "jam-cortes",
+      "profileUrl": "https://www.pba.ph/players/jam-cortes",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jam-cortes"
+    },
+    {
+      "name": "James Ryan Sena",
+      "nameKey": "jamesryansena",
+      "aliases": [
+        "jamesryansena",
+        "jamessena",
+        "jsena",
+        "jrsena",
+        "ryansena"
+      ],
+      "jerseyNumber": "15",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-sena18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-sena18.png",
+      "profileSlug": "james-ryan-sena",
+      "profileUrl": "https://www.pba.ph/players/james-ryan-sena",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/james-ryan-sena"
+    },
+    {
+      "name": "Jan Niccolo Jamon",
+      "nameKey": "janniccolojamon",
+      "aliases": [
+        "janniccolojamon",
+        "janjamon",
+        "jjamon",
+        "jnjamon",
+        "niccolojamon"
+      ],
+      "jerseyNumber": "14",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-jamon18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-jamon18.png",
+      "profileSlug": "jan-niccolo-jamon",
+      "profileUrl": "https://www.pba.ph/players/jan-niccolo-jamon",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jan-niccolo-jamon"
+    },
+    {
+      "name": "Jansen Rios",
+      "nameKey": "jansenrios",
+      "aliases": [
+        "jansenrios",
+        "jrios"
+      ],
+      "jerseyNumber": "5",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-Rios.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-Rios.png",
+      "profileSlug": "jansen-rios",
+      "profileUrl": "https://www.pba.ph/players/jansen-rios",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jansen-rios"
+    },
+    {
+      "name": "Japeth Aguilar",
+      "nameKey": "japethaguilar",
+      "aliases": [
+        "japethaguilar",
+        "jaguilar"
+      ],
+      "jerseyNumber": "25",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-jaguilar18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-jaguilar18.png",
+      "profileSlug": "japeth-aguilar",
+      "profileUrl": "https://www.pba.ph/players/japeth-aguilar",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/japeth-aguilar"
+    },
+    {
+      "name": "Jared Dillinger",
+      "nameKey": "jareddillinger",
+      "aliases": [
+        "jareddillinger",
+        "jdillinger"
+      ],
+      "jerseyNumber": "20",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-dillinger18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-dillinger18.png",
+      "profileSlug": "jared-dillinger",
+      "profileUrl": "https://www.pba.ph/players/jared-dillinger",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jared-dillinger"
+    },
+    {
+      "name": "Jason Ballesteros",
+      "nameKey": "jasonballesteros",
+      "aliases": [
+        "jasonballesteros",
+        "jballesteros"
+      ],
+      "jerseyNumber": "18",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-ballesteros18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-ballesteros18.png",
+      "profileSlug": "jason-ballesteros",
+      "profileUrl": "https://www.pba.ph/players/jason-ballesteros",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jason-ballesteros"
+    },
+    {
+      "name": "Jason Perkins",
+      "nameKey": "jasonperkins",
+      "aliases": [
+        "jasonperkins",
+        "jperkins"
+      ],
+      "jerseyNumber": "3",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phx-perkins18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phx-perkins18.png",
+      "profileSlug": "jason-perkins",
+      "profileUrl": "https://www.pba.ph/players/jason-perkins",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jason-perkins"
+    },
+    {
+      "name": "Jaypee Mendoza",
+      "nameKey": "jaypeemendoza",
+      "aliases": [
+        "jaypeemendoza",
+        "jmendoza"
+      ],
+      "jerseyNumber": "18",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-Mendoza.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-Mendoza.png",
+      "profileSlug": "jaypee-mendoza",
+      "profileUrl": "https://www.pba.ph/players/jaypee-mendoza",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jaypee-mendoza"
+    },
+    {
+      "name": "JC Intal",
+      "nameKey": "jcintal",
+      "aliases": [
+        "jcintal",
+        "jintal"
+      ],
+      "jerseyNumber": "7",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phxIntal7.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phxIntal7.png",
+      "profileSlug": "jc-intal",
+      "profileUrl": "https://www.pba.ph/players/jc-intal",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jc-intal"
+    },
+    {
+      "name": "Jeff Chan",
+      "nameKey": "jeffchan",
+      "aliases": [
+        "jeffchan",
+        "jchan"
+      ],
+      "jerseyNumber": "16",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-Chan.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-Chan.png",
+      "profileSlug": "jeff-chan",
+      "profileUrl": "https://www.pba.ph/players/jeff-chan",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jeff-chan"
+    },
+    {
+      "name": "Jeric Teng",
+      "nameKey": "jericteng",
+      "aliases": [
+        "jericteng",
+        "jteng"
+      ],
+      "jerseyNumber": "17",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mah-Teng.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mah-Teng.png",
+      "profileSlug": "jeric-teng",
+      "profileUrl": "https://www.pba.ph/players/jeric-teng",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jeric-teng"
+    },
+    {
+      "name": "Jericho Cruz",
+      "nameKey": "jerichocruz",
+      "aliases": [
+        "jerichocruz",
+        "jcruz"
+      ],
+      "jerseyNumber": "9",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/roscruz9.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/roscruz9.png",
+      "profileSlug": "jericho-cruz",
+      "profileUrl": "https://www.pba.ph/players/jericho-cruz",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jericho-cruz"
+    },
+    {
+      "name": "Jeron Teng",
+      "nameKey": "jeronteng",
+      "aliases": [
+        "jeronteng",
+        "jteng"
+      ],
+      "jerseyNumber": "12",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-teng18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-teng18.png",
+      "profileSlug": "jeron-teng",
+      "profileUrl": "https://www.pba.ph/players/jeron-teng",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jeron-teng"
+    },
+    {
+      "name": "Jerramy King",
+      "nameKey": "jerramyking",
+      "aliases": [
+        "jerramyking",
+        "jking"
+      ],
+      "jerseyNumber": "35",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ros-king.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ros-king.png",
+      "profileSlug": "jerramy-king",
+      "profileUrl": "https://www.pba.ph/players/jerramy-king",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jerramy-king"
+    },
+    {
+      "name": "Jervy Cruz",
+      "nameKey": "jervycruz",
+      "aliases": [
+        "jervycruz",
+        "jcruz"
+      ],
+      "jerseyNumber": "27",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-cruz18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-cruz18.png",
+      "profileSlug": "jervy-cruz",
+      "profileUrl": "https://www.pba.ph/players/jervy-cruz",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jervy-cruz"
+    },
+    {
+      "name": "Jeth Troy Rosario",
+      "nameKey": "jethtroyrosario",
+      "aliases": [
+        "jethtroyrosario",
+        "jethrosario",
+        "jrosario",
+        "jtrosario",
+        "troyrosario"
+      ],
+      "jerseyNumber": "18",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-Rosario.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-Rosario.png",
+      "profileSlug": "jeth-troy-rosario",
+      "profileUrl": "https://www.pba.ph/players/jeth-troy-rosario",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jeth-troy-rosario"
+    },
+    {
+      "name": "Jewel Ponferada",
+      "nameKey": "jewelponferada",
+      "aliases": [
+        "jewelponferada",
+        "jponferada"
+      ],
+      "jerseyNumber": "15",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/rosPonferada15.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/rosPonferada15.png",
+      "profileSlug": "jewel-ponferada",
+      "profileUrl": "https://www.pba.ph/players/jewel-ponferada",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jewel-ponferada"
+    },
+    {
+      "name": "Jio Jalalon",
+      "nameKey": "jiojalalon",
+      "aliases": [
+        "jiojalalon",
+        "jjalalon"
+      ],
+      "jerseyNumber": "6",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-jalalon18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-jalalon18.png",
+      "profileSlug": "jio-jalalon",
+      "profileUrl": "https://www.pba.ph/players/jio-jalalon",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jio-jalalon"
+    },
+    {
+      "name": "Joe Devance",
+      "nameKey": "joedevance",
+      "aliases": [
+        "joedevance",
+        "jdevance"
+      ],
+      "jerseyNumber": "38",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ginDevance38.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ginDevance38.png",
+      "profileSlug": "joe-devance",
+      "profileUrl": "https://www.pba.ph/players/joe-devance",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/joe-devance"
+    },
+    {
+      "name": "John Marion Wilson",
+      "nameKey": "johnmarionwilson",
+      "aliases": [
+        "johnmarionwilson",
+        "johnwilson",
+        "jwilson",
+        "jmwilson",
+        "marionwilson"
+      ],
+      "jerseyNumber": "4",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-wilson18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-wilson18.png",
+      "profileSlug": "john-marion-wilson",
+      "profileUrl": "https://www.pba.ph/players/john-marion-wilson",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/john-marion-wilson"
+    },
+    {
+      "name": "John Paul Erram",
+      "nameKey": "johnpaulerram",
+      "aliases": [
+        "johnpaulerram",
+        "johnerram",
+        "jerram",
+        "jperram",
+        "paulerram"
+      ],
+      "jerseyNumber": "7",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-erram18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-erram18.png",
+      "profileSlug": "john-paul-erram",
+      "profileUrl": "https://www.pba.ph/players/john-paul-erram",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/john-paul-erram"
+    },
+    {
+      "name": "Jon Jon Gabriel",
+      "nameKey": "jonjongabriel",
+      "aliases": [
+        "jonjongabriel",
+        "jongabriel",
+        "jgabriel",
+        "jjgabriel"
+      ],
+      "jerseyNumber": "6",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-gabriel18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-gabriel18.png",
+      "profileSlug": "jon-jon-gabriel",
+      "profileUrl": "https://www.pba.ph/players/jon-jon-gabriel",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jon-jon-gabriel"
+    },
+    {
+      "name": "Jonathan Grey",
+      "nameKey": "jonathangrey",
+      "aliases": [
+        "jonathangrey",
+        "jgrey"
+      ],
+      "jerseyNumber": "14",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-grey18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-grey18.png",
+      "profileSlug": "jonathan-grey",
+      "profileUrl": "https://www.pba.ph/players/jonathan-grey",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jonathan-grey"
+    },
+    {
+      "name": "Jose Anton Manuel",
+      "nameKey": "joseantonmanuel",
+      "aliases": [
+        "joseantonmanuel",
+        "josemanuel",
+        "jmanuel",
+        "jamanuel",
+        "antonmanuel"
+      ],
+      "jerseyNumber": "2",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-manuel18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-manuel18.png",
+      "profileSlug": "jose-anton-manuel",
+      "profileUrl": "https://www.pba.ph/players/jose-anton-manuel",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jose-anton-manuel"
+    },
+    {
+      "name": "Joseph Eriobu",
+      "nameKey": "josepheriobu",
+      "aliases": [
+        "josepheriobu",
+        "jeriobu"
+      ],
+      "jerseyNumber": "8",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mah-Eriobu.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mah-Eriobu.png",
+      "profileSlug": "joseph-eriobu",
+      "profileUrl": "https://www.pba.ph/players/joseph-eriobu",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/joseph-eriobu"
+    },
+    {
+      "name": "Joseph Gabayni",
+      "nameKey": "josephgabayni",
+      "aliases": [
+        "josephgabayni",
+        "jgabayni"
+      ],
+      "jerseyNumber": "28",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-gabayni18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-gabayni18.png",
+      "profileSlug": "joseph-gabayni",
+      "profileUrl": "https://www.pba.ph/players/joseph-gabayni",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/joseph-gabayni"
+    },
+    {
+      "name": "Joseph Sedurifa",
+      "nameKey": "josephsedurifa",
+      "aliases": [
+        "josephsedurifa",
+        "jsedurifa"
+      ],
+      "jerseyNumber": "15",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-sedurifa18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-sedurifa18.png",
+      "profileSlug": "joseph-sedurifa",
+      "profileUrl": "https://www.pba.ph/players/joseph-sedurifa",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/joseph-sedurifa"
+    },
+    {
+      "name": "JR Quinahan",
+      "nameKey": "jrquinahan",
+      "aliases": [
+        "jrquinahan",
+        "jquinahan"
+      ],
+      "jerseyNumber": "37",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-quinahan18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-quinahan18.png",
+      "profileSlug": "jr-quinahan",
+      "profileUrl": "https://www.pba.ph/players/jr-quinahan",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jr-quinahan"
+    },
+    {
+      "name": "Juan Miguel Tiongson",
+      "nameKey": "juanmigueltiongson",
+      "aliases": [
+        "juanmigueltiongson",
+        "juantiongson",
+        "jtiongson",
+        "jmtiongson",
+        "migueltiongson",
+        "juamitiongson"
+      ],
+      "jerseyNumber": "3",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-tiongson18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-tiongson18.png",
+      "profileSlug": "juan-miguel-tiongson",
+      "profileUrl": "https://www.pba.ph/players/juan-miguel-tiongson",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/juan-miguel-tiongson"
+    },
+    {
+      "name": "Juan Nicholas Elorde",
+      "nameKey": "juannicholaselorde",
+      "aliases": [
+        "juannicholaselorde",
+        "juanelorde",
+        "jelorde",
+        "jnelorde",
+        "nicholaselorde",
+        "nicoelorde"
+      ],
+      "jerseyNumber": "9",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-elorde18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-elorde18.png",
+      "profileSlug": "juan-nicholas-elorde",
+      "profileUrl": "https://www.pba.ph/players/juan-nicholas-elorde",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/juan-nicholas-elorde"
+    },
+    {
+      "name": "Julian Sargent",
+      "nameKey": "juliansargent",
+      "aliases": [
+        "juliansargent",
+        "jsargent"
+      ],
+      "jerseyNumber": "1",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-sargent18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-sargent18.png",
+      "profileSlug": "julian-sargent",
+      "profileUrl": "https://www.pba.ph/players/julian-sargent",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/julian-sargent"
+    },
+    {
+      "name": "June Mar Fajardo",
+      "nameKey": "junemarfajardo",
+      "aliases": [
+        "junemarfajardo",
+        "junefajardo",
+        "jfajardo",
+        "jmfajardo",
+        "marfajardo"
+      ],
+      "jerseyNumber": "15",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-Fajardo.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-Fajardo.png",
+      "profileSlug": "june-mar-fajardo",
+      "profileUrl": "https://www.pba.ph/players/june-mar-fajardo",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/june-mar-fajardo"
+    },
+    {
+      "name": "Justin Chua",
+      "nameKey": "justinchua",
+      "aliases": [
+        "justinchua",
+        "jchua"
+      ],
+      "jerseyNumber": "9",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-Chua.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-Chua.png",
+      "profileSlug": "justin-chua",
+      "profileUrl": "https://www.pba.ph/players/justin-chua",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/justin-chua"
+    },
+    {
+      "name": "Justin Melton",
+      "nameKey": "justinmelton",
+      "aliases": [
+        "justinmelton",
+        "jmelton"
+      ],
+      "jerseyNumber": "2",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-melton18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-melton18.png",
+      "profileSlug": "justin-melton",
+      "profileUrl": "https://www.pba.ph/players/justin-melton",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/justin-melton"
+    },
+    {
+      "name": "JVee Casio",
+      "nameKey": "jveecasio",
+      "aliases": [
+        "jveecasio",
+        "jcasio"
+      ],
+      "jerseyNumber": "42",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-casio18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-casio18.png",
+      "profileSlug": "jvee-casio",
+      "profileUrl": "https://www.pba.ph/players/jvee-casio",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/jvee-casio"
+    },
+    {
+      "name": "Karl Dehesa",
+      "nameKey": "karldehesa",
+      "aliases": [
+        "karldehesa",
+        "kdehesa"
+      ],
+      "jerseyNumber": "22",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phx-dehesa.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phx-dehesa.png",
+      "profileSlug": "karl-dehesa",
+      "profileUrl": "https://www.pba.ph/players/karl-dehesa",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/karl-dehesa"
+    },
+    {
+      "name": "Karl Kenneth Bono",
+      "nameKey": "karlkennethbono",
+      "aliases": [
+        "karlkennethbono",
+        "karlbono",
+        "kbono",
+        "kkbono",
+        "kennethbono"
+      ],
+      "jerseyNumber": "25",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-Bono.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-Bono.png",
+      "profileSlug": "karl-kenneth-bono",
+      "profileUrl": "https://www.pba.ph/players/karl-kenneth-bono",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/karl-kenneth-bono"
+    },
+    {
+      "name": "Keith Jasper Agovida",
+      "nameKey": "keithjasperagovida",
+      "aliases": [
+        "keithjasperagovida",
+        "keithagovida",
+        "kagovida",
+        "kjagovida",
+        "jasperagovida"
+      ],
+      "jerseyNumber": "23",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-Agovida.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-Agovida.png",
+      "profileSlug": "keith-jasper-agovida",
+      "profileUrl": "https://www.pba.ph/players/keith-jasper-agovida",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/keith-jasper-agovida"
+    },
+    {
+      "name": "Kelly Nabong",
+      "nameKey": "kellynabong",
+      "aliases": [
+        "kellynabong",
+        "knabong"
+      ],
+      "jerseyNumber": "33",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-Nabong18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-Nabong18.png",
+      "profileSlug": "kelly-nabong",
+      "profileUrl": "https://www.pba.ph/players/kelly-nabong",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/kelly-nabong"
+    },
+    {
+      "name": "Kelly Williams",
+      "nameKey": "kellywilliams",
+      "aliases": [
+        "kellywilliams",
+        "kwilliams"
+      ],
+      "jerseyNumber": "21",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-Williams.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-Williams.png",
+      "profileSlug": "kelly-williams",
+      "profileUrl": "https://www.pba.ph/players/kelly-williams",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/kelly-williams"
+    },
+    {
+      "name": "Kenneth Ighalo",
+      "nameKey": "kennethighalo",
+      "aliases": [
+        "kennethighalo",
+        "kighalo"
+      ],
+      "jerseyNumber": "17",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-ighalo18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-ighalo18.png",
+      "profileSlug": "kenneth-ighalo",
+      "profileUrl": "https://www.pba.ph/players/kenneth-ighalo",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/kenneth-ighalo"
+    },
+    {
+      "name": "Kevin Ferrer",
+      "nameKey": "kevinferrer",
+      "aliases": [
+        "kevinferrer",
+        "kferrer"
+      ],
+      "jerseyNumber": "14",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-ferrer18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-ferrer18.png",
+      "profileSlug": "kevin-ferrer",
+      "profileUrl": "https://www.pba.ph/players/kevin-ferrer",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/kevin-ferrer"
+    },
+    {
+      "name": "Kevin Louie Alas",
+      "nameKey": "kevinlouiealas",
+      "aliases": [
+        "kevinlouiealas",
+        "kevinalas",
+        "kalas",
+        "klalas",
+        "louiealas"
+      ],
+      "jerseyNumber": "6",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-Alas.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-Alas.png",
+      "profileSlug": "kevin-louie-alas",
+      "profileUrl": "https://www.pba.ph/players/kevin-louie-alas",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/kevin-louie-alas"
+    },
+    {
+      "name": "Kevin Racal",
+      "nameKey": "kevinracal",
+      "aliases": [
+        "kevinracal",
+        "kracal"
+      ],
+      "jerseyNumber": "61",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-racal18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-racal18.png",
+      "profileSlug": "kevin-racal",
+      "profileUrl": "https://www.pba.ph/players/kevin-racal",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/kevin-racal"
+    },
+    {
+      "name": "Kiefer Ravena",
+      "nameKey": "kieferravena",
+      "aliases": [
+        "kieferravena",
+        "kravena"
+      ],
+      "jerseyNumber": "15",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-ravena18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-ravena18.png",
+      "profileSlug": "kiefer-ravena",
+      "profileUrl": "https://www.pba.ph/players/kiefer-ravena",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/kiefer-ravena"
+    },
+    {
+      "name": "Kyle Drexler Neypes",
+      "nameKey": "kyledrexlerneypes",
+      "aliases": [
+        "kyledrexlerneypes",
+        "kyleneypes",
+        "kneypes",
+        "kdneypes",
+        "drexlerneypes"
+      ],
+      "jerseyNumber": "41",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-neypes18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-neypes18.png",
+      "profileSlug": "kyle-drexler-neypes",
+      "profileUrl": "https://www.pba.ph/players/kyle-drexler-neypes",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/kyle-drexler-neypes"
+    },
+    {
+      "name": "Kyle Pascual",
+      "nameKey": "kylepascual",
+      "aliases": [
+        "kylepascual",
+        "kpascual"
+      ],
+      "jerseyNumber": "32",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-pascual18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-pascual18.png",
+      "profileSlug": "kyle-pascual",
+      "profileUrl": "https://www.pba.ph/players/kyle-pascual",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/kyle-pascual"
+    },
+    {
+      "name": "LA Tenorio",
+      "nameKey": "latenorio",
+      "aliases": [
+        "latenorio",
+        "ltenorio"
+      ],
+      "jerseyNumber": "5",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-tenorio18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-tenorio18.png",
+      "profileSlug": "la-tenorio",
+      "profileUrl": "https://www.pba.ph/players/la-tenorio",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/la-tenorio"
+    },
+    {
+      "name": "Larry Fonacier",
+      "nameKey": "larryfonacier",
+      "aliases": [
+        "larryfonacier",
+        "lfonacier"
+      ],
+      "jerseyNumber": "12",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-fonacier18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-fonacier18.png",
+      "profileSlug": "larry-fonacier",
+      "profileUrl": "https://www.pba.ph/players/larry-fonacier",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/larry-fonacier"
+    },
+    {
+      "name": "Lervyn Flores",
+      "nameKey": "lervynflores",
+      "aliases": [
+        "lervynflores",
+        "lflores"
+      ],
+      "jerseyNumber": "26",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-flores.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-flores.png",
+      "profileSlug": "lervyn-flores",
+      "profileUrl": "https://www.pba.ph/players/lervyn-flores",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/lervyn-flores"
+    },
+    {
+      "name": "Louie Vigil",
+      "nameKey": "louievigil",
+      "aliases": [
+        "louievigil",
+        "lvigil"
+      ],
+      "jerseyNumber": "18",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-vigil18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-vigil18.png",
+      "profileSlug": "louie-vigil",
+      "profileUrl": "https://www.pba.ph/players/louie-vigil",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/louie-vigil"
+    },
+    {
+      "name": "Mac Baracael",
+      "nameKey": "macbaracael",
+      "aliases": [
+        "macbaracael",
+        "mbaracael"
+      ],
+      "jerseyNumber": "45",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-baracael18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-baracael18.png",
+      "profileSlug": "mac-baracael",
+      "profileUrl": "https://www.pba.ph/players/mac-baracael",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/mac-baracael"
+    },
+    {
+      "name": "Mac Belo",
+      "nameKey": "macbelo",
+      "aliases": [
+        "macbelo",
+        "mbelo"
+      ],
+      "jerseyNumber": "12",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-belo18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-belo18.png",
+      "profileSlug": "mac-belo",
+      "profileUrl": "https://www.pba.ph/players/mac-belo",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/mac-belo"
+    },
+    {
+      "name": "Marc Jean Pingris",
+      "nameKey": "marcjeanpingris",
+      "aliases": [
+        "marcjeanpingris",
+        "marcpingris",
+        "mpingris",
+        "mjpingris",
+        "jeanpingris"
+      ],
+      "jerseyNumber": "15",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-pingris18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-pingris18.png",
+      "profileSlug": "marc-jean-pingris",
+      "profileUrl": "https://www.pba.ph/players/marc-jean-pingris",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/marc-jean-pingris"
+    },
+    {
+      "name": "Marcio Lassiter",
+      "nameKey": "marciolassiter",
+      "aliases": [
+        "marciolassiter",
+        "mlassiter"
+      ],
+      "jerseyNumber": "13",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-Lassiter.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-Lassiter.png",
+      "profileSlug": "marcio-lassiter",
+      "profileUrl": "https://www.pba.ph/players/marcio-lassiter",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/marcio-lassiter"
+    },
+    {
+      "name": "Marion Magat",
+      "nameKey": "marionmagat",
+      "aliases": [
+        "marionmagat",
+        "mmagat"
+      ],
+      "jerseyNumber": "10",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-Magat.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-Magat.png",
+      "profileSlug": "marion-magat",
+      "profileUrl": "https://www.pba.ph/players/marion-magat",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/marion-magat"
+    },
+    {
+      "name": "Mark Anthony Borboran",
+      "nameKey": "markanthonyborboran",
+      "aliases": [
+        "markanthonyborboran",
+        "markborboran",
+        "mborboran",
+        "maborboran",
+        "anthonyborboran"
+      ],
+      "jerseyNumber": "16",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/rosBorboran.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/rosBorboran.png",
+      "profileSlug": "mark-anthony-borboran",
+      "profileUrl": "https://www.pba.ph/players/mark-anthony-borboran",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/mark-anthony-borboran"
+    },
+    {
+      "name": "Mark Caguioa",
+      "nameKey": "markcaguioa",
+      "aliases": [
+        "markcaguioa",
+        "mcaguioa"
+      ],
+      "jerseyNumber": "13",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-caguioa18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-caguioa18.png",
+      "profileSlug": "mark-caguioa",
+      "profileUrl": "https://www.pba.ph/players/mark-caguioa",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/mark-caguioa"
+    },
+    {
+      "name": "Mark Cruz",
+      "nameKey": "markcruz",
+      "aliases": [
+        "markcruz",
+        "mcruz"
+      ],
+      "jerseyNumber": "9",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-cruz18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-cruz18.png",
+      "profileSlug": "mark-cruz",
+      "profileUrl": "https://www.pba.ph/players/mark-cruz",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/mark-cruz"
+    },
+    {
+      "name": "Mark Yee",
+      "nameKey": "markyee",
+      "aliases": [
+        "markyee",
+        "myee"
+      ],
+      "jerseyNumber": "27",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-yee18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-yee18.png",
+      "profileSlug": "mark-yee",
+      "profileUrl": "https://www.pba.ph/players/mark-yee",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/mark-yee"
+    },
+    {
+      "name": "Matt Ganuelas-Rosser",
+      "nameKey": "mattganuelasrosser",
+      "aliases": [
+        "mattganuelasrosser",
+        "mattrosser",
+        "mrosser",
+        "mgrosser",
+        "ganuelasrosser"
+      ],
+      "jerseyNumber": "22",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-ganuelasrosser.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-ganuelasrosser.png",
+      "profileSlug": "matt-ganuelas-rosser",
+      "profileUrl": "https://www.pba.ph/players/matt-ganuelas-rosser",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/matt-ganuelas-rosser"
+    },
+    {
+      "name": "Matthew Wright",
+      "nameKey": "matthewwright",
+      "aliases": [
+        "matthewwright",
+        "mwright"
+      ],
+      "jerseyNumber": "35",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phx-Wright.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phx-Wright.png",
+      "profileSlug": "matthew-wright",
+      "profileUrl": "https://www.pba.ph/players/matthew-wright",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/matthew-wright"
+    },
+    {
+      "name": "Maverick Ahanmisi",
+      "nameKey": "maverickahanmisi",
+      "aliases": [
+        "maverickahanmisi",
+        "mahanmisi"
+      ],
+      "jerseyNumber": "13",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/rosAhanmisi13.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/rosAhanmisi13.png",
+      "profileSlug": "maverick-ahanmisi",
+      "profileUrl": "https://www.pba.ph/players/maverick-ahanmisi",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/maverick-ahanmisi"
+    },
+    {
+      "name": "Michael Gamboa",
+      "nameKey": "michaelgamboa",
+      "aliases": [
+        "michaelgamboa",
+        "mgamboa"
+      ],
+      "jerseyNumber": "1",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phx-gamboa18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phx-gamboa18.png",
+      "profileSlug": "michael-gamboa",
+      "profileUrl": "https://www.pba.ph/players/michael-gamboa",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/michael-gamboa"
+    },
+    {
+      "name": "Michael Miranda",
+      "nameKey": "michaelmiranda",
+      "aliases": [
+        "michaelmiranda",
+        "mmiranda"
+      ],
+      "jerseyNumber": "2",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-miranda18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-miranda18.png",
+      "profileSlug": "michael-miranda",
+      "profileUrl": "https://www.pba.ph/players/michael-miranda",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/michael-miranda"
+    },
+    {
+      "name": "Michael Vincent Digregorio",
+      "nameKey": "michaelvincentdigregorio",
+      "aliases": [
+        "michaelvincentdigregorio",
+        "michaeldigregorio",
+        "mdigregorio",
+        "mvdigregorio",
+        "vincentdigregorio",
+        "mikedigregorio"
+      ],
+      "jerseyNumber": "1",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-digregorio18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-digregorio18.png",
+      "profileSlug": "michael-vincent-digregorio",
+      "profileUrl": "https://www.pba.ph/players/michael-vincent-digregorio",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/michael-vincent-digregorio"
+    },
+    {
+      "name": "Michael Vincent Juico",
+      "nameKey": "michaelvincentjuico",
+      "aliases": [
+        "michaelvincentjuico",
+        "michaeljuico",
+        "mjuico",
+        "mvjuico",
+        "vincentjuico",
+        "mikejuico"
+      ],
+      "jerseyNumber": "12",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-juico18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-juico18.png",
+      "profileSlug": "michael-vincent-juico",
+      "profileUrl": "https://www.pba.ph/players/michael-vincent-juico",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/michael-vincent-juico"
+    },
+    {
+      "name": "Mike Cortez",
+      "nameKey": "mikecortez",
+      "aliases": [
+        "mikecortez",
+        "mcortez"
+      ],
+      "jerseyNumber": "21",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-cortez18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-cortez18.png",
+      "profileSlug": "mike-cortez",
+      "profileUrl": "https://www.pba.ph/players/mike-cortez",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/mike-cortez"
+    },
+    {
+      "name": "Mike Tolomia",
+      "nameKey": "miketolomia",
+      "aliases": [
+        "miketolomia",
+        "mtolomia"
+      ],
+      "jerseyNumber": "6",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-tolomia18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-tolomia18.png",
+      "profileSlug": "mike-tolomia",
+      "profileUrl": "https://www.pba.ph/players/mike-tolomia",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/mike-tolomia"
+    },
+    {
+      "name": "Moala Tautuaa",
+      "nameKey": "moalatautuaa",
+      "aliases": [
+        "moalatautuaa",
+        "mtautuaa"
+      ],
+      "jerseyNumber": "7",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-Tautuaa.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-Tautuaa.png",
+      "profileSlug": "moala-tautuaa",
+      "profileUrl": "https://www.pba.ph/players/moala-tautuaa",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/moala-tautuaa"
+    },
+    {
+      "name": "Nard John Pinto",
+      "nameKey": "nardjohnpinto",
+      "aliases": [
+        "nardjohnpinto",
+        "nardpinto",
+        "npinto",
+        "njpinto",
+        "johnpinto"
+      ],
+      "jerseyNumber": "10",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-pinto18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-pinto18.png",
+      "profileSlug": "nard-john-pinto",
+      "profileUrl": "https://www.pba.ph/players/nard-john-pinto",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/nard-john-pinto"
+    },
+    {
+      "name": "Nico Salva",
+      "nameKey": "nicosalva",
+      "aliases": [
+        "nicosalva",
+        "nsalva"
+      ],
+      "jerseyNumber": "8",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-salva18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-salva18.png",
+      "profileSlug": "nico-salva",
+      "profileUrl": "https://www.pba.ph/players/nico-salva",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/nico-salva"
+    },
+    {
+      "name": "Nino Canaleta",
+      "nameKey": "ninocanaleta",
+      "aliases": [
+        "ninocanaleta",
+        "ncanaleta"
+      ],
+      "jerseyNumber": "12",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-canaleta18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-canaleta18.png",
+      "profileSlug": "nino-canaleta",
+      "profileUrl": "https://www.pba.ph/players/nino-canaleta",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/nino-canaleta"
+    },
+    {
+      "name": "Nonoy Baclao",
+      "nameKey": "nonoybaclao",
+      "aliases": [
+        "nonoybaclao",
+        "nbaclao"
+      ],
+      "jerseyNumber": "9",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-Baclao.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-Baclao.png",
+      "profileSlug": "nonoy-baclao",
+      "profileUrl": "https://www.pba.ph/players/nonoy-baclao",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/nonoy-baclao"
+    },
+    {
+      "name": "Norbert Torres",
+      "nameKey": "norberttorres",
+      "aliases": [
+        "norberttorres",
+        "ntorres"
+      ],
+      "jerseyNumber": "12",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-torres18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-torres18.png",
+      "profileSlug": "norbert-torres",
+      "profileUrl": "https://www.pba.ph/players/norbert-torres",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/norbert-torres"
+    },
+    {
+      "name": "Paolo Taha",
+      "nameKey": "paolotaha",
+      "aliases": [
+        "paolotaha",
+        "ptaha"
+      ],
+      "jerseyNumber": "0",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-Taha.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-Taha.png",
+      "profileSlug": "paolo-taha",
+      "profileUrl": "https://www.pba.ph/players/paolo-taha",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/paolo-taha"
+    },
+    {
+      "name": "Paul Lee",
+      "nameKey": "paullee",
+      "aliases": [
+        "paullee",
+        "plee"
+      ],
+      "jerseyNumber": "3",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-lee18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-lee18.png",
+      "profileSlug": "paul-lee",
+      "profileUrl": "https://www.pba.ph/players/paul-lee",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/paul-lee"
+    },
+    {
+      "name": "Pedrito Galanza",
+      "nameKey": "pedritogalanza",
+      "aliases": [
+        "pedritogalanza",
+        "pgalanza"
+      ],
+      "jerseyNumber": "15",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-galanza18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-galanza18.png",
+      "profileSlug": "pedrito-galanza",
+      "profileUrl": "https://www.pba.ph/players/pedrito-galanza",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/pedrito-galanza"
+    },
+    {
+      "name": "Peter June Simon",
+      "nameKey": "peterjunesimon",
+      "aliases": [
+        "peterjunesimon",
+        "petersimon",
+        "psimon",
+        "pjsimon",
+        "junesimon"
+      ],
+      "jerseyNumber": "8",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/strSimon8.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/strSimon8.png",
+      "profileSlug": "peter-june-simon",
+      "profileUrl": "https://www.pba.ph/players/peter-june-simon",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/peter-june-simon"
+    },
+    {
+      "name": "Philip Paredes",
+      "nameKey": "philipparedes",
+      "aliases": [
+        "philipparedes",
+        "pparedes"
+      ],
+      "jerseyNumber": "28",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-Paredes.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-Paredes.png",
+      "profileSlug": "philip-paredes",
+      "profileUrl": "https://www.pba.ph/players/philip-paredes",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/philip-paredes"
+    },
+    {
+      "name": "Prince Caperal",
+      "nameKey": "princecaperal",
+      "aliases": [
+        "princecaperal",
+        "pcaperal"
+      ],
+      "jerseyNumber": "12",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-caperal18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-caperal18.png",
+      "profileSlug": "prince-caperal",
+      "profileUrl": "https://www.pba.ph/players/prince-caperal",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/prince-caperal"
+    },
+    {
+      "name": "Rabeh Al-Hussaini",
+      "nameKey": "rabehalhussaini",
+      "aliases": [
+        "rabehalhussaini",
+        "rabehhussaini",
+        "rhussaini",
+        "rahussaini",
+        "alhussaini"
+      ],
+      "jerseyNumber": "19",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-alhussaini18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-alhussaini18.png",
+      "profileSlug": "rabeh-al-hussaini",
+      "profileUrl": "https://www.pba.ph/players/rabeh-al-hussaini",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/rabeh-al-hussaini"
+    },
+    {
+      "name": "Rafi Reavis",
+      "nameKey": "rafireavis",
+      "aliases": [
+        "rafireavis",
+        "rreavis"
+      ],
+      "jerseyNumber": "4",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/strReavis4.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/strReavis4.png",
+      "profileSlug": "rafi-reavis",
+      "profileUrl": "https://www.pba.ph/players/rafi-reavis",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/rafi-reavis"
+    },
+    {
+      "name": "Ranidel de Ocampo",
+      "nameKey": "ranideldeocampo",
+      "aliases": [
+        "ranideldeocampo",
+        "ranidelocampo",
+        "rocampo",
+        "rdocampo",
+        "deocampo"
+      ],
+      "jerseyNumber": "33",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-deocampo18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-deocampo18.png",
+      "profileSlug": "ranidel-de-ocampo",
+      "profileUrl": "https://www.pba.ph/players/ranidel-de-ocampo",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/ranidel-de-ocampo"
+    },
+    {
+      "name": "Raphael Banal",
+      "nameKey": "raphaelbanal",
+      "aliases": [
+        "raphaelbanal",
+        "rbanal"
+      ],
+      "jerseyNumber": "2",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-banal18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-banal18.png",
+      "profileSlug": "raphael-banal",
+      "profileUrl": "https://www.pba.ph/players/raphael-banal",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/raphael-banal"
+    },
+    {
+      "name": "Rashawn McCarthy",
+      "nameKey": "rashawnmccarthy",
+      "aliases": [
+        "rashawnmccarthy",
+        "rmccarthy"
+      ],
+      "jerseyNumber": "11",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-mccarthy18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-mccarthy18.png",
+      "profileSlug": "rashawn-mccarthy",
+      "profileUrl": "https://www.pba.ph/players/rashawn-mccarthy",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/rashawn-mccarthy"
+    },
+    {
+      "name": "Raul Soyud",
+      "nameKey": "raulsoyud",
+      "aliases": [
+        "raulsoyud",
+        "rsoyud"
+      ],
+      "jerseyNumber": "16",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "NLX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/nlx-soyud18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/nlx-soyud18.png",
+      "profileSlug": "raul-soyud",
+      "profileUrl": "https://www.pba.ph/players/raul-soyud",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/raul-soyud"
+    },
+    {
+      "name": "Raymar Jose",
+      "nameKey": "raymarjose",
+      "aliases": [
+        "raymarjose",
+        "rjose"
+      ],
+      "jerseyNumber": "23",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-jose18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-jose18.png",
+      "profileSlug": "raymar-jose",
+      "profileUrl": "https://www.pba.ph/players/raymar-jose",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/raymar-jose"
+    },
+    {
+      "name": "Raymond Aguilar",
+      "nameKey": "raymondaguilar",
+      "aliases": [
+        "raymondaguilar",
+        "raguilar"
+      ],
+      "jerseyNumber": "23",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-RAguilar.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-RAguilar.png",
+      "profileSlug": "raymond-aguilar",
+      "profileUrl": "https://www.pba.ph/players/raymond-aguilar",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/raymond-aguilar"
+    },
+    {
+      "name": "Raymond Almazan",
+      "nameKey": "raymondalmazan",
+      "aliases": [
+        "raymondalmazan",
+        "ralmazan"
+      ],
+      "jerseyNumber": "20",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/rosAlmazan20.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/rosAlmazan20.png",
+      "profileSlug": "raymond-almazan",
+      "profileUrl": "https://www.pba.ph/players/raymond-almazan",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/raymond-almazan"
+    },
+    {
+      "name": "Reden Celda",
+      "nameKey": "redencelda",
+      "aliases": [
+        "redencelda",
+        "rcelda"
+      ],
+      "jerseyNumber": "0",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mah-celda.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mah-celda.png",
+      "profileSlug": "reden-celda",
+      "profileUrl": "https://www.pba.ph/players/reden-celda",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/reden-celda"
+    },
+    {
+      "name": "Rey Francis Guevarra",
+      "nameKey": "reyfrancisguevarra",
+      "aliases": [
+        "reyfrancisguevarra",
+        "reyguevarra",
+        "rguevarra",
+        "rfguevarra",
+        "francisguevarra"
+      ],
+      "jerseyNumber": "24",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mah-Guevarra.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mah-Guevarra.png",
+      "profileSlug": "rey-francis-guevarra",
+      "profileUrl": "https://www.pba.ph/players/rey-francis-guevarra",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/rey-francis-guevarra"
+    },
+    {
+      "name": "Rey Nambatac",
+      "nameKey": "reynambatac",
+      "aliases": [
+        "reynambatac",
+        "rnambatac"
+      ],
+      "jerseyNumber": "27",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ros-nambatac18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ros-nambatac18.png",
+      "profileSlug": "rey-nambatac",
+      "profileUrl": "https://www.pba.ph/players/rey-nambatac",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/rey-nambatac"
+    },
+    {
+      "name": "Reynel Hugnatan",
+      "nameKey": "reynelhugnatan",
+      "aliases": [
+        "reynelhugnatan",
+        "rhugnatan"
+      ],
+      "jerseyNumber": "21",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "MER",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mer-hugnatan18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mer-hugnatan18.png",
+      "profileSlug": "reynel-hugnatan",
+      "profileUrl": "https://www.pba.ph/players/reynel-hugnatan",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/reynel-hugnatan"
+    },
+    {
+      "name": "Riego Gamalinda",
+      "nameKey": "riegogamalinda",
+      "aliases": [
+        "riegogamalinda",
+        "rgamalinda"
+      ],
+      "jerseyNumber": "12",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-gamalinda18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-gamalinda18.png",
+      "profileSlug": "riego-gamalinda",
+      "profileUrl": "https://www.pba.ph/players/riego-gamalinda",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/riego-gamalinda"
+    },
+    {
+      "name": "RJ Jazul",
+      "nameKey": "rjjazul",
+      "aliases": [
+        "rjjazul",
+        "rjazul"
+      ],
+      "jerseyNumber": "31",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-Jazul.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-Jazul.png",
+      "profileSlug": "rj-jazul",
+      "profileUrl": "https://www.pba.ph/players/rj-jazul",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/rj-jazul"
+    },
+    {
+      "name": "Robert Herndon",
+      "nameKey": "robertherndon",
+      "aliases": [
+        "robertherndon",
+        "rherndon"
+      ],
+      "jerseyNumber": "9",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-herndon18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-herndon18.png",
+      "profileSlug": "robert-herndon",
+      "profileUrl": "https://www.pba.ph/players/robert-herndon",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/robert-herndon"
+    },
+    {
+      "name": "Rodney Brondial",
+      "nameKey": "rodneybrondial",
+      "aliases": [
+        "rodneybrondial",
+        "rbrondial"
+      ],
+      "jerseyNumber": "91",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/str-Brondial.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/str-Brondial.png",
+      "profileSlug": "rodney-brondial",
+      "profileUrl": "https://www.pba.ph/players/rodney-brondial",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/rodney-brondial"
+    },
+    {
+      "name": "Roger Pogoy",
+      "nameKey": "rogerpogoy",
+      "aliases": [
+        "rogerpogoy",
+        "rpogoy"
+      ],
+      "jerseyNumber": "16",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-pogoy.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-pogoy.png",
+      "profileSlug": "roger-pogoy",
+      "profileUrl": "https://www.pba.ph/players/roger-pogoy",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/roger-pogoy"
+    },
+    {
+      "name": "Roider Cabrera",
+      "nameKey": "roidercabrera",
+      "aliases": [
+        "roidercabrera",
+        "rcabrera"
+      ],
+      "jerseyNumber": "99",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-cabrera18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-cabrera18.png",
+      "profileSlug": "roider-cabrera",
+      "profileUrl": "https://www.pba.ph/players/roider-cabrera",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/roider-cabrera"
+    },
+    {
+      "name": "Roldan Sara",
+      "nameKey": "roldansara",
+      "aliases": [
+        "roldansara",
+        "rsara"
+      ],
+      "jerseyNumber": "17",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-sara18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-sara18.png",
+      "profileSlug": "roldan-sara",
+      "profileUrl": "https://www.pba.ph/players/roldan-sara",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/roldan-sara"
+    },
+    {
+      "name": "Rome dela Rosa",
+      "nameKey": "romedelarosa",
+      "aliases": [
+        "romedelarosa",
+        "romerosa",
+        "rrosa",
+        "rdrosa",
+        "delarosa"
+      ],
+      "jerseyNumber": "19",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "MAG",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mag-delarosa18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mag-delarosa18.png",
+      "profileSlug": "rome-dela-rosa",
+      "profileUrl": "https://www.pba.ph/players/rome-dela-rosa",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/rome-dela-rosa"
+    },
+    {
+      "name": "Ronald Pascual",
+      "nameKey": "ronaldpascual",
+      "aliases": [
+        "ronaldpascual",
+        "rpascual"
+      ],
+      "jerseyNumber": "13",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-rpascual18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-rpascual18.png",
+      "profileSlug": "ronald-pascual",
+      "profileUrl": "https://www.pba.ph/players/ronald-pascual",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/ronald-pascual"
+    },
+    {
+      "name": "Ronald Tubid",
+      "nameKey": "ronaldtubid",
+      "aliases": [
+        "ronaldtubid",
+        "rtubid"
+      ],
+      "jerseyNumber": "71",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/kia-tubid18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/kia-tubid18.png",
+      "profileSlug": "ronald-tubid",
+      "profileUrl": "https://www.pba.ph/players/ronald-tubid",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/ronald-tubid"
+    },
+    {
+      "name": "Ronnie Matias",
+      "nameKey": "ronniematias",
+      "aliases": [
+        "ronniematias",
+        "rmatias"
+      ],
+      "jerseyNumber": "33",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/rosMatias33.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/rosMatias33.png",
+      "profileSlug": "ronnie-matias",
+      "profileUrl": "https://www.pba.ph/players/ronnie-matias",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/ronnie-matias"
+    },
+    {
+      "name": "RR Garcia",
+      "nameKey": "rrgarcia",
+      "aliases": [
+        "rrgarcia",
+        "rgarcia"
+      ],
+      "jerseyNumber": "8",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-garcia.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-garcia.png",
+      "profileSlug": "rr-garcia",
+      "profileUrl": "https://www.pba.ph/players/rr-garcia",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/rr-garcia"
+    },
+    {
+      "name": "Russel Escoto",
+      "nameKey": "russelescoto",
+      "aliases": [
+        "russelescoto",
+        "rescoto"
+      ],
+      "jerseyNumber": "33",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "KIA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/mah-Escoto.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/mah-Escoto.png",
+      "profileSlug": "russel-escoto",
+      "profileUrl": "https://www.pba.ph/players/russel-escoto",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/russel-escoto"
+    },
+    {
+      "name": "Ryan Arana",
+      "nameKey": "ryanarana",
+      "aliases": [
+        "ryanarana",
+        "rarana"
+      ],
+      "jerseyNumber": "18",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-arana18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-arana18.png",
+      "profileSlug": "ryan-arana",
+      "profileUrl": "https://www.pba.ph/players/ryan-arana",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/ryan-arana"
+    },
+    {
+      "name": "Ryan Reyes",
+      "nameKey": "ryanreyes",
+      "aliases": [
+        "ryanreyes",
+        "rreyes"
+      ],
+      "jerseyNumber": "10",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-R-Reyes.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-R-Reyes.png",
+      "profileSlug": "ryan-reyes",
+      "profileUrl": "https://www.pba.ph/players/ryan-reyes",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/ryan-reyes"
+    },
+    {
+      "name": "Scottie Thompson",
+      "nameKey": "scottiethompson",
+      "aliases": [
+        "scottiethompson",
+        "sthompson"
+      ],
+      "jerseyNumber": "6",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-thompson18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-thompson18.png",
+      "profileSlug": "scottie-thompson",
+      "profileUrl": "https://www.pba.ph/players/scottie-thompson",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/scottie-thompson"
+    },
+    {
+      "name": "Sean Anthony",
+      "nameKey": "seananthony",
+      "aliases": [
+        "seananthony",
+        "santhony"
+      ],
+      "jerseyNumber": "10",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-anthony18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-anthony18.png",
+      "profileSlug": "sean-anthony",
+      "profileUrl": "https://www.pba.ph/players/sean-anthony",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/sean-anthony"
+    },
+    {
+      "name": "Shej Roi Sumang",
+      "nameKey": "shejroisumang",
+      "aliases": [
+        "shejroisumang",
+        "shejsumang",
+        "ssumang",
+        "srsumang",
+        "roisumang"
+      ],
+      "jerseyNumber": "6",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "BWE",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/bwe-sumang18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/bwe-sumang18.png",
+      "profileSlug": "shej-roi-sumang",
+      "profileUrl": "https://www.pba.ph/players/shej-roi-sumang",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/shej-roi-sumang"
+    },
+    {
+      "name": "Sidney Onwubere",
+      "nameKey": "sidneyonwubere",
+      "aliases": [
+        "sidneyonwubere",
+        "sonwubere"
+      ],
+      "jerseyNumber": "23",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ROS",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-onwubere18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-onwubere18.png",
+      "profileSlug": "sidney-onwubere",
+      "profileUrl": "https://www.pba.ph/players/sidney-onwubere",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/sidney-onwubere"
+    },
+    {
+      "name": "Simon Enciso",
+      "nameKey": "simonenciso",
+      "aliases": [
+        "simonenciso",
+        "senciso"
+      ],
+      "jerseyNumber": "0",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phxEnciso0.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phxEnciso0.png",
+      "profileSlug": "simon-enciso",
+      "profileUrl": "https://www.pba.ph/players/simon-enciso",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/simon-enciso"
+    },
+    {
+      "name": "Solomon Mercado",
+      "nameKey": "solomonmercado",
+      "aliases": [
+        "solomonmercado",
+        "smercado"
+      ],
+      "jerseyNumber": "3",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GIN",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/gin-mercado18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/gin-mercado18.png",
+      "profileSlug": "solomon-mercado",
+      "profileUrl": "https://www.pba.ph/players/solomon-mercado",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/solomon-mercado"
+    },
+    {
+      "name": "Sonny Thoss",
+      "nameKey": "sonnythoss",
+      "aliases": [
+        "sonnythoss",
+        "sthoss"
+      ],
+      "jerseyNumber": "7",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-thoss18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-thoss18.png",
+      "profileSlug": "sonny-thoss",
+      "profileUrl": "https://www.pba.ph/players/sonny-thoss",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/sonny-thoss"
+    },
+    {
+      "name": "Stanley Pringle",
+      "nameKey": "stanleypringle",
+      "aliases": [
+        "stanleypringle",
+        "springle"
+      ],
+      "jerseyNumber": "3",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-pringle18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-pringle18.png",
+      "profileSlug": "stanley-pringle",
+      "profileUrl": "https://www.pba.ph/players/stanley-pringle",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/stanley-pringle"
+    },
+    {
+      "name": "Terrence Romeo",
+      "nameKey": "terrenceromeo",
+      "aliases": [
+        "terrenceromeo",
+        "tromeo"
+      ],
+      "jerseyNumber": "7",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-Romeo.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-Romeo.png",
+      "profileSlug": "terrence-romeo",
+      "profileUrl": "https://www.pba.ph/players/terrence-romeo",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/terrence-romeo"
+    },
+    {
+      "name": "Vic Manuel",
+      "nameKey": "vicmanuel",
+      "aliases": [
+        "vicmanuel",
+        "vmanuel"
+      ],
+      "jerseyNumber": "87",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "ALA",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/ala-manuel18.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/ala-manuel18.png",
+      "profileSlug": "vic-manuel",
+      "profileUrl": "https://www.pba.ph/players/vic-manuel",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/vic-manuel"
+    },
+    {
+      "name": "Von Pessumal",
+      "nameKey": "vonpessumal",
+      "aliases": [
+        "vonpessumal",
+        "vpessumal"
+      ],
+      "jerseyNumber": "3",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-pessumal.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-pessumal.png",
+      "profileSlug": "von-pessumal",
+      "profileUrl": "https://www.pba.ph/players/von-pessumal",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/von-pessumal"
+    },
+    {
+      "name": "William Jayson Castro",
+      "nameKey": "williamjaysoncastro",
+      "aliases": [
+        "williamjaysoncastro",
+        "williamcastro",
+        "wcastro",
+        "wjcastro",
+        "jaysoncastro"
+      ],
+      "jerseyNumber": "17",
+      "position": "G",
+      "positions": [
+        "G"
+      ],
+      "team": "TNT",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/tnt-Castro.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/tnt-Castro.png",
+      "profileSlug": "william-jayson-castro",
+      "profileUrl": "https://www.pba.ph/players/william-jayson-castro",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/william-jayson-castro"
+    },
+    {
+      "name": "William Wilson",
+      "nameKey": "williamwilson",
+      "aliases": [
+        "williamwilson",
+        "wwilson"
+      ],
+      "jerseyNumber": "28",
+      "position": "F",
+      "positions": [
+        "F"
+      ],
+      "team": "PHX",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/phxwWilson28.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/phxwWilson28.png",
+      "profileSlug": "william-wilson",
+      "profileUrl": "https://www.pba.ph/players/william-wilson",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/william-wilson"
+    },
+    {
+      "name": "Yancy de Ocampo",
+      "nameKey": "yancydeocampo",
+      "aliases": [
+        "yancydeocampo",
+        "yancyocampo",
+        "yocampo",
+        "ydocampo",
+        "deocampo"
+      ],
+      "jerseyNumber": "95",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "SMB",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/smb-De-Ocampo.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/smb-De-Ocampo.png",
+      "profileSlug": "yancy-de-ocampo",
+      "profileUrl": "https://www.pba.ph/players/yancy-de-ocampo",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/yancy-de-ocampo"
+    },
+    {
+      "name": "Yousef Taha",
+      "nameKey": "youseftaha",
+      "aliases": [
+        "youseftaha",
+        "ytaha"
+      ],
+      "jerseyNumber": "0",
+      "position": "C",
+      "positions": [
+        "C"
+      ],
+      "team": "GLO",
+      "portraitUrl": "https://dashboard.pba.ph/assets/players/glo-Taha.png",
+      "portraitArchiveUrl": "https://dashboard.pba.ph/assets/players/glo-Taha.png",
+      "profileSlug": "yousef-taha",
+      "profileUrl": "https://www.pba.ph/players/yousef-taha",
+      "profileArchiveUrl": "https://web.archive.org/web/20180327154938/https://www.pba.ph/players/yousef-taha"
+    }
+  ]
+}

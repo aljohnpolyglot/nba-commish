@@ -18,14 +18,18 @@
  */
 
 import {
+  addGameDays,
   getDraftDate,
-  getCurrentOffseasonEffectiveFAStart,
-  getCurrentOffseasonFAMoratoriumEnd,
+  getFreeAgencyStartDate,
+  getRolloverDate,
   getTrainingCampDate,
   getOpeningNightDate,
   parseGameDate,
   toISODateString,
 } from '../../utils/dateUtils';
+import type { LeagueCalendar } from '../../types';
+import { getLeagueCalendar, getLeagueSeasonForDate, leagueCalendarDate } from '../leagueCalendar';
+import { getPbaDraftYearForSeasonYear } from '../pba/draftCalendar';
 
 /** Single source-of-truth phase enum for the post-draft → preseason window.
  *  `inSeason` is the catch-all for anything that isn't an offseason phase
@@ -72,10 +76,15 @@ type ScheduleDateLike = {
   date?: string;
   isPlayoff?: boolean;
   isPlayIn?: boolean;
+  played?: boolean;
+  season?: number;
+  competitionId?: string;
 };
 
 type LeagueStatsLike = {
   year?: number;
+  uiMode?: string;
+  leagueCalendar?: LeagueCalendar;
   draftMonth?: number;
   draftDay?: number;
   faStartMonth?: number;
@@ -89,8 +98,71 @@ type LeagueStatsLike = {
 /** Pick the right "draft season" — Jan-Jun is the upcoming draft (ls.year),
  *  Jul-Dec is the previous draft (ls.year was already rolled, so the last
  *  draft happened in the calendar year of `current`). */
-export function computeDraftSeasonYear(cMonth: number, cYear: number, lsYear: number): number {
-  return cMonth >= 7 ? cYear : lsYear;
+export function computeDraftSeasonYear(
+  cMonth: number,
+  cYear: number,
+  lsYear: number,
+  leagueStats?: LeagueStatsLike,
+  cDay = 1,
+): number {
+  const calendar = getLeagueCalendar(leagueStats as any);
+  const current = new Date(Date.UTC(cYear, cMonth - 1, cDay));
+  const activeSeason = getLeagueSeasonForDate(toISODateString(current), leagueStats as any) || lsYear;
+  const draft = calendar.draftDate ? leagueCalendarDate(activeSeason, calendar.draftDate) : undefined;
+  if (!draft) return activeSeason;
+  const opening = leagueCalendarDate(activeSeason, calendar.regularSeasonStart);
+  const regularEnd = leagueCalendarDate(activeSeason, calendar.regularSeasonEnd);
+  if (draft < opening) return current <= regularEnd ? activeSeason : activeSeason + 1;
+  return current < opening ? activeSeason - 1 : activeSeason;
+}
+
+export function isDraftBeforeSeasonOpening(
+  season: number,
+  leagueStats?: LeagueStatsLike | null,
+): boolean {
+  const calendar = getLeagueCalendar(leagueStats as any);
+  if (!calendar.draftDate) return false;
+  return leagueCalendarDate(season, calendar.draftDate)
+    < leagueCalendarDate(season, calendar.regularSeasonStart);
+}
+
+export function getDraftSeasonYearForState(state: {
+  date?: string | Date;
+  leagueStats?: LeagueStatsLike | null;
+  draftComplete?: boolean;
+  seasonLifecycle?: { draft?: { year?: number | null } } | null;
+  offseasonChecklist?: {
+    draft?: string;
+    draftLottery?: string;
+  } | null;
+}): number {
+  const persistedDraftYear = Number(state.seasonLifecycle?.draft?.year);
+  if (Number.isInteger(persistedDraftYear) && persistedDraftYear > 0) return persistedDraftYear;
+  const current = state.date ? parseGameDate(state.date) : new Date(NaN);
+  const leagueYear = Number(state.leagueStats?.year);
+  const fallbackYear = Number.isFinite(leagueYear)
+    ? leagueYear
+    : Number.isFinite(current.getTime())
+      ? current.getUTCFullYear()
+      : new Date().getUTCFullYear();
+  if (state.leagueStats?.uiMode === 'pba_isolated') return getPbaDraftYearForSeasonYear(fallbackYear);
+  if (!Number.isFinite(current.getTime())) return fallbackYear;
+  const computedSeason = computeDraftSeasonYear(
+    current.getUTCMonth() + 1,
+    current.getUTCFullYear(),
+    fallbackYear,
+    state.leagueStats ?? undefined,
+    current.getUTCDate(),
+  );
+  const draftStatus = state.offseasonChecklist?.draft;
+  const unresolvedPriorDraft = state.draftComplete === false
+    || draftStatus === 'pending'
+    || draftStatus === 'in-progress';
+  if (computedSeason < fallbackYear && !unresolvedPriorDraft) {
+    const trainingCamp = getTrainingCampDate(fallbackYear, state.leagueStats ?? undefined);
+    if (current >= trainingCamp) return fallbackYear;
+  }
+  return computedSeason;
 }
 
 /** Training camp + opening night anchor on the NEXT upcoming season, not the
@@ -98,9 +170,18 @@ export function computeDraftSeasonYear(cMonth: number, cYear: number, lsYear: nu
  *  year, helpers return Oct/Sept of seasonYear-1.
  *  If `ls.year` is stale in Jul-Sep (rollover lag / legacy save), clamp to the
  *  calendar-implied upcoming season so July 2029 never points at Sept 2028. */
-export function computeUpcomingSeasonYear(cMonth: number, cYear: number, lsYear: number): number {
-  const derivedFromLeagueYear = cMonth >= 7 ? lsYear : lsYear + 1;
-  return Math.max(derivedFromLeagueYear, cYear + 1);
+export function computeUpcomingSeasonYear(
+  cMonth: number,
+  cYear: number,
+  lsYear: number,
+  leagueStats?: LeagueStatsLike,
+  cDay = 1,
+): number {
+  const calendar = getLeagueCalendar(leagueStats as any);
+  const current = new Date(Date.UTC(cYear, cMonth - 1, cDay));
+  const activeSeason = getLeagueSeasonForDate(toISODateString(current), leagueStats as any) || lsYear;
+  const currentSeasonOpening = leagueCalendarDate(activeSeason, calendar.regularSeasonStart);
+  return current <= currentSeasonOpening ? activeSeason : activeSeason + 1;
 }
 
 /** Derive the current offseason phase. Behavior-preserving — no side effects.
@@ -120,16 +201,20 @@ export function getOffseasonState(
   const ls = leagueStats;
   const cMonth = c.getUTCMonth() + 1;
   const cYear = c.getUTCFullYear();
+  const cDay = c.getUTCDate();
 
   const lsYear = ls.year ?? cYear;
-  const draftSeasonYear = computeDraftSeasonYear(cMonth, cYear, lsYear);
+  const draftSeasonYear = computeDraftSeasonYear(cMonth, cYear, lsYear, ls, cDay);
 
   const draftDate = getDraftDate(draftSeasonYear, ls);
-  const effectiveFAStart = getCurrentOffseasonEffectiveFAStart(c, ls, schedule);
-  const moratoriumEnd = getCurrentOffseasonFAMoratoriumEnd(c, ls, schedule);
-  const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, cYear, lsYear);
+  const upcomingSeasonYear = computeUpcomingSeasonYear(cMonth, cYear, lsYear, ls, cDay);
+  const completedSeasonYear = upcomingSeasonYear - 1;
+  const rolloverDate = getRolloverDate(completedSeasonYear, ls, schedule);
+  const nominalFAStart = getFreeAgencyStartDate(draftSeasonYear, ls);
+  const effectiveFAStart = nominalFAStart > rolloverDate ? nominalFAStart : rolloverDate;
+  const moratoriumEnd = addGameDays(effectiveFAStart, ls.faMoratoriumDays ?? 0);
   const trainingCamp = getTrainingCampDate(upcomingSeasonYear, ls);
-  const openingNight = getOpeningNightDate(upcomingSeasonYear);
+  const openingNight = getOpeningNightDate(upcomingSeasonYear, ls, schedule);
 
   const dateStr = toISODateString(c);
   const draftDateStr = toISODateString(draftDate);
@@ -139,19 +224,24 @@ export function getOffseasonState(
   const openingNightStr = toISODateString(openingNight);
 
   let phase: OffseasonPhase;
-  // ── Offseason calendar window ────────────────────────────────────────────
-  // The offseason runs Jun 15 → Oct 20 of any calendar year (after Finals
-  // end, before the next opening night). Outside this window = always
-  // inSeason. Inside, run the phase cascade.
-  //
-  // Why a calendar window instead of the openingNight check we used before:
-  // getOpeningNightDate(seasonYear) returns Oct of (seasonYear-1) per BBGM
-  // convention (seasonYear = year season ENDS). So pre-rollover (e.g. Jun 23
-  // 2026 with lsYear=2026), openingNight = Oct 21 2025 → the "past opening
-  // night" check fires incorrectly. Calendar window sidesteps the year
-  // convention entirely.
-  const offseasonWindowStart = new Date(Date.UTC(cYear, 5, 15));   // Jun 15 cYear
-  const offseasonWindowEnd   = new Date(Date.UTC(cYear, 9, 21));   // Oct 21 cYear
+  const completedPostseasonDates = (schedule ?? [])
+    .filter(game => !game.competitionId && (game.isPlayoff || game.isPlayIn) && game.played && game.date)
+    .filter(game => {
+      if (Number.isFinite(game.season)) return game.season === completedSeasonYear;
+      return parseGameDate(String(game.date)).getUTCFullYear() === completedSeasonYear;
+    })
+    .map(game => parseGameDate(String(game.date)))
+    .filter(date => Number.isFinite(date.getTime()) && date <= c);
+  const lastCompletedPostseason = completedPostseasonDates.length > 0
+    ? new Date(Math.max(...completedPostseasonDates.map(date => date.getTime())))
+    : undefined;
+  const fallbackWindowStart = addGameDays(draftDate, -14) < rolloverDate
+    ? addGameDays(draftDate, -14)
+    : rolloverDate;
+  const offseasonWindowStart = lastCompletedPostseason
+    ? addGameDays(lastCompletedPostseason, 1)
+    : fallbackWindowStart;
+  const offseasonWindowEnd = openingNight;
   const inOffseasonWindow = c >= offseasonWindowStart && c < offseasonWindowEnd;
 
   if (!inOffseasonWindow) {
@@ -192,6 +282,12 @@ export function getOffseasonState(
   };
 }
 
+export const isOffseasonActiveForChecklist = (
+  phase: string,
+  canonicalOffseasonOpen: boolean,
+  pbaConferenceOffseason: boolean,
+): boolean => canonicalOffseasonOpen || phase !== 'inSeason' || pbaConferenceOffseason;
+
 // ─── Drift warning helper ──────────────────────────────────────────────────
 // Throttled by `${caller}:${phase}` so a daily tick doesn't flood the console.
 
@@ -229,6 +325,12 @@ export function logOffseasonDrift(
 export {
   defaultOffseasonChecklist,
   firstUnfinishedRow,
+  getEuroOffseasonTaskDates,
+  getEuroScheduleDrawTransition,
+  getManualReviewBlockingAutoResolve,
+  getOffseasonBlockingRow,
+  getOffseasonRowDescription,
+  getOffseasonRowLabel,
   getVisibleOffseasonRows,
   initialEuroOffseasonChecklist,
   initialPbaChecklist,
@@ -237,9 +339,13 @@ export {
   initialPreseasonChecklist,
   isChecklistComplete,
   isNoDraftLeague,
+  isOffseasonRowLocked,
   OFFSEASON_ROW_DESCRIPTIONS,
   OFFSEASON_ROW_LABELS,
   OFFSEASON_ROW_ORDER,
   OFFSEASON_ROW_TAB,
   setRowStatus,
+  shouldSuppressOpeningOffseasonChecklist,
+  shouldOpenRookieContractsDisclaimer,
+  withGovernorsBoardMeetingTask,
 } from './offseasonChecklistState';

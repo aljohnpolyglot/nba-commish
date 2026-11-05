@@ -1,0 +1,996 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "lithuanian-lkl-league-file.2963131250447897",
+  "competitionKey": "lithuanian-lkl",
+  "competitionName": "Lietuvos Krepšinio Lyga",
+  "leagueKey": "lithuanian-lkl",
+  "generatedAt": "2026-07-19T12:45:45.986Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "lithuanian-lkl-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/10/Lithuanian-LKL/stats/2026/Averages/Qualified/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/lithuanian-lkl/lithuanian-lkl-2026-bbgm.json",
+        "sourceHash": "c4dd003f394a52011fded3432d96447596ec1e43f9621cab358ce819ba6b42ab",
+        "fetchedAt": "2026-07-19T12:45:45.986Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 26,
+        "lost": 1
+      }
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 18,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mindaugas Kuzminskas",
+                "canonicalKey": "person:mindaugas-kuzminskas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Neptunas",
+        "canonicalKey": "lithuanian-lkl:neptunas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Lietuvos Rytas",
+          "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+        },
+        "won": 23,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paulius Jankunas",
+                "canonicalKey": "person:paulius-jankunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 46,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Antanas Kavaliauskas",
+                "canonicalKey": "person:antanas-kavaliauskas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Arturas Milaknis",
+                "canonicalKey": "person:arturas-milaknis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Neptunas",
+        "canonicalKey": "lithuanian-lkl:neptunas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 42,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vytautas Sulskis",
+                "canonicalKey": "person:vytautas-sulskis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Vytautas Prienu",
+                "canonicalKey": "lithuanian-lkl:vytautas-prienu"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dzherom Rendl",
+                "canonicalKey": "person:dzherom-rendl"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "7Bet-Lietkabelis Panevezys",
+        "canonicalKey": "lithuanian-lkl:7bet-lietkabelis-panevezys"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 43,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jamar Diggs",
+                "canonicalKey": "person:jamar-diggs"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Juventus",
+                "canonicalKey": "lithuanian-lkl:juventus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edgaras Ulanovas",
+                "canonicalKey": "person:edgaras-ulanovas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 42,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Laurynas Birutis",
+                "canonicalKey": "person:laurynas-birutis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Siauliai",
+                "canonicalKey": "lithuanian-lkl:siauliai"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 39,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tomas Lekunas",
+                "canonicalKey": "person:tomas-lekunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Pieno Zvaigzdes",
+                "canonicalKey": "lithuanian-lkl:pieno-zvaigzdes"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brandon Davies",
+                "canonicalKey": "person:brandon-davies"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 22,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jerai Grant",
+                "canonicalKey": "person:jerai-grant"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 41,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Zygimantas Skucas",
+                "canonicalKey": "person:zygimantas-skucas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Juventus",
+                "canonicalKey": "lithuanian-lkl:juventus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Thomas Walkup",
+                "canonicalKey": "person:thomas-walkup"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Thomas Walkup",
+                "canonicalKey": "person:thomas-walkup"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rokas Jokubaitis",
+                "canonicalKey": "person:rokas-jokubaitis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Thomas Walkup",
+                "canonicalKey": "person:thomas-walkup"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rokas Jokubaitis",
+                "canonicalKey": "person:rokas-jokubaitis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "7Bet-Lietkabelis Panevezys",
+        "canonicalKey": "lithuanian-lkl:7bet-lietkabelis-panevezys"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Lietuvos Rytas",
+          "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+        },
+        "won": 35,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Juan Palacios",
+                "canonicalKey": "person:juan-palacios"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Jonava Jonavos",
+                "canonicalKey": "lithuanian-lkl:jonava-jonavos"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Arnas Butkevicius",
+                "canonicalKey": "person:arnas-butkevicius"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vytenis Lipkevicius",
+                "canonicalKey": "person:vytenis-lipkevicius"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "7Bet-Lietkabelis Panevezys",
+                "canonicalKey": "lithuanian-lkl:7bet-lietkabelis-panevezys"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vytenis Lipkevicius",
+                "canonicalKey": "person:vytenis-lipkevicius"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "7Bet-Lietkabelis Panevezys",
+                "canonicalKey": "lithuanian-lkl:7bet-lietkabelis-panevezys"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 36,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Giedrius Staniulis",
+                "canonicalKey": "person:giedrius-staniulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Gargzdu Gargzdai",
+                "canonicalKey": "lithuanian-lkl:gargzdu-gargzdai"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Isaiah Taylor",
+                "canonicalKey": "person:isaiah-taylor"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 33,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marcus Foster",
+                "canonicalKey": "person:marcus-foster"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marcus Foster",
+                "canonicalKey": "person:marcus-foster"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lietuvos Rytas",
+                "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Lietuvos Rytas",
+        "canonicalKey": "lithuanian-lkl:lietuvos-rytas"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 42,
+        "lost": 4
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Chauncey Collins",
+                "canonicalKey": "person:chauncey-collins"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Mazeikiai",
+                "canonicalKey": "lithuanian-lkl:mazeikiai"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvain Francisco",
+                "canonicalKey": "person:sylvain-francisco"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Zalgiris Kaunas",
+        "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Juventus",
+        "canonicalKey": "lithuanian-lkl:juventus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Zalgiris Kaunas",
+          "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+        },
+        "won": 39,
+        "lost": 1
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Augustine Rubit",
+                "canonicalKey": "person:augustine-rubit"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "7Bet-Lietkabelis Panevezys",
+                "canonicalKey": "lithuanian-lkl:7bet-lietkabelis-panevezys"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Azuolas Tubelis",
+                "canonicalKey": "person:azuolas-tubelis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "lithuanian-lkl:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

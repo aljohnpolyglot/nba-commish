@@ -5,6 +5,7 @@ import { UserPlus, UserMinus, Heart, MessageCircle, Repeat2, Share, MoreHorizont
 import { formatTwitterDate } from '../../utils/socialhelpers';
 import { getUnavatarUrl, canUseUnavatar } from '../../data/photos/social';
 import { AVATAR_DATA } from '../../data/avatars';
+import { getAvatarByHandle } from '../../services/avatarService';
 import { needsCanvasEditor } from '../../services/social/photoEnricher';
 import { ImagnPhotoEditor } from './ImagnPhotoEditor';
 import { cn } from '../../lib/utils';
@@ -60,7 +61,14 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick, onC
     if (avatarSrc !== undefined) return;
     
     const resolve = async () => {
-      // 1. Try provided avatarUrl if it's not a placeholder
+      const nativeAvatar = getAvatarByHandle(post.handle, AVATAR_DATA);
+      if (nativeAvatar) {
+        setAvatarSrc(nativeAvatar);
+        avatarCache.set(post.handle, nativeAvatar);
+        return;
+      }
+
+      // Try provided avatarUrl if it's not a placeholder
       if (post.avatarUrl && typeof post.avatarUrl === 'string' && !post.avatarUrl.includes('placeholder') && !post.avatarUrl.includes('default')) {
         setAvatarSrc(post.avatarUrl);
         avatarCache.set(post.handle, post.avatarUrl);
@@ -143,6 +151,7 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick, onC
                 id: 0, setId: 0, headLine: '', caption: '', captionClean: '',
                 players: [], photographer: '', location: '', date: '',
                 width: 0, height: 0, isTopPic: false,
+                creditLine: d?.photoCredit,
                 medUrl: post.mediaUrl!,
                 largeUrl: post.mediaUrl!,
               };
@@ -164,19 +173,21 @@ const SocialPostCard: React.FC<SocialPostCardProps> = ({ post, onImageClick, onC
               );
             }
             return (
-              <div
-                className="mt-3 rounded-2xl overflow-hidden border border-zinc-800"
-                style={post.mediaBackgroundColor ? { backgroundColor: post.mediaBackgroundColor } : undefined}
-                onClick={e => e.stopPropagation()}
-              >
-                <img
-                  src={post.mediaUrl}
-                  alt=""
-                  className="w-full object-cover max-h-[512px]"
-                  referrerPolicy="no-referrer"
-                  onClick={() => onImageClick?.(post.mediaUrl!)}
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                />
+              <div className="mt-3" onClick={e => e.stopPropagation()}>
+                <div
+                  className="rounded-2xl overflow-hidden border border-zinc-800"
+                  style={post.mediaBackgroundColor ? { backgroundColor: post.mediaBackgroundColor } : undefined}
+                >
+                  <img
+                    src={post.mediaUrl}
+                    alt=""
+                    className="w-full object-cover max-h-[512px]"
+                    referrerPolicy="no-referrer"
+                    onClick={() => onImageClick?.(post.mediaUrl!)}
+                    onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  />
+                </div>
+                {d?.photoCredit && <p className="mt-1 px-1 text-[11px] text-zinc-500">{d.photoCredit}</p>}
               </div>
             );
           })()}

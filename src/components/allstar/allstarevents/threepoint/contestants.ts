@@ -3,13 +3,14 @@ export { } from '../../../../services/allStar/ThreePointContestant';
 
 import { ThreePointContestant } from '../../../../services/allStar/ThreePointContestant';
 import { getPlayerImage } from '../../../../utils/playerImage';
+import { aggregateStats, dedupeStatsRows } from '../../../central/view/playerStatsMath';
 
 /**
  * Map a game NBAPlayer to ThreePointContestant for the live contest display.
  * The nbaSlug is derived from the player name and used to fetch real shot-zone data
  * from the Cloudflare Worker. Falls back to badge-based logic if the fetch fails.
  */
-export function mapPlayerToContestant(player: any, teamAbbrev: string): ThreePointContestant {
+export function mapPlayerToContestant(player: any, teamAbbrev: string, teamLogoUrl?: string, seasonYear?: number): ThreePointContestant {
   const latestRatings = Array.isArray(player.ratings)
     ? player.ratings[player.ratings.length - 1] ?? {}
     : (player.ratings ?? {});
@@ -19,11 +20,17 @@ export function mapPlayerToContestant(player: any, teamAbbrev: string): ThreePoi
   const imgURL = getPlayerImage(player) ||
     player.imgURL ||
     (player.nbaId ? `https://cdn.nba.com/headshots/nba/latest/1040x760/${player.nbaId}.png` : '');
+  const regularRows = (player.stats ?? []).filter((row: any) => !row.playoffs && !row.competitionId);
+  const displaySeason = seasonYear ?? Math.max(...regularRows.map((row: any) => Number(row.season)));
+  const seasonRows = dedupeStatsRows(regularRows.filter((row: any) => Number(row.season) === displaySeason));
+  const totalRow = seasonRows.find(row => /^(TOT|[2-9]TM)$/.test(String(row.abbrev ?? '').toUpperCase()));
+  const regularStats = aggregateStats(totalRow ? [totalRow] : seasonRows);
 
   return {
     id: player.internalId ?? player.playerId ?? player.id,
     name: player.name,
     team: teamAbbrev,
+    teamLogoUrl,
     pos: player.pos ?? 'G',
     nbaSlug,
     imgURL,
@@ -34,6 +41,9 @@ export function mapPlayerToContestant(player: any, teamAbbrev: string): ThreePoi
     },
     badges: player.badges ?? {},
     age: player.age ?? 25,
+    seasonStats: regularStats && Number(regularStats.gp) > 0
+      ? { gp: Number(regularStats.gp), tp: Number(regularStats.tp ?? 0), tpa: Number(regularStats.tpa ?? 0) }
+      : undefined,
     awards: player.awards,
   };
 }

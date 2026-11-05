@@ -5,6 +5,12 @@ import { formatGameRelativeDate } from '../../utils/helpers';
 import { ContactAvatar } from '../common/ContactAvatar';
 import { AVATAR_DATA } from '../../data/avatars';
 import { getAvatarByName } from '../../services/avatarService';
+import { resolveChatStaffContact } from '../../utils/chatStaffContact';
+import { sanitizeChatReply } from '../../services/llm/prompts/chat';
+import { displayStaffRole } from '../../services/staff/staffCareerRows';
+import { resolveChatPlayerIdentity } from '../../services/messages/chatPlayerIdentity';
+import { PlayerPortrait } from '../shared/PlayerPortrait';
+import type { NBAPlayer } from '../../types';
 
 interface ChatListProps {
   chats: Chat[];
@@ -17,49 +23,38 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, selectedChatId, onSel
   const { state } = useGame();
 
   const allContacts = React.useMemo(() => {
-    const contacts: { id: string; name: string; avatarUrl?: string; teamLogoUrl?: string; role: string; isChat?: boolean; chatId?: string }[] = [];
+    const contacts: { id: string; name: string; avatarUrl?: string; teamLogoUrl?: string; role: string; isChat?: boolean; chatId?: string; portraitPlayer?: NBAPlayer }[] = [];
     
     // Add existing chats
     chats.forEach(chat => {
       const participant = chat.participantDetails.find(p => p.id !== 'commissioner');
       if (participant) {
-        let avatarUrl: string | undefined = undefined;
-        let teamLogoUrl: string | undefined = undefined;
+        let avatarUrl: string | undefined = participant.avatarUrl;
+        let teamLogoUrl: string | undefined = participant.teamLogoUrl;
+        let role = participant.role;
 
         // Always look up player/staff to get portrait + team logo
-        const player = state.players.find(p => p.internalId === participant.id || (p.name && participant.name && p.name.toLowerCase() === participant.name.toLowerCase()));
+        const player = resolveChatPlayerIdentity(state.players, participant);
         if (player) {
           if (player.status === 'Retired' || player.tid === -3) {
-            participant.role = player.hof ? 'Retired • Hall of Famer' : 'Retired • Retired Player';
+            role = player.hof ? 'Retired • Hall of Famer' : 'Retired • Retired Player';
           }
           avatarUrl = player.imgURL;
-          if (player.tid !== undefined && player.tid >= 0) {
-            const team = state.teams.find(t => t.id === player.tid);
-            if (team) teamLogoUrl = team.logoUrl;
-          } else if (['PBA', 'WNBA', 'Euroleague', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia'].includes(player.status || '')) {
-            const team = state.nonNBATeams.find(t => t.league === player.status && t.tid === player.tid);
-            if (team) teamLogoUrl = team.imgURL;
-          }
+          const team = state.teams.find(item => item.id === player.tid)
+            ?? state.nonNBATeams.find(item => item.tid === player.tid);
+          if (team) teamLogoUrl = 'tid' in team ? team.imgURL : team.logoUrl;
         } else {
-          const allStaff = [
-            ...(state.staff?.owners || []),
-            ...(state.staff?.gms || []),
-            ...(state.staff?.coaches || []),
-            ...(state.staff?.leagueOffice || [])
-          ];
-          const staff = allStaff.find(s => s.name && participant.name && s.name.toLowerCase() === participant.name.toLowerCase());
+          const staff = resolveChatStaffContact(state, participant);
           if (staff) {
-            avatarUrl = staff.playerPortraitUrl;
-            if (staff.team) {
-              const team = state.teams.find(t => t.name === staff.team);
-              if (team) teamLogoUrl = team.logoUrl;
-            }
+            avatarUrl = staff.portraitUrl;
+            teamLogoUrl = staff.teamLogoUrl;
+            role = staff.role;
           }
         }
 
         // Override portrait with generated avatar if found (AVATAR_DATA lookup)
         const generatedAvatar = getAvatarByName(participant.name, AVATAR_DATA);
-        if (generatedAvatar) avatarUrl = generatedAvatar;
+        if (!avatarUrl && generatedAvatar) avatarUrl = generatedAvatar;
 
         // Apply NBA logo fallback
         if (!avatarUrl && participant.name.toUpperCase().startsWith('NBA')) {
@@ -68,16 +63,18 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, selectedChatId, onSel
 
         contacts.push({
           ...participant,
+          role,
           avatarUrl,
           teamLogoUrl,
           isChat: true,
-          chatId: chat.id
+          chatId: chat.id,
+          portraitPlayer: player ?? undefined,
         });
       }
     });
 
     return contacts.filter(c => c.name && c.name.toLowerCase().includes((searchTerm || '').toLowerCase()));
-  }, [chats, state.players, state.staff, searchTerm]);
+  }, [chats, state.nonNBATeams, state.players, state.staff, state.teams, searchTerm]);
 
   return (
     <div className="space-y-1">
@@ -95,11 +92,22 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, selectedChatId, onSel
             }`}
           >
             <div className="relative shrink-0">
-              <ContactAvatar 
-                name={contact.name} 
-                portraitUrl={contact.avatarUrl} 
-                teamLogoUrl={contact.teamLogoUrl} 
-              />
+              {contact.portraitPlayer ? (
+                <PlayerPortrait
+                  imgUrl={contact.portraitPlayer.imgURL || contact.avatarUrl}
+                  face={(contact.portraitPlayer as any).face}
+                  playerName={contact.portraitPlayer.name}
+                  portraitSeason={state.leagueStats?.year}
+                  teamLogoUrl={contact.teamLogoUrl}
+                  size={40}
+                />
+              ) : (
+                <ContactAvatar
+                  name={contact.name}
+                  portraitUrl={contact.avatarUrl}
+                  teamLogoUrl={contact.teamLogoUrl}
+                />
+              )}
               {chat && chat.unreadCount > 0 && (
                 <div className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-slate-950 flex items-center justify-center text-[10px] font-bold text-white z-10">
                   {chat.unreadCount}
@@ -123,9 +131,11 @@ export const ChatList: React.FC<ChatListProps> = ({ chats, selectedChatId, onSel
                   <span className="italic text-indigo-400">typing...</span>
                 ) : (
                   lastMessage ? (
-                    `${lastMessage.senderId === 'commissioner' ? 'You: ' : ''}${lastMessage.text}`
+                    `${lastMessage.senderId === 'commissioner' ? 'You: ' : ''}${
+                      lastMessage.senderId === 'commissioner' ? lastMessage.text : sanitizeChatReply(lastMessage.text)
+                    }`
                   ) : (
-                    contact.isChat ? 'Start a conversation' : `Start chat with ${contact.role}`
+                    contact.isChat ? 'Start a conversation' : `Start chat with ${displayStaffRole(contact.role)}`
                   )
                 )}
               </p>

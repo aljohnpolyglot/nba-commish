@@ -42,6 +42,11 @@ export interface StaffRetirementRecord {
   farewellTourEligible: boolean;
   offseasonRow: 'staffSignings';
   requiresReplacement: boolean;
+  coachAchievements?: StaffMember['coachAchievements'];
+  hallOfFameEligible: boolean;
+  hallOfFameEligibleYear?: number;
+  hallOfFameScore: number;
+  sourceRetirement?: StaffMember['sourceRetirement'];
 }
 
 type TeamWithStaff = Partial<Pick<NBATeam, 'id' | 'name' | 'region' | 'abbrev' | 'logoUrl'>> & {
@@ -106,13 +111,47 @@ function clampScore(score: number): number {
 
 function ageDesire(age: number): number {
   if (age < 45) return 0;
-  if (age < 50) return 2;
-  if (age < 55) return 7;
-  if (age < 60) return 15;
-  if (age < 65) return 28;
-  if (age < 70) return 45;
-  if (age < 75) return 64;
-  return 82;
+  if (age < 55) return 1;
+  if (age < 60) return 3;
+  if (age < 65) return 5;
+  if (age < 70) return 8;
+  if (age < 75) return 12;
+  return 16;
+}
+
+function staffHallOfFameScore(member: StaffMember, role: string, yearsExperience: number): number {
+  if (!/coach/i.test(role)) return 0;
+  const achievements = member.coachAchievements ?? [];
+  const championships = achievements.filter(row => /champion/i.test(`${row.type} ${row.label}`)).length;
+  const coachAwards = achievements.filter(row => /coach of the year|best coach|\bcoy\b/i.test(`${row.type} ${row.label}`)).length;
+  const rating = Number(member.rating ?? member.reputation ?? 0);
+  const headCoachBonus = /head coach/i.test(role) ? 8 : 0;
+  const experienceBonus = yearsExperience >= 35 ? 14 : yearsExperience >= 25 ? 9 : yearsExperience >= 18 ? 4 : 0;
+  const ratingBonus = rating >= 90 ? 12 : rating >= 82 ? 7 : rating >= 75 ? 3 : 0;
+  return Math.max(0, championships * 16 + coachAwards * 12 + headCoachBonus + experienceBonus + ratingBonus);
+}
+
+export function isStaffRetirementRecordInMode(record: StaffRetirementRecord, uiMode?: string): boolean {
+  const teamId = Number(record.teamId);
+  const leagueId = String(record.leagueId ?? '').toLowerCase();
+  if (uiMode === 'pba_isolated') {
+    return (teamId >= 2000 && teamId < 2100) || leagueId === 'pba';
+  }
+  if (uiMode === 'euro_isolated') {
+    return (teamId >= 1000 && teamId < 1100)
+      || (teamId >= 5000 && teamId < 5100)
+      || leagueId === 'euroleague'
+      || leagueId === 'endesa';
+  }
+  if (uiMode === 'wnba_isolated') {
+    return (teamId >= 3000 && teamId < 4000) || leagueId === 'wnba';
+  }
+  if (uiMode === 'fictional') {
+    if (leagueId && leagueId !== 'fictional') return false;
+    return !Number.isFinite(teamId) || (teamId >= 0 && teamId < 100);
+  }
+  if (leagueId && leagueId !== 'nba') return false;
+  return !Number.isFinite(teamId) || (teamId >= 0 && teamId < 100);
 }
 
 function inferMotivation(member: StaffMember, role: string, seed: number): StaffMotivationType {
@@ -158,7 +197,7 @@ function teamWindowScore(team: TeamWithStaff): number {
   let score = 0;
   if (winPct >= 0.62 || recentDeepRuns > 0 || manualStatus === 'contending' || manualStatus === 'win_now') score -= 18;
   if (winPct < 0.38 || recentBadSeasons >= 2 || ownerBadSeasons >= 2 || manualStatus === 'rebuilding') score += 16;
-  if ((team as any).justWonEndesa || (team as any).justReachedEuroFinalFour) score -= 12;
+  if ((team as any).justWonDomesticTitle || (team as any).justWonEndesa || (team as any).justReachedEuroFinalFour) score -= 12;
   return score;
 }
 
@@ -219,7 +258,7 @@ function stressHealthScore(member: StaffMember, team: TeamWithStaff, seed: numbe
 }
 
 function desireToChance(score: number): number {
-  if (score < 20) return 1;
+  if (score < 20) return 0;
   if (score < 40) return 7;
   if (score < 60) return 22;
   if (score < 80) return 48;
@@ -293,6 +332,7 @@ export function evaluateStaffRetirement(args: {
   const teamId = team.id ?? team.tid;
   const teamName = getTeamFullName(team as unknown as NBATeam);
   const age = inferStaffAge(member, currentYear);
+  if (age < 45) return null;
   const yearsExperience = inferStaffYearsExperience(member, currentYear, age);
   const seed = hashSeed(`staff-retire:${staffKey(member, role, teamId)}:${currentYear}`);
   const motivation = inferMotivation(member, role, seed);
@@ -302,6 +342,8 @@ export function evaluateStaffRetirement(args: {
 
   const reason = pickReason({ member, motivation, seed, age, yearsExperience, desireScore });
   const postRetirementPath = pickPostRetirementPath(motivation, reason, seed);
+  const hallOfFameScore = staffHallOfFameScore(member, role, yearsExperience);
+  const hallOfFameEligible = hallOfFameScore >= 34;
   return {
     id: `staff-retire-${teamId ?? 'team'}-${String(member.id ?? member.name).replace(/[^a-z0-9]+/gi, '-')}-${currentYear}`,
     staffId: member.id,
@@ -330,6 +372,61 @@ export function evaluateStaffRetirement(args: {
     farewellTourEligible: yearsExperience >= 30 && Number((member as any).rating ?? member.reputation ?? 0) >= 82,
     offseasonRow: 'staffSignings',
     requiresReplacement: true,
+    coachAchievements: member.coachAchievements,
+    hallOfFameEligible,
+    ...(hallOfFameEligible ? { hallOfFameEligibleYear: currentYear + 5 } : {}),
+    hallOfFameScore,
+  };
+}
+
+export function buildImmediateStaffRetirement(args: {
+  member: StaffMember;
+  team: TeamWithStaff;
+  currentYear: number;
+  date: string;
+}): StaffRetirementRecord {
+  const { member, team, currentYear, date } = args;
+  const role = getStaffRole(member);
+  const teamId = team.id ?? team.tid;
+  const teamName = getTeamFullName(team as unknown as NBATeam);
+  const age = inferStaffAge(member, currentYear);
+  const yearsExperience = inferStaffYearsExperience(member, currentYear, age);
+  const seed = hashSeed(`staff-retire-now:${staffKey(member, role, teamId)}:${date}`);
+  const hallOfFameScore = staffHallOfFameScore(member, role, yearsExperience);
+  const hallOfFameEligible = hallOfFameScore >= 34;
+  return {
+    id: `staff-retire-now-${teamId ?? 'team'}-${String(member.id ?? member.name).replace(/[^a-z0-9]+/gi, '-')}-${currentYear}`,
+    staffId: member.id,
+    name: member.name,
+    role,
+    portraitUrl: member.playerPortraitUrl,
+    staffImageId: member.staffImageId,
+    face: member.face,
+    teamName,
+    teamId,
+    teamAbbrev: team.abbrev,
+    teamLogoUrl: team.logoUrl,
+    leagueId: member.leagueId,
+    age,
+    season: currentYear,
+    retiredDate: date,
+    reason: 'burnout',
+    reasonLabel: 'announced an immediate retirement',
+    motivation: inferMotivation(member, role, seed),
+    desireScore: 100,
+    yearsExperience,
+    experienceLabel: `${yearsExperience} yr${yearsExperience === 1 ? '' : 's'}`,
+    yearsWithTeam: Math.max(0, Number(member.yearsWithTeam ?? 0)),
+    sourcePlayerId: member.sourcePlayerId,
+    postRetirementPath: 'none',
+    farewellTourEligible: false,
+    offseasonRow: 'staffSignings',
+    requiresReplacement: true,
+    coachAchievements: member.coachAchievements,
+    hallOfFameEligible,
+    ...(hallOfFameEligible ? { hallOfFameEligibleYear: currentYear + 5 } : {}),
+    hallOfFameScore,
+    sourceRetirement: member.sourceRetirement,
   };
 }
 

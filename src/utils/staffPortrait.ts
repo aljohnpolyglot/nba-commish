@@ -1,3 +1,5 @@
+import { getCachedNbaHistoricalStaffPortraitCandidates } from '../services/nbaEraPortraitCatalog';
+
 const LEGACY_STAFF_IMAGE_MAX = 948;
 const STAFF_FOTOGRADE_MAX = 109;
 const STAFF_FOTOGRADE_BASE =
@@ -32,4 +34,16 @@ export function resolveStaffImageId(person: { staffImageId?: number | null; name
   const id = person.staffImageId;
   if (typeof id === 'number' && id >= 1 && id <= LEGACY_STAFF_IMAGE_MAX) return id;
   return deterministicStaffImageId(person.name ?? '');
+}
+
+export function resolveStaffPortraitUrl(person: {
+  playerPortraitUrl?: string | null;
+  portraitUrl?: string | null;
+  staffImageId?: number | null;
+  name?: string | null;
+}): string | null {
+  return getCachedNbaHistoricalStaffPortraitCandidates(person.name)[0]
+    ?? person.playerPortraitUrl
+    ?? person.portraitUrl
+    ?? getStaffImageUrl(resolveStaffImageId(person));
 }

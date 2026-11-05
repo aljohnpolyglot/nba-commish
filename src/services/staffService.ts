@@ -1,4 +1,7 @@
 import type { StaffData, NBAPlayer as Player } from '../types';
+import { getHistoricalCoachBio, getHistoricalCoachPhoto } from './staff/historicalNbaCoaches';
+import { prepareHistoricalCoachArchive } from './staff/historicalCoachArchive';
+import { readJsonResponse } from './utils/jsonResponse';
 
 interface TeamLogoRecord {
   logoUrl?: string;
@@ -49,6 +52,13 @@ interface RawStaffMember {
 interface EnrichedStaffMember extends RawStaffMember {
   playerPortraitUrl?: string;
   teamLogoUrl?: string;
+}
+
+interface RawStaffData {
+  owners?: RawStaffMember[];
+  gms?: RawStaffMember[];
+  coaches?: RawStaffMember[];
+  leagueOffice?: RawStaffMember[];
 }
 
 // ── Enrichment ─────────────────────────────────────────────────────────────────
@@ -177,6 +187,9 @@ export interface CoachContractHistory {
   end_year: number;
   annual_salary: number;
   total_value: number;
+  signing_timestamp?: number;
+  is_salary_estimate?: boolean;
+  is_length_estimate?: boolean;
 }
 
 export interface CoachContractData {
@@ -225,7 +238,36 @@ let _coachBios: CoachData[] = [];
 let _nba2kCoaches: NBA2KCoachData[] = [];
 let _coachContracts: CoachContractData[] = [];
 let _coachRatings: CoachRatingsEntry[] = [];
+let _coachBiosByName = new Map<string, CoachData>();
+let _nba2kCoachesByName = new Map<string, NBA2KCoachData>();
+let _nba2kCoachesByTeam = new Map<string, NBA2KCoachData[]>();
+let _coachContractsByName = new Map<string, CoachContractData>();
+let _coachRatingsByName = new Map<string, CoachRatingsEntry>();
+
+function firstByNormalizedName<T>(rows: T[], getName: (row: T) => string): Map<string, T> {
+  const index = new Map<string, T>();
+  for (const row of rows) {
+    const key = normalizeName(getName(row));
+    if (key && !index.has(key)) index.set(key, row);
+  }
+  return index;
+}
+
+function rebuildCoachLookupIndexes(): void {
+  _coachBiosByName = firstByNormalizedName(_coachBios, row => row.staff);
+  _nba2kCoachesByName = firstByNormalizedName(_nba2kCoaches, row => row.name);
+  _coachContractsByName = firstByNormalizedName(_coachContracts, row => row.name);
+  _coachRatingsByName = firstByNormalizedName(_coachRatings, row => row.name);
+  _nba2kCoachesByTeam = new Map<string, NBA2KCoachData[]>();
+  for (const coach of _nba2kCoaches) {
+    const team = String(coach.team ?? '');
+    const members = _nba2kCoachesByTeam.get(team) ?? [];
+    members.push(coach);
+    _nba2kCoachesByTeam.set(team, members);
+  }
+}
 let _coachDataFetched = false;
+let _coachDataPromise: Promise<void> | null = null;
 
 function normalizeName(name: string): string {
   if (!name) return '';
@@ -249,49 +291,97 @@ function parseStartYear(value: unknown): number | null {
   return parsed;
 }
 
+function parseSimulationYear(value: unknown): number | null {
+  const parsed = parseNumberish(value);
+  if (parsed == null || parsed < 1800 || parsed > 9999) return null;
+  return parsed;
+}
+
 export const fetchCoachData = async (): Promise<void> => {
   if (_coachDataFetched) return;
-  try {
-    const [photosRes, biosRes, nba2kRes, contractsRes, ratingsRes] = await Promise.all([
-      fetch(COACH_PHOTOS_GIST), fetch(COACHES_BIO_URL), fetch(NBA2K_COACH_LIST_URL),
-      fetch(COACH_CONTRACTS_URL), fetch(COACH_RATINGS_URL),
+  if (_coachDataPromise) return _coachDataPromise;
+  _coachDataPromise = (async () => {
+    const loadOptional = async <T,>(url: string, label: string): Promise<T | null> => {
+      try {
+        return await readJsonResponse<T>(await fetch(url), label);
+      } catch (error) {
+        console.warn(`[CoachData] ${label} unavailable`, error);
+        return null;
+      }
+    };
+    const [rawPhotos, bios, nba2kCoaches, contracts, ratings] = await Promise.all([
+      loadOptional<Record<string, string>>(COACH_PHOTOS_GIST, 'Coach photos'),
+      loadOptional<CoachData[]>(COACHES_BIO_URL, 'Coach biographies'),
+      loadOptional<NBA2KCoachData[]>(NBA2K_COACH_LIST_URL, 'NBA coach list'),
+      loadOptional<CoachContractData[]>(COACH_CONTRACTS_URL, 'Coach contracts'),
+      loadOptional<CoachRatingsEntry[]>(COACH_RATINGS_URL, 'Coach ratings'),
+      prepareHistoricalCoachArchive(),
     ]);
-    if (photosRes.ok) {
-      const rawPhotos = await photosRes.json();
+    if (rawPhotos && typeof rawPhotos === 'object' && !Array.isArray(rawPhotos)) {
       _coachPhotos = {};
-      for (const key in rawPhotos) _coachPhotos[normalizeName(key)] = rawPhotos[key];
+      for (const [name, photo] of Object.entries(rawPhotos)) {
+        if (typeof photo === 'string') _coachPhotos[normalizeName(name)] = photo;
+      }
     }
-    if (biosRes.ok) _coachBios = await biosRes.json();
-    if (nba2kRes.ok) _nba2kCoaches = await nba2kRes.json();
-    if (contractsRes.ok) _coachContracts = await contractsRes.json();
-    if (ratingsRes.ok) _coachRatings = await ratingsRes.json();
+    if (Array.isArray(bios)) _coachBios = bios;
+    if (Array.isArray(nba2kCoaches)) _nba2kCoaches = nba2kCoaches;
+    if (Array.isArray(contracts)) _coachContracts = contracts;
+    if (Array.isArray(ratings)) _coachRatings = ratings;
+    rebuildCoachLookupIndexes();
     _coachDataFetched = true;
-  } catch (e) {
-    console.error('[CoachData] fetch failed', e);
+  })();
+  try {
+    await _coachDataPromise;
+  } finally {
+    _coachDataPromise = null;
   }
 };
 
-export const getCoachPhoto = (name: string): string | undefined => _coachPhotos[normalizeName(name)];
-export const getCoachBio = (name: string): CoachData | undefined => _coachBios.find(c => normalizeName(c.staff) === normalizeName(name));
+export const getCoachPhoto = (name: string): string | undefined =>
+  _coachPhotos[normalizeName(name)] ?? getHistoricalCoachPhoto(name);
+export const getCoachBio = (name: string): CoachData | undefined =>
+  _coachBiosByName.get(normalizeName(name)) ?? getHistoricalCoachBio(name);
 export const getAllCoaches = (): CoachData[] => _coachBios;
-export const getNBA2KCoach = (name: string): NBA2KCoachData | undefined => _nba2kCoaches.find(c => normalizeName(c.name) === normalizeName(name));
-export const getTeamStaff = (teamName: string): NBA2KCoachData[] => _nba2kCoaches.filter(c => c.team === teamName);
-export const getCoachContract = (name: string): CoachContractData | undefined => _coachContracts.find(c => normalizeName(c.name) === normalizeName(name));
-export const getCoachContractSnapshot = (name: string | undefined, currentYear: number): CoachContractSnapshot | null => {
-  if (!name) return null;
-  const contract = getCoachContract(name);
-  const current = [...(contract?.history ?? [])]
-    .filter((entry): entry is CoachContractHistory => !!entry && Number.isFinite(entry.end_year))
-    .sort((a, b) => b.end_year - a.end_year || b.start_year - a.start_year)[0];
+export const getNBA2KCoach = (name: string): NBA2KCoachData | undefined => _nba2kCoachesByName.get(normalizeName(name));
+export const getTeamStaff = (teamName: string): NBA2KCoachData[] => _nba2kCoachesByTeam.get(teamName) ?? [];
+export const getCoachContract = (name: string): CoachContractData | undefined => _coachContractsByName.get(normalizeName(name));
+export const resolveCoachContractSnapshot = (
+  contract: CoachContractData | null | undefined,
+  currentYear: number,
+): CoachContractSnapshot | null => {
+  const current = (contract?.history ?? [])
+    .map(entry => {
+      const startYear = Number(entry?.start_year);
+      const sourceEndYear = Number(entry?.end_year);
+      const length = Number(entry?.contract_length);
+      if (!Number.isInteger(startYear) || !Number.isInteger(sourceEndYear)) return null;
+      const derivedEndYear = Number.isFinite(length) && length > 0
+        ? startYear + Math.round(length) - 1
+        : sourceEndYear;
+      return { entry, startYear, endYear: Math.max(sourceEndYear, derivedEndYear) };
+    })
+    .filter((row): row is NonNullable<typeof row> => (
+      row !== null
+      && row.startYear <= currentYear
+      && row.endYear >= currentYear
+    ))
+    .sort((a, b) => (
+      b.startYear - a.startYear
+      || Number(b.entry.signing_timestamp ?? 0) - Number(a.entry.signing_timestamp ?? 0)
+      || b.endYear - a.endYear
+    ))[0];
   if (!current) return null;
-  const endYear = current.end_year;
-  const yearsLeft = Math.max(0, endYear - currentYear);
+  const yearsLeft = Math.max(0, current.endYear - currentYear);
   return {
-    annualSalary: Number.isFinite(current.annual_salary) ? current.annual_salary : null,
-    endYear,
+    annualSalary: Number.isFinite(current.entry.annual_salary) ? current.entry.annual_salary : null,
+    endYear: current.endYear,
     yearsLeft,
     isExpiring: yearsLeft <= 0,
   };
+};
+export const getCoachContractSnapshot = (name: string | undefined, currentYear: number): CoachContractSnapshot | null => {
+  if (!name) return null;
+  return resolveCoachContractSnapshot(getCoachContract(name), currentYear);
 };
 
 export const getStaffCareerSnapshot = (person: {
@@ -304,7 +394,7 @@ export const getStaffCareerSnapshot = (person: {
   born?: { year?: number | null } | string | null;
   age?: number | string | null;
 } | null | undefined, currentYear: number): StaffCareerSnapshot => {
-  const hiredYear = parseNumberish(person?.hiredYear);
+  const hiredYear = parseSimulationYear(person?.hiredYear);
   const bornYear = parseStartYear(
     typeof person?.born === 'string'
       ? person.born
@@ -318,8 +408,8 @@ export const getStaffCareerSnapshot = (person: {
   const yearsWithTeam = Math.max(
     0,
     Math.round(
-      parseNumberish(person?.yearsWithTeam)
-      ?? derivedYearsWithTeam
+      derivedYearsWithTeam
+      ?? parseNumberish(person?.yearsWithTeam)
       ?? 0,
     ),
   );
@@ -346,7 +436,7 @@ export const getStaffCareerSnapshot = (person: {
  *  Returns null when the name isn't in the ratings file — callers can then
  *  fall back to displayAttributes.buildStaffAttrs(seed). */
 export const getCoachRatings = (name: string): CoachRatingsEntry | undefined =>
-  _coachRatings.find(c => normalizeName(c.name) === normalizeName(name));
+  _coachRatingsByName.get(normalizeName(name));
 
 export const getAllCoachRatings = (): CoachRatingsEntry[] => _coachRatings;
 
@@ -358,8 +448,7 @@ export const getStaffData = async (
 ): Promise<StaffData> => {
   try {
     const response = await fetch(STAFF_DATA_URL);
-    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-    const data = await response.json();
+    const data = await readJsonResponse<RawStaffData>(response, 'NBA staff data');
 
     const enrichedOwners = (data.owners || []).map((owner: RawStaffMember) =>
       enrichStaffMember(owner, allPlayers, teamNameMap)
@@ -391,7 +480,7 @@ export const getStaffData = async (
       leagueOffice: enrichedLeagueOffice,
     };
   } catch (error) {
-    console.error('Failed to fetch and process staff data:', error);
+    console.warn('Failed to fetch and process remote staff data; continuing with available staff.', error);
     return { owners: [], gms: [], coaches: [], leagueOffice: [] };
   }
 };

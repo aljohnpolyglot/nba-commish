@@ -1,19 +1,24 @@
 import React, { useEffect } from 'react';
-import { ArrowLeft, Link2 } from 'lucide-react';
+import { ArrowLeft, Link2, Loader2 } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import SocialPostCard from './SocialPostCard';
 import { cn } from '../../lib/utils';
 import EditProfile from './EditProfile';
 import { fetchProfileData } from '../../utils/socialapi';
+import type { SocialPost } from '../../types';
+import { AVATAR_DATA } from '../../data/avatars';
+import { getAvatarByHandle } from '../../services/avatarService';
 
 interface ProfileViewProps {
   handle?: string;
   onBack?: () => void;
   onPostClick?: (postId: string) => void;
   onProfileClick?: (handle: string) => void;
+  posts?: SocialPost[];
+  postsLoading?: boolean;
 }
 
-export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPostClick, onProfileClick }) => {
+export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPostClick, onProfileClick, posts, postsLoading = false }) => {
   const { state, followUser, unfollowUser, dispatchAction } = useGame();
   const [activeTab, setActiveTab] = React.useState<'posts' | 'replies' | 'media'>('posts');
   const [showEditProfile, setShowEditProfile] = React.useState(false);
@@ -35,7 +40,9 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPost
   }, [cleanHandle]);
 
   // Own profile: prefer state.userProfile for avatar/banner set via EditProfile
-  const ownAvatarUrl = isOwnProfile ? (state.userProfile?.avatarUrl || cached?.avatarUrl) : cached?.avatarUrl;
+  const ownAvatarUrl = isOwnProfile
+    ? (state.userProfile?.avatarUrl || cached?.avatarUrl)
+    : getAvatarByHandle(cleanHandle, AVATAR_DATA) || cached?.avatarUrl;
   const ownBannerUrl = isOwnProfile ? (state.userProfile?.bannerUrl || cached?.bannerUrl) : cached?.bannerUrl;
 
   const displayName = (isOwnProfile ? state.userProfile?.name : null) || cached?.name || cleanHandle;
@@ -48,12 +55,13 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPost
 
   const isFollowing = (state.followedHandles || []).includes(cleanHandle);
 
-  const userPosts = (state.socialFeed || [])
+  const userPosts = (posts ?? state.socialFeed ?? [])
     .filter(p => {
-      const ph = p.handle.replace('@', '');
-      if (activeTab === 'posts') return ph === cleanHandle && !p.replyToId;
-      if (activeTab === 'replies') return ph === cleanHandle && !!p.replyToId;
-      if (activeTab === 'media') return ph === cleanHandle && !!p.mediaUrl;
+      const ph = p.handle.replace('@', '').toLowerCase();
+      const targetHandle = cleanHandle.toLowerCase();
+      if (activeTab === 'posts') return ph === targetHandle && !p.replyToId;
+      if (activeTab === 'replies') return ph === targetHandle && !!p.replyToId;
+      if (activeTab === 'media') return ph === targetHandle && !!p.mediaUrl;
       return false;
     })
     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
@@ -182,7 +190,12 @@ export const ProfileView: React.FC<ProfileViewProps> = ({ handle, onBack, onPost
       </div>
 
       {/* Posts */}
-      {userPosts.length === 0 ? (
+      {postsLoading ? (
+        <div className="flex items-center justify-center gap-3 py-16 text-zinc-500">
+          <Loader2 size={20} className="animate-spin" />
+          <span className="text-sm">Loading posts…</span>
+        </div>
+      ) : userPosts.length === 0 ? (
         <div className="flex flex-col items-center py-16 px-8 text-center">
           <p className="text-white text-2xl font-bold mb-2">No {activeTab} yet</p>
           <p className="text-zinc-500 text-sm">When @{cleanHandle} posts, they'll show up here.</p>

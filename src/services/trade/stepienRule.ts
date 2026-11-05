@@ -1,5 +1,15 @@
 import type { DraftPick } from '../../types';
 
+function getStepienWindowStart(allDraftPicks: DraftPick[], currentYear: number): number {
+  let firstSeason = Number.POSITIVE_INFINITY;
+  for (const pick of allDraftPicks) {
+    if (pick.round === 1 && pick.season >= currentYear && pick.season < firstSeason) {
+      firstSeason = pick.season;
+    }
+  }
+  return Number.isFinite(firstSeason) ? firstSeason : currentYear + 1;
+}
+
 /**
  * Stepien Rule — NBA prohibition: a team cannot trade its 1st-round pick if
  * doing so would leave it without a 1st in any two CONSECUTIVE future drafts.
@@ -23,6 +33,7 @@ export function validateStepienRule(
   // on B (and vice versa); everything else is unchanged. We only care about
   // round-1, future-season picks for the two trade participants.
   const horizon = currentYear + Math.max(1, tradableSeasons);
+  const firstSeason = getStepienWindowStart(allDraftPicks, currentYear);
 
   const owns = (tid: number, season: number): boolean => {
     for (const pick of allDraftPicks) {
@@ -36,7 +47,7 @@ export function validateStepienRule(
   };
 
   for (const tid of [tidA, tidB]) {
-    for (let y = currentYear + 1; y < horizon; y++) {
+    for (let y = firstSeason; y < horizon; y++) {
       if (!owns(tid, y) && !owns(tid, y + 1)) {
         return {
           ok: false,
@@ -63,6 +74,7 @@ export function wouldStepienViolateForTid(
 ): boolean {
   const leavingIds = new Set(picksLeavingTid.map(p => p.dpid));
   const horizon = currentYear + Math.max(1, tradableSeasons);
+  const firstSeason = getStepienWindowStart(allDraftPicks, currentYear);
   const owns = (season: number): boolean => {
     for (const pick of allDraftPicks) {
       if (pick.round !== 1 || pick.season !== season) continue;
@@ -72,7 +84,7 @@ export function wouldStepienViolateForTid(
     }
     return false;
   };
-  for (let y = currentYear + 1; y < horizon; y++) {
+  for (let y = firstSeason; y < horizon; y++) {
     if (!owns(y) && !owns(y + 1)) return true;
   }
   return false;

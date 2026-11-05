@@ -32,7 +32,10 @@
  */
 import type { NBAPlayer, NBATeam, NBAGMStat, StaffData, NonNBATeam } from '../../types';
 import { resolveAnyTeam } from '../../utils/teamLookup';
-import { resolveHeadCoachName } from '../staff/coachNameResolver';
+import { resolveHeadCoachMember, resolveHeadCoachName } from '../staff/coachNameResolver';
+import { getStaffImageUrl, resolveStaffImageId } from '../../utils/staffPortrait';
+import { getCanonicalEuroStatCompetitionId } from '../euro/statsArchive';
+import { didHomeTeamWin } from '../../utils/gameOutcome';
 
 export interface EuroAwardCandidate {
   player: NBAPlayer;
@@ -44,6 +47,9 @@ export interface EuroAwardCandidate {
 
 export interface EuroCoachCandidate {
   coachName: string;
+  role?: 'coach' | 'executive';
+  portraitUrl?: string;
+  face?: unknown;
   team: NBATeam;
   score: number;
   odds: string;
@@ -71,11 +77,19 @@ export interface EuroleagueAwardRaces {
 
 export interface EndesaAwardRaces {
   mvp: EuroAwardCandidate[];
+  defender: EuroAwardCandidate[];
+  sixthMan: EuroAwardCandidate[];
+  mostImproved: EuroAwardCandidate[];
   bestYoungPlayer: EuroAwardCandidate[];
+  bestFive: [EuroAllTeamSpot[], EuroAllTeamSpot[]];
   topScorer: EuroAwardCandidate[];
   topRebounder: EuroAwardCandidate[];
   topAssister: EuroAwardCandidate[];
   pirLeader: EuroAwardCandidate[];
+  offensivePlayer: EuroAwardCandidate[];
+  efficiencyPlayer: EuroAwardCandidate[];
+  spectacularPlayer: EuroAwardCandidate[];
+  popularPlayer: EuroAwardCandidate[];
   bestCoach: EuroCoachCandidate[];
 }
 
@@ -95,14 +109,11 @@ type CompetitionBoxScore = {
 const getTrb = (s: any) => s.trb || s.reb || (s.orb || 0) + (s.drb || 0);
 const bestStat = (stats: NBAGMStat[] | undefined, season: number, tidHint?: number): NBAGMStat | undefined => {
   if (!stats) return undefined;
-  for (const s of [season, season - 1]) {
-    const filtered = stats.filter(st => st.season === s && !st.playoffs);
-    if (filtered.length === 0) continue;
-    const currentTeamRows = tidHint != null ? filtered.filter(st => st.tid === tidHint) : [];
-    const pool = currentTeamRows.length > 0 ? currentTeamRows : filtered;
-    return pool.reduce((p, c) => (p.gp >= c.gp ? p : c));
-  }
-  return undefined;
+  const filtered = stats.filter(st => st.season === season && !st.playoffs);
+  if (filtered.length === 0) return undefined;
+  const currentTeamRows = tidHint != null ? filtered.filter(st => st.tid === tidHint) : [];
+  const pool = currentTeamRows.length > 0 ? currentTeamRows : filtered;
+  return pool.reduce((p, c) => (p.gp >= c.gp ? p : c));
 };
 
 const computePIR = (s: NBAGMStat): number => {
@@ -164,7 +175,7 @@ export class EuroAwardService {
     // GM's club. For the rest, walk nonNBATeams.
     for (const t of nonNBATeams ?? []) {
       const id = t.tid;
-      if (competitionId === 'endesa' && id >= 5000 && id < 6000) ids.add(id);
+      if (competitionId === 'endesa' && id >= 5000 && id < 6000 && t.endesaRelegated !== true) ids.add(id);
       if (competitionId === 'euroleague' && id >= 1000 && id < 2000) ids.add(id);
     }
     // Merged dual-league clubs: their tids land in state.teams under 5xxx.
@@ -186,18 +197,22 @@ export class EuroAwardService {
     staff?: StaffData | null,
     minGamesOverride?: number,
     boxScores: CompetitionBoxScore[] = [],
+    participantTids?: Set<number>,
   ): EuroleagueAwardRaces {
     this.MIN_GAMES = minGamesOverride ?? 20;
-    const euroIds = this.getCompetitionTeamIds(teams, nonNBATeams, 'euroleague');
+    const euroIds = participantTids?.size
+      ? participantTids
+      : this.getCompetitionTeamIds(teams, nonNBATeams, 'euroleague');
     const competitionTeams = this.buildCompetitionTeamMap('euroleague', euroIds, teams, nonNBATeams, season, boxScores);
+    const competitionPlayers = this.scopePlayersToCompetition(players, 'euroleague');
 
     return {
-      mvp: this.calcEuroMVP(players, competitionTeams, euroIds, season),
-      defender: this.calcEuroDefender(players, competitionTeams, euroIds, season),
-      risingStar: this.calcEuroRisingStar(players, competitionTeams, euroIds, season),
-      topScorer: this.calcEuroTopScorer(players, competitionTeams, euroIds, season),
+      mvp: this.calcEuroMVP(competitionPlayers, competitionTeams, euroIds, season),
+      defender: this.calcEuroDefender(competitionPlayers, competitionTeams, euroIds, season),
+      risingStar: this.calcEuroRisingStar(competitionPlayers, competitionTeams, euroIds, season),
+      topScorer: this.calcEuroTopScorer(competitionPlayers, competitionTeams, euroIds, season),
       coy: this.calcEuroCOY(competitionTeams, euroIds, season, staff),
-      allEuroLeague: this.calcAllEuroLeague(players, competitionTeams, euroIds, season),
+      allEuroLeague: this.calcAllEuroLeague(competitionPlayers, competitionTeams, euroIds, season),
     };
   }
 
@@ -212,18 +227,51 @@ export class EuroAwardService {
     minGamesOverride?: number,
     boxScores: CompetitionBoxScore[] = [],
   ): EndesaAwardRaces {
-    this.MIN_GAMES = minGamesOverride ?? 20;
     const endesaIds = this.getCompetitionTeamIds(teams, nonNBATeams, 'endesa');
-    const competitionTeams = this.buildCompetitionTeamMap('endesa', endesaIds, teams, nonNBATeams, season, boxScores);
+    return this.calculateDomesticRaces(
+      players,
+      teams,
+      nonNBATeams,
+      season,
+      'endesa',
+      endesaIds,
+      staff,
+      minGamesOverride,
+      boxScores,
+    );
+  }
+
+  static calculateDomesticRaces(
+    players: NBAPlayer[],
+    teams: NBATeam[],
+    nonNBATeams: NonNBATeam[],
+    season: number,
+    competitionId: string,
+    competitionIds: Set<number>,
+    staff?: StaffData | null,
+    minGamesOverride?: number,
+    boxScores: CompetitionBoxScore[] = [],
+  ): EndesaAwardRaces {
+    this.MIN_GAMES = minGamesOverride ?? 20;
+    const competitionTeams = this.buildCompetitionTeamMap(competitionId, competitionIds, teams, nonNBATeams, season, boxScores);
+    const competitionPlayers = this.scopePlayersToCompetition(players, competitionId);
 
     return {
-      mvp: this.calcEndesaMVP(players, competitionTeams, endesaIds, season),
-      bestYoungPlayer: this.calcBestYoungPlayer(players, competitionTeams, endesaIds, season),
-      topScorer: this.calcTopScorer(players, competitionTeams, endesaIds, season),
-      topRebounder: this.calcTopRebounder(players, competitionTeams, endesaIds, season),
-      topAssister: this.calcTopAssister(players, competitionTeams, endesaIds, season),
-      pirLeader: this.calcPIRLeader(players, competitionTeams, endesaIds, season),
-      bestCoach: this.calcBestCoach(competitionTeams, endesaIds, season, staff),
+      mvp: this.calcEndesaMVP(competitionPlayers, competitionTeams, competitionIds, season),
+      defender: this.calcEuroDefender(competitionPlayers, competitionTeams, competitionIds, season),
+      sixthMan: this.calcSixthMan(competitionPlayers, competitionTeams, competitionIds, season),
+      mostImproved: this.calcMostImproved(competitionPlayers, competitionTeams, competitionIds, season),
+      bestYoungPlayer: this.calcBestYoungPlayer(competitionPlayers, competitionTeams, competitionIds, season),
+      bestFive: this.calcAllEuroLeague(competitionPlayers, competitionTeams, competitionIds, season),
+      topScorer: this.calcTopScorer(competitionPlayers, competitionTeams, competitionIds, season),
+      topRebounder: this.calcTopRebounder(competitionPlayers, competitionTeams, competitionIds, season),
+      topAssister: this.calcTopAssister(competitionPlayers, competitionTeams, competitionIds, season),
+      pirLeader: this.calcPIRLeader(competitionPlayers, competitionTeams, competitionIds, season),
+      offensivePlayer: this.calcOffensivePlayer(competitionPlayers, competitionTeams, competitionIds, season),
+      efficiencyPlayer: this.calcEfficiencyPlayer(competitionPlayers, competitionTeams, competitionIds, season),
+      spectacularPlayer: this.calcSpectacularPlayer(competitionPlayers, competitionTeams, competitionIds, season),
+      popularPlayer: this.calcPopularPlayer(competitionPlayers, competitionTeams, competitionIds, season),
+      bestCoach: this.calcBestCoach(competitionTeams, competitionIds, season, staff),
     };
   }
 
@@ -346,6 +394,49 @@ export class EuroAwardService {
       .map((c, i, arr) => ({ ...c, odds: this.assignOdds(c, i, arr) }));
   }
 
+  private static calcSixthMan(players: NBAPlayer[], teams: NBATeam[], ids: Set<number>, season: number): EuroAwardCandidate[] {
+    return this.rankPlayers(players, teams, ids, season, (player, stat) => {
+      if ((stat.gs ?? 0) > stat.gp / 2) return null;
+      return computePIR(stat) + (stat.pts / (stat.gp || 1)) * 0.6;
+    });
+  }
+
+  private static calcMostImproved(players: NBAPlayer[], teams: NBATeam[], ids: Set<number>, season: number): EuroAwardCandidate[] {
+    return this.rankPlayers(players, teams, ids, season, (player, stat) => {
+      const previous = bestStat(player.stats, season - 1);
+      if (!previous?.gp) return null;
+      const currentValue = computePIR(stat) + (stat.pts / (stat.gp || 1)) * 0.5;
+      const previousValue = computePIR(previous) + (previous.pts / previous.gp) * 0.5;
+      return currentValue - previousValue > 0 ? currentValue - previousValue : null;
+    });
+  }
+
+  private static calcOffensivePlayer(players: NBAPlayer[], teams: NBATeam[], ids: Set<number>, season: number): EuroAwardCandidate[] {
+    return this.rankPlayers(players, teams, ids, season, (_player, stat) =>
+      stat.pts / (stat.gp || 1) + stat.ast / (stat.gp || 1) * 0.7 + (stat.tp ?? 0) / (stat.gp || 1) * 0.2,
+    );
+  }
+
+  private static calcEfficiencyPlayer(players: NBAPlayer[], teams: NBATeam[], ids: Set<number>, season: number): EuroAwardCandidate[] {
+    return this.rankPlayers(players, teams, ids, season, (_player, stat) => computePIR(stat));
+  }
+
+  private static calcSpectacularPlayer(players: NBAPlayer[], teams: NBATeam[], ids: Set<number>, season: number): EuroAwardCandidate[] {
+    return this.rankPlayers(players, teams, ids, season, (_player, stat) =>
+      stat.pts / (stat.gp || 1)
+      + stat.ast / (stat.gp || 1) * 0.8
+      + ((stat.tp ?? 0) + stat.blk + stat.stl) / (stat.gp || 1) * 0.5,
+    );
+  }
+
+  private static calcPopularPlayer(players: NBAPlayer[], teams: NBATeam[], ids: Set<number>, season: number): EuroAwardCandidate[] {
+    return this.rankPlayers(players, teams, ids, season, (player, stat) =>
+      computePIR(stat)
+      + Number((player as NBAPlayer & { popularity?: number }).popularity ?? 0) / 10
+      + (player.awards?.length ?? 0) * 0.15,
+    );
+  }
+
   private static calcTopScorer(players: NBAPlayer[], teams: NBATeam[], ids: Set<number>, season: number): EuroAwardCandidate[] {
     return this.calcTopPerGame(players, teams, ids, season, s => s.pts / (s.gp || 1));
   }
@@ -388,6 +479,30 @@ export class EuroAwardService {
       .map((c, i, arr) => ({ ...c, odds: this.assignOdds(c, i, arr) }));
   }
 
+  private static rankPlayers(
+    players: NBAPlayer[],
+    teams: NBATeam[],
+    ids: Set<number>,
+    season: number,
+    scoreFor: (player: NBAPlayer, stat: NBAGMStat) => number | null,
+  ): EuroAwardCandidate[] {
+    return players
+      .filter(player => isEuroPlayer(player, ids))
+      .map(player => {
+        const stat = bestStat(player.stats, season, player.tid);
+        const team = teams.find(entry => entry.id === player.tid) ?? this.buildStubTeam(player.tid);
+        if (!stat || !isEligible(stat, team, Math.max(1, Math.ceil(this.MIN_GAMES / 2)))) return null;
+        const score = scoreFor(player, stat);
+        return score != null && Number.isFinite(score)
+          ? { player, team, score, odds: '', stats: stat }
+          : null;
+      })
+      .filter((entry): entry is EuroAwardCandidate => entry !== null)
+      .sort((left, right) => right.score - left.score)
+      .slice(0, 10)
+      .map((candidate, index, all) => ({ ...candidate, odds: this.assignOdds(candidate, index, all) }));
+  }
+
   private static calcTopPerGame(players: NBAPlayer[], teams: NBATeam[], ids: Set<number>, season: number, metric: (s: NBAGMStat) => number): EuroAwardCandidate[] {
     return players
       .filter(p => isEuroPlayer(p, ids))
@@ -412,9 +527,12 @@ export class EuroAwardService {
         const winPct = wins / (wins + losses || 1);
         const prevWins = (t.seasons ?? [])[(t.seasons ?? []).length - 2]?.won ?? wins;
         const improvement = wins - prevWins;
-        const coachName = resolveHeadCoachName(t, staff, season);
+        const coach = resolveHeadCoachMember(t, staff);
+        const coachName = coach?.name ?? resolveHeadCoachName(t, staff, season);
+        const portraitUrl = coach?.playerPortraitUrl ?? (coach ? getStaffImageUrl(resolveStaffImageId(coach)) ?? undefined : undefined);
+        const face = (coach as any)?.face;
         const score = winPct * 70 + improvement * 1.5;
-        return { coachName, team: t, score, odds: '', wins, losses, improvement };
+        return { coachName, role: 'coach' as const, portraitUrl, face, team: t, score, odds: '', wins, losses, improvement };
       })
       .filter(c => c.score > 0)
       .sort((a, b) => b.score - a.score)
@@ -425,7 +543,7 @@ export class EuroAwardService {
   // ─── Util ────────────────────────────────────────────────────────────────
 
   private static buildCompetitionTeamMap(
-    competitionId: 'euroleague' | 'endesa',
+    competitionId: string,
     ids: Set<number>,
     teams: NBATeam[],
     nonNBATeams: NonNBATeam[],
@@ -447,7 +565,7 @@ export class EuroAwardService {
       .forEach(game => {
         const home = rows.get(game.homeTeamId) ?? { wins: 0, losses: 0 };
         const away = rows.get(game.awayTeamId) ?? { wins: 0, losses: 0 };
-        const homeWon = game.homeScore > game.awayScore;
+        const homeWon = didHomeTeamWin(game);
         home.wins += homeWon ? 1 : 0;
         home.losses += homeWon ? 0 : 1;
         away.wins += homeWon ? 0 : 1;
@@ -473,6 +591,16 @@ export class EuroAwardService {
         losses,
       } as NBATeam;
     });
+  }
+
+  private static scopePlayersToCompetition(players: NBAPlayer[], competitionId: string): NBAPlayer[] {
+    const target = getCanonicalEuroStatCompetitionId({ competitionId } as any);
+    return players.map(player => ({
+      ...player,
+      stats: (player.stats ?? []).filter(stat =>
+        getCanonicalEuroStatCompetitionId(stat as NBAGMStat & Record<string, unknown>) === target,
+      ),
+    }));
   }
 
   private static buildStubTeam(tid: number): NBATeam {

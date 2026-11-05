@@ -1,9 +1,11 @@
 import { useContext, useMemo } from 'react';
 import { useGame } from '../store/GameContext';
 import { CompetitionHubLeagueTabContext } from '../components/competition/hubContext';
-import { getTeamsForLeagueTab } from '../utils/euroLeagueDefaults';
-import { isEuroIsolatedMode, isPbaIsolatedMode } from '../utils/uiMode';
+import { selectCompetitionTeamTids } from '../services/competition/competitionScheduler';
+import { resolveAnyTeam } from '../utils/teamLookup';
+import { isEuroIsolatedMode, isPbaIsolatedMode, isWnbaIsolatedMode } from '../utils/uiMode';
 import { getResolvedTeamLogoUrl } from '../utils/teamAssets';
+import { isExternalLeaguePlayer } from '../utils/playerLeagueScope';
 
 /**
  * Scope teams/players to the active competition context:
@@ -17,9 +19,17 @@ export function useHubScope() {
   const hubTab = useContext(CompetitionHubLeagueTabContext);
   const euroIsolated = isEuroIsolatedMode(state);
   const pbaIsolated = isPbaIsolatedMode(state);
+  const wnbaIsolated = isWnbaIsolatedMode(state);
+  const fictional = state.leagueType === 'fictional';
 
   const teams = useMemo(() => {
-    if (hubTab) return getTeamsForLeagueTab(state as any, hubTab);
+    if (hubTab) {
+      const spec = state.activeCompetitions?.find(competition => competition.id === hubTab);
+      if (!spec) return [];
+      return selectCompetitionTeamTids(spec, state as any)
+        .map(tid => resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []))
+        .filter((team): team is NonNullable<typeof team> => team !== null);
+    }
     if (pbaIsolated) {
       return ((state as any).nonNBATeams ?? [])
         .filter((t: any) => t.league === 'PBA')
@@ -33,20 +43,29 @@ export function useHubScope() {
           conference: 'PBA',
         }));
     }
+    if (wnbaIsolated) {
+      return ((state as any).nonNBATeams ?? [])
+        .filter((team: any) => team.league === 'WNBA' || (Number(team.tid) >= 3000 && Number(team.tid) < 4000))
+        .map((team: any) => resolveAnyTeam(Number(team.tid ?? team.id), state.teams, state.nonNBATeams ?? []))
+        .filter((team): team is NonNullable<typeof team> => team !== null);
+    }
     if (euroIsolated) {
-      const dom = getTeamsForLeagueTab(state as any, 'domestic');
-      const con = getTeamsForLeagueTab(state as any, 'continental');
-      const merged = new Map<number, typeof dom[number]>();
-      for (const t of [...dom, ...con]) merged.set(t.id, t);
+      const competitionTeams = (state.activeCompetitions ?? []).flatMap(spec => (
+        selectCompetitionTeamTids(spec, state as any)
+          .map(tid => resolveAnyTeam(tid, state.teams, state.nonNBATeams ?? []))
+          .filter((team): team is NonNullable<typeof team> => team !== null)
+      ));
+      const merged = new Map<number, typeof competitionTeams[number]>();
+      for (const t of competitionTeams) merged.set(t.id, t);
       return Array.from(merged.values());
     }
     return state.teams;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [hubTab, euroIsolated, pbaIsolated, state.teams, (state as any).nonNBATeams, (state as any).activeCompetitions]);
+  }, [hubTab, euroIsolated, pbaIsolated, wnbaIsolated, state.teams, (state as any).nonNBATeams, (state as any).activeCompetitions]);
 
   const tids = useMemo(() => new Set(teams.map(t => t.id)), [teams]);
 
-  const isScoped = hubTab !== null || euroIsolated || pbaIsolated;
+  const isScoped = hubTab !== null || euroIsolated || pbaIsolated || wnbaIsolated;
   const pbaBoxScorePlayerIds = useMemo(() => {
     if (!pbaIsolated) return new Set<string>();
     const ids = new Set<string>();
@@ -59,12 +78,34 @@ export function useHubScope() {
     return ids;
   }, [pbaIsolated, state.boxScores]);
 
-  const players = useMemo(
-    () => isScoped
-      ? state.players.filter(p => tids.has(p.tid) || (pbaIsolated && pbaBoxScorePlayerIds.has(p.internalId)))
-      : state.players,
-    [isScoped, pbaBoxScorePlayerIds, pbaIsolated, state.players, tids],
-  );
+  const players = useMemo(() => {
+    const leaguePlayers = fictional
+      ? state.players.filter(player => !isExternalLeaguePlayer(player))
+      : state.players;
+    return isScoped
+      ? leaguePlayers.filter(player =>
+          tids.has(player.tid)
+          || (pbaIsolated && pbaBoxScorePlayerIds.has(player.internalId))
+          || (pbaIsolated && (player.stats ?? []).some(stat => (
+            stat.tid >= 2000
+            && stat.tid < 3000
+            && (
+              String(stat.competitionId ?? '').toLowerCase() === 'pba'
+              || String(stat.competitionId ?? '').toLowerCase().startsWith('pba-')
+            )
+          )))
+          || (wnbaIsolated && (
+            player.status === 'WNBA'
+            || player.gender === 'female'
+            || String(player.internalId ?? '').toLowerCase().startsWith('wnba-')
+            || (player.stats ?? []).some(stat => (
+              String(stat.competitionId ?? '').toLowerCase() === 'wnba'
+              || (Number(stat.tid) >= 3000 && Number(stat.tid) < 4000)
+            ))
+          ))
+        )
+      : leaguePlayers;
+  }, [fictional, isScoped, pbaBoxScorePlayerIds, pbaIsolated, state.players, tids, wnbaIsolated]);
 
-  return { hubTab, teams, tids, players, isScoped, euroIsolated, pbaIsolated };
+  return { hubTab, teams, tids, players, isScoped, euroIsolated, pbaIsolated, wnbaIsolated };
 }

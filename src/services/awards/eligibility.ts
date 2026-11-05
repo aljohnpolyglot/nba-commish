@@ -3,7 +3,16 @@
  * Each returns true if the player CAN be considered for the award.
  */
 import type { NBAPlayer, NBAGMStat, NBATeam } from '../../types';
-import type { EligibilityKey } from './types';
+import type { EligibilityKey, UIMode } from './types';
+
+export function getRookieDraftSeason(season: number, uiMode: UIMode = 'nba'): number {
+  return uiMode === 'wnba_isolated' || uiMode === 'pba_isolated' ? season : season - 1;
+}
+
+export function isRookieForSeason(player: NBAPlayer, season: number, uiMode: UIMode = 'nba'): boolean {
+  if (uiMode === 'nba' && Number(player.nbaRookieSeason) === season) return true;
+  return player.draft?.year === getRookieDraftSeason(season, uiMode);
+}
 
 function playerAge(p: NBAPlayer, season: number): number {
   const born = (p as any).born?.year;
@@ -32,6 +41,7 @@ export function checkEligibility(
   season: number,
   minGames: number,
   fullSeasonRef = 82,
+  uiMode: UIMode = 'nba',
 ): boolean {
   if (!stat || !team) return false;
   for (const k of keys) {
@@ -40,7 +50,7 @@ export function checkEligibility(
         if (!isProportionallyEligible(stat, team, minGames, fullSeasonRef)) return false;
         break;
       case 'rookie-year':
-        if (player.draft?.year !== season - 1) return false;
+        if (!isRookieForSeason(player, season, uiMode)) return false;
         break;
       case 'under-22':
         if (playerAge(player, season) >= 22) return false;

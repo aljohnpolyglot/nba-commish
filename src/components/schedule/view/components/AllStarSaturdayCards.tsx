@@ -4,7 +4,7 @@ interface AllStarSaturdayCardsProps {
   allStar: any;
   isActuallyToday: boolean;
   onNavigateToAllStar: () => void;
-  onViewContestDetails: (type: 'dunk' | 'three') => void;
+  onViewContestDetails: (type: 'dunk' | 'three' | 'skills' | 'shooting-stars') => void;
   onWatchDunkContest: () => void;
   onWatchThreePoint: () => void;
   onWatchShootingStars: () => void;
@@ -140,7 +140,7 @@ export function AllStarSaturdayCards({
               </div>
             </div>
             <button
-              onClick={onNavigateToAllStar}
+              onClick={() => onViewContestDetails('shooting-stars')}
               className="w-full px-4 py-2 bg-sky-500 hover:bg-sky-400 text-black rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5"
             >
               <Trophy size={12} />
@@ -160,7 +160,7 @@ export function AllStarSaturdayCards({
             </div>
             <div className="flex gap-3">
               <button
-                onClick={onNavigateToAllStar}
+                onClick={() => onViewContestDetails('shooting-stars')}
                 className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs transition-all"
               >
                 Details
@@ -190,7 +190,7 @@ export function AllStarSaturdayCards({
               </div>
             </div>
             <button
-              onClick={onNavigateToAllStar}
+              onClick={() => onViewContestDetails('skills')}
               className="w-full px-4 py-2 bg-orange-500 hover:bg-orange-400 text-black rounded-lg font-bold text-xs transition-all flex items-center justify-center gap-1.5"
             >
               <Trophy size={12} />
@@ -210,7 +210,7 @@ export function AllStarSaturdayCards({
             </div>
             <div className="flex gap-3">
               <button
-                onClick={onNavigateToAllStar}
+                onClick={() => onViewContestDetails('skills')}
                 className="flex-1 px-4 py-2 bg-white/10 hover:bg-white/20 text-white rounded-lg font-bold text-xs transition-all"
               >
                 Details

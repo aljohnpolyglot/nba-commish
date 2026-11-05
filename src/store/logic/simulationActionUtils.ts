@@ -21,7 +21,11 @@ export function isInstantTransactionAction(action: UserAction): boolean {
     action.type === 'CONVERT_CONTRACT_TYPE' ||
     action.type === 'SUBMIT_FA_BID' ||
     action.type === 'MATCH_RFA_OFFER' ||
-    action.type === 'DECLINE_RFA_OFFER'
+    action.type === 'DECLINE_RFA_OFFER' ||
+    action.type === 'FINE_PERSON' ||
+    action.type === 'SUSPEND_PLAYER' ||
+    action.type === 'DRUG_TEST_PERSON' ||
+    action.type === 'SABOTAGE_PLAYER'
   );
 }
 

@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Search, Star, Clock, Film, ChevronDown, SortAsc, SortDesc } from 'lucide-react';
+import { Search, Clock, Film, CalendarDays, SortAsc, SortDesc } from 'lucide-react';
 import { Movie } from './types';
 
 interface MovieStepProps {
@@ -19,11 +19,11 @@ export const MovieStep: React.FC<MovieStepProps> = ({
   setSelectedMovie,
   loadingMovies
 }) => {
-  const [sortBy, setSortBy] = useState<'rank' | 'rating' | 'title'>('rank');
+  const [sortBy, setSortBy] = useState<'release' | 'rank' | 'title'>('release');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
 
   const filteredMovies = useMemo(() => {
-    let result = movies;
+    let result = [...movies];
     if (movieSearch) {
       result = movies.filter(m => 
         m.title.toLowerCase().includes(movieSearch.toLowerCase()) ||
@@ -33,8 +33,8 @@ export const MovieStep: React.FC<MovieStepProps> = ({
 
     return result.sort((a, b) => {
       let comparison = 0;
-      if (sortBy === 'rank') comparison = a.rank - b.rank;
-      else if (sortBy === 'rating') comparison = b.rating - a.rating;
+      if (sortBy === 'release') comparison = String(a.releaseDate ?? '').localeCompare(String(b.releaseDate ?? ''));
+      else if (sortBy === 'rank') comparison = a.rank - b.rank;
       else if (sortBy === 'title') comparison = a.title.localeCompare(b.title);
       
       return sortOrder === 'asc' ? comparison : -comparison;
@@ -54,15 +54,15 @@ export const MovieStep: React.FC<MovieStepProps> = ({
     <div className="space-y-6">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
-          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Search Movies</label>
+          <label className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Available Movies</label>
           <div className="flex gap-2">
             <select 
               value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as any)}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
               className="bg-slate-800 text-slate-300 text-[10px] font-bold px-2 py-1 rounded-lg border-none outline-none cursor-pointer"
             >
-              <option value="rank">Rank</option>
-              <option value="rating">Rating</option>
+              <option value="release">Release date</option>
+              <option value="rank">Box-office rank</option>
               <option value="title">Title</option>
             </select>
             <button 
@@ -88,41 +88,51 @@ export const MovieStep: React.FC<MovieStepProps> = ({
       {loadingMovies ? (
         <div className="flex flex-col items-center justify-center py-12 space-y-4">
           <div className="w-8 h-8 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Accessing IMDb Database...</p>
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Checking available movies...</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 gap-3">
+          {filteredMovies.length === 0 && (
+            <div className="rounded-2xl border border-slate-800 bg-slate-950 px-5 py-10 text-center">
+              <Film className="mx-auto text-slate-700" size={28} />
+              <p className="mt-3 text-sm font-bold text-slate-400">No movies match this search.</p>
+              <p className="mt-1 text-xs text-slate-600">Try another title or genre.</p>
+            </div>
+          )}
           {filteredMovies.map((movie) => (
             <button
-              key={movie.rank}
-              onClick={() => setSelectedMovie(selectedMovie?.rank === movie.rank ? null : movie)}
+              type="button"
+              key={movie.id}
+              onClick={() => setSelectedMovie(selectedMovie?.id === movie.id ? null : movie)}
               className={`flex gap-4 p-4 rounded-2xl border transition-all text-left group ${
-                selectedMovie?.rank === movie.rank 
+                selectedMovie?.id === movie.id
                 ? 'bg-indigo-500/10 border-indigo-500 shadow-lg shadow-indigo-500/10' 
                 : 'bg-slate-950 border-slate-800 hover:border-slate-700'
               }`}
             >
               <div className="relative shrink-0">
-                <img 
-                  src={movie.image} 
-                  alt={movie.title}
-                  className="w-20 h-28 object-cover rounded-lg shadow-xl"
-                  referrerPolicy="no-referrer"
-                />
+                {movie.image ? (
+                  <img
+                    src={movie.image}
+                    alt={movie.title}
+                    className="w-20 h-28 object-cover rounded-lg shadow-xl"
+                    referrerPolicy="no-referrer"
+                  />
+                ) : (
+                  <div className="flex h-28 w-20 items-center justify-center rounded-lg bg-slate-900 text-slate-700">
+                    <Film size={24} />
+                  </div>
+                )}
                 <div className="absolute -top-2 -left-2 w-6 h-6 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-[10px] font-black text-indigo-400">
                   {movie.rank}
                 </div>
               </div>
               <div className="flex-1 min-w-0 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <h4 className={`font-black text-sm truncate transition-colors ${selectedMovie?.rank === movie.rank ? 'text-indigo-400' : 'text-white'}`}>
+                  <div>
+                    <h4 className={`font-black text-sm truncate transition-colors ${selectedMovie?.id === movie.id ? 'text-indigo-400' : 'text-white'}`}>
                       {movie.title}
                     </h4>
-                    <div className="flex items-center gap-1 bg-amber-500/10 px-1.5 py-0.5 rounded text-[10px] font-black text-amber-500">
-                      <Star size={10} fill="currentColor" />
-                      {movie.rating}
-                    </div>
                   </div>
                   <p className="text-[10px] text-slate-500 line-clamp-2 mt-1 leading-relaxed">
                     {movie.description}
@@ -131,15 +141,19 @@ export const MovieStep: React.FC<MovieStepProps> = ({
                 <div className="flex flex-wrap gap-2 mt-2">
                   <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
                     <Clock size={10} />
-                    {formatDuration(movie.duration)}
+                    {formatDuration(movie.duration) || 'Runtime unavailable'}
                   </div>
+                  {movie.releaseDate && (
+                    <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
+                      <CalendarDays size={10} />
+                      {new Date(`${movie.releaseDate}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' })}
+                    </div>
+                  )}
                   <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
                     <Film size={10} />
-                    {movie.genres.join(', ')}
+                    {movie.genres.join(', ') || movie.distributor || 'Film'}
                   </div>
-                  <div className="bg-slate-800 text-slate-400 text-[10px] font-black px-1.5 py-0.5 rounded">
-                    {movie.content_rating}
-                  </div>
+                  {movie.contentRating && <div className="bg-slate-800 text-slate-400 text-[10px] font-black px-1.5 py-0.5 rounded">{movie.contentRating}</div>}
                 </div>
               </div>
             </button>

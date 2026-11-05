@@ -6,6 +6,9 @@ import { useHubScope } from '../../../hooks/useHubScope';
 import { getConferenceSpec, type PbaConference } from '../../../services/pba/conferenceTransition';
 import { getTeamFullName } from '../../../utils/teamNames';
 import { getResolvedTeamLogoUrl, getTeamPrimaryColor } from '../../../utils/teamAssets';
+import { didHomeTeamWin } from '../../../utils/gameOutcome';
+import { formatGameDateShort } from '../../../utils/dateUtils';
+import { formatLeagueSeasonLabel, getLeagueCalendarDates } from '../../../services/leagueCalendar';
 
 const TeamMark: React.FC<{ team: any }> = ({ team }) => {
   const [failed, setFailed] = useState(false);
@@ -38,6 +41,7 @@ export const PowerRankingsView: React.FC = () => {
   const pbaCompetitionId = pbaIsolated
     ? getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id
     : null;
+  const [sort, setSort] = useState<{ key: 'rank' | 'age' | 'diff'; direction: 'asc' | 'desc' }>({ key: 'rank', direction: 'asc' });
 
   const rankings = useMemo(() => {
     const teamGames = new Map<number, Game[]>();
@@ -60,7 +64,8 @@ export const PowerRankingsView: React.FC = () => {
     const calculateScore = (team: NBATeam, games: Game[]) => {
       const wins = games.filter(g => {
         const isHome = g.homeTid === team.id;
-        return isHome ? g.homeScore > g.awayScore : g.awayScore > g.homeScore;
+        const homeWon = didHomeTeamWin(g);
+        return isHome ? homeWon : !homeWon;
       }).length;
       const totalGames = games.length;
       const losses = Math.max(0, totalGames - wins);
@@ -69,7 +74,8 @@ export const PowerRankingsView: React.FC = () => {
       const l10Games = games.slice(0, 10);
       const l10Wins = l10Games.filter(g => {
         const isHome = g.homeTid === team.id;
-        return isHome ? g.homeScore > g.awayScore : g.awayScore > g.homeScore;
+        const homeWon = didHomeTeamWin(g);
+        return isHome ? homeWon : !homeWon;
       }).length;
       const l10WinPct = l10Games.length > 0 ? l10Wins / l10Games.length : 0;
 
@@ -96,14 +102,16 @@ export const PowerRankingsView: React.FC = () => {
       const score = calculateScore(team, games);
       const wins = games.filter(g => {
         const isHome = g.homeTid === team.id;
-        return isHome ? g.homeScore > g.awayScore : g.awayScore > g.homeScore;
+        const homeWon = didHomeTeamWin(g);
+        return isHome ? homeWon : !homeWon;
       }).length;
       const losses = Math.max(0, games.length - wins);
       
       const l10Games = games.slice(0, 10);
       const l10Sequence = l10Games.map(g => {
         const isHome = g.homeTid === team.id;
-        return (isHome ? g.homeScore > g.awayScore : g.awayScore > g.homeScore) ? 'W' : 'L';
+        const homeWon = didHomeTeamWin(g);
+        return (isHome ? homeWon : !homeWon) ? 'W' : 'L';
       }).reverse(); // chronological order for display: oldest on left, latest on right
 
       // Calculate differential from games
@@ -122,7 +130,8 @@ export const PowerRankingsView: React.FC = () => {
       let streakCount = 0;
       for (const g of games) {
         const isHome = g.homeTid === team.id;
-        const won = isHome ? g.homeScore > g.awayScore : g.awayScore > g.homeScore;
+        const homeWon = didHomeTeamWin(g);
+        const won = isHome ? homeWon : !homeWon;
         const currentType = won ? 'W' : 'L';
         if (streakType === null) {
           streakType = currentType;
@@ -194,6 +203,23 @@ export const PowerRankingsView: React.FC = () => {
 
   const seasonPhase = getSeasonPhase(state);
   const seasonNotStarted = !pbaIsolated && seasonPhase === 'preseason';
+  const completedSeasonLabel = formatLeagueSeasonLabel(state.leagueStats.year, state.leagueStats);
+  const nextSeasonStartLabel = formatGameDateShort(
+    getLeagueCalendarDates(state.leagueStats.year + 1, state.leagueStats).regularSeasonStart,
+  );
+  const visibleRankings = useMemo(() => [...rankings].sort((left, right) => {
+    const leftValue = sort.key === 'age' ? Number.parseFloat(left.avgAge) : sort.key === 'diff' ? Number.parseFloat(left.differential) : left.currentRank;
+    const rightValue = sort.key === 'age' ? Number.parseFloat(right.avgAge) : sort.key === 'diff' ? Number.parseFloat(right.differential) : right.currentRank;
+    if (!Number.isFinite(leftValue) && Number.isFinite(rightValue)) return 1;
+    if (Number.isFinite(leftValue) && !Number.isFinite(rightValue)) return -1;
+    const difference = leftValue - rightValue;
+    if (difference !== 0) return sort.direction === 'asc' ? difference : -difference;
+    return left.currentRank - right.currentRank;
+  }), [rankings, sort]);
+  const toggleSort = (key: 'age' | 'diff') => setSort(current => current.key === key
+    ? { key, direction: current.direction === 'asc' ? 'desc' : 'asc' }
+    : { key, direction: 'desc' });
+  const sortArrow = (key: 'age' | 'diff') => sort.key === key ? (sort.direction === 'asc' ? '▲' : '▼') : '';
 
   return (
     <div className="h-full flex flex-col bg-[#0f172a] text-slate-200 overflow-hidden">
@@ -202,7 +228,7 @@ export const PowerRankingsView: React.FC = () => {
         <p className="text-slate-400 text-xs md:text-sm font-medium mt-1">
           {pbaIsolated ? 'Current conference rankings based on performance, strength, and momentum'
             : seasonPhase === 'preseason' ? 'Preseason projections based on roster strength'
-            : seasonPhase === 'offseason' ? `${state.leagueStats.year - 1}–${String(state.leagueStats.year).slice(-2)} final standings — new season starts Oct 24`
+            : seasonPhase === 'offseason' ? `${completedSeasonLabel} final standings — new season starts ${nextSeasonStartLabel}`
             : seasonPhase === 'playoffs' ? 'Final regular-season standings — playoffs in progress'
             : 'Updated weekly based on performance, strength, and momentum'}
         </p>
@@ -221,16 +247,15 @@ export const PowerRankingsView: React.FC = () => {
                   <th className="px-3 md:px-4 py-3 md:py-4 font-bold text-center w-14 md:w-18">Pre-S</th>
                   {!seasonNotStarted && <th className="px-3 md:px-4 py-3 md:py-4 font-bold text-center w-10 md:w-14">▲▼</th>}
                   {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-16 md:w-20">Streak</th>}
-                  {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-16 md:w-20">Diff</th>}
+                  {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold text-center w-16 md:w-20"><button type="button" onClick={() => toggleSort('diff')} className="hover:text-amber-300" aria-label="Sort by point differential">Diff <span className="text-amber-300">{sortArrow('diff')}</span></button></th>}
                   <th className="px-2 md:px-6 py-3 md:py-4 font-bold text-center w-14 md:w-20">
-                    <span className="md:hidden">Age</span>
-                    <span className="hidden md:inline">Avg Age</span>
+                    <button type="button" onClick={() => toggleSort('age')} className="hover:text-amber-300" aria-label="Sort by average age"><span className="md:hidden">Age</span><span className="hidden md:inline">Avg Age</span> <span className="text-amber-300">{sortArrow('age')}</span></button>
                   </th>
                   {!seasonNotStarted && <th className="px-3 md:px-6 py-3 md:py-4 font-bold w-32 md:w-48">Last 10</th>}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-800/50">
-                {rankings.map((row) => {
+                {visibleRankings.map((row) => {
                   const isOwn = ownTid !== null && row.team.id === ownTid;
                   return (
                   <tr

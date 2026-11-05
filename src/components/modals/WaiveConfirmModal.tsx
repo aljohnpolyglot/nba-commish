@@ -3,6 +3,11 @@ import { motion } from 'motion/react';
 import { AlertTriangle, X } from 'lucide-react';
 import { NBAPlayer, NBATeam, GameState } from '../../types';
 import { buildStretchedSchedule, seasonLabelToYear } from '../../utils/salaryUtils';
+import { getTwoWayRosterLimit } from '../../utils/rosterLimits';
+import { isNonGuaranteedContract, isTwoWayContract, normalizeContractOptionKind } from '../../utils/contractTypes';
+import { areApronsEnabled, isDeadMoneyEnabled, isMleEnabled, isStretchProvisionEnabled } from '../../utils/ruleFlags';
+import { getTeamFullName } from '../../utils/teamNames';
+import { getWnbaDevelopmentalContractLabel } from '../../services/wnba/developmentalContracts';
 
 interface Props {
   player: NBAPlayer;
@@ -18,25 +23,34 @@ export const WaiveConfirmModal: React.FC<Props> = ({ player, team, state, onClos
   const [stretch, setStretch] = useState(false);
 
   const ls = state.leagueStats as any;
-  const deadMoneyEnabled = ls.deadMoneyEnabled ?? true;
-  const stretchEnabled = ls.stretchProvisionEnabled ?? true;
+  const pbaIsolated = ls.uiMode === 'pba_isolated';
+  const deadMoneyEnabled = !pbaIsolated && isDeadMoneyEnabled(ls);
+  const stretchEnabled = isStretchProvisionEnabled(ls);
   const stretchMult = ls.stretchProvisionMultiplier ?? 2;
   const ngDeadlineMonth = ls.ngGuaranteeDeadlineMonth ?? 1;
   const ngDeadlineDay = ls.ngGuaranteeDeadlineDay ?? 10;
   const seasonYear: number = ls.year ?? new Date().getUTCFullYear();
   const today = state.date ? new Date(state.date) : new Date();
   const ngDeadline = new Date(seasonYear, ngDeadlineMonth - 1, ngDeadlineDay);
+  const twoWayContractsActive = !pbaIsolated && getTwoWayRosterLimit(ls) > 0;
+  const nonGuaranteedContractsActive = !pbaIsolated && ls.nonGuaranteedContractsEnabled !== false;
 
-  const wasNG = !!(player as any).nonGuaranteed;
-  const wasTwoWay = !!(player as any).twoWay;
+  const wasNG = nonGuaranteedContractsActive && isNonGuaranteedContract(player, ls);
+  const wasTwoWay = twoWayContractsActive && isTwoWayContract(player, ls);
+  const secondaryContractLabel = getWnbaDevelopmentalContractLabel(ls);
   const ngFreeRelease = wasNG && today < ngDeadline;
+  const contractTypeLabel = pbaIsolated ? 'PBA CONTRACT' : wasNG ? 'NON-GUARANTEED' : wasTwoWay ? secondaryContractLabel.toUpperCase() : 'GUARANTEED';
+  const releaseActionLabel = pbaIsolated ? 'Release' : 'Waive';
 
   const remaining = useMemo(() => {
     if (!deadMoneyEnabled || wasTwoWay || ngFreeRelease) return [];
     const cy: Array<{ season: string; guaranteed: number; option?: string }> =
       Array.isArray((player as any).contractYears) ? (player as any).contractYears : [];
     const future = cy
-      .filter(y => seasonLabelToYear(y.season) >= seasonYear && y.option !== 'team' && y.option !== 'player')
+      .filter(y => {
+        const option = normalizeContractOptionKind(y.option);
+        return seasonLabelToYear(y.season) >= seasonYear && option !== 'team' && option !== 'player';
+      })
       .map(y => ({ season: y.season, amountUSD: y.guaranteed }));
     if (future.length === 0 && (player as any).contract?.amount) {
       const exp = (player as any).contract.exp ?? seasonYear;
@@ -54,104 +68,137 @@ export const WaiveConfirmModal: React.FC<Props> = ({ player, team, state, onClos
     if (!stretch || !stretchEnabled) return remaining;
     return buildStretchedSchedule(remaining, stretchMult);
   }, [remaining, stretch, stretchEnabled, stretchMult]);
+  const pbaPlainRelease = pbaIsolated && !wasTwoWay && remaining.length === 0;
 
   const totalDead = remaining.reduce((s, y) => s + y.amountUSD, 0);
   const thisSeasonHit = previewSchedule.find(y => seasonLabelToYear(y.season) === seasonYear)?.amountUSD ?? 0;
+  const impactTerms = [
+    'payroll',
+    ...(isMleEnabled(ls) ? ['exception room'] : []),
+    ...(areApronsEnabled(ls) ? ['apron'] : []),
+  ];
+  const teamName = team ? getTeamFullName(team) : 'Team';
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-6">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
         className="absolute inset-0 bg-black/85 backdrop-blur-md" onClick={onClose} />
       <motion.div initial={{ opacity: 0, scale: 0.95, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative w-full max-w-lg max-h-[calc(100vh-2rem)] overflow-y-auto bg-[#0a0a0a] border border-rose-500/30 rounded-sm shadow-2xl">
-        <div className="flex items-start justify-between gap-3 px-4 sm:px-6 py-4 bg-gradient-to-r from-rose-900/40 to-transparent border-b border-white/5">
-          <div className="flex items-start gap-2 min-w-0">
-            <AlertTriangle className="w-4 h-4 text-rose-400" />
-            <h3 className="text-sm font-black uppercase tracking-widest text-white break-words">Waive {player.name}?</h3>
+        className="relative flex w-full max-w-[1080px] max-h-[calc(100vh-2rem)] flex-col overflow-hidden rounded-lg border border-rose-500/35 bg-[#080a0d] shadow-2xl">
+        <div className="flex flex-shrink-0 items-center justify-between gap-4 border-b border-white/10 bg-gradient-to-r from-rose-950/50 via-rose-950/20 to-transparent px-5 py-5 sm:px-12 sm:py-8">
+          <div className="flex min-w-0 items-center gap-4 sm:gap-6">
+            <AlertTriangle className="h-8 w-8 flex-shrink-0 text-rose-400 sm:h-11 sm:w-11" strokeWidth={2.2} />
+            <h3 className="break-words text-lg font-black uppercase tracking-[0.12em] text-white sm:text-3xl">
+              {releaseActionLabel} {player.name}?
+            </h3>
           </div>
-          <button onClick={onClose} className="text-slate-500 hover:text-white"><X size={16} /></button>
+          <button
+            onClick={onClose}
+            aria-label="Close"
+            className="flex-shrink-0 rounded-md p-1 text-slate-400 transition-colors hover:bg-white/5 hover:text-white"
+          >
+            <X className="h-7 w-7 sm:h-9 sm:w-9" />
+          </button>
         </div>
 
-        <div className="p-4 sm:p-6 space-y-5">
-          <div className="text-xs text-slate-400">
-            {team?.name ?? 'Team'} · {player.pos} · {wasNG ? 'NON-GUARANTEED' : wasTwoWay ? 'TWO-WAY' : 'GUARANTEED'}
+        <div className="flex-1 space-y-6 overflow-y-auto p-5 sm:space-y-9 sm:px-12 sm:py-8">
+          <div className="text-sm font-medium text-slate-400 sm:text-xl">
+            {teamName} · {player.pos} · {contractTypeLabel}
             {' '}· exp {(player as any).contract?.exp ?? '?'}
           </div>
 
+          {pbaPlainRelease && (
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-5 sm:p-7">
+              <p className="text-base font-bold text-emerald-300 sm:text-xl">PBA Release</p>
+              <p className="mt-2 text-sm text-slate-400 sm:text-base">
+                This move opens a roster spot. No NBA guarantee-deadline or dead-money schedule applies.
+              </p>
+            </div>
+          )}
+
           {ngFreeRelease && (
-            <div className="bg-emerald-500/10 border border-emerald-500/30 rounded-sm p-4">
-              <p className="text-emerald-300 text-sm font-bold">Free Release</p>
-              <p className="text-[11px] text-slate-400 mt-1">
+            <div className="rounded-md border border-emerald-500/30 bg-emerald-500/10 p-5 sm:p-7">
+              <p className="text-base font-bold text-emerald-300 sm:text-xl">Free Release</p>
+              <p className="mt-2 text-sm text-slate-400 sm:text-base">
                 Contract is non-guaranteed and we're before the {ngDeadlineMonth}/{ngDeadlineDay} guarantee deadline. No dead money.
               </p>
             </div>
           )}
 
           {wasTwoWay && (
-            <div className="bg-violet-500/10 border border-violet-500/30 rounded-sm p-4">
-              <p className="text-violet-300 text-sm font-bold">Two-Way Release</p>
-              <p className="text-[11px] text-slate-400 mt-1">
-                Two-way contracts pay only for days on roster. No dead money.
+            <div className="rounded-md border border-violet-500/30 bg-violet-500/10 p-5 sm:p-7">
+              <p className="text-base font-bold text-violet-300 sm:text-xl">{secondaryContractLabel} Release</p>
+              <p className="mt-2 text-sm text-slate-400 sm:text-base">
+                {secondaryContractLabel} contracts do not create dead money.
               </p>
             </div>
           )}
 
           {!ngFreeRelease && !wasTwoWay && remaining.length > 0 && (
             <>
-              <div className="bg-rose-500/5 border border-rose-500/20 rounded-sm p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-rose-300">
+              <div className="overflow-hidden rounded-md border border-rose-500/35 bg-gradient-to-br from-rose-950/20 to-white/[0.03]">
+                <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7 sm:py-5">
+                  <p className="text-xs font-black uppercase tracking-[0.12em] text-rose-300 sm:text-lg">
                     Dead Money Schedule
                   </p>
-                  <p className="text-xs font-bold text-rose-200">{fmtM(totalDead)} total</p>
+                  <p className="text-sm font-bold text-rose-300 sm:text-xl">{fmtM(totalDead)} total</p>
                 </div>
-                <div className="space-y-1.5 max-h-44 overflow-y-auto">
+                <div className="max-h-72 divide-y divide-white/10 overflow-y-auto">
                   {previewSchedule.map(y => (
-                    <div key={y.season} className="flex justify-between text-xs">
+                    <div key={y.season} className="flex items-center justify-between px-5 py-4 text-sm sm:px-7 sm:py-5 sm:text-xl">
                       <span className="text-slate-400">{y.season}</span>
-                      <span className="font-mono font-bold text-rose-200">{fmtM(y.amountUSD)}</span>
+                      <span className="font-mono font-bold text-rose-300">{fmtM(y.amountUSD)}</span>
                     </div>
                   ))}
                 </div>
               </div>
 
               {stretchEnabled && remaining.length > 0 && (
-                <label className="flex items-start gap-3 cursor-pointer p-3 bg-amber-500/5 border border-amber-500/20 rounded-sm hover:bg-amber-500/10">
+                <label className="flex cursor-pointer items-start gap-4 rounded-md border border-amber-500/40 bg-gradient-to-r from-amber-950/35 to-amber-500/[0.04] p-5 transition-colors hover:bg-amber-500/10 sm:gap-6 sm:p-7">
                   <input
                     type="checkbox"
                     checked={stretch}
                     onChange={e => setStretch(e.target.checked)}
-                    className="mt-0.5 accent-amber-400"
+                    className="mt-0.5 h-6 w-6 flex-shrink-0 accent-amber-400 sm:h-8 sm:w-8"
                   />
                   <div className="flex-1">
-                    <p className="text-xs font-bold text-amber-300">
+                    <p className="text-sm font-black uppercase tracking-[0.08em] text-amber-300 sm:text-xl">
                       Stretch over {remaining.length * stretchMult + 1} seasons
                     </p>
-                    <p className="text-[10px] text-slate-500 mt-0.5">
+                    <p className="mt-2 text-xs text-slate-400 sm:text-lg">
                       Lowers annual cap hit (~{fmtM(totalDead / (remaining.length * stretchMult + 1))}/yr) but extends obligation.
                     </p>
                   </div>
                 </label>
               )}
 
-              <div className="text-[11px] text-slate-500 italic">
+              <div className="text-xs italic text-slate-400 sm:text-lg">
                 Cap hit this season: <span className="text-rose-300 font-bold">{fmtM(thisSeasonHit)}</span>
-                {' '}· counts against payroll, MLE, apron.
+                {' '}· counts against {impactTerms.join(', ')}.
               </div>
             </>
           )}
+
+          {!pbaPlainRelease && !ngFreeRelease && !wasTwoWay && remaining.length === 0 && (
+            <div className="rounded-md border border-slate-500/25 bg-slate-500/10 p-5 sm:p-7">
+              <p className="text-base font-bold text-slate-200 sm:text-xl">No Future Cap Charge</p>
+              <p className="mt-2 text-sm text-slate-400 sm:text-base">
+                This release has no future dead-money schedule under the active league rules.
+              </p>
+            </div>
+          )}
         </div>
 
-        <div className="flex flex-col sm:flex-row gap-2 p-4 border-t border-white/5 bg-black/40">
+        <div className="flex flex-shrink-0 flex-col gap-3 border-t border-white/10 bg-black/40 p-5 sm:flex-row sm:gap-6 sm:px-12 sm:py-7">
           <button
             onClick={onClose}
-            className="flex-1 py-2.5 bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[11px] font-black uppercase tracking-widest rounded-sm">
+            className="flex-1 rounded-md border border-white/20 bg-white/5 py-4 text-sm font-black uppercase tracking-[0.12em] text-white transition-colors hover:bg-white/10 sm:py-6 sm:text-lg">
             Cancel
           </button>
           <button
             onClick={() => onConfirm({ stretch: stretch && stretchEnabled })}
-            className="flex-1 py-2.5 bg-rose-600/30 border border-rose-500/50 hover:bg-rose-600/50 text-rose-200 text-[11px] font-black uppercase tracking-widest rounded-sm">
-            {ngFreeRelease || wasTwoWay ? 'Release' : `Waive — ${fmtM(thisSeasonHit)} dead`}
+            className="flex-1 rounded-md border border-rose-500 bg-gradient-to-r from-rose-950 to-rose-800/80 py-4 text-sm font-black uppercase tracking-[0.08em] text-white shadow-[0_0_28px_rgba(225,29,72,0.14)] transition-colors hover:from-rose-900 hover:to-rose-700 sm:py-6 sm:text-lg">
+            {ngFreeRelease || wasTwoWay || remaining.length === 0 ? 'Release' : `${releaseActionLabel} — ${fmtM(thisSeasonHit)} dead`}
           </button>
         </div>
       </motion.div>

@@ -2,24 +2,28 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useGame } from '../store/GameContext';
 import { ExpiringResignGateModal, ExpiringRow, ResignIntentLabel } from '../components/modals/ExpiringResignGateModal';
 import { SignFreeAgentModal } from '../components/modals/SignFreeAgentModal';
-import { getCurrentOffseasonEffectiveFAStart, parseGameDate } from '../utils/dateUtils';
+import { getCurrentOffseasonEffectiveFAStart } from '../utils/dateUtils';
 import { normalizeDate } from '../utils/helpers';
 import { computeContractOffer, contractToUSD, getCapThresholds, getContractLimits, hasBirdRights } from '../utils/salaryUtils';
 import { computeMoodScore, normalizeMoodTraits } from '../utils/mood/moodScore';
 import { classifyResignIntent } from '../components/central/view/PlayerBioMoraleTab';
 import type { NBAPlayer } from '../types';
 import { resolveAnyTeam } from '../utils/teamLookup';
+import { getTwoWayRosterLimit } from '../utils/rosterLimits';
+import { isTwoWayContract } from '../utils/contractTypes';
+import {
+  getExpiringContractReviewSeason,
+  getExpiringContractPlayers,
+  isExpiringContractBoardReviewed,
+} from '../services/freeAgency/expiringContractBoard';
+import {
+  isReSignDecision,
+  resolveOffseasonContractDecision,
+} from '../services/freeAgency/offseasonContractDecision';
 
 interface ExpiringResignGateOptions {
   onNavigateManual?: () => void;
-}
-
-function getEffectiveExpYear(player: NBAPlayer, currentYear: number): number {
-  const cyYears = ((((player as any).contractYears) ?? []) as Array<{ season?: string }>)
-    .map(cy => parseInt(String(cy.season ?? '').split('-')[0], 10) + 1)
-    .filter(y => Number.isFinite(y));
-  const latestCY = cyYears.length > 0 ? Math.max(...cyYears) : 0;
-  return Math.max(Number((player as any).contract?.exp ?? currentYear), latestCY);
+  onReviewComplete?: () => void | Promise<void>;
 }
 
 export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
@@ -38,24 +42,24 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
 
   const rows = useMemo<ExpiringRow[]>(() => {
     if (state.userTeamId == null) return [];
-    const currentYear = state.date
-      ? parseGameDate(state.date).getUTCFullYear()
-      : state.leagueStats?.year ?? new Date().getFullYear();
+    const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
     const team = resolveAnyTeam(state.userTeamId, state.teams, state.nonNBATeams ?? []);
     if (!team) return [];
     const gp = (team?.wins ?? 0) + (team?.losses ?? 0);
     const winPct = gp > 0 ? (team?.wins ?? 0) / gp : 0.5;
     const teamPlayers = state.players.filter((p: any) => p.tid === state.userTeamId);
+    const birdRightsEnabled = state.leagueStats?.birdRightsEnabled !== false;
+    const twoWayContractsEnabled = getTwoWayRosterLimit(state.leagueStats as any) > 0;
     const getResignBlockReason = (player: NBAPlayer, salaryUSD: number): string | undefined => {
       if (state.leagueStats?.uiMode === 'euro_isolated') return undefined;
-      if (hasBirdRights(player)) return undefined;
+      if (birdRightsEnabled && hasBirdRights(player)) return undefined;
       const limits = getContractLimits(player, state.leagueStats as any);
       if (salaryUSD <= limits.minSalaryUSD * 1.05) return undefined;
       const newDealStartYear = currentYear + 1;
       const committedAtStartYear = state.players
         .filter((p: any) =>
           p.tid === state.userTeamId &&
-          !p.twoWay &&
+          (!twoWayContractsEnabled || !isTwoWayContract(p, state.leagueStats)) &&
           (p.contract?.exp ?? newDealStartYear) >= newDealStartYear &&
           p.internalId !== player.internalId
         )
@@ -65,23 +69,19 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
       return 'CBA restriction: no Bird rights / no cap room for asking price';
     };
 
-    return teamPlayers
-      .filter((p: any) => p.status === 'Active' && p.contract)
-      .filter((p: any) => {
-        const yearsLeft = Math.max(0, getEffectiveExpYear(p, currentYear) - currentYear);
-        if (yearsLeft !== 0) return false;
-        // Team-option players are handled by the team-option gate.
-        if (p.contract?.hasTeamOption) return false;
-        return true;
-      })
+    return getExpiringContractPlayers(state, state.userTeamId)
       .map((p: any) => {
+        const decision = resolveOffseasonContractDecision(p, state);
         const traits = normalizeMoodTraits(p.moodTraits ?? []);
         const { score } = computeMoodScore(p, team as any, state.date, false, false, false, teamPlayers, currentYear);
-        const intent = classifyResignIntent(p, traits, score, currentYear, winPct) as ResignIntentLabel;
+        const intent = isReSignDecision(decision.kind)
+          ? classifyResignIntent(p, traits, score, currentYear, winPct) as ResignIntentLabel
+          : 'not_expiring' as const;
         const offer = computeContractOffer(p, state.leagueStats as any, traits as any, score);
         return {
           player: p,
           intent,
+          decisionKind: decision.kind,
           offerSalaryUSD: offer.salaryUSD,
           offerYears: offer.years,
           resignBlockReason: intent === 'ready_to_extend' || intent === 'open'
@@ -89,7 +89,12 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
             : undefined,
         };
       });
-  }, [state.userTeamId, state.players, state.teams, state.nonNBATeams, state.leagueStats, state.date]);
+  }, [state, state.userTeamId, state.players, state.teams, state.nonNBATeams, state.leagueStats, state.date]);
+
+  const reviewed = useMemo(
+    () => isExpiringContractBoardReviewed(state, rows.map(row => row.player)),
+    [state.expiringPlayersReview, state.leagueStats, rows],
+  );
 
   const allResolved = useMemo(() => (
     rows.every(r =>
@@ -127,39 +132,29 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
     return true;
   };
 
-  const autoDispatchResign = async (row: ExpiringRow) => {
-    // Used only by the bulk "Assistant GM: Offer All Willing" path — accepts the
-    // computed asking price without a negotiation modal.
-    if (row.resignBlockReason) return;
-    const team = resolveAnyTeam(state.userTeamId ?? -1, state.teams, state.nonNBATeams ?? []);
-    if (!team) return;
-    await dispatchAction({
-      type: 'SIGN_FREE_AGENT' as any,
-      payload: {
+  const handleAssistant = async () => {
+    const offers = rows
+      .filter(row => (
+        (row.intent === 'ready_to_extend' || row.intent === 'open')
+        && !row.resignBlockReason
+        && !offeredIds.has(row.player.internalId)
+        && !rejectedIds.has(row.player.internalId)
+      ))
+      .map(row => ({
         playerId: row.player.internalId,
-        teamId: team.id,
-        playerName: row.player.name,
-        teamName: team.name,
-        salary: row.offerSalaryUSD,
+        salaryUSD: row.offerSalaryUSD,
         years: row.offerYears,
-        option: 'NONE',
-        twoWay: false,
-        nonGuaranteed: false,
-        mleType: null,
+      }));
+    await dispatchAction({
+      type: 'ASSISTANT_RESIGN_EXPIRING_CONTRACTS',
+      payload: {
+        teamId: state.userTeamId,
+        season: getExpiringContractReviewSeason(state),
+        offers,
+        reviewedPlayerIds: rows.map(row => row.player.internalId),
       },
     });
-  };
-
-  const handleAssistant = async () => {
-    // "Done" path also lands here when all decided — rows.filter below is empty
-    // in that case so we just run the pending sim.
-    for (const r of rows) {
-      const willing = r.intent === 'ready_to_extend' || r.intent === 'open';
-      if (!willing) continue;
-      if (r.resignBlockReason) continue;
-      if (offeredIds.has(r.player.internalId) || rejectedIds.has(r.player.internalId)) continue;
-      await autoDispatchResign(r);
-    }
+    await options.onReviewComplete?.();
     if (!mountedRef.current) return;
     setOfferedIds(new Set());
     setRejectedIds(new Set());
@@ -239,11 +234,12 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
         <SignFreeAgentModal
           initialPlayer={signingPlayer}
           initialTeam={userTeam as any}
+          directSigning
           onClose={() => setSigningPlayer(null)}
           onConfirm={async (payload) => {
             const playerId = signingPlayer.internalId;
             setSigningPlayer(null);
-            await dispatchAction({ type: 'SIGN_FREE_AGENT' as any, payload });
+            await dispatchAction({ type: 'SIGN_FREE_AGENT' as any, payload: { ...payload, showFreeAgencySummary: true } });
             if (!mountedRef.current) return;
             setOfferedIds(prev => {
               const next = new Set(prev);
@@ -270,5 +266,7 @@ export function useExpiringResignGate(options: ExpiringResignGateOptions = {}) {
     hasRows: rows.length > 0,
     allResolved,
     actionableCount,
+    reviewed,
+    resolveWithAssistant: handleAssistant,
   };
 }

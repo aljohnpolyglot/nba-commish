@@ -2,9 +2,53 @@ import React from 'react';
 import { ArrowRightLeft, Calendar } from 'lucide-react';
 import { motion } from 'motion/react';
 import { NBAPlayer, NBATeam } from '../../../types';
+import { getPlayerImage } from '../../../utils/playerImage';
+import { getStaffImageUrl, resolveStaffImageId } from '../../../utils/staffPortrait';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { PlayerPortrait } from '../../shared/PlayerPortrait';
 import { DisplayItem, TYPE_STYLE } from './TransactionsShared';
+import type { TradeEntry } from './TradeDetailTypes';
 
-type TradeSelection = { text: string; date: string; legs?: { text: string; date: string }[] } | null;
+export type TradeSelection = (TradeEntry & { legs?: TradeEntry[] }) | null;
+
+const selectTrade = (entry: TradeEntry, legs?: TradeEntry[]): TradeSelection => ({
+  text: entry.text,
+  date: entry.date,
+  playerIds: entry.playerIds,
+  transactionId: entry.transactionId,
+  teamIds: entry.teamIds,
+  trade: entry.trade,
+  ...(legs?.length ? { legs: legs.map(leg => selectTrade(leg) as TradeEntry) } : {}),
+});
+
+const TransactionPlayerPortrait: React.FC<{
+  entry: { player?: NBAPlayer | null; playerIdentityMatch?: 'id' | 'source' | 'name' };
+  size: number;
+  onViewPlayer: (player: NBAPlayer) => void;
+}> = ({ entry, size, onViewPlayer }) => {
+  if (!entry.player) return null;
+  const portrait = (
+    <PlayerPortrait
+      imgUrl={getPlayerImage(entry.player)}
+      playerName={entry.player.name}
+      face={(entry.player as any).face}
+      size={size}
+    />
+  );
+  if (entry.playerIdentityMatch === 'name') return portrait;
+  return (
+    <button
+      type="button"
+      aria-label={`View ${entry.player.name}`}
+      onClick={event => {
+        event.stopPropagation();
+        onViewPlayer(entry.player as NBAPlayer);
+      }}
+    >
+      {portrait}
+    </button>
+  );
+};
 
 export const TransactionsPagination: React.FC<{
   displayCount: number;
@@ -54,39 +98,71 @@ export const TransactionsPagination: React.FC<{
   );
 };
 
-function uniqueTradeTeams(legs: Array<{ text?: string }>, teams: NBATeam[]) {
+function uniqueTradeTeams(legs: Array<{ text?: string; team?: any }>, teams: NBATeam[]) {
   const legTeams = legs.flatMap((leg: any) => {
-    const logos: { logo: string; name: string }[] = [];
+    const logos: { logo?: string; name: string; abbrev: string }[] = [];
+    const directTeam = leg.team;
+    if (directTeam?.name) {
+      logos.push({
+        logo: getResolvedTeamLogoUrl(directTeam),
+        name: directTeam.name,
+        abbrev: directTeam.abbrev || String(directTeam.name).slice(0, 3).toUpperCase(),
+      });
+    }
     for (const team of teams) {
-      if ((leg.text || '').includes(team.name)) logos.push({ logo: (team as any).logoUrl, name: team.name });
+      const text = leg.text || '';
+      if (text.includes(team.name) || (team.abbrev && new RegExp(`\\b${team.abbrev.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i').test(text))) {
+        logos.push({
+          logo: getResolvedTeamLogoUrl(team),
+          name: team.name,
+          abbrev: team.abbrev || team.name.slice(0, 3).toUpperCase(),
+        });
+      }
     }
     return logos;
   });
   return legTeams.filter((team, index, arr) => arr.findIndex(entry => entry.name === team.name) === index);
 }
 
+function tradeTeamCount(legs: Array<{ text?: string; team?: any }>, teams: NBATeam[]) {
+  const uniqueTeams = uniqueTradeTeams(legs, teams);
+  return Math.max(2, uniqueTeams.length || legs.length);
+}
+
+const TradeTeamMark: React.FC<{ team: { logo?: string; name: string; abbrev: string }; className?: string }> = ({ team, className = '' }) => {
+  if (team.logo) {
+    return <img src={team.logo} alt={team.name} title={team.name} className={`object-contain opacity-80 ${className}`} referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} />;
+  }
+  return (
+    <span title={team.name} className={`inline-flex items-center justify-center rounded-full bg-blue-500/15 border border-blue-400/25 text-blue-200 font-black ${className}`}>
+      {team.abbrev.slice(0, 3)}
+    </span>
+  );
+};
+
 type TeamFeedProps = {
   visibleItems: DisplayItem[];
   teams: NBATeam[];
   setSelectedTrade: (value: TradeSelection) => void;
-  setViewingPlayer: (value: NBAPlayer | null) => void;
+  onViewPlayer: (player: NBAPlayer) => void;
   emptyLabel: string;
 };
 
-export const TeamTransactionsFeed: React.FC<TeamFeedProps> = ({ visibleItems, teams, setSelectedTrade, setViewingPlayer, emptyLabel }) => (
+export const TeamTransactionsFeed: React.FC<TeamFeedProps> = ({ visibleItems, teams, setSelectedTrade, onViewPlayer, emptyLabel }) => (
   <div className="w-full overflow-x-hidden max-w-4xl mx-auto space-y-3">
     {visibleItems.length > 0 ? visibleItems.map((item, index) => {
       if (item.kind === 'multi') {
         const uniqueTeams = uniqueTradeTeams(item.legs, teams);
+        const teamCount = tradeTeamCount(item.legs, teams);
         return (
           <div key={`multi-${index}`} className="bg-blue-950/30 border border-blue-700/40 hover:border-blue-600/60 rounded-xl overflow-hidden transition-all">
-            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-blue-800/30 cursor-pointer hover:bg-blue-900/20 transition-colors" onClick={() => { const [first, ...rest] = item.legs; setSelectedTrade({ text: first.text, date: first.date, legs: rest.map(leg => ({ text: leg.text, date: leg.date })) }); }}>
+            <div className="flex items-center justify-between px-4 pt-3 pb-2 border-b border-blue-800/30 cursor-pointer hover:bg-blue-900/20 transition-colors" onClick={() => { const [first, ...rest] = item.legs; setSelectedTrade(selectTrade(first, rest)); }}>
               <div className="flex items-center gap-2">
                 <ArrowRightLeft size={13} className="text-blue-400" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-blue-300">{item.legs.length + 1}-Team Trade</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-blue-300">{teamCount}-Team Trade</span>
                 <div className="flex items-center gap-1">
                   {uniqueTeams.slice(0, 4).map((team, teamIndex) => (
-                    <img key={teamIndex} src={team.logo} alt={team.name} title={team.name} className="w-4 h-4 object-contain opacity-80" referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} />
+                    <TradeTeamMark key={teamIndex} team={team} className="w-4 h-4 text-[7px]" />
                   ))}
                 </div>
                 <span className="text-[9px] text-blue-400/60 font-medium">View All →</span>
@@ -95,10 +171,10 @@ export const TeamTransactionsFeed: React.FC<TeamFeedProps> = ({ visibleItems, te
             </div>
             <div className="divide-y divide-blue-900/30">
               {item.legs.map((leg, legIndex) => (
-                <div key={legIndex} className="flex gap-3 px-4 py-2.5 items-start cursor-pointer hover:bg-blue-900/20 transition-colors" onClick={() => setSelectedTrade({ text: leg.text, date: leg.date })}>
+                <div key={legIndex} className="flex gap-3 px-4 py-2.5 items-start cursor-pointer hover:bg-blue-900/20 transition-colors" onClick={() => setSelectedTrade(selectTrade(leg))}>
                   <span className="text-[9px] font-black text-blue-500 uppercase tracking-wider mt-0.5 w-8 shrink-0">L{legIndex + 1}</span>
                   <p className="flex-1 text-slate-300 text-xs leading-relaxed">{leg.text}</p>
-                  {leg.player?.imgURL && <img src={leg.player.imgURL} alt={leg.player.name} className="w-7 h-7 rounded-full object-cover border border-slate-700 cursor-pointer hover:border-indigo-400 shrink-0" referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} onClick={event => { event.stopPropagation(); leg.player && setViewingPlayer(leg.player as NBAPlayer); }} />}
+                  <div className="shrink-0"><TransactionPlayerPortrait entry={leg} size={28} onViewPlayer={onViewPlayer} /></div>
                 </div>
               ))}
             </div>
@@ -109,12 +185,14 @@ export const TeamTransactionsFeed: React.FC<TeamFeedProps> = ({ visibleItems, te
       const entry = item.entry;
       const style = TYPE_STYLE[entry.kind] ?? TYPE_STYLE['League Event'];
       const teamColor = (entry.team as any)?.colors?.[0];
-      const teamLogo = (entry.team as any)?.logoUrl;
-      const playerImg = entry.player?.imgURL;
+      const teamLogo = getResolvedTeamLogoUrl(entry.team);
+      const staffImg = entry.staff
+        ? entry.staff.playerPortraitUrl ?? getStaffImageUrl(resolveStaffImageId(entry.staff))
+        : null;
       const isTrade = entry.kind === 'Trade';
 
       return (
-        <div key={index} className={`group relative bg-slate-900/40 border border-slate-800 hover:border-slate-700 rounded-xl overflow-hidden transition-all ${isTrade ? 'cursor-pointer hover:bg-slate-900/70' : ''}`} onClick={isTrade ? () => setSelectedTrade({ text: entry.text, date: entry.date }) : undefined}>
+        <div key={index} className={`group relative bg-slate-900/40 border border-slate-800 hover:border-slate-700 rounded-xl overflow-hidden transition-all ${isTrade ? 'cursor-pointer hover:bg-slate-900/70' : ''}`} onClick={isTrade ? () => setSelectedTrade(selectTrade(entry)) : undefined}>
           {teamColor && <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ backgroundColor: teamColor }} />}
           <div className="flex gap-3 p-3 sm:p-4 pl-4 sm:pl-5">
             <div className={`mt-0.5 w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm ${style.bg} ${style.color}`}>{style.icon}</div>
@@ -128,9 +206,10 @@ export const TeamTransactionsFeed: React.FC<TeamFeedProps> = ({ visibleItems, te
               </div>
               <p className="text-slate-300 text-xs leading-relaxed break-words">{entry.text}</p>
             </div>
-            {(playerImg || teamLogo) && (
+            {(entry.player || staffImg || teamLogo) && (
               <div className="flex items-center gap-1.5 shrink-0 ml-1">
-                {playerImg && <img src={playerImg} alt={entry.player?.name} className="w-9 h-9 rounded-full object-cover border border-slate-700 cursor-pointer hover:border-indigo-400 transition-colors" referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} onClick={event => { event.stopPropagation(); entry.player && setViewingPlayer(entry.player as NBAPlayer); }} />}
+                <TransactionPlayerPortrait entry={entry} size={36} onViewPlayer={onViewPlayer} />
+                {!entry.player && entry.staff && <PlayerPortrait imgUrl={staffImg ?? undefined} playerName={entry.staff.name} disableNameFallback size={36} />}
                 {teamLogo && <img src={teamLogo} alt="" className="w-7 h-7 object-contain opacity-60 shrink-0" referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} />}
               </div>
             )}
@@ -152,25 +231,27 @@ type LeagueFeedProps = {
   ownTid: number | null;
   ownTeam: NBATeam | null;
   setSelectedTrade: (value: TradeSelection) => void;
-  setViewingPlayer: (value: NBAPlayer | null) => void;
+  onViewPlayer: (player: NBAPlayer) => void;
+  emptyLabel?: string;
 };
 
-export const LeagueTransactionsFeed: React.FC<LeagueFeedProps> = ({ visibleItems, teams, ownTid, ownTeam, setSelectedTrade, setViewingPlayer }) => (
+export const LeagueTransactionsFeed: React.FC<LeagueFeedProps> = ({ visibleItems, teams, ownTid, ownTeam, setSelectedTrade, onViewPlayer, emptyLabel }) => (
   <div className="max-w-4xl mx-auto space-y-4">
     {visibleItems.length > 0 ? visibleItems.map((item, index) => {
       if (item.kind === 'multi') {
         const uniqueTeams = uniqueTradeTeams(item.legs, teams);
+        const teamCount = tradeTeamCount(item.legs, teams);
         const isOwn = !!ownTeam && item.legs.some(leg => (leg.text || '').includes(ownTeam.name) || (leg.text || '').includes(ownTeam.abbrev));
         return (
           <motion.div key={`multi-${index}`} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.02, 0.5), duration: 0.3 }} className={`relative bg-blue-950/30 border hover:border-blue-600/60 rounded-xl overflow-hidden transition-all ${isOwn ? 'border-indigo-500/60 ring-2 ring-indigo-500/40' : 'border-blue-700/40'}`}>
-            <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-blue-800/30 cursor-pointer hover:bg-blue-900/20 transition-colors" onClick={() => { const [first, ...rest] = item.legs; setSelectedTrade({ text: first.text, date: first.date, legs: rest.map(leg => ({ text: leg.text, date: leg.date })) }); }}>
+            <div className="flex items-center justify-between px-5 pt-4 pb-2 border-b border-blue-800/30 cursor-pointer hover:bg-blue-900/20 transition-colors" onClick={() => { const [first, ...rest] = item.legs; setSelectedTrade(selectTrade(first, rest)); }}>
               <div className="flex items-center gap-2">
                 <ArrowRightLeft size={15} className="text-blue-400" />
-                <span className="text-[11px] font-black uppercase tracking-widest text-blue-300">{item.legs.length + 1}-Team Trade</span>
+                <span className="text-[11px] font-black uppercase tracking-widest text-blue-300">{teamCount}-Team Trade</span>
                 {isOwn && <span className="text-[9px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1.5 py-0.5 rounded border border-indigo-500/40">You</span>}
                 <div className="flex items-center gap-1 ml-1">
                   {uniqueTeams.slice(0, 4).map((team, teamIndex) => (
-                    <img key={teamIndex} src={team.logo} alt={team.name} title={team.name} className="w-5 h-5 object-contain opacity-80" referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} />
+                    <TradeTeamMark key={teamIndex} team={team} className="w-5 h-5 text-[8px]" />
                   ))}
                 </div>
                 <span className="text-[10px] text-blue-400/60 font-medium ml-1">View All →</span>
@@ -182,13 +263,13 @@ export const LeagueTransactionsFeed: React.FC<LeagueFeedProps> = ({ visibleItems
             </div>
             <div className="divide-y divide-blue-900/30">
               {item.legs.map((leg, legIndex) => {
-                const legTeamLogo = (leg.team as any)?.logoUrl;
+                const legTeamLogo = getResolvedTeamLogoUrl(leg.team);
                 return (
-                  <div key={legIndex} className="flex gap-3 px-5 py-3 items-start cursor-pointer hover:bg-blue-900/20 transition-colors" onClick={() => setSelectedTrade({ text: leg.text, date: leg.date })}>
+                  <div key={legIndex} className="flex gap-3 px-5 py-3 items-start cursor-pointer hover:bg-blue-900/20 transition-colors" onClick={() => setSelectedTrade(selectTrade(leg))}>
                     <span className="text-[9px] font-black text-blue-500 uppercase tracking-wider mt-0.5 w-10 shrink-0">Leg {legIndex + 1}</span>
                     <p className="flex-1 text-slate-300 text-sm leading-relaxed font-medium">{leg.text}</p>
                     <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                      {leg.player?.imgURL && <img src={leg.player.imgURL} alt={leg.player.name} className="w-9 h-9 rounded-full object-cover border border-slate-700 cursor-pointer hover:border-indigo-400 transition-colors" referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} onClick={event => { event.stopPropagation(); leg.player && setViewingPlayer(leg.player as NBAPlayer); }} />}
+                      <TransactionPlayerPortrait entry={leg} size={36} onViewPlayer={onViewPlayer} />
                       {legTeamLogo && <img src={legTeamLogo} alt="" className="w-7 h-7 object-contain opacity-70" referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} />}
                       <span className="text-[10px] text-blue-400/60 font-medium whitespace-nowrap">View →</span>
                     </div>
@@ -203,15 +284,17 @@ export const LeagueTransactionsFeed: React.FC<LeagueFeedProps> = ({ visibleItems
       const entry = item.entry;
       const style = TYPE_STYLE[entry.kind] ?? TYPE_STYLE['League Event'];
       const teamColor = (entry.team as any)?.colors?.[0];
-      const teamLogo = (entry.team as any)?.logoUrl || (entry.team as any)?.imgURL;
-      const playerImg = entry.player?.imgURL;
+      const teamLogo = getResolvedTeamLogoUrl(entry.team);
+      const staffImg = entry.staff
+        ? entry.staff.playerPortraitUrl ?? getStaffImageUrl(resolveStaffImageId(entry.staff))
+        : null;
       const isTrade = entry.kind === 'Trade';
-      const isSigningWithPlayer = !isTrade && !!entry.player;
+      const isSigningWithPlayer = !isTrade && !!entry.player && entry.playerIdentityMatch !== 'name';
       const isClickable = isTrade || isSigningWithPlayer;
       const isOwn = ownTid !== null && ((entry.team as any)?.id === ownTid || (!!ownTeam && (entry.text || '').includes(ownTeam.name)) || (entry.player as any)?.tid === ownTid);
 
       return (
-        <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.02, 0.5), duration: 0.3 }} className={`group relative bg-slate-900/40 border hover:border-slate-700 rounded-xl overflow-hidden transition-all hover:bg-slate-900/60 ${isOwn ? 'border-indigo-500/60 ring-2 ring-indigo-500/30 bg-indigo-950/20' : 'border-slate-800'} ${isClickable ? 'cursor-pointer' : ''}`} onClick={isClickable ? () => { if (isTrade) setSelectedTrade({ text: entry.text, date: entry.date }); else if (entry.player) setViewingPlayer(entry.player as NBAPlayer); } : undefined}>
+        <motion.div key={index} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: Math.min(index * 0.02, 0.5), duration: 0.3 }} className={`group relative bg-slate-900/40 border hover:border-slate-700 rounded-xl overflow-hidden transition-all hover:bg-slate-900/60 ${isOwn ? 'border-indigo-500/60 ring-2 ring-indigo-500/30 bg-indigo-950/20' : 'border-slate-800'} ${isClickable ? 'cursor-pointer' : ''}`} onClick={isClickable ? () => { if (isTrade) setSelectedTrade(selectTrade(entry)); else if (entry.player) onViewPlayer(entry.player as NBAPlayer); } : undefined}>
           {teamColor && <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-xl" style={{ backgroundColor: teamColor }} />}
           <div className="flex gap-4 p-5 pl-6">
             <div className={`mt-1 w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${style.bg} ${style.color}`}>{style.icon}</div>
@@ -232,9 +315,10 @@ export const LeagueTransactionsFeed: React.FC<LeagueFeedProps> = ({ visibleItems
               </div>
               <p className="text-slate-200 leading-relaxed font-medium">{entry.text || `${style.label} transaction recorded.`}</p>
             </div>
-            {(playerImg || teamLogo) && (
+            {(entry.player || staffImg || teamLogo) && (
               <div className="flex items-center gap-2 shrink-0 ml-2">
-                {playerImg && <img src={playerImg} alt={entry.player?.name} className="w-12 h-12 rounded-full object-cover border-2 border-slate-700 shrink-0 cursor-pointer hover:border-indigo-400 transition-colors" referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} title={entry.player?.name ? `View ${entry.player.name}'s profile` : undefined} onClick={event => { event.stopPropagation(); entry.player && setViewingPlayer(entry.player as NBAPlayer); }} />}
+                <TransactionPlayerPortrait entry={entry} size={48} onViewPlayer={onViewPlayer} />
+                {!entry.player && entry.staff && <PlayerPortrait imgUrl={staffImg ?? undefined} playerName={entry.staff.name} disableNameFallback size={48} />}
                 {teamLogo && <img src={teamLogo} alt={entry.team?.name} className="w-10 h-10 object-contain opacity-80 shrink-0" referrerPolicy="no-referrer" onError={event => { event.currentTarget.style.display = 'none'; }} />}
               </div>
             )}
@@ -246,8 +330,8 @@ export const LeagueTransactionsFeed: React.FC<LeagueFeedProps> = ({ visibleItems
         <div className="w-16 h-16 rounded-full bg-slate-900 flex items-center justify-center mb-4">
           <ArrowRightLeft size={32} />
         </div>
-        <p className="text-lg font-medium">No transactions found matching your filters.</p>
-        <p className="text-sm">Try adjusting your search or filter criteria.</p>
+        <p className="text-center text-lg font-medium">{emptyLabel ?? 'No transactions found matching your filters.'}</p>
+        <p className="text-sm">No movement is invented when the saved record is empty.</p>
       </div>
     )}
   </div>

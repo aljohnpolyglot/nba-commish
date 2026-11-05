@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ArrowLeftRight, UserPlus, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, X } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
 import { NBAPlayer } from '../../../types';
-import { getDisplayOverall, getDisplayPotential } from '../../../utils/playerRatings';
+import { getDisplayPotential } from '../../../utils/playerRatings';
+import { getScoutedDisplayOverall } from '../../../utils/scoutingFuzz';
 import { PlayerSelectorGrid, PlayerSelectorItem } from '../../shared/PlayerSelectorGrid';
 import { getDomesticPlayerStatus } from '../../../utils/euroLeagueDefaults';
 import { isEuroIsolatedMode, isPbaIsolatedMode } from '../../../utils/uiMode';
@@ -18,9 +19,25 @@ import {
   type StatMode,
   PG_METRICS,
 } from './PlayerComparisonMetrics';
+import { getHistoricalNbaCompletedSeasonCutoff } from '../../../services/playerDevelopment/hofHistoryWindow';
+import { isExternalLeaguePlayer } from '../../../utils/playerLeagueScope';
+import { getPlayerImage } from '../../../utils/playerImage';
+import { getResolvedTeamLogoUrl } from '../../../utils/teamAssets';
+import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
+import { formatLeagueSeasonLabel } from '../../../services/leagueCalendar';
 
 export const PlayerComparisonView: React.FC = () => {
   const { state } = useGame();
+  const isFictional = state.leagueType === 'fictional';
+  const selectableLeagues = isFictional
+    ? MODAL_LEAGUES.filter(league => league === 'NBA' || league === 'Draft Prospects' || league === 'Retired')
+    : MODAL_LEAGUES;
+  const maxVisibleSeason = getHistoricalNbaCompletedSeasonCutoff({
+    currentYear: state.leagueStats?.year,
+    leagueType: state.leagueType,
+    moddedLeagueBase: state.moddedLeagueBase,
+    nbaStartYear: state.nbaStartYear,
+  }) ?? state.leagueStats.year;
   const defaultModalLeague = (): ModalLeague => {
     const domestic = getDomesticPlayerStatus(state as any);
     if (isPbaIsolatedMode(state) && MODAL_LEAGUES.includes('PBA')) return 'PBA';
@@ -33,17 +50,23 @@ export const PlayerComparisonView: React.FC = () => {
   const [selectingForSlot, setSelectingForSlot] = useState<1 | 2 | null>(null);
   const [modalLeague, setModalLeague] = useState<ModalLeague>(defaultModalLeague);
   const [expandedCats, setExpandedCats] = useState<Set<string>>(new Set());
-  const [season, setSeason] = useState<number>(() => state.leagueStats.year);
+  const [season, setSeason] = useState<number>(() => maxVisibleSeason);
   const [statMode, setStatMode] = useState<StatMode>('perGame');
 
   const availableSeasons = useMemo(() => {
     const years = new Set<number>();
     [player1, player2].forEach(p => {
-      p?.stats?.filter(s => !s.playoffs && (s.gp ?? 0) > 0).forEach(s => years.add(s.season));
+      p?.stats?.filter(s => !s.playoffs && (s.gp ?? 0) > 0 && s.season <= maxVisibleSeason).forEach(s => years.add(s.season));
     });
-    if (years.size === 0) years.add(state.leagueStats.year);
+    if (years.size === 0) years.add(maxVisibleSeason);
     return Array.from(years).sort((a, b) => b - a);
-  }, [player1, player2, state.leagueStats.year]);
+  }, [maxVisibleSeason, player1, player2]);
+
+  React.useEffect(() => {
+    if (!availableSeasons.includes(season)) {
+      setSeason(availableSeasons[0] ?? maxVisibleSeason);
+    }
+  }, [availableSeasons, maxVisibleSeason, season]);
 
   const seasonIdx = availableSeasons.indexOf(season);
 
@@ -51,26 +74,27 @@ export const PlayerComparisonView: React.FC = () => {
   // Coerce tid→id so PSG's `teams.find(t => t.id === player.tid)` works.
   const mergedTeams = useMemo(() => [
     ...state.teams,
-    ...(state.nonNBATeams ?? []).map((t: any) => ({ ...t, id: t.tid })),
-  ] as typeof state.teams, [state.teams, state.nonNBATeams]);
+    ...(!isFictional ? (state.nonNBATeams ?? []).map((t: any) => ({ ...t, id: t.tid })) : []),
+  ] as typeof state.teams, [isFictional, state.teams, state.nonNBATeams]);
 
   const allSelectorItems = useMemo((): PlayerSelectorItem[] =>
     state.players
       .filter(p => !(p as any).diedYear)
+      .filter(player => !isFictional || !isExternalLeaguePlayer(player))
       .map(p => {
-        const displayOvr = getDisplayOverall(p, state.leagueStats.year);
+        const displayOvr = getScoutedDisplayOverall(state, p, state.leagueStats.year);
         // For players with no resolvable team (FA/retired tid=-1), hint via subtitle
         const noTeam = p.tid === -1 || (p.status === 'Retired' && !state.teams.find(t => t.id === p.tid) && !(state.nonNBATeams ?? []).find((t: any) => t.tid === p.tid));
         return { player: p, score: displayOvr, subtitle: noTeam ? (p.status === 'Retired' ? 'RET' : 'FA') : undefined };
       }),
-  [state.players, state.teams, state.nonNBATeams, state.leagueStats.year]);
+  [isFictional, state.players, state.teams, state.nonNBATeams, state.leagueStats.year]);
 
   const selectorItems = useMemo((): PlayerSelectorItem[] =>
     allSelectorItems.filter(x => getPlayerLeague(x.player) === modalLeague),
   [allSelectorItems, modalLeague]);
 
-  const k2_1 = useMemo(() => player1 ? getK2(player1) : null, [player1]);
-  const k2_2 = useMemo(() => player2 ? getK2(player2) : null, [player2]);
+  const k2_1 = useMemo(() => player1 ? getK2(player1, state) : null, [player1, state]);
+  const k2_2 = useMemo(() => player2 ? getK2(player2, state) : null, [player2, state]);
 
   const selectedSet1 = useMemo(() => player1 ? new Set([player1.internalId]) : new Set<string>(), [player1]);
   const selectedSet2 = useMemo(() => player2 ? new Set([player2.internalId]) : new Set<string>(), [player2]);
@@ -121,7 +145,7 @@ export const PlayerComparisonView: React.FC = () => {
           <ChevronLeft size={16} />
         </button>
         <span className="text-xs font-bold text-slate-300 w-24 text-center">
-          {season}–{String(season + 1).slice(2)} Season
+          {formatLeagueSeasonLabel(season, state.leagueStats)} Season
         </span>
         <button
           onClick={() => { const prev = availableSeasons[seasonIdx - 1]; if (prev !== undefined) setSeason(prev); }}
@@ -140,8 +164,10 @@ export const PlayerComparisonView: React.FC = () => {
           <div className="grid grid-cols-2 gap-8 py-8">
             {([1, 2] as const).map(slot => {
               const player = slot === 1 ? player1 : player2;
-              const team = player ? state.teams.find(t => t.id === player.tid) : null;
+              const team = player ? mergedTeams.find(t => t.id === player.tid) : null;
               const teamColor = team?.colors?.[0] || '#334155';
+              const teamLogoUrl = team ? getResolvedTeamLogoUrl(team, season) : '';
+              const playerImageUrl = player ? getPlayerImage(player) : undefined;
 
               return (
                 <div key={slot} className="flex flex-col items-center gap-3">
@@ -158,20 +184,28 @@ export const PlayerComparisonView: React.FC = () => {
                     {player ? (
                       <>
                         <div className="absolute inset-0 bg-gradient-to-b from-black/20 to-black/60 z-10 pointer-events-none" />
-                        {team?.logoUrl && (
+                        {teamLogoUrl && (
                           <div className="absolute inset-0 flex items-center justify-center opacity-20 pointer-events-none">
-                            <img src={team.logoUrl} alt="" className="w-32 h-32 object-contain grayscale brightness-200" referrerPolicy="no-referrer" />
+                            <img src={teamLogoUrl} alt="" className="w-32 h-32 object-contain grayscale brightness-200" referrerPolicy="no-referrer" />
                           </div>
                         )}
-                        <img
-                          src={player.imgURL || `https://picsum.photos/seed/${player.internalId}/200/200`}
-                          alt={player.name}
-                          className="w-full h-full object-cover relative z-0 brightness-110 contrast-110"
-                          referrerPolicy="no-referrer"
-                        />
-                        {team?.logoUrl && (
+                        {playerImageUrl ? (
+                          <img
+                            src={playerImageUrl}
+                            alt={player.name}
+                            className="w-full h-full object-cover relative z-0 brightness-110 contrast-110"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : isRealFaceConfig((player as any).face) ? (
+                          <MyFace face={(player as any).face} style={{ width: '100%', height: '100%' }} />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-4xl font-black text-white/50">
+                            {player.name.split(' ').map(part => part[0]).slice(0, 2).join('')}
+                          </div>
+                        )}
+                        {teamLogoUrl && (
                           <div className="absolute top-2 left-2 w-7 h-7 z-20 bg-white/10 backdrop-blur-md rounded-lg p-1 border border-white/20">
-                            <img src={team.logoUrl} alt={team.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
+                            <img src={teamLogoUrl} alt={team.name} className="w-full h-full object-contain" referrerPolicy="no-referrer" />
                           </div>
                         )}
                         <div className="absolute inset-0 bg-indigo-600/0 group-hover:bg-indigo-600/10 transition-colors flex items-center justify-center z-30">
@@ -191,7 +225,7 @@ export const PlayerComparisonView: React.FC = () => {
                       <div className="text-[11px] text-slate-500 font-medium mt-0.5">
                         {player.pos} · {team?.abbrev ?? (player.status === 'Retired' ? 'RET' : 'FA')}
                         {' · '}
-                        <span className="text-indigo-400 font-black">{getDisplayOverall(player, state.leagueStats.year)}</span>
+                        <span className="text-indigo-400 font-black">{getScoutedDisplayOverall(state, player, state.leagueStats.year)}</span>
                         <span className="text-slate-600"> / {getDisplayPotential(player, state.leagueStats.year, state.leagueStats.year)}</span>
                       </div>
                     )}
@@ -391,7 +425,7 @@ export const PlayerComparisonView: React.FC = () => {
 
               {/* League filter chips */}
               <div className="px-4 py-2.5 border-b border-slate-800/60 flex gap-1.5 flex-wrap shrink-0 bg-slate-900/60">
-                {MODAL_LEAGUES.map(lg => (
+                {selectableLeagues.map(lg => (
                   <button
                     key={lg}
                     onClick={() => setModalLeague(lg)}
@@ -402,7 +436,7 @@ export const PlayerComparisonView: React.FC = () => {
                         : "bg-slate-800 border-slate-700/60 text-slate-400 hover:text-white hover:border-slate-500"
                     )}
                   >
-                    {lg === 'NBL Australia' ? 'NBL' : lg === 'China CBA' ? 'CBA' : lg === 'Draft Prospects' ? 'Prospects' : lg}
+                    {isFictional && lg === 'NBA' ? 'Association' : lg === 'NBL Australia' ? 'NBL' : lg === 'China CBA' ? 'CBA' : lg === 'Draft Prospects' ? 'Prospects' : lg}
                   </button>
                 ))}
               </div>

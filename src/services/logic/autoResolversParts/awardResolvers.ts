@@ -1,6 +1,9 @@
 import type { GameState, HistoricalAward, NewsItem } from '../../../types';
 import { AwardService } from '../AwardService';
 import { NewsGenerator } from '../../news/NewsGenerator';
+import { resolveHeadCoachMember } from '../../staff/coachNameResolver';
+import { recordCoachAchievement } from '../../staff/coachAchievements';
+import { getTeamFullName } from '../../../utils/teamNames';
 
 type AwardKey = 'COY' | 'SMOY' | 'MIP' | 'DPOY' | 'ROY' | 'All-NBA' | 'MVP';
 
@@ -20,13 +23,14 @@ function announceAward(state: GameState, key: AwardKey): Partial<GameState> {
 
   try {
     const races = AwardService.calculateAwardRaces(
-      state.players, state.teams, season, state.staff, state.leagueStats.minGamesRequirement
+      state.players, state.teams, season, state.staff, state.leagueStats.minGamesRequirement, 10, state.leagueStats.uiMode
     );
 
     const date = state.date;
     const newAwards: HistoricalAward[] = [];
     const newsItems: NewsItem[] = [];
     let updatedPlayers = state.players;
+    let coachAchievementPatch: Partial<GameState> = {};
 
     const addPlayerAward = (type: string, pid: string) => {
       const normalType = PLAYER_AWARD_TYPE_MAP[type] ?? type;
@@ -40,7 +44,27 @@ function announceAward(state: GameState, key: AwardKey): Partial<GameState> {
     if (key === 'COY') {
       const coy = races.coy[0];
       if (!coy) return {};
-      newAwards.push({ season, type: 'COY', name: coy.coachName, tid: coy.team.id });
+      const coach = resolveHeadCoachMember(coy.team, state.staff);
+      newAwards.push({
+        season,
+        type: 'COY',
+        name: coy.coachName,
+        tid: coy.team.id,
+        team: getTeamFullName(coy.team),
+        uiMode: 'nba',
+        role: 'coach',
+        coachName: coy.coachName,
+        coachId: coach?.id ?? coach?.sourcePlayerId,
+      });
+      coachAchievementPatch = recordCoachAchievement(state, {
+        teamId: coy.team.id,
+        season,
+        type: 'COY',
+        label: `${season} Coach of the Year`,
+        league: 'nba',
+        coachName: coy.coachName,
+        coachId: coach?.id ?? coach?.sourcePlayerId,
+      });
       const item = NewsGenerator.generate('award_coy', date, {
         coachName: coy.coachName, teamName: coy.team.name, year: season,
         wins: coy.wins, losses: coy.losses,
@@ -134,8 +158,9 @@ function announceAward(state: GameState, key: AwardKey): Partial<GameState> {
       if (item) { item.playerPortraitUrl = mvp.player.imgURL; newsItems.push(item); }
     }
 
-    return {
-      players: updatedPlayers,
+  return {
+    ...coachAchievementPatch,
+    players: updatedPlayers,
       historicalAwards: [...(state.historicalAwards ?? []), ...newAwards],
       news: newsItems.length > 0
         ? [...newsItems, ...(state.news ?? [])].slice(0, 200)

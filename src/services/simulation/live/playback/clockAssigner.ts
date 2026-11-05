@@ -7,6 +7,7 @@ import { Possession, Period, PossessionOutcome } from './possessionTypes';
 function durationFor(o: PossessionOutcome): number {
   switch (o) {
     case 'TOV':         return 8;
+    case 'PENALTY_GOAL': return 8;
     case 'MADE_2':      return 14;
     case 'MADE_3':      return 15;
     case 'MADE_4':      return 16;

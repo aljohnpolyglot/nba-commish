@@ -29,8 +29,9 @@ export function IdealRotationReseedModal({
 }: IdealRotationReseedModalProps) {
   if (!open) return null;
 
-  const detectedLabel =
-    OUTLOOK_OPTIONS.find(option => option.depth !== null && option.depth <= benchDepth + 10 && option.depth >= benchDepth - 10)?.label ?? 'DETECTED';
+  const detectedLabel = OUTLOOK_OPTIONS
+    .filter(option => option.depth !== null)
+    .sort((left, right) => Math.abs(left.depth! - benchDepth) - Math.abs(right.depth! - benchDepth))[0]?.label ?? 'DETECTED';
   const bias = OUTLOOK_OPTIONS.find(option => option.key === reseedOutlook)?.bias ?? 1.0;
 
   return (
@@ -38,8 +39,8 @@ export function IdealRotationReseedModal({
       <div className="bg-slate-900 border border-slate-700 rounded-2xl p-5 w-full max-w-sm mx-4 flex flex-col gap-4" onClick={e => e.stopPropagation()}>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Reseed Rotation</div>
-            <div className="text-xs text-slate-400 mt-0.5">Pick a team outlook — preview updates live.</div>
+            <div className="text-[10px] font-bold uppercase tracking-widest text-amber-400">Auto Rotation</div>
+            <div className="text-xs text-slate-400 mt-0.5">Choose a team outlook — the rotation preview updates live.</div>
           </div>
           <button onClick={onClose} className="text-slate-500 hover:text-slate-300 text-lg leading-none">×</button>
         </div>
@@ -118,7 +119,7 @@ export function IdealRotationReseedModal({
           onClick={onApply}
           className="w-full bg-amber-500 hover:bg-amber-400 text-black font-black uppercase tracking-widest text-xs rounded-lg py-2 transition-colors"
         >
-          Apply Rotation
+          Use Template
         </button>
       </div>
     </div>

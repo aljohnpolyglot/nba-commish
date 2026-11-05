@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "seasonAnchor": "october-to-september",
+  "conferenceDateSource": "user-confirmed-pba-calendar",
+  "conferenceCalendar": [
+    {
+      "id": "pba-philippine-cup",
+      "displayName": "PBA Philippine Cup",
+      "opening": { "month": 10, "day": 5 },
+      "seasonStart": { "month": 10, "day": 5 },
+      "seasonEnd": { "month": 2, "day": 1 },
+      "dateStatus": "source-exact",
+      "playoffs": {
+        "qf": { "start": { "month": 12, "day": 15 }, "end": { "month": 1, "day": 5 } },
+        "sf": { "start": { "month": 1, "day": 8 }, "end": { "month": 1, "day": 25 } },
+        "final": { "start": { "month": 1, "day": 28 }, "end": { "month": 2, "day": 15 } }
+      }
+    },
+    {
+      "id": "pba-commissioners-cup",
+      "displayName": "PBA Commissioner's Cup",
+      "opening": { "month": 3, "day": 11 },
+      "seasonStart": { "month": 3, "day": 11 },
+      "seasonEnd": { "month": 5, "day": 31 },
+      "dateStatus": "source-exact",
+      "playoffs": {
+        "qf": { "start": { "month": 6, "day": 3 }, "end": { "month": 6, "day": 8 } },
+        "sf": { "start": { "month": 6, "day": 10 }, "end": { "month": 6, "day": 22 } },
+        "final": { "start": { "month": 6, "day": 25 }, "end": { "month": 7, "day": 7 } }
+      }
+    },
+    {
+      "id": "pba-governors-cup",
+      "displayName": "PBA Governors' Cup",
+      "opening": { "month": 7, "day": 10 },
+      "seasonStart": { "month": 7, "day": 10 },
+      "seasonEnd": { "month": 8, "day": 25 },
+      "dateStatus": "source-exact",
+      "playoffs": {
+        "qf": { "start": { "month": 8, "day": 28 }, "end": { "month": 9, "day": 1 } },
+        "sf": { "start": { "month": 9, "day": 3 }, "end": { "month": 9, "day": 15 } },
+        "final": { "start": { "month": 9, "day": 18 }, "end": { "month": 9, "day": 30 } }
+      }
+    }
+  ],
+  "nationalTeamWindows": [
+    { "key": "fiba-wcq-2027-w1", "eventType": "world-cup-qualifier", "label": "FIBA World Cup 2027 Asian Qualifiers — Window 1", "startDate": "2025-11-24", "endDate": "2025-12-02" },
+    { "key": "fiba-wcq-2027-w2", "eventType": "world-cup-qualifier", "label": "FIBA World Cup 2027 Asian Qualifiers — Window 2", "startDate": "2026-02-23", "endDate": "2026-03-03" },
+    { "key": "fiba-wcq-2027-w3", "eventType": "world-cup-qualifier", "label": "FIBA World Cup 2027 Asian Qualifiers — Window 3", "startDate": "2026-06-29", "endDate": "2026-07-07" },
+    { "key": "fiba-wcq-2027-w4", "eventType": "world-cup-qualifier", "label": "FIBA World Cup 2027 Asian Qualifiers — Window 4", "startDate": "2026-08-24", "endDate": "2026-09-01" },
+    { "key": "fiba-wcq-2027-w5", "eventType": "world-cup-qualifier", "label": "FIBA World Cup 2027 Asian Qualifiers — Window 5", "startDate": "2026-11-23", "endDate": "2026-12-01" },
+    { "key": "fiba-wcq-2027-w6", "eventType": "world-cup-qualifier", "label": "FIBA World Cup 2027 Asian Qualifiers — Window 6", "startDate": "2027-02-22", "endDate": "2027-03-02" },
+    { "key": "fiba-olympic-prequal-2027", "eventType": "olympic-pre-qualifying", "label": "FIBA Olympic Pre-Qualifying Tournaments", "startDate": "2027-08-14", "endDate": "2027-08-22" },
+    { "key": "fiba-world-cup-2027", "eventType": "world-cup", "label": "FIBA Basketball World Cup 2027", "startDate": "2027-08-27", "endDate": "2027-09-12", "tournamentYear": 2027 },
+    { "key": "fiba-olympic-qualifying-2028", "eventType": "olympic-qualifying", "label": "FIBA Olympic Qualifying Tournaments", "startDate": "2028-06-26", "endDate": "2028-07-02" },
+    { "key": "olympics-men-2028", "eventType": "olympics-men", "label": "Men's Olympic Basketball Tournament 2028", "startDate": "2028-07-12", "endDate": "2028-07-30", "tournamentYear": 2028 }
+  ],
+  "majorTournamentDates": [
+    { "eventType": "world-cup", "tournamentYear": 2019, "start": "08-31", "end": "09-15" },
+    { "eventType": "world-cup", "tournamentYear": 2023, "start": "08-25", "end": "09-10" },
+    { "eventType": "world-cup", "tournamentYear": 2027, "start": "08-27", "end": "09-12" },
+    { "eventType": "olympics-men", "tournamentYear": 2021, "marker": "07-15", "start": "07-25", "end": "08-07" },
+    { "eventType": "olympics-men", "tournamentYear": 2024, "marker": "07-17", "start": "07-27", "end": "08-10" },
+    { "eventType": "olympics-men", "tournamentYear": 2028, "marker": "07-05", "start": "07-12", "end": "07-30" }
+  ]
+}

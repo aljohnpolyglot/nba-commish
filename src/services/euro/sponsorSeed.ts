@@ -1,4 +1,4 @@
-import { getSponsorCatalogSync, pickSponsorName } from '../../data/sponsorCatalogFetcher';
+import { pickSponsorName, resolveSponsorLeagueKey } from '../../data/sponsorCatalogFetcher';
 import type { SponsorshipSlot, TycoonTier } from '../../types/tycoon';
 import { leagueIdToKey, type SponsorSlot } from './sponsorSeedTypes';
 
@@ -16,10 +16,14 @@ const TIER_AMOUNTS: Record<TycoonTier, Record<SponsorSlot['slotId'], number>> = 
   D: { main: 150_000, jersey: 60_000, arena: 40_000 },
 };
 
-export function seedSponsors(leagueId: string, tier: TycoonTier, _subSeed: number): SponsorSlot[] {
-  const catalog = getSponsorCatalogSync();
-  if (!catalog) return [];
-  const leagueKey = leagueIdToKey(leagueId);
+export function seedSponsors(
+  leagueId: string,
+  tier: TycoonTier,
+  _subSeed: number,
+  team?: { league?: string; region?: string; name?: string },
+): SponsorSlot[] {
+  const leagueKey = leagueIdToKey(leagueId)
+    ?? (team ? resolveSponsorLeagueKey(team.league, team.region, team.name) : undefined);
   if (!leagueKey) return [];
   const amounts = TIER_AMOUNTS[tier];
   return SLOT_MAP.map(({ slotId, catalog: catalogSlot }) => ({

@@ -1,21 +1,31 @@
 import type { LeagueStats } from '../../../../types';
+import { HISTORICAL_GAME_RULE_KEYS } from '../../../../services/era/basketballEraRules';
+import { DEFAULT_CAP_INFLATION_AVERAGE, INITIAL_LEAGUE_STATS } from '../../../../constants';
 import { calculateRuleChangeEffects } from '../../../../utils/ruleEffects';
 import { ruleChangeService } from '../../../../services/RuleChangeService';
 import type { createRulesViewDefaults } from './rulesStateViewDefaults';
+import { getMinimumPlayoffField, MAX_PLAYOFF_ROUNDS, MIN_PLAYOFF_ROUNDS } from '../../../../utils/playoffFormat';
+import { getLeagueCalendar, normalizeLeagueCalendar, validateLeagueCalendar } from '../../../../services/leagueCalendar';
+import { WNBA_DEVELOPMENTAL_DEFAULTS } from '../../../../services/wnba/developmentalContracts';
 
 type RulesViewDefaults = ReturnType<typeof createRulesViewDefaults>;
 
-type RuleValue = string | number | boolean | (string | number)[] | undefined;
+type RuleValue = string | number | boolean | (string | number)[] | LeagueStats['awardSettings'] | LeagueStats['leagueCalendar'] | undefined;
 type RulesSnapshot = Record<string, RuleValue>;
 
 const NBA_MAX_PLAYOFF_SERIES = 7;
 const NBA_MAX_GAMES_PER_SEASON = 82;
+const MODDED_MAX_GAMES_PER_SEASON = 200;
 const NBA_MAX_DIVISION_GAMES = 16;
 const NBA_MAX_CONFERENCE_GAMES = 36;
 
 export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: RulesViewDefaults): RulesSnapshot => ({
+  awardSettings: leagueStats.awardSettings,
+  playoffsEnabled: viewDefaults.playoffsEnabled,
   playIn: viewDefaults.playIn,
   inSeasonTournament: viewDefaults.inSeasonTournament,
+  summerLeagueEnabled: viewDefaults.summerLeagueEnabled,
+  summerLeagueTournamentEnabled: viewDefaults.summerLeagueTournamentEnabled,
   cupPrizePoolEnabled: viewDefaults.cupPrizePoolEnabled,
   cupPrizePoolAutoInflate: viewDefaults.cupPrizePoolAutoInflate,
   cupPrizeWinner: viewDefaults.cupPrizeWinner,
@@ -23,21 +33,33 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   cupPrizeSemi: viewDefaults.cupPrizeSemi,
   cupPrizeQuarter: viewDefaults.cupPrizeQuarter,
   playoffFormat: viewDefaults.playoffFormat,
+  numPlayoffTeams: viewDefaults.numPlayoffTeams,
+  numPlayoffByes: viewDefaults.numPlayoffByes,
+  playoffsByConf: viewDefaults.playoffsByConf,
   draftType: viewDefaults.draftType,
   eligibilityRule: viewDefaults.eligibilityRule,
   draftEligibilityRule: viewDefaults.eligibilityRule,
   minAgeRequirement: viewDefaults.minAgeRequirement,
   minGamesRequirement: viewDefaults.minGamesRequirement,
   customScheduleEnabled: viewDefaults.customScheduleEnabled,
+  leagueCalendar: viewDefaults.leagueCalendar,
+  preseasonGamesPerTeam: viewDefaults.preseasonGamesPerTeam,
   gamesPerSeason: viewDefaults.gamesPerSeason,
   divisionGames: viewDefaults.divisionGames,
   conferenceGames: viewDefaults.conferenceGames,
+  jerseyPatchProgramEnabled: viewDefaults.jerseyPatchProgramEnabled,
   allStarGameEnabled: viewDefaults.allStarGameEnabled,
   allStarFormat: viewDefaults.allStarFormat,
   allStarTeams: viewDefaults.allStarTeams,
+  allStarCaptainType: viewDefaults.allStarCaptainType,
+  allStarPlayerCaptainNameStyle: viewDefaults.allStarPlayerCaptainNameStyle,
+  allStarLegendCaptainIds: viewDefaults.allStarLegendCaptainIds,
+  allStarTeamNames: viewDefaults.allStarTeamNames,
   allStarMirrorLeagueRules: viewDefaults.allStarMirrorLeagueRules,
   allStarDunkContest: viewDefaults.allStarDunkContest,
   allStarDunkContestPlayers: viewDefaults.allStarDunkContestPlayers,
+  allStarDanceContestEnabled: viewDefaults.allStarDanceContestEnabled,
+  pbaAllStarDanceContestEnabled: viewDefaults.pbaAllStarDanceContestEnabled,
   allStarThreePointContest: viewDefaults.allStarThreePointContest,
   allStarThreePointContestPlayers: viewDefaults.allStarThreePointContestPlayers,
   allStarShootingStars: viewDefaults.allStarShootingStars,
@@ -54,8 +76,6 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   allStarHorseParticipants: viewDefaults.allStarHorseParticipants,
   allStarHorseNoPlayerRepeat: viewDefaults.allStarHorseNoPlayerRepeat,
   allStarHorseNoGlobalRepeat: viewDefaults.allStarHorseNoGlobalRepeat,
-  allStarOneOnOneEnabled: viewDefaults.allStarOneOnOneEnabled,
-  allStarOneOnOneParticipants: viewDefaults.allStarOneOnOneParticipants,
   allStarThroneEnabled: viewDefaults.allStarThroneEnabled,
   allStarThroneFieldSize: viewDefaults.allStarThroneFieldSize,
   allStarThroneFormat: viewDefaults.allStarThroneFormat,
@@ -68,6 +88,8 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   allStarThroneMandatoryDefense: viewDefaults.allStarThroneMandatoryDefense,
   risingStarsEnabled: viewDefaults.risingStarsEnabled,
   risingStarsFormat: viewDefaults.risingStarsFormat,
+  risingStarsCaptainType: viewDefaults.risingStarsCaptainType,
+  risingStarsLegendCaptainIds: viewDefaults.risingStarsLegendCaptainIds,
   risingStarsMirrorLeagueRules: viewDefaults.risingStarsMirrorLeagueRules,
   risingStarsQuarterLength: viewDefaults.risingStarsQuarterLength,
   risingStarsEliminationEndings: viewDefaults.risingStarsEliminationEndings,
@@ -95,7 +117,7 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   numQuarters: leagueStats.numQuarters ?? 4,
   overtimeDuration: leagueStats.overtimeDuration ?? 5,
   overtimeTargetPoints: leagueStats.overtimeTargetPoints ?? 0,
-  shootoutRounds: leagueStats.shootoutRounds ?? 0,
+  shootoutRounds: leagueStats.shootoutRounds || 3,
   overtimeType: leagueStats.overtimeType ?? 'standard',
   maxTimeouts: leagueStats.maxTimeouts ?? 7,
   coachChallenges: leagueStats.coachChallenges ?? true,
@@ -137,9 +159,17 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   threePointLineDistance: leagueStats.threePointLineDistance ?? 23.75,
   fourPointLineDistance: leagueStats.fourPointLineDistance ?? 27,
   dunkValue: leagueStats.dunkValue ?? 2,
-  midrangeValue: leagueStats.midrangeValue ?? 2,
+  fieldGoalValue: leagueStats.fieldGoalValue ?? 2,
+  freeThrowsEnabled: leagueStats.freeThrowsEnabled ?? true,
+  dribbleRule: leagueStats.dribbleRule ?? (leagueStats.noDribbleRule ? 'none' : 'continuous'),
+  madeBasketRestart: leagueStats.madeBasketRestart ?? 'inbound',
+  teamFoulPenaltyMode: leagueStats.teamFoulPenaltyMode ?? 'free_throws',
+  teamFoulPenaltyPoints: leagueStats.teamFoulPenaltyPoints ?? 1,
+  temporaryDisqualificationFoulLimit: leagueStats.temporaryDisqualificationFoulLimit ?? 0,
+  temporaryDisqualificationUntilNextScore: leagueStats.temporaryDisqualificationUntilNextScore ?? false,
+  temporaryDisqualificationAllowsSubstitute: leagueStats.temporaryDisqualificationAllowsSubstitute ?? true,
+  homeCourtAdvantage: leagueStats.homeCourtAdvantage ?? 50,
   heaveRuleEnabled: leagueStats.heaveRuleEnabled ?? false,
-  halfCourtShotValue: leagueStats.halfCourtShotValue ?? 3,
   clutchTimeoutLimit: leagueStats.clutchTimeoutLimit ?? 2,
   handcheckingEnabled: leagueStats.handcheckingEnabled ?? false,
   illegalZoneDefenseEnabled: leagueStats.illegalZoneDefenseEnabled ?? false,
@@ -159,10 +189,20 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   fightingInstantEjection: leagueStats.fightingInstantEjection ?? true,
   useYellowRedCards: leagueStats.useYellowRedCards ?? false,
   shotClockResetOffensiveRebound: leagueStats.shotClockResetOffensiveRebound ?? 14,
+  pace: leagueStats.pace ?? 100,
+  threePointTendencyFactor: leagueStats.threePointTendencyFactor ?? 1,
+  threePointAccuracyFactor: leagueStats.threePointAccuracyFactor ?? 1,
+  twoPointAccuracyFactor: leagueStats.twoPointAccuracyFactor ?? 1,
+  ftAccuracyFactor: leagueStats.ftAccuracyFactor ?? 1,
+  blockFactor: leagueStats.blockFactor ?? 1,
+  stealFactor: leagueStats.stealFactor ?? 1,
+  turnoverFactor: leagueStats.turnoverFactor ?? 1,
+  orbFactor: leagueStats.orbFactor ?? 1,
+  foulRateFactor: leagueStats.foulRateFactor ?? 1,
   currency: leagueStats.currency ?? 'USD',
   tradesAllowed: leagueStats.tradesAllowed ?? true,
   pbaLocalEligibilityMode: leagueStats.pbaLocalEligibilityMode ?? 'registered_roster',
-  salaryCap: leagueStats.salaryCap ?? 154647000,
+  salaryCap: leagueStats.salaryCap ?? INITIAL_LEAGUE_STATS.salaryCap,
   salaryCapEnabled: leagueStats.salaryCapEnabled ?? true,
   salaryCapType: leagueStats.salaryCapType ?? 'soft',
   minimumPayrollEnabled: leagueStats.minimumPayrollEnabled ?? true,
@@ -183,6 +223,18 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   restrictTPEProvenanceOver2ndApron: leagueStats.restrictTPEProvenanceOver2ndApron ?? true,
   postSigningMoratoriumEnabled: leagueStats.postSigningMoratoriumEnabled ?? true,
   twoWayContractsEnabled: leagueStats.twoWayContractsEnabled ?? true,
+  developmentalContractsEnabled: leagueStats.developmentalContractsEnabled
+    ?? (leagueStats.uiMode === 'wnba_isolated' && leagueStats.year >= 2026),
+  maxDevelopmentalPlayersPerTeam: leagueStats.maxDevelopmentalPlayersPerTeam
+    ?? WNBA_DEVELOPMENTAL_DEFAULTS.maxPlayersPerTeam,
+  developmentalMaxServiceYears: leagueStats.developmentalMaxServiceYears
+    ?? WNBA_DEVELOPMENTAL_DEFAULTS.maxServiceYears,
+  developmentalMaxGames: leagueStats.developmentalMaxGames
+    ?? WNBA_DEVELOPMENTAL_DEFAULTS.maxGames,
+  developmentalWeeklyStipendUSD: leagueStats.developmentalWeeklyStipendUSD
+    ?? WNBA_DEVELOPMENTAL_DEFAULTS.weeklyStipendUSD,
+  developmentalActiveGameBonusUSD: leagueStats.developmentalActiveGameBonusUSD
+    ?? WNBA_DEVELOPMENTAL_DEFAULTS.activeGameBonusUSD,
   nonGuaranteedContractsEnabled: leagueStats.nonGuaranteedContractsEnabled ?? true,
   minPlayersPerTeam: leagueStats.minPlayersPerTeam ?? 14,
   maxPlayersPerTeam: leagueStats.maxPlayersPerTeam ?? 17,
@@ -208,18 +260,18 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
   inflationEnabled: leagueStats.inflationEnabled ?? true,
   inflationMin: leagueStats.inflationMin ?? 0,
   inflationMax: leagueStats.inflationMax ?? 10,
-  inflationAverage: leagueStats.inflationAverage ?? 5.5,
+  inflationAverage: leagueStats.inflationAverage ?? DEFAULT_CAP_INFLATION_AVERAGE,
   inflationStdDev: leagueStats.inflationStdDev ?? 2,
   mleEnabled: leagueStats.mleEnabled ?? true,
   roomMleAmount: leagueStats.roomMleAmount ?? 8_781_000,
   nonTaxpayerMleAmount: leagueStats.nonTaxpayerMleAmount ?? 14_104_000,
   taxpayerMleAmount: leagueStats.taxpayerMleAmount ?? 5_685_000,
   biannualEnabled: leagueStats.biannualEnabled ?? true,
-  biannualAmount: leagueStats.biannualAmount ?? 4_767_000,
+  biannualAmount: leagueStats.biannualAmount ?? 5_135_000,
   roomMlePercentage: (leagueStats as any).roomMlePercentage ?? 5.68,
   nonTaxpayerMlePercentage: (leagueStats as any).nonTaxpayerMlePercentage ?? 9.12,
   taxpayerMlePercentage: (leagueStats as any).taxpayerMlePercentage ?? 3.68,
-  biannualPercentage: (leagueStats as any).biannualPercentage ?? 3.08,
+  biannualPercentage: (leagueStats as any).biannualPercentage ?? 3.32,
   tradableDraftPickSeasons: leagueStats.tradableDraftPickSeasons ?? 7,
   stepienRuleEnabled: leagueStats.stepienRuleEnabled ?? true,
   tradeExceptionsEnabled: leagueStats.tradeExceptionsEnabled ?? true,
@@ -261,7 +313,7 @@ export const buildRulesStateBaseline = (leagueStats: LeagueStats, viewDefaults: 
 });
 
 const sameRuleValue = (left: RuleValue, right: RuleValue) =>
-  Array.isArray(left) || Array.isArray(right)
+  typeof left === 'object' || typeof right === 'object'
     ? JSON.stringify(left) === JSON.stringify(right)
     : left === right;
 
@@ -297,26 +349,49 @@ export const saveRulesConfig = async ({
   cupShort: string;
 }) => {
   const rawPlayoffFormat = Array.isArray(rules.playoffFormat) ? rules.playoffFormat : [];
-  const cleanedFormat = rawPlayoffFormat.map(value => {
+  const cleanedFormat = (rawPlayoffFormat.length > 0 ? rawPlayoffFormat : [1])
+    .slice(0, MAX_PLAYOFF_ROUNDS)
+    .map(value => {
     let num = typeof value === 'string' ? parseInt(value, 10) : value;
     if (Number.isNaN(num) || num < 1) num = 1;
     if (num > NBA_MAX_PLAYOFF_SERIES) num = NBA_MAX_PLAYOFF_SERIES;
     if (num % 2 === 0) num += 1;
     if (num > NBA_MAX_PLAYOFF_SERIES) num = NBA_MAX_PLAYOFF_SERIES;
     return num;
-  });
+    });
+  while (cleanedFormat.length < MIN_PLAYOFF_ROUNDS) cleanedFormat.push(1);
 
   const cleanedMinGames = typeof rules.minGamesRequirement === 'string' ? parseInt(rules.minGamesRequirement, 10) : Number(rules.minGamesRequirement);
   const cleanedMinAge = typeof rules.minAgeRequirement === 'string' ? parseInt(rules.minAgeRequirement, 10) : Number(rules.minAgeRequirement);
+  const scheduleMaximum = leagueStats.uiMode === 'nba' ? NBA_MAX_GAMES_PER_SEASON : MODDED_MAX_GAMES_PER_SEASON;
   const cleanedGamesPerSeason = Number.isFinite(Number(rules.gamesPerSeason))
-    ? Math.min(NBA_MAX_GAMES_PER_SEASON, Math.max(1, Math.round(Number(rules.gamesPerSeason))))
-    : 82;
+    ? Math.min(scheduleMaximum, Math.max(1, Math.round(Number(rules.gamesPerSeason))))
+    : Math.min(scheduleMaximum, leagueStats.gamesPerSeason ?? 82);
+  const cleanedPreseasonGames = Number.isFinite(Number(rules.preseasonGamesPerTeam))
+    ? Math.min(20, Math.max(0, Math.round(Number(rules.preseasonGamesPerTeam))))
+    : Math.max(0, Math.round(getLeagueCalendar(leagueStats).preseasonGamesPerTeam ?? 0));
+  const editableCalendar = rules.leagueCalendar && typeof rules.leagueCalendar === 'object' && !Array.isArray(rules.leagueCalendar)
+    ? rules.leagueCalendar as NonNullable<LeagueStats['leagueCalendar']>
+    : getLeagueCalendar(leagueStats);
+  const cleanedCalendar = normalizeLeagueCalendar({
+    ...editableCalendar,
+    preseasonGamesPerTeam: cleanedPreseasonGames,
+  }, getLeagueCalendar(leagueStats));
+  const calendarValidation = validateLeagueCalendar(cleanedCalendar, leagueStats.year, cleanedGamesPerSeason, {
+    allStarEnabled: rules.allStarGameEnabled !== false,
+    cupEnabled: rules.inSeasonTournament === true,
+    playInEnabled: rules.playIn === true,
+    summerLeagueEnabled: rules.summerLeagueEnabled === true,
+  });
+  if (!calendarValidation.valid) {
+    throw new Error(calendarValidation.errors.join(' '));
+  }
   let cleanedDivisionGames = Number.isFinite(Number(rules.divisionGames))
-    ? Math.min(NBA_MAX_DIVISION_GAMES, Math.max(0, Math.round(Number(rules.divisionGames))))
-    : 16;
+    ? Math.min(leagueStats.uiMode === 'nba' ? NBA_MAX_DIVISION_GAMES : cleanedGamesPerSeason, Math.max(0, Math.round(Number(rules.divisionGames))))
+    : Math.max(0, leagueStats.numGamesDiv ?? leagueStats.divisionGames ?? 0);
   let cleanedConferenceGames = Number.isFinite(Number(rules.conferenceGames))
-    ? Math.min(NBA_MAX_CONFERENCE_GAMES, Math.max(0, Math.round(Number(rules.conferenceGames))))
-    : 36;
+    ? Math.min(leagueStats.uiMode === 'nba' ? NBA_MAX_CONFERENCE_GAMES : cleanedGamesPerSeason, Math.max(0, Math.round(Number(rules.conferenceGames))))
+    : Math.max(0, leagueStats.numGamesConf ?? leagueStats.conferenceGames ?? 0);
   if (cleanedDivisionGames + cleanedConferenceGames > cleanedGamesPerSeason) {
     cleanedConferenceGames = Math.max(0, cleanedGamesPerSeason - cleanedDivisionGames);
     if (cleanedDivisionGames > cleanedGamesPerSeason) {
@@ -325,17 +400,69 @@ export const saveRulesConfig = async ({
     }
   }
 
-  const { eligibilityRule, draftEligibilityRule: _draftEligibilityRule, playoffFormat: _playoffFormat, ...rawStats } = rules;
+  const {
+    eligibilityRule,
+    draftEligibilityRule: _draftEligibilityRule,
+    playoffFormat: _playoffFormat,
+    preseasonGamesPerTeam: _preseasonGamesPerTeam,
+    ...rawStats
+  } = rules;
+  const playoffCapacity = 2 ** cleanedFormat.length;
+  const playoffsByConference = rules.playoffsByConf !== false;
+  const minimumPlayoffField = getMinimumPlayoffField(cleanedFormat.length, playoffsByConference);
+  const requestedPlayoffTeams = Math.min(
+    playoffCapacity,
+    Math.max(minimumPlayoffField, Math.round(Number(rules.numPlayoffTeams) || leagueStats.numPlayoffTeams || playoffCapacity)),
+  );
+  const cleanedPlayoffTeams = playoffsByConference && requestedPlayoffTeams % 2 !== 0
+    ? requestedPlayoffTeams - 1
+    : requestedPlayoffTeams;
+  const cleanedPlayoffByes = Math.max(0, playoffCapacity - cleanedPlayoffTeams);
   const newStats: any = {
     ...rawStats,
     numGamesPlayoffSeries: cleanedFormat,
+    numPlayoffTeams: cleanedPlayoffTeams,
+    numPlayoffByes: cleanedPlayoffByes,
+    leagueCalendar: {
+      ...cleanedCalendar,
+    },
     draftEligibilityRule: typeof eligibilityRule === 'string' ? eligibilityRule : 'one_and_done',
     minAgeRequirement: Number.isNaN(cleanedMinAge) ? 19 : cleanedMinAge,
     minGamesRequirement: Number.isNaN(cleanedMinGames) ? 65 : cleanedMinGames,
     gamesPerSeason: cleanedGamesPerSeason,
     divisionGames: cleanedDivisionGames,
     conferenceGames: cleanedConferenceGames,
+    numGamesDiv: cleanedDivisionGames,
+    numGamesConf: cleanedConferenceGames,
   };
+  if (newStats.risingStarsFormat === 'captains_draft') {
+    newStats.risingStarsCaptainType = 'legend';
+  }
+  newStats.pace = Math.min(400, Math.max(1, Number(newStats.pace) || 100));
+  newStats.homeCourtAdvantage = Math.min(100, Math.max(0, Number(newStats.homeCourtAdvantage) || 0));
+  for (const key of [
+    'threePointTendencyFactor',
+    'threePointAccuracyFactor',
+    'twoPointAccuracyFactor',
+    'ftAccuracyFactor',
+    'blockFactor',
+    'stealFactor',
+    'turnoverFactor',
+    'orbFactor',
+    'foulRateFactor',
+  ]) {
+    const value = Number(newStats[key]);
+    newStats[key] = Number.isFinite(value) ? Math.min(4, Math.max(0, value)) : 1;
+  }
+  {
+    const minimumRoster = Number.isFinite(Number(newStats.minPlayersPerTeam))
+      ? Math.max(1, Math.round(Number(newStats.minPlayersPerTeam)))
+      : 14;
+    const requested = Number(newStats.maxPlayersOnCourt);
+    newStats.maxPlayersOnCourt = Number.isFinite(requested)
+      ? Math.max(1, Math.min(10, minimumRoster, Math.round(requested)))
+      : 5;
+  }
   {
     const value = Number(newStats.allStarShootingStarsTeams);
     const teams = Number.isFinite(value) ? Math.min(30, Math.max(2, Math.round(value))) : 4;
@@ -357,7 +484,7 @@ export const saveRulesConfig = async ({
     newStats.allStarHorseParticipants = Number.isFinite(value) ? Math.min(10, Math.max(3, Math.round(value))) : 3;
   }
 
-  const changes = Object.keys(baseline)
+  const changedKeys = Object.keys(baseline)
     .filter(key => ![
       'allStarShootingStarsMode',
       'allStarShootingStarsPlayersPerTeam',
@@ -369,8 +496,35 @@ export const saveRulesConfig = async ({
     .filter(key => {
       const left = key === 'playoffFormat' ? cleanedFormat : newStats[key as keyof typeof newStats];
       return !sameRuleValue(left as RuleValue, baseline[key]);
-    })
-    .map(key => formatRuleKey(key, cupShort));
+    });
+  if (changedKeys.some(key => ['gamesPerSeason', 'playoffFormat', 'numPlayoffTeams', 'numPlayoffByes', 'playoffsByConf', 'playIn', 'leagueCalendar'].includes(key))) {
+    newStats.calendarRulesCustomized = true;
+  }
+  if (changedKeys.some(key => ['tradeDeadlineMonth', 'tradeDeadlineOrdinal', 'tradeDeadlineDayOfWeek', 'faStartMonth', 'faStartDay', 'faMoratoriumDays'].includes(key))) {
+    newStats.transactionCalendarRulesCustomized = true;
+  }
+  if (changedKeys.some(key => ['draftType', 'eligibilityRule', 'draftEligibilityRule', 'minAgeRequirement'].includes(key))) {
+    newStats.draftRulesCustomized = true;
+  }
+  if (changedKeys.some(key => key.startsWith('allStar') || key.startsWith('risingStars') || key.startsWith('celebrityGame'))) {
+    newStats.allStarRulesCustomized = true;
+  }
+  if (changedKeys.some(key => ['inSeasonTournament', 'summerLeagueEnabled', 'summerLeagueTournamentEnabled', 'cupPrizePoolEnabled'].includes(key))) {
+    newStats.competitionRulesCustomized = true;
+  }
+  const gameRuleKeys = new Set([
+    ...HISTORICAL_GAME_RULE_KEYS,
+    'gameFormat', 'gameTargetScore', 'quarterLength', 'numQuarters', 'overtimeEnabled', 'overtimeType',
+    'shotClockEnabled', 'shotClockValue', 'fieldGoalValue', 'freeThrowsEnabled', 'threePointLineEnabled',
+    'fourPointLine', 'dunkValue', 'maxPlayersOnCourt', 'noDribbleRule', 'dribbleRule', 'madeBasketRestart',
+    'teamFoulPenalty', 'teamFoulPenaltyMode', 'teamFoulPenaltyPoints', 'temporaryDisqualificationFoulLimit',
+    'temporaryDisqualificationUntilNextScore', 'temporaryDisqualificationAllowsSubstitute', 'homeCourtAdvantage',
+  ]);
+  if (changedKeys.some(key => gameRuleKeys.has(key))) {
+    newStats.gameRulesCustomized = true;
+    newStats.historicalGameRulesAutoProgression = false;
+  }
+  const changes = changedKeys.map(key => formatRuleKey(key, cupShort));
 
   const penalty = ruleChangeService.checkRapidChangePenalty(changes);
   const preview = changes.slice(0, 8).join(', ');

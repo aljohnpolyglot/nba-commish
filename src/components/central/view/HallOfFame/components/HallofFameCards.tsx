@@ -3,6 +3,7 @@ import { motion } from 'motion/react';
 import { Trophy, Star, MapPin } from 'lucide-react';
 import type { HOFInductee } from './HOFSection';
 import { HOF_FIRST_BALLOT_WAIT_YEARS, HOF_BORDERLINE_WAIT_YEARS } from '../../../../../services/playerDevelopment/hofChecker';
+import { getPlayerImage } from '../../../../../utils/playerImage';
 
 interface HOFCardProps {
   inductee: HOFInductee;
@@ -11,9 +12,10 @@ interface HOFCardProps {
 
 const HOFCard: React.FC<HOFCardProps> = ({ inductee, onClick }) => {
   const { player, inductionYear } = inductee;
+  const portraitUrl = getPlayerImage(player);
   const awards = player.awards ?? [];
 
-  const championships = awards.filter(a => a.type === 'Won Championship' || a.type === 'Champion').length;
+  const championships = awards.filter(a => a.type === 'Won Championship' || a.type === 'Champion' || a.type === 'NBA Champion').length;
   const mvps = awards.filter(a => a.type === 'Most Valuable Player').length;
   const allStars = awards.filter(a => a.type === 'All-Star').length;
   const allLeagues = awards.filter(a => a.type.includes('All-League')).length;
@@ -81,9 +83,9 @@ const HOFCard: React.FC<HOFCardProps> = ({ inductee, onClick }) => {
       <div className="relative flex flex-row gap-4 md:gap-6">
         {/* Portrait */}
         <div className="relative h-32 w-24 shrink-0 overflow-hidden rounded-lg bg-slate-800 md:h-56 md:w-48">
-          {player.imgURL ? (
+          {portraitUrl ? (
             <img
-              src={player.imgURL}
+              src={portraitUrl}
               alt={player.name}
               className="h-full w-full object-cover object-top transition-transform duration-700 group-hover:scale-110"
               referrerPolicy="no-referrer"

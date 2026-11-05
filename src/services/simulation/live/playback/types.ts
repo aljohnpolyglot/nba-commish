@@ -11,6 +11,7 @@ export interface PlayerPool {
   orb: number; drb: number;
   stl: number; blk: number;
   tov: number; pf: number;
+  dunks?: number;
   ftPct?: number;
   fouledOut?: boolean;
 }

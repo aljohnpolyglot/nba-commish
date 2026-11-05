@@ -1,6 +1,6 @@
 /**
  * TradeSummaryModal — revamped to reuse OfferCard visuals from the Trade Proposals
- * flow. Two side-by-side OfferCards show each team's outgoing assets with the
+ * flow. Two side-by-side OfferCards show what each team receives with the
  * same portrait/OVR/POT/salary layout used everywhere else.
  */
 
@@ -104,10 +104,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   salaryMismatchInfo,
 }) => {
   const [submitting, setSubmitting] = useState(false);
+  const { state, navigateToPlayer } = useGame();
   useEffect(() => { if (!isOpen) setSubmitting(false); }, [isOpen]);
   if (!isOpen) return null;
 
-  const { state } = useGame();
   const { teamA, teamB, teamAPlayers, teamBPlayers, teamAPicks, teamBPicks } = tradeDetails;
 
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
@@ -142,9 +142,9 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
 
   // Compute outlook + mode + cap for each team for the OfferCard headers.
   const buildOutlook = (team: NBATeam): TradeOutlook => {
-    const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId);
+    const manual = resolveManualOutlook(team, state.gameMode, state.userTeamId, state.leagueStats?.playIn !== false);
     if (manual) return manual;
-    const payroll = getTeamPayrollUSD(activePlayers, team.id, team, currentYear);
+    const payroll = getTeamPayrollUSD(activePlayers, team.id, team, currentYear, state.leagueStats as any);
     const rec = effectiveRecord(team, currentYear);
     const confTeams = activeTeams.filter(t => t.conference === team.conference).map(t => ({
       t, rec: effectiveRecord(t, currentYear),
@@ -184,8 +184,8 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
   const teamAItems = buildItems(teamAPlayers, teamAPicks, teamAMode, currentYear, activeTeams, classStrengthByYear, lotterySlotByTid, powerRanks);
   const teamBItems = buildItems(teamBPlayers, teamBPicks, teamBMode, currentYear, activeTeams, classStrengthByYear, lotterySlotByTid, powerRanks);
 
-  const teamAOffer: FoundOffer = { tid: teamA.id, items: teamAItems, outlook: teamAOutlook, variant: 'match' };
-  const teamBOffer: FoundOffer = { tid: teamB.id, items: teamBItems, outlook: teamBOutlook, variant: 'match' };
+  const teamAOffer: FoundOffer = { tid: teamA.id, items: teamBItems, outlook: teamAOutlook, variant: 'match' };
+  const teamBOffer: FoundOffer = { tid: teamB.id, items: teamAItems, outlook: teamBOutlook, variant: 'match' };
   const teamASalaryBadge = salaryMismatchInfo
     ? salaryMismatchInfo.team === 'A'
       ? { label: '✗ CBA Blocked', tone: 'bad' as const }
@@ -264,7 +264,7 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <OfferCard
                 offer={teamAOffer}
-                myItems={teamBItems}
+                myItems={teamAItems}
                 team={teamA}
                 teams={activeTeams}
                 currentYear={currentYear}
@@ -273,11 +273,15 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                 capSpaceK={teamACapK}
                 salaryBadgeOverride={teamASalaryBadge}
                 hideActions
+                onPlayerClick={player => {
+                  onClose();
+                  navigateToPlayer(player);
+                }}
                 onManage={() => {}}
               />
               <OfferCard
                 offer={teamBOffer}
-                myItems={teamAItems}
+                myItems={teamBItems}
                 team={teamB}
                 teams={activeTeams}
                 currentYear={currentYear}
@@ -286,6 +290,10 @@ export const TradeSummaryModal: React.FC<TradeSummaryModalProps> = ({
                 capSpaceK={teamBCapK}
                 salaryBadgeOverride={teamBSalaryBadge}
                 hideActions
+                onPlayerClick={player => {
+                  onClose();
+                  navigateToPlayer(player);
+                }}
                 onManage={() => {}}
               />
             </div>

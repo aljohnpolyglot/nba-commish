@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Plane, Hotel, Bus, Star } from 'lucide-react';
+import { Plane, Hotel, Bus, Star, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { TycoonState, TycoonTier } from '../../types/tycoon';
 import { formatCurrencyWithCode } from '../../utils/helpers';
 import { HelpIconPopover } from './HelpIconPopover';
@@ -130,16 +130,11 @@ const Row: React.FC<{
           <span className="text-sm font-bold text-amber-300 tabular-nums w-10 text-right">{value.toFixed(1)}</span>
         </div>
       </div>
-      <input
-        type="range"
-        min={0.5}
-        max={5}
-        step={0.5}
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        className="w-full accent-amber-400"
-        disabled={readOnly}
-      />
+      <div className="grid grid-cols-[44px_minmax(0,1fr)_44px] gap-2">
+        <button type="button" onClick={() => onChange(Math.max(0.5, value - 0.5))} disabled={readOnly || value <= 0.5} className="flex h-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 disabled:opacity-30"><ChevronLeft size={16} /></button>
+        <div className="flex h-10 items-center justify-center rounded-lg border border-amber-400/30 bg-amber-400/5 text-sm font-black text-amber-200">Level {value.toFixed(1)}</div>
+        <button type="button" onClick={() => onChange(Math.min(5, value + 0.5))} disabled={readOnly || value >= 5} className="flex h-10 items-center justify-center rounded-lg border border-slate-700 bg-slate-900 text-slate-300 disabled:opacity-30"><ChevronRight size={16} /></button>
+      </div>
       <p className="text-xs text-slate-400 mt-1">{labelMap[fmtKey(value)] ?? '—'}</p>
       <div className="mt-2 flex items-center justify-between text-xs">
         <span className="text-slate-500">

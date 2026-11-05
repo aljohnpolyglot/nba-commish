@@ -1,0 +1,4922 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "euroleague-league-file.2445302874191187",
+  "competitionKey": "euroleague",
+  "competitionName": "EuroLeague",
+  "leagueKey": "euroleague",
+  "generatedAt": "2026-07-19T11:14:05.704Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "euroleague-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/1/Euroleague/stats/2026/Averages/All/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/euroleague/euroleague-2026-bbgm.json",
+        "sourceHash": "a6965f8c21ae708de6332a15a055647c33e04c7c8db610d1bff9d36af11838a7",
+        "fetchedAt": "2026-07-19T11:14:05.704Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2001,
+      "seasonLabel": "2001",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Baskonia Vitoria-Gasteiz",
+        "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Virtus Segafredo Bologna",
+          "canonicalKey": "euroleague:virtus-segafredo-bologna"
+        },
+        "won": 19,
+        "lost": 3
+      }
+    },
+    {
+      "season": 2002,
+      "seasonLabel": "2002",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Virtus Segafredo Bologna",
+        "canonicalKey": "euroleague:virtus-segafredo-bologna"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Panathinaikos Athens",
+          "canonicalKey": "euroleague:panathinaikos-athens"
+        },
+        "won": 12,
+        "lost": 2
+      }
+    },
+    {
+      "season": 2003,
+      "seasonLabel": "2003",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Universo De",
+        "canonicalKey": "euroleague:universo-de"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Barca",
+          "canonicalKey": "euroleague:barca"
+        },
+        "won": 18,
+        "lost": 4
+      }
+    },
+    {
+      "season": 2004,
+      "seasonLabel": "2004",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fortituto Kontatto Bologna",
+        "canonicalKey": "euroleague:fortituto-kontatto-bologna"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+        },
+        "won": 17,
+        "lost": 5
+      }
+    },
+    {
+      "season": 2005,
+      "seasonLabel": "2005",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Baskonia Vitoria-Gasteiz",
+        "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "euroleague:cska-moscow"
+        },
+        "won": 21,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Erazem Lorbek",
+                "canonicalKey": "person:erazem-lorbek"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fortituto Kontatto Bologna",
+                "canonicalKey": "euroleague:fortituto-kontatto-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Erazem Lorbek",
+                "canonicalKey": "person:erazem-lorbek"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fortituto Kontatto Bologna",
+                "canonicalKey": "euroleague:fortituto-kontatto-bologna"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "euroleague:cska-moscow"
+        },
+        "won": 19,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrea Bargnani",
+                "canonicalKey": "person:andrea-bargnani"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Universo De",
+                "canonicalKey": "euroleague:universo-de"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrea Bargnani",
+                "canonicalKey": "person:andrea-bargnani"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Universo De",
+                "canonicalKey": "euroleague:universo-de"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "euroleague:cska-moscow"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "euroleague:cska-moscow"
+        },
+        "won": 22,
+        "lost": 3
+      },
+      "awards": [
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rudy Fernandez",
+                "canonicalKey": "person:rudy-fernandez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Joventut Badalona",
+                "canonicalKey": "euroleague:joventut-badalona"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rudy Fernandez",
+                "canonicalKey": "person:rudy-fernandez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Joventut Badalona",
+                "canonicalKey": "euroleague:joventut-badalona"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "euroleague:cska-moscow"
+        },
+        "won": 20,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Danilo Gallinari",
+                "canonicalKey": "person:danilo-gallinari"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Danilo Gallinari",
+                "canonicalKey": "person:danilo-gallinari"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "euroleague:cska-moscow"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Barca",
+          "canonicalKey": "euroleague:barca"
+        },
+        "won": 18,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Novica Velickovic",
+                "canonicalKey": "person:novica-velickovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "euroleague:kk-partizan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Novica Velickovic",
+                "canonicalKey": "person:novica-velickovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "euroleague:kk-partizan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "euroleague:olympiacos-piraeus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Barca",
+          "canonicalKey": "euroleague:barca"
+        },
+        "won": 20,
+        "lost": 2
+      },
+      "awards": [
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ricky Rubio",
+                "canonicalKey": "person:ricky-rubio"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ricky Rubio",
+                "canonicalKey": "person:ricky-rubio"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Maccabi FOX Tel Aviv",
+        "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Maccabi FOX Tel Aviv",
+          "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+        },
+        "won": 16,
+        "lost": 6
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dimitris Diamantidis",
+                "canonicalKey": "person:dimitris-diamantidis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dimitris Diamantidis",
+                "canonicalKey": "person:dimitris-diamantidis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Juan Carlos Navarro",
+                "canonicalKey": "person:juan-carlos-navarro"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sofoklis Schortsanitis",
+                "canonicalKey": "person:sofoklis-schortsanitis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike Batiste",
+                "canonicalKey": "person:mike-batiste"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dimitris Diamantidis",
+                "canonicalKey": "person:dimitris-diamantidis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Fernando San Emeterio",
+                "canonicalKey": "person:fernando-san-emeterio"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Baskonia Vitoria-Gasteiz",
+                "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sergio Llull",
+                "canonicalKey": "person:sergio-llull"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jeremy Pargo",
+                "canonicalKey": "person:jeremy-pargo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ksystof Lavrinovic",
+                "canonicalKey": "person:ksystof-lavrinovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Mens Sana 1871 Siena",
+                "canonicalKey": "euroleague:mens-sana-1871-siena"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dusko Savanovic",
+                "canonicalKey": "person:dusko-savanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "euroleague:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "CSKA Moscow",
+        "canonicalKey": "euroleague:cska-moscow"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Galatasaray",
+          "canonicalKey": "euroleague:galatasaray"
+        },
+        "won": 3,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrei Kirilenko",
+                "canonicalKey": "person:andrei-kirilenko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrei Kirilenko",
+                "canonicalKey": "person:andrei-kirilenko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bo McCalebb",
+                "canonicalKey": "person:bo-mccalebb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Mens Sana 1871 Siena",
+                "canonicalKey": "euroleague:mens-sana-1871-siena"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Erazem Lorbek",
+                "canonicalKey": "person:erazem-lorbek"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nenad Krstic",
+                "canonicalKey": "person:nenad-krstic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrei Kirilenko",
+                "canonicalKey": "person:andrei-kirilenko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dimitris Diamantidis",
+                "canonicalKey": "person:dimitris-diamantidis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Juan Carlos Navarro",
+                "canonicalKey": "person:juan-carlos-navarro"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike Batiste",
+                "canonicalKey": "person:mike-batiste"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bo McCalebb",
+                "canonicalKey": "person:bo-mccalebb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Mens Sana 1871 Siena",
+                "canonicalKey": "euroleague:mens-sana-1871-siena"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Henry Domercant",
+                "canonicalKey": "person:henry-domercant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "euroleague:unics-kazan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrei Kirilenko",
+                "canonicalKey": "person:andrei-kirilenko"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Real Madrid",
+        "canonicalKey": "euroleague:real-madrid"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Acqua San Bernardo Cantu",
+          "canonicalKey": "euroleague:acqua-san-bernardo-cantu"
+        },
+        "won": 3,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Papanikolaou",
+                "canonicalKey": "person:kostas-papanikolaou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bobby Brown",
+                "canonicalKey": "person:bobby-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Mens Sana 1871 Siena",
+                "canonicalKey": "euroleague:mens-sana-1871-siena"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nenad Krstic",
+                "canonicalKey": "person:nenad-krstic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rudy Fernandez",
+                "canonicalKey": "person:rudy-fernandez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ante Tomic",
+                "canonicalKey": "person:ante-tomic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dimitris Diamantidis",
+                "canonicalKey": "person:dimitris-diamantidis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Juan Carlos Navarro",
+                "canonicalKey": "person:juan-carlos-navarro"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Viktor Khryapa",
+                "canonicalKey": "person:viktor-khryapa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shawn James",
+                "canonicalKey": "person:shawn-james"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Papanikolaou",
+                "canonicalKey": "person:kostas-papanikolaou"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Real Madrid",
+        "canonicalKey": "euroleague:real-madrid"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Lietuvos Rytas",
+          "canonicalKey": "euroleague:lietuvos-rytas"
+        },
+        "won": 3,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sergio Rodriguez",
+                "canonicalKey": "person:sergio-rodriguez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyrese Rice",
+                "canonicalKey": "person:tyrese-rice"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryant Dunston",
+                "canonicalKey": "person:bryant-dunston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bogdan Bogdanovic",
+                "canonicalKey": "person:bogdan-bogdanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "euroleague:kk-partizan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Keith Langford",
+                "canonicalKey": "person:keith-langford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sergio Rodriguez",
+                "canonicalKey": "person:sergio-rodriguez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Keith Langford",
+                "canonicalKey": "person:keith-langford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rudy Fernandez",
+                "canonicalKey": "person:rudy-fernandez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sonny Weems",
+                "canonicalKey": "person:sonny-weems"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ante Tomic",
+                "canonicalKey": "person:ante-tomic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Viktor Khryapa",
+                "canonicalKey": "person:viktor-khryapa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yann Ulrich Stephane Lasme",
+                "canonicalKey": "person:yann-ulrich-stephane-lasme"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ricky Hickman",
+                "canonicalKey": "person:ricky-hickman"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryant Dunston",
+                "canonicalKey": "person:bryant-dunston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bogdan Bogdanovic",
+                "canonicalKey": "person:bogdan-bogdanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "euroleague:kk-partizan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "euroleague:olympiacos-piraeus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "UNICS Kazan",
+          "canonicalKey": "euroleague:unics-kazan"
+        },
+        "won": 3,
+        "lost": 0
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nemanja Bjelica",
+                "canonicalKey": "person:nemanja-bjelica"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andres Nocioni",
+                "canonicalKey": "person:andres-nocioni"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryant Dunston",
+                "canonicalKey": "person:bryant-dunston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bogdan Bogdanovic",
+                "canonicalKey": "person:bogdan-bogdanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Taylor Rochestie",
+                "canonicalKey": "person:taylor-rochestie"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Nizhny Novgorod",
+                "canonicalKey": "euroleague:nizhny-novgorod"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sammy Mejia",
+                "canonicalKey": "person:sammy-mejia"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Petteri Koponen",
+                "canonicalKey": "person:petteri-koponen"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Derrick Brown",
+                "canonicalKey": "person:derrick-brown"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyrese Rice",
+                "canonicalKey": "person:tyrese-rice"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Boban Marjanovic",
+                "canonicalKey": "person:boban-marjanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "euroleague:crvena-zvezda-belgrade"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nemanja Bjelica",
+                "canonicalKey": "person:nemanja-bjelica"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Felipe Reyes",
+                "canonicalKey": "person:felipe-reyes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Keith Langford",
+                "canonicalKey": "person:keith-langford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "euroleague:unics-kazan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rudy Fernandez",
+                "canonicalKey": "person:rudy-fernandez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Randolph",
+                "canonicalKey": "person:anthony-randolph"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ante Tomic",
+                "canonicalKey": "person:ante-tomic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sharrod Ford",
+                "canonicalKey": "person:sharrod-ford"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Devin Smith",
+                "canonicalKey": "person:devin-smith"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Kuric",
+                "canonicalKey": "person:kyle-kuric"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Goudelock",
+                "canonicalKey": "person:andrew-goudelock"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ali Muhammed",
+                "canonicalKey": "person:ali-muhammed"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryant Dunston",
+                "canonicalKey": "person:bryant-dunston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bogdan Bogdanovic",
+                "canonicalKey": "person:bogdan-bogdanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "euroleague:fenerbahce-beko"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "euroleague:cska-moscow"
+        },
+        "won": 24,
+        "lost": 5
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alex Abrines",
+                "canonicalKey": "person:alex-abrines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Malcolm Delaney",
+                "canonicalKey": "person:malcolm-delaney"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "euroleague:lokomotiv-kuban"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jan Vesely",
+                "canonicalKey": "person:jan-vesely"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yannis Bourousis",
+                "canonicalKey": "person:yannis-bourousis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Baskonia Vitoria-Gasteiz",
+                "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Anthony Randolph",
+                "canonicalKey": "person:anthony-randolph"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Lokomotiv Kuban",
+                "canonicalKey": "euroleague:lokomotiv-kuban"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gigi Datome",
+                "canonicalKey": "person:gigi-datome"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ekpe Udoh",
+                "canonicalKey": "person:ekpe-udoh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Quincy Miller",
+                "canonicalKey": "person:quincy-miller"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Crvena Zvezda Belgrade",
+                "canonicalKey": "euroleague:crvena-zvezda-belgrade"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gustavo Ayon",
+                "canonicalKey": "person:gustavo-ayon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alex Abrines",
+                "canonicalKey": "person:alex-abrines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "euroleague:olympiacos-piraeus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "euroleague:cska-moscow"
+        },
+        "won": 26,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sergio Llull",
+                "canonicalKey": "person:sergio-llull"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ekpe Udoh",
+                "canonicalKey": "person:ekpe-udoh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adam Hanga",
+                "canonicalKey": "person:adam-hanga"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Baskonia Vitoria-Gasteiz",
+                "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rolands Smits",
+                "canonicalKey": "person:rolands-smits"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Keith Langford",
+                "canonicalKey": "person:keith-langford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "UNICS Kazan",
+                "canonicalKey": "euroleague:unics-kazan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Georgios Printezis",
+                "canonicalKey": "person:georgios-printezis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sergio Llull",
+                "canonicalKey": "person:sergio-llull"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Ekpe Udoh",
+                "canonicalKey": "person:ekpe-udoh"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bogdan Bogdanovic",
+                "canonicalKey": "person:bogdan-bogdanovic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bryant Dunston",
+                "canonicalKey": "person:bryant-dunston"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brad Wanamaker",
+                "canonicalKey": "person:brad-wanamaker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Darussafaka Basketbol Istanbul",
+                "canonicalKey": "euroleague:darussafaka-basketbol-istanbul"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gustavo Ayon",
+                "canonicalKey": "person:gustavo-ayon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nicolo Melli",
+                "canonicalKey": "person:nicolo-melli"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Brose Baskets Bamberg",
+                "canonicalKey": "euroleague:brose-baskets-bamberg"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Adam Hanga",
+                "canonicalKey": "person:adam-hanga"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Baskonia Vitoria-Gasteiz",
+                "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rolands Smits",
+                "canonicalKey": "person:rolands-smits"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fenerbahce Beko",
+        "canonicalKey": "euroleague:fenerbahce-beko"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "euroleague:cska-moscow"
+        },
+        "won": 27,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luka Doncic",
+                "canonicalKey": "person:luka-doncic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luka Doncic",
+                "canonicalKey": "person:luka-doncic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luka Doncic",
+                "canonicalKey": "person:luka-doncic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alexey Shved",
+                "canonicalKey": "person:alexey-shved"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "euroleague:khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jan Vesely",
+                "canonicalKey": "person:jan-vesely"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tornike Shengelia",
+                "canonicalKey": "person:tornike-shengelia"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Baskonia Vitoria-Gasteiz",
+                "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luka Doncic",
+                "canonicalKey": "person:luka-doncic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sergio Rodriguez",
+                "canonicalKey": "person:sergio-rodriguez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vassilis Spanoulis",
+                "canonicalKey": "person:vassilis-spanoulis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alexey Shved",
+                "canonicalKey": "person:alexey-shved"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "euroleague:khimki"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Paulius Jankunas",
+                "canonicalKey": "person:paulius-jankunas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "euroleague:zalgiris-kaunas"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Pangos",
+                "canonicalKey": "person:kevin-pangos"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "euroleague:zalgiris-kaunas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Luka Doncic",
+                "canonicalKey": "person:luka-doncic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Anadolu Efes Istanbul",
+        "canonicalKey": "euroleague:anadolu-efes-istanbul"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "euroleague:cska-moscow"
+        },
+        "won": 29,
+        "lost": 7
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jan Vesely",
+                "canonicalKey": "person:jan-vesely"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Clyburn",
+                "canonicalKey": "person:will-clyburn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Goga Bitadze",
+                "canonicalKey": "person:goga-bitadze"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Buducnost Voli Podgorica",
+                "canonicalKey": "euroleague:buducnost-voli-podgorica"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike James",
+                "canonicalKey": "person:mike-james"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Calathes",
+                "canonicalKey": "person:nick-calathes"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jan Vesely",
+                "canonicalKey": "person:jan-vesely"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brandon Davies",
+                "canonicalKey": "person:brandon-davies"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "euroleague:zalgiris-kaunas"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Clyburn",
+                "canonicalKey": "person:will-clyburn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Sloukas",
+                "canonicalKey": "person:kostas-sloukas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike James",
+                "canonicalKey": "person:mike-james"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vasilije Micic",
+                "canonicalKey": "person:vasilije-micic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vincent Poirier",
+                "canonicalKey": "person:vincent-poirier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Baskonia Vitoria-Gasteiz",
+                "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Goga Bitadze",
+                "canonicalKey": "person:goga-bitadze"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Buducnost Voli Podgorica",
+                "canonicalKey": "euroleague:buducnost-voli-podgorica"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Anadolu Efes Istanbul",
+          "canonicalKey": "euroleague:anadolu-efes-istanbul"
+        },
+        "won": 24,
+        "lost": 5
+      }
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Barca",
+        "canonicalKey": "euroleague:barca"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "CSKA Moscow",
+          "canonicalKey": "euroleague:cska-moscow"
+        },
+        "won": 27,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vasilije Micic",
+                "canonicalKey": "person:vasilije-micic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vasilije Micic",
+                "canonicalKey": "person:vasilije-micic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rokas Jokubaitis",
+                "canonicalKey": "person:rokas-jokubaitis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "euroleague:zalgiris-kaunas"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alexey Shved",
+                "canonicalKey": "person:alexey-shved"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Khimki",
+                "canonicalKey": "euroleague:khimki"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Pangos",
+                "canonicalKey": "person:kevin-pangos"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zenit St. Petersburg",
+                "canonicalKey": "euroleague:zenit-st-petersburg"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vladimir Lucic",
+                "canonicalKey": "person:vladimir-lucic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "euroleague:fc-bayern-munich"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nando De Colo",
+                "canonicalKey": "person:nando-de-colo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Brandon Davies",
+                "canonicalKey": "person:brandon-davies"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Will Clyburn",
+                "canonicalKey": "person:will-clyburn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "CSKA Moscow",
+                "canonicalKey": "euroleague:cska-moscow"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shane Larkin",
+                "canonicalKey": "person:shane-larkin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shavon Shields",
+                "canonicalKey": "person:shavon-shields"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rokas Jokubaitis",
+                "canonicalKey": "person:rokas-jokubaitis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "euroleague:zalgiris-kaunas"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Real Madrid",
+        "canonicalKey": "euroleague:real-madrid"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Barca",
+          "canonicalKey": "euroleague:barca"
+        },
+        "won": 28,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vasilije Micic",
+                "canonicalKey": "person:vasilije-micic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rokas Jokubaitis",
+                "canonicalKey": "person:rokas-jokubaitis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vasilije Micic",
+                "canonicalKey": "person:vasilije-micic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike James",
+                "canonicalKey": "person:mike-james"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "euroleague:as-monaco"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shane Larkin",
+                "canonicalKey": "person:shane-larkin"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Sloukas",
+                "canonicalKey": "person:kostas-sloukas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vladimir Lucic",
+                "canonicalKey": "person:vladimir-lucic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "euroleague:fc-bayern-munich"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Vasilije Micic",
+                "canonicalKey": "person:vasilije-micic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Anadolu Efes Istanbul",
+                "canonicalKey": "euroleague:anadolu-efes-istanbul"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "George Papagiannis",
+                "canonicalKey": "person:george-papagiannis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shavon Shields",
+                "canonicalKey": "person:shavon-shields"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "euroleague:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rokas Jokubaitis",
+                "canonicalKey": "person:rokas-jokubaitis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Olympiacos Piraeus",
+        "canonicalKey": "euroleague:olympiacos-piraeus"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "euroleague:olympiacos-piraeus"
+        },
+        "won": 28,
+        "lost": 13
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yam Madar",
+                "canonicalKey": "person:yam-madar"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "euroleague:kk-partizan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lorenzo Brown",
+                "canonicalKey": "person:lorenzo-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mathias Lessort",
+                "canonicalKey": "person:mathias-lessort"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "euroleague:kk-partizan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Dzanan Musa",
+                "canonicalKey": "person:dzanan-musa"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Barca",
+                "canonicalKey": "euroleague:barca"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike James",
+                "canonicalKey": "person:mike-james"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "euroleague:as-monaco"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Darius Thompson",
+                "canonicalKey": "person:darius-thompson"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Baskonia Vitoria-Gasteiz",
+                "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kevin Punter",
+                "canonicalKey": "person:kevin-punter"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "euroleague:kk-partizan"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Wade Baldwin IV",
+                "canonicalKey": "person:wade-baldwin-iv"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Yam Madar",
+                "canonicalKey": "person:yam-madar"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "KK Partizan",
+                "canonicalKey": "euroleague:kk-partizan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Real Madrid",
+        "canonicalKey": "euroleague:real-madrid"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Real Madrid",
+          "canonicalKey": "euroleague:real-madrid"
+        },
+        "won": 31,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lorenzo Brown",
+                "canonicalKey": "person:lorenzo-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Sloukas",
+                "canonicalKey": "person:kostas-sloukas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Thomas Walkup",
+                "canonicalKey": "person:thomas-walkup"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gabriele Procida",
+                "canonicalKey": "person:gabriele-procida"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "euroleague:alba-berlin"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Markus Howard",
+                "canonicalKey": "person:markus-howard"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Baskonia Vitoria-Gasteiz",
+                "canonicalKey": "euroleague:baskonia-vitoria-gasteiz"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike James",
+                "canonicalKey": "person:mike-james"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "euroleague:as-monaco"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nigel Hayes-Davis",
+                "canonicalKey": "person:nigel-hayes-davis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kendrick Nunn",
+                "canonicalKey": "person:kendrick-nunn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mathias Lessort",
+                "canonicalKey": "person:mathias-lessort"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Facundo Campazzo",
+                "canonicalKey": "person:facundo-campazzo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Lorenzo Brown",
+                "canonicalKey": "person:lorenzo-brown"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mario Hezonja",
+                "canonicalKey": "person:mario-hezonja"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kostas Sloukas",
+                "canonicalKey": "person:kostas-sloukas"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Wade Baldwin IV",
+                "canonicalKey": "person:wade-baldwin-iv"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maccabi FOX Tel Aviv",
+                "canonicalKey": "euroleague:maccabi-fox-tel-aviv"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Thomas Walkup",
+                "canonicalKey": "person:thomas-walkup"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gabriele Procida",
+                "canonicalKey": "person:gabriele-procida"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Alba Berlin",
+                "canonicalKey": "euroleague:alba-berlin"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "AS Monaco",
+        "canonicalKey": "euroleague:as-monaco"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Fenerbahce Beko",
+          "canonicalKey": "euroleague:fenerbahce-beko"
+        },
+        "won": 28,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Theo Maledon",
+                "canonicalKey": "person:theo-maledon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "euroleague:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nigel Hayes-Davis",
+                "canonicalKey": "person:nigel-hayes-davis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Weiler-Babb",
+                "canonicalKey": "person:nick-weiler-babb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "euroleague:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nadir Hifi",
+                "canonicalKey": "person:nadir-hifi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "euroleague:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kendrick Nunn",
+                "canonicalKey": "person:kendrick-nunn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nigel Hayes-Davis",
+                "canonicalKey": "person:nigel-hayes-davis"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kendrick Nunn",
+                "canonicalKey": "person:kendrick-nunn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Carsen Edwards",
+                "canonicalKey": "person:carsen-edwards"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "euroleague:fc-bayern-munich"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "T.J. Shorts II",
+                "canonicalKey": "person:t-j-shorts-ii"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "euroleague:paris"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Mike James",
+                "canonicalKey": "person:mike-james"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "euroleague:as-monaco"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Evan Fournier",
+                "canonicalKey": "person:evan-fournier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Juancho Hernangomez",
+                "canonicalKey": "person:juancho-hernangomez"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Theo Maledon",
+                "canonicalKey": "person:theo-maledon"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "ASVEL Basket",
+                "canonicalKey": "euroleague:asvel-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nick Weiler-Babb",
+                "canonicalKey": "person:nick-weiler-babb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "FC Bayern Munich",
+                "canonicalKey": "euroleague:fc-bayern-munich"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nadir Hifi",
+                "canonicalKey": "person:nadir-hifi"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Paris",
+                "canonicalKey": "euroleague:paris"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Real Madrid",
+        "canonicalKey": "euroleague:real-madrid"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Olympiacos Piraeus",
+          "canonicalKey": "euroleague:olympiacos-piraeus"
+        },
+        "won": 31,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Evan Fournier",
+                "canonicalKey": "person:evan-fournier"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alpha Diallo",
+                "canonicalKey": "person:alpha-diallo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "euroleague:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jean Montero",
+                "canonicalKey": "person:jean-montero"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "euroleague:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-first-team",
+          "awardName": "First Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Milutinov",
+                "canonicalKey": "person:nikola-milutinov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sasha Vezenkov",
+                "canonicalKey": "person:sasha-vezenkov"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Elijah Bryant",
+                "canonicalKey": "person:elijah-bryant"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Hapoel Tel Aviv",
+                "canonicalKey": "euroleague:hapoel-tel-aviv"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Sylvain Francisco",
+                "canonicalKey": "person:sylvain-francisco"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Zalgiris Kaunas",
+                "canonicalKey": "euroleague:zalgiris-kaunas"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jean Montero",
+                "canonicalKey": "person:jean-montero"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "euroleague:valencia-basket"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-league-second-team",
+          "awardName": "Second Team All-League",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kendrick Nunn",
+                "canonicalKey": "person:kendrick-nunn"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Panathinaikos Athens",
+                "canonicalKey": "euroleague:panathinaikos-athens"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Edy Tavares",
+                "canonicalKey": "person:edy-tavares"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Real Madrid",
+                "canonicalKey": "euroleague:real-madrid"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tyler Dorsey",
+                "canonicalKey": "person:tyler-dorsey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Olympiacos Piraeus",
+                "canonicalKey": "euroleague:olympiacos-piraeus"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Wade Baldwin IV",
+                "canonicalKey": "person:wade-baldwin-iv"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            },
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Talen Horton-Tucker",
+                "canonicalKey": "person:talen-horton-tucker"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Fenerbahce Beko",
+                "canonicalKey": "euroleague:fenerbahce-beko"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alpha Diallo",
+                "canonicalKey": "person:alpha-diallo"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AS Monaco",
+                "canonicalKey": "euroleague:as-monaco"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jean Montero",
+                "canonicalKey": "person:jean-montero"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Valencia Basket",
+                "canonicalKey": "euroleague:valencia-basket"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

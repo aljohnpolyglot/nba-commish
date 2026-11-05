@@ -40,12 +40,17 @@ const TeamMark: React.FC<{ team: NBATeam }> = ({ team }) => {
 const StandingsTable: React.FC<StandingsTableProps> = ({ teams, conference, onSelectTeam, selectedTeamId, phase }) => {
     const { state } = useGame();
     const ownTid = getOwnTeamId(state);
+    const title = conference === 'East' || conference === 'West'
+        ? `${conference}ern Conference`
+        : /(?:conference|standings)$/i.test(conference)
+            ? conference
+            : `${conference} Standings`;
 
     return (
     <div className="bg-zinc-900/50 rounded-2xl border border-zinc-800 p-4">
         <h4 className="text-md font-semibold text-indigo-400 mb-4 border-b border-zinc-800 pb-2 flex items-center gap-2">
           <span className="w-2 h-2 rounded-full bg-indigo-500"></span>
-          {conference === 'East' || conference === 'West' ? `${conference}ern Conference` : `${conference} Standings`}
+          {title}
           {phase && phase !== 'regular' && (
             <span className={`ml-auto text-[9px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded border ${
               phase === 'playoffs' ? 'bg-amber-500/15 text-amber-300 border-amber-500/30' :

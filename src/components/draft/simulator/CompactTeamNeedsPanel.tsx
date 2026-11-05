@@ -38,8 +38,39 @@ interface CompactNeedsProps {
 }
 
 export const CompactTeamNeedsPanel: React.FC<CompactNeedsProps> = ({ teamId, players }) => {
-  const { posNeeds, topGaps } = useMemo(() => {
-    const allActive = players.filter(p => p.tid >= 0 && isOnRoster(p));
+  const { posNeeds, topGaps } = useMemo(() => deriveCompactTeamNeeds(teamId, players), [players, teamId]);
+
+  if (posNeeds.length === 0) return null;
+
+  return (
+    <div className="space-y-3">
+      <div className="space-y-1">
+        {posNeeds.map(p => (
+          <div key={p.pos} className="flex items-center justify-between text-[10px]">
+            <span className="font-black text-white/80 w-6">{p.pos}</span>
+            <span className={`font-black uppercase tracking-widest ${p.color}`}>{p.status}</span>
+          </div>
+        ))}
+      </div>
+      {topGaps.length > 0 && (
+        <div className="pt-2 border-t border-[#333] space-y-1">
+          <div className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Biggest Gaps</div>
+          <div className="font-black uppercase tracking-widest text-red-400">
+            {topGaps.map(gap => gap.label).join(', ')}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export function deriveCompactTeamNeeds(teamId: number, players: any[]) {
+    const isNbaTeam = teamId >= 0 && teamId < 100;
+    const allActive = players.filter(p =>
+      p.tid >= 0
+      && isOnRoster(p)
+      && (isNbaTeam ? p.tid < 100 : p.tid >= 100),
+    );
     const teamPlayers = allActive.filter(p => p.tid === teamId);
     if (teamPlayers.length === 0) return { posNeeds: [], topGaps: [] };
 
@@ -103,33 +134,4 @@ export const CompactTeamNeedsPanel: React.FC<CompactNeedsProps> = ({ teamId, pla
       .slice(0, 3);
 
     return { posNeeds, topGaps };
-  }, [players, teamId]);
-
-  if (posNeeds.length === 0) return null;
-
-  return (
-    <div className="space-y-3">
-      <div className="space-y-1">
-        {posNeeds.map(p => (
-          <div key={p.pos} className="flex items-center justify-between text-[10px]">
-            <span className="font-black text-white/80 w-6">{p.pos}</span>
-            <span className={`font-black uppercase tracking-widest ${p.color}`}>{p.status}</span>
-          </div>
-        ))}
-      </div>
-      {topGaps.length > 0 && (
-        <div className="pt-2 border-t border-[#333] space-y-1">
-          <div className="text-[9px] font-black text-white/30 uppercase tracking-widest mb-1">Biggest Gaps</div>
-          {topGaps.map(g => (
-            <div key={g.key} className="flex items-center justify-between text-[10px]">
-              <span className="font-bold text-white/70">{g.label}</span>
-              <span className={`font-black ${g.gap > 2 ? 'text-red-400' : 'text-amber-300'}`}>
-                {g.gap > 0 ? '−' : '+'}{Math.abs(g.gap).toFixed(1)}
-              </span>
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
+}

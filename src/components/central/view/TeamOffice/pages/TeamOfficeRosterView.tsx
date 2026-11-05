@@ -3,15 +3,15 @@ import { createPortal } from 'react-dom';
 import { cn } from '../../../../../lib/utils';
 import { useGame } from '../../../../../store/GameContext';
 import { PlayerPortrait } from '../../../../shared/PlayerPortrait';
-import { convertTo2KRating } from '../../../../../utils/helpers';
-import { calculatePlayerOverallForYear, getDisplayPotential } from '../../../../../utils/playerRatings';
+import { getDisplayOverall, getDisplayPotential } from '../../../../../utils/playerRatings';
+import { fuzzRatingValue, getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../../../utils/scoutingFuzz';
 import { computeMoodScore } from '../../../../../utils/mood/moodScore';
-import { DEFAULT_GM_ATTRIBUTES, findGMForTeam } from '../../../../../services/staff/gmAttributes';
+import { findGMForTeam, normalizeGMAttributes } from '../../../../../services/staff/gmAttributes';
 import { StarterService } from '../../../../../services/simulation/StarterService';
 import { usePlayerQuickActions } from '../../../../../hooks/usePlayerQuickActions';
 import { getGameplan } from '../../../../../store/gameplanStore';
 import { formatPlayerSalaryDisplay, getPlayerContractExpiryDisplay, getPlayerCurrentSalaryUSD } from '../../../../../utils/salaryUtils';
-import type { NBAPlayer } from '../../../../../types';
+import type { GameState, NBAPlayer } from '../../../../../types';
 import { PlayerNameWithHover } from '../../../../shared/PlayerNameWithHover';
 import { resolveAnyTeam, isOnRoster } from '../../../../../utils/teamLookup';
 import { isEuroIsolatedMode } from '../../../../../utils/uiMode';
@@ -19,6 +19,15 @@ import { getDisplayAge } from '../../../../../store/playerRatingStore';
 import { makePlaceholderGM } from '../../../../../services/staff/staffFallback';
 import { getFatigueBarColor, getFatigueTextColor, getInjuryRisk, getMoodBarColor } from '../../../../shared/playerWellness';
 import { getConferenceSpec, type PbaConference } from '../../../../../services/pba/conferenceTransition';
+import { getSigningRosterLimit, getStandardRosterLimit, getTwoWayRosterLimit } from '../../../../../utils/rosterLimits';
+import { areNonGuaranteedContractsEnabled, areTwoWayContractsEnabled, isNonGuaranteedContract, isTwoWayContract } from '../../../../../utils/contractTypes';
+import { getTeamRosterContractCounts } from '../../../../../utils/rosterCounts';
+import { getTeamCompetitionRecord } from '../../../../../utils/competitionRecord';
+import { getPlayersOnCourt } from '../../../../../services/simulation/courtSize';
+import { normalizePositionLabel } from '../../../../../utils/positionUtils';
+import { getCalibratedPer } from '../../../../../utils/advancedStatCalibration';
+import { areWnbaDevelopmentalContractsEnabled, getWnbaDevelopmentalContractLabel } from '../../../../../services/wnba/developmentalContracts';
+import { isLeagueTrainingCampWindow } from '../../../../../services/leagueCalendar';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -27,20 +36,17 @@ function fmtSalary(usd: number): string {
   return `$${(usd / 1_000).toFixed(0)}K`;
 }
 
-function getK2WithDelta(p: NBAPlayer, currentYear: number): { k2: number; delta: number | null } {
-  const currR = p.ratings?.[p.ratings.length - 1];
-  const k2 = convertTo2KRating(p.overallRating, currR?.hgt ?? 50, currR?.tp ?? 50);
+function getK2WithDelta(state: GameState, p: NBAPlayer, currentYear: number): { k2: number; delta: number | null } {
+  const k2 = getScoutedDisplayOverall(state, p, currentYear);
   if (!p.ratings || p.ratings.length < 2) return { k2, delta: null };
-  const prevOvr = calculatePlayerOverallForYear(p as any, currentYear - 1);
-  const prevR = p.ratings.find(r => r.season === currentYear - 1) ?? p.ratings[p.ratings.length - 2];
-  const prevK2 = convertTo2KRating(prevOvr, prevR?.hgt ?? 50, prevR?.tp ?? 50);
+  const prevK2 = fuzzRatingValue(getDisplayOverall(p, currentYear - 1), state, p, `ovr-${currentYear - 1}`);
   return { k2, delta: k2 - prevK2 };
 }
 
-function getPotWithDelta(p: NBAPlayer, currentYear: number): { pot: number; delta: number | null } {
-  const pot = getDisplayPotential(p, currentYear);
+function getPotWithDelta(state: GameState, p: NBAPlayer, currentYear: number): { pot: number; delta: number | null } {
+  const pot = getScoutedDisplayPotential(state, p, currentYear, currentYear);
   if (!p.ratings || p.ratings.length < 2) return { pot, delta: null };
-  const prevPot = getDisplayPotential(p, currentYear - 1);
+  const prevPot = fuzzRatingValue(getDisplayPotential(p, currentYear - 1, currentYear - 1), state, p, `pot-${currentYear - 1}`);
   return { pot, delta: pot - prevPot };
 }
 
@@ -67,15 +73,27 @@ function getLastSeasonStats(p: NBAPlayer, teamId: number, currentYear: number, c
         String(s.competitionId ?? '') === competitionId
       )
       .slice(-1)[0];
-    if (!currentCompetitionRow) return null;
-    const gp = currentCompetitionRow.gp;
+    const historicalPbaSeasonRow = competitionId.startsWith('pba-')
+      ? stats
+          .filter(s =>
+            !s.playoffs &&
+            (s.gp ?? 0) > 0 &&
+            s.tid === teamId &&
+            s.season === currentYear &&
+            String(s.competitionId ?? '') === 'pba'
+          )
+          .slice(-1)[0]
+      : null;
+    const displayRow = currentCompetitionRow ?? historicalPbaSeasonRow;
+    if (!displayRow) return null;
+    const gp = displayRow.gp;
     return {
       g: gp,
-      mp: (currentCompetitionRow.min ?? 0) / gp,
-      pts: (currentCompetitionRow.pts ?? 0) / gp,
-      reb: ((currentCompetitionRow.orb ?? 0) + (currentCompetitionRow.drb ?? 0)) / gp || (currentCompetitionRow.trb ?? 0) / gp,
-      ast: (currentCompetitionRow.ast ?? 0) / gp,
-      per: currentCompetitionRow.per ?? 0,
+      mp: (displayRow.min ?? 0) / gp,
+      pts: (displayRow.pts ?? 0) / gp,
+      reb: ((displayRow.orb ?? 0) + (displayRow.drb ?? 0)) / gp || (displayRow.trb ?? 0) / gp,
+      ast: (displayRow.ast ?? 0) / gp,
+      per: getCalibratedPer(displayRow),
     };
   }
   const currentTeamRow = stats
@@ -94,7 +112,7 @@ function getLastSeasonStats(p: NBAPlayer, teamId: number, currentYear: number, c
     pts: (last.pts ?? 0) / gp,
     reb: ((last.orb ?? 0) + (last.drb ?? 0)) / gp || (last.trb ?? 0) / gp,
     ast: (last.ast ?? 0) / gp,
-    per: last.per ?? 0,
+    per: getCalibratedPer(last),
   };
 }
 
@@ -115,27 +133,10 @@ function getBoxScoreDerivedStats(p: NBAPlayer, teamId: number, currentYear: numb
     pts += Number(line.pts ?? 0);
     reb += Number(line.reb ?? ((line.orb ?? 0) + (line.drb ?? 0)));
     ast += Number(line.ast ?? 0);
-    per += Number(line.gameScore ?? line.per ?? 0);
+    per += line.per != null ? getCalibratedPer(line) : Number(line.gameScore ?? 0);
   }
   if (g <= 0) return null;
   return { g, mp: min / g, pts: pts / g, reb: reb / g, ast: ast / g, per: per / g };
-}
-
-function getCompetitionTeamRecord(teamId: number, currentYear: number, boxScores: any[], schedule: any[], competitionId?: string) {
-  if (!competitionId) return null;
-  let wins = 0;
-  let losses = 0;
-  for (const box of boxScores ?? []) {
-    if ((box.season ?? currentYear) !== currentYear) continue;
-    if (!isRegularRosterBox(box, schedule, competitionId)) continue;
-    const isHome = box.homeTeamId === teamId;
-    const isAway = box.awayTeamId === teamId;
-    if (!isHome && !isAway) continue;
-    const won = Number(box.winnerId) === teamId || (isHome ? box.homeScore > box.awayScore : box.awayScore > box.homeScore);
-    if (won) wins += 1;
-    else losses += 1;
-  }
-  return { wins, losses };
 }
 
 function getYearsWithTeam(p: NBAPlayer, teamId: number): number {
@@ -193,19 +194,29 @@ interface Props {
 // ── Sidebar attribute bar ─────────────────────────────────────────────────────
 
 const ATTR_TOOLTIPS = {
+  overall: 'General decision-making competence across roster-building decisions.',
   trade_aggression: 'How often this GM initiates trades.',
-  scouting_focus: 'Preference for hoarding draft picks versus trading them for proven young players.',
-  work_ethic: 'Appetite for constant roster churn versus keeping the same group together.',
-  spending: 'Sets the opening offer in free agency — high-spending GMs start above market; value hunters start lean.',
+  scouting_focus: 'How strongly this GM values and protects draft capital.',
+  drafting: 'Ability to identify value throughout the draft.',
+  negotiation: 'Ability to attract and retain established players.',
+  work_ethic: 'How actively this GM searches for roster improvements.',
+  spending: 'Willingness to use available budget and roster exceptions.',
+  team_chemistry: 'How connected and coordinated the current roster is as a team.',
 };
 
-function AttributeBar({ label, value, tooltip }: { label: string; value: number; tooltip?: string }) {
-  const barColor = value >= 80 ? 'bg-[#FDB927]' : value >= 70 ? 'bg-slate-300' : 'bg-slate-500';
+function AttributeBar({ label, value, tooltip, tone = 'default' }: {
+  label: string;
+  value: number;
+  tooltip?: string;
+  tone?: 'default' | 'chemistry';
+}) {
+  const isChemistry = tone === 'chemistry';
+  const barColor = isChemistry ? 'bg-[#FDB927]' : value >= 80 ? 'bg-[#FDB927]' : value >= 70 ? 'bg-slate-300' : 'bg-slate-500';
   return (
-    <div className="flex flex-col gap-1.5 group relative cursor-help">
+    <div className="flex flex-col gap-1.5 group relative cursor-default">
       <div className="flex justify-between items-end">
         <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">{label}</span>
-        <span className="text-sm font-black text-slate-100">{value}</span>
+        <span className={cn('text-sm font-black', isChemistry ? 'text-[#FDB927]' : 'text-slate-100')}>{value}</span>
       </div>
       <div className="h-1.5 bg-slate-800 rounded overflow-hidden">
         <div className={cn('h-full transition-all duration-700', barColor)} style={{ width: `${Math.min(100, value)}%` }} />
@@ -227,20 +238,40 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   const isGM = state.gameMode === 'gm';
   const isOwnTeam = isGM && teamId === state.userTeamId;
   const currentYear = state.leagueStats?.year ?? new Date().getFullYear();
+  const playersOnCourt = getPlayersOnCourt(state.leagueStats);
   const hideNbaContractBadges = isEuroIsolatedMode(state) || teamId >= 100;
+  const expandedRosterWindow = state.offseasonChecklist?.freeAgency === 'in-progress'
+    || isLeagueTrainingCampWindow(state.date, state.leagueStats);
+  const maxStandardRoster = getStandardRosterLimit(state.leagueStats as any);
+  const maxActiveRoster = getSigningRosterLimit(state.leagueStats as any, expandedRosterWindow);
+  const maxTwoWayRoster = getTwoWayRosterLimit(state.leagueStats as any);
+  const twoWayContractsEnabled = !hideNbaContractBadges && areTwoWayContractsEnabled(state.leagueStats);
+  const developmentalActive = areWnbaDevelopmentalContractsEnabled(state.leagueStats);
+  const secondaryContractLabel = getWnbaDevelopmentalContractLabel(state.leagueStats);
+  const nonGuaranteedContractsEnabled = !hideNbaContractBadges && areNonGuaranteedContractsEnabled(state.leagueStats);
   const showNbaContractMix = !hideNbaContractBadges;
-  const pbaCompetitionId = state.leagueStats?.uiMode === 'pba_isolated'
+  const activeCompetitionId = state.leagueStats?.uiMode === 'pba_isolated'
     ? getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id
-    : undefined;
+    : isEuroIsolatedMode(state)
+      ? state.euroPrimaryCompetitionId
+      : undefined;
 
   const team = resolveAnyTeam(teamId, state.teams, state.nonNBATeams ?? []);
   const teamColor = team?.colors?.[0] ?? '#552583';
   const teamRecord = useMemo(
-    () => getCompetitionTeamRecord(teamId, currentYear, state.boxScores ?? [], state.schedule ?? [], pbaCompetitionId),
-    [teamId, currentYear, state.boxScores, state.schedule, pbaCompetitionId],
+    () => activeCompetitionId
+      ? getTeamCompetitionRecord(state.boxScores ?? [], teamId, currentYear, activeCompetitionId)
+      : null,
+    [activeCompetitionId, currentYear, state.boxScores, teamId],
   );
   const displayWins = teamRecord?.wins ?? team?.wins ?? 0;
   const displayLosses = teamRecord?.losses ?? team?.losses ?? 0;
+  const teamChemistry = Number(Math.max(0, Math.min(100, Number(
+    team?.teamChemistry
+      ?? (team as any)?.chemistry
+      ?? (team as any)?.Chemistry
+      ?? 50,
+  ))).toFixed(1));
 
   const teamPlayers = useMemo(
     () => (state.players ?? []).filter(p => p.tid === teamId),
@@ -248,17 +279,13 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   );
 
   const rosterCounts = useMemo(() => {
-    const activePlayers = teamPlayers.filter(p => isOnRoster(p) && p.contract);
-    const twoWayCount = hideNbaContractBadges ? 0 : activePlayers.filter(p => !!(p as any).twoWay).length;
-    const nonGuaranteedCount = hideNbaContractBadges ? 0 : activePlayers.filter(p => !!(p as any).nonGuaranteed).length;
-    const guaranteedCount = Math.max(0, activePlayers.length - twoWayCount - nonGuaranteedCount);
+    const counts = getTeamRosterContractCounts(teamPlayers, teamId, state.leagueStats, (team as any)?.league ?? 'NBA');
     return {
-      total: activePlayers.length,
-      guaranteedCount,
-      twoWayCount,
-      nonGuaranteedCount,
+      ...counts,
+      twoWayCount: twoWayContractsEnabled ? counts.twoWayCount : 0,
+      nonGuaranteedCount: nonGuaranteedContractsEnabled ? counts.nonGuaranteedCount : 0,
     };
-  }, [teamPlayers, hideNbaContractBadges]);
+  }, [nonGuaranteedContractsEnabled, state.leagueStats, team, teamId, teamPlayers, twoWayContractsEnabled]);
 
   const [sortMode, setSortMode] = useState<SortMode>(
     () => (localStorage.getItem('rosterSortMode') as SortMode | null) ?? 'rating',
@@ -292,7 +319,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   );
   const foundGM = findGMForTeam(state, teamId);
   const gmObj = foundGM && !hasBrokenGMName(foundGM.name) ? foundGM : placeholderGM;
-  const gmAttrs = gmObj?.attributes ?? DEFAULT_GM_ATTRIBUTES;
+  const gmAttrs = normalizeGMAttributes(gmObj?.attributes);
   let gmName = gmObj?.name ?? '';
   let gmPortrait = gmObj?.playerPortraitUrl ?? '';
   if (isOwnTeam && state.commissionerName) {
@@ -303,11 +330,11 @@ export function TeamOfficeRosterView({ teamId }: Props) {
   const allRows = useMemo((): RowData[] => {
     const active = teamPlayers.filter(p => isOnRoster(p) && p.contract);
     return active.map(p => {
-      const { k2, delta: k2Delta } = getK2WithDelta(p, currentYear);
-      const { pot, delta: potDelta } = getPotWithDelta(p, currentYear);
+      const { k2, delta: k2Delta } = getK2WithDelta(state, p, currentYear);
+      const { pot, delta: potDelta } = getPotWithDelta(state, p, currentYear);
       const stats =
-        getLastSeasonStats(p, teamId, currentYear, pbaCompetitionId) ??
-        getBoxScoreDerivedStats(p, teamId, currentYear, state.boxScores ?? [], state.schedule ?? [], pbaCompetitionId);
+        getLastSeasonStats(p, teamId, currentYear, activeCompetitionId) ??
+        getBoxScoreDerivedStats(p, teamId, currentYear, state.boxScores ?? [], state.schedule ?? [], activeCompetitionId);
       const { score: moodScore } = computeMoodScore(
         p, team, state.date, false, false, false, teamPlayers, currentYear,
       );
@@ -346,13 +373,13 @@ export function TeamOfficeRosterView({ teamId }: Props) {
         per: stats?.per ?? 0,
         trainingFatigue: Math.max(0, Math.min(100, Math.round((p as any).trainingFatigue ?? 0))),
         moodScore,
-        isTwoWay: !hideNbaContractBadges && !!(p as any).twoWay,
-        isNonGuaranteed: !hideNbaContractBadges && !!(p as any).nonGuaranteed,
+        isTwoWay: twoWayContractsEnabled && isTwoWayContract(p, state.leagueStats),
+        isNonGuaranteed: nonGuaranteedContractsEnabled && isNonGuaranteedContract(p, state.leagueStats),
         isInjured: ((p as any).injury?.gamesRemaining ?? 0) > 0,
         injuryType: (p as any).injury?.type ?? 'Injured',
       };
     });
-  }, [teamPlayers, team, state.date, state.leagueStats, state.boxScores, state.schedule, currentYear, teamId, hideNbaContractBadges, state.nonNBATeams, pbaCompetitionId]);
+  }, [teamPlayers, team, state.date, state.leagueStats, state.boxScores, state.schedule, currentYear, teamId, hideNbaContractBadges, twoWayContractsEnabled, nonGuaranteedContractsEnabled, state.nonNBATeams, activeCompetitionId]);
 
   const rows = useMemo((): RowData[] => {
     if (sortMode === 'rotation' && team) {
@@ -362,10 +389,10 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       const savedStarters = (savedPlan?.starterIds ?? [])
         .map(id => healthyById.get(id))
         .filter(Boolean) as NBAPlayer[];
-      const rawStarters = savedStarters.length === 5
+      const rawStarters = savedStarters.length === playersOnCourt
         ? savedStarters
-        : StarterService.getProjectedStarters(team, state.players, currentYear, healthy);
-      const startersSorted = savedStarters.length === 5
+        : StarterService.getProjectedStarters(team, state.players, currentYear, healthy, true, playersOnCourt);
+      const startersSorted = savedStarters.length === playersOnCourt
         ? savedStarters
         : StarterService.sortByPositionSlot(rawStarters, currentYear);
       const starterIds = new Set(startersSorted.map(p => p.internalId));
@@ -403,7 +430,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       let av: any = 0, bv: any = 0;
       if (col === 'name')   { av = a.player.name; bv = b.player.name; }
       else if (col === 'num')    { av = parseInt(a.jerseyNum) || 99; bv = parseInt(b.jerseyNum) || 99; }
-      else if (col === 'pos')    { av = a.player.pos ?? ''; bv = b.player.pos ?? ''; }
+      else if (col === 'pos')    { av = normalizePositionLabel(a.player.pos, a.player.hgt); bv = normalizePositionLabel(b.player.pos, b.player.hgt); }
       else if (col === 'age')    { av = a.age;  bv = b.age; }
       else if (col === 'k2')     { av = a.k2;   bv = b.k2; }
       else if (col === 'pot')    { av = a.pot;  bv = b.pot; }
@@ -421,11 +448,11 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       if (typeof av === 'string') return dir === 'asc' ? av.localeCompare(bv) : bv.localeCompare(av);
       return dir === 'asc' ? av - bv : bv - av;
     });
-  }, [allRows, sort, sortMode, team, teamPlayers, state.players, currentYear]);
+  }, [allRows, sort, sortMode, team, teamPlayers, state.players, currentYear, playersOnCourt]);
 
-  // In rotation mode, inject a "Bench" divider after row index 4 (starters = 0-4)
+  // In rotation mode, inject a "Bench" divider after the configured starting unit.
   const rotationStarterCount = sortMode === 'rotation' && team
-    ? Math.min(5, rows.filter(r => !r.isInjured).length)
+    ? Math.min(playersOnCourt, rows.filter(r => !r.isInjured).length)
     : 0;
 
   // Starter IDs for rotation + gameplan highlight
@@ -434,14 +461,21 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       const healthy = teamPlayers.filter(p => isOnRoster(p) && !((p as any).injury?.gamesRemaining > 0));
       const savedPlan = getGameplan(teamId);
       const healthyIds = new Set(healthy.map(p => p.internalId));
-      if ((savedPlan?.starterIds ?? []).filter(id => healthyIds.has(id)).length === 5) {
+      if ((savedPlan?.starterIds ?? []).filter(id => healthyIds.has(id)).length === playersOnCourt) {
         return new Set(savedPlan!.starterIds);
       }
-      const starters = StarterService.getProjectedStarters(team, state.players, currentYear, healthy);
+      const starters = StarterService.getProjectedStarters(
+        team,
+        state.players,
+        currentYear,
+        healthy,
+        true,
+        playersOnCourt,
+      );
       return new Set(starters.map(p => p.internalId));
     }
     return new Set();
-  }, [sortMode, team, teamPlayers, state.players, currentYear, teamId]);
+  }, [sortMode, team, teamPlayers, state.players, currentYear, teamId, playersOnCourt]);
 
   if (quick.fullPageView) return quick.fullPageView;
 
@@ -450,7 +484,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
       {/* Mobile-only GM strip */}
       <div className="md:hidden flex items-center gap-3 mb-2 rounded-lg border border-[#30363d] bg-slate-900/60 px-3 py-2">
         <div className="w-9 h-9 rounded-full border border-white/10 overflow-hidden bg-slate-800/50 shrink-0">
-          <PlayerPortrait playerName={gmName || 'GM'} imgUrl={gmPortrait} size={36} />
+          <PlayerPortrait playerName={gmName || 'GM'} imgUrl={gmPortrait} disableNameFallback size={36} />
         </div>
         <div className="min-w-0">
           <div className="text-xs font-black text-slate-100 truncate">{gmName || 'Unknown GM'}</div>
@@ -478,6 +512,16 @@ export function TeamOfficeRosterView({ teamId }: Props) {
           <option value="gameplan">PER</option>
         </select>
       </div>
+      {isOwnTeam && (
+        <div className="md:hidden mb-2 rounded-lg border border-amber-400/30 bg-amber-400/5 px-3 py-2">
+          <AttributeBar
+            label="Team Chemistry"
+            value={teamChemistry}
+            tooltip={ATTR_TOOLTIPS.team_chemistry}
+            tone="chemistry"
+          />
+        </div>
+      )}
 
       <div className="h-full flex gap-4 min-h-0">
         {/* GM Sidebar — LEFT (desktop only) */}
@@ -489,7 +533,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
           >
             <div className="flex flex-col items-center gap-2 text-center">
               <div className="w-14 h-14 rounded-full border-2 border-white/10 overflow-hidden bg-slate-800/50 shrink-0">
-                <PlayerPortrait playerName={gmName || 'GM'} imgUrl={gmPortrait} size={56} />
+                <PlayerPortrait playerName={gmName || 'GM'} imgUrl={gmPortrait} disableNameFallback size={56} />
               </div>
               <div>
                 <div className="text-xs font-black text-slate-100 leading-tight">{gmName || 'Unknown GM'}</div>
@@ -515,10 +559,23 @@ export function TeamOfficeRosterView({ teamId }: Props) {
             <div className="text-[9px] font-black uppercase tracking-widest text-slate-500 border-b border-slate-800 pb-2">
               GM Attributes
             </div>
+            <AttributeBar label="Overall" value={gmAttrs.overall} tooltip={ATTR_TOOLTIPS.overall} />
             <AttributeBar label="Trade Aggr." value={gmAttrs.trade_aggression} tooltip={ATTR_TOOLTIPS.trade_aggression} />
             <AttributeBar label="Scouting"    value={gmAttrs.scouting_focus}   tooltip={ATTR_TOOLTIPS.scouting_focus} />
+            <AttributeBar label="Drafting"    value={gmAttrs.drafting}         tooltip={ATTR_TOOLTIPS.drafting} />
+            <AttributeBar label="Negotiation" value={gmAttrs.negotiation}      tooltip={ATTR_TOOLTIPS.negotiation} />
             <AttributeBar label="Work Ethic"  value={gmAttrs.work_ethic}        tooltip={ATTR_TOOLTIPS.work_ethic} />
             <AttributeBar label="Spending"    value={gmAttrs.spending}          tooltip={ATTR_TOOLTIPS.spending} />
+            {isOwnTeam && (
+              <div className="mt-1 border-t border-amber-400/20 pt-3">
+                <AttributeBar
+                  label="Team Chemistry"
+                  value={teamChemistry}
+                  tooltip={ATTR_TOOLTIPS.team_chemistry}
+                  tone="chemistry"
+                />
+              </div>
+            )}
 
             {/* Sort mode dropdown */}
             <div className="mt-auto pt-3 border-t border-slate-800">
@@ -544,16 +601,18 @@ export function TeamOfficeRosterView({ teamId }: Props) {
               <>
                 <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-emerald-500/50 border border-emerald-500/60 inline-block" />
-                  {rosterCounts.guaranteedCount}/15 guaranteed
+                  {expandedRosterWindow
+                    ? `${rosterCounts.total}/${maxActiveRoster} camp · ${Math.max(0, maxActiveRoster - rosterCounts.total)} available`
+                    : `${rosterCounts.standardCount}/${maxStandardRoster} standard`}
                 </span>
-                <span className="flex items-center gap-1">
+                {twoWayContractsEnabled && <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-violet-500/50 border border-violet-500/60 inline-block" />
-                  {rosterCounts.twoWayCount}/3 two-way
-                </span>
-                <span className="flex items-center gap-1">
+                  {rosterCounts.twoWayCount}/{maxTwoWayRoster} {secondaryContractLabel.toLowerCase()}
+                </span>}
+                {nonGuaranteedContractsEnabled && <span className="flex items-center gap-1">
                   <span className="w-2 h-2 rounded-sm bg-amber-500/30 border border-amber-500/50 inline-block" />
                   {rosterCounts.nonGuaranteedCount} non-guaranteed
-                </span>
+                </span>}
               </>
             )}
             {sortMode !== 'rating' && (
@@ -603,11 +662,11 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                         </PlayerNameWithHover>
                       </div>
                       <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-slate-500">
-                        <span>{p.pos}</span>
+                        <span>{normalizePositionLabel(p.pos, p.hgt)}</span>
                         <span>{r.age} yrs</span>
                         {isStarter && (sortMode === 'rotation' || sortMode === 'gameplan') && <span className="rounded border border-amber-400/40 bg-amber-500/20 px-1 py-0.5 text-amber-300">Starter</span>}
                         {r.isInjured && <span className="rounded border border-rose-500/40 bg-rose-500/10 px-1 py-0.5 text-rose-300">{r.injuryType}</span>}
-                        {r.isTwoWay && <span className="rounded border border-violet-500/50 bg-violet-500/30 px-1 py-0.5 text-violet-300">2W</span>}
+                        {r.isTwoWay && <span className="rounded border border-violet-500/50 bg-violet-500/30 px-1 py-0.5 text-violet-300">{developmentalActive ? 'DEV' : '2W'}</span>}
                         {r.isNonGuaranteed && <span className="rounded border border-amber-500/50 bg-amber-500/30 px-1 py-0.5 text-amber-300">NG</span>}
                       </div>
                     </div>
@@ -772,11 +831,11 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                             {r.isInjured && (
                               <span
                                 title={`Out — ${r.injuryType}`}
-                                className="text-[8px] font-black text-red-500 shrink-0 cursor-help"
+                                className="text-[8px] font-black text-red-500 shrink-0 cursor-default"
                               >✚</span>
                             )}
                             {r.isTwoWay && (
-                              <span className="text-[7px] font-black uppercase px-1 py-0.5 rounded bg-violet-500/30 text-violet-300 border border-violet-500/50 shrink-0">2W</span>
+                              <span className="text-[7px] font-black uppercase px-1 py-0.5 rounded bg-violet-500/30 text-violet-300 border border-violet-500/50 shrink-0">{developmentalActive ? 'DEV' : '2W'}</span>
                             )}
                             {r.isNonGuaranteed && (
                               <span className="text-[7px] font-black uppercase px-1 py-0.5 rounded bg-amber-500/30 text-amber-300 border border-amber-500/50 shrink-0">NG</span>
@@ -784,7 +843,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                           </div>
                         </td>
 
-                        <td className="text-center text-slate-400 px-1.5">{p.pos}</td>
+                        <td className="text-center text-slate-400 px-1.5">{normalizePositionLabel(p.pos, p.hgt)}</td>
                         <td className="text-center text-slate-400 tabular-nums px-1.5">{r.age}</td>
 
                         <td className="text-right tabular-nums px-1.5 whitespace-nowrap">
@@ -835,7 +894,7 @@ export function TeamOfficeRosterView({ teamId }: Props) {
                           <div className="flex items-center gap-1.5">
                             <div className="flex-1">
                               <div className="flex items-center justify-between text-[8px] font-black uppercase tracking-widest text-slate-500 mb-1">
-                                <span className={getFatigueTextColor(r.trainingFatigue)}>{r.trainingFatigue}</span>
+                                <span className={getFatigueTextColor(r.trainingFatigue)}>{r.trainingFatigue}%</span>
                                 <span className={`px-1 py-0.5 rounded border text-[7px] ${fatigueRisk.color}`}>{fatigueRisk.label}</span>
                               </div>
                               <div className="h-1.5 w-full bg-slate-800 rounded-full overflow-hidden">

@@ -1,0 +1,3795 @@
+{
+  "generatedAt": "2026-08-11T07:59:12.938Z",
+  "sourceTitle": "Category:Basketball teams in Japan",
+  "sourceUrl": "https://en.wikipedia.org/wiki/Category:Basketball_teams_in_Japan",
+  "detection": {
+    "plainListCount": 0,
+    "plainListLinks": 0,
+    "matchedTables": 0,
+    "tableLinks": 0,
+    "categoryLinks": 67,
+    "navboxLinks": 0,
+    "uniqueTeams": 67,
+    "logosFound": 66,
+    "logosMissing": 1,
+    "colorsFound": 66,
+    "colorsMissing": 1
+  },
+  "teams": [
+    {
+      "displayName": "Aisin Wings",
+      "articleTitle": "Aisin Wings",
+      "pageUrl": "https://en.wikipedia.org/wiki/Aisin_Wings",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "A"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/5/50/Aisin_Wings_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/5/50/Aisin_Wings_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Aisin Wingsアイシン ウィングス logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#1D2B6E",
+        "#F899D1",
+        "#F35E18"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#1D2B6E",
+          "rgb": {
+            "r": 29,
+            "g": 43,
+            "b": 110
+          },
+          "share": 0.302,
+          "sharePercent": 30.2
+        },
+        {
+          "hex": "#F899D1",
+          "rgb": {
+            "r": 248,
+            "g": 153,
+            "b": 209
+          },
+          "share": 0.1661,
+          "sharePercent": 16.61
+        },
+        {
+          "hex": "#F35E18",
+          "rgb": {
+            "r": 243,
+            "g": 94,
+            "b": 24
+          },
+          "share": 0.0252,
+          "sharePercent": 2.52
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Akita Bank Red Arrows",
+      "articleTitle": "Akita Bank Red Arrows",
+      "pageUrl": "https://en.wikipedia.org/wiki/Akita_Bank_Red_Arrows",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "A"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/7/71/ABRA_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/7/71/ABRA_logo.png/250px-ABRA_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Akita Bank Red Arrows秋田銀行レッドアローズ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Red, Navy blue .mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#D10914",
+        "#022376",
+        "#321D60"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#D10914",
+          "rgb": {
+            "r": 209,
+            "g": 9,
+            "b": 20
+          },
+          "share": 0.9165,
+          "sharePercent": 91.65
+        },
+        {
+          "hex": "#022376",
+          "rgb": {
+            "r": 2,
+            "g": 35,
+            "b": 118
+          },
+          "share": 0.0398,
+          "sharePercent": 3.98
+        },
+        {
+          "hex": "#321D60",
+          "rgb": {
+            "r": 50,
+            "g": 29,
+            "b": 96
+          },
+          "share": 0.0047,
+          "sharePercent": 0.47
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Akita Northern Happinets",
+      "articleTitle": "Akita Northern Happinets",
+      "pageUrl": "https://en.wikipedia.org/wiki/Akita_Northern_Happinets",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "A"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/b9/Akita_Northern_Happinets_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/b/b9/Akita_Northern_Happinets_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Akita Northern Happinets logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Pink, Gold, Black.mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{} [1]",
+      "primaryColors": [
+        "#1E1614",
+        "#F7F3F2",
+        "#E80346"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#1E1614",
+          "rgb": {
+            "r": 30,
+            "g": 22,
+            "b": 20
+          },
+          "share": 0.0754,
+          "sharePercent": 7.54
+        },
+        {
+          "hex": "#F7F3F2",
+          "rgb": {
+            "r": 247,
+            "g": 243,
+            "b": 242
+          },
+          "share": 0.0452,
+          "sharePercent": 4.52
+        },
+        {
+          "hex": "#E80346",
+          "rgb": {
+            "r": 232,
+            "g": 3,
+            "b": 70
+          },
+          "share": 0.0218,
+          "sharePercent": 2.18
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Altiri Chiba",
+      "articleTitle": "Altiri Chiba",
+      "pageUrl": "https://en.wikipedia.org/wiki/Altiri_Chiba",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "A"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/0/09/Altiri_Chiba.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/0/09/Altiri_Chiba.png/250px-Altiri_Chiba.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#010523",
+        "#303149",
+        "#565567"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#010523",
+          "rgb": {
+            "r": 1,
+            "g": 5,
+            "b": 35
+          },
+          "share": 0.6994,
+          "sharePercent": 69.94
+        },
+        {
+          "hex": "#303149",
+          "rgb": {
+            "r": 48,
+            "g": 49,
+            "b": 73
+          },
+          "share": 0.0554,
+          "sharePercent": 5.54
+        },
+        {
+          "hex": "#565567",
+          "rgb": {
+            "r": 86,
+            "g": 85,
+            "b": 103
+          },
+          "share": 0.0015,
+          "sharePercent": 0.15
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Aomori Wat's",
+      "articleTitle": "Aomori Wat's",
+      "pageUrl": "https://en.wikipedia.org/wiki/Aomori_Wat%27s",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "A"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/f/f2/Aomori_Wat%27s.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/f/f2/Aomori_Wat%27s.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Aomori Wat's logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#0218DA",
+        "#015FE7",
+        "#EFF4FD"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#0218DA",
+          "rgb": {
+            "r": 2,
+            "g": 24,
+            "b": 218
+          },
+          "share": 0.046,
+          "sharePercent": 4.6
+        },
+        {
+          "hex": "#015FE7",
+          "rgb": {
+            "r": 1,
+            "g": 95,
+            "b": 231
+          },
+          "share": 0.0287,
+          "sharePercent": 2.87
+        },
+        {
+          "hex": "#EFF4FD",
+          "rgb": {
+            "r": 239,
+            "g": 244,
+            "b": 253
+          },
+          "share": 0.026,
+          "sharePercent": 2.6
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Bambitious Nara",
+      "articleTitle": "Bambitious Nara",
+      "pageUrl": "https://en.wikipedia.org/wiki/Bambitious_Nara",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "B"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/b9/Bambitious_Nara_logo.gif",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/b/b9/Bambitious_Nara_logo.gif?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#003C3E",
+        "#FFFFFF",
+        "#C10F31"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#003C3E",
+          "rgb": {
+            "r": 0,
+            "g": 60,
+            "b": 62
+          },
+          "share": 0.1476,
+          "sharePercent": 14.76
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.4986,
+          "sharePercent": 49.86
+        },
+        {
+          "hex": "#C10F31",
+          "rgb": {
+            "r": 193,
+            "g": 15,
+            "b": 49
+          },
+          "share": 0.039,
+          "sharePercent": 3.9
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Chanson V-Magic",
+      "articleTitle": "Chanson V-Magic",
+      "pageUrl": "https://en.wikipedia.org/wiki/Chanson_V-Magic",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "C"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/e/ed/Chanson_V-Magic_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/e/ed/Chanson_V-Magic_logo.png/330px-Chanson_V-Magic_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Chanson V-MagicシャンソンVマジック logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FF46B1",
+        "#FED9EE",
+        "#FEA8D9"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FF46B1",
+          "rgb": {
+            "r": 255,
+            "g": 70,
+            "b": 177
+          },
+          "share": 0.1877,
+          "sharePercent": 18.77
+        },
+        {
+          "hex": "#FED9EE",
+          "rgb": {
+            "r": 254,
+            "g": 217,
+            "b": 238
+          },
+          "share": 0.0591,
+          "sharePercent": 5.91
+        },
+        {
+          "hex": "#FEA8D9",
+          "rgb": {
+            "r": 254,
+            "g": 168,
+            "b": 217
+          },
+          "share": 0.0277,
+          "sharePercent": 2.77
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Chiba Jets",
+      "articleTitle": "Chiba Jets",
+      "pageUrl": "https://en.wikipedia.org/wiki/Chiba_Jets",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "C"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/4/4f/ChibaJetsEmblem.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/4/4f/ChibaJetsEmblem.svg/250px-ChibaJetsEmblem.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Chiba Jets Funabashi logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": ".mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#CF1A24"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#CF1A24",
+          "rgb": {
+            "r": 207,
+            "g": 26,
+            "b": 36
+          },
+          "share": 0.9951,
+          "sharePercent": 99.51
+        }
+      ],
+      "colorsFound": 1,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Denso Iris",
+      "articleTitle": "Denso Iris",
+      "pageUrl": "https://en.wikipedia.org/wiki/Denso_Iris",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "D"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/6/6f/Denso_Iris_logo.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/6/6f/Denso_Iris_logo.svg/250px-Denso_Iris_logo.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Denso Irisデンソーアイリス logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#E7002A",
+        "#FDF0F1",
+        "#F7C2C4"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#E7002A",
+          "rgb": {
+            "r": 231,
+            "g": 0,
+            "b": 42
+          },
+          "share": 0.0953,
+          "sharePercent": 9.53
+        },
+        {
+          "hex": "#FDF0F1",
+          "rgb": {
+            "r": 253,
+            "g": 240,
+            "b": 241
+          },
+          "share": 0.0915,
+          "sharePercent": 9.15
+        },
+        {
+          "hex": "#F7C2C4",
+          "rgb": {
+            "r": 247,
+            "g": 194,
+            "b": 196
+          },
+          "share": 0.0593,
+          "sharePercent": 5.93
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Ehime Orange Vikings",
+      "articleTitle": "Ehime Orange Vikings",
+      "pageUrl": "https://en.wikipedia.org/wiki/Ehime_Orange_Vikings",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "E"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/0/0a/Ehime_Orange_Vikings_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/0/0a/Ehime_Orange_Vikings_logo.png/250px-Ehime_Orange_Vikings_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#EE7300",
+        "#010000",
+        "#601700"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#EE7300",
+          "rgb": {
+            "r": 238,
+            "g": 115,
+            "b": 0
+          },
+          "share": 0.2033,
+          "sharePercent": 20.33
+        },
+        {
+          "hex": "#010000",
+          "rgb": {
+            "r": 1,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.2164,
+          "sharePercent": 21.64
+        },
+        {
+          "hex": "#601700",
+          "rgb": {
+            "r": 96,
+            "g": 23,
+            "b": 0
+          },
+          "share": 0.043,
+          "sharePercent": 4.3
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Eneos Sunflowers",
+      "articleTitle": "Eneos Sunflowers",
+      "pageUrl": "https://en.wikipedia.org/wiki/Eneos_Sunflowers",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "E"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/2/26/JX_Sunflowers_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/2/26/JX_Sunflowers_logo.jpg/330px-JX_Sunflowers_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Eneos SunflowersENEOSサンフラワーズ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#006634",
+        "#EAD404",
+        "#F4F5F0"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#006634",
+          "rgb": {
+            "r": 0,
+            "g": 102,
+            "b": 52
+          },
+          "share": 0.7915,
+          "sharePercent": 79.15
+        },
+        {
+          "hex": "#EAD404",
+          "rgb": {
+            "r": 234,
+            "g": 212,
+            "b": 4
+          },
+          "share": 0.0084,
+          "sharePercent": 0.84
+        },
+        {
+          "hex": "#F4F5F0",
+          "rgb": {
+            "r": 244,
+            "g": 245,
+            "b": 240
+          },
+          "share": 0.0065,
+          "sharePercent": 0.65
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Fighting Eagles Nagoya",
+      "articleTitle": "Fighting Eagles Nagoya",
+      "pageUrl": "https://en.wikipedia.org/wiki/Fighting_Eagles_Nagoya",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "F"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/5/51/Fighting_Eagles_Nagoya_logo_%282023%29.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/5/51/Fighting_Eagles_Nagoya_logo_%282023%29.png/250px-Fighting_Eagles_Nagoya_logo_%282023%29.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#032C90",
+        "#E6000A"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#032C90",
+          "rgb": {
+            "r": 3,
+            "g": 44,
+            "b": 144
+          },
+          "share": 0.926,
+          "sharePercent": 92.6
+        },
+        {
+          "hex": "#E6000A",
+          "rgb": {
+            "r": 230,
+            "g": 0,
+            "b": 10
+          },
+          "share": 0.074,
+          "sharePercent": 7.4
+        }
+      ],
+      "colorsFound": 2,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Fujitsu Red Wave",
+      "articleTitle": "Fujitsu Red Wave",
+      "pageUrl": "https://en.wikipedia.org/wiki/Fujitsu_Red_Wave",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "F"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/6/64/Fujitsu_Redwave_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/6/64/Fujitsu_Redwave_logo.jpg/250px-Fujitsu_Redwave_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Fujitsu Red Wave富士通レッドウェーブ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#A10102",
+        "#F20403",
+        "#FEF3F1"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#A10102",
+          "rgb": {
+            "r": 161,
+            "g": 1,
+            "b": 2
+          },
+          "share": 0.1505,
+          "sharePercent": 15.05
+        },
+        {
+          "hex": "#F20403",
+          "rgb": {
+            "r": 242,
+            "g": 4,
+            "b": 3
+          },
+          "share": 0.0779,
+          "sharePercent": 7.79
+        },
+        {
+          "hex": "#FEF3F1",
+          "rgb": {
+            "r": 254,
+            "g": 243,
+            "b": 241
+          },
+          "share": 0.0384,
+          "sharePercent": 3.84
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Fukui Blowinds",
+      "articleTitle": "Fukui Blowinds",
+      "pageUrl": "https://en.wikipedia.org/wiki/Fukui_Blowinds",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "F"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/af/Fukui_Blowinds_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/a/af/Fukui_Blowinds_logo.png/250px-Fukui_Blowinds_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Fukui Blowinds logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": ".mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{} Royal Blue",
+      "primaryColors": [
+        "#171F71",
+        "#EDEEF4",
+        "#454C8C"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#171F71",
+          "rgb": {
+            "r": 23,
+            "g": 31,
+            "b": 113
+          },
+          "share": 0.4146,
+          "sharePercent": 41.46
+        },
+        {
+          "hex": "#EDEEF4",
+          "rgb": {
+            "r": 237,
+            "g": 238,
+            "b": 244
+          },
+          "share": 0.0737,
+          "sharePercent": 7.37
+        },
+        {
+          "hex": "#454C8C",
+          "rgb": {
+            "r": 69,
+            "g": 76,
+            "b": 140
+          },
+          "share": 0.0354,
+          "sharePercent": 3.54
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Fukushima Firebonds",
+      "articleTitle": "Fukushima Firebonds",
+      "pageUrl": "https://en.wikipedia.org/wiki/Fukushima_Firebonds",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "F"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/8/85/Fukushima_Firebonds_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/8/85/Fukushima_Firebonds_logo.png/250px-Fukushima_Firebonds_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Fukushima Firebonds logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Fuchsia.mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#FFFFFF",
+        "#2E2D93",
+        "#D3D4D6"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.5334,
+          "sharePercent": 53.34
+        },
+        {
+          "hex": "#2E2D93",
+          "rgb": {
+            "r": 46,
+            "g": 45,
+            "b": 147
+          },
+          "share": 0.0851,
+          "sharePercent": 8.51
+        },
+        {
+          "hex": "#D3D4D6",
+          "rgb": {
+            "r": 211,
+            "g": 212,
+            "b": 214
+          },
+          "share": 0.0862,
+          "sharePercent": 8.62
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Gifu Swoops",
+      "articleTitle": "Gifu Swoops",
+      "pageUrl": "https://en.wikipedia.org/wiki/Gifu_Swoops",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "G"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/9/9d/GSwoops_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9d/GSwoops_logo.png/250px-GSwoops_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#010000",
+        "#F20000",
+        "#BEA10E"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#010000",
+          "rgb": {
+            "r": 1,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.3891,
+          "sharePercent": 38.91
+        },
+        {
+          "hex": "#F20000",
+          "rgb": {
+            "r": 242,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.0735,
+          "sharePercent": 7.35
+        },
+        {
+          "hex": "#BEA10E",
+          "rgb": {
+            "r": 190,
+            "g": 161,
+            "b": 14
+          },
+          "share": 0.0288,
+          "sharePercent": 2.88
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Gunma Crane Thunders",
+      "articleTitle": "Gunma Crane Thunders",
+      "pageUrl": "https://en.wikipedia.org/wiki/Gunma_Crane_Thunders",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "G"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/8/8d/Gunma_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/8/8d/Gunma_logo.png/250px-Gunma_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#030000",
+        "#FEE000",
+        "#E90209"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#030000",
+          "rgb": {
+            "r": 3,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.4638,
+          "sharePercent": 46.38
+        },
+        {
+          "hex": "#FEE000",
+          "rgb": {
+            "r": 254,
+            "g": 224,
+            "b": 0
+          },
+          "share": 0.0754,
+          "sharePercent": 7.54
+        },
+        {
+          "hex": "#E90209",
+          "rgb": {
+            "r": 233,
+            "g": 2,
+            "b": 9
+          },
+          "share": 0.0271,
+          "sharePercent": 2.71
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Hiroshima Dragonflies",
+      "articleTitle": "Hiroshima Dragonflies",
+      "pageUrl": "https://en.wikipedia.org/wiki/Hiroshima_Dragonflies",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "H"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/3/37/HiroshimaDragonfliesEmblem.svg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/3/37/HiroshimaDragonfliesEmblem.svg/250px-HiroshimaDragonfliesEmblem.svg.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Hiroshima Dragonflies logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Teal, Orange, Brown, White .mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#F04D1E",
+        "#FFFFFF",
+        "#00B8B2"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#F04D1E",
+          "rgb": {
+            "r": 240,
+            "g": 77,
+            "b": 30
+          },
+          "share": 0.5058,
+          "sharePercent": 50.58
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.3241,
+          "sharePercent": 32.41
+        },
+        {
+          "hex": "#00B8B2",
+          "rgb": {
+            "r": 0,
+            "g": 184,
+            "b": 178
+          },
+          "share": 0.0414,
+          "sharePercent": 4.14
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Hiroshima Egrets",
+      "articleTitle": "Hiroshima Egrets",
+      "pageUrl": "https://en.wikipedia.org/wiki/Hiroshima_Egrets",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "H"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/9/96/Hiroshima_Egrets_Logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/9/96/Hiroshima_Egrets_Logo.png",
+      "logoAlt": "Hiroshima Egrets広島イーグレッツ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "White and Teal.mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#1C7E8D",
+        "#01ADAB",
+        "#E84709"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#1C7E8D",
+          "rgb": {
+            "r": 28,
+            "g": 126,
+            "b": 141
+          },
+          "share": 0.2512,
+          "sharePercent": 25.12
+        },
+        {
+          "hex": "#01ADAB",
+          "rgb": {
+            "r": 1,
+            "g": 173,
+            "b": 171
+          },
+          "share": 0.1636,
+          "sharePercent": 16.36
+        },
+        {
+          "hex": "#E84709",
+          "rgb": {
+            "r": 232,
+            "g": 71,
+            "b": 9
+          },
+          "share": 0.0487,
+          "sharePercent": 4.87
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Hitachi High-Tech Cougars",
+      "articleTitle": "Hitachi High-Tech Cougars",
+      "pageUrl": "https://en.wikipedia.org/wiki/Hitachi_High-Tech_Cougars",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "H"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/0/0d/Hitachi_Cougars_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/0/0d/Hitachi_Cougars_logo.jpg/250px-Hitachi_Cougars_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Hitachi High-Tech Cougars日立ハイテク クーガーズ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#072D7C",
+        "#FFFFFF",
+        "#16A9EC"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#072D7C",
+          "rgb": {
+            "r": 7,
+            "g": 45,
+            "b": 124
+          },
+          "share": 0.0464,
+          "sharePercent": 4.64
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.3121,
+          "sharePercent": 31.21
+        },
+        {
+          "hex": "#16A9EC",
+          "rgb": {
+            "r": 22,
+            "g": 169,
+            "b": 236
+          },
+          "share": 0.0156,
+          "sharePercent": 1.56
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Ibaraki Robots",
+      "articleTitle": "Ibaraki Robots",
+      "pageUrl": "https://en.wikipedia.org/wiki/Ibaraki_Robots",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "I"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/bf/Ibaraki_Robots_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/b/bf/Ibaraki_Robots_logo.png/250px-Ibaraki_Robots_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#003595",
+        "#EE8B00",
+        "#FFFFFF"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#003595",
+          "rgb": {
+            "r": 0,
+            "g": 53,
+            "b": 149
+          },
+          "share": 0.4114,
+          "sharePercent": 41.14
+        },
+        {
+          "hex": "#EE8B00",
+          "rgb": {
+            "r": 238,
+            "g": 139,
+            "b": 0
+          },
+          "share": 0.0624,
+          "sharePercent": 6.24
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.2121,
+          "sharePercent": 21.21
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Iwate Big Bulls",
+      "articleTitle": "Iwate Big Bulls",
+      "pageUrl": "https://en.wikipedia.org/wiki/Iwate_Big_Bulls",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "I"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/c/cd/Iwate_Big_Bulls_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/c/cd/Iwate_Big_Bulls_logo.png/250px-Iwate_Big_Bulls_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Iwate Big Bulls logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#C90D17",
+        "#030A2C",
+        "#EDB030"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#C90D17",
+          "rgb": {
+            "r": 201,
+            "g": 13,
+            "b": 23
+          },
+          "share": 0.2694,
+          "sharePercent": 26.94
+        },
+        {
+          "hex": "#030A2C",
+          "rgb": {
+            "r": 3,
+            "g": 10,
+            "b": 44
+          },
+          "share": 0.1822,
+          "sharePercent": 18.22
+        },
+        {
+          "hex": "#EDB030",
+          "rgb": {
+            "r": 237,
+            "g": 176,
+            "b": 48
+          },
+          "share": 0.0667,
+          "sharePercent": 6.67
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "JR East Akita Peckers",
+      "articleTitle": "JR East Akita Peckers",
+      "pageUrl": "https://en.wikipedia.org/wiki/JR_East_Akita_Peckers",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "J"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/3/33/JR_East_Akita_Peckers_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/3/33/JR_East_Akita_Peckers_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "JR East Akita Peckers logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#00823E",
+        "#DBDCDC",
+        "#FFFFFF"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#00823E",
+          "rgb": {
+            "r": 0,
+            "g": 130,
+            "b": 62
+          },
+          "share": 0.1533,
+          "sharePercent": 15.33
+        },
+        {
+          "hex": "#DBDCDC",
+          "rgb": {
+            "r": 219,
+            "g": 220,
+            "b": 220
+          },
+          "share": 0.1677,
+          "sharePercent": 16.77
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.3996,
+          "sharePercent": 39.96
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Kagawa Five Arrows",
+      "articleTitle": "Kagawa Five Arrows",
+      "pageUrl": "https://en.wikipedia.org/wiki/Kagawa_Five_Arrows",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "K"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/b/bc/Kagawa_Five_Arrows_logo_%282025%29.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/b/bc/Kagawa_Five_Arrows_logo_%282025%29.png/250px-Kagawa_Five_Arrows_logo_%282025%29.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Kagawa Five Arrows logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Yellow, Black.mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#FCCC00"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FCCC00",
+          "rgb": {
+            "r": 252,
+            "g": 204,
+            "b": 0
+          },
+          "share": 0.8268,
+          "sharePercent": 82.68
+        }
+      ],
+      "colorsFound": 1,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Kagoshima Rebnise",
+      "articleTitle": "Kagoshima Rebnise",
+      "pageUrl": "https://en.wikipedia.org/wiki/Kagoshima_Rebnise",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "K"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/b5/Kagoshima_Rebnise_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/b/b5/Kagoshima_Rebnise_logo.png/250px-Kagoshima_Rebnise_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#1E110D",
+        "#E70009",
+        "#E0B764"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#1E110D",
+          "rgb": {
+            "r": 30,
+            "g": 17,
+            "b": 13
+          },
+          "share": 0.3551,
+          "sharePercent": 35.51
+        },
+        {
+          "hex": "#E70009",
+          "rgb": {
+            "r": 231,
+            "g": 0,
+            "b": 9
+          },
+          "share": 0.0538,
+          "sharePercent": 5.38
+        },
+        {
+          "hex": "#E0B764",
+          "rgb": {
+            "r": 224,
+            "g": 183,
+            "b": 100
+          },
+          "share": 0.0541,
+          "sharePercent": 5.41
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Kanazawa Samuraiz",
+      "articleTitle": "Kanazawa Samuraiz",
+      "pageUrl": "https://en.wikipedia.org/wiki/Kanazawa_Samuraiz",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "K"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/7/7b/Kanazawa_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/7/7b/Kanazawa_logo.png/250px-Kanazawa_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Kanazawa Samuraiz logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Gold, Black.mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#D3BC5A"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#D3BC5A",
+          "rgb": {
+            "r": 211,
+            "g": 188,
+            "b": 90
+          },
+          "share": 1,
+          "sharePercent": 100
+        }
+      ],
+      "colorsFound": 1,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Kawasaki Brave Thunders",
+      "articleTitle": "Kawasaki Brave Thunders",
+      "pageUrl": "https://en.wikipedia.org/wiki/Kawasaki_Brave_Thunders",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "K"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/e/e7/Kawasaki_Brave_Thunders_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/e/e7/Kawasaki_Brave_Thunders_logo.jpg/250px-Kawasaki_Brave_Thunders_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Kawasaki Brave Thunders logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FFFFFF",
+        "#7D2844",
+        "#BE9176"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.5798,
+          "sharePercent": 57.98
+        },
+        {
+          "hex": "#7D2844",
+          "rgb": {
+            "r": 125,
+            "g": 40,
+            "b": 68
+          },
+          "share": 0.0302,
+          "sharePercent": 3.02
+        },
+        {
+          "hex": "#BE9176",
+          "rgb": {
+            "r": 190,
+            "g": 145,
+            "b": 118
+          },
+          "share": 0.0087,
+          "sharePercent": 0.87
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Kobe Storks",
+      "articleTitle": "Kobe Storks",
+      "pageUrl": "https://en.wikipedia.org/wiki/Kobe_Storks",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "K"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/a3/Kobe_Storks_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a3/Kobe_Storks_logo.png/250px-Kobe_Storks_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Kobe Storks logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#06492B",
+        "#022108",
+        "#3E5745"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#06492B",
+          "rgb": {
+            "r": 6,
+            "g": 73,
+            "b": 43
+          },
+          "share": 0.3272,
+          "sharePercent": 32.72
+        },
+        {
+          "hex": "#022108",
+          "rgb": {
+            "r": 2,
+            "g": 33,
+            "b": 8
+          },
+          "share": 0.2721,
+          "sharePercent": 27.21
+        },
+        {
+          "hex": "#3E5745",
+          "rgb": {
+            "r": 62,
+            "g": 87,
+            "b": 69
+          },
+          "share": 0.0193,
+          "sharePercent": 1.93
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Koshigaya Alphas",
+      "articleTitle": "Koshigaya Alphas",
+      "pageUrl": "https://en.wikipedia.org/wiki/Koshigaya_Alphas",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "K"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/d/d4/Koshigaya_Alphas_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/d/d4/Koshigaya_Alphas_logo.png/250px-Koshigaya_Alphas_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Koshigaya Alphas logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#010000",
+        "#C4AE7B",
+        "#801329"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#010000",
+          "rgb": {
+            "r": 1,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.3952,
+          "sharePercent": 39.52
+        },
+        {
+          "hex": "#C4AE7B",
+          "rgb": {
+            "r": 196,
+            "g": 174,
+            "b": 123
+          },
+          "share": 0.063,
+          "sharePercent": 6.3
+        },
+        {
+          "hex": "#801329",
+          "rgb": {
+            "r": 128,
+            "g": 19,
+            "b": 41
+          },
+          "share": 0.0368,
+          "sharePercent": 3.68
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Kumamoto Volters",
+      "articleTitle": "Kumamoto Volters",
+      "pageUrl": "https://en.wikipedia.org/wiki/Kumamoto_Volters",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "K"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/e/e6/Kumamoto_Volters_Logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/e/e6/Kumamoto_Volters_Logo.png/250px-Kumamoto_Volters_Logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#000000",
+        "#E7000A",
+        "#A90000"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#000000",
+          "rgb": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.3417,
+          "sharePercent": 34.17
+        },
+        {
+          "hex": "#E7000A",
+          "rgb": {
+            "r": 231,
+            "g": 0,
+            "b": 10
+          },
+          "share": 0.219,
+          "sharePercent": 21.9
+        },
+        {
+          "hex": "#A90000",
+          "rgb": {
+            "r": 169,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.0576,
+          "sharePercent": 5.76
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Kyoto Hannaryz",
+      "articleTitle": "Kyoto Hannaryz",
+      "pageUrl": "https://en.wikipedia.org/wiki/Kyoto_Hannaryz",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "K"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/af/Kyoto_Hannaryz_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/a/af/Kyoto_Hannaryz_logo.png/250px-Kyoto_Hannaryz_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#160D09",
+        "#30A8B9",
+        "#322C2B"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#160D09",
+          "rgb": {
+            "r": 22,
+            "g": 13,
+            "b": 9
+          },
+          "share": 0.3408,
+          "sharePercent": 34.08
+        },
+        {
+          "hex": "#30A8B9",
+          "rgb": {
+            "r": 48,
+            "g": 168,
+            "b": 185
+          },
+          "share": 0.112,
+          "sharePercent": 11.2
+        },
+        {
+          "hex": "#322C2B",
+          "rgb": {
+            "r": 50,
+            "g": 44,
+            "b": 43
+          },
+          "share": 0.0431,
+          "sharePercent": 4.31
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Levanga Hokkaido",
+      "articleTitle": "Levanga Hokkaido",
+      "pageUrl": "https://en.wikipedia.org/wiki/Levanga_Hokkaido",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "L"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/7/76/Levanga_Hokkaido_logo_%282026%29.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/7/76/Levanga_Hokkaido_logo_%282026%29.png/250px-Levanga_Hokkaido_logo_%282026%29.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Levanga Hokkaido logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Chartreuse and Sapphire .mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#92C519"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#92C519",
+          "rgb": {
+            "r": 146,
+            "g": 197,
+            "b": 25
+          },
+          "share": 0.9914,
+          "sharePercent": 99.14
+        }
+      ],
+      "colorsFound": 1,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Mitsubishi Electric Koalas",
+      "articleTitle": "Mitsubishi Electric Koalas",
+      "pageUrl": "https://en.wikipedia.org/wiki/Mitsubishi_Electric_Koalas",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "M"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/b4/Mitsubishi_Electric_Koalas_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/b/b4/Mitsubishi_Electric_Koalas_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Mitsubishi Electric Koalas三菱電機コアラーズ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#DC0614",
+        "#F7B72B",
+        "#EC6102"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#DC0614",
+          "rgb": {
+            "r": 220,
+            "g": 6,
+            "b": 20
+          },
+          "share": 0.1773,
+          "sharePercent": 17.73
+        },
+        {
+          "hex": "#F7B72B",
+          "rgb": {
+            "r": 247,
+            "g": 183,
+            "b": 43
+          },
+          "share": 0.103,
+          "sharePercent": 10.3
+        },
+        {
+          "hex": "#EC6102",
+          "rgb": {
+            "r": 236,
+            "g": 97,
+            "b": 2
+          },
+          "share": 0.0451,
+          "sharePercent": 4.51
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Nagasaki Velca",
+      "articleTitle": "Nagasaki Velca",
+      "pageUrl": "https://en.wikipedia.org/wiki/Nagasaki_Velca",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "N"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/a2/Nagasaki_Velca_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/a/a2/Nagasaki_Velca_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Nagasaki Velca logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Prussian blue, white and dark yellow .mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#22345A"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#22345A",
+          "rgb": {
+            "r": 34,
+            "g": 52,
+            "b": 90
+          },
+          "share": 0.9847,
+          "sharePercent": 98.47
+        }
+      ],
+      "colorsFound": 1,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Nagoya Diamond Dolphins",
+      "articleTitle": "Nagoya Diamond Dolphins",
+      "pageUrl": "https://en.wikipedia.org/wiki/Nagoya_Diamond_Dolphins",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "N"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/7/79/Nagoya_Diamond_Dolphins.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/7/79/Nagoya_Diamond_Dolphins.png/250px-Nagoya_Diamond_Dolphins.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Nagoya Diamond Dolphins logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Red.mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#1D110D",
+        "#F39900",
+        "#E70009"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#1D110D",
+          "rgb": {
+            "r": 29,
+            "g": 17,
+            "b": 13
+          },
+          "share": 0.2484,
+          "sharePercent": 24.84
+        },
+        {
+          "hex": "#F39900",
+          "rgb": {
+            "r": 243,
+            "g": 153,
+            "b": 0
+          },
+          "share": 0.1407,
+          "sharePercent": 14.07
+        },
+        {
+          "hex": "#E70009",
+          "rgb": {
+            "r": 231,
+            "g": 0,
+            "b": 9
+          },
+          "share": 0.0829,
+          "sharePercent": 8.29
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Niigata Albirex BB",
+      "articleTitle": "Niigata Albirex BB",
+      "pageUrl": "https://en.wikipedia.org/wiki/Niigata_Albirex_BB",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "N"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/7/7b/AlbirexBB.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/7/7b/AlbirexBB.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Niigata Albirex BB logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Orange and Blue",
+      "primaryColors": [
+        "#101F8B",
+        "#FFFFFF",
+        "#FE3302"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#101F8B",
+          "rgb": {
+            "r": 16,
+            "g": 31,
+            "b": 139
+          },
+          "share": 0.0655,
+          "sharePercent": 6.55
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.4923,
+          "sharePercent": 49.23
+        },
+        {
+          "hex": "#FE3302",
+          "rgb": {
+            "r": 254,
+            "g": 51,
+            "b": 2
+          },
+          "share": 0.04,
+          "sharePercent": 4
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Niigata Albirex BB Rabbits",
+      "articleTitle": "Niigata Albirex BB Rabbits",
+      "pageUrl": "https://en.wikipedia.org/wiki/Niigata_Albirex_BB_Rabbits",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "N"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/9/93/Niigata_Albirex_BB_Rabbits_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Niigata_Albirex_BB_Rabbits_logo.jpg/330px-Niigata_Albirex_BB_Rabbits_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Niigata Albirex BB Rabbits新潟アルビレックスBBラビッツ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FFFFFF",
+        "#F6047B",
+        "#F44A05"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.6124,
+          "sharePercent": 61.24
+        },
+        {
+          "hex": "#F6047B",
+          "rgb": {
+            "r": 246,
+            "g": 4,
+            "b": 123
+          },
+          "share": 0.0229,
+          "sharePercent": 2.29
+        },
+        {
+          "hex": "#F44A05",
+          "rgb": {
+            "r": 244,
+            "g": 74,
+            "b": 5
+          },
+          "share": 0.0127,
+          "sharePercent": 1.27
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Osaka Evessa",
+      "articleTitle": "Osaka Evessa",
+      "pageUrl": "https://en.wikipedia.org/wiki/Osaka_Evessa",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "O"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/1/19/Osaka_Evessa_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/1/19/Osaka_Evessa_logo.png/250px-Osaka_Evessa_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Red, Black and Gold",
+      "primaryColors": [
+        "#E60113",
+        "#010000",
+        "#C19759"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#E60113",
+          "rgb": {
+            "r": 230,
+            "g": 1,
+            "b": 19
+          },
+          "share": 0.1127,
+          "sharePercent": 11.27
+        },
+        {
+          "hex": "#010000",
+          "rgb": {
+            "r": 1,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.2063,
+          "sharePercent": 20.63
+        },
+        {
+          "hex": "#C19759",
+          "rgb": {
+            "r": 193,
+            "g": 151,
+            "b": 89
+          },
+          "share": 0.0951,
+          "sharePercent": 9.51
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Prestige International Aranmare Akita",
+      "articleTitle": "Prestige International Aranmare Akita",
+      "pageUrl": "https://en.wikipedia.org/wiki/Prestige_International_Aranmare_Akita",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "P"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/1/1a/Aranmare_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/1/1a/Aranmare_logo.jpg/500px-Aranmare_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Prestige International Aranmare Akitaプレステージ・インターナショナル・アランマーレ秋田 logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Orange, Navy blue .mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#FFFFFF",
+        "#1C2758",
+        "#F05A43"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.5192,
+          "sharePercent": 51.92
+        },
+        {
+          "hex": "#1C2758",
+          "rgb": {
+            "r": 28,
+            "g": 39,
+            "b": 88
+          },
+          "share": 0.0293,
+          "sharePercent": 2.93
+        },
+        {
+          "hex": "#F05A43",
+          "rgb": {
+            "r": 240,
+            "g": 90,
+            "b": 67
+          },
+          "share": 0.0231,
+          "sharePercent": 2.31
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Rizing Zephyr Fukuoka",
+      "articleTitle": "Rizing Zephyr Fukuoka",
+      "pageUrl": "https://en.wikipedia.org/wiki/Rizing_Zephyr_Fukuoka",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "R"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/0/0e/Rizingzephyrlogo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/0/0e/Rizingzephyrlogo.jpg/250px-Rizingzephyrlogo.jpg",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#E80121",
+        "#063090",
+        "#FFFFFE"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#E80121",
+          "rgb": {
+            "r": 232,
+            "g": 1,
+            "b": 33
+          },
+          "share": 0.1494,
+          "sharePercent": 14.94
+        },
+        {
+          "hex": "#063090",
+          "rgb": {
+            "r": 6,
+            "g": 48,
+            "b": 144
+          },
+          "share": 0.114,
+          "sharePercent": 11.4
+        },
+        {
+          "hex": "#FFFFFE",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 254
+          },
+          "share": 0.3002,
+          "sharePercent": 30.02
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Ryukyu Golden Kings",
+      "articleTitle": "Ryukyu Golden Kings",
+      "pageUrl": "https://en.wikipedia.org/wiki/Ryukyu_Golden_Kings",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "R"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/3/35/Ryukyu_Golden_Kings_logo_19.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/3/35/Ryukyu_Golden_Kings_logo_19.png/250px-Ryukyu_Golden_Kings_logo_19.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Ryukyu Golden Kings logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Champagne Gold, Steel Blue and Pearl Red .mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#013E6B",
+        "#D9C073",
+        "#F3F1F1"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#013E6B",
+          "rgb": {
+            "r": 1,
+            "g": 62,
+            "b": 107
+          },
+          "share": 0.212,
+          "sharePercent": 21.2
+        },
+        {
+          "hex": "#D9C073",
+          "rgb": {
+            "r": 217,
+            "g": 192,
+            "b": 115
+          },
+          "share": 0.0697,
+          "sharePercent": 6.97
+        },
+        {
+          "hex": "#F3F1F1",
+          "rgb": {
+            "r": 243,
+            "g": 241,
+            "b": 241
+          },
+          "share": 0.0474,
+          "sharePercent": 4.74
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Saga Ballooners",
+      "articleTitle": "Saga Ballooners",
+      "pageUrl": "https://en.wikipedia.org/wiki/Saga_Ballooners",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "S"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/f/f8/Ballooners-logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/f/f8/Ballooners-logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#02A4D0",
+        "#020202",
+        "#EE41A8"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#02A4D0",
+          "rgb": {
+            "r": 2,
+            "g": 164,
+            "b": 208
+          },
+          "share": 0.2339,
+          "sharePercent": 23.39
+        },
+        {
+          "hex": "#020202",
+          "rgb": {
+            "r": 2,
+            "g": 2,
+            "b": 2
+          },
+          "share": 0.3662,
+          "sharePercent": 36.62
+        },
+        {
+          "hex": "#EE41A8",
+          "rgb": {
+            "r": 238,
+            "g": 65,
+            "b": 168
+          },
+          "share": 0.0586,
+          "sharePercent": 5.86
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Saitama Broncos",
+      "articleTitle": "Saitama Broncos",
+      "pageUrl": "https://en.wikipedia.org/wiki/Saitama_Broncos",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "S"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/d/d6/Broncos_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/d/d6/Broncos_logo.jpg/250px-Broncos_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Saitama Broncos logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Red and Black.mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#D6282E",
+        "#FFFFFF",
+        "#1F1614"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#D6282E",
+          "rgb": {
+            "r": 214,
+            "g": 40,
+            "b": 46
+          },
+          "share": 0.065,
+          "sharePercent": 6.5
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.4032,
+          "sharePercent": 40.32
+        },
+        {
+          "hex": "#1F1614",
+          "rgb": {
+            "r": 31,
+            "g": 22,
+            "b": 20
+          },
+          "share": 0.0568,
+          "sharePercent": 5.68
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "San-en NeoPhoenix",
+      "articleTitle": "San-en NeoPhoenix",
+      "pageUrl": "https://en.wikipedia.org/wiki/San-en_NeoPhoenix",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "S"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/c/cc/SAN-EN_NeoPhoenix.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/c/cc/SAN-EN_NeoPhoenix.jpg/250px-SAN-EN_NeoPhoenix.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "San-en NeoPhoenix logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Red, White.mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#FFFFFF",
+        "#DD0513",
+        "#040304"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.4843,
+          "sharePercent": 48.43
+        },
+        {
+          "hex": "#DD0513",
+          "rgb": {
+            "r": 221,
+            "g": 5,
+            "b": 19
+          },
+          "share": 0.0194,
+          "sharePercent": 1.94
+        },
+        {
+          "hex": "#040304",
+          "rgb": {
+            "r": 4,
+            "g": 3,
+            "b": 4
+          },
+          "share": 0.0471,
+          "sharePercent": 4.71
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "SeaHorses Mikawa",
+      "articleTitle": "SeaHorses Mikawa",
+      "pageUrl": "https://en.wikipedia.org/wiki/SeaHorses_Mikawa",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "S"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/1/1c/SeaHorses_Mikawa_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/1/1c/SeaHorses_Mikawa_logo.jpg/250px-SeaHorses_Mikawa_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Seahorses Mikawa logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FEFEFE",
+        "#1C1616",
+        "#EDC44C"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FEFEFE",
+          "rgb": {
+            "r": 254,
+            "g": 254,
+            "b": 254
+          },
+          "share": 0.3952,
+          "sharePercent": 39.52
+        },
+        {
+          "hex": "#1C1616",
+          "rgb": {
+            "r": 28,
+            "g": 22,
+            "b": 22
+          },
+          "share": 0.0703,
+          "sharePercent": 7.03
+        },
+        {
+          "hex": "#EDC44C",
+          "rgb": {
+            "r": 237,
+            "g": 196,
+            "b": 76
+          },
+          "share": 0.0146,
+          "sharePercent": 1.46
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Sendai 89ers",
+      "articleTitle": "Sendai 89ers",
+      "pageUrl": "https://en.wikipedia.org/wiki/Sendai_89ers",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "S"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/d/df/Sendai_89ers_logo_%282025%29.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/d/df/Sendai_89ers_logo_%282025%29.png/330px-Sendai_89ers_logo_%282025%29.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Sendai 89ers logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#000000",
+        "#EAE709",
+        "#C1BF05"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#000000",
+          "rgb": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.4805,
+          "sharePercent": 48.05
+        },
+        {
+          "hex": "#EAE709",
+          "rgb": {
+            "r": 234,
+            "g": 231,
+            "b": 9
+          },
+          "share": 0.2005,
+          "sharePercent": 20.05
+        },
+        {
+          "hex": "#C1BF05",
+          "rgb": {
+            "r": 193,
+            "g": 191,
+            "b": 5
+          },
+          "share": 0.0226,
+          "sharePercent": 2.26
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Shiga Lakes",
+      "articleTitle": "Shiga Lakes",
+      "pageUrl": "https://en.wikipedia.org/wiki/Shiga_Lakes",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "S"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/af/Shiga_Lakes_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/a/af/Shiga_Lakes_logo.png/250px-Shiga_Lakes_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Shiga Lakes logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Blue, Yellow, Platinum.mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#0C5B98",
+        "#6091BA",
+        "#A0BFD5"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#0C5B98",
+          "rgb": {
+            "r": 12,
+            "g": 91,
+            "b": 152
+          },
+          "share": 0.8236,
+          "sharePercent": 82.36
+        },
+        {
+          "hex": "#6091BA",
+          "rgb": {
+            "r": 96,
+            "g": 145,
+            "b": 186
+          },
+          "share": 0.0155,
+          "sharePercent": 1.55
+        },
+        {
+          "hex": "#A0BFD5",
+          "rgb": {
+            "r": 160,
+            "g": 191,
+            "b": 213
+          },
+          "share": 0.0008,
+          "sharePercent": 0.08
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Shimane Susanoo Magic",
+      "articleTitle": "Shimane Susanoo Magic",
+      "pageUrl": "https://en.wikipedia.org/wiki/Shimane_Susanoo_Magic",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "S"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/9/9c/Shimane_Susanoo_Magic_logo_%282026%29.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/9/9c/Shimane_Susanoo_Magic_logo_%282026%29.png/250px-Shimane_Susanoo_Magic_logo_%282026%29.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Blue, Black and Silver",
+      "primaryColors": [
+        "#000000",
+        "#C0C1C1",
+        "#FFFFFF"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#000000",
+          "rgb": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.5111,
+          "sharePercent": 51.11
+        },
+        {
+          "hex": "#C0C1C1",
+          "rgb": {
+            "r": 192,
+            "g": 193,
+            "b": 193
+          },
+          "share": 0.2071,
+          "sharePercent": 20.71
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.2014,
+          "sharePercent": 20.14
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Shinagawa City Basketball Club",
+      "articleTitle": "Shinagawa City Basketball Club",
+      "pageUrl": "https://en.wikipedia.org/wiki/Shinagawa_City_Basketball_Club",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "S"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/commons/3/3b/Shinagawa_City_BC_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/commons/thumb/3/3b/Shinagawa_City_BC_logo.png/250px-Shinagawa_City_BC_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#030B2A"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#030B2A",
+          "rgb": {
+            "r": 3,
+            "g": 11,
+            "b": 42
+          },
+          "share": 0.9895,
+          "sharePercent": 98.95
+        }
+      ],
+      "colorsFound": 1,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Shinshu Brave Warriors",
+      "articleTitle": "Shinshu Brave Warriors",
+      "pageUrl": "https://en.wikipedia.org/wiki/Shinshu_Brave_Warriors",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "S"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/b7/Shinshu_Brave_Warriors_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/b/b7/Shinshu_Brave_Warriors_logo.png/250px-Shinshu_Brave_Warriors_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#1D110D",
+        "#AC9840",
+        "#746330"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#1D110D",
+          "rgb": {
+            "r": 29,
+            "g": 17,
+            "b": 13
+          },
+          "share": 0.3352,
+          "sharePercent": 33.52
+        },
+        {
+          "hex": "#AC9840",
+          "rgb": {
+            "r": 172,
+            "g": 152,
+            "b": 64
+          },
+          "share": 0.1696,
+          "sharePercent": 16.96
+        },
+        {
+          "hex": "#746330",
+          "rgb": {
+            "r": 116,
+            "g": 99,
+            "b": 48
+          },
+          "share": 0.0293,
+          "sharePercent": 2.93
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Yokohama Excellence",
+      "articleTitle": "Yokohama Excellence",
+      "pageUrl": "https://en.wikipedia.org/wiki/Yokohama_Excellence",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "T"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/f/f4/Yokohama_Excellence_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f4/Yokohama_Excellence_logo.png/250px-Yokohama_Excellence_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Yokohama Excellence logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#066836",
+        "#FFFFFF",
+        "#438A65"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#066836",
+          "rgb": {
+            "r": 6,
+            "g": 104,
+            "b": 54
+          },
+          "share": 0.1143,
+          "sharePercent": 11.43
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.767,
+          "sharePercent": 76.7
+        },
+        {
+          "hex": "#438A65",
+          "rgb": {
+            "r": 67,
+            "g": 138,
+            "b": 101
+          },
+          "share": 0.0092,
+          "sharePercent": 0.92
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Tokyo Haneda Vickies",
+      "articleTitle": "Tokyo Haneda Vickies",
+      "pageUrl": "https://en.wikipedia.org/wiki/Tokyo_Haneda_Vickies",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "T"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/9/9f/Haneda_Vickies_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/9/9f/Haneda_Vickies_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Tokyo Haneda Vickies東京羽田ヴィッキーズ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#F8BC77",
+        "#0859AA",
+        "#FFFFFF"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#F8BC77",
+          "rgb": {
+            "r": 248,
+            "g": 188,
+            "b": 119
+          },
+          "share": 0.0728,
+          "sharePercent": 7.28
+        },
+        {
+          "hex": "#0859AA",
+          "rgb": {
+            "r": 8,
+            "g": 89,
+            "b": 170
+          },
+          "share": 0.0306,
+          "sharePercent": 3.06
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.2787,
+          "sharePercent": 27.87
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Tokyo Sunrockers",
+      "articleTitle": "Tokyo Sunrockers",
+      "pageUrl": "https://en.wikipedia.org/wiki/Tokyo_Sunrockers",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "T"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/4/4d/Tokyo_Sun_Rockers_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/4/4d/Tokyo_Sun_Rockers_logo.png/250px-Tokyo_Sun_Rockers_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Tokyo Sunrockers logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#3D2074",
+        "#F2F0F5",
+        "#EEC402"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#3D2074",
+          "rgb": {
+            "r": 61,
+            "g": 32,
+            "b": 116
+          },
+          "share": 0.5553,
+          "sharePercent": 55.53
+        },
+        {
+          "hex": "#F2F0F5",
+          "rgb": {
+            "r": 242,
+            "g": 240,
+            "b": 245
+          },
+          "share": 0.0401,
+          "sharePercent": 4.01
+        },
+        {
+          "hex": "#EEC402",
+          "rgb": {
+            "r": 238,
+            "g": 196,
+            "b": 2
+          },
+          "share": 0.0147,
+          "sharePercent": 1.47
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Toyama Grouses",
+      "articleTitle": "Toyama Grouses",
+      "pageUrl": "https://en.wikipedia.org/wiki/Toyama_Grouses",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "T"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/a/a9/Toyama_Grouses_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/a/a9/Toyama_Grouses_logo.png/250px-Toyama_Grouses_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#EF2812",
+        "#272A30",
+        "#FFFFFF"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#EF2812",
+          "rgb": {
+            "r": 239,
+            "g": 40,
+            "b": 18
+          },
+          "share": 0.2201,
+          "sharePercent": 22.01
+        },
+        {
+          "hex": "#272A30",
+          "rgb": {
+            "r": 39,
+            "g": 42,
+            "b": 48
+          },
+          "share": 0.3586,
+          "sharePercent": 35.86
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.173,
+          "sharePercent": 17.3
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Toyoda Gosei Scorpions",
+      "articleTitle": "Toyoda Gosei Scorpions",
+      "pageUrl": "https://en.wikipedia.org/wiki/Toyoda_Gosei_Scorpions",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "T"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/7/74/Toyoda_Gosei_Scorpions_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/7/74/Toyoda_Gosei_Scorpions_logo.png/250px-Toyoda_Gosei_Scorpions_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#025BA8",
+        "#D00005",
+        "#317BB9"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#025BA8",
+          "rgb": {
+            "r": 2,
+            "g": 91,
+            "b": 168
+          },
+          "share": 0.2353,
+          "sharePercent": 23.53
+        },
+        {
+          "hex": "#D00005",
+          "rgb": {
+            "r": 208,
+            "g": 0,
+            "b": 5
+          },
+          "share": 0.116,
+          "sharePercent": 11.6
+        },
+        {
+          "hex": "#317BB9",
+          "rgb": {
+            "r": 49,
+            "g": 123,
+            "b": 185
+          },
+          "share": 0.0292,
+          "sharePercent": 2.92
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Toyota Antelopes",
+      "articleTitle": "Toyota Antelopes",
+      "pageUrl": "https://en.wikipedia.org/wiki/Toyota_Antelopes",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "T"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/6/6b/Toyota_Antelopes_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/6/6b/Toyota_Antelopes_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Toyota Antelopesトヨタ自動車アンテロープス logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FFFFFF",
+        "#F3AEA3",
+        "#040303"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.4179,
+          "sharePercent": 41.79
+        },
+        {
+          "hex": "#F3AEA3",
+          "rgb": {
+            "r": 243,
+            "g": 174,
+            "b": 163
+          },
+          "share": 0.0273,
+          "sharePercent": 2.73
+        },
+        {
+          "hex": "#040303",
+          "rgb": {
+            "r": 4,
+            "g": 3,
+            "b": 3
+          },
+          "share": 0.0213,
+          "sharePercent": 2.13
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Toyota Boshoku Sunshine Rabbits",
+      "articleTitle": "Toyota Boshoku Sunshine Rabbits",
+      "pageUrl": "https://en.wikipedia.org/wiki/Toyota_Boshoku_Sunshine_Rabbits",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "T"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/b/b6/Sunshine_Rabbits_logo.gif",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/b/b6/Sunshine_Rabbits_logo.gif/250px-Sunshine_Rabbits_logo.gif?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Toyota Boshoku Sunshine Rabbitsトヨタ紡織サンシャインラビッツ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FFFFFF",
+        "#941F3A",
+        "#F4667C"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.596,
+          "sharePercent": 59.6
+        },
+        {
+          "hex": "#941F3A",
+          "rgb": {
+            "r": 148,
+            "g": 31,
+            "b": 58
+          },
+          "share": 0.086,
+          "sharePercent": 8.6
+        },
+        {
+          "hex": "#F4667C",
+          "rgb": {
+            "r": 244,
+            "g": 102,
+            "b": 124
+          },
+          "share": 0.0205,
+          "sharePercent": 2.05
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Tryhoop Okayama",
+      "articleTitle": "Tryhoop Okayama",
+      "pageUrl": "https://en.wikipedia.org/wiki/Tryhoop_Okayama",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "T"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/5/5c/Tryhoop_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/5/5c/Tryhoop_logo.png/250px-Tryhoop_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#F29700",
+        "#01459D",
+        "#FFFFFF"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#F29700",
+          "rgb": {
+            "r": 242,
+            "g": 151,
+            "b": 0
+          },
+          "share": 0.1439,
+          "sharePercent": 14.39
+        },
+        {
+          "hex": "#01459D",
+          "rgb": {
+            "r": 1,
+            "g": 69,
+            "b": 157
+          },
+          "share": 0.0921,
+          "sharePercent": 9.21
+        },
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.5214,
+          "sharePercent": 52.14
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Utsunomiya Brex",
+      "articleTitle": "Utsunomiya Brex",
+      "pageUrl": "https://en.wikipedia.org/wiki/Utsunomiya_Brex",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "U"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/9/93/Utsonomiya_Brex_loog.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/9/93/Utsonomiya_Brex_loog.png/250px-Utsonomiya_Brex_loog.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Utsunomiya Brex logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": "Navy Blue and Yellow .mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{}",
+      "primaryColors": [
+        "#013156",
+        "#FEDA00",
+        "#BFAC18"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#013156",
+          "rgb": {
+            "r": 1,
+            "g": 49,
+            "b": 86
+          },
+          "share": 0.4771,
+          "sharePercent": 47.71
+        },
+        {
+          "hex": "#FEDA00",
+          "rgb": {
+            "r": 254,
+            "g": 218,
+            "b": 0
+          },
+          "share": 0.2728,
+          "sharePercent": 27.28
+        },
+        {
+          "hex": "#BFAC18",
+          "rgb": {
+            "r": 191,
+            "g": 172,
+            "b": 24
+          },
+          "share": 0.0106,
+          "sharePercent": 1.06
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Veertien Mie Basketball",
+      "articleTitle": "Veertien Mie Basketball",
+      "pageUrl": "https://en.wikipedia.org/wiki/Veertien_Mie_Basketball",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "V"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/8/86/Veertein_mie_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/8/86/Veertein_mie_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FF5000",
+        "#010000",
+        "#B08600"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FF5000",
+          "rgb": {
+            "r": 255,
+            "g": 80,
+            "b": 0
+          },
+          "share": 0.1629,
+          "sharePercent": 16.29
+        },
+        {
+          "hex": "#010000",
+          "rgb": {
+            "r": 1,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.1775,
+          "sharePercent": 17.75
+        },
+        {
+          "hex": "#B08600",
+          "rgb": {
+            "r": 176,
+            "g": 134,
+            "b": 0
+          },
+          "share": 0.0785,
+          "sharePercent": 7.85
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Veltex Shizuoka",
+      "articleTitle": "Veltex Shizuoka",
+      "pageUrl": "https://en.wikipedia.org/wiki/Veltex_Shizuoka",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "V"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/f/fc/Veltex_Shizuoka_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/f/fc/Veltex_Shizuoka_logo.png/250px-Veltex_Shizuoka_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#EC6100",
+        "#19285C",
+        "#F4802A"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#EC6100",
+          "rgb": {
+            "r": 236,
+            "g": 97,
+            "b": 0
+          },
+          "share": 0.5475,
+          "sharePercent": 54.75
+        },
+        {
+          "hex": "#19285C",
+          "rgb": {
+            "r": 25,
+            "g": 40,
+            "b": 92
+          },
+          "share": 0.2856,
+          "sharePercent": 28.56
+        },
+        {
+          "hex": "#F4802A",
+          "rgb": {
+            "r": 244,
+            "g": 128,
+            "b": 42
+          },
+          "share": 0.0176,
+          "sharePercent": 1.76
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Wakayama Trians",
+      "articleTitle": "Wakayama Trians",
+      "pageUrl": "https://en.wikipedia.org/wiki/Wakayama_Trians",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "W"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/5/5f/Wakayama_Trians_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/5/5f/Wakayama_Trians_logo.png/250px-Wakayama_Trians_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Wakayama Trians logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FF693E",
+        "#000000",
+        "#F49275"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FF693E",
+          "rgb": {
+            "r": 255,
+            "g": 105,
+            "b": 62
+          },
+          "share": 0.34,
+          "sharePercent": 34
+        },
+        {
+          "hex": "#000000",
+          "rgb": {
+            "r": 0,
+            "g": 0,
+            "b": 0
+          },
+          "share": 0.2434,
+          "sharePercent": 24.34
+        },
+        {
+          "hex": "#F49275",
+          "rgb": {
+            "r": 244,
+            "g": 146,
+            "b": 117
+          },
+          "share": 0.0141,
+          "sharePercent": 1.41
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Yamagata Wyverns",
+      "articleTitle": "Yamagata Wyverns",
+      "pageUrl": "https://en.wikipedia.org/wiki/Yamagata_Wyverns",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "Y"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/2/20/Yamagata_Wyverns_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/2/20/Yamagata_Wyverns_logo.jpg/250px-Yamagata_Wyverns_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Yamagata Wyverns logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FFFFFF",
+        "#020202",
+        "#A7A7A7"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.5787,
+          "sharePercent": 57.87
+        },
+        {
+          "hex": "#020202",
+          "rgb": {
+            "r": 2,
+            "g": 2,
+            "b": 2
+          },
+          "share": 0.1417,
+          "sharePercent": 14.17
+        },
+        {
+          "hex": "#A7A7A7",
+          "rgb": {
+            "r": 167,
+            "g": 167,
+            "b": 167
+          },
+          "share": 0.0156,
+          "sharePercent": 1.56
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Yamaguchi Patsfive",
+      "articleTitle": "Yamaguchi Patsfive",
+      "pageUrl": "https://en.wikipedia.org/wiki/Yamaguchi_Patsfive",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "Y"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/f/f6/Yamaguchi_Pats_Five_logo.png",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/f/f6/Yamaguchi_Pats_Five_logo.png/250px-Yamaguchi_Pats_Five_logo.png?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "{{{name}}} logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#001A63",
+        "#EB6100",
+        "#003E99"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#001A63",
+          "rgb": {
+            "r": 0,
+            "g": 26,
+            "b": 99
+          },
+          "share": 0.2409,
+          "sharePercent": 24.09
+        },
+        {
+          "hex": "#EB6100",
+          "rgb": {
+            "r": 235,
+            "g": 97,
+            "b": 0
+          },
+          "share": 0.134,
+          "sharePercent": 13.4
+        },
+        {
+          "hex": "#003E99",
+          "rgb": {
+            "r": 0,
+            "g": 62,
+            "b": 153
+          },
+          "share": 0.122,
+          "sharePercent": 12.2
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Yamanashi Queenbees",
+      "articleTitle": "Yamanashi Queenbees",
+      "pageUrl": "https://en.wikipedia.org/wiki/Yamanashi_Queenbees",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "Y"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/7/73/Yamanashi_Queen_Bees_logo.gif",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/7/73/Yamanashi_Queen_Bees_logo.gif?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail_unscaled",
+      "logoAlt": "Yamanashi Queenbees山梨クィーンビーズ logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": null,
+      "primaryColors": [
+        "#FFFFFF",
+        "#010101",
+        "#5B5207"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.6938,
+          "sharePercent": 69.38
+        },
+        {
+          "hex": "#010101",
+          "rgb": {
+            "r": 1,
+            "g": 1,
+            "b": 1
+          },
+          "share": 0.0402,
+          "sharePercent": 4.02
+        },
+        {
+          "hex": "#5B5207",
+          "rgb": {
+            "r": 91,
+            "g": 82,
+            "b": 7
+          },
+          "share": 0.0078,
+          "sharePercent": 0.78
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Yokohama B-Corsairs",
+      "articleTitle": "Yokohama B-Corsairs",
+      "pageUrl": "https://en.wikipedia.org/wiki/Yokohama_B-Corsairs",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "Y"
+      ],
+      "rowValues": [],
+      "logoUrl": "https://upload.wikimedia.org/wikipedia/en/6/67/Yokohama_B-Corsairs_logo.jpg",
+      "logoThumbUrl": "https://upload.wikimedia.org/wikipedia/en/thumb/6/67/Yokohama_B-Corsairs_logo.jpg/250px-Yokohama_B-Corsairs_logo.jpg?utm_source=en.wikipedia.org&utm_campaign=parser&utm_content=thumbnail",
+      "logoAlt": "Yokohama B-Corsairs logo",
+      "logoFound": true,
+      "logoReason": null,
+      "teamColorsText": ".mw-parser-output .legend{page-break-inside:avoid;break-inside:avoid-column}.mw-parser-output .legend-color{display:inline-block;min-width:1.25em;height:1.25em;line-height:1.25;margin:1px 0;text-align:center;border:1px solid black;background-color:transparent;color:black}.mw-parser-output .legend-text{} Navy blue",
+      "primaryColors": [
+        "#FFFFFF",
+        "#040831",
+        "#BEA977"
+      ],
+      "primaryColorDetails": [
+        {
+          "hex": "#FFFFFF",
+          "rgb": {
+            "r": 255,
+            "g": 255,
+            "b": 255
+          },
+          "share": 0.458,
+          "sharePercent": 45.8
+        },
+        {
+          "hex": "#040831",
+          "rgb": {
+            "r": 4,
+            "g": 8,
+            "b": 49
+          },
+          "share": 0.0544,
+          "sharePercent": 5.44
+        },
+        {
+          "hex": "#BEA977",
+          "rgb": {
+            "r": 190,
+            "g": 169,
+            "b": 119
+          },
+          "share": 0.0102,
+          "sharePercent": 1.02
+        }
+      ],
+      "colorsFound": 3,
+      "colorReason": null,
+      "colorError": null,
+      "error": null
+    },
+    {
+      "displayName": "Yokohama Giga Spirits",
+      "articleTitle": "Yokohama Giga Spirits",
+      "pageUrl": "https://en.wikipedia.org/wiki/Yokohama_Giga_Spirits",
+      "sourceTypes": [
+        "category"
+      ],
+      "sourceSections": [
+        "Y"
+      ],
+      "rowValues": [],
+      "logoUrl": null,
+      "logoThumbUrl": null,
+      "logoAlt": null,
+      "logoFound": false,
+      "logoReason": "No infobox image",
+      "teamColorsText": null,
+      "primaryColors": [],
+      "primaryColorDetails": [],
+      "colorsFound": 0,
+      "colorReason": "No logo image available",
+      "colorError": null,
+      "error": null
+    }
+  ]
+}

@@ -3,8 +3,11 @@ import { AlertTriangle, Calendar, GripVertical, Sparkles, Swords, Trophy } from 
 import { injurySeverityLevel } from '../../../../../../services/simulation/playThroughInjuriesFactor';
 import { PlayerNameWithHover } from '../../../../../shared/PlayerNameWithHover';
 import { PlayerPortrait } from '../../../../../shared/PlayerPortrait';
-import { STARTER_POS_ORDER, getK2, injuryReturnLabel } from './gameplanTabShared';
+import { getScoutedDisplayOverall } from '../../../../../../utils/scoutingFuzz';
+import { getTeamFullName } from '../../../../../../utils/teamNames';
+import { injuryReturnLabel } from './gameplanTabShared';
 import type { GameplanTabController } from './useGameplanTabController';
+import { getCourtSlotLabels } from '../../../../../../services/simulation/courtSize';
 
 function minutesTone(remaining: number) {
   if (remaining === 0) return 'text-emerald-400';
@@ -24,6 +27,7 @@ export function GameplanTabLayout({
   canEdit,
   isCommissioner,
   currentYear,
+  playersOnCourt,
   targetMinutes,
   maxPlayerMinutes,
   starters,
@@ -53,6 +57,10 @@ export function GameplanTabLayout({
   noScrollOnFocus,
 }: GameplanTabController) {
   const isHome = nextMatchup ? nextMatchup.homeTid === team.id : false;
+  const starterSlots = getCourtSlotLabels(playersOnCourt);
+  const courtGridStyle = {
+    '--court-columns': Math.min(5, playersOnCourt),
+  } as React.CSSProperties;
 
   return (
     <div className="flex flex-col gap-4">
@@ -90,7 +98,7 @@ export function GameplanTabLayout({
             {opponent.logoUrl && <img src={opponent.logoUrl} alt="" className="w-6 h-6 object-contain shrink-0" />}
             <div className="flex flex-col min-w-0">
               <div className="text-sm font-bold text-white truncate">
-                {isHome ? 'vs.' : '@'} {opponent.region ? `${opponent.region} ${opponent.name}` : opponent.name}
+                {isHome ? 'vs.' : '@'} {getTeamFullName(opponent)}
               </div>
               <div className="text-[10px] text-slate-400 flex items-center gap-2">
                 <span>{matchupDateLabel}</span>
@@ -171,9 +179,14 @@ export function GameplanTabLayout({
       )}
 
       <div className="bg-black/40 border border-slate-800 rounded-lg p-3">
-        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Starting Five</div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2">
-          {STARTER_POS_ORDER.map((pos, index) => {
+        <div className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">
+          Starting Lineup ({playersOnCourt})
+        </div>
+        <div
+          className="grid grid-cols-2 sm:grid-cols-3 lg:[grid-template-columns:repeat(var(--court-columns),minmax(0,1fr))] gap-2"
+          style={courtGridStyle}
+        >
+          {starterSlots.map((pos, index) => {
             const player = starters[index];
             if (!player) {
               return (
@@ -186,7 +199,7 @@ export function GameplanTabLayout({
                 </div>
               );
             }
-            const k2 = getK2(player);
+            const k2 = getScoutedDisplayOverall(state, player, currentYear);
             return (
               <div
                 key={player.internalId}
@@ -213,6 +226,7 @@ export function GameplanTabLayout({
                     playerName={player.name}
                     size={72}
                     overallRating={player.overallRating}
+                    ovrLabel={String(k2)}
                   />
                   <div className="text-[11px] font-bold text-white text-center line-clamp-1 w-full">
                     <PlayerNameWithHover player={player}>{player.name}</PlayerNameWithHover>
@@ -235,8 +249,8 @@ export function GameplanTabLayout({
         <div className="flex flex-col gap-1">
           {[...starters, ...rotationBench].map((player, index) => {
             const mins = minuteOverrides[player.internalId] ?? 0;
-            const isStarter = index < 5;
-            const k2 = getK2(player);
+            const isStarter = index < playersOnCourt;
+            const k2 = getScoutedDisplayOverall(state, player, currentYear);
             const k2Color = k2 >= 90 ? 'text-blue-300' : k2 >= 85 ? 'text-emerald-300' : k2 >= 78 ? 'text-amber-300' : 'text-slate-400';
             const injuryGames = player.injury?.gamesRemaining ?? 0;
             const injuryType = player.injury?.type;
@@ -328,27 +342,31 @@ export function GameplanTabLayout({
             <div className="text-[10px] text-slate-500 ml-auto">Two-way players cannot participate in playoff games</div>
           </div>
           <div className="flex flex-col gap-1">
-            {twoWayIneligible.map(player => (
-              <div key={player.internalId} className="grid grid-cols-[40px_1fr_40px_1fr] gap-2 items-center px-2 py-1.5 rounded bg-slate-800/20">
-                <div className="grayscale opacity-50">
-                  <PlayerPortrait
-                    imgUrl={player.imgURL}
-                    face={(player as any).face}
-                    playerName={player.name}
-                    size={36}
-                    overallRating={player.overallRating}
-                  />
+            {twoWayIneligible.map(player => {
+              const k2 = getScoutedDisplayOverall(state, player, currentYear);
+              return (
+                <div key={player.internalId} className="grid grid-cols-[40px_1fr_40px_1fr] gap-2 items-center px-2 py-1.5 rounded bg-slate-800/20">
+                  <div className="grayscale opacity-50">
+                    <PlayerPortrait
+                      imgUrl={player.imgURL}
+                      face={(player as any).face}
+                      playerName={player.name}
+                      size={36}
+                      overallRating={player.overallRating}
+                      ovrLabel={String(k2)}
+                    />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <PlayerNameWithHover player={player} className="text-xs font-bold text-slate-500 truncate">
+                      {player.name}
+                    </PlayerNameWithHover>
+                    <span className="text-[10px] text-sky-500/70 font-bold">TWO WAY</span>
+                  </div>
+                  <span className="text-center text-xs font-black tabular-nums text-slate-600">{k2}</span>
+                  <span className="text-[10px] text-slate-500 font-mono text-right">DNP — PLAYOFFS</span>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <PlayerNameWithHover player={player} className="text-xs font-bold text-slate-500 truncate">
-                    {player.name}
-                  </PlayerNameWithHover>
-                  <span className="text-[10px] text-sky-500/70 font-bold">TWO WAY</span>
-                </div>
-                <span className="text-center text-xs font-black tabular-nums text-slate-600">{getK2(player)}</span>
-                <span className="text-[10px] text-slate-500 font-mono text-right">DNP — PLAYOFFS</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}
@@ -361,29 +379,33 @@ export function GameplanTabLayout({
             <div className="text-[10px] text-rose-400/70 ml-auto">Rotation auto-adjusts while these players recover</div>
           </div>
           <div className="flex flex-col gap-1">
-            {injuredPlayers.map(player => (
-              <div key={player.internalId} className="grid grid-cols-[40px_1fr_40px_1fr] gap-2 items-center px-2 py-1.5 rounded bg-rose-900/10 opacity-80">
-                <div className="grayscale">
-                  <PlayerPortrait
-                    imgUrl={player.imgURL}
-                    face={(player as any).face}
-                    playerName={player.name}
-                    size={36}
-                    overallRating={player.overallRating}
-                  />
+            {injuredPlayers.map(player => {
+              const k2 = getScoutedDisplayOverall(state, player, currentYear);
+              return (
+                <div key={player.internalId} className="grid grid-cols-[40px_1fr_40px_1fr] gap-2 items-center px-2 py-1.5 rounded bg-rose-900/10 opacity-80">
+                  <div className="grayscale">
+                    <PlayerPortrait
+                      imgUrl={player.imgURL}
+                      face={(player as any).face}
+                      playerName={player.name}
+                      size={36}
+                      overallRating={player.overallRating}
+                      ovrLabel={String(k2)}
+                    />
+                  </div>
+                  <div className="flex flex-col min-w-0">
+                    <PlayerNameWithHover player={player} className="text-xs font-bold text-rose-100/80 truncate line-through decoration-rose-400/40">
+                      {player.name}
+                    </PlayerNameWithHover>
+                    <span className="text-[10px] text-rose-300/70">{player.injury?.type ?? 'Injured'}</span>
+                  </div>
+                  <span className="text-center text-xs font-black tabular-nums text-slate-500">{k2}</span>
+                  <span className="text-[10px] text-rose-300/80 font-mono text-right">
+                    est. {injuryReturnLabel(player.injury?.gamesRemaining ?? 0, state.date)}
+                  </span>
                 </div>
-                <div className="flex flex-col min-w-0">
-                  <PlayerNameWithHover player={player} className="text-xs font-bold text-rose-100/80 truncate line-through decoration-rose-400/40">
-                    {player.name}
-                  </PlayerNameWithHover>
-                  <span className="text-[10px] text-rose-300/70">{player.injury?.type ?? 'Injured'}</span>
-                </div>
-                <span className="text-center text-xs font-black tabular-nums text-slate-500">{getK2(player)}</span>
-                <span className="text-[10px] text-rose-300/80 font-mono text-right">
-                  est. {injuryReturnLabel(player.injury?.gamesRemaining ?? 0, state.date)}
-                </span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       )}

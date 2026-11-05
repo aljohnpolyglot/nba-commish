@@ -1,0 +1,5 @@
+Courtside Ring — west
+=====================
+
+C1	sections/c1-west.svg
+C2	sections/c2-west.svg

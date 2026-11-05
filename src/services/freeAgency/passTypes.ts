@@ -9,8 +9,13 @@ export interface SigningResult {
   contractYears: number;
   contractExp: number;
   hasPlayerOption: boolean;
+  signedDate?: string;
+  signingBonusEUR?: number;
+  leagueStatus?: string;
   mleTypeUsed?: MleType;
   mleAmountUSD?: number;
+  baeAmountUSD?: number;
+  twoWay?: boolean;
   nonGuaranteed?: boolean;
   contractLabel?: string;
   matchedOfferSheet?: boolean;

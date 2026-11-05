@@ -1,0 +1,1463 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "italian-serie-a-league-file.3873676647202887",
+  "competitionKey": "italian-serie-a",
+  "competitionName": "Lega Basket Serie A",
+  "leagueKey": "italian-serie-a",
+  "generatedAt": "2026-07-19T12:37:37.403Z",
+  "sources": [
+    {
+      "role": "bundled-league-history",
+      "source": {
+        "provider": "game-league-file",
+        "pageTitle": "italian-lega-basket-serie-a-2026-bbgm.json",
+        "pageUrl": "https://basketball.realgm.com/international/league/6/Italian-Lega-Basket-Serie-A/stats/2026/Averages/Qualified/All/points/All/desc/1/Regular_Season",
+        "sourcePath": "public/data/external/italian-serie-a/italian-lega-basket-serie-a-2026-bbgm.json",
+        "sourceHash": "3dbab881bf3f1bfbdecfca26f3dc0192efe780eb24e3152692a39f5152ee08bd",
+        "fetchedAt": "2026-07-19T12:37:37.403Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2004,
+      "seasonLabel": "2004",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Mens Sana 1871 Siena",
+        "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fortituto Kontatto Bologna",
+        "canonicalKey": "italian-serie-a:fortituto-kontatto-bologna"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Mens Sana 1871 Siena",
+          "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+        },
+        "won": 35,
+        "lost": 8
+      }
+    },
+    {
+      "season": 2005,
+      "seasonLabel": "2005",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fortituto Kontatto Bologna",
+        "canonicalKey": "italian-serie-a:fortituto-kontatto-bologna"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Universo De",
+          "canonicalKey": "italian-serie-a:universo-de"
+        },
+        "won": 33,
+        "lost": 9
+      }
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Universo De",
+        "canonicalKey": "italian-serie-a:universo-de"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fortituto Kontatto Bologna",
+        "canonicalKey": "italian-serie-a:fortituto-kontatto-bologna"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Universo De",
+          "canonicalKey": "italian-serie-a:universo-de"
+        },
+        "won": 35,
+        "lost": 12
+      }
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Mens Sana 1871 Siena",
+        "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Virtus Segafredo Bologna",
+        "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Mens Sana 1871 Siena",
+          "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+        },
+        "won": 39,
+        "lost": 5
+      }
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Mens Sana 1871 Siena",
+        "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Virtus Roma",
+        "canonicalKey": "italian-serie-a:virtus-roma"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Mens Sana 1871 Siena",
+          "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+        },
+        "won": 41,
+        "lost": 4
+      }
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Mens Sana 1871 Siena",
+        "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Mens Sana 1871 Siena",
+          "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+        },
+        "won": 39,
+        "lost": 1
+      }
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Mens Sana 1871 Siena",
+        "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Mens Sana 1871 Siena",
+          "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+        },
+        "won": 36,
+        "lost": 2
+      }
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Mens Sana 1871 Siena",
+        "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Acqua San Bernardo Cantu",
+        "canonicalKey": "italian-serie-a:acqua-san-bernardo-cantu"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Mens Sana 1871 Siena",
+          "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+        },
+        "won": 36,
+        "lost": 6
+      }
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Mens Sana 1871 Siena",
+          "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+        },
+        "won": 34,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bo McCalebb",
+                "canonicalKey": "person:bo-mccalebb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Mens Sana 1871 Siena",
+                "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Bo McCalebb",
+                "canonicalKey": "person:bo-mccalebb"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Mens Sana 1871 Siena",
+                "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Mens Sana 1871 Siena",
+        "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Virtus Roma",
+        "canonicalKey": "italian-serie-a:virtus-roma"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "OpenJobMetis Varese",
+          "canonicalKey": "italian-serie-a:openjobmetis-varese"
+        },
+        "won": 30,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gigi Datome",
+                "canonicalKey": "person:gigi-datome"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Roma",
+                "canonicalKey": "italian-serie-a:virtus-roma"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Daniel Hackett",
+                "canonicalKey": "person:daniel-hackett"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Mens Sana 1871 Siena",
+                "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Mens Sana 1871 Siena",
+        "canonicalKey": "italian-serie-a:mens-sana-1871-siena"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AX Armani Exchange Milan",
+          "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+        },
+        "won": 36,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Drake Diener",
+                "canonicalKey": "person:drake-diener"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Banco di Sardegna Sassari",
+                "canonicalKey": "italian-serie-a:banco-di-sardegna-sassari"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alessandro Gentile",
+                "canonicalKey": "person:alessandro-gentile"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Banco di Sardegna Sassari",
+        "canonicalKey": "italian-serie-a:banco-di-sardegna-sassari"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Grissin Bon Reggio Emilia",
+        "canonicalKey": "italian-serie-a:grissin-bon-reggio-emilia"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AX Armani Exchange Milan",
+          "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+        },
+        "won": 32,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tony Mitchell",
+                "canonicalKey": "person:tony-mitchell"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Dolomiti Energia Trento",
+                "canonicalKey": "italian-serie-a:dolomiti-energia-trento"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shane Lawal",
+                "canonicalKey": "person:shane-lawal"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Banco di Sardegna Sassari",
+                "canonicalKey": "italian-serie-a:banco-di-sardegna-sassari"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Grissin Bon Reggio Emilia",
+        "canonicalKey": "italian-serie-a:grissin-bon-reggio-emilia"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AX Armani Exchange Milan",
+          "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+        },
+        "won": 33,
+        "lost": 12
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "James Nunnally",
+                "canonicalKey": "person:james-nunnally"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sidigas Avellino",
+                "canonicalKey": "italian-serie-a:sidigas-avellino"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Rakim Sanders",
+                "canonicalKey": "person:rakim-sanders"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Umana Venezia",
+        "canonicalKey": "italian-serie-a:umana-venezia"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Dolomiti Energia Trento",
+        "canonicalKey": "italian-serie-a:dolomiti-energia-trento"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Umana Venezia",
+          "canonicalKey": "italian-serie-a:umana-venezia"
+        },
+        "won": 32,
+        "lost": 14
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marcus Landry",
+                "canonicalKey": "person:marcus-landry"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maxima Roma",
+                "canonicalKey": "italian-serie-a:maxima-roma"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Melvin Ejim",
+                "canonicalKey": "person:melvin-ejim"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Umana Venezia",
+                "canonicalKey": "italian-serie-a:umana-venezia"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Dolomiti Energia Trento",
+        "canonicalKey": "italian-serie-a:dolomiti-energia-trento"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AX Armani Exchange Milan",
+          "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+        },
+        "won": 32,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jason Rich",
+                "canonicalKey": "person:jason-rich"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Sidigas Avellino",
+                "canonicalKey": "italian-serie-a:sidigas-avellino"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Andrew Goudelock",
+                "canonicalKey": "person:andrew-goudelock"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Umana Venezia",
+        "canonicalKey": "italian-serie-a:umana-venezia"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Banco di Sardegna Sassari",
+        "canonicalKey": "italian-serie-a:banco-di-sardegna-sassari"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AX Armani Exchange Milan",
+          "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+        },
+        "won": 27,
+        "lost": 11
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Drew Crawford",
+                "canonicalKey": "person:drew-crawford"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Roma SPQR",
+                "canonicalKey": "italian-serie-a:roma-spqr"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Austin Daye",
+                "canonicalKey": "person:austin-daye"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Umana Venezia",
+                "canonicalKey": "italian-serie-a:umana-venezia"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Virtus Segafredo Bologna",
+          "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+        },
+        "won": 18,
+        "lost": 3
+      }
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Virtus Segafredo Bologna",
+        "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Virtus Segafredo Bologna",
+          "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+        },
+        "won": 29,
+        "lost": 9
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Stefano Tonut",
+                "canonicalKey": "person:stefano-tonut"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Umana Venezia",
+                "canonicalKey": "italian-serie-a:umana-venezia"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Milos Teodosic",
+                "canonicalKey": "person:milos-teodosic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Virtus Segafredo Bologna",
+        "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AX Armani Exchange Milan",
+          "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+        },
+        "won": 34,
+        "lost": 8
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Amedeo Della Valle",
+                "canonicalKey": "person:amedeo-della-valle"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maxima Roma",
+                "canonicalKey": "italian-serie-a:maxima-roma"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Shavon Shields",
+                "canonicalKey": "person:shavon-shields"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "rookie-of-the-year",
+          "awardName": "Rookie of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Naz Long",
+                "canonicalKey": "person:naz-long"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maxima Roma",
+                "canonicalKey": "italian-serie-a:maxima-roma"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Kyle Hines",
+                "canonicalKey": "person:kyle-hines"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-rookie-team",
+          "awardName": "All-Rookie Team",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Naz Long",
+                "canonicalKey": "person:naz-long"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maxima Roma",
+                "canonicalKey": "italian-serie-a:maxima-roma"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Virtus Segafredo Bologna",
+        "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AX Armani Exchange Milan",
+          "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+        },
+        "won": 34,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Colbey Ross",
+                "canonicalKey": "person:colbey-ross"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "OpenJobMetis Varese",
+                "canonicalKey": "italian-serie-a:openjobmetis-varese"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Gigi Datome",
+                "canonicalKey": "person:gigi-datome"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Petrucelli",
+                "canonicalKey": "person:john-petrucelli"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maxima Roma",
+                "canonicalKey": "italian-serie-a:maxima-roma"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Petrucelli",
+                "canonicalKey": "person:john-petrucelli"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maxima Roma",
+                "canonicalKey": "italian-serie-a:maxima-roma"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Virtus Segafredo Bologna",
+        "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "AX Armani Exchange Milan",
+          "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+        },
+        "won": 31,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Marco Belinelli",
+                "canonicalKey": "person:marco-belinelli"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nikola Mirotic",
+                "canonicalKey": "person:nikola-mirotic"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Petrucelli",
+                "canonicalKey": "person:john-petrucelli"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maxima Roma",
+                "canonicalKey": "italian-serie-a:maxima-roma"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Nico Mannion",
+                "canonicalKey": "person:nico-mannion"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "OpenJobMetis Varese",
+                "canonicalKey": "italian-serie-a:openjobmetis-varese"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "John Petrucelli",
+                "canonicalKey": "person:john-petrucelli"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maxima Roma",
+                "canonicalKey": "italian-serie-a:maxima-roma"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Dolomiti Energia Trento",
+        "canonicalKey": "italian-serie-a:dolomiti-energia-trento"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Maxima Roma",
+        "canonicalKey": "italian-serie-a:maxima-roma"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Virtus Segafredo Bologna",
+          "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+        },
+        "won": 32,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Tornike Shengelia",
+                "canonicalKey": "person:tornike-shengelia"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Miro Bilan",
+                "canonicalKey": "person:miro-bilan"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Maxima Roma",
+                "canonicalKey": "italian-serie-a:maxima-roma"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alessandro Pajola",
+                "canonicalKey": "person:alessandro-pajola"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Alessandro Pajola",
+                "canonicalKey": "person:alessandro-pajola"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Virtus Segafredo Bologna",
+                "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "AX Armani Exchange Milan",
+        "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Umana Venezia",
+        "canonicalKey": "italian-serie-a:umana-venezia"
+      },
+      "bestRecord": {
+        "team": {
+          "entityType": "team",
+          "sourceName": "Virtus Segafredo Bologna",
+          "canonicalKey": "italian-serie-a:virtus-segafredo-bologna"
+        },
+        "won": 28,
+        "lost": 10
+      },
+      "awards": [
+        {
+          "awardKey": "mvp",
+          "awardName": "Most Valuable Player",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Armoni Brooks",
+                "canonicalKey": "person:armoni-brooks"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "finals-mvp",
+          "awardName": "Finals MVP",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Armoni Brooks",
+                "canonicalKey": "person:armoni-brooks"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "defensive-player-of-the-year",
+          "awardName": "Defensive Player of the Year",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Leandro Bolmaro",
+                "canonicalKey": "person:leandro-bolmaro"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "scoring-leader",
+          "awardName": "Scoring Leader",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Jahmi'us Ramsey",
+                "canonicalKey": "person:jahmi-us-ramsey"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "Pallacanestro Trieste 2004",
+                "canonicalKey": "italian-serie-a:pallacanestro-trieste-2004"
+              }
+            }
+          ]
+        },
+        {
+          "awardKey": "all-defensive-first-team",
+          "awardName": "First Team All-Defensive",
+          "role": "player",
+          "status": "awarded",
+          "winners": [
+            {
+              "person": {
+                "entityType": "person",
+                "sourceName": "Leandro Bolmaro",
+                "canonicalKey": "person:leandro-bolmaro"
+              },
+              "team": {
+                "entityType": "team",
+                "sourceName": "AX Armani Exchange Milan",
+                "canonicalKey": "italian-serie-a:ax-armani-exchange-milan"
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

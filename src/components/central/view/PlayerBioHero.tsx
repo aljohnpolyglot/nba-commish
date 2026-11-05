@@ -1,6 +1,7 @@
 import React from 'react';
 import { Loader2 } from 'lucide-react';
 import { MyFace, isRealFaceConfig } from '../../shared/MyFace';
+import { useConnectedBlackPortrait } from '../../../utils/portraitBackground';
 
 interface PlayerBioHeroProps {
   bioData: any;
@@ -45,11 +46,13 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
   showStatsBar = true,
   schoolLabel = 'Last Attended',
 }) => {
+  const isCareerStats = bioData?.stats?.fromSeason === false && Number(bioData?.stats?.GP) > 0;
+  const { src: displayPortraitSrc, preparing: isPreparingPortrait } = useConnectedBlackPortrait(portraitSrc);
   return (
   <>
     {/* ── Hero Banner ── */}
     <div
-      className="relative h-auto min-h-[350px] overflow-hidden pt-16 pb-4 md:h-[350px] md:px-[5%] md:pt-0 md:pb-0"
+      className="relative h-auto min-h-[350px] overflow-hidden pt-24 pb-4 md:px-[5%]"
       style={{ backgroundColor: teamColor }}
     >
       {teamLogo && (
@@ -74,14 +77,18 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
       )}
 
       <div className="relative z-20 flex h-full flex-col justify-end">
-        <div className="flex flex-col items-center gap-5 px-[5%] md:h-full md:flex-row md:items-end md:gap-8 md:px-0 md:pl-36">
-          <div className="relative flex flex-col items-center shrink-0">
-            {portraitSrc ? (
+        <div className="flex flex-col items-center gap-5 px-[5%] md:flex-row md:flex-wrap md:items-end md:justify-center md:gap-8 md:px-0">
+          <div className="relative flex max-w-full flex-col items-center shrink-0 md:w-60">
+            {isPreparingPortrait ? (
+              <div className="h-48 md:h-[340px] min-w-48 flex items-center justify-center" role="status" aria-label="Preparing player portrait">
+                <Loader2 className="animate-spin text-white/70" size={28} />
+              </div>
+            ) : displayPortraitSrc ? (
               <img
-                key={portraitSrc}
-                src={portraitSrc}
+                key={displayPortraitSrc}
+                src={displayPortraitSrc}
                 alt={bioData.n}
-                className="h-48 md:h-[340px] drop-shadow-[10px_0_20px_rgba(0,0,0,0.5)] object-contain object-bottom"
+                className="h-48 max-w-full md:h-[340px] animate-in fade-in duration-300 drop-shadow-[10px_0_20px_rgba(0,0,0,0.5)] object-contain object-bottom"
                 referrerPolicy="no-referrer"
                 onError={e => { e.currentTarget.style.display = 'none'; }}
               />
@@ -99,9 +106,9 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
             )}
           </div>
 
-          <div className="text-center md:text-left md:mb-12 flex-1 min-w-0">
+          <div className="w-full min-w-0 text-center md:mb-12 md:flex-[1_1_18rem] md:text-left">
             <p className="m-0 uppercase text-sm font-medium tracking-widest text-white/90">{bioData.m}</p>
-            <h1 className="m-0 mt-1 text-2xl sm:text-3xl md:text-[64px] leading-[0.95] uppercase font-black tracking-tight text-white break-words w-full">
+            <h1 className="m-0 mt-1 text-2xl sm:text-3xl md:text-5xl lg:text-[64px] leading-[0.95] uppercase font-black tracking-tight text-white break-words w-full" aria-label={bioData.n}>
               {bioData.n.split(' ').map((part: string, i: number) => (
                 <React.Fragment key={i}>{part}<br /></React.Fragment>
               ))}
@@ -120,7 +127,12 @@ export const PlayerBioHero: React.FC<PlayerBioHeroProps> = ({
     {/* ── Stats Bar ── */}
     <div className="flex flex-col md:flex-row border-y border-white/20" style={{ backgroundColor: teamColor }}>
       {showStatsBar && (
-        <div className="flex flex-row w-full md:w-2/5 border-b md:border-b-0 md:border-r border-white/20 bg-black/20">
+        <div className={`relative flex flex-row w-full md:w-2/5 border-b md:border-b-0 md:border-r border-white/20 bg-black/20 ${isCareerStats ? 'pt-5' : ''}`}>
+          {isCareerStats && (
+            <span className="absolute inset-x-0 top-1 text-center text-[8px] font-black uppercase tracking-[2px] text-white/65">
+              Career · {bioData.stats.GP} games
+            </span>
+          )}
           {(['PTS', 'REB', 'AST'] as const).map((key, i, arr) => (
             <div key={key} className={`flex-1 flex flex-col justify-center items-center py-4 md:py-6 ${i < arr.length - 1 ? 'border-r border-white/20' : ''}`}>
               <span className="text-[10px] text-white/80 uppercase mb-1 tracking-widest font-bold">

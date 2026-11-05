@@ -147,8 +147,12 @@ function markWorkerCooldown(key: string, status: number): void {
 
     if (!response.ok) {
       const errText = await response.text().catch(() => "");
+      let errCode = "";
+      try {
+        errCode = JSON.parse(errText)?.error?.code ?? "";
+      } catch {}
       markWorkerCooldown("groq", response.status);
-      throw new Error(`Groq Worker ${response.status}: ${errText.slice(0, 200)}`);
+      throw new Error(`Groq Worker ${response.status}${errCode ? ` (${errCode})` : ""}`);
     }
 
     const data = await response.json();
@@ -285,6 +289,11 @@ function markWorkerCooldown(key: string, status: number): void {
       try {
         return await callViaGroqWorker(params);
       } catch (groqErr: any) {
+        const groqMessage = String(groqErr?.message ?? "");
+        if (groqMessage.includes("model_not_found") || groqMessage.includes("does not exist")) {
+          console.warn("[LLM] Groq Worker model unavailable — marking chat seen");
+          return wrapText("");
+        }
         console.warn(`[LLM] Groq Worker failed: ${groqErr?.message} — trying Gemini Worker`);
         try {
           // Strip thinkingConfig — Gemini worker doesn't support it for chat
@@ -292,7 +301,7 @@ function markWorkerCooldown(key: string, status: number): void {
           return await callViaGeminiWorker(cleanParams);
         } catch (geminiErr: any) {
           console.warn(`[LLM] Gemini Worker failed: ${geminiErr?.message}`);
-          return wrapText("I'm having trouble connecting right now. Try again in a moment.");
+          return wrapText("");
         }
       }
     }

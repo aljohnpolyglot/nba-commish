@@ -1,8 +1,11 @@
 import React from 'react';
-import { retireProb, farewellTourProb } from '../../../services/playerDevelopment/retirementChecker';
-import type { NBAPlayer } from '../../../types';
+import { evaluateRetirementDecision, farewellTourProb } from '../../../services/playerDevelopment/retirementChecker';
+import type { LeagueStats, NBAPlayer } from '../../../types';
+import { areWnbaDevelopmentalContractsEnabled } from '../../../services/wnba/developmentalContracts';
 import type { MoodTrait } from '../../../utils/mood/moodTypes';
 import { getDisplayAge } from '../../../store/playerRatingStore';
+import { isRfaMatchingEnabled } from '../../../utils/ruleFlags';
+export { classifyResignIntent, type ResignIntent } from '../../../services/freeAgency/resignIntent';
 
 export const TRAIT_CONFIG: Record<MoodTrait, { letter: string; label: string; color: string; bg: string; desc: string }> = {
   DIVA:         { letter: 'F', label: 'Fame',       color: 'text-purple-300',  bg: 'bg-purple-500/20 border-purple-500/40',  desc: 'Prioritizes spotlight, market size & playing time' },
@@ -19,43 +22,19 @@ function approx2K(rawOvr: number): number {
   return Math.min(99, Math.round(0.88 * rawOvr + 31));
 }
 
-export type ResignIntent = 'ready_to_extend' | 'testing_market' | 'farewell' | 'open' | 'not_expiring';
+export type RetirementOutlook = {
+  status: 'retiring' | 'considering';
+  probability: number;
+};
 
-export function classifyResignIntent(
-  player: NBAPlayer,
-  traits: MoodTrait[],
-  moodScore: number,
-  currentYear: number,
-  teamWinPct: number,
-): ResignIntent {
-  const yearsLeft = Math.max(0, (player.contract?.exp ?? currentYear) - currentYear);
-  const isExpiring = yearsLeft <= 0;
-  const isFarewell = !!(player as any).farewellTour;
-  if (isFarewell) return 'farewell';
-  const contractYears = (player as any).contractYears as Array<{ option?: string }> | undefined;
-  const finalOpt = contractYears?.[contractYears.length - 1]?.option;
-  const traitsAny = traits as any[];
-  const isWinner = traitsAny.includes('COMPETITOR') || traitsAny.includes('WINNER');
-  const isLoyal = traitsAny.includes('LOYAL') || traitsAny.includes('LOYALTY');
-  const isMercenary = traitsAny.includes('MERCENARY') || traitsAny.includes('$');
-  const ovr2K = Math.min(99, Math.round(0.88 * (player.overallRating ?? 60) + 31));
-  if (finalOpt === 'player' && yearsLeft <= 1) {
-    if (isLoyal && moodScore >= 3) return 'ready_to_extend';
-    if (isMercenary || ovr2K >= 88) return 'testing_market';
-    if (moodScore <= -3) return 'testing_market';
-    return 'open';
+export function getRetirementOutlook(player: NBAPlayer, currentYear: number): RetirementOutlook | null {
+  const evaluation = evaluateRetirementDecision(player, currentYear);
+  if (player.farewellTour || evaluation.willRetire) {
+    return { status: 'retiring', probability: Math.max(evaluation.probability, 1) };
   }
-  if (finalOpt === 'team' && yearsLeft <= 1) {
-    if (moodScore <= -4) return 'testing_market';
-    return 'open';
-  }
-  if (!isExpiring) return 'not_expiring';
-  if (isLoyal && moodScore >= 4) return 'ready_to_extend';
-  if (isMercenary) return 'testing_market';
-  if (isWinner && teamWinPct < 0.42) return 'testing_market';
-  if (moodScore <= -3) return 'testing_market';
-  if (moodScore >= 5) return 'ready_to_extend';
-  return 'open';
+  return evaluation.probability >= 0.15
+    ? { status: 'considering', probability: evaluation.probability }
+    : null;
 }
 
 export function getContractThoughts(
@@ -64,6 +43,8 @@ export function getContractThoughts(
   moodScore: number,
   currentYear: number,
   teamWinPct: number,
+  leagueStats?: LeagueStats,
+  rightsTeamName?: string,
 ): string {
   const yearsLeft = Math.max(0, (player.contract?.exp ?? currentYear) - currentYear);
   const age = getDisplayAge(player, currentYear);
@@ -72,10 +53,20 @@ export function getContractThoughts(
   const oneFinalYear = yearsLeft === 1;
   const isFarewell = !!(player as any).farewellTour;
   const isCurrentlyFA = player.tid === -1 || player.status === 'Free Agent';
+  const retirement = getRetirementOutlook(player, currentYear);
+
+  if (retirement?.status === 'retiring') {
+    return `I've made my decision — this season will be my last. I want to finish it the right way and give everything I have left.`;
+  }
+  if (retirement?.status === 'considering') {
+    return retirement.probability >= 0.4
+      ? `I haven't made a final decision, but retirement is seriously on my mind. I'm listening to my body before I commit to another season.`
+      : `I'm taking this one year at a time. I still love the game, but I'm thinking about whether another season is the right call.`;
+  }
 
   if (isCurrentlyFA && !isFarewell) {
-    const hadNBACareer = (player.stats ?? []).some((s: any) => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0);
-    if (age < 22) return `I'm ready to prove I belong. A two-way slot, a camp invite — whatever it takes. Give me the chance and I'll show you what I can do.`;
+    const hadNBACareer = (player.stats ?? []).some((s: any) => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) < 100);
+    if (age < 22) return `I'm ready to prove I belong. A camp invite, an end-of-bench role — whatever it takes. Give me the chance and I'll show you what I can do.`;
     if (traits.includes('COMPETITOR')) return `I'm a free agent right now. I'm not looking for the biggest paycheck — I want to win. Put me on a contender and I'll fit in wherever you need me.`;
     if (traits.includes('MERCENARY')) return `I'm testing the waters. My price is my price — I know what I bring to a roster. Serious offers only.`;
     if (traits.includes('LOYAL') && hadNBACareer) return `It's strange being a free agent after everything I've built. I'm just waiting for the right situation — somewhere I can settle in again.`;
@@ -85,8 +76,20 @@ export function getContractThoughts(
 
   const externalStatuses = new Set(['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia']);
   if (externalStatuses.has(player.status ?? '')) {
-    const hadNBACareer = (player.stats ?? []).some((s: any) => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0);
+    const hadNBACareer = (player.stats ?? []).some((s: any) => !s.playoffs && (s.gp ?? 0) > 0 && (s.tid ?? -1) >= 0 && (s.tid ?? -1) < 100);
     const status = player.status ?? 'overseas';
+    if (rightsTeamName) {
+      return `${rightsTeamName} holds my NBA draft rights. If the deal is right, I'm ready to come over and compete.`;
+    }
+    if (status === 'PBA') {
+      if ((traits as any[]).includes('FAME') || (traits as any[]).includes('DIVA')) {
+        return `Every game here is loud, physical, and personal. I want the biggest moments in the PBA, and I want the ball when they come.`;
+      }
+      if (traits.includes('COMPETITOR')) return `I'm locked in on winning here. The PBA is tough every night, and that's exactly the kind of stage I want.`;
+      if (traits.includes('LOYAL')) return `This team and this league mean a lot to me. I'm focused on doing my job, staying ready, and giving the fans a reason to believe.`;
+      if (hadNBACareer) return `I've seen different levels of basketball, and the PBA has its own pressure. Right now this is where my focus is.`;
+      return `I'm focused on my role in the PBA. Good minutes, a clear job, and a team that believes in me — that's what matters.`;
+    }
     if ((traits as any[]).includes('FAME') || (traits as any[]).includes('DIVA')) {
       return `I belong in the NBA. The ${status} is a stop, not a destination. Whoever comes for me first, I'm ready — bags packed.`;
     }
@@ -101,10 +104,6 @@ export function getContractThoughts(
     if (age < 24) return `I'm focused on my game in the ${status}. The NBA is the dream — if they call, I'm on the next flight. Until then, I'm putting in the work.`;
     if (age >= 30) return `I'm happy where I am. Playing in the ${status} means something to me and to the people back home. I'm not sweating NBA interest.`;
     return `I'm doing my thing in the ${status}. If an NBA team comes knocking with a real offer, sure, but I'm not begging for it either.`;
-  }
-
-  if (isFarewell) {
-    return `This is it. I've thought long and hard about it, and I've made my decision — this is my last season. I want to go out on my terms, give everything I have, and make it count.`;
   }
 
   const isGLeagueAssigned = !!(player as any).gLeagueAssigned;
@@ -139,6 +138,58 @@ export function getContractThoughts(
   }
   if (age >= 37 && isExpiring && ovr2K < 85) {
     return `Honestly, I'm taking it one year at a time. I've thought about hanging it up, but there's still something left in the tank. A championship would be the perfect sendoff.`;
+  }
+
+  const contractType = String(player.contract?.type ?? (player as any).contractType ?? '').toUpperCase();
+  const developmental = areWnbaDevelopmentalContractsEnabled(leagueStats)
+    && ((player as any).developmentalContract === true || contractType === 'DEVELOPMENTAL');
+  const isTwoWayContract = developmental || player.twoWay === true || contractType === 'TWO_WAY' || contractType === 'TWOWAY';
+  if (isTwoWayContract) {
+    if (developmental) {
+      if (traits.includes('COMPETITOR')) return `I'm on a developmental contract, and every opportunity is a chance to earn a standard roster spot.`;
+      if (moodScore >= 4) return `The developmental role gives me a real path. I like the setup here, and I'm focused on earning a standard deal.`;
+      return `I'm on a developmental deal. I know the situation: stay ready, make the most of my appearances, and earn a standard contract.`;
+    }
+    if (leagueStats?.twoWayContractsEnabled === false) {
+      return `I'm trying to turn this opportunity into a full roster spot. Whatever the label says, the goal is simple: keep earning trust every day.`;
+    }
+    if (traits.includes('COMPETITOR')) {
+      return `I'm on a two-way right now, and I'm not treating it like a ceiling. Every assignment is a chance to prove I belong in the rotation.`;
+    }
+    if (moodScore >= 4) {
+      return `The two-way role gives me a real path. I like the setup here, and I'm focused on earning a standard deal.`;
+    }
+    return `I'm on a two-way deal. I know the situation: play well, stay ready, and force the team to make room for me.`;
+  }
+
+  const draftYear = Number(player.draft?.year ?? 0);
+  const isFirstYearPlayer = Number.isFinite(draftYear) && draftYear > 0 && draftYear === currentYear - 1;
+  const isRookieContract = player.contract?.rookie === true;
+  const rookieScaleActive = leagueStats?.rookieScaleType !== 'none';
+  const rookieTeamOptionsActive = rookieScaleActive && leagueStats?.rookieTeamOptionsEnabled !== false;
+  const rookieRfaActive = rookieScaleActive && isRfaMatchingEnabled(leagueStats);
+  if (isFirstYearPlayer) {
+    if (!rookieScaleActive) {
+      if (moodScore >= 4) return `First year in the league and I'm in a good spot. I want to earn a bigger role and prove this team was right to invest in me.`;
+      if (moodScore <= -3) return `I'm still finding my footing. First-year contracts are about opportunity, and I need to show I can be more than just a roster spot.`;
+      return `I'm in my first year, so the focus is simple: learn fast, earn minutes, and make the next contract take care of itself.`;
+    }
+    if (traits.includes('LOYAL') || moodScore >= 4) {
+      return `Rookie deal, clear runway. I like where I'm developing, and if I keep earning trust, the team options and next steps will handle themselves.`;
+    }
+    if (traits.includes('COMPETITOR') && teamWinPct < 0.42) {
+      return `I'm early in my rookie deal, but I still want to compete. I need to see the team building toward something real while I grow.`;
+    }
+    return rookieTeamOptionsActive
+      ? `I'm on the rookie scale, so the contract structure is mostly set. My job is to earn minutes and make every option year an easy decision.`
+      : `I'm on my first NBA deal. The structure is set for now, but the role is not — I have to earn that part.`;
+  }
+
+  if (isRookieContract && yearsLeft <= 1 && rookieRfaActive) {
+    if (traits.includes('LOYAL') && moodScore >= 3) return `I'm near the end of my rookie deal, and I want to keep building here. Restricted free agency gives the team a path to keep this going.`;
+    if (traits.includes('MERCENARY')) return `My rookie deal is almost up. Restricted or not, I'm looking for the offer that reflects my value.`;
+    if (moodScore <= -3) return `The rookie deal is almost done, and I'm not sure this is the right long-term fit. We'll see what the market says.`;
+    return `My rookie deal is almost up. Restricted free agency is part of the process, but I'm focused on proving what the next contract should look like.`;
   }
 
   const contractYears = (player as any).contractYears as Array<{ option?: string }> | undefined;
@@ -227,14 +278,19 @@ export function computeResignProbability(
   currentYear: number,
   teamWinPct: number,
   team: any,
-): { score: number; factors: ResignFactor[] } | null {
+): { score: number; factors: ResignFactor[]; retirementStatus: RetirementOutlook['status'] | null } | null {
   const yearsLeft = Math.max(0, (player.contract?.exp ?? currentYear) - currentYear);
   const isFarewell = !!(player as any).farewellTour;
   const isFA = player.tid === -1 || player.status === 'Free Agent';
   const externalStatuses = new Set(['Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'WNBA']);
   const isExternal = externalStatuses.has(player.status ?? '');
-  if (isFarewell || isFA || isExternal) return null;
+  if (isFA || isExternal) return null;
   if (yearsLeft > 2) return null;
+
+  const retirement = getRetirementOutlook(player, currentYear);
+  if (isFarewell || retirement?.status === 'retiring') {
+    return { score: 0, factors: [{ label: 'Plans to retire', delta: -100 }], retirementStatus: 'retiring' };
+  }
 
   let score = 50;
   const factors: ResignFactor[] = [];
@@ -283,6 +339,9 @@ export function computeResignProbability(
   const age = getDisplayAge(player, currentYear);
   if (age >= 34) add('Veteran seeking stability here', 7);
   else if (age < 24) add('Young and wants to explore', -4);
+  if (retirement?.status === 'considering') {
+    add('Considering retirement', -Math.max(8, Math.round(retirement.probability * 35)));
+  }
 
   const contractYears = (player as any).contractYears as Array<{ option?: string }> | undefined;
   const finalOpt = contractYears?.[contractYears.length - 1]?.option;
@@ -302,7 +361,7 @@ export function computeResignProbability(
 
   score = Math.max(0, Math.min(100, Math.round(score)));
   factors.sort((a, b) => Math.abs(b.delta) - Math.abs(a.delta));
-  return { score, factors };
+  return { score, factors, retirementStatus: retirement?.status ?? null };
 }
 
 export function resignColor(val: number): string {

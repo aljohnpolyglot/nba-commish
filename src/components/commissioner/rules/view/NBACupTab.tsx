@@ -9,6 +9,7 @@ import { getCommissionerSettingsWindow } from '../../../../utils/commissionerSet
 interface NBACupTabProps {
     rules: LeagueStats;
     setRule: <K extends keyof LeagueStats>(key: K, value: LeagueStats[K]) => void;
+    startup?: boolean;
 }
 
 function ToggleRow({ label, description, value, onChange }: {
@@ -58,13 +59,15 @@ function PrizeInput({ label, value, onChange, color }: {
     );
 }
 
-export const NBACupTab: React.FC<NBACupTabProps> = ({ rules, setRule }) => {
+export const NBACupTab: React.FC<NBACupTabProps> = ({ rules, setRule, startup = false }) => {
     const { state } = useGame();
     const labels = useLeagueLabels();
     const seasonYear = state.leagueStats.year ?? new Date().getFullYear() + 1;
-    const inGrace = getCommissionerSettingsWindow(state).isOpen;
+    const reviewOpen = getCommissionerSettingsWindow(state).isOpen;
 
     const inSeasonTournament = ruleValue(rules, 'inSeasonTournament') as boolean;
+    const summerLeagueEnabled = (rules.summerLeagueEnabled ?? seasonYear >= 2003) as boolean;
+    const summerLeagueTournamentEnabled = (rules.summerLeagueTournamentEnabled ?? seasonYear >= 2003) as boolean;
     const cupPrizePoolEnabled = (ruleValue(rules, 'cupPrizePoolEnabled') ?? true) as boolean;
     const cupPrizePoolAutoInflate = (ruleValue(rules, 'cupPrizePoolAutoInflate') ?? true) as boolean;
     const cupPrizeWinner = (ruleValue(rules, 'cupPrizeWinner') ?? 500_000) as number;
@@ -75,20 +78,19 @@ export const NBACupTab: React.FC<NBACupTabProps> = ({ rules, setRule }) => {
     return (
         <div className="space-y-12">
             <div className="flex flex-col gap-2">
-                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">{labels.cupLong}</h1>
+                <h1 className="text-3xl font-black text-white uppercase tracking-tighter">{startup ? 'Association Cup' : labels.cupLong}</h1>
                 <p className="text-xs text-slate-500 font-medium max-w-2xl">
                     Configure the in-season tournament — mid-season group play, knockout bracket, and player prize pool.
                 </p>
             </div>
 
-            {/* ── Grace period banner ───────────────────────────────────────── */}
-            {inGrace ? (
+            {!startup && (reviewOpen ? (
                 <div className="flex items-center gap-3 px-5 py-4 bg-emerald-500/10 border border-emerald-500/30 rounded-2xl">
                     <Clock size={16} className="text-emerald-400 shrink-0" />
                     <div>
-                        <span className="text-xs font-bold text-emerald-300 uppercase tracking-widest">Grace Period Open</span>
+                        <span className="text-xs font-bold text-emerald-300 uppercase tracking-widest">League Settings Review Open</span>
                         <p className="text-[10px] text-emerald-500/80 font-medium mt-0.5">
-                            Schedule not yet generated — changes here apply to the upcoming {seasonYear - 1}–{String(seasonYear).slice(2)} season
+                            Changes apply to the upcoming {seasonYear - 1}–{String(seasonYear).slice(2)} season
                         </p>
                     </div>
                 </div>
@@ -96,13 +98,13 @@ export const NBACupTab: React.FC<NBACupTabProps> = ({ rules, setRule }) => {
                 <div className="flex items-center gap-3 px-5 py-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl">
                     <AlertTriangle size={16} className="text-amber-400 shrink-0" />
                     <div>
-                        <span className="text-xs font-bold text-amber-300 uppercase tracking-widest">Grace Period Closed</span>
+                        <span className="text-xs font-bold text-amber-300 uppercase tracking-widest">League Settings Locked</span>
                         <p className="text-[10px] text-amber-500/80 font-medium mt-0.5">
-                            Schedule already locked for this season — any changes saved here take effect next season
+                            Open the League Settings Review task to make changes
                         </p>
                     </div>
                 </div>
-            )}
+            ))}
 
             {/* ── Tournament on/off ─────────────────────────────────────────── */}
             <div className="bg-slate-900/50 border border-slate-800 p-8 rounded-[2.5rem] backdrop-blur-sm space-y-6">
@@ -120,23 +122,29 @@ export const NBACupTab: React.FC<NBACupTabProps> = ({ rules, setRule }) => {
                         value={inSeasonTournament}
                         onChange={v => setRule('inSeasonTournament', v)}
                     />
-                    {!inGrace && (
+                    {!startup && !reviewOpen && (
                         <div className="flex items-center gap-2 px-3">
                             <span className="text-[9px] font-bold text-amber-400/70 uppercase tracking-widest">Takes effect next season</span>
                         </div>
                     )}
                 </div>
 
-                {/* Future commissioner settings:
-                    - Group stage size (number of groups per conference: 5 or 6 teams)
-                    - Knockout bracket format (quarterfinal byes for group leaders)
-                    - Cup final location (commissioner sets city / arena name)
-                    - Broadcaster override (tag Cup nights TNT/ABC/NBC)
-                    - Tiebreaker priority (head-to-head → point differential → coin flip)
-                    - Wildcard selection method (best 2nd-place record vs. point differential)
-                    - Cup game scheduling window (earliest/latest month for group games)
-                    - Whether Cup games count toward regular-season standings (excludeFromRecord override)
-                */}
+                <div className="pt-4 border-t border-slate-800 space-y-2">
+                    <ToggleRow
+                        label="Summer League"
+                        description="Hold the annual July showcase for young players and free agents"
+                        value={summerLeagueEnabled}
+                        onChange={v => setRule('summerLeagueEnabled', v)}
+                    />
+                    {summerLeagueEnabled && (
+                        <ToggleRow
+                            label="Summer League Championship"
+                            description="Use preliminary games, a championship final, and tournament honors"
+                            value={summerLeagueTournamentEnabled}
+                            onChange={v => setRule('summerLeagueTournamentEnabled', v)}
+                        />
+                    )}
+                </div>
             </div>
 
             {/* ── Prize Pool — only when tournament is on ─────────────────── */}

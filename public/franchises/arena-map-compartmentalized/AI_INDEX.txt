@@ -1,0 +1,19 @@
+ARENA MAP — AI INDEX
+====================
+
+Do not read the full SVG first.
+Use this index, then open only the relevant category or section file.
+
+Map viewBox: -0.007700000423938036 -30 3105.226318359375 2725
+Seat-number font threshold: <= 34.71
+
+01-lower-bowl/index.txt — Lower Bowl: 29 detected section groups
+02-upper-bowl/index.txt — Upper Bowl: 25 detected section groups
+03-courtside-ring/index.txt — Courtside Ring: 32 detected section groups
+04-floor-sections/index.txt — Floor Sections: 13 detected section groups
+05-boxes-suites-tables/index.txt — Boxes, Suites, and Tables: 10 detected section groups
+06-seat-number-labels/index.txt — 105 small numeric seat labels
+07-unclassified-labels/index.txt — 0 unmatched text labels
+
+Full visual map: 00-full-map/arena-map-organized.svg
+Compact coordinates: manifest/manifest.min.json

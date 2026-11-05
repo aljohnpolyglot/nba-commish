@@ -1,12 +1,11 @@
 import { computeContractOffer } from '../../../../../utils/salaryUtils';
 import { getDisplayAge, getDisplayOverall } from '../../../../../store/playerRatingStore';
 import { getDisplayPotential } from '../../../../../utils/playerRatings';
-import type { NBAPlayer, NBATeam, NonNBATeam } from '../../../../../types';
-
-export interface AutoBidSummary {
-  submitted: number;
-  skipped: number;
-}
+import { getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../../../../utils/scoutingFuzz';
+import type { GameState, NBAPlayer, NBATeam, NonNBATeam } from '../../../../../types';
+import { getCalibratedPer } from '../../../../../utils/advancedStatCalibration';
+import { resolveBirdRightsForTeam } from '../../../../../utils/playerBirdRights';
+import { isPlayerRestrictedFreeAgent } from '../../../../../services/freeAgency/rfaEligibility';
 
 export interface FreeAgencyBid {
   teamId: number;
@@ -27,15 +26,13 @@ export interface FreeAgencyMarket {
 export interface TrackedMarketRow {
   market: FreeAgencyMarket;
   player: NBAPlayer | undefined;
-  top: FreeAgencyBid | undefined;
   userBid: FreeAgencyBid | undefined;
-  daysToDecide: number;
-  decisionLabel: string;
 }
 
 export interface TopFreeAgentRow {
   player: NBAPlayer;
   k2: number;
+  pot: number;
   age: number;
 }
 
@@ -57,10 +54,12 @@ export interface SortConfig {
 
 export type ResolvedTeam = NBATeam | NonNBATeam;
 
-export const SHORTLIST_CAP = 15;
+export function getK2Ovr(player: NBAPlayer, state?: GameState, currentYear?: number): number {
+  return state ? getScoutedDisplayOverall(state, player, currentYear) : getDisplayOverall(player);
+}
 
-export function getK2Ovr(player: NBAPlayer): number {
-  return getDisplayOverall(player);
+export function getPot(player: NBAPlayer, currentYear: number, state?: GameState): number {
+  return state ? getScoutedDisplayPotential(state, player, currentYear, currentYear) : getDisplayPotential(player, currentYear);
 }
 
 export function getLastSeasonPergame(player: NBAPlayer): LastSeasonPergame | null {
@@ -73,7 +72,7 @@ export function getLastSeasonPergame(player: NBAPlayer): LastSeasonPergame | nul
     pts: (last.pts ?? 0) / gp,
     reb: ((last.orb ?? 0) + (last.drb ?? 0)) / gp || (last.trb ?? 0) / gp,
     ast: (last.ast ?? 0) / gp,
-    per: last.per ?? 0,
+    per: getCalibratedPer(last),
     mp: (last.min ?? 0) / gp,
     gp,
   };
@@ -84,16 +83,13 @@ export function fmt1(value: number): string {
 }
 
 export function isPlayerRFA(player: NBAPlayer): boolean {
-  const contract = (player as any).contract;
-  if (contract?.isRestrictedFA || contract?.restrictedFA) return true;
-  if (contract?.rookie && (player as any).draft?.round === 1) return true;
-  return false;
+  return isPlayerRestrictedFreeAgent(player);
 }
 
 export function getLastTeamTid(player: NBAPlayer): number {
   const transactions: Array<{ season: number; tid: number }> = (player as any).transactions ?? [];
   if (transactions.length > 0) {
-    const latest = [...transactions].reverse().find(txn => txn.tid >= 0 && txn.tid <= 29);
+    const latest = [...transactions].reverse().find(txn => txn.tid >= 0 && txn.tid < 100);
     if (latest) return latest.tid;
   }
 
@@ -108,23 +104,16 @@ export function getLastTeamTid(player: NBAPlayer): number {
 
 export function getResolvedTeamLogoUrl(team: ResolvedTeam | null | undefined): string | undefined {
   if (!team) return undefined;
-  return 'logoUrl' in team ? team.logoUrl : undefined;
+  return (team as any).logoUrl ?? (team as any).imgURL;
 }
 
-export function hasBirdRightsResolved(player: NBAPlayer): boolean {
-  if ((player as any).hasBirdRights === true) return true;
-  const stats: Array<{ season?: number; tid?: number; gp?: number; playoffs?: boolean }> = (player as any).stats ?? [];
-  const sorted = stats
-    .filter(stat => !stat.playoffs && (stat.gp ?? 0) > 0 && (stat.tid ?? -1) >= 0 && (stat.tid ?? -1) <= 29)
-    .sort((a, b) => (b.season ?? 0) - (a.season ?? 0));
-  if (sorted.length < 3) return false;
-  const lastTid = sorted[0].tid;
-  let consecutive = 0;
-  for (const stat of sorted) {
-    if (stat.tid === lastTid) consecutive++;
-    else break;
-  }
-  return consecutive >= 3;
+export function hasBirdRightsResolved(player: NBAPlayer, teamId?: number, season?: number): boolean {
+  const resolvedTeamId = Number.isFinite(Number(teamId)) ? Number(teamId) : getLastTeamTid(player);
+  const latestSeason = ((player as any).stats ?? []).reduce(
+    (max: number, row: { season?: number; playoffs?: boolean }) => row.playoffs ? max : Math.max(max, Number(row.season ?? 0)),
+    0,
+  );
+  return resolveBirdRightsForTeam(player, resolvedTeamId, Number.isFinite(Number(season)) ? Number(season) : latestSeason);
 }
 
 export function fmtUSD(value: number): string {
@@ -139,7 +128,6 @@ export function fmtUSD(value: number): string {
 export function sortTopFreeAgents(
   rows: TopFreeAgentRow[],
   sortConfig: SortConfig,
-  currentYear: number,
   leagueStats: unknown,
 ): TopFreeAgentRow[] {
   return [...rows].sort((a, b) => {
@@ -160,8 +148,8 @@ export function sortTopFreeAgents(
         bValue = b.k2;
         break;
       case 'pot':
-        aValue = getDisplayPotential(a.player, currentYear);
-        bValue = getDisplayPotential(b.player, currentYear);
+        aValue = a.pot;
+        bValue = b.pot;
         break;
       case 'mp':
         aValue = getLastSeasonPergame(a.player)?.mp ?? 0;
@@ -213,9 +201,10 @@ export function filterTopFreeAgents(
   players: NBAPlayer[],
   tierFilter: TierFilter,
   currentYear: number,
+  state?: GameState,
 ): TopFreeAgentRow[] {
   return players
-    .map(player => ({ player, k2: getK2Ovr(player), age: getDisplayAge(player, currentYear) }))
+    .map(player => ({ player, k2: getK2Ovr(player, state, currentYear), pot: getPot(player, currentYear, state), age: getDisplayAge(player, currentYear) }))
     .filter(row => {
       if (tierFilter === '90+') return row.k2 >= 90;
       if (tierFilter === '80-89') return row.k2 >= 80 && row.k2 < 90;

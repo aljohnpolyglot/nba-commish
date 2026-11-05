@@ -1,0 +1,627 @@
+[
+  {
+    "edition": "1",
+    "year": 1935,
+    "hosts": [
+      "Switzerland"
+    ],
+    "gold": "Latvia",
+    "score": "24–18",
+    "silver": "Spain",
+    "bronze": "Czechoslovakia",
+    "bronzeScore": "25–23",
+    "fourthPlace": "Switzerland",
+    "teams": 10
+  },
+  {
+    "edition": "2",
+    "year": 1937,
+    "hosts": [
+      "Latvia"
+    ],
+    "gold": "Lithuania",
+    "score": "24–23",
+    "silver": "Italy",
+    "bronze": "France",
+    "bronzeScore": "27–24",
+    "fourthPlace": "Poland",
+    "teams": 8
+  },
+  {
+    "edition": "3",
+    "year": 1939,
+    "hosts": [
+      "Lithuania"
+    ],
+    "gold": "Lithuania",
+    "score": "No playoffs",
+    "silver": "Latvia",
+    "bronze": "Poland",
+    "bronzeScore": "No playoffs",
+    "fourthPlace": "France",
+    "teams": 8
+  },
+  {
+    "edition": "-",
+    "year": 1941,
+    "hosts": [
+      "Lithuania"
+    ],
+    "status": "Cancelled due to World War II"
+  },
+  {
+    "edition": "4",
+    "year": 1946,
+    "hosts": [
+      "Switzerland"
+    ],
+    "gold": "Czechoslovakia",
+    "score": "34–32",
+    "silver": "Italy",
+    "bronze": "Hungary",
+    "bronzeScore": "38–32",
+    "fourthPlace": "France",
+    "teams": 10
+  },
+  {
+    "edition": "5",
+    "year": 1947,
+    "hosts": [
+      "Czechoslovakia"
+    ],
+    "gold": "Soviet Union",
+    "score": "56–37",
+    "silver": "Czechoslovakia",
+    "bronze": "Egypt",
+    "bronzeScore": "50–48",
+    "fourthPlace": "Belgium",
+    "teams": 14
+  },
+  {
+    "edition": "6",
+    "year": 1949,
+    "hosts": [
+      "Egypt"
+    ],
+    "gold": "Egypt",
+    "score": "No playoffs",
+    "silver": "France",
+    "bronze": "Greece",
+    "bronzeScore": "No playoffs",
+    "fourthPlace": "Turkey",
+    "teams": 7
+  },
+  {
+    "edition": "7",
+    "year": 1951,
+    "hosts": [
+      "France"
+    ],
+    "gold": "Soviet Union",
+    "score": "45–44",
+    "silver": "Czechoslovakia",
+    "bronze": "France",
+    "bronzeScore": "55–52",
+    "fourthPlace": "Bulgaria",
+    "teams": 18
+  },
+  {
+    "edition": "8",
+    "year": 1953,
+    "hosts": [
+      "Soviet Union"
+    ],
+    "gold": "Soviet Union",
+    "score": "No playoffs",
+    "silver": "Hungary",
+    "bronze": "France",
+    "bronzeScore": "No playoffs",
+    "fourthPlace": "Czechoslovakia",
+    "teams": 17
+  },
+  {
+    "edition": "9",
+    "year": 1955,
+    "hosts": [
+      "Hungary"
+    ],
+    "gold": "Hungary",
+    "score": "No playoffs",
+    "silver": "Czechoslovakia",
+    "bronze": "Soviet Union",
+    "bronzeScore": "No playoffs",
+    "fourthPlace": "Bulgaria",
+    "teams": 18
+  },
+  {
+    "edition": "10",
+    "year": 1957,
+    "hosts": [
+      "Bulgaria"
+    ],
+    "gold": "Soviet Union",
+    "score": "No playoffs",
+    "silver": "Bulgaria",
+    "bronze": "Czechoslovakia",
+    "bronzeScore": "No playoffs",
+    "fourthPlace": "Hungary",
+    "teams": 16
+  },
+  {
+    "edition": "11",
+    "year": 1959,
+    "hosts": [
+      "Turkey"
+    ],
+    "gold": "Soviet Union",
+    "score": "No playoffs",
+    "silver": "Czechoslovakia",
+    "bronze": "France",
+    "bronzeScore": "No playoffs",
+    "fourthPlace": "Hungary",
+    "teams": 17
+  },
+  {
+    "edition": "12",
+    "year": 1961,
+    "hosts": [
+      "Yugoslavia"
+    ],
+    "gold": "Soviet Union",
+    "score": "60–53",
+    "silver": "Yugoslavia",
+    "bronze": "Bulgaria",
+    "bronzeScore": "55–46",
+    "fourthPlace": "France",
+    "teams": 19
+  },
+  {
+    "edition": "13",
+    "year": 1963,
+    "hosts": [
+      "Poland"
+    ],
+    "gold": "Soviet Union",
+    "score": "61–45",
+    "silver": "Poland",
+    "bronze": "Yugoslavia",
+    "bronzeScore": "89–61",
+    "fourthPlace": "Hungary",
+    "teams": 16
+  },
+  {
+    "edition": "14",
+    "year": 1965,
+    "hosts": [
+      "Soviet Union"
+    ],
+    "gold": "Soviet Union",
+    "score": "58–49",
+    "silver": "Yugoslavia",
+    "bronze": "Poland",
+    "bronzeScore": "86–70",
+    "fourthPlace": "Italy",
+    "teams": 16
+  },
+  {
+    "edition": "15",
+    "year": 1967,
+    "hosts": [
+      "Finland"
+    ],
+    "gold": "Soviet Union",
+    "score": "89–77",
+    "silver": "Czechoslovakia",
+    "bronze": "Poland",
+    "bronzeScore": "80–76",
+    "fourthPlace": "Bulgaria",
+    "teams": 16
+  },
+  {
+    "edition": "16",
+    "year": 1969,
+    "hosts": [
+      "Italy"
+    ],
+    "gold": "Soviet Union",
+    "score": "81–72",
+    "silver": "Yugoslavia",
+    "bronze": "Czechoslovakia",
+    "bronzeScore": "77–75",
+    "fourthPlace": "Poland",
+    "teams": 12
+  },
+  {
+    "edition": "17",
+    "year": 1971,
+    "hosts": [
+      "West Germany"
+    ],
+    "gold": "Soviet Union",
+    "score": "69–64",
+    "silver": "Yugoslavia",
+    "bronze": "Italy",
+    "bronzeScore": "85–67",
+    "fourthPlace": "Poland",
+    "teams": 12
+  },
+  {
+    "edition": "18",
+    "year": 1973,
+    "hosts": [
+      "Spain"
+    ],
+    "gold": "Yugoslavia",
+    "score": "78–67",
+    "silver": "Spain",
+    "bronze": "Soviet Union",
+    "bronzeScore": "90–58",
+    "fourthPlace": "Czechoslovakia",
+    "teams": 12
+  },
+  {
+    "edition": "19",
+    "year": 1975,
+    "hosts": [
+      "Yugoslavia"
+    ],
+    "gold": "Yugoslavia",
+    "score": "No playoffs",
+    "silver": "Soviet Union",
+    "bronze": "Italy",
+    "bronzeScore": "No playoffs",
+    "fourthPlace": "Spain",
+    "teams": 12
+  },
+  {
+    "edition": "20",
+    "year": 1977,
+    "hosts": [
+      "Belgium"
+    ],
+    "gold": "Yugoslavia",
+    "score": "74–61",
+    "silver": "Soviet Union",
+    "bronze": "Czechoslovakia",
+    "bronzeScore": "91–81",
+    "fourthPlace": "Italy",
+    "teams": 12
+  },
+  {
+    "edition": "21",
+    "year": 1979,
+    "hosts": [
+      "Italy"
+    ],
+    "gold": "Soviet Union",
+    "score": "98–76",
+    "silver": "Israel",
+    "bronze": "Yugoslavia",
+    "bronzeScore": "99–92",
+    "fourthPlace": "Czechoslovakia",
+    "teams": 12
+  },
+  {
+    "edition": "22",
+    "year": 1981,
+    "hosts": [
+      "Czechoslovakia"
+    ],
+    "gold": "Soviet Union",
+    "score": "84–67",
+    "silver": "Yugoslavia",
+    "bronze": "Czechoslovakia",
+    "bronzeScore": "101–90",
+    "fourthPlace": "Spain",
+    "teams": 12
+  },
+  {
+    "edition": "23",
+    "year": 1983,
+    "hosts": [
+      "France"
+    ],
+    "gold": "Italy",
+    "score": "105–96",
+    "silver": "Spain",
+    "bronze": "Soviet Union",
+    "bronzeScore": "105–70",
+    "fourthPlace": "Netherlands",
+    "teams": 12
+  },
+  {
+    "edition": "24",
+    "year": 1985,
+    "hosts": [
+      "West Germany"
+    ],
+    "gold": "Soviet Union",
+    "score": "120–89",
+    "silver": "Czechoslovakia",
+    "bronze": "Italy",
+    "bronzeScore": "102–90",
+    "fourthPlace": "Spain",
+    "teams": 12
+  },
+  {
+    "edition": "25",
+    "year": 1987,
+    "hosts": [
+      "Greece"
+    ],
+    "gold": "Greece",
+    "score": "103–101 overtime",
+    "silver": "Soviet Union",
+    "bronze": "Yugoslavia",
+    "bronzeScore": "98–87",
+    "fourthPlace": "Spain",
+    "teams": 12
+  },
+  {
+    "edition": "26",
+    "year": 1989,
+    "hosts": [
+      "Yugoslavia"
+    ],
+    "gold": "Yugoslavia",
+    "score": "98–77",
+    "silver": "Greece",
+    "bronze": "Soviet Union",
+    "bronzeScore": "104–76",
+    "fourthPlace": "Italy",
+    "teams": 8
+  },
+  {
+    "edition": "27",
+    "year": 1991,
+    "hosts": [
+      "Italy"
+    ],
+    "gold": "Yugoslavia",
+    "score": "88–73",
+    "silver": "Italy",
+    "bronze": "Spain",
+    "bronzeScore": "101–83",
+    "fourthPlace": "France",
+    "teams": 8
+  },
+  {
+    "edition": "28",
+    "year": 1993,
+    "hosts": [
+      "Germany"
+    ],
+    "gold": "Germany",
+    "score": "71–70",
+    "silver": "Russia",
+    "bronze": "Croatia",
+    "bronzeScore": "99–59",
+    "fourthPlace": "Greece",
+    "teams": 16
+  },
+  {
+    "edition": "29",
+    "year": 1995,
+    "hosts": [
+      "Greece"
+    ],
+    "gold": "Yugoslavia",
+    "score": "96–90",
+    "silver": "Lithuania",
+    "bronze": "Croatia",
+    "bronzeScore": "73–68",
+    "fourthPlace": "Greece",
+    "teams": 14
+  },
+  {
+    "edition": "30",
+    "year": 1997,
+    "hosts": [
+      "Spain"
+    ],
+    "gold": "Yugoslavia",
+    "score": "61–49",
+    "silver": "Italy",
+    "bronze": "Russia",
+    "bronzeScore": "97–77",
+    "fourthPlace": "Greece",
+    "teams": 16
+  },
+  {
+    "edition": "31",
+    "year": 1999,
+    "hosts": [
+      "France"
+    ],
+    "gold": "Italy",
+    "score": "64–56",
+    "silver": "Spain",
+    "bronze": "Yugoslavia",
+    "bronzeScore": "74–62",
+    "fourthPlace": "France",
+    "teams": 16
+  },
+  {
+    "edition": "32",
+    "year": 2001,
+    "hosts": [
+      "Turkey"
+    ],
+    "gold": "Yugoslavia",
+    "score": "78–69",
+    "silver": "Turkey",
+    "bronze": "Spain",
+    "bronzeScore": "99–90",
+    "fourthPlace": "Germany",
+    "teams": 16
+  },
+  {
+    "edition": "33",
+    "year": 2003,
+    "hosts": [
+      "Sweden"
+    ],
+    "gold": "Lithuania",
+    "score": "93–84",
+    "silver": "Spain",
+    "bronze": "Italy",
+    "bronzeScore": "69–67",
+    "fourthPlace": "France",
+    "teams": 16
+  },
+  {
+    "edition": "34",
+    "year": 2005,
+    "hosts": [
+      "Serbia and Montenegro"
+    ],
+    "gold": "Greece",
+    "score": "78–62",
+    "silver": "Germany",
+    "bronze": "France",
+    "bronzeScore": "98–68",
+    "fourthPlace": "Spain",
+    "teams": 16
+  },
+  {
+    "edition": "35",
+    "year": 2007,
+    "hosts": [
+      "Spain"
+    ],
+    "gold": "Russia",
+    "score": "60–59",
+    "silver": "Spain",
+    "bronze": "Lithuania",
+    "bronzeScore": "78–69",
+    "fourthPlace": "Greece",
+    "teams": 16
+  },
+  {
+    "edition": "36",
+    "year": 2009,
+    "hosts": [
+      "Poland"
+    ],
+    "gold": "Spain",
+    "score": "85–63",
+    "silver": "Serbia",
+    "bronze": "Greece",
+    "bronzeScore": "57–56",
+    "fourthPlace": "Slovenia",
+    "teams": 16
+  },
+  {
+    "edition": "37",
+    "year": 2011,
+    "hosts": [
+      "Lithuania"
+    ],
+    "gold": "Spain",
+    "score": "98–85",
+    "silver": "France",
+    "bronze": "Russia",
+    "bronzeScore": "72–68",
+    "fourthPlace": "Macedonia",
+    "teams": 24
+  },
+  {
+    "edition": "38",
+    "year": 2013,
+    "hosts": [
+      "Slovenia"
+    ],
+    "gold": "France",
+    "score": "80–66",
+    "silver": "Lithuania",
+    "bronze": "Spain",
+    "bronzeScore": "92–66",
+    "fourthPlace": "Croatia",
+    "teams": 24
+  },
+  {
+    "edition": "39",
+    "year": 2015,
+    "hosts": [
+      "France",
+      "Croatia",
+      "Germany",
+      "Latvia"
+    ],
+    "gold": "Spain",
+    "score": "80–63",
+    "silver": "Lithuania",
+    "bronze": "France",
+    "bronzeScore": "81–68",
+    "fourthPlace": "Serbia",
+    "teams": 24
+  },
+  {
+    "edition": "40",
+    "year": 2017,
+    "hosts": [
+      "Finland",
+      "Israel",
+      "Romania",
+      "Turkey"
+    ],
+    "gold": "Slovenia",
+    "score": "93–85",
+    "silver": "Serbia",
+    "bronze": "Spain",
+    "bronzeScore": "93–85",
+    "fourthPlace": "Russia",
+    "teams": 24
+  },
+  {
+    "edition": "41",
+    "year": 2022,
+    "hosts": [
+      "Czech Republic",
+      "Georgia",
+      "Italy",
+      "Germany"
+    ],
+    "gold": "Spain",
+    "score": "88–76",
+    "silver": "France",
+    "bronze": "Germany",
+    "bronzeScore": "82–69",
+    "fourthPlace": "Poland",
+    "teams": 24
+  },
+  {
+    "edition": "42",
+    "year": 2025,
+    "hosts": [
+      "Cyprus",
+      "Finland",
+      "Poland",
+      "Latvia"
+    ],
+    "gold": "Germany",
+    "score": "88–83",
+    "silver": "Turkey",
+    "bronze": "Greece",
+    "bronzeScore": "92–89",
+    "fourthPlace": "Finland",
+    "teams": 24
+  },
+  {
+    "edition": "43",
+    "year": 2029,
+    "hosts": [
+      "Estonia",
+      "Greece",
+      "Slovenia",
+      "Spain"
+    ],
+    "gold": null,
+    "score": null,
+    "silver": null,
+    "bronze": null,
+    "bronzeScore": null,
+    "fourthPlace": null,
+    "teams": 24
+  }
+]

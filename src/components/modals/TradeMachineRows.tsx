@@ -1,13 +1,15 @@
 import React, { useRef, useState } from 'react';
 import { MoreVertical, X } from 'lucide-react';
-import { PlayerHoverCard } from '../shared/PlayerHoverCard';
 import { PlayerHoverCardK2 } from '../shared/PlayerHoverCardK2';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
-import { SettingsManager } from '../../services/SettingsManager';
-import { calcOvr2K, calcPot2K, getPotColor } from '../../services/trade/tradeValueEngine';
+import { getPotColor } from '../../services/trade/tradeValueEngine';
 import { formatPickLabel } from '../../services/draft/draftClassStrength';
 import type { DraftPick, NBAPlayer, NBATeam } from '../../types';
 import { getPlayerContractExpiryDisplay } from '../../utils/salaryUtils';
+import { getPlayerImage } from '../../utils/playerImage';
+import { getScoutedDisplayOverall, getScoutedDisplayPotential } from '../../utils/scoutingFuzz';
+import { useGame } from '../../store/GameContext';
+import { isEurostashPlayer } from '../../services/freeAgency/eurostashRights';
 
 const ovrTextColor = (v: number): string => {
   if (v >= 95) return 'text-violet-300';
@@ -23,10 +25,11 @@ const expiryTextClass = (exp: number | undefined, currentSeason: number | undefi
 
 export const OutgoingPill = ({ player, onRemove }: { player: NBAPlayer; onRemove: () => void }) => (
   <div className="flex items-center gap-2 bg-slate-700/50 hover:bg-slate-700 border border-slate-600 rounded-full pl-1 pr-2 py-1 transition-colors shadow-sm flex-shrink-0">
-    <PlayerPortrait imgUrl={player.imgURL} face={(player as any).face} playerName={player.name} size={24} />
+    <PlayerPortrait imgUrl={getPlayerImage(player)} face={(player as any).face} playerName={player.name} size={24} />
     <span className="text-xs font-bold text-white whitespace-nowrap">
       {player.name.charAt(0)}. {player.name.split(' ').slice(1).join(' ')}
     </span>
+    {isEurostashPlayer(player) && <span className="text-[8px] font-black uppercase tracking-wider text-sky-300">Rights</span>}
     <button onClick={onRemove} className="w-4 h-4 rounded-full bg-slate-500 hover:bg-rose-500 flex items-center justify-center text-white transition-colors">
       <X size={10} />
     </button>
@@ -86,6 +89,7 @@ export const PlayerRow = ({
   moratoriumLockedUntil?: string;
   isSuggested?: boolean;
 }) => {
+  const { state } = useGame();
   const team = teams.find(t => t.id === player.tid);
   const currentSeasonStats = player.stats?.find(s => s.season === currentSeason);
   const seasonStats = (currentSeasonStats && (currentSeasonStats.gp ?? 0) > 0)
@@ -95,9 +99,11 @@ export const PlayerRow = ({
   const ppg = gp > 0 ? ((seasonStats!.pts ?? 0) / gp).toFixed(1) : '—';
   const rpg = gp > 0 ? ((seasonStats!.trb ?? 0) / gp).toFixed(1) : '—';
   const apg = gp > 0 ? ((seasonStats!.ast ?? 0) / gp).toFixed(1) : '—';
-  const ovr = calcOvr2K(player);
-  const pot = calcPot2K(player, currentSeason ?? new Date().getFullYear());
-  const expiry = getPlayerContractExpiryDisplay(player as any, currentSeason ?? new Date().getFullYear());
+  const seasonYear = currentSeason ?? state.leagueStats?.year ?? new Date().getFullYear();
+  const ovr = getScoutedDisplayOverall(state, player, seasonYear);
+  const pot = getScoutedDisplayPotential(state, player, seasonYear, seasonYear);
+  const expiry = getPlayerContractExpiryDisplay(player as any, seasonYear);
+  const eurostashed = isEurostashPlayer(player);
   const expClass = expiry.isConferenceDeal ? 'text-amber-300' : expiryTextClass(player.contract?.exp, currentSeason);
   const rowRef = useRef<HTMLDivElement>(null);
   const [cardPos, setCardPos] = useState<{ top: number; left: number } | null>(null);
@@ -130,7 +136,7 @@ export const PlayerRow = ({
                   ${isSuggested && !isSelected && !player.isIncoming ? 'bg-amber-500/10 border-l-4 border-l-amber-500 ring-1 ring-amber-500/30' : ''}`}
     >
       <PlayerPortrait
-        imgUrl={player.imgURL}
+        imgUrl={getPlayerImage(player)}
         face={(player as any).face}
         teamLogoUrl={team?.logoUrl}
         isIncoming={player.isIncoming}
@@ -139,7 +145,7 @@ export const PlayerRow = ({
       />
       <div className="flex-1 ml-4 min-w-0">
         <div className="text-sm font-black text-white truncate group-hover:text-blue-400 transition-colors">{player.name}</div>
-        <div className={`text-[10px] font-bold uppercase tracking-wider ${expClass}`}>{player.pos} • {expiry.label}</div>
+        <div className={`text-[10px] font-bold uppercase tracking-wider ${eurostashed ? 'text-sky-300' : expClass}`}>{player.pos} • {eurostashed ? 'RIGHTS ONLY' : expiry.label}</div>
         {moratoriumLockedUntil && (
           <div className="mt-1 text-[9px] font-black uppercase tracking-wider text-amber-300">
             Moratorium until {moratoriumLockedUntil}
@@ -157,16 +163,14 @@ export const PlayerRow = ({
           <span className={`text-xs font-bold ${getPotColor(pot)}`}>{pot}</span>
         </div>
         <div className="text-right">
-          <div className="text-sm font-black text-white">{formatContract(player)}</div>
-          <div className={`text-[10px] font-bold ${expClass}`}>{expiry.isConferenceDeal ? 'Conference deal' : `${expiry.label} YRS LEFT`}</div>
+          <div className="text-sm font-black text-white">{eurostashed ? 'Rights' : formatContract(player)}</div>
+          {expiry.isConferenceDeal && <div className={`text-[10px] font-bold ${expClass}`}>Conference deal</div>}
         </div>
         <MoreVertical size={16} className="text-slate-600 group-hover:text-slate-400" />
       </div>
       {cardPos && (
         <div className="fixed z-[200] pointer-events-none" style={{ top: cardPos.top, left: cardPos.left }}>
-          {SettingsManager.getSettings().tooltipStyle === 'simple'
-            ? <PlayerHoverCard player={player} />
-            : <PlayerHoverCardK2 player={player} />}
+          <PlayerHoverCardK2 player={player} />
         </div>
       )}
     </div>

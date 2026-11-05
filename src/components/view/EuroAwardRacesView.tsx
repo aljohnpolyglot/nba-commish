@@ -1,407 +1,434 @@
-/**
- * EuroAwardRacesView — Euroleague + Liga ACB award races, rendered when
- * `isEuroIsolatedMode(state)` is true. Uses EuroAwardService for race
- * calculations; mirrors the NBA AwardRacesView visual style.
- *
- * Two parallel competition tracks ("Euroleague" / "Liga ACB") with their
- * own award tab set. Switch competition via the top toggle.
- */
-import React, { useState, useMemo } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { Trophy, Target, Star, Info, Users, UserCheck, Sparkles, Award, BarChart3 } from 'lucide-react';
+import React, { useEffect, useMemo, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
+import { Info, Trophy } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
-import { EuroAwardService, EuroAwardCandidate, EuroCoachCandidate, EuroAllTeamSpot } from '../../services/logic/EuroAwardService';
-import { PlayerBioView } from '../central/view/PlayerBioView';
-import { RankedPersonCard, StatPills } from '../shared/ui';
+import {
+  EuroAwardService,
+  type EuroAllTeamSpot,
+  type EuroAwardCandidate,
+  type EuroCoachCandidate,
+} from '../../services/logic/EuroAwardService';
+import type { CompetitionAwardKind } from '../../services/competition/types';
+import { selectCompetitionTeamTids } from '../../services/competition/competitionScheduler';
+import {
+  matchesBoxScoreSeason,
+  matchesScheduleSeason,
+} from '../../services/competition/competitionSeasonState';
+import { filterAwardsToVisibleTimeline } from '../../utils/awardHistory';
 import { getOwnTeamId } from '../../utils/helpers';
+import { getHistoricalTeamSnapshot } from '../../utils/teamAssets';
+import { getTeamFullName } from '../../utils/teamNames';
+import { buildCompetitionSeasonPlayers } from '../central/view/playerStatsBoxScoreMaps';
 import { PlayerPortrait } from '../shared/PlayerPortrait';
-import { NBAPlayer } from '../../types';
+import { RankedPersonCard, StatPills } from '../shared/ui';
+import {
+  buildEuroAwardOptions,
+  euroAwardDescription,
+} from './euroAwardRacePresentation';
+import { AwardTrophyArtwork, useAwardTrophyCatalog } from '../shared/AwardTrophyArtwork';
+import { resolveAwardTrophyPhoto } from '../../services/awards/awardTrophyPhotos';
 
-type EuroleagueTab = 'mvp' | 'defender' | 'risingStar' | 'topScorer' | 'coy' | 'allEL';
-type EndesaTab = 'mvp' | 'bestYoung' | 'topScorer' | 'topRebounder' | 'topAssister' | 'pirLeader' | 'bestCoach';
-type Competition = 'euroleague' | 'endesa';
+type CompetitionTrack = 'euroleague' | 'domestic';
 
 const isPostRegularPhase = (phase?: string): boolean => {
   const normalized = String(phase ?? '').toLowerCase();
-  return normalized === 'play-in'
-    || normalized === 'qf'
-    || normalized === 'quarterfinal'
-    || normalized === 'sf'
-    || normalized === 'semifinal'
-    || normalized === 'final';
+  return ['play-in', 'qf', 'quarterfinal', 'sf', 'semifinal', 'final'].includes(normalized);
 };
 
 const competitionRoundStart = (season: number, month: number, day: number): number =>
   Date.UTC(month >= 9 ? season - 1 : season, month - 1, day);
 
 interface EuroAwardRacesViewProps {
-  forcedCompetition?: Competition;
+  forcedCompetition?: string;
 }
 
-const STORED_TYPES = {
-  euroleague: {
-    mvp: 'Euroleague MVP',
-    defender: 'Euroleague Best Defender',
-    risingStar: 'Euroleague Rising Star',
-    topScorer: 'Alphonso Ford Top Scorer',
-    coy: 'Alexander Gomelskiy COY',
-    allEL: 'All-EuroLeague First Team',
-  } as Record<EuroleagueTab, string>,
-  endesa: {
-    mvp: 'Liga ACB MVP',
-    bestYoung: 'Liga ACB Best Young Player',
-    topScorer: 'Liga ACB Top Scorer',
-    topRebounder: 'Liga ACB Rebound Leader',
-    topAssister: 'Liga ACB Assist Leader',
-    pirLeader: 'Liga ACB PIR Leader',
-    bestCoach: 'Liga ACB Best Coach',
-  } as Record<EndesaTab, string>,
-};
-
 export const EuroAwardRacesView: React.FC<EuroAwardRacesViewProps> = ({ forcedCompetition }) => {
-  const { state } = useGame();
+  const { state, navigateToPlayer } = useGame();
+  const season = state.leagueStats.year;
   const ownTid = getOwnTeamId(state);
-  const [competition, setCompetition] = useState<Competition>(forcedCompetition ?? 'euroleague');
-  const [elTab, setELTab] = useState<EuroleagueTab>('mvp');
-  const [endesaTab, setEndesaTab] = useState<EndesaTab>('mvp');
-  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
+  const domesticCompetitionId = forcedCompetition && forcedCompetition !== 'euroleague'
+    ? forcedCompetition
+    : state.euroPrimaryCompetitionId ?? 'endesa';
+  const euroleagueSpec = state.activeCompetitions?.find(entry => entry.id === 'euroleague');
+  const domesticSpec = state.activeCompetitions?.find(entry => entry.id === domesticCompetitionId);
+  const [track, setTrack] = useState<CompetitionTrack>(
+    forcedCompetition === 'euroleague' ? 'euroleague' : forcedCompetition ? 'domestic' : 'euroleague',
+  );
+  const [selectedKinds, setSelectedKinds] = useState<Record<CompetitionTrack, CompetitionAwardKind>>({
+    euroleague: 'mvp',
+    domestic: 'mvp',
+  });
+  const trophyCatalog = useAwardTrophyCatalog(true);
 
-  React.useEffect(() => {
-    if (!forcedCompetition) return;
-    setCompetition(forcedCompetition);
+  useEffect(() => {
+    if (forcedCompetition) {
+      setTrack(forcedCompetition === 'euroleague' ? 'euroleague' : 'domestic');
+    }
   }, [forcedCompetition]);
 
-  const seasonAwards = (state.historicalAwards ?? []).filter(a => a.season === state.leagueStats.year);
-  const competitionHistory = ((state as any).competitionHistory ?? {}) as Record<string, Array<{ season: number; championTid?: number | null }>>;
-
+  const euroleagueTeamIds = useMemo(
+    () => new Set(euroleagueSpec ? selectCompetitionTeamTids(euroleagueSpec, state) : []),
+    [euroleagueSpec, state],
+  );
+  const domesticTeamIds = useMemo(
+    () => new Set(domesticSpec ? selectCompetitionTeamTids(domesticSpec, state) : []),
+    [domesticSpec, state],
+  );
+  const euroleaguePlayers = useMemo(
+    () => buildCompetitionSeasonPlayers(state, 'euroleague', euroleagueTeamIds),
+    [euroleagueTeamIds, state.boxScores, season, state.nbaCup, state.nbaCupHistory, state.players, state.playoffs, state.schedule],
+  );
+  const domesticPlayers = useMemo(
+    () => buildCompetitionSeasonPlayers(state, domesticCompetitionId, domesticTeamIds),
+    [domesticCompetitionId, domesticTeamIds, state.boxScores, season, state.nbaCup, state.nbaCupHistory, state.players, state.playoffs, state.schedule],
+  );
   const euroleagueRaces = useMemo(() => EuroAwardService.calculateEuroleagueRaces(
-    state.players, state.teams, state.nonNBATeams ?? [], state.leagueStats.year, state.staff, undefined, state.boxScores ?? [],
-  ), [state.players, state.teams, state.nonNBATeams, state.leagueStats.year, state.staff, state.boxScores]);
+    euroleaguePlayers,
+    state.teams,
+    state.nonNBATeams ?? [],
+    season,
+    state.staff,
+    undefined,
+    state.boxScores ?? [],
+    euroleagueTeamIds,
+  ), [euroleaguePlayers, euroleagueTeamIds, season, state.boxScores, state.nonNBATeams, state.staff, state.teams]);
+  const domesticRaces = useMemo(() => EuroAwardService.calculateDomesticRaces(
+    domesticPlayers,
+    state.teams,
+    state.nonNBATeams ?? [],
+    season,
+    domesticCompetitionId,
+    domesticTeamIds,
+    state.staff,
+    undefined,
+    state.boxScores ?? [],
+  ), [domesticCompetitionId, domesticPlayers, domesticTeamIds, season, state.boxScores, state.nonNBATeams, state.staff, state.teams]);
 
-  const endesaRaces = useMemo(() => EuroAwardService.calculateEndesaRaces(
-    state.players, state.teams, state.nonNBATeams ?? [], state.leagueStats.year, state.staff, undefined, state.boxScores ?? [],
-  ), [state.players, state.teams, state.nonNBATeams, state.leagueStats.year, state.staff, state.boxScores]);
+  const euroleagueOptions = useMemo(
+    () => buildEuroAwardOptions(euroleagueSpec, season),
+    [euroleagueSpec, season],
+  );
+  const domesticOptions = useMemo(
+    () => buildEuroAwardOptions(domesticSpec, season),
+    [domesticSpec, season],
+  );
+  const options = track === 'euroleague' ? euroleagueOptions : domesticOptions;
+  const selectedOption = options.find(option => option.kind === selectedKinds[track]) ?? options[0];
+  const selectedSpec = track === 'euroleague' ? euroleagueSpec : domesticSpec;
+  const selectedCompetitionId = selectedSpec?.id ?? (track === 'euroleague' ? 'euroleague' : domesticCompetitionId);
+  const selectedDisplayName = selectedSpec?.displayName ?? 'European competition';
+  const selectedTrophy = selectedOption ? resolveAwardTrophyPhoto(trophyCatalog, {
+    awardType: selectedOption.title,
+    namespace: 'euro',
+    competitionId: selectedCompetitionId,
+    competitionName: selectedDisplayName,
+  }) : undefined;
+
+  useEffect(() => {
+    if (!selectedOption && options.length === 0) return;
+    if (selectedOption?.kind !== selectedKinds[track]) {
+      setSelectedKinds(current => ({ ...current, [track]: selectedOption.kind }));
+    }
+  }, [options, selectedKinds, selectedOption, track]);
 
   const competitionSamples = useMemo(() => {
-    const hasRegularSeasonSample = (id: Competition) => (state.boxScores ?? []).some((game: any) =>
-      game.competitionId === id &&
-      game.season === state.leagueStats.year &&
-      !isPostRegularPhase(game.competitionPhase),
+    const hasSample = (id: string) => (state.boxScores ?? []).some(game =>
+      game.competitionId === id
+      && game.season === season
+      && !isPostRegularPhase(game.competitionPhase),
     );
     return {
-      euroleague: hasRegularSeasonSample('euroleague'),
-      endesa: hasRegularSeasonSample('endesa'),
+      euroleague: hasSample('euroleague'),
+      domestic: hasSample(domesticCompetitionId),
     };
-  }, [state.boxScores, state.leagueStats.year]);
-  const seasonNotStarted = forcedCompetition
-    ? !competitionSamples[forcedCompetition]
-    : !competitionSamples.euroleague && !competitionSamples.endesa;
+  }, [domesticCompetitionId, season, state.boxScores]);
 
+  const competitionHistory = state.competitionHistory ?? {};
   const competitionWindow = useMemo(() => {
-    const buildWindow = (id: Competition) => {
-      const currentSeason = state.leagueStats.year;
-      const spec = state.activeCompetitions?.find((entry: any) => entry.id === id);
-      const firstPostRegularRound = spec?.playoffFormat?.rounds?.[0];
-      const dateMs = state.date ? new Date(state.date).getTime() : 0;
-      const calendarGate = firstPostRegularRound
-        ? dateMs >= competitionRoundStart(currentSeason, firstPostRegularRound.start.month, firstPostRegularRound.start.day)
-        : false;
-      const postRegularGames = [
-        ...(state.schedule ?? []),
-        ...(state.boxScores ?? []),
-      ].some((game: any) =>
-        game.competitionId === id &&
-        (
-          game.season === currentSeason ||
-          (typeof game.season !== 'number' && String(game.date ?? '').includes(String(currentSeason)))
-        ) &&
-        isPostRegularPhase(game.competitionPhase),
-      );
-      const resolvedSeason = (competitionHistory[id] ?? []).some(entry =>
-        entry.season === currentSeason && entry.championTid != null,
-      );
-      return {
-        calendarGate,
-        postRegularGames,
-        resolvedSeason,
-        regularSeasonAwardsFinalized: calendarGate || postRegularGames || resolvedSeason,
+    const firstRound = selectedSpec?.playoffFormat?.rounds?.[0];
+    const dateMs = state.date ? new Date(state.date).getTime() : 0;
+    const calendarGate = firstRound
+      ? dateMs >= competitionRoundStart(season, firstRound.start.month, firstRound.start.day)
+      : false;
+    const postRegularGames = (state.schedule ?? []).some(game =>
+      game.competitionId === selectedCompetitionId
+      && matchesScheduleSeason(game, season)
+      && isPostRegularPhase(game.competitionPhase),
+    ) || (state.boxScores ?? []).some(game =>
+      game.competitionId === selectedCompetitionId
+      && matchesBoxScoreSeason(game, season)
+      && isPostRegularPhase(game.competitionPhase),
+    );
+    const savedHistory = (competitionHistory[selectedCompetitionId] ?? []) as Array<{
+      season?: number;
+      championTid?: number;
+    }>;
+    const resolved = savedHistory.some(entry =>
+      entry.season === season && entry.championTid != null,
+    );
+    return calendarGate || postRegularGames || resolved;
+  }, [competitionHistory, season, selectedCompetitionId, selectedSpec, state.boxScores, state.date, state.schedule]);
+
+  const seasonAwards = filterAwardsToVisibleTimeline(state.historicalAwards ?? [], season)
+    .filter(award => award.season === season && award.competitionId === selectedCompetitionId);
+  const announced = !!selectedOption && selectedOption.entries.some(entry =>
+    seasonAwards.some(award => award.type === entry.type),
+  );
+  const finalized = announced || competitionWindow;
+  const seasonNotStarted = !competitionSamples[track];
+
+  const playerCandidates = (kind: CompetitionAwardKind): EuroAwardCandidate[] => {
+    if (track === 'euroleague') {
+      const raceMap: Partial<Record<CompetitionAwardKind, EuroAwardCandidate[]>> = {
+        mvp: euroleagueRaces.mvp,
+        defender: euroleagueRaces.defender,
+        youngPlayer: euroleagueRaces.risingStar,
+        topScorer: euroleagueRaces.topScorer,
       };
+      return raceMap[kind] ?? [];
+    }
+    const raceMap: Partial<Record<CompetitionAwardKind, EuroAwardCandidate[]>> = {
+      mvp: domesticRaces.mvp,
+      defender: domesticRaces.defender,
+      sixthMan: domesticRaces.sixthMan,
+      mostImproved: domesticRaces.mostImproved,
+      youngPlayer: domesticRaces.bestYoungPlayer,
+      topScorer: domesticRaces.topScorer,
+      assistLeader: domesticRaces.topAssister,
+      offensivePlayer: domesticRaces.offensivePlayer,
+      efficiencyPlayer: domesticRaces.efficiencyPlayer,
+      spectacularPlayer: domesticRaces.spectacularPlayer,
+      popularPlayer: domesticRaces.popularPlayer,
     };
-    return {
-      euroleague: buildWindow('euroleague'),
-      endesa: buildWindow('endesa'),
-    };
-  }, [state.schedule, state.boxScores, state.leagueStats.year, competitionHistory]);
-
-  if (viewingPlayer) {
-    return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
-  }
-
-  // ─── Tab metadata ────────────────────────────────────────────────────────
-
-  const euroleagueLabels: Record<EuroleagueTab, { title: string; icon: React.ReactElement; desc: string }> = {
-    mvp:        { title: 'Regular Season MVP',          icon: <Star className="text-yellow-400" />,        desc: 'Best player of the EuroLeague regular season' },
-    defender:   { title: 'Best Defender Trophy',         icon: <Target className="text-blue-400" />,        desc: 'Most impactful defender across the season' },
-    risingStar: { title: 'Rising Star Award',            icon: <Sparkles className="text-purple-400" />,    desc: 'Top performer under the age of 23' },
-    topScorer:  { title: 'Alphonso Ford Top Scorer',     icon: <BarChart3 className="text-orange-400" />,   desc: 'Highest points-per-game leader' },
-    coy:        { title: 'Alexander Gomelskiy COY',      icon: <UserCheck className="text-teal-400" />,     desc: 'Coach of the Year' },
-    allEL:      { title: 'All-EuroLeague Teams',         icon: <Users className="text-indigo-400" />,       desc: 'First & Second Team selections' },
-  };
-  const endesaLabels: Record<EndesaTab, { title: string; icon: React.ReactElement; desc: string }> = {
-    mvp:           { title: 'Regular Season MVP',     icon: <Star className="text-yellow-400" />,      desc: 'MVP of the Liga ACB regular season' },
-    bestYoung:     { title: 'Best Young Player',      icon: <Sparkles className="text-purple-400" />,  desc: 'Top performer under the age of 22' },
-    topScorer:     { title: 'Top Scorer',             icon: <BarChart3 className="text-orange-400" />, desc: 'Highest points-per-game leader' },
-    topRebounder:  { title: 'Rebound Leader',         icon: <BarChart3 className="text-amber-400" />,  desc: 'Highest rebounds-per-game leader' },
-    topAssister:   { title: 'Assist Leader',          icon: <BarChart3 className="text-sky-400" />,    desc: 'Highest assists-per-game leader' },
-    pirLeader:     { title: 'PIR Leader',             icon: <Award className="text-pink-400" />,       desc: 'Performance Index Rating leader' },
-    bestCoach:     { title: 'Best Coach',             icon: <UserCheck className="text-teal-400" />,   desc: 'Best Coach award' },
+    return raceMap[kind] ?? [];
   };
 
-  if (seasonNotStarted) {
-    return (
-      <div className="h-full flex flex-col bg-slate-950 items-center justify-center gap-4 p-12 text-center">
-        <Trophy className="text-slate-700" size={48} />
-        <h2 className="text-2xl font-black text-white uppercase tracking-tight">Award Races</h2>
-        <p className="text-slate-500 text-sm max-w-md">
-          Award projections will be available once Liga Endesa and EuroLeague games are underway and players have built a real stat sample.
-        </p>
+  const renderEmpty = (message: string) => (
+    <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-8 text-center text-sm text-slate-500">
+      {message}
+    </div>
+  );
+
+  const renderPlayerCards = (candidates: EuroAwardCandidate[]) => candidates.length === 0
+    ? renderEmpty(seasonNotStarted ? 'The race opens after the first competition games.' : 'No eligible candidates yet.')
+    : (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <AnimatePresence mode="wait">
+          {candidates.map((candidate, index) => {
+            const teamSnapshot = getHistoricalTeamSnapshot(candidate.team, season);
+            const rebounds = candidate.stats.trb
+              || (candidate.stats as { reb?: number }).reb
+              || (candidate.stats.orb || 0) + (candidate.stats.drb || 0);
+            return (
+              <div
+                key={candidate.player.internalId}
+                className={ownTid === candidate.player.tid ? 'rounded-xl ring-2 ring-indigo-500/50' : ''}
+              >
+                <RankedPersonCard
+                  rank={index + 1}
+                  portraitUrl={candidate.player.imgURL}
+                  face={candidate.player.face}
+                  name={candidate.player.name}
+                  badge={candidate.player.pos}
+                  subtitle={`${getTeamFullName(teamSnapshot)} · ${candidate.team.wins}-${candidate.team.losses}`}
+                  teamLogoUrl={teamSnapshot.logoUrl}
+                  stats={[
+                    { label: 'PTS', val: (candidate.stats.pts / candidate.stats.gp).toFixed(1) },
+                    { label: 'REB', val: (rebounds / candidate.stats.gp).toFixed(1) },
+                    { label: 'AST', val: (candidate.stats.ast / candidate.stats.gp).toFixed(1) },
+                  ]}
+                  odds={finalized ? undefined : candidate.odds}
+                  accentColor="indigo"
+                  animDelay={index * 0.05}
+                  onClick={() => navigateToPlayer(candidate.player)}
+                />
+              </div>
+            );
+          })}
+        </AnimatePresence>
       </div>
     );
-  }
 
-  const selectedRaces = competition === 'euroleague' ? euroleagueRaces : endesaRaces;
-  const selectedTab = competition === 'euroleague' ? elTab : endesaTab;
-  const selectedEndesaRaceKey = endesaTab === 'bestYoung' ? 'bestYoungPlayer' : endesaTab;
-  const selectedLabel = competition === 'euroleague'
-    ? euroleagueLabels[elTab]
-    : endesaLabels[endesaTab];
-  const announced = seasonAwards.some(a => a.type === (competition === 'euroleague'
-    ? STORED_TYPES.euroleague[elTab]
-    : STORED_TYPES.endesa[endesaTab]));
-  const phaseFinalized = competition === 'euroleague'
-    ? competitionWindow.euroleague.regularSeasonAwardsFinalized
-    : competitionWindow.endesa.regularSeasonAwardsFinalized;
-  const finalized = announced || phaseFinalized;
-  const viewTitle = forcedCompetition === 'euroleague'
-    ? 'EuroLeague Awards'
-    : forcedCompetition === 'endesa'
-      ? 'Liga ACB Awards'
-      : 'European Awards';
-  const viewSubtitle = forcedCompetition === 'euroleague'
-    ? 'Regular-season honors, coaching awards, and All-EuroLeague selections.'
-    : forcedCompetition === 'endesa'
-      ? 'Regular-season honors and Liga ACB award results.'
-      : 'EuroLeague + Liga ACB award races and results.';
-
-  // ─── Renderers ───────────────────────────────────────────────────────────
-
-  const renderPlayerCards = (candidates: EuroAwardCandidate[]) => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      <AnimatePresence mode="wait">
-        {candidates.map((c, idx) => {
-          const isOwn = ownTid !== null && c.player.tid === ownTid;
+  const renderStaff = (candidates: EuroCoachCandidate[], roleLabel: string) => candidates.length === 0
+    ? renderEmpty(seasonNotStarted ? `The ${roleLabel} race opens after the first competition games.` : `No eligible ${roleLabel}s yet.`)
+    : (
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {candidates.map((candidate, index) => {
+          const teamSnapshot = getHistoricalTeamSnapshot(candidate.team, season);
           return (
-            <div key={c.player.internalId} className={isOwn ? 'ring-2 ring-indigo-500/50 rounded-xl' : ''}>
-              <RankedPersonCard
-                rank={idx + 1}
-                portraitUrl={c.player.imgURL}
-                face={(c.player as any).face}
-                name={c.player.name}
-                badge={c.player.pos}
-                subtitle={`${c.team.name} · ${c.team.wins}-${c.team.losses}`}
-                teamLogoUrl={c.team.logoUrl}
-                stats={[
-                  { label: 'PTS', val: (c.stats.pts / c.stats.gp).toFixed(1) },
-                  { label: 'REB', val: ((c.stats.trb || (c.stats as any).reb || (c.stats.orb || 0) + (c.stats.drb || 0)) / c.stats.gp).toFixed(1) },
-                  { label: 'AST', val: (c.stats.ast / c.stats.gp).toFixed(1) },
-                ]}
-                odds={finalized ? undefined : c.odds}
-                accentColor="indigo"
-                animDelay={idx * 0.05}
-                onClick={() => setViewingPlayer(c.player)}
-              />
-            </div>
+            <RankedPersonCard
+              key={`${candidate.coachName}-${candidate.team.id}`}
+              rank={index + 1}
+              portraitUrl={candidate.portraitUrl}
+              face={candidate.face}
+              name={candidate.coachName}
+              subtitle={`${getTeamFullName(teamSnapshot)} · ${candidate.wins}–${candidate.losses}`}
+              teamLogoUrl={teamSnapshot.logoUrl}
+              odds={finalized ? undefined : candidate.odds}
+              accentColor="teal"
+              animDelay={index * 0.05}
+            />
           );
         })}
-      </AnimatePresence>
-    </div>
-  );
+      </div>
+    );
 
-  const renderCoaches = (candidates: EuroCoachCandidate[]) => (
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-      {candidates.map((c, i) => (
-        <RankedPersonCard
-          key={`${c.coachName}-${c.team.id}`}
-          rank={i + 1}
-          name={c.coachName}
-          subtitle={`${c.team.name} · ${c.wins}–${c.losses}`}
-          teamLogoUrl={c.team.logoUrl}
-          odds={finalized ? undefined : c.odds}
-          accentColor="teal"
-          animDelay={i * 0.05}
-        />
-      ))}
-    </div>
-  );
-
-  const renderAllELTeams = (teams: [EuroAllTeamSpot[], EuroAllTeamSpot[]]) => (
+  const renderSelectionTeams = (teams: EuroAllTeamSpot[][], headings: string[]) => (
     <div>
-      {teams.map((team, ti) => (
-        <div key={ti} className="mb-6">
-          <h4 className={`text-xs font-black uppercase tracking-[0.2em] mb-3 ${ti === 0 ? 'text-yellow-400' : 'text-slate-400'}`}>
-            All-EuroLeague {ti === 0 ? 'First Team' : 'Second Team'}
+      {teams.map((team, teamIndex) => team.length > 0 && (
+        <section key={headings[teamIndex] ?? teamIndex} className="mb-6">
+          <h4 className={`mb-3 text-xs font-black uppercase tracking-[0.2em] ${teamIndex === 0 ? 'text-yellow-400' : 'text-slate-400'}`}>
+            {headings[teamIndex] ?? `Selection ${teamIndex + 1}`}
           </h4>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-            {team.map((spot, si) => {
-              const isOwn = ownTid !== null && spot.player.tid === ownTid;
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {team.map((spot, spotIndex) => {
+              const teamSnapshot = getHistoricalTeamSnapshot(spot.team, season);
               return (
-                <motion.div
+                <motion.button
+                  type="button"
                   key={spot.player.internalId}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: (ti * 5 + si) * 0.04 }}
-                  onClick={() => setViewingPlayer(spot.player)}
-                  className={`group flex items-center gap-3 border rounded-xl p-3 cursor-pointer transition-all ${
-                    isOwn
-                      ? 'bg-indigo-500/10 hover:bg-indigo-500/15 border-indigo-500/40'
-                      : 'bg-slate-900 hover:bg-slate-800 border-slate-800 hover:border-indigo-500/40'
+                  transition={{ delay: (teamIndex * 5 + spotIndex) * 0.04 }}
+                  onClick={() => navigateToPlayer(spot.player)}
+                  className={`group flex items-center gap-3 rounded-xl border p-3 text-left transition-all ${
+                    ownTid === spot.player.tid
+                      ? 'border-indigo-500/40 bg-indigo-500/10 hover:bg-indigo-500/15'
+                      : 'border-slate-800 bg-slate-900 hover:border-indigo-500/40 hover:bg-slate-800'
                   }`}
                 >
                   <PlayerPortrait
                     imgUrl={spot.player.imgURL}
-                    face={(spot.player as any).face}
+                    face={spot.player.face}
                     playerName={spot.player.name}
-                    teamLogoUrl={spot.team.logoUrl}
+                    teamLogoUrl={teamSnapshot.logoUrl}
                     size={40}
                   />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-bold text-white text-xs truncate group-hover:text-indigo-400 transition-colors">{spot.player.name}</p>
-                    <p className="text-[10px] text-slate-500">{spot.pos} · {spot.team.abbrev}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-xs font-bold text-white group-hover:text-indigo-400">{spot.player.name}</p>
+                    <p className="text-[10px] text-slate-500">{spot.pos} · {teamSnapshot.abbrev}</p>
                   </div>
-                  <StatPills
-                    stats={[
-                      { label: 'PTS', val: (spot.stats.pts / spot.stats.gp).toFixed(1) },
-                      { label: 'REB', val: ((spot.stats.trb || (spot.stats as any).reb || (spot.stats.orb || 0) + (spot.stats.drb || 0)) / spot.stats.gp).toFixed(1) },
-                      { label: 'AST', val: (spot.stats.ast / spot.stats.gp).toFixed(1) },
-                    ]}
-                    size="xs"
-                  />
-                </motion.div>
+                  <StatPills stats={[{ label: 'PTS', val: (spot.stats.pts / spot.stats.gp).toFixed(1) }]} />
+                </motion.button>
               );
             })}
           </div>
-        </div>
+        </section>
       ))}
     </div>
   );
 
   const content = (() => {
-    if (competition === 'euroleague') {
-      if (elTab === 'allEL') return renderAllELTeams(euroleagueRaces.allEuroLeague);
-      if (elTab === 'coy') return renderCoaches(euroleagueRaces.coy);
-      return renderPlayerCards((euroleagueRaces as any)[elTab]);
+    if (!selectedOption) {
+      return renderEmpty('This competition has no individual regular-season award program for this season.');
     }
-    if (endesaTab === 'bestCoach') return renderCoaches(endesaRaces.bestCoach);
-    return renderPlayerCards((endesaRaces as any)[selectedEndesaRaceKey]);
+    if (selectedOption.kind === 'coach') {
+      return renderStaff(track === 'euroleague' ? euroleagueRaces.coy : domesticRaces.bestCoach, 'coach');
+    }
+    if (selectedOption.kind === 'allLeague') {
+      const teams = track === 'euroleague' ? euroleagueRaces.allEuroLeague : domesticRaces.bestFive;
+      const visibleTeams = teams.slice(0, selectedOption.entries.length);
+      return renderSelectionTeams(visibleTeams, selectedOption.entries.map(entry => entry.type));
+    }
+    return renderPlayerCards(playerCandidates(selectedOption.kind));
   })();
 
+  const viewTitle = forcedCompetition
+    ? `${selectedDisplayName} Awards`
+    : 'European Awards';
+  const viewSubtitle = forcedCompetition
+    ? `${selectedDisplayName} honors and live award races.`
+    : `EuroLeague and ${domesticSpec?.displayName ?? 'domestic league'} honors in separate competition tracks.`;
+
   return (
-    <div className="h-full flex flex-col bg-slate-950 overflow-hidden">
-      {/* Header */}
-      <div className="p-6 bg-slate-900/50 border-b border-slate-800">
+    <div className="flex h-full flex-col overflow-hidden bg-slate-950">
+      <div className="border-b border-slate-800 bg-slate-900/50 p-4 md:p-6">
         <div className="flex flex-col gap-4">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
             <div>
-              <h2 className="text-3xl font-black text-white uppercase tracking-tighter flex items-center gap-3">
+              <h2 className="flex items-center gap-3 text-2xl font-black uppercase tracking-tighter text-white md:text-3xl">
                 <Trophy className="text-yellow-500" size={32} />
                 {viewTitle}
               </h2>
-              <p className="text-slate-400 text-sm mt-1">{viewSubtitle}</p>
+              <p className="mt-1 text-sm text-slate-400">{viewSubtitle}</p>
             </div>
-
-            {/* Competition toggle */}
-            {!forcedCompetition && (
-              <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 gap-0.5">
+            {!forcedCompetition && euroleagueSpec && domesticSpec && (
+              <div className="flex gap-0.5 rounded-xl border border-slate-800 bg-slate-950 p-1">
                 <button
-                  onClick={() => setCompetition('euroleague')}
-                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                    competition === 'euroleague'
-                      ? 'bg-orange-500 text-white shadow-lg shadow-orange-500/20'
-                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
+                  type="button"
+                  onClick={() => setTrack('euroleague')}
+                  className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-wider ${
+                    track === 'euroleague' ? 'bg-orange-500 text-white' : 'text-slate-500 hover:bg-slate-900 hover:text-slate-300'
                   }`}
                 >
-                  EuroLeague
+                  {euroleagueSpec.shortName || 'EuroLeague'}
                 </button>
                 <button
-                  onClick={() => setCompetition('endesa')}
-                  className={`px-4 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all ${
-                    competition === 'endesa'
-                      ? 'bg-red-500 text-white shadow-lg shadow-red-500/20'
-                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
+                  type="button"
+                  onClick={() => setTrack('domestic')}
+                  className={`rounded-lg px-4 py-2 text-[10px] font-black uppercase tracking-wider ${
+                    track === 'domestic' ? 'bg-red-500 text-white' : 'text-slate-500 hover:bg-slate-900 hover:text-slate-300'
                   }`}
                 >
-                  Liga ACB
+                  {domesticSpec.shortName || 'Domestic'}
                 </button>
               </div>
             )}
           </div>
-
-          {/* Award tabs */}
-          <div className="flex bg-slate-950 p-1 rounded-xl border border-slate-800 overflow-x-auto no-scrollbar gap-0.5">
-            {(competition === 'euroleague'
-              ? Object.entries(euroleagueLabels)
-              : Object.entries(endesaLabels)
-            ).map(([key, info]) => {
-              const isActive = competition === 'euroleague' ? elTab === key : endesaTab === key;
-              return (
+          {options.length > 0 && (
+            <div className="flex gap-0.5 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950 p-1 no-scrollbar">
+              {options.map(option => (
                 <button
-                  key={key}
-                  onClick={() => competition === 'euroleague' ? setELTab(key as EuroleagueTab) : setEndesaTab(key as EndesaTab)}
-                  className={`px-3 py-2 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all whitespace-nowrap ${
-                    isActive
-                      ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                      : 'text-slate-500 hover:text-slate-300 hover:bg-slate-900'
+                  type="button"
+                  key={option.kind}
+                  onClick={() => setSelectedKinds(current => ({ ...current, [track]: option.kind }))}
+                  className={`whitespace-nowrap rounded-lg px-3 py-2 text-[10px] font-black uppercase tracking-wider ${
+                    selectedOption?.kind === option.kind
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-slate-500 hover:bg-slate-900 hover:text-slate-300'
                   }`}
                 >
-                  {(info as any).title}
+                  {option.title}
                 </button>
-              );
-            })}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Main */}
-      <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
-        <div className="max-w-6xl mx-auto">
-          <motion.div
-            key={`${competition}-${selectedTab}`}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="mb-8 p-6 rounded-2xl bg-gradient-to-br from-indigo-900/20 to-slate-900 border border-indigo-500/20 flex items-center gap-6"
-          >
-            <div className="w-16 h-16 rounded-2xl bg-indigo-500/10 flex items-center justify-center border border-indigo-500/20">
-              {React.cloneElement(selectedLabel.icon, { size: 32 } as any)}
-            </div>
-            <div>
-              <h3 className="text-2xl font-bold text-white">{selectedLabel.title}</h3>
-              <p className="text-slate-400">{selectedLabel.desc}</p>
-            </div>
-            <div className="ml-auto hidden md:flex flex-col items-end gap-1">
-              <span className={`text-xs font-bold uppercase tracking-widest ${finalized ? 'text-amber-400' : 'text-indigo-400'}`}>
+      <div className="flex-1 overflow-y-auto p-4 custom-scrollbar md:p-6">
+        <div className="mx-auto max-w-6xl">
+          {selectedOption && (
+            <motion.div
+              key={`${track}-${selectedOption.kind}`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mb-6 flex items-center gap-4"
+            >
+              <AwardTrophyArtwork
+                src={selectedTrophy?.trophy}
+                alt={`${selectedOption.title} trophy`}
+                className="h-20 w-16 shrink-0"
+                fallback={null}
+              />
+              <div>
+                <h3 className="text-xl font-bold text-white md:text-2xl">{selectedOption.title}</h3>
+                <p className="text-sm text-slate-400">{euroAwardDescription(selectedOption.kind, selectedDisplayName)}</p>
+              </div>
+              <span className={`ml-auto hidden text-xs font-bold uppercase tracking-widest md:block ${finalized ? 'text-amber-400' : 'text-indigo-400'}`}>
                 {finalized ? 'Finalized' : 'Projection'}
               </span>
-            </div>
-          </motion.div>
+            </motion.div>
+          )}
 
           {content}
 
-          <div className="mt-12 p-4 rounded-xl bg-slate-900/30 border border-slate-800/50 flex items-start gap-3">
-            <Info size={18} className="text-slate-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-slate-600 leading-relaxed">
+          <div className="mt-12 flex items-start gap-3 rounded-xl border border-slate-800/50 bg-slate-900/30 p-4">
+            <Info size={18} className="mt-0.5 shrink-0 text-slate-600" />
+            <p className="text-xs leading-relaxed text-slate-600">
               {finalized
-                ? 'This board is no longer treated as a live race. Once the competition moves into play-in or playoffs, regular-season Euro awards lock to the finished result window.'
-                : 'These are live regular-season projections built from individual production, team success, PIR, and award-specific voting signals.'}
+                ? 'This board is no longer a live race after the competition reaches its postseason or writes its awards.'
+                : 'These projections use competition-only production and team results. Each league shows only the honors active in that season.'}
             </p>
           </div>
         </div>

@@ -3,6 +3,7 @@ import { AlertTriangle, ArrowRight, ShieldAlert } from 'lucide-react';
 import { useGame } from '../../store/GameContext';
 import { getTeamFullName } from '../../utils/teamNames';
 import type { NBATeam } from '../../types';
+import { postClubTransaction } from '../../services/tycoon/clubFinance';
 
 const fmtEUR = (value: number): string =>
   new Intl.NumberFormat('en-US', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(value);
@@ -59,12 +60,18 @@ export const EuroBankruptcyModal: React.FC = () => {
     if (!pending || !injectionAmount) return;
     const patchClub = (team: any) => {
       if (teamId(team) !== pending.teamId || !team.tycoon || !team.ownerProfile) return team;
+      const tycoon = { ...team.tycoon, transactions: [...(team.tycoon.transactions ?? [])] };
+      postClubTransaction(tycoon, {
+        sourceId: `owner-injection:${pending.teamId}:${pending.year}`,
+        date: String(state.date),
+        season: pending.year,
+        category: 'credit',
+        label: 'Owner emergency funding',
+        amountEUR: injectionAmount,
+      });
       return {
         ...team,
-        tycoon: {
-          ...team.tycoon,
-          cashOnHand: Math.round((team.tycoon.cashOnHand ?? 0) + injectionAmount),
-        },
+        tycoon,
         ownerProfile: {
           ...team.ownerProfile,
           cashInjectionUsedThisSeason: true,

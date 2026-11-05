@@ -1,0 +1,4774 @@
+{
+  "schemaVersion": 2,
+  "source": "Logopedia / Fandom",
+  "rootPage": {
+    "title": "Women's National Basketball Association",
+    "url": "https://logos.fandom.com/wiki/Women%27s_National_Basketball_Association"
+  },
+  "scrapedAt": "2026-07-31T09:08:11.583Z",
+  "settings": {
+    "followedNavboxLinks": true,
+    "linkContainerSelector": ".mw-parser-output .navbox, #mw-content-text .navbox",
+    "extractedPalettes": true,
+    "paletteSize": 3
+  },
+  "summary": {
+    "pagesQueued": 33,
+    "pagesSaved": 33,
+    "failedPages": 0,
+    "totalLogos": 95
+  },
+  "pages": [
+    {
+      "title": "Women's National Basketball Association",
+      "linkText": "Women's National Basketball Association",
+      "pageUrl": "https://logos.fandom.com/wiki/Women%27s_National_Basketball_Association",
+      "isRootPage": true,
+      "logoCount": 12,
+      "logos": [
+        {
+          "eraLabel": "1997-2012[]",
+          "startYear": 1997,
+          "endYear": 2012,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA",
+          "imageName": "WNBA.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/d/d7/WNBA.svg/revision/latest?cb=20130408231446",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/d/d7/WNBA.svg/revision/latest/scale-to-width-down/150?cb=20130408231446",
+          "palette": [
+            "#0572B2",
+            "#E12537",
+            "#B5BDD6"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0572B2",
+              "rgb": [
+                5,
+                114,
+                178
+              ],
+              "pixelShare": 52.4
+            },
+            {
+              "hex": "#E12537",
+              "rgb": [
+                225,
+                37,
+                55
+              ],
+              "pixelShare": 36.2
+            },
+            {
+              "hex": "#B5BDD6",
+              "rgb": [
+                181,
+                189,
+                214
+              ],
+              "pixelShare": 11.4
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1997-2012[]",
+          "startYear": 1997,
+          "endYear": 2012,
+          "present": false,
+          "specificYears": [],
+          "logoType": "secondary",
+          "caption": "Secondary logo",
+          "imageName": "WNBA (Horizontal).svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/5/5c/WNBA_%28Horizontal%29.svg/revision/latest?cb=20171214192423",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/5/5c/WNBA_%28Horizontal%29.svg/revision/latest/scale-to-width-down/150?cb=20171214192423",
+          "palette": [
+            "#0271B1",
+            "#F03251",
+            "#D2CCDB"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0271B1",
+              "rgb": [
+                2,
+                113,
+                177
+              ],
+              "pixelShare": 60.5
+            },
+            {
+              "hex": "#F03251",
+              "rgb": [
+                240,
+                50,
+                81
+              ],
+              "pixelShare": 34.2
+            },
+            {
+              "hex": "#D2CCDB",
+              "rgb": [
+                210,
+                204,
+                219
+              ],
+              "pixelShare": 5.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1997-2012[]",
+          "startYear": 1997,
+          "endYear": 2012,
+          "present": false,
+          "specificYears": [
+            2006
+          ],
+          "logoType": "anniversary",
+          "caption": "10th Anniversary (2006)",
+          "imageName": "481 -wnba-anniversary-2006.gif",
+          "fileExtension": "gif",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ef/481_-wnba-anniversary-2006.gif/revision/latest?cb=20260423175644",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ef/481_-wnba-anniversary-2006.gif/revision/latest/scale-to-width-down/150?cb=20260423175644",
+          "palette": [
+            "#C6D1D3",
+            "#1A2A31",
+            "#EE7033"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#C6D1D3",
+              "rgb": [
+                198,
+                209,
+                211
+              ],
+              "pixelShare": 49.3
+            },
+            {
+              "hex": "#1A2A31",
+              "rgb": [
+                26,
+                42,
+                49
+              ],
+              "pixelShare": 32.5
+            },
+            {
+              "hex": "#EE7033",
+              "rgb": [
+                238,
+                112,
+                51
+              ],
+              "pixelShare": 17.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1997-2012[]",
+          "startYear": 1997,
+          "endYear": 2012,
+          "present": false,
+          "specificYears": [
+            2011
+          ],
+          "logoType": "anniversary",
+          "caption": "15th Anniversary (2011)",
+          "imageName": "15th-anniv.-logo.jpg",
+          "fileExtension": "jpg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f0/15th-anniv.-logo.jpg/revision/latest?cb=20260423175641",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f0/15th-anniv.-logo.jpg/revision/latest/scale-to-width-down/150?cb=20260423175641",
+          "palette": [
+            "#EF1851",
+            "#D7DEDE",
+            "#0B74B5"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#EF1851",
+              "rgb": [
+                239,
+                24,
+                81
+              ],
+              "pixelShare": 38.2
+            },
+            {
+              "hex": "#D7DEDE",
+              "rgb": [
+                215,
+                222,
+                222
+              ],
+              "pixelShare": 32.3
+            },
+            {
+              "hex": "#0B74B5",
+              "rgb": [
+                11,
+                116,
+                181
+              ],
+              "pixelShare": 29.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2013-2019[]",
+          "startYear": 2013,
+          "endYear": 2019,
+          "present": false,
+          "specificYears": [
+            2013
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA 2013",
+          "imageName": "WNBA 2013.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0c/WNBA_2013.svg/revision/latest?cb=20171213194926",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0c/WNBA_2013.svg/revision/latest/scale-to-width-down/100?cb=20171213194926",
+          "palette": [
+            "#F05121",
+            "#F69C7E",
+            "#FFDFD5"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#F05121",
+              "rgb": [
+                240,
+                81,
+                33
+              ],
+              "pixelShare": 88.4
+            },
+            {
+              "hex": "#F69C7E",
+              "rgb": [
+                246,
+                156,
+                126
+              ],
+              "pixelShare": 6.1
+            },
+            {
+              "hex": "#FFDFD5",
+              "rgb": [
+                255,
+                223,
+                213
+              ],
+              "pixelShare": 5.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2013-2019[]",
+          "startYear": 2013,
+          "endYear": 2019,
+          "present": false,
+          "specificYears": [
+            2013
+          ],
+          "logoType": "secondary",
+          "caption": "Secondary logo",
+          "imageName": "WNBA 2013 II.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/c/cd/WNBA_2013_II.svg/revision/latest?cb=20171214093736",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/c/cd/WNBA_2013_II.svg/revision/latest/scale-to-width-down/150?cb=20171214093736",
+          "palette": [
+            "#F05121",
+            "#F59B7E",
+            "#FFDBD0"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#F05121",
+              "rgb": [
+                240,
+                81,
+                33
+              ],
+              "pixelShare": 79.8
+            },
+            {
+              "hex": "#F59B7E",
+              "rgb": [
+                245,
+                155,
+                126
+              ],
+              "pixelShare": 10.7
+            },
+            {
+              "hex": "#FFDBD0",
+              "rgb": [
+                255,
+                219,
+                208
+              ],
+              "pixelShare": 9.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2013-2019[]",
+          "startYear": 2013,
+          "endYear": 2019,
+          "present": false,
+          "specificYears": [
+            2013
+          ],
+          "logoType": "alternate",
+          "caption": "Alternative logo",
+          "imageName": "WNBA 2013 (Alt).svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/8/8c/WNBA_2013_%28Alt%29.svg/revision/latest?cb=20171215200334",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/8/8c/WNBA_2013_%28Alt%29.svg/revision/latest/scale-to-width-down/66?cb=20171215200334",
+          "palette": [
+            "#D11343",
+            "#0241B0",
+            "#E5BCCF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#D11343",
+              "rgb": [
+                209,
+                19,
+                67
+              ],
+              "pixelShare": 52
+            },
+            {
+              "hex": "#0241B0",
+              "rgb": [
+                2,
+                65,
+                176
+              ],
+              "pixelShare": 39.1
+            },
+            {
+              "hex": "#E5BCCF",
+              "rgb": [
+                229,
+                188,
+                207
+              ],
+              "pixelShare": 8.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2019-present[]",
+          "startYear": 2019,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2019
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA 2019",
+          "imageName": "WNBA 2019.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/2/22/WNBA_2019.svg/revision/latest?cb=20190409091829",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/2/22/WNBA_2019.svg/revision/latest/scale-to-width-down/300?cb=20190409091829",
+          "palette": [
+            "#FF5000"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FF5000",
+              "rgb": [
+                255,
+                80,
+                0
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2019-present[]",
+          "startYear": 2019,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2019
+          ],
+          "logoType": "alternate",
+          "caption": "Alternate primary",
+          "imageName": "WNBA 2019 Primary2.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/5/5a/WNBA_2019_Primary2.svg/revision/latest?cb=20200527191427",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/5/5a/WNBA_2019_Primary2.svg/revision/latest/scale-to-width-down/60?cb=20200527191427",
+          "palette": [
+            "#FF5010"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FF5010",
+              "rgb": [
+                255,
+                80,
+                16
+              ],
+              "pixelShare": 90.7
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2019-present[]",
+          "startYear": 2019,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2019
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA family logo",
+          "imageName": "WNBA 2019 Family.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/1/13/WNBA_2019_Family.svg/revision/latest?cb=20200527191452",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/1/13/WNBA_2019_Family.svg/revision/latest/scale-to-width-down/66?cb=20200527191452",
+          "palette": [
+            "#FF5011",
+            "#FF9272",
+            "#FFD8CC"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FF5011",
+              "rgb": [
+                255,
+                80,
+                17
+              ],
+              "pixelShare": 91.1
+            },
+            {
+              "hex": "#FF9272",
+              "rgb": [
+                255,
+                146,
+                114
+              ],
+              "pixelShare": 4.7
+            },
+            {
+              "hex": "#FFD8CC",
+              "rgb": [
+                255,
+                216,
+                204
+              ],
+              "pixelShare": 4.2
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2019-present[]",
+          "startYear": 2019,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2021
+          ],
+          "logoType": "anniversary",
+          "caption": "25th Anniversary (2021)",
+          "imageName": "WNBA S25 Primary Icon-cfc81c7e4e6e4fbeb9e87f526d84af7e.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b3/WNBA_S25_Primary_Icon-cfc81c7e4e6e4fbeb9e87f526d84af7e.png/revision/latest?cb=20260423175644",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b3/WNBA_S25_Primary_Icon-cfc81c7e4e6e4fbeb9e87f526d84af7e.png/revision/latest/scale-to-width-down/150?cb=20260423175644",
+          "palette": [
+            "#000000",
+            "#FF5000",
+            "#A83800"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#000000",
+              "rgb": [
+                0,
+                0,
+                0
+              ],
+              "pixelShare": 56.6
+            },
+            {
+              "hex": "#FF5000",
+              "rgb": [
+                255,
+                80,
+                0
+              ],
+              "pixelShare": 43.4
+            },
+            {
+              "hex": "#A83800",
+              "rgb": [
+                168,
+                56,
+                0
+              ],
+              "pixelShare": 0
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2019-present[]",
+          "startYear": 2019,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2026
+          ],
+          "logoType": "anniversary",
+          "caption": "30th Anniversary (2026)",
+          "imageName": "WNBA30 ALL ORANGE.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/c/c9/WNBA30_ALL_ORANGE.svg/revision/latest?cb=20260423175155",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/c/c9/WNBA30_ALL_ORANGE.svg/revision/latest/scale-to-width-down/150?cb=20260423175155",
+          "palette": [
+            "#FF5000"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FF5000",
+              "rgb": [
+                255,
+                80,
+                0
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Dallas Wings",
+      "linkText": "Dallas Wings",
+      "pageUrl": "https://logos.fandom.com/wiki/Dallas_Wings",
+      "isRootPage": false,
+      "logoCount": 4,
+      "logos": [
+        {
+          "eraLabel": "1997-2002[]",
+          "startYear": 1997,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [
+            1998
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Detroit Shock 1998",
+          "imageName": "Detroit Shock 1998.gif",
+          "fileExtension": "gif",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a8/Detroit_Shock_1998.gif/revision/latest?cb=20110413203408",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a8/Detroit_Shock_1998.gif/revision/latest/scale-to-width-down/250?cb=20110413203408",
+          "palette": [
+            "#0E0C06",
+            "#D7AB4E",
+            "#198089"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0E0C06",
+              "rgb": [
+                14,
+                12,
+                6
+              ],
+              "pixelShare": 41.3
+            },
+            {
+              "hex": "#D7AB4E",
+              "rgb": [
+                215,
+                171,
+                78
+              ],
+              "pixelShare": 39.5
+            },
+            {
+              "hex": "#198089",
+              "rgb": [
+                25,
+                128,
+                137
+              ],
+              "pixelShare": 17.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2003-2009[]",
+          "startYear": 2003,
+          "endYear": 2009,
+          "present": false,
+          "specificYears": [
+            2003
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Detroit Shock 2003",
+          "imageName": "Detroit Shock 2003.gif",
+          "fileExtension": "gif",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/7a/Detroit_Shock_2003.gif/revision/latest?cb=20110413203338",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/7a/Detroit_Shock_2003.gif/revision/latest/scale-to-width-down/250?cb=20110413203338",
+          "palette": [
+            "#044484",
+            "#EF1B56",
+            "#CEC7D0"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#044484",
+              "rgb": [
+                4,
+                68,
+                132
+              ],
+              "pixelShare": 53.4
+            },
+            {
+              "hex": "#EF1B56",
+              "rgb": [
+                239,
+                27,
+                86
+              ],
+              "pixelShare": 24.3
+            },
+            {
+              "hex": "#CEC7D0",
+              "rgb": [
+                206,
+                199,
+                208
+              ],
+              "pixelShare": 20
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2010-2015[]",
+          "startYear": 2010,
+          "endYear": 2015,
+          "present": false,
+          "specificYears": [
+            2010
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Tulsa Shock 2010",
+          "imageName": "Tulsa Shock 2010.jpg",
+          "fileExtension": "jpg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/2/27/Tulsa_Shock_2010.jpg/revision/latest?cb=20110413203252",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/2/27/Tulsa_Shock_2010.jpg/revision/latest/scale-to-width-down/250?cb=20110413203252",
+          "palette": [
+            "#0B0304",
+            "#F5D297",
+            "#B2202F"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0B0304",
+              "rgb": [
+                11,
+                3,
+                4
+              ],
+              "pixelShare": 37.1
+            },
+            {
+              "hex": "#F5D297",
+              "rgb": [
+                245,
+                210,
+                151
+              ],
+              "pixelShare": 23.7
+            },
+            {
+              "hex": "#B2202F",
+              "rgb": [
+                178,
+                32,
+                47
+              ],
+              "pixelShare": 18.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2016-present[]",
+          "startYear": 2016,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2016
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Dallas Wings (2016)",
+          "imageName": "Dallas Wings (2016).png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b5/Dallas_Wings_%282016%29.png/revision/latest?cb=20240219034646",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b5/Dallas_Wings_%282016%29.png/revision/latest/scale-to-width-down/300?cb=20240219034646",
+          "palette": [
+            "#122341",
+            "#C1D02A",
+            "#01ADDD"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#122341",
+              "rgb": [
+                18,
+                35,
+                65
+              ],
+              "pixelShare": 65.4
+            },
+            {
+              "hex": "#C1D02A",
+              "rgb": [
+                193,
+                208,
+                42
+              ],
+              "pixelShare": 17.9
+            },
+            {
+              "hex": "#01ADDD",
+              "rgb": [
+                1,
+                173,
+                221
+              ],
+              "pixelShare": 16.7
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Golden State Valkyries",
+      "linkText": "Golden State Valkyries",
+      "pageUrl": "https://logos.fandom.com/wiki/Golden_State_Valkyries",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "2024-present[]",
+          "startYear": 2024,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Golden State Valkyries logo",
+          "imageName": "Golden State Valkyries logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/79/Golden_State_Valkyries_logo.png/revision/latest?cb=20241205213934",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/79/Golden_State_Valkyries_logo.png/revision/latest/scale-to-width-down/250?cb=20241205213934",
+          "palette": [
+            "#BA97D2",
+            "#030204",
+            "#5B4B65"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#BA97D2",
+              "rgb": [
+                186,
+                151,
+                210
+              ],
+              "pixelShare": 63.7
+            },
+            {
+              "hex": "#030204",
+              "rgb": [
+                3,
+                2,
+                4
+              ],
+              "pixelShare": 32.1
+            },
+            {
+              "hex": "#5B4B65",
+              "rgb": [
+                91,
+                75,
+                101
+              ],
+              "pixelShare": 4.2
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2024-present[]",
+          "startYear": 2024,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Las Vegas Aces",
+      "linkText": "Las Vegas Aces",
+      "pageUrl": "https://logos.fandom.com/wiki/Las_Vegas_Aces",
+      "isRootPage": false,
+      "logoCount": 5,
+      "logos": [
+        {
+          "eraLabel": "1997-2002[]",
+          "startYear": 1997,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Utah Starzz",
+          "imageName": "Utah Starzz.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f8/Utah_Starzz.png/revision/latest?cb=20110803053216",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f8/Utah_Starzz.png/revision/latest?cb=20110803053216",
+          "palette": [
+            "#1F0F42",
+            "#4C5F69",
+            "#D3CECE"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#1F0F42",
+              "rgb": [
+                31,
+                15,
+                66
+              ],
+              "pixelShare": 39
+            },
+            {
+              "hex": "#4C5F69",
+              "rgb": [
+                76,
+                95,
+                105
+              ],
+              "pixelShare": 22.9
+            },
+            {
+              "hex": "#D3CECE",
+              "rgb": [
+                211,
+                206,
+                206
+              ],
+              "pixelShare": 8.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2003-2013[]",
+          "startYear": 2003,
+          "endYear": 2013,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "San Antonio Silver Stars",
+          "imageName": "San Antonio Silver Stars.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/6/64/San_Antonio_Silver_Stars.png/revision/latest?cb=20110803053249",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/6/64/San_Antonio_Silver_Stars.png/revision/latest?cb=20110803053249",
+          "palette": [
+            "#0A0B0B",
+            "#C5C8C9",
+            "#6A6B6C"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0A0B0B",
+              "rgb": [
+                10,
+                11,
+                11
+              ],
+              "pixelShare": 38.4
+            },
+            {
+              "hex": "#C5C8C9",
+              "rgb": [
+                197,
+                200,
+                201
+              ],
+              "pixelShare": 35.3
+            },
+            {
+              "hex": "#6A6B6C",
+              "rgb": [
+                106,
+                107,
+                108
+              ],
+              "pixelShare": 26.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2014-2017[]",
+          "startYear": 2014,
+          "endYear": 2017,
+          "present": false,
+          "specificYears": [
+            2014
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "San Antonio Stars logo (introduced 2014)",
+          "imageName": "San Antonio Stars logo (introduced 2014).png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0f/San_Antonio_Stars_logo_%28introduced_2014%29.png/revision/latest?cb=20140128203656",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0f/San_Antonio_Stars_logo_%28introduced_2014%29.png/revision/latest/scale-to-width-down/250?cb=20140128203656",
+          "palette": [
+            "#0B2428",
+            "#CDD6DA",
+            "#6D7B83"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0B2428",
+              "rgb": [
+                11,
+                36,
+                40
+              ],
+              "pixelShare": 52.9
+            },
+            {
+              "hex": "#CDD6DA",
+              "rgb": [
+                205,
+                214,
+                218
+              ],
+              "pixelShare": 32.6
+            },
+            {
+              "hex": "#6D7B83",
+              "rgb": [
+                109,
+                123,
+                131
+              ],
+              "pixelShare": 14.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2018-2023[]",
+          "startYear": 2018,
+          "endYear": 2023,
+          "present": false,
+          "specificYears": [
+            2018
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Las Vegas Aces Logo 2018",
+          "imageName": "Las Vegas Aces Logo 2018.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/5/56/Las_Vegas_Aces_Logo_2018.svg/revision/latest?cb=20250904144739",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/5/56/Las_Vegas_Aces_Logo_2018.svg/revision/latest?cb=20250904144739",
+          "palette": [
+            "#060512",
+            "#B89B7C",
+            "#963236"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#060512",
+              "rgb": [
+                6,
+                5,
+                18
+              ],
+              "pixelShare": 64.1
+            },
+            {
+              "hex": "#B89B7C",
+              "rgb": [
+                184,
+                155,
+                124
+              ],
+              "pixelShare": 19.4
+            },
+            {
+              "hex": "#963236",
+              "rgb": [
+                150,
+                50,
+                54
+              ],
+              "pixelShare": 16.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2024-present[]",
+          "startYear": 2024,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2024
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Las Vegas Aces Logo 2024",
+          "imageName": "Las Vegas Aces Logo 2024.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/8/8a/Las_Vegas_Aces_Logo_2024.svg/revision/latest?cb=20250904144757",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/8/8a/Las_Vegas_Aces_Logo_2024.svg/revision/latest/scale-to-width-down/200?cb=20250904144757",
+          "palette": [
+            "#020202",
+            "#A3A8AA",
+            "#4E4E4F"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#020202",
+              "rgb": [
+                2,
+                2,
+                2
+              ],
+              "pixelShare": 62.6
+            },
+            {
+              "hex": "#A3A8AA",
+              "rgb": [
+                163,
+                168,
+                170
+              ],
+              "pixelShare": 26.3
+            },
+            {
+              "hex": "#4E4E4F",
+              "rgb": [
+                78,
+                78,
+                79
+              ],
+              "pixelShare": 11.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Los Angeles Sparks",
+      "linkText": "Los Angeles Sparks",
+      "pageUrl": "https://logos.fandom.com/wiki/Los_Angeles_Sparks",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "1997-2020[]",
+          "startYear": 1997,
+          "endYear": 2020,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Los Angeles Sparks",
+          "imageName": "Los Angeles Sparks.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/ac/Los_Angeles_Sparks.svg/revision/latest?cb=20140709000459",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/ac/Los_Angeles_Sparks.svg/revision/latest/scale-to-width-down/250?cb=20140709000459",
+          "palette": [
+            "#42275D",
+            "#2AA792",
+            "#E3A524"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#42275D",
+              "rgb": [
+                66,
+                39,
+                93
+              ],
+              "pixelShare": 52.5
+            },
+            {
+              "hex": "#2AA792",
+              "rgb": [
+                42,
+                167,
+                146
+              ],
+              "pixelShare": 21.4
+            },
+            {
+              "hex": "#E3A524",
+              "rgb": [
+                227,
+                165,
+                36
+              ],
+              "pixelShare": 18.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2021-present[]",
+          "startYear": 2021,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2021
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Los angeles sparks logo primary 2021 sportslogosnet-6192",
+          "imageName": "Los angeles sparks logo primary 2021 sportslogosnet-6192.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/1/16/Los_angeles_sparks_logo_primary_2021_sportslogosnet-6192.png/revision/latest?cb=20210413024049",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/1/16/Los_angeles_sparks_logo_primary_2021_sportslogosnet-6192.png/revision/latest/scale-to-width-down/200?cb=20210413024049",
+          "palette": [
+            "#512180",
+            "#FDBE21",
+            "#C9BAD7"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#512180",
+              "rgb": [
+                81,
+                33,
+                128
+              ],
+              "pixelShare": 71.8
+            },
+            {
+              "hex": "#FDBE21",
+              "rgb": [
+                253,
+                190,
+                33
+              ],
+              "pixelShare": 26.7
+            },
+            {
+              "hex": "#C9BAD7",
+              "rgb": [
+                201,
+                186,
+                215
+              ],
+              "pixelShare": 1.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Minnesota Lynx",
+      "linkText": "Minnesota Lynx",
+      "pageUrl": "https://logos.fandom.com/wiki/Minnesota_Lynx",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "1999-2017[]",
+          "startYear": 1999,
+          "endYear": 2017,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Minnesota Lynx",
+          "imageName": "Minnesota Lynx.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/d/d5/Minnesota_Lynx.svg/revision/latest?cb=20140709000718",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/d/d5/Minnesota_Lynx.svg/revision/latest/scale-to-width-down/250?cb=20140709000718",
+          "palette": [
+            "#336A72",
+            "#B5C5CB",
+            "#CE503C"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#336A72",
+              "rgb": [
+                51,
+                106,
+                114
+              ],
+              "pixelShare": 54.2
+            },
+            {
+              "hex": "#B5C5CB",
+              "rgb": [
+                181,
+                197,
+                203
+              ],
+              "pixelShare": 44.8
+            },
+            {
+              "hex": "#CE503C",
+              "rgb": [
+                206,
+                80,
+                60
+              ],
+              "pixelShare": 0.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2018-present[]",
+          "startYear": 2018,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Minnesota Lynx logo",
+          "imageName": "Minnesota Lynx logo.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/75/Minnesota_Lynx_logo.svg/revision/latest?cb=20210607064223",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/75/Minnesota_Lynx_logo.svg/revision/latest?cb=20210607064223",
+          "palette": [
+            "#123142",
+            "#9DA1A1",
+            "#305F82"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#123142",
+              "rgb": [
+                18,
+                49,
+                66
+              ],
+              "pixelShare": 53.3
+            },
+            {
+              "hex": "#9DA1A1",
+              "rgb": [
+                157,
+                161,
+                161
+              ],
+              "pixelShare": 26.9
+            },
+            {
+              "hex": "#305F82",
+              "rgb": [
+                48,
+                95,
+                130
+              ],
+              "pixelShare": 19.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Phoenix Mercury",
+      "linkText": "Phoenix Mercury",
+      "pageUrl": "https://logos.fandom.com/wiki/Phoenix_Mercury",
+      "isRootPage": false,
+      "logoCount": 3,
+      "logos": [
+        {
+          "eraLabel": "1997-2010[]",
+          "startYear": 1997,
+          "endYear": 2010,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Phoenix Mercury",
+          "imageName": "Phoenix Mercury.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/1/11/Phoenix_Mercury.png/revision/latest?cb=20110803054228",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/1/11/Phoenix_Mercury.png/revision/latest?cb=20110803054228",
+          "palette": [
+            "#2E3545",
+            "#E1E028",
+            "#E52125"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#2E3545",
+              "rgb": [
+                46,
+                53,
+                69
+              ],
+              "pixelShare": 44.3
+            },
+            {
+              "hex": "#E1E028",
+              "rgb": [
+                225,
+                224,
+                40
+              ],
+              "pixelShare": 16.5
+            },
+            {
+              "hex": "#E52125",
+              "rgb": [
+                229,
+                33,
+                37
+              ],
+              "pixelShare": 16.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2011-2025[]",
+          "startYear": 2011,
+          "endYear": 2025,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "H01jek5lfu6gp1s9ovvy3qxre",
+          "imageName": "H01jek5lfu6gp1s9ovvy3qxre.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/9/91/H01jek5lfu6gp1s9ovvy3qxre.png/revision/latest?cb=20170929224806",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/9/91/H01jek5lfu6gp1s9ovvy3qxre.png/revision/latest/scale-to-width-down/250?cb=20170929224806",
+          "palette": [
+            "#2F2129",
+            "#CD6013",
+            "#AFADAE"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#2F2129",
+              "rgb": [
+                47,
+                33,
+                41
+              ],
+              "pixelShare": 60.9
+            },
+            {
+              "hex": "#CD6013",
+              "rgb": [
+                205,
+                96,
+                19
+              ],
+              "pixelShare": 24.2
+            },
+            {
+              "hex": "#AFADAE",
+              "rgb": [
+                175,
+                173,
+                174
+              ],
+              "pixelShare": 13.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2026-present[]",
+          "startYear": 2026,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Mercury2026present",
+          "imageName": "Mercury2026present.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/2/20/Mercury2026present.png/revision/latest?cb=20260728185649",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/2/20/Mercury2026present.png/revision/latest/scale-to-width-down/250?cb=20260728185649",
+          "palette": [
+            "#402170",
+            "#FE5010",
+            "#BBB0C5"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#402170",
+              "rgb": [
+                64,
+                33,
+                112
+              ],
+              "pixelShare": 71.5
+            },
+            {
+              "hex": "#FE5010",
+              "rgb": [
+                254,
+                80,
+                16
+              ],
+              "pixelShare": 28.2
+            },
+            {
+              "hex": "#BBB0C5",
+              "rgb": [
+                187,
+                176,
+                197
+              ],
+              "pixelShare": 0.4
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Portland Fire (2026)",
+      "linkText": "Portland Fire",
+      "pageUrl": "https://logos.fandom.com/wiki/Portland_Fire_(2026)",
+      "isRootPage": false,
+      "logoCount": 3,
+      "logos": [
+        {
+          "eraLabel": "2026-present[]",
+          "startYear": 2026,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Portland Fire 26",
+          "imageName": "Portland Fire 26.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/e/e6/Portland_Fire_26.png/revision/latest?cb=20250716021522",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/e/e6/Portland_Fire_26.png/revision/latest/scale-to-width-down/250?cb=20250716021522",
+          "palette": [
+            "#443131",
+            "#D4DEE4",
+            "#B92B33"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#443131",
+              "rgb": [
+                68,
+                49,
+                49
+              ],
+              "pixelShare": 38.5
+            },
+            {
+              "hex": "#D4DEE4",
+              "rgb": [
+                212,
+                222,
+                228
+              ],
+              "pixelShare": 33.4
+            },
+            {
+              "hex": "#B92B33",
+              "rgb": [
+                185,
+                43,
+                51
+              ],
+              "pixelShare": 26.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2026-present[]",
+          "startYear": 2026,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2026-present[]",
+          "startYear": 2026,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "wordmark",
+          "caption": "Wordmark with icon",
+          "imageName": "Portland FIre Heaader Logo.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/6/61/Portland_FIre_Heaader_Logo.svg/revision/latest?cb=20250716021527",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/6/61/Portland_FIre_Heaader_Logo.svg/revision/latest/scale-to-width-down/150?cb=20250716021527",
+          "palette": [
+            "#000000",
+            "#D0A0A5",
+            "#C03D41"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#000000",
+              "rgb": [
+                0,
+                0,
+                0
+              ],
+              "pixelShare": 73.6
+            },
+            {
+              "hex": "#D0A0A5",
+              "rgb": [
+                208,
+                160,
+                165
+              ],
+              "pixelShare": 13.8
+            },
+            {
+              "hex": "#C03D41",
+              "rgb": [
+                192,
+                61,
+                65
+              ],
+              "pixelShare": 12.7
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Seattle Storm",
+      "linkText": "Seattle Storm",
+      "pageUrl": "https://logos.fandom.com/wiki/Seattle_Storm",
+      "isRootPage": false,
+      "logoCount": 4,
+      "logos": [
+        {
+          "eraLabel": "2000−2016[]",
+          "startYear": 2000,
+          "endYear": 2016,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Seattle Storm",
+          "imageName": "Seattle Storm.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/77/Seattle_Storm.svg/revision/latest?cb=20140709001558",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/77/Seattle_Storm.svg/revision/latest/scale-to-width-down/250?cb=20140709001558",
+          "palette": [
+            "#1B4424",
+            "#A9492C",
+            "#D7CEB1"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#1B4424",
+              "rgb": [
+                27,
+                68,
+                36
+              ],
+              "pixelShare": 54.1
+            },
+            {
+              "hex": "#A9492C",
+              "rgb": [
+                169,
+                73,
+                44
+              ],
+              "pixelShare": 28.1
+            },
+            {
+              "hex": "#D7CEB1",
+              "rgb": [
+                215,
+                206,
+                177
+              ],
+              "pixelShare": 14.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2016−2021[]",
+          "startYear": 2016,
+          "endYear": 2021,
+          "present": false,
+          "specificYears": [
+            2016
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "SeattleStorm 2016",
+          "imageName": "SeattleStorm 2016.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b3/SeattleStorm_2016.svg/revision/latest?cb=20210303051017",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b3/SeattleStorm_2016.svg/revision/latest/scale-to-width-down/250?cb=20210303051017",
+          "palette": [
+            "#495944",
+            "#BEC4B5",
+            "#DED04C"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#495944",
+              "rgb": [
+                73,
+                89,
+                68
+              ],
+              "pixelShare": 63.6
+            },
+            {
+              "hex": "#BEC4B5",
+              "rgb": [
+                190,
+                196,
+                181
+              ],
+              "pixelShare": 21.4
+            },
+            {
+              "hex": "#DED04C",
+              "rgb": [
+                222,
+                208,
+                76
+              ],
+              "pixelShare": 15
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2021−present[]",
+          "startYear": 2021,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2021
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "SeattleStorm 2021",
+          "imageName": "SeattleStorm 2021.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/74/SeattleStorm_2021.png/revision/latest?cb=20210303050559",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/74/SeattleStorm_2021.png/revision/latest/scale-to-width-down/200?cb=20210303050559",
+          "palette": [
+            "#31512F",
+            "#FAE02D",
+            "#80B82A"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#31512F",
+              "rgb": [
+                49,
+                81,
+                47
+              ],
+              "pixelShare": 75.1
+            },
+            {
+              "hex": "#FAE02D",
+              "rgb": [
+                250,
+                224,
+                45
+              ],
+              "pixelShare": 15.1
+            },
+            {
+              "hex": "#80B82A",
+              "rgb": [
+                128,
+                184,
+                42
+              ],
+              "pixelShare": 9.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2021−present[]",
+          "startYear": 2021,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Atlanta Dream",
+      "linkText": "Atlanta Dream",
+      "pageUrl": "https://logos.fandom.com/wiki/Atlanta_Dream",
+      "isRootPage": false,
+      "logoCount": 6,
+      "logos": [
+        {
+          "eraLabel": "2008-2019[]",
+          "startYear": 2008,
+          "endYear": 2019,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Atlanta Dream",
+          "imageName": "Atlanta Dream.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b1/Atlanta_Dream.png/revision/latest?cb=20110803052332",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b1/Atlanta_Dream.png/revision/latest?cb=20110803052332",
+          "palette": [
+            "#5791CB",
+            "#DDCADB",
+            "#CE3951"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#5791CB",
+              "rgb": [
+                87,
+                145,
+                203
+              ],
+              "pixelShare": 39.2
+            },
+            {
+              "hex": "#DDCADB",
+              "rgb": [
+                221,
+                202,
+                219
+              ],
+              "pixelShare": 28.4
+            },
+            {
+              "hex": "#CE3951",
+              "rgb": [
+                206,
+                57,
+                81
+              ],
+              "pixelShare": 21.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2020-2021[]",
+          "startYear": 2020,
+          "endYear": 2021,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Atlanta Dream Global",
+          "imageName": "Atlanta Dream Global.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f9/Atlanta_Dream_Global.svg/revision/latest?cb=20200527190333",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f9/Atlanta_Dream_Global.svg/revision/latest/scale-to-width-down/200?cb=20200527190333",
+          "palette": [
+            "#354133",
+            "#99A3AB",
+            "#C01330"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#354133",
+              "rgb": [
+                53,
+                65,
+                51
+              ],
+              "pixelShare": 62.9
+            },
+            {
+              "hex": "#99A3AB",
+              "rgb": [
+                153,
+                163,
+                171
+              ],
+              "pixelShare": 23
+            },
+            {
+              "hex": "#C01330",
+              "rgb": [
+                192,
+                19,
+                48
+              ],
+              "pixelShare": 14
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2020-2021[]",
+          "startYear": 2020,
+          "endYear": 2021,
+          "present": false,
+          "specificYears": [
+            2020
+          ],
+          "logoType": "icon",
+          "caption": "Primary Icon (2020-pres)",
+          "imageName": "Atlanta Dream PrimaryIcon.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/c/cd/Atlanta_Dream_PrimaryIcon.svg/revision/latest?cb=20200527190520",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/c/cd/Atlanta_Dream_PrimaryIcon.svg/revision/latest/scale-to-width-down/95?cb=20200527190520",
+          "palette": [
+            "#354133",
+            "#98A3AD",
+            "#C21330"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#354133",
+              "rgb": [
+                53,
+                65,
+                51
+              ],
+              "pixelShare": 62.1
+            },
+            {
+              "hex": "#98A3AD",
+              "rgb": [
+                152,
+                163,
+                173
+              ],
+              "pixelShare": 21.9
+            },
+            {
+              "hex": "#C21330",
+              "rgb": [
+                194,
+                19,
+                48
+              ],
+              "pixelShare": 16.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2020-2021[]",
+          "startYear": 2020,
+          "endYear": 2021,
+          "present": false,
+          "specificYears": [
+            2020
+          ],
+          "logoType": "secondary",
+          "caption": "Secondary Logo A (2020-pres)",
+          "imageName": "Atlanta Dream Secondary A.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/fd/Atlanta_Dream_Secondary_A.svg/revision/latest?cb=20200527190644",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/fd/Atlanta_Dream_Secondary_A.svg/revision/latest/scale-to-width-down/95?cb=20200527190644",
+          "palette": [
+            "#354032",
+            "#A4A5A5",
+            "#BF1430"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#354032",
+              "rgb": [
+                53,
+                64,
+                50
+              ],
+              "pixelShare": 57.5
+            },
+            {
+              "hex": "#A4A5A5",
+              "rgb": [
+                164,
+                165,
+                165
+              ],
+              "pixelShare": 23.9
+            },
+            {
+              "hex": "#BF1430",
+              "rgb": [
+                191,
+                20,
+                48
+              ],
+              "pixelShare": 18.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2020-2021[]",
+          "startYear": 2020,
+          "endYear": 2021,
+          "present": false,
+          "specificYears": [
+            2020
+          ],
+          "logoType": "secondary",
+          "caption": "Secondary Logo B (2020-pres)",
+          "imageName": "Atlanta Dream Secondary B.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/c/c6/Atlanta_Dream_Secondary_B.svg/revision/latest?cb=20200527190716",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/c/c6/Atlanta_Dream_Secondary_B.svg/revision/latest/scale-to-width-down/100?cb=20200527190716",
+          "palette": [
+            "#CF1232",
+            "#A49497",
+            "#4090E0"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#CF1232",
+              "rgb": [
+                207,
+                18,
+                50
+              ],
+              "pixelShare": 70.1
+            },
+            {
+              "hex": "#A49497",
+              "rgb": [
+                164,
+                148,
+                151
+              ],
+              "pixelShare": 26.9
+            },
+            {
+              "hex": "#4090E0",
+              "rgb": [
+                64,
+                144,
+                224
+              ],
+              "pixelShare": 3.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2022-present[]",
+          "startYear": 2022,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2022
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Atlanta Dream 2022 Primary Logo",
+          "imageName": "Atlanta Dream 2022 Primary Logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/d/d6/Atlanta_Dream_2022_Primary_Logo.png/revision/latest?cb=20260215145053",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/d/d6/Atlanta_Dream_2022_Primary_Logo.png/revision/latest/scale-to-width-down/200?cb=20260215145053",
+          "palette": [
+            "#323F31",
+            "#97A3AC",
+            "#DB1540"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#323F31",
+              "rgb": [
+                50,
+                63,
+                49
+              ],
+              "pixelShare": 63.8
+            },
+            {
+              "hex": "#97A3AC",
+              "rgb": [
+                151,
+                163,
+                172
+              ],
+              "pixelShare": 20
+            },
+            {
+              "hex": "#DB1540",
+              "rgb": [
+                219,
+                21,
+                64
+              ],
+              "pixelShare": 16.2
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Chicago Sky",
+      "linkText": "Chicago Sky",
+      "pageUrl": "https://logos.fandom.com/wiki/Chicago_Sky",
+      "isRootPage": false,
+      "logoCount": 4,
+      "logos": [
+        {
+          "eraLabel": "2006-2018[]",
+          "startYear": 2006,
+          "endYear": 2018,
+          "present": false,
+          "specificYears": [
+            2006
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Chicago Sky 2006 Primary",
+          "imageName": "Chicago Sky 2006 Primary.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b9/Chicago_Sky_2006_Primary.svg/revision/latest?cb=20200527192504",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b9/Chicago_Sky_2006_Primary.svg/revision/latest/scale-to-width-down/200?cb=20200527192504",
+          "palette": [
+            "#4090E0",
+            "#FED001",
+            "#ADC8CD"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#4090E0",
+              "rgb": [
+                64,
+                144,
+                224
+              ],
+              "pixelShare": 68.4
+            },
+            {
+              "hex": "#FED001",
+              "rgb": [
+                254,
+                208,
+                1
+              ],
+              "pixelShare": 30.3
+            },
+            {
+              "hex": "#ADC8CD",
+              "rgb": [
+                173,
+                200,
+                205
+              ],
+              "pixelShare": 1.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2006-2018[]",
+          "startYear": 2006,
+          "endYear": 2018,
+          "present": false,
+          "specificYears": [
+            2006
+          ],
+          "logoType": "secondary",
+          "caption": "Secondary Logo",
+          "imageName": "Chicago Sky 2006 Secondary.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f2/Chicago_Sky_2006_Secondary.svg/revision/latest?cb=20200527192751",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f2/Chicago_Sky_2006_Secondary.svg/revision/latest/scale-to-width-down/95?cb=20200527192751",
+          "palette": [
+            "#4090E0",
+            "#FED001",
+            "#99BCC6"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#4090E0",
+              "rgb": [
+                64,
+                144,
+                224
+              ],
+              "pixelShare": 55.9
+            },
+            {
+              "hex": "#FED001",
+              "rgb": [
+                254,
+                208,
+                1
+              ],
+              "pixelShare": 42.5
+            },
+            {
+              "hex": "#99BCC6",
+              "rgb": [
+                153,
+                188,
+                198
+              ],
+              "pixelShare": 1.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2019-present[]",
+          "startYear": 2019,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2019
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Chicago Sky 2019 Global",
+          "imageName": "Chicago Sky 2019 Global.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/9/9c/Chicago_Sky_2019_Global.svg/revision/latest?cb=20200527192610",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/9/9c/Chicago_Sky_2019_Global.svg/revision/latest/scale-to-width-down/200?cb=20200527192610",
+          "palette": [
+            "#5697D2",
+            "#F5CB09",
+            "#082525"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#5697D2",
+              "rgb": [
+                86,
+                151,
+                210
+              ],
+              "pixelShare": 49.8
+            },
+            {
+              "hex": "#F5CB09",
+              "rgb": [
+                245,
+                203,
+                9
+              ],
+              "pixelShare": 25.3
+            },
+            {
+              "hex": "#082525",
+              "rgb": [
+                8,
+                37,
+                37
+              ],
+              "pixelShare": 24.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2019-present[]",
+          "startYear": 2019,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2019
+          ],
+          "logoType": "icon",
+          "caption": "Primary Icon",
+          "imageName": "Chicago Sky 2019 PrimaryIcon.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/2/21/Chicago_Sky_2019_PrimaryIcon.svg/revision/latest?cb=20200527192650",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/2/21/Chicago_Sky_2019_PrimaryIcon.svg/revision/latest/scale-to-width-down/100?cb=20200527192650",
+          "palette": [
+            "#4894DC",
+            "#F7CC05",
+            "#052320"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#4894DC",
+              "rgb": [
+                72,
+                148,
+                220
+              ],
+              "pixelShare": 43.3
+            },
+            {
+              "hex": "#F7CC05",
+              "rgb": [
+                247,
+                204,
+                5
+              ],
+              "pixelShare": 34
+            },
+            {
+              "hex": "#052320",
+              "rgb": [
+                5,
+                35,
+                32
+              ],
+              "pixelShare": 22.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Connecticut Sun",
+      "linkText": "Connecticut Sun",
+      "pageUrl": "https://logos.fandom.com/wiki/Connecticut_Sun",
+      "isRootPage": false,
+      "logoCount": 6,
+      "logos": [
+        {
+          "eraLabel": "1999-2002[]",
+          "startYear": 1999,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Orlando Miracle",
+          "imageName": "Orlando Miracle.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/8/8a/Orlando_Miracle.png/revision/latest?cb=20110803055526",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/8/8a/Orlando_Miracle.png/revision/latest?cb=20110803055526",
+          "palette": [
+            "#0F242E",
+            "#BECFD3",
+            "#31779D"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0F242E",
+              "rgb": [
+                15,
+                36,
+                46
+              ],
+              "pixelShare": 42.9
+            },
+            {
+              "hex": "#BECFD3",
+              "rgb": [
+                190,
+                207,
+                211
+              ],
+              "pixelShare": 25
+            },
+            {
+              "hex": "#31779D",
+              "rgb": [
+                49,
+                119,
+                157
+              ],
+              "pixelShare": 24
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2003-2021[]",
+          "startYear": 2003,
+          "endYear": 2021,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Connecticut Sun Primary",
+          "imageName": "Connecticut Sun Primary.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/0/09/Connecticut_Sun_Primary.svg/revision/latest?cb=20200527185318",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/0/09/Connecticut_Sun_Primary.svg/revision/latest/scale-to-width-down/250?cb=20200527185318",
+          "palette": [
+            "#C2340E",
+            "#F8C350",
+            "#0E2B48"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#C2340E",
+              "rgb": [
+                194,
+                52,
+                14
+              ],
+              "pixelShare": 60.5
+            },
+            {
+              "hex": "#F8C350",
+              "rgb": [
+                248,
+                195,
+                80
+              ],
+              "pixelShare": 25.8
+            },
+            {
+              "hex": "#0E2B48",
+              "rgb": [
+                14,
+                43,
+                72
+              ],
+              "pixelShare": 9.2
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2003-2021[]",
+          "startYear": 2003,
+          "endYear": 2021,
+          "present": false,
+          "specificYears": [
+            2003,
+            2014
+          ],
+          "logoType": "alternate",
+          "caption": "Alternate variant (2003–2014).",
+          "imageName": "Connecticut Sun alternate.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ee/Connecticut_Sun_alternate.png/revision/latest?cb=20110803055717",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ee/Connecticut_Sun_alternate.png/revision/latest/scale-to-width-down/147?cb=20110803055717",
+          "palette": [
+            "#EF743F",
+            "#FEB43B",
+            "#173359"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#EF743F",
+              "rgb": [
+                239,
+                116,
+                63
+              ],
+              "pixelShare": 65.6
+            },
+            {
+              "hex": "#FEB43B",
+              "rgb": [
+                254,
+                180,
+                59
+              ],
+              "pixelShare": 29
+            },
+            {
+              "hex": "#173359",
+              "rgb": [
+                23,
+                51,
+                89
+              ],
+              "pixelShare": 5.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2003-2021[]",
+          "startYear": 2003,
+          "endYear": 2021,
+          "present": false,
+          "specificYears": [
+            2015,
+            2021
+          ],
+          "logoType": "secondary",
+          "caption": "Secondary variant (2015–2021).",
+          "imageName": "Connecticut Sun Secondary.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/3/3a/Connecticut_Sun_Secondary.svg/revision/latest?cb=20200527185452",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/3/3a/Connecticut_Sun_Secondary.svg/revision/latest/scale-to-width-down/136?cb=20200527185452",
+          "palette": [
+            "#CF3B19",
+            "#F5CF99",
+            "#142D4C"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#CF3B19",
+              "rgb": [
+                207,
+                59,
+                25
+              ],
+              "pixelShare": 50.9
+            },
+            {
+              "hex": "#F5CF99",
+              "rgb": [
+                245,
+                207,
+                153
+              ],
+              "pixelShare": 32.9
+            },
+            {
+              "hex": "#142D4C",
+              "rgb": [
+                20,
+                45,
+                76
+              ],
+              "pixelShare": 14.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2021-present[]",
+          "startYear": 2021,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2021
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Connecticut-Sun-2021",
+          "imageName": "Connecticut-Sun-2021.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a5/Connecticut-Sun-2021.png/revision/latest?cb=20220317014210",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a5/Connecticut-Sun-2021.png/revision/latest/scale-to-width-down/250?cb=20220317014210",
+          "palette": [
+            "#F05122",
+            "#132443",
+            "#EECDC5"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#F05122",
+              "rgb": [
+                240,
+                81,
+                34
+              ],
+              "pixelShare": 63.1
+            },
+            {
+              "hex": "#132443",
+              "rgb": [
+                19,
+                36,
+                67
+              ],
+              "pixelShare": 30.7
+            },
+            {
+              "hex": "#EECDC5",
+              "rgb": [
+                238,
+                205,
+                197
+              ],
+              "pixelShare": 6.2
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2027 (tentative)[]",
+          "startYear": 2027,
+          "endYear": 2027,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Indiana Fever",
+      "linkText": "Indiana Fever",
+      "pageUrl": "https://logos.fandom.com/wiki/Indiana_Fever",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "2000-present[]",
+          "startYear": 2000,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Indiana Fever",
+          "imageName": "Indiana Fever.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0e/Indiana_Fever.png/revision/latest?cb=20110803021835",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/0/0e/Indiana_Fever.png/revision/latest?cb=20110803021835",
+          "palette": [
+            "#082661",
+            "#D93B43",
+            "#E8C580"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#082661",
+              "rgb": [
+                8,
+                38,
+                97
+              ],
+              "pixelShare": 52.4
+            },
+            {
+              "hex": "#D93B43",
+              "rgb": [
+                217,
+                59,
+                67
+              ],
+              "pixelShare": 27.5
+            },
+            {
+              "hex": "#E8C580",
+              "rgb": [
+                232,
+                197,
+                128
+              ],
+              "pixelShare": 17.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "New York Liberty",
+      "linkText": "New York Liberty",
+      "pageUrl": "https://logos.fandom.com/wiki/New_York_Liberty",
+      "isRootPage": false,
+      "logoCount": 6,
+      "logos": [
+        {
+          "eraLabel": "1997-2019[]",
+          "startYear": 1997,
+          "endYear": 2019,
+          "present": false,
+          "specificYears": [
+            1997
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "NY-Liberty-1997-Primary",
+          "imageName": "NY-Liberty-1997-Primary.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/0/06/NY-Liberty-1997-Primary.svg/revision/latest?cb=20200724142615",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/0/06/NY-Liberty-1997-Primary.svg/revision/latest/scale-to-width-down/250?cb=20200724142615",
+          "palette": [
+            "#0C304C",
+            "#F15E23",
+            "#78BEAB"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0C304C",
+              "rgb": [
+                12,
+                48,
+                76
+              ],
+              "pixelShare": 50.9
+            },
+            {
+              "hex": "#F15E23",
+              "rgb": [
+                241,
+                94,
+                35
+              ],
+              "pixelShare": 27.7
+            },
+            {
+              "hex": "#78BEAB",
+              "rgb": [
+                120,
+                190,
+                171
+              ],
+              "pixelShare": 16.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1997-2019[]",
+          "startYear": 1997,
+          "endYear": 2019,
+          "present": false,
+          "specificYears": [
+            1997
+          ],
+          "logoType": "secondary",
+          "caption": "Secondary logo",
+          "imageName": "NY-Liberty-1997-Secondary.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/fd/NY-Liberty-1997-Secondary.png/revision/latest?cb=20200724142647",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/fd/NY-Liberty-1997-Secondary.png/revision/latest/scale-to-width-down/142?cb=20200724142647",
+          "palette": [
+            "#012B4C",
+            "#FD6021",
+            "#72CFB0"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#012B4C",
+              "rgb": [
+                1,
+                43,
+                76
+              ],
+              "pixelShare": 58.7
+            },
+            {
+              "hex": "#FD6021",
+              "rgb": [
+                253,
+                96,
+                33
+              ],
+              "pixelShare": 33.6
+            },
+            {
+              "hex": "#72CFB0",
+              "rgb": [
+                114,
+                207,
+                176
+              ],
+              "pixelShare": 7.4
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1997-2019[]",
+          "startYear": 1997,
+          "endYear": 2019,
+          "present": false,
+          "specificYears": [
+            1997
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logotype",
+          "imageName": "NY-Liberty-1997-Logotype.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a0/NY-Liberty-1997-Logotype.svg/revision/latest?cb=20200724142820",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a0/NY-Liberty-1997-Logotype.svg/revision/latest/scale-to-width-down/150?cb=20200724142820",
+          "palette": [
+            "#0141A0",
+            "#FF6020",
+            "#3989B0"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0141A0",
+              "rgb": [
+                1,
+                65,
+                160
+              ],
+              "pixelShare": 56.4
+            },
+            {
+              "hex": "#FF6020",
+              "rgb": [
+                255,
+                96,
+                32
+              ],
+              "pixelShare": 37.8
+            },
+            {
+              "hex": "#3989B0",
+              "rgb": [
+                57,
+                137,
+                176
+              ],
+              "pixelShare": 5.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2020-present[]",
+          "startYear": 2020,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2020
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "NY-Liberty-2020-Global",
+          "imageName": "NY-Liberty-2020-Global.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/6/68/NY-Liberty-2020-Global.svg/revision/latest?cb=20200724141928",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/6/68/NY-Liberty-2020-Global.svg/revision/latest/scale-to-width-down/250?cb=20200724141928",
+          "palette": [
+            "#022122",
+            "#73C9AE",
+            "#3C6664"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#022122",
+              "rgb": [
+                2,
+                33,
+                34
+              ],
+              "pixelShare": 57.4
+            },
+            {
+              "hex": "#73C9AE",
+              "rgb": [
+                115,
+                201,
+                174
+              ],
+              "pixelShare": 32.8
+            },
+            {
+              "hex": "#3C6664",
+              "rgb": [
+                60,
+                102,
+                100
+              ],
+              "pixelShare": 9.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2020-present[]",
+          "startYear": 2020,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2020
+          ],
+          "logoType": "icon",
+          "caption": "Primary icon",
+          "imageName": "NY-Liberty-2020-PrimaryIcon.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/6/64/NY-Liberty-2020-PrimaryIcon.svg/revision/latest?cb=20200724142100",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/6/64/NY-Liberty-2020-PrimaryIcon.svg/revision/latest/scale-to-width-down/123?cb=20200724142100",
+          "palette": [
+            "#022122",
+            "#74CBAF",
+            "#3C6865"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#022122",
+              "rgb": [
+                2,
+                33,
+                34
+              ],
+              "pixelShare": 51.7
+            },
+            {
+              "hex": "#74CBAF",
+              "rgb": [
+                116,
+                203,
+                175
+              ],
+              "pixelShare": 39
+            },
+            {
+              "hex": "#3C6865",
+              "rgb": [
+                60,
+                104,
+                101
+              ],
+              "pixelShare": 9.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2020-present[]",
+          "startYear": 2020,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2020
+          ],
+          "logoType": "secondary",
+          "caption": "Secondary logo",
+          "imageName": "NY-Liberty-2020-Secondary.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/7d/NY-Liberty-2020-Secondary.svg/revision/latest?cb=20200724142126",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/7d/NY-Liberty-2020-Secondary.svg/revision/latest/scale-to-width-down/71?cb=20200724142126",
+          "palette": [
+            "#032223",
+            "#72CDB0",
+            "#407870"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#032223",
+              "rgb": [
+                3,
+                34,
+                35
+              ],
+              "pixelShare": 46.3
+            },
+            {
+              "hex": "#72CDB0",
+              "rgb": [
+                114,
+                205,
+                176
+              ],
+              "pixelShare": 42
+            },
+            {
+              "hex": "#407870",
+              "rgb": [
+                64,
+                120,
+                112
+              ],
+              "pixelShare": 11.7
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Toronto Tempo",
+      "linkText": "Toronto Tempo",
+      "pageUrl": "https://logos.fandom.com/wiki/Toronto_Tempo",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "2026-present[]",
+          "startYear": 2026,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2026
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Toronto Tempo Logo (2026)",
+          "imageName": "Toronto Tempo Logo (2026).png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/1/16/Toronto_Tempo_Logo_%282026%29.png/revision/latest?cb=20260403160848",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/1/16/Toronto_Tempo_Logo_%282026%29.png/revision/latest/scale-to-width-down/250?cb=20260403160848",
+          "palette": [
+            "#402030"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#402030",
+              "rgb": [
+                64,
+                32,
+                48
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Washington Mystics",
+      "linkText": "Washington Mystics",
+      "pageUrl": "https://logos.fandom.com/wiki/Washington_Mystics",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "1998-2010[]",
+          "startYear": 1998,
+          "endYear": 2010,
+          "present": false,
+          "specificYears": [
+            1998
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Washington Mystics 1998",
+          "imageName": "Washington Mystics 1998.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/9/94/Washington_Mystics_1998.png/revision/latest?cb=20110803054714",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/9/94/Washington_Mystics_1998.png/revision/latest?cb=20110803054714",
+          "palette": [
+            "#09486D",
+            "#998472",
+            "#DCE2E0"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#09486D",
+              "rgb": [
+                9,
+                72,
+                109
+              ],
+              "pixelShare": 64.6
+            },
+            {
+              "hex": "#998472",
+              "rgb": [
+                153,
+                132,
+                114
+              ],
+              "pixelShare": 19.7
+            },
+            {
+              "hex": "#DCE2E0",
+              "rgb": [
+                220,
+                226,
+                224
+              ],
+              "pixelShare": 5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2011-present[]",
+          "startYear": 2011,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2011
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Washington Mystics 2011",
+          "imageName": "Washington Mystics 2011.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b5/Washington_Mystics_2011.png/revision/latest?cb=20110803054803",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b5/Washington_Mystics_2011.png/revision/latest?cb=20110803054803",
+          "palette": [
+            "#0D315E",
+            "#BEB0BD",
+            "#CA3850"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0D315E",
+              "rgb": [
+                13,
+                49,
+                94
+              ],
+              "pixelShare": 50.4
+            },
+            {
+              "hex": "#BEB0BD",
+              "rgb": [
+                190,
+                176,
+                189
+              ],
+              "pixelShare": 25.4
+            },
+            {
+              "hex": "#CA3850",
+              "rgb": [
+                202,
+                56,
+                80
+              ],
+              "pixelShare": 12.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Cleveland WNBA Team",
+      "linkText": "Cleveland",
+      "pageUrl": "https://logos.fandom.com/wiki/Cleveland_WNBA_Team",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "2028 (tentative)[]",
+          "startYear": 2028,
+          "endYear": 2028,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA Cleveland logo",
+          "imageName": "WNBA Cleveland logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b5/WNBA_Cleveland_logo.png/revision/latest?cb=20250716041856",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b5/WNBA_Cleveland_logo.png/revision/latest/scale-to-width-down/250?cb=20250716041856",
+          "palette": [
+            "#010111",
+            "#E04C20",
+            "#A9A9A9"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#010111",
+              "rgb": [
+                1,
+                1,
+                17
+              ],
+              "pixelShare": 95.5
+            },
+            {
+              "hex": "#E04C20",
+              "rgb": [
+                224,
+                76,
+                32
+              ],
+              "pixelShare": 2.7
+            },
+            {
+              "hex": "#A9A9A9",
+              "rgb": [
+                169,
+                169,
+                169
+              ],
+              "pixelShare": 1.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2028 (tentative)[]",
+          "startYear": 2028,
+          "endYear": 2028,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Detroit WNBA Team",
+      "linkText": "Detroit",
+      "pageUrl": "https://logos.fandom.com/wiki/Detroit_WNBA_Team",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "2029 (tentative)[]",
+          "startYear": 2029,
+          "endYear": 2029,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA Detroit logo",
+          "imageName": "WNBA Detroit logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/7/7f/WNBA_Detroit_logo.png/revision/latest?cb=20250716042312",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/7/7f/WNBA_Detroit_logo.png/revision/latest/scale-to-width-down/250?cb=20250716042312",
+          "palette": [
+            "#000000",
+            "#F05020",
+            "#262626"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#000000",
+              "rgb": [
+                0,
+                0,
+                0
+              ],
+              "pixelShare": 78.6
+            },
+            {
+              "hex": "#F05020",
+              "rgb": [
+                240,
+                80,
+                32
+              ],
+              "pixelShare": 18.8
+            },
+            {
+              "hex": "#262626",
+              "rgb": [
+                38,
+                38,
+                38
+              ],
+              "pixelShare": 2.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2029 (tentative)[]",
+          "startYear": 2029,
+          "endYear": 2029,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Philadelphia WNBA Team",
+      "linkText": "Philadelphia",
+      "pageUrl": "https://logos.fandom.com/wiki/Philadelphia_WNBA_Team",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "2030 (tentative)[]",
+          "startYear": 2030,
+          "endYear": 2030,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA Philadelphia Logo",
+          "imageName": "WNBA Philadelphia Logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/8/87/WNBA_Philadelphia_Logo.png/revision/latest?cb=20250716042649",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/8/87/WNBA_Philadelphia_Logo.png/revision/latest/scale-to-width-down/250?cb=20250716042649",
+          "palette": [
+            "#010000",
+            "#9E513C",
+            "#C4C4C4"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#010000",
+              "rgb": [
+                1,
+                0,
+                0
+              ],
+              "pixelShare": 90.3
+            },
+            {
+              "hex": "#9E513C",
+              "rgb": [
+                158,
+                81,
+                60
+              ],
+              "pixelShare": 5.7
+            },
+            {
+              "hex": "#C4C4C4",
+              "rgb": [
+                196,
+                196,
+                196
+              ],
+              "pixelShare": 4
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2030 (tentative)[]",
+          "startYear": 2030,
+          "endYear": 2030,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Charlotte Sting",
+      "linkText": "Charlotte Sting",
+      "pageUrl": "https://logos.fandom.com/wiki/Charlotte_Sting",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "1997-2003[]",
+          "startYear": 1997,
+          "endYear": 2003,
+          "present": false,
+          "specificYears": [
+            1997,
+            2003
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Charlotte Sting logo (1997-2003)",
+          "imageName": "Charlotte Sting logo (1997-2003).png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/8/81/Charlotte_Sting_logo_%281997-2003%29.png/revision/latest?cb=20130905183910",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/8/81/Charlotte_Sting_logo_%281997-2003%29.png/revision/latest?cb=20130905183910",
+          "palette": [
+            "#27163C",
+            "#578D8D",
+            "#D5DADF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#27163C",
+              "rgb": [
+                39,
+                22,
+                60
+              ],
+              "pixelShare": 50.7
+            },
+            {
+              "hex": "#578D8D",
+              "rgb": [
+                87,
+                141,
+                141
+              ],
+              "pixelShare": 26.1
+            },
+            {
+              "hex": "#D5DADF",
+              "rgb": [
+                213,
+                218,
+                223
+              ],
+              "pixelShare": 12.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2004-2006[]",
+          "startYear": 2004,
+          "endYear": 2006,
+          "present": false,
+          "specificYears": [
+            2004,
+            2006
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Charlotte Sting logo (2004-2006)",
+          "imageName": "Charlotte Sting logo (2004-2006).png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/af/Charlotte_Sting_logo_%282004-2006%29.png/revision/latest?cb=20130905184012",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/af/Charlotte_Sting_logo_%282004-2006%29.png/revision/latest?cb=20130905184012",
+          "palette": [
+            "#17506C",
+            "#E15C37",
+            "#B9C6CD"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#17506C",
+              "rgb": [
+                23,
+                80,
+                108
+              ],
+              "pixelShare": 59.3
+            },
+            {
+              "hex": "#E15C37",
+              "rgb": [
+                225,
+                92,
+                55
+              ],
+              "pixelShare": 14.6
+            },
+            {
+              "hex": "#B9C6CD",
+              "rgb": [
+                185,
+                198,
+                205
+              ],
+              "pixelShare": 14.5
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Cleveland Rockers",
+      "linkText": "Cleveland Rockers",
+      "pageUrl": "https://logos.fandom.com/wiki/Cleveland_Rockers",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "1997-2003[]",
+          "startYear": 1997,
+          "endYear": 2003,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Cleveland Rockers logo",
+          "imageName": "Cleveland Rockers logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/6/69/Cleveland_Rockers_logo.png/revision/latest?cb=20130905183135",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/6/69/Cleveland_Rockers_logo.png/revision/latest?cb=20130905183135",
+          "palette": [
+            "#BEC8C9",
+            "#0C292E",
+            "#4D7E92"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#BEC8C9",
+              "rgb": [
+                190,
+                200,
+                201
+              ],
+              "pixelShare": 41.6
+            },
+            {
+              "hex": "#0C292E",
+              "rgb": [
+                12,
+                41,
+                46
+              ],
+              "pixelShare": 37.2
+            },
+            {
+              "hex": "#4D7E92",
+              "rgb": [
+                77,
+                126,
+                146
+              ],
+              "pixelShare": 17.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Houston Comets",
+      "linkText": "Houston Comets",
+      "pageUrl": "https://logos.fandom.com/wiki/Houston_Comets",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "1997-2008[]",
+          "startYear": 1997,
+          "endYear": 2008,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Houston Comets logo",
+          "imageName": "Houston Comets logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/1/11/Houston_Comets_logo.png/revision/latest?cb=20130905185303",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/1/11/Houston_Comets_logo.png/revision/latest?cb=20130905185303",
+          "palette": [
+            "#1A265C",
+            "#B71B4A",
+            "#D9AEC5"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#1A265C",
+              "rgb": [
+                26,
+                38,
+                92
+              ],
+              "pixelShare": 41.9
+            },
+            {
+              "hex": "#B71B4A",
+              "rgb": [
+                183,
+                27,
+                74
+              ],
+              "pixelShare": 31
+            },
+            {
+              "hex": "#D9AEC5",
+              "rgb": [
+                217,
+                174,
+                197
+              ],
+              "pixelShare": 10.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Miami Sol",
+      "linkText": "Miami Sol",
+      "pageUrl": "https://logos.fandom.com/wiki/Miami_Sol",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "2000-2002[]",
+          "startYear": 2000,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Miami Sol",
+          "imageName": "Miami Sol.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/2/2f/Miami_Sol.svg/revision/latest?cb=20140708235924",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/2/2f/Miami_Sol.svg/revision/latest/scale-to-width-down/250?cb=20140708235924",
+          "palette": [
+            "#BB2B2D",
+            "#EB9B21",
+            "#1C1305"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#BB2B2D",
+              "rgb": [
+                187,
+                43,
+                45
+              ],
+              "pixelShare": 48.1
+            },
+            {
+              "hex": "#EB9B21",
+              "rgb": [
+                235,
+                155,
+                33
+              ],
+              "pixelShare": 38.2
+            },
+            {
+              "hex": "#1C1305",
+              "rgb": [
+                28,
+                19,
+                5
+              ],
+              "pixelShare": 13.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Portland Fire",
+      "linkText": "Portland Fire",
+      "pageUrl": "https://logos.fandom.com/wiki/Portland_Fire",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "2000-2002[]",
+          "startYear": 2000,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Portland Fire logo",
+          "imageName": "Portland Fire logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/1/1c/Portland_Fire_logo.png/revision/latest?cb=20130905185932",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/1/1c/Portland_Fire_logo.png/revision/latest/scale-to-width-down/250?cb=20130905185932",
+          "palette": [
+            "#070404",
+            "#C33231",
+            "#D5AA4C"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#070404",
+              "rgb": [
+                7,
+                4,
+                4
+              ],
+              "pixelShare": 54.5
+            },
+            {
+              "hex": "#C33231",
+              "rgb": [
+                195,
+                50,
+                49
+              ],
+              "pixelShare": 29.1
+            },
+            {
+              "hex": "#D5AA4C",
+              "rgb": [
+                213,
+                170,
+                76
+              ],
+              "pixelShare": 15.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2000-2002[]",
+          "startYear": 2000,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [],
+          "logoType": "alternate",
+          "caption": "Alternate logo",
+          "imageName": "Portland Fire logo (alternate).png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/1/15/Portland_Fire_logo_%28alternate%29.png/revision/latest?cb=20130905190144",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/1/15/Portland_Fire_logo_%28alternate%29.png/revision/latest/scale-to-width-down/150?cb=20130905190144",
+          "palette": [
+            "#CA3030",
+            "#0E0806",
+            "#CFA146"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#CA3030",
+              "rgb": [
+                202,
+                48,
+                48
+              ],
+              "pixelShare": 55.3
+            },
+            {
+              "hex": "#0E0806",
+              "rgb": [
+                14,
+                8,
+                6
+              ],
+              "pixelShare": 31.3
+            },
+            {
+              "hex": "#CFA146",
+              "rgb": [
+                207,
+                161,
+                70
+              ],
+              "pixelShare": 13
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "Sacramento Monarchs",
+      "linkText": "Sacramento Monarchs",
+      "pageUrl": "https://logos.fandom.com/wiki/Sacramento_Monarchs",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "1997-2010[]",
+          "startYear": 1997,
+          "endYear": 2010,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "SacramentoMonarchs",
+          "imageName": "SacramentoMonarchs.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f1/SacramentoMonarchs.png/revision/latest?cb=20160819203004",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f1/SacramentoMonarchs.png/revision/latest?cb=20160819203004",
+          "palette": [
+            "#434A85",
+            "#091C2D",
+            "#B0BAD2"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#434A85",
+              "rgb": [
+                67,
+                74,
+                133
+              ],
+              "pixelShare": 39.8
+            },
+            {
+              "hex": "#091C2D",
+              "rgb": [
+                9,
+                28,
+                45
+              ],
+              "pixelShare": 38.2
+            },
+            {
+              "hex": "#B0BAD2",
+              "rgb": [
+                176,
+                186,
+                210
+              ],
+              "pixelShare": 18.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "WNBA on CBS",
+      "linkText": "WNBA on CBS",
+      "pageUrl": "https://logos.fandom.com/wiki/WNBA_on_CBS",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "2021-present[]",
+          "startYear": 2021,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA CBS Sports",
+          "imageName": "WNBA CBS Sports.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/be/WNBA_CBS_Sports.svg/revision/latest?cb=20250804081054",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/be/WNBA_CBS_Sports.svg/revision/latest/scale-to-width-down/300?cb=20250804081054",
+          "palette": [
+            "#000000",
+            "#001030"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#000000",
+              "rgb": [
+                0,
+                0,
+                0
+              ],
+              "pixelShare": 83.6
+            },
+            {
+              "hex": "#001030",
+              "rgb": [
+                0,
+                16,
+                48
+              ],
+              "pixelShare": 16.4
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "WNBA on ESPN",
+      "linkText": "WNBA on ESPN",
+      "pageUrl": "https://logos.fandom.com/wiki/WNBA_on_ESPN",
+      "isRootPage": false,
+      "logoCount": 8,
+      "logos": [
+        {
+          "eraLabel": "1997-2000[]",
+          "startYear": 1997,
+          "endYear": 2000,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "F53dcc8bc5a3a241fe4a3e14f7ee15a4",
+          "imageName": "F53dcc8bc5a3a241fe4a3e14f7ee15a4.jpg",
+          "fileExtension": "jpg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/4/47/F53dcc8bc5a3a241fe4a3e14f7ee15a4.jpg/revision/latest?cb=20171005143547",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/4/47/F53dcc8bc5a3a241fe4a3e14f7ee15a4.jpg/revision/latest/scale-to-width-down/200?cb=20171005143547",
+          "palette": [
+            "#323139",
+            "#605854",
+            "#A39F9D"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#323139",
+              "rgb": [
+                50,
+                49,
+                57
+              ],
+              "pixelShare": 50.7
+            },
+            {
+              "hex": "#605854",
+              "rgb": [
+                96,
+                88,
+                84
+              ],
+              "pixelShare": 23.5
+            },
+            {
+              "hex": "#A39F9D",
+              "rgb": [
+                163,
+                159,
+                157
+              ],
+              "pixelShare": 6.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2000-2003[]",
+          "startYear": 2000,
+          "endYear": 2003,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "78f333084ea0f7aaab9ba33e194ad6b6",
+          "imageName": "78f333084ea0f7aaab9ba33e194ad6b6.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/9/94/78f333084ea0f7aaab9ba33e194ad6b6.png/revision/latest?cb=20171005143517",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/9/94/78f333084ea0f7aaab9ba33e194ad6b6.png/revision/latest/scale-to-width-down/250?cb=20171005143517",
+          "palette": [
+            "#6D5BC9",
+            "#040307",
+            "#D5CDFE"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#6D5BC9",
+              "rgb": [
+                109,
+                91,
+                201
+              ],
+              "pixelShare": 35.6
+            },
+            {
+              "hex": "#040307",
+              "rgb": [
+                4,
+                3,
+                7
+              ],
+              "pixelShare": 26.3
+            },
+            {
+              "hex": "#D5CDFE",
+              "rgb": [
+                213,
+                205,
+                254
+              ],
+              "pixelShare": 18.1
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2003-2010[]",
+          "startYear": 2003,
+          "endYear": 2010,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Ff408d1484ecde4e50fe5dc415cb0ad6",
+          "imageName": "Ff408d1484ecde4e50fe5dc415cb0ad6.jpg",
+          "fileExtension": "jpg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a7/Ff408d1484ecde4e50fe5dc415cb0ad6.jpg/revision/latest?cb=20171005143403",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a7/Ff408d1484ecde4e50fe5dc415cb0ad6.jpg/revision/latest?cb=20171005143403",
+          "palette": [
+            "#831824",
+            "#EBD3E4",
+            "#0C2EE6"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#831824",
+              "rgb": [
+                131,
+                24,
+                36
+              ],
+              "pixelShare": 40.8
+            },
+            {
+              "hex": "#EBD3E4",
+              "rgb": [
+                235,
+                211,
+                228
+              ],
+              "pixelShare": 27.8
+            },
+            {
+              "hex": "#0C2EE6",
+              "rgb": [
+                12,
+                46,
+                230
+              ],
+              "pixelShare": 23.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2010-2013[]",
+          "startYear": 2010,
+          "endYear": 2013,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Wnba on espn logo",
+          "imageName": "Wnba on espn logo.jpg",
+          "fileExtension": "jpg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/e/e6/Wnba_on_espn_logo.jpg/revision/latest?cb=20130716015917",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/e/e6/Wnba_on_espn_logo.jpg/revision/latest/scale-to-width-down/200?cb=20130716015917",
+          "palette": [
+            "#1332DE",
+            "#CBD3E6",
+            "#EB0B26"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#1332DE",
+              "rgb": [
+                19,
+                50,
+                222
+              ],
+              "pixelShare": 53
+            },
+            {
+              "hex": "#CBD3E6",
+              "rgb": [
+                203,
+                211,
+                230
+              ],
+              "pixelShare": 33.9
+            },
+            {
+              "hex": "#EB0B26",
+              "rgb": [
+                235,
+                11,
+                38
+              ],
+              "pixelShare": 2.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2013-2016[]",
+          "startYear": 2013,
+          "endYear": 2016,
+          "present": false,
+          "specificYears": [
+            2013
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA on ESPN 2013 logo",
+          "imageName": "WNBA on ESPN 2013 logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/4/48/WNBA_on_ESPN_2013_logo.png/revision/latest?cb=20130716020207",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/4/48/WNBA_on_ESPN_2013_logo.png/revision/latest/scale-to-width-down/200?cb=20130716020207",
+          "palette": [
+            "#464846",
+            "#F0E0C0",
+            "#EF8021"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#464846",
+              "rgb": [
+                70,
+                72,
+                70
+              ],
+              "pixelShare": 51.9
+            },
+            {
+              "hex": "#F0E0C0",
+              "rgb": [
+                240,
+                224,
+                192
+              ],
+              "pixelShare": 26.5
+            },
+            {
+              "hex": "#EF8021",
+              "rgb": [
+                239,
+                128,
+                33
+              ],
+              "pixelShare": 21.6
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2016-2019[]",
+          "startYear": 2016,
+          "endYear": 2019,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "A4cfa1ed0f55be6925ccbc84f8867262",
+          "imageName": "A4cfa1ed0f55be6925ccbc84f8867262.jpg",
+          "fileExtension": "jpg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/3/34/A4cfa1ed0f55be6925ccbc84f8867262.jpg/revision/latest?cb=20171005140027",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/3/34/A4cfa1ed0f55be6925ccbc84f8867262.jpg/revision/latest?cb=20171005140027",
+          "palette": [
+            "#F1855B",
+            "#35394B",
+            "#F3D5C5"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#F1855B",
+              "rgb": [
+                241,
+                133,
+                91
+              ],
+              "pixelShare": 35.7
+            },
+            {
+              "hex": "#35394B",
+              "rgb": [
+                53,
+                57,
+                75
+              ],
+              "pixelShare": 27.4
+            },
+            {
+              "hex": "#F3D5C5",
+              "rgb": [
+                243,
+                213,
+                197
+              ],
+              "pixelShare": 12.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2019-2022[]",
+          "startYear": 2019,
+          "endYear": 2022,
+          "present": false,
+          "specificYears": [
+            2019
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA on ESPN (2019)",
+          "imageName": "WNBA on ESPN (2019).svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/e/e4/WNBA_on_ESPN_%282019%29.svg/revision/latest?cb=20250210122050",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/e/e4/WNBA_on_ESPN_%282019%29.svg/revision/latest/scale-to-width-down/200?cb=20250210122050",
+          "palette": [
+            "#FF5011",
+            "#FF9378",
+            "#FFD8CB"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FF5011",
+              "rgb": [
+                255,
+                80,
+                17
+              ],
+              "pixelShare": 92.2
+            },
+            {
+              "hex": "#FF9378",
+              "rgb": [
+                255,
+                147,
+                120
+              ],
+              "pixelShare": 5
+            },
+            {
+              "hex": "#FFD8CB",
+              "rgb": [
+                255,
+                216,
+                203
+              ],
+              "pixelShare": 2.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2023-present[]",
+          "startYear": 2023,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2023
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA on ESPN (2023)",
+          "imageName": "WNBA on ESPN (2023).svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/e/e4/WNBA_on_ESPN_%282023%29.svg/revision/latest?cb=20250210122059",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/e/e4/WNBA_on_ESPN_%282023%29.svg/revision/latest/scale-to-width-down/200?cb=20250210122059",
+          "palette": [
+            "#FF5010"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FF5010",
+              "rgb": [
+                255,
+                80,
+                16
+              ],
+              "pixelShare": 87.9
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "WNBA on Ion",
+      "linkText": "WNBA on Ion",
+      "pageUrl": "https://logos.fandom.com/wiki/WNBA_on_Ion",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "2023-present[]",
+          "startYear": 2023,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA-on-ION-image",
+          "imageName": "WNBA-on-ION-image.webp",
+          "fileExtension": "webp",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f3/WNBA-on-ION-image.webp/revision/latest?cb=20250520004216",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/f/f3/WNBA-on-ION-image.webp/revision/latest/scale-to-width-down/300?cb=20250520004216",
+          "palette": [
+            "#D73020",
+            "#F0EEEE"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#D73020",
+              "rgb": [
+                215,
+                48,
+                32
+              ],
+              "pixelShare": 61.9
+            },
+            {
+              "hex": "#F0EEEE",
+              "rgb": [
+                240,
+                238,
+                238
+              ],
+              "pixelShare": 5.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "WNBA on NBC",
+      "linkText": "WNBA on NBC",
+      "pageUrl": "https://logos.fandom.com/wiki/WNBA_on_NBC",
+      "isRootPage": false,
+      "logoCount": 3,
+      "logos": [
+        {
+          "eraLabel": "1997-2002[]",
+          "startYear": 1997,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Cf972fafc2d248b86f8f56222771b24c",
+          "imageName": "Cf972fafc2d248b86f8f56222771b24c.jpg",
+          "fileExtension": "jpg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ea/Cf972fafc2d248b86f8f56222771b24c.jpg/revision/latest?cb=20171005141329",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ea/Cf972fafc2d248b86f8f56222771b24c.jpg/revision/latest/scale-to-width-down/250?cb=20171005141329",
+          "palette": [
+            "#30302E",
+            "#D1D0D4",
+            "#6F5D65"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#30302E",
+              "rgb": [
+                48,
+                48,
+                46
+              ],
+              "pixelShare": 37.9
+            },
+            {
+              "hex": "#D1D0D4",
+              "rgb": [
+                209,
+                208,
+                212
+              ],
+              "pixelShare": 19.9
+            },
+            {
+              "hex": "#6F5D65",
+              "rgb": [
+                111,
+                93,
+                101
+              ],
+              "pixelShare": 19.2
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "1997-2002[]",
+          "startYear": 1997,
+          "endYear": 2002,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2026-present[]",
+          "startYear": 2026,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Dt7dzsVJ 400x400",
+          "imageName": "Dt7dzsVJ 400x400.jpg",
+          "fileExtension": "jpg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ed/Dt7dzsVJ_400x400.jpg/revision/latest?cb=20260419060150",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ed/Dt7dzsVJ_400x400.jpg/revision/latest/scale-to-width-down/250?cb=20260419060150",
+          "palette": [
+            "#0C0706",
+            "#F25209",
+            "#C8C8C8"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0C0706",
+              "rgb": [
+                12,
+                7,
+                6
+              ],
+              "pixelShare": 59.1
+            },
+            {
+              "hex": "#F25209",
+              "rgb": [
+                242,
+                82,
+                9
+              ],
+              "pixelShare": 26.8
+            },
+            {
+              "hex": "#C8C8C8",
+              "rgb": [
+                200,
+                200,
+                200
+              ],
+              "pixelShare": 10
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "WNBA on Prime Video",
+      "linkText": "WNBA on Prime Video",
+      "pageUrl": "https://logos.fandom.com/wiki/WNBA_on_Prime_Video",
+      "isRootPage": false,
+      "logoCount": 2,
+      "logos": [
+        {
+          "eraLabel": "2026-present[]",
+          "startYear": 2026,
+          "endYear": null,
+          "present": true,
+          "specificYears": [
+            2026
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "Screenshot 2026-04-23 124300",
+          "imageName": "Screenshot 2026-04-23 124300.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a1/Screenshot_2026-04-23_124300.png/revision/latest?cb=20260423174337",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/a/a1/Screenshot_2026-04-23_124300.png/revision/latest?cb=20260423174337",
+          "palette": [
+            "#0D5296",
+            "#E34502",
+            "#D8DAE1"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#0D5296",
+              "rgb": [
+                13,
+                82,
+                150
+              ],
+              "pixelShare": 48.4
+            },
+            {
+              "hex": "#E34502",
+              "rgb": [
+                227,
+                69,
+                2
+              ],
+              "pixelShare": 24.9
+            },
+            {
+              "hex": "#D8DAE1",
+              "rgb": [
+                216,
+                218,
+                225
+              ],
+              "pixelShare": 15.3
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        },
+        {
+          "eraLabel": "2026-present[]",
+          "startYear": 2026,
+          "endYear": null,
+          "present": true,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "Logopedia InfoWhite",
+          "imageName": "Logopedia InfoWhite.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/b/b6/Logopedia_InfoWhite.svg/revision/latest?cb=20230124025212",
+          "palette": [
+            "#FFFFFF"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FFFFFF",
+              "rgb": [
+                255,
+                255,
+                255
+              ],
+              "pixelShare": 100
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "WNBA on ABC",
+      "linkText": "WNBA on ABC",
+      "pageUrl": "https://logos.fandom.com/wiki/WNBA_on_ABC",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "2003[]",
+          "startYear": 2003,
+          "endYear": 2003,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBAonABC2003",
+          "imageName": "WNBAonABC2003.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/1/1e/WNBAonABC2003.png/revision/latest?cb=20210228205522",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/1/1e/WNBAonABC2003.png/revision/latest/scale-to-width-down/200?cb=20210228205522",
+          "palette": [
+            "#F1C6D2",
+            "#C34D28",
+            "#100546"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#F1C6D2",
+              "rgb": [
+                241,
+                198,
+                210
+              ],
+              "pixelShare": 17.8
+            },
+            {
+              "hex": "#C34D28",
+              "rgb": [
+                195,
+                77,
+                40
+              ],
+              "pixelShare": 16.9
+            },
+            {
+              "hex": "#100546",
+              "rgb": [
+                16,
+                5,
+                70
+              ],
+              "pixelShare": 16.8
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "WNBA on Lifetime",
+      "linkText": "WNBA on Lifetime",
+      "pageUrl": "https://logos.fandom.com/wiki/WNBA_on_Lifetime",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "1997-2000[]",
+          "startYear": 1997,
+          "endYear": 2000,
+          "present": false,
+          "specificYears": [],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA on Lifetime logo",
+          "imageName": "WNBA on Lifetime logo.png",
+          "fileExtension": "png",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ef/WNBA_on_Lifetime_logo.png/revision/latest?cb=20160501050118",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/e/ef/WNBA_on_Lifetime_logo.png/revision/latest/scale-to-width-down/200?cb=20160501050118",
+          "palette": [
+            "#FED01C",
+            "#508BBE",
+            "#EF1150"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#FED01C",
+              "rgb": [
+                254,
+                208,
+                28
+              ],
+              "pixelShare": 70.5
+            },
+            {
+              "hex": "#508BBE",
+              "rgb": [
+                80,
+                139,
+                190
+              ],
+              "pixelShare": 22.5
+            },
+            {
+              "hex": "#EF1150",
+              "rgb": [
+                239,
+                17,
+                80
+              ],
+              "pixelShare": 4.4
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    },
+    {
+      "title": "WNBA Season Pass",
+      "linkText": "WNBA Season Pass",
+      "pageUrl": "https://logos.fandom.com/wiki/WNBA_Season_Pass",
+      "isRootPage": false,
+      "logoCount": 1,
+      "logos": [
+        {
+          "eraLabel": "1998-2001[]",
+          "startYear": 1998,
+          "endYear": 2001,
+          "present": false,
+          "specificYears": [
+            1998
+          ],
+          "logoType": "primary-or-unspecified",
+          "caption": "WNBA Season Pass 1998",
+          "imageName": "WNBA Season Pass 1998.svg",
+          "fileExtension": "svg",
+          "imageUrl": "https://static.wikia.nocookie.net/logopedia/images/9/96/WNBA_Season_Pass_1998.svg/revision/latest?cb=20240816195603",
+          "thumbnailUrl": "https://static.wikia.nocookie.net/logopedia/images/9/96/WNBA_Season_Pass_1998.svg/revision/latest/scale-to-width-down/300?cb=20240816195603",
+          "palette": [
+            "#EA7C48",
+            "#0D73B0",
+            "#C6CBD6"
+          ],
+          "paletteDetails": [
+            {
+              "hex": "#EA7C48",
+              "rgb": [
+                234,
+                124,
+                72
+              ],
+              "pixelShare": 60.2
+            },
+            {
+              "hex": "#0D73B0",
+              "rgb": [
+                13,
+                115,
+                176
+              ],
+              "pixelShare": 20.8
+            },
+            {
+              "hex": "#C6CBD6",
+              "rgb": [
+                198,
+                203,
+                214
+              ],
+              "pixelShare": 17.7
+            }
+          ],
+          "paletteStatus": "ok",
+          "paletteError": null
+        }
+      ]
+    }
+  ],
+  "errors": []
+}

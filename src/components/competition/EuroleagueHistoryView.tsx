@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Trophy, Loader, ExternalLink } from 'lucide-react';
 import {
   fetchEuroleagueHistory,
@@ -42,17 +42,6 @@ export const EuroleagueHistoryView: React.FC = () => {
     return () => { cancelled = true; };
   }, []);
 
-  // Most-titled clubs: count champion appearances across all seasons
-  const titlesByClub = useMemo(() => {
-    if (!seasons) return [];
-    const m = new Map<string, number>();
-    seasons.forEach(s => {
-      const champ = cleanChampionName(s.Champions);
-      if (champ) m.set(champ, (m.get(champ) ?? 0) + 1);
-    });
-    return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8);
-  }, [seasons]);
-
   if (error) {
     return (
       <div className="p-8 text-rose-400 text-sm">
@@ -81,21 +70,6 @@ export const EuroleagueHistoryView: React.FC = () => {
         <p className="text-slate-500 text-xs mt-2">
           From {seasons[seasons.length - 1].Season ?? '1995–96'} to {seasons[0].Season ?? '2024–25'}.
         </p>
-      </div>
-
-      {/* Most-titled clubs */}
-      <div className="rounded-2xl border border-slate-800 bg-slate-950/70 overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-800 text-xs font-black uppercase tracking-widest text-slate-400">
-          Most-Titled Clubs
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-px bg-slate-800/40">
-          {titlesByClub.map(([club, n]) => (
-            <div key={club} className="bg-slate-950/80 p-4 flex items-baseline justify-between">
-              <span className="text-sm text-slate-300 truncate">{club}</span>
-              <span className="text-amber-300 font-black text-lg ml-3">{n}</span>
-            </div>
-          ))}
-        </div>
       </div>
 
       {/* Champions table */}

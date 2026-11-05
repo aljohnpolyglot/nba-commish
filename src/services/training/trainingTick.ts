@@ -26,7 +26,7 @@ import type { GameState, NBATeam, NBAPlayer } from '../../types';
 import type { TrainingParadigm, Allocations, DailyPlan } from '../../TeamTraining/types';
 import { systemDescriptions } from '../../utils/systemDescriptions';
 import { defensiveSystemDescriptions } from '../../utils/defensiveSystemDescriptions';
-import { getAICoachPlanForDay } from './aiCoachParadigm';
+import { buildAICoachGameDays, getAICoachPlanForDay } from './aiCoachParadigm';
 import { resolveEffectiveTrainingPlan } from './trainingPlanResolver';
 import type { Game } from '../../types';
 import { normalizeDate } from '../../utils/helpers';
@@ -34,6 +34,23 @@ import {
   getTeamCoachingGameplayEffects,
   getTeamMedicalGameplayEffects,
 } from '../staff/staffGameplayEffects';
+import { isLeaguePreseasonWindow, isLeagueTrainingCampWindow } from '../leagueCalendar';
+import { isSimulationPerfEnabled, recordSimulationPerf } from '../simulation/simulationPerfDebug';
+
+const trainingPerfNow = () =>
+  typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+
+type FamiliarityTickProfile = {
+  planLookupMs: number;
+  coachingEffectsMs: number;
+  deltaCalculationMs: number;
+  perSystemMs: number;
+  equalityMs: number;
+  coachingEffectCalls: number;
+  systemsScanned: number;
+};
 
 // Allocation reps → familiarity gain. Each daily session contributes a small
 // rep count proportional to the offense/defense allocation in the user's plan.
@@ -91,9 +108,19 @@ function defensiveAuraDelta(plan: PlanLike | null): number {
   return REP_BASE * defShare * factor;
 }
 
-function applyPositiveDefenseTrainingBoost(team: NBATeam, delta: number): number {
+function applyPositiveDefenseTrainingBoost(
+  team: NBATeam,
+  delta: number,
+  profile?: FamiliarityTickProfile,
+): number {
   if (delta <= 0) return delta;
-  return delta * getTeamCoachingGameplayEffects(team as any).defensiveTrainingMultiplier;
+  const started = profile ? trainingPerfNow() : 0;
+  const result = delta * getTeamCoachingGameplayEffects(team as any).defensiveTrainingMultiplier;
+  if (profile) {
+    profile.coachingEffectsMs += trainingPerfNow() - started;
+    profile.coachingEffectCalls += 1;
+  }
+  return result;
 }
 
 /**
@@ -112,8 +139,15 @@ export function tickTeamFamiliarity(
   /** Optional AI-coach plan override — used by AI teams when ctx is provided
    *  to applyDailyFamiliarityTick. Bypasses the team's calendar for this day. */
   planOverride?: PlanLike | null,
+  profile?: FamiliarityTickProfile,
 ): NBATeam {
+  let leafStart = profile ? trainingPerfNow() : 0;
   const plan = planOverride ?? pickPlanForDay(team, iso);
+  if (profile) {
+    profile.planLookupMs += trainingPerfNow() - leafStart;
+    leafStart = trainingPerfNow();
+  }
+  const coachingEffectsBefore = profile?.coachingEffectsMs ?? 0;
 
   let offDelta: number;
   let defDelta: number;
@@ -129,7 +163,7 @@ export function tickTeamFamiliarity(
     defDelta = defShare > 0 ? REP_BASE * defShare * factor : NO_REPS_DECAY;
   }
 
-  defDelta = applyPositiveDefenseTrainingBoost(team, defDelta);
+  defDelta = applyPositiveDefenseTrainingBoost(team, defDelta, profile);
 
   const current = team.systemFamiliarity ?? { offense: 0, defense: 0 };
   const currentAura = team.defensiveAura ?? 50;
@@ -137,7 +171,12 @@ export function tickTeamFamiliarity(
     offense: clamp(current.offense + offDelta),
     defense: clamp(current.defense + defDelta),
   };
-  const nextAura = clamp(currentAura + applyPositiveDefenseTrainingBoost(team, defensiveAuraDelta(plan)));
+  const nextAura = clamp(currentAura + applyPositiveDefenseTrainingBoost(team, defensiveAuraDelta(plan), profile));
+  if (profile) {
+    profile.deltaCalculationMs += trainingPerfNow() - leafStart
+      - (profile.coachingEffectsMs - coachingEffectsBefore);
+    leafStart = trainingPerfNow();
+  }
 
   // Per-system reps. Each drilled system gets the side's full delta; un-drilled
   // systems on the same side decay at NO_REPS_DECAY. Imports stay lazy via require
@@ -173,6 +212,7 @@ export function tickTeamFamiliarity(
 
   const offSystems = Object.keys(systemDescriptions);
   const defSystems = Object.keys(defensiveSystemDescriptions);
+  if (profile) profile.systemsScanned += offSystems.length + defSystems.length;
   const nextByOff = tickPerSystem(offDelta, offFocused, offSystems, current.byOffense);
   const nextByDef = tickPerSystem(defDelta, defFocused, defSystems, current.byDefense);
   // Roll-up: the flat scalar floors to max(byX) so the aura/star-bonus reflects
@@ -188,6 +228,10 @@ export function tickTeamFamiliarity(
     byOffense: nextByOff,
     byDefense: nextByDef,
   };
+  if (profile) {
+    profile.perSystemMs += trainingPerfNow() - leafStart;
+    leafStart = trainingPerfNow();
+  }
 
   if (
     Math.abs(next.offense - current.offense) < 0.01 &&
@@ -196,8 +240,11 @@ export function tickTeamFamiliarity(
     JSON.stringify(next.byOffense) === JSON.stringify(current.byOffense) &&
     JSON.stringify(next.byDefense) === JSON.stringify(current.byDefense)
   ) {
+    if (profile) profile.equalityMs += trainingPerfNow() - leafStart;
     return team;
   }
+
+  if (profile) profile.equalityMs += trainingPerfNow() - leafStart;
 
   return { ...team, systemFamiliarity: next, defensiveAura: nextAura };
 }
@@ -230,24 +277,80 @@ export function applyDailyFamiliarityTick(
 ): NBATeam[] {
   if (daysToAdvance <= 0) return teams;
 
+  const perfEnabled = isSimulationPerfEnabled();
+  const totalStart = perfEnabled ? trainingPerfNow() : 0;
+  const profile: FamiliarityTickProfile | undefined = perfEnabled ? {
+    planLookupMs: 0,
+    coachingEffectsMs: 0,
+    deltaCalculationMs: 0,
+    perSystemMs: 0,
+    equalityMs: 0,
+    coachingEffectCalls: 0,
+    systemsScanned: 0,
+  } : undefined;
   let working = teams;
+  const dateSetupStart = perfEnabled ? trainingPerfNow() : 0;
   const start = new Date(startDate);
   if (isNaN(start.getTime())) return teams;
+  const dateSetupMs = perfEnabled ? trainingPerfNow() - dateSetupStart : 0;
+  const scheduleIndexStart = perfEnabled ? trainingPerfNow() : 0;
+  const aiGameDays = ctx ? buildAICoachGameDays(ctx.schedule) : undefined;
+  const scheduleIndexMs = perfEnabled ? trainingPerfNow() - scheduleIndexStart : 0;
+  let aiPlanMs = 0;
+  let teamLoopMs = 0;
+  let mutations = 0;
+  const teamDurations: number[] = [];
 
   for (let i = 0; i < daysToAdvance; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i + 1);
     const iso = d.toISOString().slice(0, 10);
     working = working.map(t => {
+      const teamStart = perfEnabled ? trainingPerfNow() : 0;
       let override: PlanLike | null = null;
       if (ctx) {
         const isUserTeam = ctx.gameMode === 'gm' && ctx.userTeamId != null && t.id === ctx.userTeamId;
         if (!isUserTeam) {
           // AI team — compute today's paradigm. Null falls through to calendar plan.
-          override = getAICoachPlanForDay(t, iso, ctx.schedule, ctx.currentYear) as any;
+          const aiPlanStart = perfEnabled ? trainingPerfNow() : 0;
+          override = getAICoachPlanForDay(t, iso, ctx.schedule, ctx.currentYear, aiGameDays) as any;
+          if (perfEnabled) aiPlanMs += trainingPerfNow() - aiPlanStart;
         }
       }
-      return tickTeamFamiliarity(t, iso, override);
+      const next = tickTeamFamiliarity(t, iso, override, profile);
+      if (next !== t) mutations += 1;
+      if (perfEnabled) {
+        const elapsed = trainingPerfNow() - teamStart;
+        teamLoopMs += elapsed;
+        teamDurations.push(elapsed);
+      }
+      return next;
+    });
+  }
+
+  if (perfEnabled && profile) {
+    const sortedDurations = [...teamDurations].sort((a, b) => a - b);
+    const percentile = (fraction: number) => sortedDurations.length === 0 ? 0 : sortedDurations[Math.min(
+      sortedDurations.length - 1,
+      Math.max(0, Math.ceil(sortedDurations.length * fraction) - 1),
+    )];
+    recordSimulationPerf({
+      engine: 'training-familiarity-forensics',
+      totalMs: trainingPerfNow() - totalStart,
+      dateSetupMs,
+      scheduleIndexMs,
+      aiPlanMs,
+      teamLoopMs,
+      ...profile,
+      daysToAdvance,
+      teamsScanned: teams.length,
+      teamDays: teams.length * daysToAdvance,
+      scheduleRowsScanned: ctx?.schedule.length ?? 0,
+      mutations,
+      noOpCount: teams.length * daysToAdvance - mutations,
+      teamMedianMs: percentile(0.5),
+      teamP95Ms: percentile(0.95),
+      mapsBuilt: ctx ? 1 : 0,
     });
   }
 
@@ -368,7 +471,8 @@ const INDIVIDUAL_INTENSITY_MULT: Record<string, number> = {
 
 // Reads the player's most recent regular-season MPG from their stats array.
 // 0 if no games this season (rookies pre-debut, G-League shuttlers, IL guys).
-function getRecentMpg(player: NBAPlayer): number {
+function getRecentMpg(player: NBAPlayer, statsCounter?: { rows: number }): number {
+  if (statsCounter) statsCounter.rows += ((player as any).stats ?? []).length;
   const stats = ((player as any).stats ?? []).filter((s: any) => !s.playoffs);
   if (stats.length === 0) return 0;
   const latest = stats[stats.length - 1];
@@ -390,18 +494,22 @@ export function tickPlayerFatigue(
   team: NBATeam | undefined,
   iso: string,
   hasGameToday = false,
+  leagueStats?: GameState['leagueStats'],
+  prepared?: {
+    plan: ReturnType<typeof resolveEffectiveTrainingPlan>;
+    recoveryMultiplier: number;
+    recentMpg: number;
+  },
 ): NBAPlayer {
-  const plan = team ? resolveEffectiveTrainingPlan(team, iso) : null;
+  const plan = prepared ? prepared.plan : (team ? resolveEffectiveTrainingPlan(team, iso) : null);
   const current = Math.max(0, Math.min(100, Number(player.trainingFatigue ?? 0)));
   const indMult = INDIVIDUAL_INTENSITY_MULT[player.trainingIntensity ?? 'Normal'] ?? 1.0;
-  const recoveryMultiplier = team
+  const recoveryMultiplier = prepared?.recoveryMultiplier ?? (team
     ? getTeamMedicalGameplayEffects(team as any).recoveryMultiplier
-    : 1.0;
+    : 1.0);
   const injuryGamesRemaining = Math.max(0, Number((player as any).injury?.gamesRemaining ?? 0));
-  const month = Number(iso.slice(5, 7));
-  const day = Number(iso.slice(8, 10));
-  const isTrainingCampWindow = month === 8 || month === 9;
-  const isPreseasonWindow = month === 10 && day <= 23;
+  const isTrainingCampWindow = isLeagueTrainingCampWindow(iso, leagueStats);
+  const isPreseasonWindow = isLeaguePreseasonWindow(iso, leagueStats);
 
   // Modern NBA sport-science calibration: pro recovery teams (cryo, hyperbaric,
   // film/load monitoring, individualized nutrition) keep elite athletes fresh
@@ -453,7 +561,7 @@ export function tickPlayerFatigue(
 
   // Bench-player exemption — only scales positive deltas (fatigue gain).
   if (delta > 0) {
-    delta *= recentMinutesFatigueScale(getRecentMpg(player));
+    delta *= recentMinutesFatigueScale(prepared?.recentMpg ?? getRecentMpg(player));
   } else if (delta < 0) {
     delta *= recoveryMultiplier;
   }
@@ -469,13 +577,31 @@ export function applyDailyFatigueTick(
   startDate: string,
   daysToAdvance: number,
   schedule?: Game[],
+  leagueStats?: GameState['leagueStats'],
 ): NBAPlayer[] {
   if (daysToAdvance <= 0) return players;
+  const perfEnabled = isSimulationPerfEnabled();
+  const totalStart = perfEnabled ? trainingPerfNow() : 0;
+  const dateSetupStart = perfEnabled ? trainingPerfNow() : 0;
   const start = new Date(startDate);
   if (isNaN(start.getTime())) return players;
+  const dateSetupMs = perfEnabled ? trainingPerfNow() - dateSetupStart : 0;
 
+  const teamMapStart = perfEnabled ? trainingPerfNow() : 0;
   const teamById = new Map<number, NBATeam>();
   for (const t of teams) teamById.set(t.id, t);
+  const teamMapMs = perfEnabled ? trainingPerfNow() - teamMapStart : 0;
+  const recoveryLookupStart = perfEnabled ? trainingPerfNow() : 0;
+  const recoveryMultiplierByTeam = new Map<number, number>();
+  for (const team of teams) {
+    recoveryMultiplierByTeam.set(team.id, getTeamMedicalGameplayEffects(team as any).recoveryMultiplier);
+  }
+  const recoveryLookupMs = perfEnabled ? trainingPerfNow() - recoveryLookupStart : 0;
+  const recentMpgStart = perfEnabled ? trainingPerfNow() : 0;
+  const statsCounter = { rows: 0 };
+  const recentMpgByPlayerIndex = players.map(player => getRecentMpg(player, perfEnabled ? statsCounter : undefined));
+  const recentMpgMs = perfEnabled ? trainingPerfNow() - recentMpgStart : 0;
+  const scheduleIndexStart = perfEnabled ? trainingPerfNow() : 0;
   const teamGameDates = new Map<number, Set<string>>();
   for (const game of schedule ?? []) {
     const iso = normalizeDate(String(game.date ?? ''));
@@ -487,16 +613,70 @@ export function applyDailyFatigueTick(
       else teamGameDates.set(tid, new Set([iso]));
     }
   }
+  const scheduleIndexMs = perfEnabled ? trainingPerfNow() - scheduleIndexStart : 0;
 
   let working = players;
+  let planLookupMs = 0;
+  let playerLoopMs = 0;
+  let mutations = 0;
+  let activePlayerDays = 0;
+  const playerDurations: number[] = [];
   for (let i = 0; i < daysToAdvance; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i + 1);
     const iso = d.toISOString().slice(0, 10);
-    working = working.map(p => {
+    const planLookupStart = perfEnabled ? trainingPerfNow() : 0;
+    const trainingPlanByTeam = new Map<number, ReturnType<typeof resolveEffectiveTrainingPlan>>();
+    for (const team of teams) trainingPlanByTeam.set(team.id, resolveEffectiveTrainingPlan(team, iso));
+    if (perfEnabled) planLookupMs += trainingPerfNow() - planLookupStart;
+    working = working.map((p, playerIndex) => {
       if (p.status && p.status !== 'Active') return p;
+      activePlayerDays += 1;
+      const playerStart = perfEnabled ? trainingPerfNow() : 0;
       const hasGameToday = teamGameDates.get(p.tid)?.has(iso) ?? false;
-      return tickPlayerFatigue(p, teamById.get(p.tid), iso, hasGameToday);
+      const next = tickPlayerFatigue(p, teamById.get(p.tid), iso, hasGameToday, leagueStats, {
+        plan: trainingPlanByTeam.get(p.tid) ?? null,
+        recoveryMultiplier: recoveryMultiplierByTeam.get(p.tid) ?? 1,
+        recentMpg: recentMpgByPlayerIndex[playerIndex],
+      });
+      if (next !== p) mutations += 1;
+      if (perfEnabled) {
+        const elapsed = trainingPerfNow() - playerStart;
+        playerLoopMs += elapsed;
+        playerDurations.push(elapsed);
+      }
+      return next;
+    });
+  }
+  if (perfEnabled) {
+    const sortedDurations = [...playerDurations].sort((a, b) => a - b);
+    const percentile = (fraction: number) => sortedDurations.length === 0 ? 0 : sortedDurations[Math.min(
+      sortedDurations.length - 1,
+      Math.max(0, Math.ceil(sortedDurations.length * fraction) - 1),
+    )];
+    recordSimulationPerf({
+      engine: 'training-fatigue-forensics',
+      totalMs: trainingPerfNow() - totalStart,
+      dateSetupMs,
+      teamMapMs,
+      recoveryLookupMs,
+      recentMpgMs,
+      scheduleIndexMs,
+      planLookupMs,
+      playerLoopMs,
+      daysToAdvance,
+      playersScanned: players.length,
+      teamsScanned: teams.length,
+      playerDays: players.length * daysToAdvance,
+      activePlayerDays,
+      scheduleRowsScanned: schedule?.length ?? 0,
+      scheduleDateNormalizations: schedule?.length ?? 0,
+      statRowsScanned: statsCounter.rows,
+      mutations,
+      noOpCount: activePlayerDays - mutations,
+      playerMedianMs: percentile(0.5),
+      playerP95Ms: percentile(0.95),
+      mapsBuilt: 4 + daysToAdvance,
     });
   }
   return working;

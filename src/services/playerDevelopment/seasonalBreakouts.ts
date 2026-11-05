@@ -22,23 +22,27 @@
  */
 
 import { NBAPlayer } from '../../types';
-import { calculatePlayerOverallForYear } from '../../utils/playerRatings';
+import { calculatePlayerOverallForYear, resolvePotentialBbgm } from '../../utils/playerRatings';
 import { calculateLeagueOverall } from '../logic/leagueOvr';
+import { EXTERNAL_LEAGUE_STATUSES, EXTERNAL_MENS_LEAGUE_STATUSES } from '../../constants';
+import { simDebug } from '../../utils/simDebug';
 
-const EXTERNAL_LEAGUE_STATUSES = new Set([
-  'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa',
-]);
+const EXTERNAL_MENS_STATUSES = new Set(EXTERNAL_MENS_LEAGUE_STATUSES);
 
 // Statuses excluded from lightning strikes entirely
-const NON_LIGHTNING_STATUSES = new Set([
-  'WNBA', 'G-League', 'PBA', 'Euroleague', 'B-League', 'Endesa', 'China CBA', 'NBL Australia',
-]);
+const NON_LIGHTNING_STATUSES = new Set(EXTERNAL_LEAGUE_STATUSES);
 
 /** NBA-active: on an NBA roster (not overseas, not FA, not retired/prospect) */
 function isNBAActive(p: NBAPlayer): boolean {
   const s = p.status ?? 'Active';
-  return s !== 'Free Agent' && !EXTERNAL_LEAGUE_STATUSES.has(s) && s !== 'WNBA'
+  return s !== 'Free Agent' && !EXTERNAL_MENS_STATUSES.has(s) && s !== 'WNBA'
       && s !== 'Draft Prospect' && s !== 'Prospect' && s !== 'Retired';
+}
+function isHistoricalRealPlayer(p: NBAPlayer): boolean {
+  return typeof (p as any).srID === 'string' || typeof (p as any).slug === 'string';
+}
+function getPlayerAge(p: NBAPlayer, currentYear: number): number {
+  return (p as any).born?.year ? currentYear - (p as any).born.year : (typeof (p as any).age === 'number' && (p as any).age > 0 ? (p as any).age : 25);
 }
 
 const BOOST_ATTRS = [
@@ -158,8 +162,12 @@ export function markLightningStrikes(
   });
 
   const getWeights = (pool: NBAPlayer[]) => pool.map(p => {
-    const lastRating = (p as any).ratings?.[(p as any).ratings.length - 1];
-    const pot: number = lastRating?.pot ?? 70;
+    const ratings = ((p as any).ratings ?? []) as any[];
+    const rating = ratings.find(r => Number(r?.season ?? 0) === currentYear) ?? ratings[ratings.length - 1];
+    const age = getPlayerAge(p, currentYear);
+    const ovr = Number(rating?.ovr ?? p.overallRating ?? 60);
+    const storedPot = Number(rating?.pot ?? (p as any).potential ?? 70);
+    const pot = resolvePotentialBbgm(ovr, age, isHistoricalRealPlayer(p) ? undefined : storedPot);
     // Using a lower exponent (or no exponent) allows mid-tier prospects to occasionally breakout
     return Math.pow(pot, 1.1); 
   });
@@ -170,7 +178,7 @@ export function markLightningStrikes(
   for (const targetAge of AGE_GROUPS) {
     const forAge = eligiblePool.filter(p => {
       // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
-      const age = (p as any).born?.year ? (currentYear - (p as any).born.year) : (typeof (p as any).age === 'number' && (p as any).age > 0 ? (p as any).age : 25);
+      const age = getPlayerAge(p, currentYear);
       return age === targetAge;
     });
     if (forAge.length === 0) continue;
@@ -250,10 +258,10 @@ export function markLightningStrikes(
       playerMap.set(pid, { ...player, pendingLightningBoost: pending } as any);
       markedCount++;
 
-      console.log(
+      simDebug('development', () => (
         `[LightningStrike MARK] ${player.name} (age ${targetAge}) | ${isGradual ? `GRADUAL ${strikeDate}→${graduationDate}` : `INSTANT ${strikeDate}`}` +
         ` | ${boosts.map(b => `${b.attr}+${b.delta}`).join(', ')}`
-      );
+      ), { playerId: pid, event: 'breakout-mark' });
     }
   }
 
@@ -325,7 +333,7 @@ export function resolveLightningStrikes(
         (updated as any).pendingLightningBoost = { ...pending, applied: alreadyApplied };
       }
 
-      updated.overallRating = EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
+      updated.overallRating = EXTERNAL_MENS_STATUSES.has(player.status ?? '')
         ? calculateLeagueOverall(rating)
         : calculatePlayerOverallForYear(updated, currentYear);
 
@@ -336,7 +344,9 @@ export function resolveLightningStrikes(
           strikeDate: pending.strikeDate, boosts: pending.boosts,
           ovrBefore: pending.ovrBefore, ovrAfter,
         });
-        console.log(`[LightningStrike GRADUAL DONE] ${player.name} | OVR ${pending.ovrBefore} → ${ovrAfter}`);
+        simDebug('development', () => (
+          `[LightningStrike GRADUAL DONE] ${player.name} | OVR ${pending.ovrBefore} → ${ovrAfter}`
+        ), { playerId: player.internalId, event: 'breakout-gradual-complete' });
       }
 
       changed = true;
@@ -359,7 +369,7 @@ export function resolveLightningStrikes(
     const updated: NBAPlayer = { ...player, ratings: newRatings };
     delete (updated as any).pendingLightningBoost;
 
-    updated.overallRating = EXTERNAL_LEAGUE_STATUSES.has(player.status ?? '')
+    updated.overallRating = EXTERNAL_MENS_STATUSES.has(player.status ?? '')
       ? calculateLeagueOverall(rating)
       : calculatePlayerOverallForYear(updated, currentYear);
 
@@ -370,10 +380,10 @@ export function resolveLightningStrikes(
       ovrBefore: pending.ovrBefore, ovrAfter,
     });
 
-    console.log(
+    simDebug('development', () => (
       `[LightningStrike INSTANT] ${player.name} (age ${pending.age}) | OVR ${pending.ovrBefore} → ${ovrAfter}` +
       ` | ${applied.map(b => `${b.attr}+${b.delta}`).join(', ')}`
-    );
+    ), { playerId: player.internalId, event: 'breakout-instant' });
 
     changed = true;
     return updated;

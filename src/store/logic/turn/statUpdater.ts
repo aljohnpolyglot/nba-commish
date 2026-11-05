@@ -2,12 +2,27 @@ import { GameState, UserAction, LeagueStats } from '../../../types';
 import { ViewershipService } from '../../../services/logic/ViewershipService';
 import { calculateDailyLeagueFunds } from '../../../services/logic/financialService';
 import { DEFAULT_MEDIA_RIGHTS } from '../../../utils/broadcastingUtils';
+import { buildPbaMediaRights } from '../../../data/pbaBroadcastRights';
+import {
+    isAllStarHalftimePerformance,
+    isAllStarSaturdayPerformance,
+    isFinalsPerformance,
+} from '../../../services/events/performanceEvents';
+import {
+    getAvailableLeagueBudget,
+    getLeagueReserve,
+} from '../../../services/logic/leagueTreasury';
+import { getOpeningNightDate, toISODateString } from '../../../utils/dateUtils';
+import { normalizeDate } from '../../../utils/helpers';
 
 export const calculateNewStats = (state: GameState, action: UserAction, result: any, allSimResults: any[], totalNetPay: number, dateString: string) => {
     const combinedStatChanges = {
         ...result.statChanges,
         ...(result.consequence?.statChanges || {}),
-        leagueFunds: (result.statChanges?.leagueFunds || 0) + (result.consequence?.statChanges?.revenue || 0),
+        ...(result.nativeActionStatChanges || {}),
+        leagueFunds: (result.statChanges?.leagueFunds || 0)
+            + (result.consequence?.statChanges?.revenue || 0)
+            + (result.nativeActionStatChanges?.leagueFunds || 0),
         morale: {
             ...(result.statChanges?.morale || {}),
             ...(result.consequence?.statChanges?.morale || {})
@@ -41,34 +56,86 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
     // Deterministic Viewership Calculation
     const dailyViewership = ViewershipService.calculateDailyViewership(state, action);
     const performanceImpact = ViewershipService.calculatePerformanceImpact(state, allSimResults);
-    const finalViewership = parseFloat((dailyViewership + performanceImpact).toFixed(2));
+    const finalViewership = parseFloat((dailyViewership + performanceImpact + (combinedStatChanges.viewership || 0)).toFixed(2));
 
     // Daily League Funds Tick (mirrors viewership pattern)
     const dailyProfit = calculateDailyLeagueFunds(state);
+    const actionTreasuryDelta = combinedStatChanges.leagueFunds || 0;
     combinedStatChanges.leagueFunds = (combinedStatChanges.leagueFunds || 0) + dailyProfit;
 
     const capChange = (val: number) => Math.max(-4, Math.min(4, val)); // Reduced max daily change
 
+    const actionAmountM = Math.max(0, Number(action.payload?.amount ?? 0)) / 1_000_000;
+    const aspireSpendM = action.type === 'SIGN_FREE_AGENT'
+        ? Math.max(0, Number(action.payload?.aspireSideDeal?.amountUSD ?? 0)) / 1_000_000
+        : 0;
+    const disciplineFineM = action.type === 'FINE_PERSON'
+        ? actionAmountM
+        : action.type === 'SUSPEND_PLAYER'
+            ? Math.max(0, Number(action.payload?.fineAmount ?? action.payload?.amount ?? 0)) / 1_000_000
+            : 0;
+    const giveFromPersonal = action.type === 'GIVE_MONEY' && action.payload?.fundSource === 'personal';
+    const giveFromLeague = action.type === 'GIVE_MONEY' && !giveFromPersonal;
+    const transferFromLeague = action.type === 'TRANSFER_FUNDS' && action.payload?.from === 'league';
+    const transferFromPersonal = action.type === 'TRANSFER_FUNDS' && action.payload?.from === 'personal';
+    const currentReserve = getLeagueReserve(state.stats);
+    const currentBudget = getAvailableLeagueBudget(state.stats);
+    const actionRevenueM = Math.max(0, actionTreasuryDelta);
+    const authorizedActionExpenseM = Math.min(currentBudget, Math.max(0, -actionTreasuryDelta));
+    const budgetAfterActionExpense = currentBudget - authorizedActionExpenseM;
+    const requestedDirectSpendM = giveFromLeague || transferFromLeague ? actionAmountM : 0;
+    const authorizedDirectSpendM = Math.min(budgetAfterActionExpense, requestedDirectSpendM);
+    const leagueReserve = Number((Math.max(
+        0,
+        currentReserve
+        + actionRevenueM
+        - authorizedActionExpenseM
+        + dailyProfit
+        + disciplineFineM
+        - authorizedDirectSpendM
+        + (transferFromPersonal ? actionAmountM : 0),
+    )).toFixed(6));
+    const availableBudget = Number((Math.min(
+        leagueReserve,
+        Math.max(0, budgetAfterActionExpense - authorizedDirectSpendM),
+    )).toFixed(6));
     const newStats = {
         publicApproval: Math.round(Math.max(0, Math.min(100, state.stats.publicApproval + capChange(combinedStatChanges.publicApproval || 0)))),
         ownerApproval: Math.round(Math.max(0, Math.min(100, state.stats.ownerApproval + capChange(combinedStatChanges.ownerApproval || 0)))),
         playerApproval: Math.round(Math.max(0, Math.min(100, state.stats.playerApproval + capChange(combinedStatChanges.playerApproval || 0)))),
-        leagueFunds: Number((Math.max(0, state.stats.leagueFunds + (combinedStatChanges.leagueFunds || 0) + (action.type === 'FINE_PERSON' ? (action.payload?.amount || 0) / 1000000 : 0))).toFixed(2)),
-        personalWealth: Number((Math.max(0, state.stats.personalWealth + (totalNetPay / 1000000) + (combinedStatChanges.personalWealth || 0))).toFixed(2)),
+        leagueFunds: availableBudget,
+        leagueReserve,
+        availableBudget,
+        personalWealth: Number((Math.max(
+            0,
+            state.stats.personalWealth
+            + (totalNetPay / 1_000_000)
+            + (combinedStatChanges.personalWealth || 0)
+            - (giveFromPersonal || transferFromPersonal ? actionAmountM : 0)
+            - aspireSpendM
+            + (transferFromLeague ? authorizedDirectSpendM : 0),
+        )).toFixed(2)),
         legacy: Math.round(Math.max(0, Math.min(100, state.stats.legacy + capChange(combinedStatChanges.legacy || 0)))),
     };
 
     // Fallback: auto-lock the default deal at Opening Night if the player
     // never finalized one.  Initialization now seeds DEFAULT_MEDIA_RIGHTS so
     // this branch only fires on very old save files that pre-date that change.
-    const openingYear = (state.leagueStats?.year ?? new Date().getFullYear()) - 1;
-    const OPENING_NIGHT = `${openingYear}-10-24`;
-    if (!state.leagueStats.mediaRights && dateString >= OPENING_NIGHT) {
+    const openingNight = toISODateString(getOpeningNightDate(
+        state.leagueStats?.year ?? new Date().getFullYear(),
+        state.leagueStats,
+        state.schedule,
+    ));
+    const currentDate = normalizeDate(dateString);
+    if (!state.leagueStats.mediaRights && currentDate >= openingNight) {
+        const fallbackRights = state.leagueStats.uiMode === 'pba_isolated'
+            ? buildPbaMediaRights(state.leagueStats.year, state.leagueStats.salaryCap)
+            : DEFAULT_MEDIA_RIGHTS;
         state = {
             ...state,
             leagueStats: {
                 ...state.leagueStats,
-                mediaRights: { ...DEFAULT_MEDIA_RIGHTS, isLocked: true },
+                mediaRights: { ...fallbackRights, isLocked: true },
             },
         };
     }
@@ -76,7 +143,7 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
     if (
         state.leagueStats.mediaRights &&
         !state.leagueStats.mediaRights.isLocked &&
-        dateString >= OPENING_NIGHT
+        currentDate >= openingNight
     ) {
         state = {
             ...state,
@@ -104,10 +171,11 @@ export const calculateNewStats = (state: GameState, action: UserAction, result: 
             legacy: newStats.legacy,
         },
         hasExpanded: action.type === 'EXPANSION_DRAFT' ? true : state.leagueStats.hasExpanded,
-        hasFinalsHalftime: (action.type === 'INVITE_PERFORMANCE' && action.payload.event === 'NBA Finals Halftime Show') ? true : state.leagueStats.hasFinalsHalftime,
-        hasAllStarHalftime: (action.type === 'INVITE_PERFORMANCE' && action.payload.event === 'All-Star Game Halftime') ? true : state.leagueStats.hasAllStarHalftime,
+        hasFinalsHalftime: (action.type === 'INVITE_PERFORMANCE' && isFinalsPerformance(action.payload.event)) ? true : state.leagueStats.hasFinalsHalftime,
+        hasAllStarHalftime: (action.type === 'INVITE_PERFORMANCE' && isAllStarHalftimePerformance(action.payload.event)) ? true : state.leagueStats.hasAllStarHalftime,
+        hasAllStarSaturdayPerformance: (action.type === 'INVITE_PERFORMANCE' && isAllStarSaturdayPerformance(action.payload.event)) ? true : state.leagueStats.hasAllStarSaturdayPerformance,
         hasRingCeremony: (action.type === 'INVITE_PERFORMANCE' && action.payload.event === 'Championship Ring Ceremony') ? true : state.leagueStats.hasRingCeremony,
-        hasInvitedPerformance: (action.type === 'INVITE_PERFORMANCE' && (action.payload.event === 'Regular Season Halftime' || action.payload.type === 'national_anthem')) ? true : state.leagueStats.hasInvitedPerformance,
+        hasInvitedPerformance: action.type === 'INVITE_PERFORMANCE' ? true : state.leagueStats.hasInvitedPerformance,
         hasSetCelebrityRoster: action.type === 'CELEBRITY_ROSTER' ? true : state.leagueStats.hasSetCelebrityRoster,
         celebrityRosterAutoSelected: action.type === 'CELEBRITY_ROSTER' ? false : state.leagueStats.celebrityRosterAutoSelected,
         celebrityRoster: action.type === 'CELEBRITY_ROSTER' ? action.payload.roster.split(', ') : state.leagueStats.celebrityRoster,

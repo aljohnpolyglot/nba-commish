@@ -10,13 +10,39 @@ export interface KeyDate {
   locked?: boolean;
   placeholder?: boolean;
   placeholderLabel?: string;
+  accentColor?: string;
 }
 
 import { getLeagueLabels } from '../../utils/leagueLabels';
+import { isNbaCupEra, isPlayInEra } from '../../data/historicalNbaSeasons';
+import { getAllStarWeekendStartDate, toISODateString } from '../../utils/dateUtils';
+import { getPlayableInternationalWindowForSeason } from '../../services/fiba/tournamentWindows';
+import { formatPbaSeasonLabel } from '../../services/pba/historicalCatalog';
+import { getCachedHistoricalPbaSource } from '../../services/pba/historicalLoader';
+import { dateForCompetitionSeason } from '../../services/competition/competitionSeasonState';
+import { getConferenceSpec, getPbaCalendarPosition, getConferenceStartIso } from '../../services/pba/conferenceTransition';
+import { getPbaAllStarWeekendStartIso } from '../../services/pba/calendar';
 
-export function getKeyDates(leagueType?: 'fictional' | 'modded'): KeyDate[] {
+const shiftSeasonDate = (date: string, seasonEndYear: number): string => {
+  if (date.startsWith('2025-')) return `${seasonEndYear - 1}${date.slice(4)}`;
+  if (date.startsWith('2026-')) return `${seasonEndYear}${date.slice(4)}`;
+  return date;
+};
+
+const addDays = (date: string, days: number): string => {
+  const next = new Date(`${date}T00:00:00Z`);
+  next.setUTCDate(next.getUTCDate() + days);
+  return next.toISOString().slice(0, 10);
+};
+
+export function getKeyDates(leagueType?: 'fictional' | 'modded', seasonEndYear = 2026): KeyDate[] {
   const labels = getLeagueLabels(leagueType);
-  return [
+  const startYear = seasonEndYear - 1;
+  const allStarStart = toISODateString(getAllStarWeekendStartDate(seasonEndYear));
+  const internationalWindow = leagueType === 'modded'
+    ? getPlayableInternationalWindowForSeason(startYear)
+    : undefined;
+  const base: KeyDate[] = [
     { date: '2025-08-06', label: 'Day 1',             sublabel: 'Earliest start — planning window',        icon: '🏀', zone: 'offseason' },
     { date: '2025-08-06', label: 'Broadcasting',      sublabel: 'TV Deal Window',                          icon: '📺', zone: 'offseason', placeholder: true, placeholderLabel: 'Broadcasting Negotiations — Future Feature' },
     { date: '2025-08-06', label: 'Arena Naming',      sublabel: 'Sponsorship Rights',                      icon: '🏟️', zone: 'offseason', placeholder: true, placeholderLabel: 'Arena Naming Rights — Future Feature' },
@@ -45,9 +71,30 @@ export function getKeyDates(leagueType?: 'fictional' | 'modded'): KeyDate[] {
     { date: '2026-04-16', label: 'Play-In',           sublabel: 'Play-In Tournament',                      icon: '⚡', zone: 'late' },
     { date: '2026-04-19', label: 'Playoffs',          sublabel: 'First Round begins',                      icon: '🏆', zone: 'late' },
     { date: '2026-06-01', label: 'Finals',            sublabel: `${labels.finals} begin`,                  icon: '🏆', zone: 'late' },
-    { date: '2026-06-21', label: labels.draftLottery, sublabel: 'Draft order determined',                  icon: '🎰', zone: 'late' },
+    { date: '2026-05-14', label: labels.draftLottery, sublabel: 'Draft order determined',                  icon: '🎰', zone: 'late' },
     { date: '2026-06-25', label: labels.draft,        sublabel: 'Rookie selection',                        icon: '📋', zone: 'late' },
   ];
+  const seasonDates = base
+    .filter(item => isNbaCupEra(startYear) || !/cup|tournament/i.test(`${item.label} ${item.sublabel ?? ''}`))
+    .filter(item => isPlayInEra(startYear) || !/play-in/i.test(`${item.label} ${item.sublabel ?? ''}`))
+    .map(item => {
+      const shifted = shiftSeasonDate(item.date, seasonEndYear);
+      if (item.label === 'All-Star Weekend') return { ...item, date: allStarStart };
+      if (item.label === 'Season Resumes') return { ...item, date: addDays(allStarStart, 4) };
+      return { ...item, date: shifted };
+    });
+  if (!internationalWindow) return seasonDates;
+  return [
+    ...seasonDates,
+    {
+      date: internationalWindow.markerDate,
+      label: internationalWindow.label,
+      sublabel: 'Playable international tournament before training camp',
+      icon: '🌍',
+      zone: 'offseason' as const,
+      accentColor: '#34d399',
+    },
+  ].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 export const KEY_DATES: KeyDate[] = getKeyDates('modded');
@@ -67,40 +114,60 @@ export const EURO_TIMELINE_DISPLAY_END = '2026-07-10';
 export type PbaDateZone = 'philippineCup' | 'allstar' | 'commissionersCup' | 'governorsCup' | 'offseason';
 
 export function getPbaSeasonEndYear(iso: string): number {
+  if (iso.startsWith('2020-')) return 2020;
   const [year, month, day] = iso.split('-').map(Number);
   return month > 10 || (month === 10 && day >= 5) ? year + 1 : year;
 }
 
 export function getPbaSeasonLabel(iso: string): string {
   const endYear = getPbaSeasonEndYear(iso);
-  return `${endYear - 1}-${String(endYear).slice(-2)}`;
+  return formatPbaSeasonLabel(endYear, getCachedHistoricalPbaSource() ?? undefined);
 }
 
 export function getPbaDateContext(iso: string): string {
-  const [, month, day] = iso.split('-').map(Number);
   const season = getPbaSeasonLabel(iso);
-  if (month === 10 && day >= 5) return `${season} Philippine Cup`;
-  if (month === 10) return `${season} offseason`;
-  if (month < 3 || (month === 3 && day <= 10)) return `${season} Philippine Cup`;
-  if (month < 7 || (month === 7 && day <= 9)) return `${season} Commissioner's Cup`;
+  const position = getPbaCalendarPosition(iso);
+  if (position.phase === 'offseason') return `${season} offseason`;
+  if (position.conference === 'philippine') return `${season} Philippine Cup`;
+  if (position.conference === 'commissioners') return `${season} Commissioner's Cup`;
   return `${season} Governors' Cup`;
 }
 
-export function getPbaKeyDates(): KeyDate[] {
+const addPbaDays = (iso: string, days: number): string => {
+  const date = new Date(`${iso}T00:00:00Z`);
+  date.setUTCDate(date.getUTCDate() + days);
+  return date.toISOString().slice(0, 10);
+};
+
+export function getPbaKeyDates(seasonEndYear = 2026): KeyDate[] {
+  const philippine = getConferenceSpec('philippine', seasonEndYear);
+  const commissioners = getConferenceSpec('commissioners', seasonEndYear);
+  const governors = getConferenceSpec('governors', seasonEndYear);
+  const roundDate = (spec: typeof philippine, phase: 'qf' | 'final', edge: 'start' | 'end' = 'start') => {
+    const round = spec.playoffFormat?.rounds.find(item => item.phase === phase);
+    if (!round) return getConferenceStartIso('philippine', seasonEndYear);
+    return dateForCompetitionSeason(spec, seasonEndYear, round[edge].month, round[edge].day).slice(0, 10);
+  };
+  const philippineStart = getConferenceStartIso('philippine', seasonEndYear);
+  const commissionersStart = getConferenceStartIso('commissioners', seasonEndYear);
+  const governorsStart = getConferenceStartIso('governors', seasonEndYear);
+  const allStarStart = getPbaAllStarWeekendStartIso(seasonEndYear);
+  const awardsDate = addPbaDays(roundDate(governors, 'final', 'end'), 1);
+  const seasonLabel = formatPbaSeasonLabel(seasonEndYear, getCachedHistoricalPbaSource() ?? undefined);
   return [
-    { date: '2025-10-05', label: '2025-26 Phil. Cup',    sublabel: 'Season-opening All-Filipino conference',      icon: '🏀', zone: 'philippineCup' },
-    { date: '2025-12-15', label: 'Phil. Cup Playoffs',   sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'philippineCup' },
-    { date: '2026-01-28', label: 'Phil. Cup Finals',     sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'philippineCup' },
-    { date: '2026-03-06', label: 'All-Star Weekend',     sublabel: 'Captain draft, 3-point contest, main event',  icon: '⭐', zone: 'allstar' },
-    { date: '2026-03-11', label: 'Comm. Cup Opening',    sublabel: '1 import per team, no height limit',          icon: '🏀', zone: 'commissionersCup' },
-    { date: '2026-03-11', label: 'Import Search',        sublabel: 'Sign your conference import',                  icon: '🔍', zone: 'commissionersCup', placeholder: true, placeholderLabel: 'Import Search — auto-resolved on jump' },
-    { date: '2026-06-03', label: 'Comm. Cup Playoffs',   sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'commissionersCup' },
-    { date: '2026-06-25', label: 'Comm. Cup Finals',     sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'commissionersCup' },
-    { date: '2026-07-10', label: 'Gov. Cup Opening',     sublabel: '1 import, max 6\'5\" height limit',           icon: '🏀', zone: 'governorsCup' },
-    { date: '2026-07-10', label: 'Import Search (6\'5\")', sublabel: 'Height-restricted import signing',         icon: '🔍', zone: 'governorsCup', placeholder: true, placeholderLabel: 'Import Search — auto-resolved on jump' },
-    { date: '2026-08-28', label: 'Gov. Cup Playoffs',    sublabel: 'Twice-to-beat quarterfinals',                 icon: '🏆', zone: 'governorsCup' },
-    { date: '2026-09-18', label: 'Gov. Cup Finals',      sublabel: 'Best-of-7 championship series',               icon: '🏆', zone: 'governorsCup' },
-    { date: '2026-10-01', label: 'Season Awards',        sublabel: 'MVP, Mythical Team, Grand Slam check',        icon: '🎖️', zone: 'offseason' },
+    { date: philippineStart, label: `${seasonLabel} Phil. Cup`, sublabel: 'Season-opening All-Filipino conference', icon: '🏀', zone: 'philippineCup' },
+    { date: roundDate(philippine, 'qf'), label: 'Phil. Cup Playoffs', sublabel: 'Twice-to-beat quarterfinals', icon: '🏆', zone: 'philippineCup' },
+    { date: roundDate(philippine, 'final'), label: 'Phil. Cup Finals', sublabel: 'Best-of-7 championship series', icon: '🏆', zone: 'philippineCup' },
+    { date: allStarStart, label: 'All-Star Weekend', sublabel: 'Captain draft, 3-point contest, main event', icon: '⭐', zone: 'allstar' },
+    { date: commissionersStart, label: 'Comm. Cup Opening', sublabel: '1 import per team, no height limit', icon: '🏀', zone: 'commissionersCup' },
+    { date: commissionersStart, label: 'Import Search', sublabel: 'Sign your conference import', icon: '🔍', zone: 'commissionersCup', placeholder: true, placeholderLabel: 'Import Search — auto-resolved on jump' },
+    { date: roundDate(commissioners, 'qf'), label: 'Comm. Cup Playoffs', sublabel: 'Twice-to-beat quarterfinals', icon: '🏆', zone: 'commissionersCup' },
+    { date: roundDate(commissioners, 'final'), label: 'Comm. Cup Finals', sublabel: 'Best-of-7 championship series', icon: '🏆', zone: 'commissionersCup' },
+    { date: governorsStart, label: 'Gov. Cup Opening', sublabel: '1 import, max 6\'5\" height limit', icon: '🏀', zone: 'governorsCup' },
+    { date: governorsStart, label: 'Import Search (6\'5\")', sublabel: 'Height-restricted import signing', icon: '🔍', zone: 'governorsCup', placeholder: true, placeholderLabel: 'Import Search — auto-resolved on jump' },
+    { date: roundDate(governors, 'qf'), label: 'Gov. Cup Playoffs', sublabel: 'Twice-to-beat quarterfinals', icon: '🏆', zone: 'governorsCup' },
+    { date: roundDate(governors, 'final'), label: 'Gov. Cup Finals', sublabel: 'Best-of-7 championship series', icon: '🏆', zone: 'governorsCup' },
+    { date: awardsDate, label: 'Season Awards', sublabel: 'MVP, Mythical Team, Grand Slam check', icon: '🎖️', zone: 'offseason' },
   ];
 }
 

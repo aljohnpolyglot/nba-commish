@@ -1,6 +1,8 @@
 import type { GameState } from '../../types';
 import { normalizeDate } from '../helpers';
+import { getStandardRosterLimit, getTwoWayRosterLimit } from '../rosterLimits';
 import { getUnresolvedEuroSeasonCompetitionIds } from '../../services/competition/competitionResolver';
+import { matchesScheduleSeason } from '../../services/competition/competitionSeasonState';
 import type { CheatContext, CheatResult } from './shared';
 
 function getLive(ctx: CheatContext): GameState {
@@ -164,7 +166,7 @@ export async function runWarp(ctx: CheatContext): Promise<CheatResult> {
     const year: number = ls.year ?? new Date(String((live as any).date)).getUTCFullYear();
     const stops: Array<{ label: string; date: string; through?: boolean }> = [
       { label: 'training-camp',  date: dt.toISODateString(dt.getTrainingCampDate(year, ls)) },
-      { label: 'opening-night',  date: dt.toISODateString(dt.getOpeningNightDate(year)) },
+      { label: 'opening-night',  date: dt.toISODateString(dt.getOpeningNightDate(year, ls, (live as any).schedule)) },
       { label: 'trade-deadline', date: dt.toISODateString(dt.getTradeDeadlineDate(year, ls)) },
       { label: 'all-star',       date: dt.toISODateString(dt.getAllStarWeekendStartDate(year, ls)) },
       { label: 'lottery',        date: dt.toISODateString(dt.getDraftLotteryDate(year, ls)) },
@@ -365,6 +367,34 @@ export function runStuck(state: GameState): CheatResult {
     })));
   }
 
+  const international = s.internationalTournament;
+  if (international) {
+    const internationalGames = (international.games ?? []) as any[];
+    const internationalUnplayed = internationalGames
+      .filter(game => !game.played)
+      .sort((left, right) => String(left.date).localeCompare(String(right.date)));
+    const pastInternationalGames = internationalUnplayed.filter(game => normalizeDate(String(game.date)) < todayShort);
+    const internationalTask = Object.values(s.commissionerTasks?.records ?? {})
+      .find((record: any) => record?.taskId === 'international_tournament') as any;
+    console.log('internationalTournament:', {
+      id: international.id,
+      kind: international.kind,
+      year: international.year,
+      playedYear: international.playedYear,
+      status: international.status,
+      reviewed: international.reviewed,
+      readOnly: international.readOnly,
+      hosts: international.hostCountries,
+      games: internationalGames.length,
+      unplayed: internationalUnplayed.length,
+      nextGameDate: internationalUnplayed[0]?.date,
+      taskStatus: internationalTask?.status,
+    });
+    if (pastInternationalGames.length > 0) {
+      findings.push(`International Tournament: ${pastInternationalGames.length} unplayed games are dated before today; the International Play menu must expose Simulate Day recovery.`);
+    }
+  }
+
   // Bug B — draftComplete drift
   if (s.draftComplete && (s.draftPicks ?? []).some((p: any) => p.season === s.leagueStats?.year && !p.playerSelected)) {
     findings.push('Bug B candidate: draftComplete=true but draftPicks for current year still have unselected slots');
@@ -384,6 +414,17 @@ export function runStuck(state: GameState): CheatResult {
   } catch { /* ignore */ }
 
   const unresolvedEuroSeasonCompetitions = getUnresolvedEuroSeasonCompetitionIds(s as any);
+  const missingEuroPostseason = (s.activeCompetitions ?? []).filter((spec: any) => {
+    if (!spec.playoffFormat?.rounds?.length || !unresolvedEuroSeasonCompetitions.includes(spec.id)) return false;
+    const regularGames = sched.filter((game: any) => game.competitionId === spec.id && (!game.competitionPhase || game.competitionPhase === 'group' || String(game.competitionPhase).startsWith('r')));
+    const regularComplete = regularGames.length > 0 && regularGames.every((game: any) => game.played);
+    const postseasonExists = sched.some((game: any) => game.competitionId === spec.id && ['play-in', 'qf', 'sf', 'final'].includes(game.competitionPhase))
+      || (s.boxScores ?? []).some((game: any) => game.competitionId === spec.id && ['play-in', 'qf', 'sf', 'final'].includes(game.competitionPhase));
+    return regularComplete && !postseasonExists;
+  });
+  if (missingEuroPostseason.length > 0) {
+    findings.push(`Euro playoff setup missing after a completed regular season: ${missingEuroPostseason.map((spec: any) => spec.id).join(', ')}. Use the Play menu retry action; if it remains, inspect competition participants.`);
+  }
   if (unresolvedEuroSeasonCompetitions.length > 0 && s.offseasonChecklist) {
     findings.push(`Euro playoff bug: offseasonChecklist is mounted while unresolved season competitions remain: ${unresolvedEuroSeasonCompetitions.join(', ')}`);
   } else if (unresolvedEuroSeasonCompetitions.length > 0) {
@@ -410,6 +451,10 @@ export function runStuck(state: GameState): CheatResult {
 // PHASEDUMP ───────────────────────────────────────────────────────────────────
 export async function runPhaseDump(state: GameState): Promise<CheatResult> {
   const dt = await import('../dateUtils');
+  const commissionerSettings = await import('../commissionerSettings');
+  const commissionerTasks = await import('../../services/commissionerTasks/taskRegistry');
+  const offseasonState = await import('../../services/offseason/offseasonState');
+  const transferWindow = await import('../transferWindow');
   const s: any = state;
   const ls = s.leagueStats ?? {};
   const today = String(s.date);
@@ -419,14 +464,14 @@ export async function runPhaseDump(state: GameState): Promise<CheatResult> {
     today,
     year,
     trainingCamp: dt.toISODateString(dt.getTrainingCampDate(year, ls)),
-    openingNight: dt.toISODateString(dt.getOpeningNightDate(year)),
+    openingNight: dt.toISODateString(dt.getOpeningNightDate(year, ls, state.schedule)),
     tradeDeadline: dt.toISODateString(dt.getTradeDeadlineDate(year, ls)),
     allStar: dt.toISODateString(dt.getAllStarWeekendStartDate(year, ls)),
     lottery: dt.toISODateString(dt.getDraftLotteryDate(year, ls)),
     draft: dt.toISODateString(dt.getDraftDate(year, ls)),
     faStart: dt.toISODateString(dt.getFreeAgencyStartDate(year, ls)),
     moratoriumEnd: dt.toISODateString(dt.getFreeAgencyMoratoriumEndDate(year, ls)),
-    rolloverDate: dt.toISODateString(dt.getRolloverDate(year, ls)),
+    rolloverDate: dt.toISODateString(dt.getRolloverDate(year, ls, state.schedule)),
   };
   console.group('%c📅 PHASEDUMP', 'color:#22d3ee;font-weight:bold');
   console.table(dates);
@@ -434,7 +479,94 @@ export async function runPhaseDump(state: GameState): Promise<CheatResult> {
   console.log('schedule entries:', (s.schedule ?? []).length);
   console.log('playoff series:', (s.playoffs?.series ?? []).length);
   console.log('faBidding markets:', (s.faBidding?.markets ?? []).length);
+  console.log('commissioner settings:', commissionerSettings.getCommissionerSettingsWindow(state));
+  console.log('NBA start/offseason flow:', {
+    gameMode: s.gameMode,
+    nbaGmStartMode: s.nbaGmStartMode,
+    visibleOrder: s.offseasonChecklist
+      ? offseasonState.getVisibleOffseasonRows(
+        s.leagueStats,
+        null,
+        s.date,
+        s.expansionSchedule,
+        s.offseasonChecklist,
+        {
+          lotteryResolved: Array.isArray(s.draftLotteryResult) && s.draftLotteryResult.length > 0,
+          draftComplete: s.draftComplete === true,
+        },
+      )
+      : [],
+    seasonReview: s.offseasonChecklist?.seasonSummary,
+    seasonStrategy: s.offseasonChecklist?.strategyReview,
+    pendingStrategyModal: s.pendingSeasonStrategyModal === true,
+    pendingTeamOfficeNav: s.pendingTeamOfficeNav,
+  });
+  console.log('expansion lifecycle:', {
+    scheduleYear: s.expansionSchedule?.year,
+    scheduledTeams: s.expansionSchedule?.teams?.map((team: any) => team.abbrev) ?? [],
+    bidDecision: s.expansionSchedule?.year == null
+      ? undefined
+      : s.expansionBidDecisions?.[s.expansionSchedule.year],
+    expansionTeamIds: s.expansionTeamIds ?? [],
+    protectionTeams: Object.keys(s.expansionDraftProtections ?? {}).length,
+    eligiblePlayers: s.expansionEligiblePlayers?.length ?? 0,
+    completedPicks: Object.keys(s.activeExpansionDraftPicks ?? {}).length,
+    checklist: s.offseasonChecklist?.expansionDraft,
+  });
+  const international = s.internationalTournament;
+  if (international) {
+    const unplayedGames = (international.games ?? [])
+      .filter((game: any) => !game.played)
+      .sort((left: any, right: any) => String(left.date).localeCompare(String(right.date)));
+    console.log('international tournament:', {
+      id: international.id,
+      kind: international.kind,
+      year: international.year,
+      playedYear: international.playedYear,
+      status: international.status,
+      reviewed: international.reviewed,
+      readOnly: international.readOnly,
+      hosts: international.hostCountries,
+      games: (international.games ?? []).length,
+      unplayed: unplayedGames.length,
+      nextGameDate: unplayedGames[0]?.date,
+    });
+  }
+  const taskViews = commissionerTasks.getCommissionerTaskViews(state);
+  if (taskViews.length > 0) {
+    console.table(taskViews.map(task => ({
+      task: task.definition.title,
+      phase: task.phase,
+      status: task.status,
+      open: task.openDate,
+      due: task.dueDate,
+      available: task.available,
+      overdue: task.overdue,
+    })));
+    console.log(
+      'next commissioner task:',
+      taskViews
+        .filter(task => !commissionerTasks.isCommissionerTaskTerminal(task.status))
+        .sort((left, right) => left.openDate.localeCompare(right.openDate))[0] ?? null,
+    );
+  }
+  console.log('Euro transfer window:', transferWindow.isInTransferWindow(today, ls));
   console.log('unresolved Euro season competitions:', getUnresolvedEuroSeasonCompetitionIds(s as any));
+  if (ls.uiMode === 'euro_isolated') {
+    console.table((s.activeCompetitions ?? []).map((competition: any) => {
+      const games = (s.schedule ?? []).filter((game: any) => game.competitionId === competition.id);
+      const seasonGames = games.filter((game: any) => matchesScheduleSeason(game, year));
+      const postseason = games.filter((game: any) => ['play-in', 'qf', 'sf', 'final'].includes(String(game.competitionPhase)));
+      return {
+        competition: competition.displayName ?? competition.id,
+        currentSeasonGames: seasonGames.length,
+        userFixtures: seasonGames.filter((game: any) => game.homeTid === s.userTeamId || game.awayTid === s.userTeamId).length,
+        regularUnplayed: games.filter((game: any) => !game.played && !postseason.includes(game)).length,
+        postseasonGames: postseason.length,
+        postseasonUnplayed: postseason.filter((game: any) => !game.played).length,
+      };
+    }));
+  }
   console.log('TIP: cross-reference today against the date table above. If today is past a milestone but PlayButton still offers "Until X", phase detection drifted.');
   console.groupEnd();
   return { title: 'PHASEDUMP', body: `today=${today} year=${year} — see console table`, ok: true };
@@ -448,11 +580,14 @@ export function runGateScan(state: GameState): CheatResult {
 
   if (s.gameMode === 'gm' && typeof s.userTeamId === 'number') {
     const userPlayers = s.players.filter((p: any) => p.tid === s.userTeamId);
-    const standard = userPlayers.filter((p: any) => !p.twoWay);
-    const twoWay = userPlayers.filter((p: any) => p.twoWay);
-    console.log(`User roster: ${standard.length}/15 standard, ${twoWay.length}/3 two-way`);
+    const maxStandard = getStandardRosterLimit(s.leagueStats);
+    const maxTwoWay = getTwoWayRosterLimit(s.leagueStats);
+    const twoWayActive = maxTwoWay > 0;
+    const standard = userPlayers.filter((p: any) => !twoWayActive || !p.twoWay);
+    const twoWay = twoWayActive ? userPlayers.filter((p: any) => p.twoWay) : [];
+    console.log(`User roster: ${standard.length}/${maxStandard} standard${twoWayActive ? `, ${twoWay.length}/${maxTwoWay} two-way` : ''}`);
     if (standard.length < 13) console.warn('⚠️ Below 13 standard — rosterGate should be blocking sim. If "Until X" advances anyway, gate is bypassed.');
-    if (standard.length > 15) console.warn('⚠️ Over 15 standard — rosterGate should be blocking. Likely Bug: trim not running before sim.');
+    if (standard.length > maxStandard) console.warn(`⚠️ Over ${maxStandard} standard — rosterGate should be blocking. Likely Bug: trim not running before sim.`);
   }
 
   console.log('draftComplete:', s.draftComplete);

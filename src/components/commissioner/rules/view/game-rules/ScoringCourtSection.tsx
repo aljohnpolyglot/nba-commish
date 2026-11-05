@@ -13,12 +13,12 @@ interface ScoringCourtSectionProps {
     setFourPointLineDistance: (val: number) => void;
     dunkValue: number;
     setDunkValue: (val: number) => void;
-    midrangeValue: number;
-    setMidrangeValue: (val: number) => void;
+    fieldGoalValue: 1 | 2;
+    setFieldGoalValue: (value: 1 | 2) => void;
+    freeThrowsEnabled: boolean;
+    setFreeThrowsEnabled: (value: boolean) => void;
     heaveRuleEnabled: boolean;
     setHeaveRuleEnabled: (val: boolean) => void;
-    halfCourtShotValue: number;
-    setHalfCourtShotValue: (val: number) => void;
     backcourtViolationEnabled: boolean;
     setBackcourtViolationEnabled: (val: boolean) => void;
     travelingEnabled: boolean;
@@ -55,9 +55,9 @@ export const ScoringCourtSection: React.FC<ScoringCourtSectionProps> = ({
     fourPointLine, setFourPointLine,
     fourPointLineDistance, setFourPointLineDistance,
     dunkValue, setDunkValue,
-    midrangeValue, setMidrangeValue,
+    fieldGoalValue, setFieldGoalValue,
+    freeThrowsEnabled, setFreeThrowsEnabled,
     heaveRuleEnabled, setHeaveRuleEnabled,
-    halfCourtShotValue, setHalfCourtShotValue,
     backcourtViolationEnabled, setBackcourtViolationEnabled,
     travelingEnabled, setTravelingEnabled,
     doubleDribbleEnabled, setDoubleDribbleEnabled,
@@ -81,6 +81,25 @@ export const ScoringCourtSection: React.FC<ScoringCourtSectionProps> = ({
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-4">
                 <div className="space-y-2">
+                    <div>
+                        <div className="text-sm font-bold text-slate-200">Field Goal Value</div>
+                        <div className="text-xs text-slate-500">Points awarded for an ordinary made basket.</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-950/50 p-1">
+                        {[1, 2].map(points => (
+                            <button
+                                key={points}
+                                type="button"
+                                onClick={() => setFieldGoalValue(points as 1 | 2)}
+                                className={`rounded-lg px-3 py-2 text-xs font-black transition-colors ${fieldGoalValue === points ? 'bg-sky-500 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                            >
+                                {points} {points === 1 ? 'POINT' : 'POINTS'}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <RuleToggle id="freeThrowsEnabled" value={freeThrowsEnabled} onChange={setFreeThrowsEnabled} />
+                <div className="space-y-2">
                     <RuleToggle id="threePointLineEnabled" value={threePointLineEnabled} onChange={setThreePointLineEnabled} />
                     {threePointLineEnabled && <RuleInput id="threePointLineDistance" value={threePointLineDistance} onChange={setThreePointLineDistance} />}
                 </div>
@@ -88,12 +107,36 @@ export const ScoringCourtSection: React.FC<ScoringCourtSectionProps> = ({
                     <RuleToggle id="fourPointLine" value={fourPointLine} onChange={setFourPointLine} />
                     {fourPointLine && <RuleInput id="fourPointLineDistance" value={fourPointLineDistance} onChange={setFourPointLineDistance} />}
                 </div>
-                {/* Stored only: the sim still uses fixed 2PT/3PT point values. */}
-                <RuleInput id="dunkValue" value={dunkValue} onChange={setDunkValue} />
-                <RuleInput id="midrangeValue" value={midrangeValue} onChange={setMidrangeValue} />
-                {/* Stored only until heave/half-court attempts exist in stat generation. */}
-                <RuleToggle id="heaveRuleEnabled" value={heaveRuleEnabled} onChange={setHeaveRuleEnabled} />
-                <RuleInput id="halfCourtShotValue" value={halfCourtShotValue} onChange={setHalfCourtShotValue} />
+                <div className="space-y-2">
+                    <div>
+                        <div className="text-sm font-bold text-slate-200">Dunk Value</div>
+                        <div className="text-xs text-slate-500">Points awarded for a successful dunk.</div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 rounded-xl bg-slate-950/50 p-1">
+                        {[1, 2, 3].map(points => (
+                            <button
+                                key={points}
+                                type="button"
+                                onClick={() => setDunkValue(points)}
+                                className={`rounded-lg px-3 py-2 text-xs font-black transition-colors ${
+                                    dunkValue === points
+                                        ? 'bg-sky-500 text-white'
+                                        : 'text-slate-400 hover:bg-slate-800 hover:text-white'
+                                }`}
+                            >
+                                {points} POINTS
+                            </button>
+                        ))}
+                    </div>
+                </div>
+                <div className="space-y-2">
+                    <RuleToggle id="heaveRuleEnabled" value={heaveRuleEnabled} onChange={setHeaveRuleEnabled} />
+                    {heaveRuleEnabled && (
+                        <p className="text-xs leading-relaxed text-slate-500">
+                            Eligible misses in the final three seconds of non-final regulation periods are charged to the team, not the shooter. Made heaves still count normally.
+                        </p>
+                    )}
+                </div>
                 {/* FT distance, rim height, ball weight, and court dimensions feed simulator stat knobs. */}
                 <RuleInput id="freeThrowDistance" value={freeThrowDistance} onChange={setFreeThrowDistance} />
                 <RuleInput id="rimHeight" value={rimHeight} onChange={setRimHeight} />

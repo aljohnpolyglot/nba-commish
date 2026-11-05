@@ -1,11 +1,36 @@
 import type { NBATeam } from '../../types';
-import type { TravelPreferences } from '../../types/tycoon';
+import type { TravelPreferences, TycoonState } from '../../types/tycoon';
+import { getSponsorRecoveryReduction, getSponsorTravelCoverage } from './sponsorBenefits';
+import { getSponsorQualityFloor, getSponsorReferenceYear } from './sponsorPerkEngine';
 
 const DEFAULT_TRAVEL_PREFERENCES: TravelPreferences = {
   hotel: 3.5,
   flight: 3.0,
   bus: 3.0,
 };
+
+export function getEffectiveTravelPreferences(tycoon?: TycoonState | null): TravelPreferences {
+  const flightCoverage = tycoon ? getSponsorTravelCoverage(tycoon, 'flight') : null;
+  const busCoverage = tycoon ? getSponsorTravelCoverage(tycoon, 'bus') : null;
+  const sponsorYear = getSponsorReferenceYear(tycoon ?? undefined);
+  const savedHotel = tycoon?.travelPreferences?.hotel ?? DEFAULT_TRAVEL_PREFERENCES.hotel;
+  const savedFlight = flightCoverage?.package.serviceStars ?? tycoon?.travelPreferences?.flight ?? DEFAULT_TRAVEL_PREFERENCES.flight;
+  const savedBus = busCoverage?.package.serviceStars ?? tycoon?.travelPreferences?.bus ?? DEFAULT_TRAVEL_PREFERENCES.bus;
+  return {
+    hotel: Math.max(savedHotel, getSponsorQualityFloor(tycoon ?? undefined, sponsorYear, 'hotelQualityStars') ?? 0),
+    flight: Math.max(savedFlight, getSponsorQualityFloor(tycoon ?? undefined, sponsorYear, 'flightQualityStars') ?? 0),
+    bus: Math.max(savedBus, getSponsorQualityFloor(tycoon ?? undefined, sponsorYear, 'busTravelCost') ?? 0),
+  };
+}
+
+export function getTravelServiceQuality(tycoon?: TycoonState | null): number {
+  const preferences = getEffectiveTravelPreferences(tycoon);
+  return (preferences.hotel + preferences.flight + preferences.bus) / 3;
+}
+
+export function getTravelDepartmentRating(tycoon?: TycoonState | null): number {
+  return Math.max(1, Math.min(99, Math.round((getTravelServiceQuality(tycoon) / 5) * 99)));
+}
 
 export interface TeamTravelGameplayEffects {
   roadRecoveryScore: number;
@@ -23,13 +48,9 @@ function clamp(value: number, min: number, max: number): number {
 }
 
 export function getTravelPreferences(
-  team?: (NBATeam & { tycoon?: { travelPreferences?: TravelPreferences } }) | null,
+  team?: (NBATeam & { tycoon?: TycoonState }) | null,
 ): TravelPreferences {
-  return {
-    hotel: team?.tycoon?.travelPreferences?.hotel ?? DEFAULT_TRAVEL_PREFERENCES.hotel,
-    flight: team?.tycoon?.travelPreferences?.flight ?? DEFAULT_TRAVEL_PREFERENCES.flight,
-    bus: team?.tycoon?.travelPreferences?.bus ?? DEFAULT_TRAVEL_PREFERENCES.bus,
-  };
+  return getEffectiveTravelPreferences(team?.tycoon);
 }
 
 export function getTravelGameplayEffectsFromPreferences(
@@ -56,7 +77,20 @@ export function getTravelGameplayEffectsFromPreferences(
 }
 
 export function getTeamTravelGameplayEffects(
-  team?: (NBATeam & { tycoon?: { travelPreferences?: TravelPreferences } }) | null,
+  team?: (NBATeam & { tycoon?: TycoonState }) | null,
 ): TeamTravelGameplayEffects {
-  return getTravelGameplayEffectsFromPreferences(getTravelPreferences(team));
+  const base = getTravelGameplayEffectsFromPreferences(getTravelPreferences(team));
+  const recovery = team?.tycoon ? getSponsorRecoveryReduction(team.tycoon) : 0;
+  return applySponsorRecoveryBenefit(base, recovery);
+}
+
+export function applySponsorRecoveryBenefit(effects: TeamTravelGameplayEffects, reduction: number): TeamTravelGameplayEffects {
+  if (reduction <= 0) return effects;
+  return {
+    ...effects,
+    roadRecoveryScore: Math.min(99, effects.roadRecoveryScore + reduction),
+    playerFatigueScore: Math.min(99, effects.playerFatigueScore + reduction),
+    awayFatigueShift: Math.max(-3, effects.awayFatigueShift - Math.ceil(reduction / 3)),
+    roadTripFatigueDelta: Math.max(0.55, effects.roadTripFatigueDelta - reduction * 0.04),
+  };
 }

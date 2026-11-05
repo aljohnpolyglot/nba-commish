@@ -1,8 +1,9 @@
 import type { NBAPlayer, DraftPick, LeagueStats } from '../../types';
 import { getDisplayAge, getDisplayOverall, getDisplayPotential } from '../../store/playerRatingStore';
-import { getPlayerInjuryProfile } from '../../data/playerInjuryData';
+import { getPlayerInjuryProfileForPlayer, getRealDurability } from '../../utils/durabilityUtils';
 import { formatPickLabel } from '../draft/draftClassStrength';
 import { isTradeEligible } from '../../utils/signingMoratorium';
+import { incrementSimulationPerfCounter } from '../simulation/simulationPerfDebug';
 import {
   calcCashTV,
   CASH_TRADE_CAP_USD,
@@ -20,7 +21,11 @@ import {
 import {
   calcOvr2K,
   calcPot2K,
+  buildLeagueRelativeTradePercentiles,
   computeLeaguePerAvg,
+  getLeagueRelativeTradeValueFloor,
+  isPbaTradeValuePlayer,
+  isContenderChampionshipCore,
   isOnTradingBlock,
   isRecentlySignedLocked,
   isUntouchable,
@@ -29,6 +34,7 @@ import {
   type TeamMode,
   type TVContext,
 } from './tradeValueCore';
+import type { TradeComputationMemo } from './tradeComputationMemo';
 export {
   calcCashTV,
   CASH_TRADE_CAP_USD,
@@ -46,9 +52,13 @@ export {
 export {
   calcOvr2K,
   calcPot2K,
+  buildLeagueRelativeTradePercentiles,
   computeLeaguePerAvg,
+  getLeagueRelativeTradeValueFloor,
+  isContenderChampionshipCore,
   isOnTradingBlock,
   isRecentlySignedLocked,
+  isPbaTradeValuePlayer,
   isTradeEligible,
   isUntouchable,
   isWalkingExpiring,
@@ -57,6 +67,13 @@ export {
 export type { TeamMode, TVContext } from './tradeValueCore';
 
 export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: number, ctx?: TVContext): number {
+  const memoKey = `${player.internalId}|${mode}|${currentYear}`;
+  if (ctx?.memo?.playerValues.has(memoKey)) {
+    incrementSimulationPerfCounter('trade.playerValuationCacheHits');
+    return ctx.memo.playerValues.get(memoKey)!;
+  }
+  if (ctx?.memo) incrementSimulationPerfCounter('trade.playerValuationCacheMisses');
+  incrementSimulationPerfCounter('trade.playerValuations');
   const ovr = calcOvr2K(player);
   const pot = calcPot2K(player, currentYear);
   const age = getDisplayAge(player, currentYear);
@@ -74,6 +91,11 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
   else if (mode === 'contend')  val = ovrPart * 1.4 + potPart * 0.6;
   else /* presti */              val = ovrPart * 0.5 + potPart * 1.5;
 
+  if (isPbaTradeValuePlayer(player)) {
+    const percentile = ctx?.leaguePlayerPercentile?.get(player.internalId);
+    if (percentile !== undefined) val = Math.max(val, getLeagueRelativeTradeValueFloor(percentile));
+  }
+
   // Age nerf — minimal global decay. OVR already declines naturally with age in the
   // ratings engine, so a 41yo still sitting at 94 OVR is a genuine outlier (LeBron, KJ
   // types) and their TV should reflect that they're still elite. Start at 39, gentle decay, 72% floor.
@@ -88,6 +110,7 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
   const expYear = player.contract?.exp ?? currentYear + 1;
   const isExpiring = expYear <= currentYear + 1;       // 1 year or less remaining
   const isFutureMultiYear = expYear >= currentYear + 2; // 2+ years left = locked-in salary
+  const credibleResignExpiring = ctx?.credibleResignExpiringIds?.has(player.internalId) ?? false;
   if (mode === 'rebuild' || mode === 'presti') {
     // Age penalty applies only to non-star OVR — once a player is below 80 OVR, the
     // rebuilder sees them as either flip asset (expiring) or toxic salary (multi-year).
@@ -125,7 +148,7 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
 
   // Walk-year stub: contract already past expiry (data lag). Flat half — keeps the
   // pre-existing safety net for malformed contract data.
-  if (expYear <= currentYear) val *= 0.5;
+  if (expYear <= currentYear && !credibleResignExpiring) val *= 0.5;
 
   // In-season PER adjustment — regular season only, auto-resets on rollover.
   // Qualified: >10 GP AND >12 MPG. Cap ±20% (up from ±10%); scaling is perDelta/60
@@ -148,14 +171,9 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
 
   // Durability penalty — injury-prone players are worth less (AD, Embiid, Zion)
   // Based on career injury history, NOT current injury status
-  const profile = getPlayerInjuryProfile(player.name);
+  const profile = getPlayerInjuryProfileForPlayer(player);
   if (profile) {
-    const careerGP = player.stats
-      ? player.stats.filter((s: any) => !s.playoffs && (s.tid ?? -1) >= 0).reduce((sum: number, s: any) => sum + (s.gp ?? 0), 0)
-      : 0;
-    const durability = careerGP > 0
-      ? Math.max(0, Math.min(99, Math.round(99 - ((profile.careerCount / careerGP) * 100) * 5)))
-      : (player as any).durability ?? 75;
+    const durability = getRealDurability(player) ?? 75;
     // Glass (< 30): 0.65x, Injury-Prone (30-44): 0.75x, Fragile (45-59): 0.85x, Average (60-74): 0.93x, Durable (75+): no penalty
     if (durability < 30)       val *= 0.65;
     else if (durability < 45)  val *= 0.75;
@@ -177,7 +195,9 @@ export function calcPlayerTV(player: NBAPlayer, mode: TeamMode, currentYear: num
     val *= mvpMult;
   }
 
-  return Math.max(0, Number(val.toFixed(2)));
+  const result = Math.max(0, Number(val.toFixed(2)));
+  ctx?.memo?.playerValues.set(memoKey, result);
+  return result;
 }
 
 // ── Pick value (power-ranking aware) ─────────────────────────────────────────
@@ -204,6 +224,7 @@ export function calcPickTV(
   yearsFromNow: number,
   opts?: PickTVOpts,
 ): number {
+  incrementSimulationPerfCounter('trade.pickValuations');
   const classStrength = opts?.classStrength ?? 1.0;
 
   if (round === 2) {
@@ -256,12 +277,19 @@ export interface PickValueContext {
   classStrengthByYear?: Map<number, number>;
   /** tid → actual lottery slot (1-14) for currentYear draft. Optional. */
   lotterySlotByTid?: Map<number, number>;
+  memo?: TradeComputationMemo;
 }
 
 export function getPickTV(
   pick: { round: number; season: number; originalTid: number },
   ctx: PickValueContext,
 ): number {
+  const memoKey = `${pick.round}|${pick.season}|${pick.originalTid}`;
+  if (ctx.memo?.pickValues.has(memoKey)) {
+    incrementSimulationPerfCounter('trade.pickValuationCacheHits');
+    return ctx.memo.pickValues.get(memoKey)!;
+  }
+  if (ctx.memo) incrementSimulationPerfCounter('trade.pickValuationCacheMisses');
   const yearsFromNow = Math.max(1, pick.season - ctx.currentYear);
   // Pick value follows ORIGINAL owner's record, not the current holder's.
   const rank = ctx.powerRanks.get(pick.originalTid) ?? Math.ceil(ctx.totalTeams / 2);
@@ -270,7 +298,9 @@ export function getPickTV(
   const actualSlot = pick.round === 1 && pick.season === ctx.currentYear
     ? ctx.lotterySlotByTid?.get(pick.originalTid)
     : undefined;
-  return calcPickTV(pick.round, rank, ctx.totalTeams, yearsFromNow, { classStrength, actualSlot });
+  const result = calcPickTV(pick.round, rank, ctx.totalTeams, yearsFromNow, { classStrength, actualSlot });
+  ctx.memo?.pickValues.set(memoKey, result);
+  return result;
 }
 
 // ── Team mode ─────────────────────────────────────────────────────────────────
@@ -344,8 +374,10 @@ export function autoBalance(
   const gapTolerance = getTradeGapTolerance(originalGap);
 
   // 1. Find a player to fill the gap (exclude untouchables — they're off-limits)
-  const available = players
-    .filter(p => p.tid === targetTid && !usedIds.has(p.internalId) && !isUntouchable(p, modeWeak, currentYear, tvCtx?.mvpRank))
+  const targetRoster = players.filter(player => player.tid === targetTid);
+  const available = targetRoster
+    .filter(p => !usedIds.has(p.internalId) && !isUntouchable(p, modeWeak, currentYear, tvCtx?.mvpRank))
+    .filter(p => !isContenderChampionshipCore(p, targetRoster, modeWeak, currentYear, tvCtx?.mvpRank))
     .map(p => ({ ...p, tv: calcPlayerTV(p, modeWeak, currentYear, tvCtx) }))
     .filter(p => p.tv > 0 && p.tv <= gap * 1.8)
     .sort((a, b) => Math.abs(a.tv - gap) - Math.abs(b.tv - gap));

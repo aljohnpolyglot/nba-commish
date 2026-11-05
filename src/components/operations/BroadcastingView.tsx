@@ -5,7 +5,7 @@ import { useGame } from '../../store/GameContext';
 import { useLeagueLabels } from '../../utils/leagueLabels';
 import { useRosterComplianceGate } from '../../hooks/useRosterComplianceGate';
 import { useDraftEventGate } from '../../hooks/useDraftEventGate';
-import { compareGameDates } from '../../utils/dateUtils';
+import { INITIAL_LEAGUE_STATS } from '../../constants';
 import { BroadcastingDashboardStep } from './BroadcastingDashboardStep';
 import { BroadcastingRosterStep } from './BroadcastingRosterStep';
 import {
@@ -25,20 +25,47 @@ import {
   WarningModal,
 } from './BroadcastingShared';
 import { BroadcastingStrategyStep } from './BroadcastingStrategyStep';
+import {
+  getHistoricalBroadcastEra,
+  getHistoricalBroadcastProfile,
+} from '../../data/historicalBroadcastRights';
+import {
+  getCommissionerTaskViews,
+} from '../../services/commissionerTasks/taskRegistry';
+import { resolveCommissionerTask } from '../../services/commissionerTasks/taskResolution';
+import { MediaRightsTaskPanel } from '../commissioner-tasks/MediaRightsTaskPanel';
+import { formatLeagueSeasonLabel } from '../../services/leagueCalendar';
 
 export const BroadcastingView: React.FC = () => {
   const { state, dispatchAction } = useGame();
   const isFictional = state.leagueType === 'fictional';
-  const bcName = (id: string) => getBroadcastPartnerName(id, isFictional);
   const labels = useLeagueLabels();
   const phaseName = (phase: { id: string; name: string }) => phase.id === 'nbacupinseason' ? labels.cupShort : phase.name;
   const rosterGate = useRosterComplianceGate();
   const draftGate = useDraftEventGate();
 
-  const isLocked = state.leagueStats.mediaRights?.isLocked === true;
-  const broadcastDeadline = `${state.leagueStats.year ?? new Date().getFullYear()}-06-30`;
-  const isAfterDeadline = compareGameDates(state.date, broadcastDeadline) >= 0;
-  const readOnly = isLocked || isAfterDeadline;
+  const seasonStart = (state.leagueStats.year ?? new Date().getFullYear()) - 1;
+  const historicalEra = state.leagueStats.mediaRights?.historicalDefault
+    ? getHistoricalBroadcastEra(seasonStart)
+    : null;
+  const historicalProfile = historicalEra
+    ? getHistoricalBroadcastProfile(historicalEra)
+    : null;
+  const bcName = (id: string) => {
+    const historicalIndex = historicalEra?.partnerIds.indexOf(id) ?? -1;
+    return historicalIndex >= 0
+      ? historicalEra!.partners[historicalIndex]
+      : getBroadcastPartnerName(id, isFictional);
+  };
+  const contractEnd = state.leagueStats.mediaRights?.contractEndSeason;
+  const isLocked = contractEnd != null
+    ? contractEnd >= seasonStart
+    : state.leagueStats.mediaRights?.isLocked === true;
+  const readOnly = true;
+  const renewalTask = getCommissionerTaskViews(state)
+    .find(task => task.taskId === 'media_rights_renewal' && task.status === 'in_progress');
+  const [dismissedRenewalKey, setDismissedRenewalKey] = useState<string | null>(null);
+  const showRenewal = renewalTask != null && dismissedRenewalKey !== renewalTask.key;
 
   const [view, setView] = useState<BroadcastingViewStep>('roster');
   const [activeBroadcasters, setActiveBroadcasters] = useState<string[]>(['espn', 'tnt', 'abc']);
@@ -144,7 +171,22 @@ export const BroadcastingView: React.FC = () => {
   const savedRights = readOnly ? state.leagueStats.mediaRights : null;
   const dispMediaRev = savedRights?.mediaRev ?? metrics.mediaRev;
   const dispTotalRev = savedRights?.totalRev ?? metrics.totalRev;
-  const dispSalaryCap = readOnly ? (state.leagueStats.salaryCap ?? 154_647_000) / 1_000_000 : metrics.salaryCap;
+  const dispSalaryCap = readOnly ? (state.leagueStats.salaryCap ?? INITIAL_LEAGUE_STATS.salaryCap) / 1_000_000 : metrics.salaryCap;
+  const savedApproval = savedRights?.approval ?? historicalProfile?.approval;
+  const displayApproval = savedApproval != null ? savedApproval / 100 : metrics.approval;
+  const displayMetrics: BroadcastingMetrics = savedRights ? {
+    ...metrics,
+    totalRev: savedRights.totalRev,
+    mediaRev: savedRights.mediaRev,
+    lpRev: savedRights.lpRev,
+    salaryCap: dispSalaryCap,
+    viewership: state.leagueStats.viewership,
+    avgReach: (savedRights.reach ?? historicalProfile?.reach) != null
+      ? (savedRights.reach ?? historicalProfile!.reach) / 100
+      : metrics.avgReach,
+    approval: displayApproval,
+    approvalGrade: getGrade(displayApproval, { S: 0.9, A: 0.8, B: 0.7, C: 0.5, D: 0.3 }),
+  } : metrics;
 
   const toggleBroadcaster = (id: string) => {
     if (readOnly) return;
@@ -268,11 +310,6 @@ export const BroadcastingView: React.FC = () => {
         setShowWarning(true);
         return;
       }
-      setView('leaguepass');
-      return;
-    }
-
-    if (view === 'leaguepass') {
       setView('dashboard');
       return;
     }
@@ -308,7 +345,7 @@ export const BroadcastingView: React.FC = () => {
       .join(', ');
     const year = state.leagueStats.year ?? new Date().getFullYear();
     const dealOutcome = [
-      `Commissioner ${state.commissionerName || 'of the NBA'} has officially finalized the league's media rights deal for the ${year - 1}-${String(year).slice(2)} season.`,
+      `Commissioner ${state.commissionerName || 'of the NBA'} has officially finalized the league's media rights deal for the ${formatLeagueSeasonLabel(year, state.leagueStats)} season.`,
       `Broadcasting partners: ${partnerNames}.`,
       `Total media revenue: $${metrics.mediaRev.toFixed(2)}B. League Pass priced at $${lpPrice.toFixed(2)}/month (${metrics.subs.toFixed(1)}M projected subscribers).`,
       `Combined annual broadcast revenue: $${metrics.totalRev.toFixed(2)}B. New salary cap set at $${metrics.salaryCap.toFixed(1)}M.`,
@@ -326,21 +363,53 @@ export const BroadcastingView: React.FC = () => {
   };
 
   const filteredBroadcasters = useMemo(() => {
-    const list = [...BROADCASTERS].filter(broadcaster => {
+    const saved = state.leagueStats.mediaRights;
+    const activeCount = Math.max(1, saved?.activeBroadcasters.length ?? 0);
+    const list = BROADCASTERS.filter(broadcaster =>
+      !readOnly || saved?.activeBroadcasters.includes(broadcaster.id),
+    ).map(broadcaster => {
+      if (!saved?.historicalDefault || !saved.activeBroadcasters.includes(broadcaster.id)) return broadcaster;
+      const historicalIndex = historicalEra?.partnerIds.indexOf(broadcaster.id) ?? -1;
+      return {
+        ...broadcaster,
+        name: historicalIndex >= 0 ? historicalEra!.partners[historicalIndex] : broadcaster.name,
+        fee: saved.mediaRev / activeCount,
+        reach: (saved.reach ?? historicalProfile?.reach) != null
+          ? (saved.reach ?? historicalProfile!.reach) / 100
+          : broadcaster.reach,
+        approval: (saved.approval ?? historicalProfile?.approval) != null
+          ? (saved.approval ?? historicalProfile!.approval) / 100
+          : broadcaster.approval,
+        specialty: 'Historical partner',
+      };
+    }).filter(broadcaster => {
       if (filter === 'National TV') return broadcaster.type === 'national';
       if (filter === 'Streaming') return broadcaster.type === 'streaming';
       return true;
     });
     list.sort((left, right) => sortBy === 'fee' ? right.fee - left.fee : sortBy === 'reach' ? right.reach - left.reach : right.approval - left.approval);
     return list;
-  }, [filter, sortBy]);
+  }, [filter, historicalEra, historicalProfile, sortBy, state.leagueStats.mediaRights]);
 
-  const stepLabel = view === 'roster' ? 'Confirm Roster' : view === 'phases' ? 'Next: Weekly' : view === 'weekly' ? 'Next: League Pass' : view === 'leaguepass' ? 'View Dashboard' : readOnly ? 'Locked' : 'Finalize Deal';
-  const steps: BroadcastingViewStep[] = ['roster', 'phases', 'weekly', 'leaguepass', 'dashboard'];
-  const stepLabels = ['Roster', 'Phases', 'Weekly', 'League Pass', 'Dashboard'];
+  const stepLabel = view === 'roster' ? 'Confirm Roster' : view === 'phases' ? 'Next: Weekly' : view === 'weekly' ? 'View Dashboard' : readOnly ? 'Locked' : 'Finalize Deal';
+  const steps: BroadcastingViewStep[] = ['roster', 'phases', 'weekly', 'dashboard'];
+  const stepLabels = ['Roster', 'Phases', 'Weekly', 'Dashboard'];
 
   return (
     <div className="min-h-full bg-[#050714] text-zinc-300 selection:bg-indigo-500/30 pb-8">
+      {showRenewal && renewalTask && (
+        <MediaRightsTaskPanel
+          state={state}
+          onClose={() => setDismissedRenewalKey(renewalTask.key)}
+          onConfirm={async offer => {
+            const patch = await resolveCommissionerTask(state, 'media_rights_renewal', {
+              mode: 'manual',
+              broadcastOffer: offer,
+            });
+            await dispatchAction({ type: 'UPDATE_STATE', payload: patch } as any);
+          }}
+        />
+      )}
       <header className="sticky top-0 bg-[#050714]/80 backdrop-blur-xl border-b border-[#1a1f35] z-40 px-4 md:px-8 py-4">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
@@ -349,7 +418,9 @@ export const BroadcastingView: React.FC = () => {
             </div>
             <div>
               <h1 className="text-lg font-black text-white tracking-tighter uppercase italic leading-none">{labels.mediaRights}</h1>
-              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest">Season 2025-26</p>
+              <p className="text-[10px] text-zinc-500 font-medium uppercase tracking-widest">
+                Season {seasonStart}-{String(seasonStart + 1).slice(-2)}
+              </p>
             </div>
           </div>
 
@@ -371,7 +442,7 @@ export const BroadcastingView: React.FC = () => {
             <div className="h-6 w-px bg-zinc-800" />
             <div className="flex flex-col items-end">
               <span className="text-[9px] font-bold text-zinc-500 uppercase tracking-widest">Approval</span>
-              <span className={`text-base font-black ${gradeColor(metrics.approvalGrade)}`}>{metrics.approvalGrade}</span>
+              <span className={`text-base font-black ${gradeColor(displayMetrics.approvalGrade)}`}>{displayMetrics.approvalGrade}</span>
             </div>
 
             {!readOnly && (
@@ -397,7 +468,9 @@ export const BroadcastingView: React.FC = () => {
         {readOnly && (
           <div className="mt-3 flex items-center gap-2 px-3 py-2 bg-amber-500/10 border border-amber-500/20 rounded-xl text-amber-400 text-xs font-medium">
             <Lock size={12} />
-            {isLocked ? 'Deal finalized - Broadcasting rights are locked for this season.' : 'Season has started - deadline passed.'}
+            {isLocked
+              ? `Agreement locked through ${contractEnd ?? seasonStart}. The next renewal opens for the ${Number(contractEnd ?? seasonStart) + 1}-${String(Number(contractEnd ?? seasonStart) + 2).slice(-2)} season.`
+              : 'The agreement has expired. Open Commissioner Tasks to review complete renewal packages.'}
           </div>
         )}
 
@@ -420,8 +493,24 @@ export const BroadcastingView: React.FC = () => {
         </div>
       </header>
 
+      {renewalTask && (
+        <div className="mx-4 mt-4 flex flex-col gap-3 rounded-2xl border border-amber-400/30 bg-amber-400/10 p-4 sm:flex-row sm:items-center sm:justify-between md:mx-8">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-amber-200">National Media Rights Renewal</p>
+            <p className="mt-1 text-xs text-zinc-400">Review complete offers, assign every broadcast category, and finalize one shared contract term.</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setDismissedRenewalKey(null)}
+            className="rounded-xl bg-amber-400 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-950 hover:bg-amber-300"
+          >
+            Resume Renewal
+          </button>
+        </div>
+      )}
+
       <ValidationModal isOpen={showValidation} onClose={() => setShowValidation(false)} items={validationItems} />
-      <WarningModal isOpen={showWarning} onClose={() => setShowWarning(false)} onConfirm={() => { setShowWarning(false); setView('leaguepass'); }} warnings={warningItems} />
+      <WarningModal isOpen={showWarning} onClose={() => setShowWarning(false)} onConfirm={() => { setShowWarning(false); setView('dashboard'); }} warnings={warningItems} />
 
       <div className="max-w-7xl mx-auto p-4 md:p-8">
         <AnimatePresence mode="wait">
@@ -437,10 +526,11 @@ export const BroadcastingView: React.FC = () => {
               toggleBroadcaster={toggleBroadcaster}
               readOnly={readOnly}
               isFictional={isFictional}
+              broadcastTalent={(state.broadcastTalent ?? []).filter(talent => talent.active)}
             />
           )}
 
-          {(view === 'phases' || view === 'weekly' || view === 'leaguepass') && (
+          {(view === 'phases' || view === 'weekly') && (
             <BroadcastingStrategyStep
               view={view}
               activeBroadcasters={activeBroadcasters}
@@ -450,8 +540,6 @@ export const BroadcastingView: React.FC = () => {
               scheduleAssignments={scheduleAssignments}
               togglePhaseAssignment={togglePhaseAssignment}
               toggleScheduleAssignment={toggleScheduleAssignment}
-              lpPrice={lpPrice}
-              setLpPrice={setLpPrice}
               metrics={metrics}
               phaseName={phaseName}
               bcName={bcName}
@@ -462,7 +550,7 @@ export const BroadcastingView: React.FC = () => {
 
           {view === 'dashboard' && (
             <BroadcastingDashboardStep
-              metrics={metrics}
+              metrics={displayMetrics}
               dispTotalRev={dispTotalRev}
               dispSalaryCap={dispSalaryCap}
               phaseAssignments={phaseAssignments}
@@ -470,12 +558,13 @@ export const BroadcastingView: React.FC = () => {
               phaseName={phaseName}
               handleNext={handleNext}
               readOnly={readOnly}
+              historicalDefault={savedRights?.historicalDefault === true}
             />
           )}
         </AnimatePresence>
       </div>
 
-      <footer className="fixed bottom-0 left-0 right-0 bg-[#0c1021] border-t border-[#1a1f35] px-6 py-2 z-40 flex items-center justify-between">
+      <footer className="fixed bottom-0 left-0 right-0 bg-[#0c1021] border-t border-[#1a1f35] px-6 py-2 z-40 flex items-center">
         <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest">
           <span className="flex items-center gap-1.5 text-emerald-400">
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -483,14 +572,6 @@ export const BroadcastingView: React.FC = () => {
           </span>
           <div className="w-px h-3 bg-zinc-800" />
           <span className="text-zinc-500">Broadcasters: {activeBroadcasters.length}</span>
-          <div className="w-px h-3 bg-zinc-800" />
-          <span className="text-zinc-500">Streaming: {metrics.streamingCount}</span>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="w-32 h-1.5 bg-zinc-900 rounded-full overflow-hidden">
-            <div className="h-full bg-indigo-500 transition-all" style={{ width: `${Math.min(100, (metrics.totalRev / 15) * 100)}%` }} />
-          </div>
-          <span className="text-[10px] font-black text-white tracking-widest">REV CAP</span>
         </div>
       </footer>
       {rosterGate.modal}

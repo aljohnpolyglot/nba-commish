@@ -1,0 +1,458 @@
+{
+  "schemaVersion": 1,
+  "datasetVersion": "gleague-history.1950796889725386",
+  "competitionKey": "gleague",
+  "competitionName": "NBA G League",
+  "leagueKey": "gleague",
+  "generatedAt": "2026-08-01T22:47:37.134Z",
+  "sources": [
+    {
+      "role": "champions",
+      "source": {
+        "provider": "wikipedia",
+        "pageTitle": "List of NBA G League champions",
+        "pageUrl": "https://en.wikipedia.org/w/index.php?title=List_of_NBA_G_League_champions&oldid=1354326412",
+        "revisionId": 1354326412,
+        "fetchedAt": "2026-08-01T22:47:37.134Z"
+      }
+    }
+  ],
+  "seasons": [
+    {
+      "season": 2002,
+      "seasonLabel": "2002",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Greenville Groove",
+        "sourcePageTitle": "Greenville Groove",
+        "sourceHref": "/wiki/Greenville_Groove",
+        "canonicalKey": "club:greenville-groove"
+      },
+      "result": "North Charleston Lowgators†"
+    },
+    {
+      "season": 2003,
+      "seasonLabel": "2003",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Mobile Revelers",
+        "sourcePageTitle": "Mobile Revelers",
+        "sourceHref": "/wiki/Mobile_Revelers",
+        "canonicalKey": "club:mobile-revelers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fayetteville Patriots",
+        "sourcePageTitle": "Fayetteville Patriots",
+        "sourceHref": "/wiki/Fayetteville_Patriots",
+        "canonicalKey": "club:fayetteville-patriots"
+      },
+      "result": "2–1"
+    },
+    {
+      "season": 2004,
+      "seasonLabel": "2004",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Asheville Altitude",
+        "sourcePageTitle": "Asheville Altitude",
+        "sourceHref": "/wiki/Asheville_Altitude",
+        "canonicalKey": "club:asheville-altitude"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Huntsville Flight",
+        "sourcePageTitle": "Huntsville Flight",
+        "sourceHref": "/wiki/Huntsville_Flight",
+        "canonicalKey": "club:huntsville-flight"
+      },
+      "result": "108–106 (OT)"
+    },
+    {
+      "season": 2005,
+      "seasonLabel": "2005",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Asheville Altitude",
+        "sourcePageTitle": "Asheville Altitude",
+        "sourceHref": "/wiki/Asheville_Altitude",
+        "canonicalKey": "club:asheville-altitude"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Columbus Riverdragons",
+        "sourcePageTitle": "Austin Toros",
+        "sourceHref": "/wiki/Austin_Toros",
+        "canonicalKey": "club:austin-toros"
+      },
+      "result": "90–67"
+    },
+    {
+      "season": 2006,
+      "seasonLabel": "2006",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Albuquerque Thunderbirds",
+        "sourcePageTitle": "Albuquerque Thunderbirds",
+        "sourceHref": "/wiki/Albuquerque_Thunderbirds",
+        "canonicalKey": "club:albuquerque-thunderbirds"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Fort Worth Flyers",
+        "sourcePageTitle": "Fort Worth Flyers",
+        "sourceHref": "/wiki/Fort_Worth_Flyers",
+        "canonicalKey": "club:fort-worth-flyers"
+      },
+      "result": "119–108"
+    },
+    {
+      "season": 2007,
+      "seasonLabel": "2007",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Dakota Wizards",
+        "sourcePageTitle": "Dakota Wizards",
+        "sourceHref": "/wiki/Dakota_Wizards",
+        "canonicalKey": "club:dakota-wizards"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Colorado 14ers"
+    },
+    {
+      "season": 2008,
+      "seasonLabel": "2008",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Idaho Stampede",
+        "sourcePageTitle": "Idaho Stampede",
+        "sourceHref": "/wiki/Idaho_Stampede",
+        "canonicalKey": "club:idaho-stampede"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Southwest",
+        "canonicalKey": "club:southwest"
+      },
+      "result": "Austin Toros"
+    },
+    {
+      "season": 2009,
+      "seasonLabel": "2009",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Colorado 14ers",
+        "sourcePageTitle": "Colorado 14ers",
+        "sourceHref": "/wiki/Colorado_14ers",
+        "canonicalKey": "club:colorado-14ers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Utah Flash"
+    },
+    {
+      "season": 2010,
+      "seasonLabel": "2010",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Rio Grande Valley Vipers",
+        "sourcePageTitle": "Rio Grande Valley Vipers",
+        "sourceHref": "/wiki/Rio_Grande_Valley_Vipers",
+        "canonicalKey": "club:rio-grande-valley-vipers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Tulsa 66ers"
+    },
+    {
+      "season": 2011,
+      "seasonLabel": "2011",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Iowa Energy",
+        "sourcePageTitle": "Iowa Energy",
+        "sourceHref": "/wiki/Iowa_Energy",
+        "canonicalKey": "club:iowa-energy"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Rio Grande Valley Vipers"
+    },
+    {
+      "season": 2012,
+      "seasonLabel": "2012",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Austin Toros",
+        "sourcePageTitle": "Austin Toros",
+        "sourceHref": "/wiki/Austin_Toros",
+        "canonicalKey": "club:austin-toros"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Los Angeles D-Fenders†"
+    },
+    {
+      "season": 2013,
+      "seasonLabel": "2013",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Rio Grande Valley Vipers",
+        "sourcePageTitle": "Rio Grande Valley Vipers",
+        "sourceHref": "/wiki/Rio_Grande_Valley_Vipers",
+        "canonicalKey": "club:rio-grande-valley-vipers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Santa Cruz Warriors"
+    },
+    {
+      "season": 2014,
+      "seasonLabel": "2014",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Fort Wayne Mad Ants",
+        "sourcePageTitle": "Fort Wayne Mad Ants",
+        "sourceHref": "/wiki/Fort_Wayne_Mad_Ants",
+        "canonicalKey": "club:fort-wayne-mad-ants"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Santa Cruz Warriors"
+    },
+    {
+      "season": 2015,
+      "seasonLabel": "2015",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Santa Cruz Warriors",
+        "sourcePageTitle": "Santa Cruz Warriors",
+        "sourceHref": "/wiki/Santa_Cruz_Warriors",
+        "canonicalKey": "club:santa-cruz-warriors"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Eastern",
+        "canonicalKey": "club:eastern"
+      },
+      "result": "Fort Wayne Mad Ants"
+    },
+    {
+      "season": 2016,
+      "seasonLabel": "2016",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Sioux Falls Skyforce",
+        "sourcePageTitle": "Sioux Falls Skyforce",
+        "sourceHref": "/wiki/Sioux_Falls_Skyforce",
+        "canonicalKey": "club:sioux-falls-skyforce"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Los Angeles D-Fenders"
+    },
+    {
+      "season": 2017,
+      "seasonLabel": "2017",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Raptors 905",
+        "sourcePageTitle": "Raptors 905",
+        "sourceHref": "/wiki/Raptors_905",
+        "canonicalKey": "club:raptors-905"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Rio Grande Valley Vipers"
+    },
+    {
+      "season": 2018,
+      "seasonLabel": "2018",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Austin Spurs",
+        "sourcePageTitle": "Austin Spurs",
+        "sourceHref": "/wiki/Austin_Spurs",
+        "canonicalKey": "club:austin-spurs"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Eastern",
+        "canonicalKey": "club:eastern"
+      },
+      "result": "Raptors 905"
+    },
+    {
+      "season": 2019,
+      "seasonLabel": "2019",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Rio Grande Valley Vipers",
+        "sourcePageTitle": "Rio Grande Valley Vipers",
+        "sourceHref": "/wiki/Rio_Grande_Valley_Vipers",
+        "canonicalKey": "club:rio-grande-valley-vipers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Eastern",
+        "canonicalKey": "club:eastern"
+      },
+      "result": "Long Island Nets†"
+    },
+    {
+      "season": 2020,
+      "seasonLabel": "2020",
+      "status": "cancelled",
+      "result": "No NBA G League playoffs due to the COVID-19 pandemic"
+    },
+    {
+      "season": 2021,
+      "seasonLabel": "2021",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Lakeland Magic",
+        "sourcePageTitle": "Lakeland Magic",
+        "sourceHref": "/wiki/Lakeland_Magic",
+        "canonicalKey": "club:lakeland-magic"
+      },
+      "result": "Delaware Blue Coats"
+    },
+    {
+      "season": 2022,
+      "seasonLabel": "2022",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Rio Grande Valley Vipers",
+        "sourcePageTitle": "Rio Grande Valley Vipers",
+        "sourceHref": "/wiki/Rio_Grande_Valley_Vipers",
+        "canonicalKey": "club:rio-grande-valley-vipers"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Eastern",
+        "canonicalKey": "club:eastern"
+      },
+      "result": "Delaware Blue Coats"
+    },
+    {
+      "season": 2023,
+      "seasonLabel": "2023",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Delaware Blue Coats",
+        "sourcePageTitle": "Delaware Blue Coats",
+        "sourceHref": "/wiki/Delaware_Blue_Coats",
+        "canonicalKey": "club:delaware-blue-coats"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Rio Grande Valley Vipers"
+    },
+    {
+      "season": 2024,
+      "seasonLabel": "2024",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Oklahoma City Blue",
+        "sourcePageTitle": "Oklahoma City Blue",
+        "sourceHref": "/wiki/Oklahoma_City_Blue",
+        "canonicalKey": "club:oklahoma-city-blue"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Eastern",
+        "canonicalKey": "club:eastern"
+      },
+      "result": "Maine Celtics"
+    },
+    {
+      "season": 2025,
+      "seasonLabel": "2025",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Stockton Kings",
+        "sourcePageTitle": "Stockton Kings",
+        "sourceHref": "/wiki/Stockton_Kings",
+        "canonicalKey": "club:stockton-kings"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Eastern",
+        "canonicalKey": "club:eastern"
+      },
+      "result": "Osceola Magic†"
+    },
+    {
+      "season": 2026,
+      "seasonLabel": "2026",
+      "status": "complete",
+      "champion": {
+        "entityType": "team",
+        "sourceName": "Greensboro Swarm",
+        "sourcePageTitle": "Greensboro Swarm",
+        "sourceHref": "/wiki/Greensboro_Swarm",
+        "canonicalKey": "club:greensboro-swarm"
+      },
+      "runnerUp": {
+        "entityType": "team",
+        "sourceName": "Western",
+        "canonicalKey": "club:western"
+      },
+      "result": "Stockton Kings"
+    }
+  ]
+}

@@ -1,9 +1,9 @@
-import React, { useMemo, useState, useEffect } from 'react';
+import React, { useMemo, useState, useEffect, useRef } from 'react';
 import { useGame } from '../../store/GameContext';
 import { ArrowUpDown, Search, X, ChevronLeft, ChevronRight, SlidersHorizontal } from 'lucide-react';
 import { NBATeam } from '../../types';
 import { evaluateFilter } from '../../utils/filterUtils';
-import { getOwnTeamId } from '../../utils/helpers';
+import { getOwnTeamId, getSeasonPhase } from '../../utils/helpers';
 import { isFourPointEnabled } from '../../utils/ruleFlags';
 import { useHubScope } from '../../hooks/useHubScope';
 import { classifyBoxScoreGame } from '../../utils/gameClassification';
@@ -12,14 +12,25 @@ import { getDisplayAge } from '../../store/playerRatingStore';
 import { PBA_COMPETITIONS } from '../../data/templates/philippines/competitions';
 import { getConferenceSpec, type PbaConference } from '../../services/pba/conferenceTransition';
 import { isPbaCompetitionId, makeCountedPbaRegularBoxSet, pbaBoxIdentity } from '../../services/pba/competitionGames';
+import { getHistoricalNbaCompletedSeasonCutoff } from '../../services/playerDevelopment/hofHistoryWindow';
+import { getHistoricalTeamSnapshot } from '../../utils/teamAssets';
+import { getTeamFullName } from '../../utils/teamNames';
+import { deriveOfficialNbaRecords } from '../../utils/nbaOfficialRecords';
+import { TeamStatsMobileCards } from './TeamStatsMobileCards';
+import { didHomeTeamWin } from '../../utils/gameOutcome';
+import { getPbaBranchStartSeason } from '../../services/pba/branchHistoryOwnership';
+import { formatLeagueSeasonLabel } from '../../services/leagueCalendar';
+import { buildLeagueBaseKnobs } from '../../services/simulation/GameSimulator/engineLeagueKnobs';
+import { getNormalizedFieldGoalAttempts } from '../../services/simulation/GameSimulator/engineBoxScore';
 
-type StatType = 'team' | 'opponent' | 'shotLocations' | 'oppShotLocations' | 'advanced';
-type Phase = 'regular' | 'playoffs' | 'cup' | 'combined';
+export type StatType = 'team' | 'opponent' | 'shotLocations' | 'oppShotLocations' | 'advanced';
+type Phase = 'preseason' | 'regular' | 'playoffs' | 'cup' | 'combined';
 const PBA_COMBINED_FILTER = 'combined';
 
-interface TeamStatRow {
+export interface TeamStatRow {
   team: NBATeam;
   g: number; wins: number; losses: number; winPct: number; age: number;
+  sourceOffenseOnly?: boolean;
   // team basic (per game)
   pts: number; oppg: number; mov: number;
   fgm: number; fga: number; fgp: number;
@@ -65,18 +76,48 @@ function countFeats(pts: number, reb: number, ast: number, stl: number, blk: num
   return { dd: c10 >= 2 ? 1 : 0, td: c10 >= 3 ? 1 : 0, qd: c10 >= 4 ? 1 : 0, fiveX5: c5 === 5 ? 1 : 0 };
 }
 
+const finiteStat = (value: unknown): number => typeof value === 'number' && Number.isFinite(value) ? value : 0;
+
+const finiteRebounds = (line: any): number => {
+  const reported = line.reb ?? line.trb;
+  return typeof reported === 'number' && Number.isFinite(reported)
+    ? reported
+    : finiteStat(line.orb) + finiteStat(line.drb);
+};
+
 export const TeamStatsView: React.FC = () => {
   const { state, navigateToTeam, pendingStatSort, setPendingStatSort } = useGame();
-  const { teams: scopedTeams, pbaIsolated } = useHubScope();
+  const { teams: scopedTeams, hubTab, euroIsolated, pbaIsolated } = useHubScope();
+  const hubCompetition = state.activeCompetitions?.find(competition => competition.id === hubTab);
+  const knockoutOnly = hubCompetition?.format === 'knockout' || hubCompetition?.format === 'tournament';
   const labels = useLeagueLabels();
-  const title = pbaIsolated ? 'PBA Team Stats' : 'Team Stats';
+  const title = hubCompetition ? `${hubCompetition.displayName} Team Stats` : pbaIsolated ? 'PBA Team Stats' : 'Team Stats';
+  const currentSeason = state.leagueStats.year;
+  const pbaSourceCutoff = getPbaBranchStartSeason(state);
+  const maxVisibleSeason = getHistoricalNbaCompletedSeasonCutoff({
+    currentYear: currentSeason,
+    leagueType: state.leagueType,
+    moddedLeagueBase: state.moddedLeagueBase,
+    nbaStartYear: state.nbaStartYear,
+  }) ?? currentSeason;
+  const isStatsSeasonVisible = (seasonYear: number) => seasonYear <= maxVisibleSeason || seasonYear === currentSeason;
   const ownTid = getOwnTeamId(state);
   const fourPointEnabled = isFourPointEnabled(state.leagueStats);
+  const formatStatsSeasonLabel = (seasonYear: number) => pbaIsolated
+    ? String(seasonYear)
+    : formatLeagueSeasonLabel(seasonYear, state.leagueStats);
 
+  const activeStatsPhase = useMemo<Phase>(() => {
+    if (knockoutOnly) return 'combined';
+    const activePhase = getSeasonPhase(state);
+    if (activePhase === 'preseason' || activePhase === 'playoffs') return activePhase;
+    return 'regular';
+  }, [knockoutOnly, state.date, state.leagueStats, state.schedule, state.teams]);
   const [statType, setStatType]     = useState<StatType>('team');
-  const [season,   setSeason]       = useState<number | 'all'>(state.leagueStats.year);
-  useEffect(() => { setSeason(state.leagueStats.year); }, [state.leagueStats.year]);
-  const [phase,    setPhase]        = useState<Phase>('regular');
+  const [season,   setSeason]       = useState<number | 'all'>(currentSeason);
+  useEffect(() => { setSeason(currentSeason); }, [currentSeason]);
+  const [phase,    setPhase]        = useState<Phase>(activeStatsPhase);
+  const phaseWasSelected = useRef(false);
   const [pbaCompetitionFilter, setPbaCompetitionFilter] = useState(() =>
     getConferenceSpec(((state.leagueStats as any)?.pbaConference ?? 'philippine') as PbaConference).id,
   );
@@ -86,6 +127,15 @@ export const TeamStatsView: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [showFilters, setShowFilters]     = useState(false);
   const [columnFilters, setColumnFilters] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    phaseWasSelected.current = false;
+    setPhase(activeStatsPhase);
+  }, [hubTab, knockoutOnly]);
+
+  useEffect(() => {
+    if (!phaseWasSelected.current) setPhase(activeStatsPhase);
+  }, [activeStatsPhase]);
 
   useEffect(() => {
     if (pbaIsolated && phase === 'cup') setPhase('regular');
@@ -105,10 +155,16 @@ export const TeamStatsView: React.FC = () => {
     if (!pbaIsolated) return undefined;
     return new Set(
       pbaCompetitionFilter === PBA_COMBINED_FILTER
-        ? PBA_COMPETITIONS.map(spec => spec.id)
+        ? ['pba', ...PBA_COMPETITIONS.map(spec => spec.id)]
         : [pbaCompetitionFilter],
     );
   }, [pbaIsolated, pbaCompetitionFilter]);
+  const euroCompetitionIds = useMemo(() => {
+    if (!euroIsolated) return undefined;
+    const competitionId = hubTab ?? state.euroPrimaryCompetitionId;
+    return competitionId ? new Set([competitionId]) : undefined;
+  }, [euroIsolated, hubTab, state.euroPrimaryCompetitionId]);
+  const scopedCompetitionIds = pbaCompetitionIds ?? euroCompetitionIds;
 
   const countedPbaRegularBoxes = useMemo(() => {
     if (!pbaIsolated) return undefined;
@@ -117,24 +173,55 @@ export const TeamStatsView: React.FC = () => {
   }, [pbaCompetitionIds, pbaIsolated, season, state.boxScores]);
 
   const availableSeasons = useMemo(() => {
-    const years = new Set<number>();
+    const years = new Set<number>([currentSeason]);
     const pbaIds = pbaIsolated ? new Set(PBA_COMPETITIONS.map(spec => spec.id)) : null;
     (state.boxScores as any[]).forEach(game => {
       if (pbaIds && !pbaIds.has(String(game.competitionId ?? ''))) return;
+      if (euroCompetitionIds && !euroCompetitionIds.has(String(game.competitionId ?? ''))) return;
       const savedSeason = Number(game.season);
       if (savedSeason > 0) {
-        years.add(savedSeason);
+        if (isStatsSeasonVisible(savedSeason)) years.add(savedSeason);
         return;
       }
       if (!game.date) return;
       const date = new Date(game.date);
       if (Number.isNaN(date.getTime())) return;
-      years.add(date.getMonth() < 9 ? date.getFullYear() : date.getFullYear() + 1);
+      const derivedSeason = date.getMonth() < 9 ? date.getFullYear() : date.getFullYear() + 1;
+      if (isStatsSeasonVisible(derivedSeason)) years.add(derivedSeason);
     });
+    if (pbaIsolated) {
+      state.players.forEach(player => (player.stats ?? []).forEach(stat => {
+        const competitionId = String(stat.competitionId ?? '').toLowerCase();
+        if (stat.playoffs || (competitionId !== 'pba' && !competitionId.startsWith('pba-'))) return;
+        const savedSeason = Number(stat.season);
+        if (competitionId === 'pba' && savedSeason >= pbaSourceCutoff) return;
+        if ((stat.gp ?? 0) > 0 && isStatsSeasonVisible(savedSeason)) years.add(savedSeason);
+      }));
+    }
     return ['all' as const, ...Array.from(years).sort((a, b) => b - a)];
-  }, [pbaIsolated, state.boxScores]);
+  }, [currentSeason, euroCompetitionIds, maxVisibleSeason, pbaIsolated, pbaSourceCutoff, state.boxScores, state.players]);
 
   const seasonIndex = availableSeasons.indexOf(season as any);
+  const displaySeason = season === 'all' ? currentSeason : season;
+
+  useEffect(() => {
+    if (!availableSeasons.includes(season as any)) {
+      setSeason(availableSeasons.includes(currentSeason) ? currentSeason : availableSeasons[0] ?? currentSeason);
+    }
+  }, [availableSeasons, currentSeason, season]);
+
+  useEffect(() => {
+    if (!pbaIsolated) return;
+    const selectedSeason = season === 'all' ? null : season;
+    const hasAggregate = state.players.some(player => (player.stats ?? []).some(stat =>
+      !stat.playoffs
+      && String(stat.competitionId ?? '').toLowerCase() === 'pba'
+      && (selectedSeason === null || Number(stat.season) === selectedSeason)
+      && Number(stat.season) < pbaSourceCutoff
+      && (stat.gp ?? 0) > 0
+    ));
+    if (hasAggregate) setPbaCompetitionFilter(PBA_COMBINED_FILTER);
+  }, [pbaIsolated, pbaSourceCutoff, season, state.players]);
 
   useEffect(() => {
     if (pendingStatSort?.type === 'team') {
@@ -174,6 +261,7 @@ export const TeamStatsView: React.FC = () => {
       oppDd: number; oppTd: number; oppQd: number; oppFiveX5: number;
       oppDunks: number; oppTechs: number;
       ageMinSum: number; ageMinTotal: number;
+      sourceOffenseOnly: boolean;
     };
 
     const zero = (team: NBATeam): Acc => ({
@@ -189,14 +277,25 @@ export const TeamStatsView: React.FC = () => {
       oppDd:0,oppTd:0,oppQd:0,oppFiveX5:0,
       oppDunks:0,oppTechs:0,
       ageMinSum:0,ageMinTotal:0,
+      sourceOffenseOnly:false,
     });
 
     const acc = new Map<number, Acc>();
     scopedTeams.forEach(t => acc.set(t.id, zero(t)));
+    const historicalFastFgaMultiplier = buildLeagueBaseKnobs(state.leagueStats).boxScoreFgaNormalizationMult ?? 1;
+    const officialRecords = !euroIsolated && !pbaIsolated && phase === 'regular' && season === currentSeason
+      ? deriveOfficialNbaRecords(state.schedule, scopedTeams, currentSeason)
+      : null;
 
-    const addPlayers = (a: Acc, ownStats: any[], oppStats: any[]) => {
+    const addPlayers = (
+      a: Acc,
+      ownStats: any[],
+      oppStats: any[],
+      ownProtectedHeaves = 0,
+      oppProtectedHeaves = 0,
+    ) => {
       ownStats.forEach(ps => {
-        const reb = ps.reb ?? ps.trb ?? (ps.orb || 0) + (ps.drb || 0);
+        const reb = finiteRebounds(ps);
         a.fgm += ps.fgm || 0; a.fga += ps.fga || 0;
         a.tpm += ps.threePm || 0; a.tpa += ps.threePa || 0;
         a.fpm += ps.fourPm || 0; a.fpa += ps.fourPa || 0;
@@ -216,7 +315,7 @@ export const TeamStatsView: React.FC = () => {
         a.ageMinSum += age * (ps.min || 0); a.ageMinTotal += ps.min || 0;
       });
       oppStats.forEach(ps => {
-        const reb = ps.reb ?? ps.trb ?? (ps.orb || 0) + (ps.drb || 0);
+        const reb = finiteRebounds(ps);
         a.oppFgm += ps.fgm || 0; a.oppFga += ps.fga || 0;
         a.oppTpm += ps.threePm || 0; a.oppTpa += ps.threePa || 0;
         a.oppFpm += ps.fourPm || 0; a.oppFpa += ps.fourPa || 0;
@@ -232,39 +331,133 @@ export const TeamStatsView: React.FC = () => {
         const f = countFeats(ps.pts || 0, reb, ps.ast || 0, ps.stl || 0, ps.blk || 0);
         a.oppDd += f.dd; a.oppTd += f.td; a.oppQd += f.qd; a.oppFiveX5 += f.fiveX5;
       });
+      a.fga += ownProtectedHeaves;
+      a.tpa += ownProtectedHeaves;
+      a.oppFga += oppProtectedHeaves;
+      a.oppTpa += oppProtectedHeaves;
     };
 
+    const sourceTeamSeasons = new Set<string>();
+    if (pbaIsolated && pbaCompetitionFilter === PBA_COMBINED_FILTER && (phase === 'regular' || phase === 'combined')) {
+      const teamSeasonGames = new Map<string, number>();
+      for (const player of state.players) {
+        for (const stat of player.stats ?? []) {
+          const statSeason = Number(stat.season);
+          const tid = Number(stat.tid);
+          if (
+            stat.playoffs
+            || String(stat.competitionId ?? '').toLowerCase() !== 'pba'
+            || !acc.has(tid)
+            || !Number.isFinite(statSeason)
+            || statSeason > currentSeason
+            || statSeason >= pbaSourceCutoff
+            || (season !== 'all' && statSeason !== season)
+            || (stat.gp ?? 0) <= 0
+          ) continue;
+          const a = acc.get(tid)!;
+          const key = `${tid}|${statSeason}`;
+          sourceTeamSeasons.add(key);
+          teamSeasonGames.set(key, Math.max(teamSeasonGames.get(key) ?? 0, finiteStat(stat.gp)));
+          a.sourceOffenseOnly = true;
+          a.fgm += finiteStat(stat.fg);
+          a.fga += finiteStat(stat.fga);
+          a.tpm += finiteStat(stat.tp);
+          a.tpa += finiteStat(stat.tpa);
+          a.ftm += finiteStat(stat.ft);
+          a.fta += finiteStat(stat.fta);
+          a.orb += finiteStat(stat.orb);
+          a.drb += finiteStat(stat.drb);
+          a.trb += finiteStat(stat.trb) || finiteStat(stat.orb) + finiteStat(stat.drb);
+          a.ast += finiteStat(stat.ast);
+          a.stl += finiteStat(stat.stl);
+          a.blk += finiteStat(stat.blk);
+          a.tov += finiteStat(stat.tov);
+          a.pf += finiteStat(stat.pf);
+          a.ptsPlayer += finiteStat(stat.pts);
+          a.ptsActual += finiteStat(stat.pts);
+          a.min += finiteStat(stat.min);
+          const age = playerAgeMap.get(player.internalId) ?? 25;
+          a.ageMinSum += age * finiteStat(stat.min);
+          a.ageMinTotal += finiteStat(stat.min);
+        }
+      }
+      for (const [key, games] of teamSeasonGames) {
+        const [tidText, statSeasonText] = key.split('|');
+        const tid = Number(tidText);
+        const statSeason = Number(statSeasonText);
+        const a = acc.get(tid);
+        if (!a) continue;
+        const teamSeason = (a.team.seasons ?? []).find(row => Number(row.season) === statSeason) as any;
+        const wins = finiteStat(teamSeason?.won ?? teamSeason?.wins);
+        const losses = finiteStat(teamSeason?.lost ?? teamSeason?.losses);
+        a.g += Math.max(games, wins + losses);
+        a.wins += wins;
+        a.losses += losses;
+      }
+    }
+
     (state.boxScores as any[]).forEach(game => {
-      if (game.isAllStar || game.isRisingStars || game.isCelebrityGame || game.isPreseason) return;
-      if (pbaCompetitionIds && !pbaCompetitionIds.has(String(game.competitionId ?? ''))) return;
+      if (game.isAllStar || game.isRisingStars || game.isCelebrityGame) return;
+      if (scopedCompetitionIds && !scopedCompetitionIds.has(String(game.competitionId ?? ''))) return;
       const meta = classifyBoxScoreGame(game, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats.year, state.leagueStats);
       const gameSeason = Number(game.season ?? meta.seasonYear);
+      if (
+        sourceTeamSeasons.has(`${Number(game.homeTeamId)}|${gameSeason}`)
+        || sourceTeamSeasons.has(`${Number(game.awayTeamId)}|${gameSeason}`)
+      ) return;
       if (season !== 'all' && gameSeason !== season) return;
+      if (phase === 'preseason' && !meta.isPreseason) return;
+      if (phase !== 'preseason' && meta.isPreseason) return;
       if (phase === 'regular' && (meta.isPreseason || meta.isPlayoff || meta.isPlayIn || meta.excludeFromRecord)) return;
       if (phase === 'regular' && countedPbaRegularBoxes && isPbaCompetitionId(game.competitionId) && !countedPbaRegularBoxes.has(pbaBoxIdentity(game))) return;
-      if (phase === 'playoffs' && !meta.isPlayoff) return;
+      if (phase === 'playoffs' && !meta.isPlayoff && !meta.isPlayIn) return;
       if (phase === 'cup' && !meta.isNBACup) return;
-      if (phase === 'combined' && (meta.isPreseason || meta.isPlayIn)) return;
+      if (phase === 'combined' && (meta.isPreseason || (meta.isPlayIn && !scopedCompetitionIds))) return;
 
       const home = acc.get(game.homeTeamId);
       const away = acc.get(game.awayTeamId);
-      const hStats = game.homeStats || []; const aStats = game.awayStats || [];
+      const normalizeLegacyFastStats = (stats: any[]) => (
+        historicalFastFgaMultiplier !== 1
+        && (game.simulationEngine === 'fast' || game.simulationEngine === 'fast-fallback')
+          ? stats.map(player => ({
+              ...player,
+              ...getNormalizedFieldGoalAttempts(player, historicalFastFgaMultiplier),
+            }))
+          : stats
+      );
+      const hStats = normalizeLegacyFastStats(game.homeStats || []);
+      const aStats = normalizeLegacyFastStats(game.awayStats || []);
+      const protectedHeaveMisses = (teamId: number) => (game.heaves ?? []).filter(
+        (event: any) => event.teamId === teamId && !event.made && event.protectedFromIndividualStats,
+      ).length;
+      const homeProtectedHeaves = protectedHeaveMisses(game.homeTeamId);
+      const awayProtectedHeaves = protectedHeaveMisses(game.awayTeamId);
+      const homeWon = didHomeTeamWin(game);
 
       if (home) {
-        home.g++; home.wins += game.homeScore > game.awayScore ? 1 : 0;
-        home.losses += game.homeScore < game.awayScore ? 1 : 0;
+        home.g++; home.wins += homeWon ? 1 : 0;
+        home.losses += homeWon ? 0 : 1;
         home.ptsActual += game.homeScore || 0; home.oppPtsActual += game.awayScore || 0;
-        addPlayers(home, hStats, aStats);
+        addPlayers(home, hStats, aStats, homeProtectedHeaves, awayProtectedHeaves);
       }
       if (away) {
-        away.g++; away.wins += game.awayScore > game.homeScore ? 1 : 0;
-        away.losses += game.awayScore < game.homeScore ? 1 : 0;
+        away.g++; away.wins += homeWon ? 0 : 1;
+        away.losses += homeWon ? 1 : 0;
         away.ptsActual += game.awayScore || 0; away.oppPtsActual += game.homeScore || 0;
-        addPlayers(away, aStats, hStats);
+        addPlayers(away, aStats, hStats, awayProtectedHeaves, homeProtectedHeaves);
       }
     });
 
     return Array.from(acc.values()).map(a => {
+      const official = officialRecords?.get(a.team.id);
+      const officialG = (official?.totalWins ?? 0) + (official?.totalLosses ?? 0);
+      const useOfficialRecord = officialG > a.g;
+      const recordG = useOfficialRecord ? officialG : a.g;
+      const recordWins = useOfficialRecord ? (official?.totalWins ?? 0) : a.wins;
+      const recordLosses = useOfficialRecord ? (official?.totalLosses ?? 0) : a.losses;
+      const scoringGames = useOfficialRecord ? officialG : a.g;
+      const ptsFor = useOfficialRecord ? (official?.ptsFor ?? a.ptsActual) : a.ptsActual;
+      const ptsAgainst = useOfficialRecord ? (official?.ptsAgainst ?? a.oppPtsActual) : a.oppPtsActual;
       const g = a.g || 1;
       const twomT = a.fgm - a.tpm - a.fpm; const twoaT = a.fga - a.tpa - a.fpa;
       const oppTwomT = a.oppFgm - a.oppTpm - a.oppFpm; const oppTwoaT = a.oppFga - a.oppTpa - a.oppFpa;
@@ -289,8 +482,8 @@ export const TeamStatsView: React.FC = () => {
       const nrtg = ortg - drtg;
 
       const pytExp = 13.91;
-      const pw = (a.ptsActual > 0 || a.oppPtsActual > 0)
-        ? g * Math.pow(a.ptsActual, pytExp) / (Math.pow(a.ptsActual, pytExp) + Math.pow(a.oppPtsActual, pytExp))
+      const pw = (ptsFor > 0 || ptsAgainst > 0)
+        ? Math.max(1, scoringGames || g) * Math.pow(ptsFor, pytExp) / (Math.pow(ptsFor, pytExp) + Math.pow(ptsAgainst, pytExp))
         : 0;
 
       const tsPct  = (a.fga + 0.44 * a.fta) > 0 ? a.ptsPlayer / (2 * (a.fga + 0.44 * a.fta)) : 0;
@@ -307,9 +500,9 @@ export const TeamStatsView: React.FC = () => {
       const age = a.ageMinTotal > 0 ? a.ageMinSum / a.ageMinTotal : 0;
 
       return {
-        team: a.team, g: a.g, wins: a.wins, losses: a.losses,
-        winPct: (a.wins + a.losses) > 0 ? a.wins / (a.wins + a.losses) : 0, age,
-        pts: a.ptsActual / g, oppg: a.oppPtsActual / g, mov: (a.ptsActual - a.oppPtsActual) / g,
+        team: a.team, g: recordG, wins: recordWins, losses: recordLosses, sourceOffenseOnly: a.sourceOffenseOnly,
+        winPct: (recordWins + recordLosses) > 0 ? recordWins / (recordWins + recordLosses) : 0, age,
+        pts: ptsFor / Math.max(1, scoringGames || g), oppg: ptsAgainst / Math.max(1, scoringGames || g), mov: (ptsFor - ptsAgainst) / Math.max(1, scoringGames || g),
         fgm: a.fgm/g, fga: a.fga/g, fgp,
         tpm: a.tpm/g, tpa: a.tpa/g, tpp,
         fpm: a.fpm/g, fpa: a.fpa/g, fpp,
@@ -336,19 +529,22 @@ export const TeamStatsView: React.FC = () => {
         oppSlTpm: a.oppTpm/g, oppSlTpa: a.oppTpa/g, oppSlTpp: oppTpp,
         oppDd: a.oppDd, oppTd: a.oppTd, oppQd: a.oppQd, oppFiveX5: a.oppFiveX5,
         oppDunks: a.oppDunks/g, oppTechs: a.oppTechs, oppPip: (a.oppRimFgm + a.oppLpFgm) * 2 / g,
-        pw, pl: a.g - pw, ortg, drtg, nrtg, pace, threePar, ftr, tsPct, efgPct,
+        pw, pl: Math.max(0, Math.max(1, scoringGames || g) - pw), ortg, drtg, nrtg, pace, threePar, ftr, tsPct, efgPct,
         tovPct, orbPct, ftFga, dEfgPct, dTovPct, drbPct, dFtFga,
       };
     });
-  }, [scopedTeams, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats, season, phase, pbaCompetitionIds, countedPbaRegularBoxes, playerAgeMap]);
+  }, [scopedTeams, state.boxScores, state.schedule, state.playoffs, state.nbaCup, state.nbaCupHistory, state.leagueStats, state.players, currentSeason, pbaCompetitionFilter, pbaIsolated, pbaSourceCutoff, season, phase, scopedCompetitionIds, countedPbaRegularBoxes, playerAgeMap]);
 
   const sortedStats = useMemo(() => {
     const filtered = teamStats.filter(row => {
-      if (searchTerm && !row.team.name.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (row.sourceOffenseOnly && statType !== 'team') return false;
+      const teamSnapshot = getHistoricalTeamSnapshot(row.team, displaySeason);
+      const teamName = getTeamFullName(teamSnapshot);
+      if (searchTerm && !teamName.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       for (const [col, filterStr] of Object.entries(columnFilters)) {
         if (!filterStr) continue;
         if (col === 'team') {
-          if (!evaluateFilter(row.team.name, filterStr) && !evaluateFilter((row.team as any).abbrev ?? '', filterStr)) return false;
+          if (!evaluateFilter(teamName, filterStr) && !evaluateFilter(teamSnapshot.abbrev ?? '', filterStr)) return false;
         } else {
           if (!evaluateFilter(String((row as any)[col] ?? ''), filterStr)) return false;
         }
@@ -356,13 +552,13 @@ export const TeamStatsView: React.FC = () => {
       return true;
     });
     return [...filtered].sort((a, b) => {
-      let va: any = sortField === 'team' ? a.team.name : (a as any)[sortField] ?? 0;
-      let vb: any = sortField === 'team' ? b.team.name : (b as any)[sortField] ?? 0;
+      let va: any = sortField === 'team' ? getTeamFullName(getHistoricalTeamSnapshot(a.team, displaySeason)) : (a as any)[sortField] ?? 0;
+      let vb: any = sortField === 'team' ? getTeamFullName(getHistoricalTeamSnapshot(b.team, displaySeason)) : (b as any)[sortField] ?? 0;
       if (va < vb) return sortOrder === 'asc' ? -1 : 1;
       if (va > vb) return sortOrder === 'asc' ? 1 : -1;
-      return 0;
+      return a.team.id - b.team.id;
     });
-  }, [teamStats, sortField, sortOrder, searchTerm, columnFilters]);
+  }, [teamStats, sortField, sortOrder, searchTerm, columnFilters, displaySeason, statType]);
 
   const handleSort = (field: string) => {
     if (sortField === field) setSortOrder(o => o === 'asc' ? 'desc' : 'asc');
@@ -401,7 +597,7 @@ export const TeamStatsView: React.FC = () => {
   const activeFilterCount = Object.values(columnFilters).filter(v => v).length + (searchTerm ? 1 : 0);
   const clearFilters = () => { setColumnFilters({}); setSearchTerm(''); };
   const navSeason = (dir: 1 | -1) => { const i = seasonIndex + dir; if (i >= 0 && i < availableSeasons.length) setSeason(availableSeasons[i]); };
-  const seasonLabel = season === 'all' ? 'All' : `${(season as number) - 1}–${String(season).slice(-2)}`;
+  const seasonLabel = season === 'all' ? 'All' : formatStatsSeasonLabel(season as number);
 
   const commonThs = (
     <>
@@ -415,13 +611,16 @@ export const TeamStatsView: React.FC = () => {
     </>
   );
 
-  const commonTds = (row: TeamStatRow, idx: number, isOwn: boolean) => (
+  const commonTds = (row: TeamStatRow, idx: number, isOwn: boolean) => {
+    const teamSnapshot = getHistoricalTeamSnapshot(row.team, displaySeason);
+    const teamName = getTeamFullName(teamSnapshot);
+    return (
     <>
       <td className={`px-2 py-1.5 text-right text-slate-600 text-[11px] sticky left-0 z-10 ${isOwn ? 'bg-indigo-950/60' : 'bg-slate-950'}`}>{idx + 1}</td>
       <td className="px-2 py-1.5 whitespace-nowrap">
         <button onClick={() => navigateToTeam(row.team.id)} className="flex items-center gap-1.5 hover:opacity-80 transition-opacity text-left">
-          {(row.team as any).logoUrl && <img src={(row.team as any).logoUrl} alt={row.team.name} className="w-4 h-4 object-contain" />}
-          <span className="font-bold text-white">{row.team.name}</span>
+          {teamSnapshot.logoUrl && <img src={teamSnapshot.logoUrl} alt={teamName} className="w-4 h-4 object-contain" />}
+          <span className="font-bold text-white">{teamName}</span>
           {isOwn && <span className="text-[8px] font-black uppercase tracking-wider bg-indigo-500/20 text-indigo-300 px-1 py-0.5 rounded border border-indigo-500/40">You</span>}
         </button>
       </td>
@@ -431,7 +630,8 @@ export const TeamStatsView: React.FC = () => {
       <td className="px-2 py-1.5 text-right text-indigo-300">{fP(row.winPct)}</td>
       <td className="px-2 py-1.5 text-right text-slate-300">{fn(row.age)}</td>
     </>
-  );
+    );
+  };
 
   const renderThead = () => {
     if (statType === 'shotLocations' || statType === 'oppShotLocations') {
@@ -502,8 +702,8 @@ export const TeamStatsView: React.FC = () => {
       <thead className="sticky top-0 z-20 bg-slate-900">
         <tr className="border-b-2 border-slate-700">
           {commonThs}
-          <Th field="pts"  label={isOpp ? 'OPPG' : 'PTS'} />
-          <Th field="oppg" label={isOpp ? 'PPG'  : 'OPP'} />
+          <Th field={isOpp ? 'oppg' : 'pts'}  label={isOpp ? 'OPPG' : 'PTS'} />
+          <Th field={isOpp ? 'pts' : 'oppg'} label={isOpp ? 'PPG'  : 'OPP'} />
           <Th field="mov"  label="MOV" />
           <Th field={isOpp ? 'oppFgm'  : 'fgm'}  label="FG"   />
           <Th field={isOpp ? 'oppFga'  : 'fga'}  label="FGA"  />
@@ -606,9 +806,9 @@ export const TeamStatsView: React.FC = () => {
     return (
       <>
         <td className="px-2 py-1.5 text-right font-bold text-white">{fn(ptsDisp)}</td>
-        <td className={tc}>{fn(oppDisp)}</td>
-        <td className={`px-2 py-1.5 text-right font-bold ${row.mov >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-          {row.mov > 0 ? '+' : ''}{fn(row.mov)}
+        <td className={tc}>{row.sourceOffenseOnly ? '—' : fn(oppDisp)}</td>
+        <td className={`px-2 py-1.5 text-right font-bold ${row.sourceOffenseOnly ? 'text-slate-600' : row.mov >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+          {row.sourceOffenseOnly ? '—' : <>{row.mov > 0 ? '+' : ''}{fn(row.mov)}</>}
         </td>
         <td className={tc}>{fn(fgm)}</td><td className={tc}>{fn(fga)}</td><td className={tca}>{fP(fgp)}</td>
         <td className={tc}>{fn(tpm)}</td><td className={tc}>{fn(tpa)}</td><td className={tca}>{fP(tpp)}</td>
@@ -636,7 +836,7 @@ export const TeamStatsView: React.FC = () => {
       <div className="shrink-0 px-3 sm:px-4 py-2.5 border-b border-slate-800 bg-slate-950">
         {/* Row 1 — title + mobile search */}
         <div className="flex items-center justify-between mb-2">
-          <h2 className="text-base sm:text-lg font-black text-white uppercase tracking-tight">{title}</h2>
+          <h2 className="min-w-0 truncate pr-2 text-base font-black uppercase tracking-tight text-white sm:text-lg">{title}</h2>
           <div className="relative sm:hidden">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500" size={13} />
             <input type="text" placeholder="Search..." value={searchTerm}
@@ -662,7 +862,7 @@ export const TeamStatsView: React.FC = () => {
             >
               <option value="all">All Time</option>
               {availableSeasons.filter(s => s !== 'all').map(s => (
-                <option key={s} value={s as number}>{(s as number) - 1}–{String(s).slice(2)}</option>
+                <option key={s} value={s as number}>{formatStatsSeasonLabel(s as number)}</option>
               ))}
             </select>
             <button onClick={() => navSeason(1)} disabled={seasonIndex >= availableSeasons.length - 1}
@@ -688,14 +888,24 @@ export const TeamStatsView: React.FC = () => {
           </select>
 
           {/* Phase */}
-          <select value={phase} onChange={e => setPhase(e.target.value as Phase)}
-            className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded focus:outline-none focus:border-indigo-500 appearance-none"
-          >
-            <option value="regular">Regular Season</option>
-            <option value="playoffs">Playoffs</option>
-            {!pbaIsolated && <option value="cup">{labels.cupShort}</option>}
-            <option value="combined">Combined</option>
-          </select>
+          {knockoutOnly ? (
+            <span className="inline-flex h-7 items-center rounded border border-slate-700 bg-slate-900 px-2 text-xs font-bold text-slate-300">
+              Tournament Games
+            </span>
+          ) : (
+            <select value={phase} onChange={e => {
+              phaseWasSelected.current = true;
+              setPhase(e.target.value as Phase);
+            }}
+              className="h-7 bg-slate-900 border border-slate-700 text-white text-xs px-1.5 rounded focus:outline-none focus:border-indigo-500 appearance-none"
+            >
+              <option value="preseason">Preseason</option>
+              <option value="regular">Regular Season</option>
+              <option value="playoffs">Playoffs</option>
+              {!euroIsolated && !pbaIsolated && <option value="cup">{labels.cupShort}</option>}
+              <option value="combined">Combined</option>
+            </select>
+          )}
 
           {pbaIsolated && (
             <select value={pbaCompetitionFilter} onChange={e => setPbaCompetitionFilter(e.target.value)}
@@ -733,12 +943,24 @@ export const TeamStatsView: React.FC = () => {
       {/* ── Season label ── */}
       <div className="shrink-0 px-3 sm:px-4 py-1 border-b border-slate-800/40 flex items-center justify-end">
         <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">
-          {seasonLabel} · {pbaIsolated ? `${pbaCompetitionOptions.find(option => option.id === pbaCompetitionFilter)?.label ?? 'Conference'} · ` : ''}{statType === 'team' ? 'Team' : statType === 'opponent' ? 'Opponent' : statType === 'shotLocations' ? 'Shot Locations & Feats' : statType === 'oppShotLocations' ? 'Opp. Shot Locations' : 'Advanced'} · {phase === 'regular' ? 'Regular Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? labels.cupShort : 'Combined'}
+          {seasonLabel} · {pbaIsolated ? `${pbaCompetitionOptions.find(option => option.id === pbaCompetitionFilter)?.label ?? 'Conference'} · ` : ''}{statType === 'team' ? 'Team' : statType === 'opponent' ? 'Opponent' : statType === 'shotLocations' ? 'Shot Locations & Feats' : statType === 'oppShotLocations' ? 'Opp. Shot Locations' : 'Advanced'} · {knockoutOnly ? 'Tournament Games' : phase === 'preseason' ? 'Preseason' : phase === 'regular' ? 'Regular Season' : phase === 'playoffs' ? 'Playoffs' : phase === 'cup' ? labels.cupShort : 'Combined'}
         </span>
       </div>
 
-      {/* ── Table ── */}
-      <div className="flex-1 overflow-auto custom-scrollbar">
+      <TeamStatsMobileCards
+        rows={sortedStats}
+        statType={statType}
+        sortField={sortField}
+        sortOrder={sortOrder}
+        displaySeason={displaySeason}
+        ownTid={ownTid}
+        fourPointEnabled={fourPointEnabled}
+        onSortField={field => { if (field !== sortField) handleSort(field); }}
+        onToggleSort={() => handleSort(sortField)}
+        onTeamSelect={navigateToTeam}
+      />
+
+      <div className="hidden flex-1 overflow-auto custom-scrollbar sm:block">
         <table className="w-full text-xs text-left border-collapse"
           style={{ minWidth: statType === 'advanced' ? 900 : statType === 'shotLocations' || statType === 'oppShotLocations' ? 900 : 1100 }}>
           {renderThead()}

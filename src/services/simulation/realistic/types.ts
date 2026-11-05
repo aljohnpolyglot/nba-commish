@@ -3,26 +3,41 @@ import { NBAPlayer as Player, NBATeam as Team } from '../../../types';
 export type ShotZone = 'rim' | 'midRange' | 'three' | 'four' | 'lowPost';
 
 export interface ShotRules {
+  fieldGoalValue?: 1 | 2;
+  freeThrowsEnabled?: boolean;
+  threePointAvailable?: boolean;
+  threePointEfficiencyMult?: number;
+  twoPointEfficiencyMult?: number;
   fourPointAvailable?: boolean;
   fourPointRateMult?: number;
   fourPointEfficiencyMult?: number;
+  ftEfficiencyMult?: number;
+  dunkValue?: 1 | 2 | 3;
 }
 
 export interface TeamGameplayModifiers {
   paceMultiplier?: number;
+  shotEfficiencyMult?: number;
   tovMult?: number;
   ftRateMult?: number;
   orbMult?: number;
+  assistRateMult?: number;
+  assistDistributionExponent?: number;
+  reboundDistributionExponent?: number;
+  reboundOpportunityMult?: number;
   interiorEffMult?: number;
+  blockRateMult?: number;
+  stealRateMult?: number;
   rimRateMult?: number;
   lowPostRateMult?: number;
   midRangeRateMult?: number;
   threePointRateMult?: number;
 }
 export type PossessionEnd =
-  | { kind: 'shot'; zone: ShotZone; made: boolean; pts: number; shooterId: string; assisterId?: string; blockerId?: string; fouled: boolean; foulerId?: string; ftAttempts: number; ftMade: number }
+  | { kind: 'shot'; zone: ShotZone; made: boolean; pts: number; shooterId: string; assisterId?: string; blockerId?: string; fouled: boolean; foulerId?: string; ftAttempts: number; ftMade: number; penaltyPoints?: number; isDunk?: boolean }
   | { kind: 'turnover'; offenderId: string; stealerId?: string }
-  | { kind: 'foul'; offenderId: string; victimId: string; ftAttempts: number; ftMade: number };
+  | { kind: 'foul'; offenderId: string; victimId: string; ftAttempts: number; ftMade: number; penaltyPoints?: number }
+  | { kind: 'discipline'; offenderId: string; victimId: string; discipline: 'technical' | 'flagrant_1' | 'flagrant_2'; ftAttempts: number; ftMade: number; penaltyPoints?: number; retainPossession: boolean };
 
 export interface OnCourt {
   players: Player[];          // 5 actives
@@ -37,6 +52,7 @@ export interface PlayerComposite {
   rim: number;        // finishing at rim
   midRange: number;   // mid-range jumper
   three: number;      // three-point
+  threeVolume?: number;
   lowPost: number;    // back-to-basket
   driving: number;    // creates rim attempts
   passing: number;    // assist generation

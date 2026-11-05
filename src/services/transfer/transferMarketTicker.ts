@@ -1,5 +1,5 @@
 import type { GameState, NBAPlayer, TransferBid, TransferListing } from '../../types';
-import { isInTransferWindow } from '../../utils/transferWindow';
+import { getTransferMarketSettings, isInTransferWindow } from '../../utils/transferWindow';
 import {
   buildBid,
   buildListing,
@@ -12,28 +12,74 @@ import {
   toISO,
 } from './transferMarket';
 import { getDisplayOverall, getDisplayPotential } from '../../utils/playerRatings';
-import { evaluateOffer } from './interestModel';
-import { filterTransferMarketTeams, isTransferMarketEligibleTid, getTransferMarketLeague } from './marketEligibility';
+import {
+  computePlayerInterest,
+  evaluateOffer,
+  getSigningBonusStepEUR,
+  recommendSigningBonusEUR,
+} from './interestModel';
+import { filterTransferMarketTeams, isTransferMarketEligibleTeam, getTransferMarketLeague } from './marketEligibility';
 import { getCapStatus } from './transferCaps';
 import {
   adjustCash,
   AI_ACCEPTS_PER_DAY_CAP,
+  buildTransferHistoryEntry,
   collectMovedPlayerIdsThisSeason,
   countCompletedTransfersInWindow,
   GLOBAL_WINDOW_CAP,
+  releaseInactiveTransferBidReservations,
   seedRng,
   type TickResult,
 } from './transferMarketTickerHelpers';
+import { getClubSpendableEUR, getSeasonEconomyIndex } from '../tycoon/clubFinance';
+import { getTeamFullName } from '../../utils/teamNames';
+import {
+  buildEuroTransferRosterCounts,
+  hasEuroTransferRosterCapacityFromCounts,
+} from './transferRosterCapacity';
+import { getClubContinentalPrestige } from '../euro/continentalPrestige';
+import {
+  commitSponsorPurchaseQuote,
+  consumeSponsorSigningPerkForTeamRows,
+  getAvailableSigningSponsorPerks,
+  getSponsorCoverageQuote,
+  type SponsorCoverageQuote,
+} from '../tycoon/sponsorPerkEngine';
+
+function commitTransferSponsorCoverage<T extends any>(
+  rows: T[],
+  tid: number,
+  year: number,
+  quote: SponsorCoverageQuote,
+): T[] {
+  if (quote.appliedPerks.length === 0) return rows;
+  return rows.map((team: any) => {
+    if (Number(team?.id ?? team?.tid) !== tid || !team?.tycoon) return team;
+    const tycoon = {
+      ...team.tycoon,
+      sponsorPerkUsage: [...(team.tycoon.sponsorPerkUsage ?? [])].map((usage: any) => ({ ...usage })),
+    };
+    commitSponsorPurchaseQuote(tycoon, year, quote);
+    return { ...team, tycoon };
+  });
+}
+
 export function tickTransferMarket(state: GameState): TickResult {
   const today = toISO(state.date);
   const rng = seedRng(`tm:${today}`);
   const windowStatus = isInTransferWindow(state.date, state.leagueStats);
   let listings: TransferListing[] = [...(state.transferListings ?? [])];
   let bids: TransferBid[] = [...(state.transferBids ?? [])];
+  bids = bids.map(bid => bid.bidType === 'loan' && (bid.status === 'active' || bid.status === 'highest' || bid.status === 'outbid')
+    ? { ...bid, status: 'expired' as const }
+    : bid);
   let activity = [...(state.transferActivity ?? [])];
   let players = [...(state.players ?? [])];
   let teams = [...(state.teams ?? [])];
   let nonNBA = [...((state as any).nonNBATeams ?? [])];
+  const findTeam = (tid: number): any => teams.find(team => Number((team as any).id ?? (team as any).tid) === tid)
+    ?? nonNBA.find(team => Number((team as any).tid ?? (team as any).id) === tid);
+  const isEligibleTeamId = (tid: number): boolean => isTransferMarketEligibleTeam(findTeam(tid));
   const inboxNotices: TickResult['inboxNotices'] = [];
   const userBidResolutions: TickResult['userBidResolutions'] = [];
   const historyEntries: TickResult['historyEntries'] = [];
@@ -43,14 +89,17 @@ export function tickTransferMarket(state: GameState): TickResult {
         timeZone: 'UTC', month: 'short', day: 'numeric', year: 'numeric',
       });
   const userTid = state.userTeamId ?? -1;
+  const loanedPlayerIds = new Set((state.loanAgreements ?? [])
+    .filter(agreement => agreement.status === 'active')
+    .map(agreement => agreement.playerId));
   if (state.leagueStats?.uiMode === 'euro_isolated') {
     listings = listings.map(l =>
-      l.status === 'active' && !isTransferMarketEligibleTid(l.sellerTid)
+      l.status === 'active' && (!isEligibleTeamId(l.sellerTid) || loanedPlayerIds.has(l.playerId))
         ? { ...l, status: 'expired' as const, daysLeft: 0 }
         : l
     );
     bids = bids.map(b =>
-      (b.status === 'active' || b.status === 'highest') && !isTransferMarketEligibleTid(b.sellerTid)
+      (b.status === 'active' || b.status === 'highest') && (!isEligibleTeamId(b.sellerTid) || loanedPlayerIds.has(b.playerId))
         ? { ...b, status: 'expired' as const }
         : b
     );
@@ -77,16 +126,19 @@ export function tickTransferMarket(state: GameState): TickResult {
     return b;
   });
   if (!windowStatus.open) {
+    teams = releaseInactiveTransferBidReservations(teams, bids);
+    nonNBA = releaseInactiveTransferBidReservations(nonNBA, bids);
     return { transferListings: listings, transferBids: bids, transferActivity: activity, players, teams, nonNBATeams: nonNBA, inboxNotices, userBidResolutions, historyEntries };
   }
   const currentYear: number = state.leagueStats?.year ?? new Date().getFullYear();
+  const economyIndex = getSeasonEconomyIndex(state, currentYear);
   const euroMode = state.leagueStats?.uiMode === 'euro_isolated';
   const playerById = new Map<string, NBAPlayer>();
   for (const p of players) playerById.set(p.internalId, p);
   if (euroMode) {
     listings = listings.map(l => {
       const player = playerById.get(l.playerId);
-      return l.status === 'active' && (!player || player.tid !== l.sellerTid || !isTransferMarketEligibleTid(l.sellerTid))
+      return l.status === 'active' && (!player || player.tid !== l.sellerTid || !isEligibleTeamId(l.sellerTid))
         ? { ...l, status: 'expired' as const, daysLeft: 0 }
         : l;
     });
@@ -95,8 +147,8 @@ export function tickTransferMarket(state: GameState): TickResult {
       return (b.status === 'active' || b.status === 'highest') && (
         !player ||
         player.tid !== b.sellerTid ||
-        !isTransferMarketEligibleTid(b.sellerTid) ||
-        !isTransferMarketEligibleTid(b.bidderTid)
+        !isEligibleTeamId(b.sellerTid) ||
+        !isEligibleTeamId(b.bidderTid)
       )
         ? { ...b, status: 'expired' as const }
         : b;
@@ -110,6 +162,10 @@ export function tickTransferMarket(state: GameState): TickResult {
     if (!arr) { arr = []; rosterByTid.set(tid, arr); }
     arr.push(p);
   }
+  const rosterCounts = buildEuroTransferRosterCounts(players);
+  const hasRosterCapacity = (tid: number): boolean => (
+    !euroMode || hasEuroTransferRosterCapacityFromCounts(rosterCounts, tid, state.leagueStats)
+  );
   const eligibleTeams: any[] = euroMode
     ? filterTransferMarketTeams([...(nonNBA ?? [])])
     : [...(teams ?? [])];
@@ -121,7 +177,33 @@ export function tickTransferMarket(state: GameState): TickResult {
     : eligibleTids;
   const cashByTid = new Map<number, number>();
   for (const tid of eligibleTids) cashByTid.set(tid, teamCashEUR(state, tid));
-  const settings = state.leagueStats?.transferMarket ?? { summerStart: '07-01', summerEnd: '09-30', winterStart: '01-01', winterEnd: '01-31' };
+  const getAISigningBonus = (player: NBAPlayer, bidderTid: number, transferFeeEUR: number): number => {
+    const annualSalaryEUR = Math.max(50_000, Math.round(Number(player.contract?.amount ?? 0) * 1_000));
+    const yearsLeft = Math.max(1, Number(player.contract?.exp ?? currentYear) - currentYear + 1);
+    const prestige = getClubContinentalPrestige(state, bidderTid, currentYear);
+    const baseInterest = computePlayerInterest(player.internalId, prestige);
+    if (baseInterest >= 75 && getDisplayOverall(player) < 78) return 0;
+    const step = getSigningBonusStepEUR(annualSalaryEUR);
+    const recommended = recommendSigningBonusEUR(annualSalaryEUR, yearsLeft);
+    const availableAfterFee = Math.max(0, (cashByTid.get(bidderTid) ?? 0) - transferFeeEUR);
+    return Math.floor(Math.min(recommended, availableAfterFee) / step) * step;
+  };
+  const getBidSponsorSigningPerkValue = (bid: TransferBid, player: NBAPlayer | undefined): number => {
+    if (!bid.sponsorSigningPerk || !player) return 0;
+    const bidder = findTeam(bid.bidderTid);
+    if (!bidder?.tycoon) return 0;
+    const annualSalaryEUR = Math.max(0, Number(player.contract?.amount ?? 0) * 1_000);
+    return getAvailableSigningSponsorPerks(
+      bidder.tycoon,
+      currentYear,
+      'player',
+      annualSalaryEUR,
+    ).find(choice => (
+      choice.sponsor === bid.sponsorSigningPerk?.sponsor
+      && choice.perk.id === bid.sponsorSigningPerk?.perkId
+    ))?.equivalentAnnualValueEUR ?? 0;
+  };
+  const settings = getTransferMarketSettings(state.leagueStats);
   const todayY = parseInt(today.slice(0, 4), 10);
   const todayMonth = parseInt(today.slice(5, 7), 10);
   const seasonStartYear = todayMonth >= 7 ? todayY : todayY - 1;
@@ -173,12 +255,14 @@ export function tickTransferMarket(state: GameState): TickResult {
   if (!globalWindowFull) {
     for (const l of listings) {
       if (l.status !== 'active') continue;
+      if (l.privateInquiry) continue;
       if (transferredPlayerIdsThisSeason.has(l.playerId)) continue;
       const player = playerById.get(l.playerId);
       if (!player) continue;
-      const fairEUR = estimatePlayerValueEUR(player, currentYear);
+      const fairEUR = estimatePlayerValueEUR(player, currentYear, economyIndex);
       for (const bidderTid of aiBidderTids) {
         if (bidderTid === l.sellerTid) continue;
+        if (!hasRosterCapacity(bidderTid)) continue;
         if (activeBidByPair.has(activeBidKey(l.id, bidderTid))) continue;
         const cap = capByTid.get(bidderTid);
         if (cap && !cap.canBuy) continue;
@@ -190,6 +274,7 @@ export function tickTransferMarket(state: GameState): TickResult {
         const willingness = Math.min(cash * 0.25, fairEUR * (0.8 + rng() * 0.35));
         const amount = Math.max(50_000, Math.round(willingness / 50_000) * 50_000);
         if (amount < l.askingEUR * 0.75) continue;
+        const signingBonusEUR = getAISigningBonus(player, bidderTid, amount);
         const bid = buildBid({
           listingId: l.id,
           playerId: l.playerId,
@@ -197,6 +282,7 @@ export function tickTransferMarket(state: GameState): TickResult {
           sellerTid: l.sellerTid,
           bidType: 'transfer',
           amountEUR: amount,
+          signingBonusEUR,
           currentDate: today,
           validDays: 5,
         });
@@ -228,7 +314,13 @@ export function tickTransferMarket(state: GameState): TickResult {
       (b.status === 'active' || b.status === 'highest' || b.status === 'outbid')
     );
     for (const ub of userBids) {
-      const verdict = evaluateOffer(ub.amountEUR, l.askingEUR, l.playerId);
+      const verdict = evaluateOffer(
+        ub.amountEUR,
+        l.askingEUR,
+        l.playerId,
+        getClubContinentalPrestige(state, ub.bidderTid),
+        ub.signingBonusEUR ?? 0,
+      );
       if (!verdict.clubLowball && !verdict.playerVeto) continue;
       bids = bids.map(b => b.id === ub.id ? { ...b, status: 'rejected' as const } : b);
       const sellerTeam = resolveTeamAnywhere(state, l.sellerTid);
@@ -237,8 +329,10 @@ export function tickTransferMarket(state: GameState): TickResult {
         ? verdict.rejectReason
         : `${sellerTeam ? (sellerTeam as any).name : 'The club'} accepted, but the player wants to join a contender.`;
       userBidResolutions.push({
+        playerId: l.playerId,
         playerName: player?.name ?? '—',
         accepted: false,
+        sellerTid: l.sellerTid,
         sellerTeamName: (sellerTeam as any)?.name ?? '—',
         feeEUR: ub.amountEUR,
         reason,
@@ -259,6 +353,24 @@ export function tickTransferMarket(state: GameState): TickResult {
     const highest = bids.find(b => b.listingId === l.id && b.status === 'highest');
     if (!highest) continue;
     const isUserBid = highest.bidderTid === userTid && highest.userInitiated === true;
+    if (!hasRosterCapacity(highest.bidderTid)) {
+      bids = bids.map(bid => bid.id === highest.id ? { ...bid, status: 'withdrawn' as const } : bid);
+      if (isUserBid) {
+        const sellerTeam = resolveTeamAnywhere(state, highest.sellerTid);
+        const player = playerById.get(highest.playerId);
+        userBidResolutions.push({
+          playerId: highest.playerId,
+          playerName: player?.name ?? '—',
+          accepted: false,
+          sellerTid: highest.sellerTid,
+          sellerTeamName: (sellerTeam as any)?.name ?? '—',
+          feeEUR: highest.amountEUR,
+          reason: 'The receiving club has no open senior roster place.',
+          userInitiated: true,
+        });
+      }
+      continue;
+    }
     if (!isUserBid && (
       completedTransfersThisWindow + aiAcceptedToday >= GLOBAL_WINDOW_CAP[windowStatus.window ?? 'closed'] ||
       aiAcceptedToday >= aiAcceptsTodayCap
@@ -267,17 +379,25 @@ export function tickTransferMarket(state: GameState): TickResult {
     const nearAsk = highest.amountEUR >= l.askingEUR * 0.9;
     const strongOverpay = highest.amountEUR >= l.askingEUR * 1.12;
     const lastDay = l.daysLeft <= 1;
-    const earlyListing = l.daysLeft >= Math.max(2, l.totalDays - 1);
+    const earlyListing = !l.privateInquiry && l.daysLeft >= Math.max(2, l.totalDays - 1);
     const eagerSell = rng() < (windowStatus.window === 'winter' ? 0.003 : 0.012);
-    const v = evaluateOffer(highest.amountEUR, l.askingEUR, l.playerId);
+    const v = evaluateOffer(
+      highest.amountEUR,
+      l.askingEUR,
+      l.playerId,
+      getClubContinentalPrestige(state, highest.bidderTid),
+      (highest.signingBonusEUR ?? 0) + getBidSponsorSigningPerkValue(highest, playerById.get(highest.playerId)),
+    );
     if (v.playerVeto && (meetsAsk || eagerSell || lastDay)) {
       bids = bids.map(b => b.id === highest.id ? { ...b, status: 'rejected' as const } : b);
       if (highest.bidderTid === userTid && highest.userInitiated === true) {
         const sellerTeam = resolveTeamAnywhere(state, l.sellerTid);
         const player = playerById.get(highest.playerId);
         userBidResolutions.push({
+          playerId: highest.playerId,
           playerName: player?.name ?? '—',
           accepted: false,
+          sellerTid: l.sellerTid,
           sellerTeamName: (sellerTeam as any)?.name ?? '—',
           feeEUR: highest.amountEUR,
           reason: `${sellerTeam ? (sellerTeam as any).name : 'The club'} accepted, but the player wants to join a contender.`,
@@ -286,30 +406,109 @@ export function tickTransferMarket(state: GameState): TickResult {
       }
       continue;
     }
-    const sellerReadyNow = meetsAsk && v.clubInterest >= 86 && (!earlyListing || strongOverpay);
+    const sellerReadyNow = meetsAsk && (l.privateInquiry || (v.clubInterest >= 86 && (!earlyListing || strongOverpay)));
     const sellerReadyLate = nearAsk && lastDay && v.clubInterest >= 74 && rng() < 0.28;
     const sellerFlashSale = nearAsk && eagerSell && v.clubInterest >= 82 && !earlyListing;
     if (sellerReadyNow || sellerReadyLate || sellerFlashSale) {
+      const buyerCash = cashByTid.get(highest.bidderTid) ?? 0;
+      const buyerFinanceTeam = findTeam(highest.bidderTid);
+      const transferCoverage = buyerFinanceTeam?.tycoon
+        ? getSponsorCoverageQuote(buyerFinanceTeam.tycoon, currentYear, 'transferFee', highest.amountEUR)
+        : { costEUR: highest.amountEUR, coveredEUR: 0, appliedPerks: [] };
+      const immediateCostEUR = transferCoverage.costEUR + Math.max(0, highest.signingBonusEUR ?? 0);
+      const spendableEUR = buyerFinanceTeam?.tycoon
+        ? getClubSpendableEUR(buyerFinanceTeam.tycoon, today, `transfer-bid:${highest.id}`)
+        : buyerCash;
+      if (spendableEUR < immediateCostEUR) {
+        bids = bids.map(bid => bid.id === highest.id ? { ...bid, status: 'withdrawn' as const } : bid);
+        if (highest.bidderTid === userTid && highest.userInitiated === true) {
+          const sellerTeam = resolveTeamAnywhere(state, l.sellerTid);
+          const player = playerById.get(highest.playerId);
+          userBidResolutions.push({
+            playerId: highest.playerId,
+            playerName: player?.name ?? '—',
+            accepted: false,
+            sellerTid: l.sellerTid,
+            sellerTeamName: (sellerTeam as any)?.name ?? '—',
+            feeEUR: highest.amountEUR,
+            reason: 'The club no longer has enough available cash for this transfer.',
+            userInitiated: true,
+          });
+        }
+        continue;
+      }
       const player = playerById.get(highest.playerId);
-      const buyerRosterStatus =
-        highest.bidderTid >= 1000 && highest.bidderTid < 2000 ? 'Euroleague'
-        : highest.bidderTid >= 5000 && highest.bidderTid < 6000 ? 'Endesa'
-        : highest.bidderTid >= 2000 && highest.bidderTid < 3000 ? 'PBA'
-        : highest.bidderTid >= 4000 && highest.bidderTid < 5000 ? 'B-League'
-        : highest.bidderTid >= 7000 && highest.bidderTid < 8000 ? 'China CBA'
-        : highest.bidderTid >= 8000 && highest.bidderTid < 9000 ? 'NBL Australia'
-        : undefined;
+      const buyerTeam = teamByTid.get(highest.bidderTid);
+      const sellerTeam = teamByTid.get(highest.sellerTid);
+      const buyerRosterStatus = buyerTeam?.league;
+      const completedSigningBonusEUR = Math.max(0, highest.signingBonusEUR ?? 0);
+      const annualSalaryEUR = Math.max(0, Number(player?.contract?.amount ?? 0) * 1_000);
+      const teamPerkResult = consumeSponsorSigningPerkForTeamRows(
+        teams,
+        highest.bidderTid,
+        currentYear,
+        highest.sponsorSigningPerk,
+        'player',
+        annualSalaryEUR,
+      );
+      teams = teamPerkResult.rows;
+      const nonNbaPerkResult = teamPerkResult.grant
+        ? { rows: nonNBA, grant: undefined }
+        : consumeSponsorSigningPerkForTeamRows(
+          nonNBA,
+          highest.bidderTid,
+          currentYear,
+          highest.sponsorSigningPerk,
+          'player',
+          annualSalaryEUR,
+        );
+      nonNBA = nonNbaPerkResult.rows;
+      const completedSponsorSigningPerk = teamPerkResult.grant ?? nonNbaPerkResult.grant;
       players = players.map(p => p.internalId === highest.playerId
-        ? { ...p, tid: highest.bidderTid, ...(buyerRosterStatus ? { status: buyerRosterStatus as any } : {}) }
+        ? {
+            ...p,
+            tid: highest.bidderTid,
+            ...(buyerRosterStatus ? { status: buyerRosterStatus as any } : {}),
+            ...((completedSigningBonusEUR > 0 || completedSponsorSigningPerk) && p.contract
+              ? {
+                contract: {
+                  ...p.contract,
+                  ...(completedSigningBonusEUR > 0 ? { signingBonusEUR: completedSigningBonusEUR } : {}),
+                  ...(completedSponsorSigningPerk ? { sponsorSigningPerk: completedSponsorSigningPerk } : {}),
+                },
+              }
+              : {}),
+            ...(completedSponsorSigningPerk && p.contractYears ? {
+              contractYears: p.contractYears.map((row, index) => (
+                index === 0 ? { ...row, sponsorSigningPerk: completedSponsorSigningPerk } : row
+              )),
+            } : {}),
+          }
         : p);
-      teams = adjustCash(teams, highest.sellerTid, +highest.amountEUR);
-      teams = adjustCash(teams, highest.bidderTid, -highest.amountEUR);
-      nonNBA = adjustCash(nonNBA, highest.sellerTid, +highest.amountEUR);
-      nonNBA = adjustCash(nonNBA, highest.bidderTid, -highest.amountEUR);
+      const cashPosting = {
+        bidId: highest.id,
+        date: today,
+        season: currentYear,
+        label: `${player?.name ?? 'Player'} transfer`,
+        playerId: highest.playerId,
+        sellerTid: highest.sellerTid,
+        sellerName: getTeamFullName(sellerTeam),
+        buyerTid: highest.bidderTid,
+        buyerName: getTeamFullName(buyerTeam),
+      };
+      teams = adjustCash(teams, highest.sellerTid, +highest.amountEUR, { ...cashPosting, side: 'sale' });
+      teams = adjustCash(teams, highest.bidderTid, -immediateCostEUR, { ...cashPosting, side: 'purchase' });
+      nonNBA = adjustCash(nonNBA, highest.sellerTid, +highest.amountEUR, { ...cashPosting, side: 'sale' });
+      nonNBA = adjustCash(nonNBA, highest.bidderTid, -immediateCostEUR, { ...cashPosting, side: 'purchase' });
+      teams = commitTransferSponsorCoverage(teams, highest.bidderTid, currentYear, transferCoverage);
+      nonNBA = commitTransferSponsorCoverage(nonNBA, highest.bidderTid, currentYear, transferCoverage);
+      cashByTid.set(highest.sellerTid, (cashByTid.get(highest.sellerTid) ?? 0) + highest.amountEUR);
+      cashByTid.set(highest.bidderTid, buyerCash - immediateCostEUR);
+      const transferActivityId = newId('act');
       activity = [
         ...activity,
         {
-          id: newId('act'),
+          id: transferActivityId,
           date: today,
           fromTid: highest.sellerTid,
           toTid: highest.bidderTid,
@@ -320,6 +519,8 @@ export function tickTransferMarket(state: GameState): TickResult {
         },
       ];
       transferredPlayerIdsThisSeason.add(highest.playerId);
+      rosterCounts.set(highest.sellerTid, Math.max(0, (rosterCounts.get(highest.sellerTid) ?? 1) - 1));
+      rosterCounts.set(highest.bidderTid, (rosterCounts.get(highest.bidderTid) ?? 0) + 1);
       if (!isUserBid) aiAcceptedToday++;
       listings = listings.map(x => x.id === l.id ? { ...x, status: 'sold' as const, daysLeft: 0 } : x);
       bids = bids.map(b => {
@@ -329,24 +530,32 @@ export function tickTransferMarket(state: GameState): TickResult {
       });
       bumpCap(highest.sellerTid, { sold: 1 });
       bumpCap(highest.bidderTid, { bought: 1 });
-      const sellerTeam = teamByTid.get(highest.sellerTid);
-      const buyerTeam = teamByTid.get(highest.bidderTid);
       const feeM = (highest.amountEUR / 1_000_000).toFixed(highest.amountEUR >= 10_000_000 ? 1 : 2).replace(/\.?0+$/, '');
-      const lgName = getTransferMarketLeague(highest.sellerTid)?.name;
-      const historyLeague = lgName === 'Liga Endesa' ? 'Endesa' : lgName;
-      historyEntries.push({
-        text: `${player?.name ?? '—'} transferred from ${(sellerTeam as any)?.name ?? '—'} to ${(buyerTeam as any)?.name ?? '—'} for €${feeM}M`,
+      const marketLeague = getTransferMarketLeague(highest.sellerTid, sellerTeam);
+      const historyLeague = marketLeague?.leagueStatus;
+      const signingBonusText = completedSigningBonusEUR > 0
+        ? ` plus a €${(completedSigningBonusEUR / 1_000_000).toFixed(completedSigningBonusEUR >= 1_000_000 ? 1 : 2).replace(/\.?0+$/, '')}M signing bonus`
+        : '';
+      historyEntries.push(buildTransferHistoryEntry({
+        activityId: transferActivityId,
         date: gameDate,
-        type: 'Transfer',
-        playerIds: player ? [player.internalId] : [],
-        tid: highest.bidderTid,
+        season: currentYear,
+        player,
+        sellerTid: highest.sellerTid,
+        sellerName: (sellerTeam as any)?.name ?? '—',
+        buyerTid: highest.bidderTid,
+        buyerName: (buyerTeam as any)?.name ?? '—',
+        feeText: feeM,
+        signingBonusText,
         league: historyLeague,
-      });
+      }));
       if (highest.bidderTid === userTid && highest.userInitiated === true) {
         const sellerTeam = resolveTeamAnywhere(state, highest.sellerTid);
         userBidResolutions.push({
+          playerId: highest.playerId,
           playerName: player?.name ?? '—',
           accepted: true,
+          sellerTid: highest.sellerTid,
           sellerTeamName: (sellerTeam as any)?.name ?? '—',
           feeEUR: highest.amountEUR,
           userInitiated: true,
@@ -357,7 +566,7 @@ export function tickTransferMarket(state: GameState): TickResult {
   const MIN_AI_LISTINGS = globalWindowFull ? 0 : (windowStatus.window === 'winter' ? 3 : 8);
   let activeAICount = 0;
   for (const l of listings) {
-    if (l.status === 'active' && l.sellerTid !== userTid) activeAICount++;
+    if (l.status === 'active' && l.sellerTid !== userTid && !l.privateInquiry) activeAICount++;
   }
   const alreadyListed = new Set(listings.filter(l => l.status === 'active').map(l => l.playerId));
   const pickRandomAISellerListing = (): boolean => {
@@ -399,7 +608,7 @@ export function tickTransferMarket(state: GameState): TickResult {
       });
       if (candidates.length === 0) continue;
       const pick = candidates[Math.floor(rng() * candidates.length)];
-      const ask = Math.round(estimatePlayerValueEUR(pick, currentYear) * (0.9 + rng() * 0.3) / 50_000) * 50_000;
+      const ask = Math.round(estimatePlayerValueEUR(pick, currentYear, economyIndex) * (0.9 + rng() * 0.3) / 50_000) * 50_000;
       const days = 5 + Math.floor(rng() * 6);
       const newListing = buildListing({
         playerId: pick.internalId,
@@ -419,6 +628,7 @@ export function tickTransferMarket(state: GameState): TickResult {
         if (otherSellers.length > 0) {
           const bidderTid = otherSellers[Math.floor(rng() * otherSellers.length)];
           const openingBidAmount = Math.round(ask * (0.85 + rng() * 0.25) / 50_000) * 50_000;
+          const signingBonusEUR = getAISigningBonus(pick, bidderTid, openingBidAmount);
           const opening = buildBid({
             listingId: newListing.id,
             playerId: pick.internalId,
@@ -426,6 +636,7 @@ export function tickTransferMarket(state: GameState): TickResult {
             sellerTid,
             bidType: 'transfer',
             amountEUR: openingBidAmount,
+            signingBonusEUR,
             currentDate: today,
             validDays: 5,
           });
@@ -454,6 +665,8 @@ export function tickTransferMarket(state: GameState): TickResult {
     }
     listings = syncListingRollups(listings, bids);
   }
+  teams = releaseInactiveTransferBidReservations(teams, bids);
+  nonNBA = releaseInactiveTransferBidReservations(nonNBA, bids);
   return {
     transferListings: listings,
     transferBids: bids,

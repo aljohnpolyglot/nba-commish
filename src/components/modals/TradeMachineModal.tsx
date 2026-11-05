@@ -6,20 +6,24 @@ import { NBAPlayer, NBATeam, DraftPick } from '../../types';
 import { TradeMachineActionBar } from './TradeMachineActionBar';
 import { TradeMachineResponseOverlay } from './TradeMachineResponseOverlay';
 import { TradeSummaryModal } from './TradeSummaryModal';
-import { computeLeaguePerAvg, type TVContext } from '../../services/trade/tradeValueEngine';
+import { buildLeagueRelativeTradePercentiles, computeLeaguePerAvg, type TVContext } from '../../services/trade/tradeValueEngine';
 import { AwardService } from '../../services/logic/AwardService';
 import { formatPlayerSalaryDisplay, getCapThresholds, getTeamPayrollUSD, getTradeOutlook, effectiveRecord, sumPlayerCurrentSalariesUSD, topNAvgK2, resolveManualOutlook, type TradeOutlook } from '../../utils/salaryUtils';
 import { validateCBATradeRules } from '../../utils/cbaTradeRules';
 import { teamPowerRanks } from '../../services/trade/tradeFinderEngine';
-import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks, DEFAULT_TRADABLE_PICK_SEASONS } from '../../services/draft/DraftPickGenerator';
+import { buildCredibleResignExpiringIds } from '../../services/trade/expiringResignSignal';
+import { getMinTradableSeason, getMaxTradableSeason, getTradablePicks, healMissingCurrentDraftPickRows, DEFAULT_TRADABLE_PICK_SEASONS } from '../../services/draft/DraftPickGenerator';
 import { buildClassStrengthMap, buildFullDraftSlotMap, comparePicks } from '../../services/draft/draftClassStrength';
 import { validateStepienRule, wouldStepienViolateForTid } from '../../services/trade/stepienRule';
 import { getGameDateParts, isInPostDeadlinePreFAWindow } from '../../utils/dateUtils';
 import { formatCurrencyWithCode, getLeagueCurrencyCode } from '../../utils/helpers';
 import { isPbaIsolatedMode } from '../../utils/uiMode';
 import { getActiveLeagueTeams, isOnRoster } from '../../utils/teamLookup';
+import { getHistoricalTeamSnapshot } from '../../utils/teamAssets';
 import { TradeMachineTeamColumn } from './TradeMachineTeamColumn';
 import { evaluateTradeMachineExecution } from './tradeMachineExecution';
+import { isPbaConferenceImport } from '../../services/trade/tradeFinderShared';
+import { getTradeAssetsForTeam } from '../../services/freeAgency/eurostashRights';
 
 interface TradeMachineModalProps {
   onClose: () => void;
@@ -34,6 +38,26 @@ interface TradeMachineModalProps {
   initialPreAccepted?: boolean;
 }
 
+const tradeMachineSignature = (
+  teamAId: number | null | undefined,
+  teamBId: number | null | undefined,
+  teamAPlayerIds: string[] = [],
+  teamBPlayerIds: string[] = [],
+  teamAPickDpids: number[] = [],
+  teamBPickDpids: number[] = [],
+  teamACashUSD = 0,
+  teamBCashUSD = 0,
+) => JSON.stringify({
+  teamAId: teamAId ?? null,
+  teamBId: teamBId ?? null,
+  teamAPlayerIds: [...teamAPlayerIds].sort(),
+  teamBPlayerIds: [...teamBPlayerIds].sort(),
+  teamAPickDpids: [...teamAPickDpids].sort((a, b) => a - b),
+  teamBPickDpids: [...teamBPickDpids].sort((a, b) => a - b),
+  teamACashUSD,
+  teamBCashUSD,
+});
+
 export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   onClose, onConfirm,
   initialTeamAId, initialTeamBId,
@@ -41,17 +65,22 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   initialTeamAPickDpids, initialTeamBPickDpids,
   initialPreAccepted = false,
 }) => {
-  const { state } = useGame();
+  const { state, dispatchAction } = useGame();
   const pbaMode = isPbaIsolatedMode(state);
   const isGM = state.gameMode === 'gm';
   const activeTeams = useMemo(() => {
-    if (!pbaMode) return state.teams;
+    if (!pbaMode) {
+      const historicalNba = state.leagueType === 'modded' && state.moddedLeagueBase === 'nba';
+      return historicalNba
+        ? state.teams.map(team => getHistoricalTeamSnapshot(team, state.leagueStats.year))
+        : state.teams;
+    }
     return getActiveLeagueTeams({
       teams: state.teams,
       nonNBATeams: state.nonNBATeams ?? [],
       userTeamId: state.userTeamId,
     });
-  }, [pbaMode, state.teams, state.nonNBATeams, state.userTeamId]);
+  }, [pbaMode, state.leagueStats.year, state.leagueType, state.moddedLeagueBase, state.teams, state.nonNBATeams, state.userTeamId]);
   const activeTeamIds = useMemo(() => new Set(activeTeams.map(t => t.id)), [activeTeams]);
   const activePlayers = useMemo(() => {
     if (!pbaMode) return state.players;
@@ -61,10 +90,14 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const [teamBId, setTeamBId] = useState<number | null>(initialTeamBId ?? null);
 
   const [teamAPlayers, setTeamAPlayers] = useState<NBAPlayer[]>(() =>
-    initialTeamAPlayerIds ? state.players.filter(p => initialTeamAPlayerIds.includes(p.internalId)) : []
+    initialTeamAPlayerIds
+      ? state.players.filter(p => initialTeamAPlayerIds.includes(p.internalId) && (!pbaMode || !isPbaConferenceImport(p)))
+      : []
   );
   const [teamBPlayers, setTeamBPlayers] = useState<NBAPlayer[]>(() =>
-    initialTeamBPlayerIds ? state.players.filter(p => initialTeamBPlayerIds.includes(p.internalId)) : []
+    initialTeamBPlayerIds
+      ? state.players.filter(p => initialTeamBPlayerIds.includes(p.internalId) && (!pbaMode || !isPbaConferenceImport(p)))
+      : []
   );
   const [teamAPicks, setTeamAPicks] = useState<DraftPick[]>(() =>
     initialTeamAPickDpids ? state.draftPicks.filter(pk => initialTeamAPickDpids.includes(pk.dpid)) : []
@@ -80,6 +113,33 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const teamBCashCapRemaining = Math.max(0, 7_500_000 - teamBCashUsedUSD);
   const [teamACashUSD, setTeamACashUSD] = useState(0);
   const [teamBCashUSD, setTeamBCashUSD] = useState(0);
+  const [tradeEditedAfterLoad, setTradeEditedAfterLoad] = useState(false);
+  const markTradeEdited = () => setTradeEditedAfterLoad(true);
+  const initialTradeSignature = useMemo(
+    () => tradeMachineSignature(
+      initialTeamAId,
+      initialTeamBId,
+      initialTeamAPlayerIds,
+      initialTeamBPlayerIds,
+      initialTeamAPickDpids,
+      initialTeamBPickDpids,
+    ),
+    [initialTeamAId, initialTeamBId, initialTeamAPlayerIds, initialTeamBPlayerIds, initialTeamAPickDpids, initialTeamBPickDpids],
+  );
+  const currentTradeSignature = useMemo(
+    () => tradeMachineSignature(
+      teamAId,
+      teamBId,
+      teamAPlayers.map(p => p.internalId),
+      teamBPlayers.map(p => p.internalId),
+      teamAPicks.map(p => p.dpid),
+      teamBPicks.map(p => p.dpid),
+      teamACashUSD,
+      teamBCashUSD,
+    ),
+    [teamAId, teamBId, teamAPlayers, teamBPlayers, teamAPicks, teamBPicks, teamACashUSD, teamBCashUSD],
+  );
+  const preAcceptedStillExact = initialPreAccepted && !tradeEditedAfterLoad && initialTradeSignature === currentTradeSignature;
   const [showSummaryModal, setShowSummaryModal] = useState(false);
   const [tradeResponse, setTradeResponse] = useState<{ accepted: boolean; gmName: string; reason: string; suggestion?: string } | null>(null);
   // AI's suggested additions (user-side assets) that would make the rejected trade work.
@@ -103,19 +163,25 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const teamB = activeTeams.find(t => t.id === teamBId);
 
   // Memos for rosters and picks
-  const teamARoster = useMemo(() => activePlayers
-    .filter(p => p.tid === teamAId && isOnRoster(p))
+  const teamARoster = useMemo(() => getTradeAssetsForTeam(activePlayers, teamAId ?? -1)
+    .filter(p => (isOnRoster(p) || p.tid !== teamAId) && (!pbaMode || !isPbaConferenceImport(p)))
     .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
-  [activePlayers, teamAId]);
+  [activePlayers, teamAId, pbaMode]);
 
-  const teamBRoster = useMemo(() => activePlayers
-    .filter(p => p.tid === teamBId && isOnRoster(p))
+  const teamBRoster = useMemo(() => getTradeAssetsForTeam(activePlayers, teamBId ?? -1)
+    .filter(p => (isOnRoster(p) || p.tid !== teamBId) && (!pbaMode || !isPbaConferenceImport(p)))
     .sort((a, b) => (b.contract?.amount || 0) - (a.contract?.amount || 0)),
-  [activePlayers, teamBId]);
+  [activePlayers, teamBId, pbaMode]);
 
   const tradablePickCutoff = getMaxTradableSeason(state);
   const minTradableSeason = getMinTradableSeason(state);
-  const tradablePicks = useMemo(() => getTradablePicks(state), [state.draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, (state as any).draftComplete]);
+  React.useEffect(() => {
+    const healed = healMissingCurrentDraftPickRows(state);
+    if (healed.length !== (state.draftPicks ?? []).length) {
+      dispatchAction({ type: 'UPDATE_STATE', payload: { draftPicks: healed } } as any);
+    }
+  }, [dispatchAction, state, state.draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, (state as any).draftComplete]);
+  const tradablePicks = useMemo(() => getTradablePicks(state), [state.draftPicks, state.leagueStats?.year, state.leagueStats?.tradableDraftPickSeasons, state.draftComplete, state.activeDraftPicks, state.activeDraftPassedPicks, state.activeDraftOrder]);
   const lotterySlotByTid = useMemo(
     () => buildFullDraftSlotMap((state as any).draftLotteryResult, activeTeams),
     [(state as any).draftLotteryResult, activeTeams],
@@ -145,23 +211,23 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
     const blocked = new Set<number>();
     for (const pick of teamAPicksAvailable) {
       if (teamAPicks.some(p => p.dpid === pick.dpid)) continue;
-      if (wouldStepienViolateForTid(state.draftPicks ?? [], state.leagueStats?.year ?? new Date().getFullYear(), tradablePickSeasons, teamA.id, [...teamAPicks, pick])) {
+      if (wouldStepienViolateForTid(tradablePicks, state.leagueStats?.year ?? new Date().getFullYear(), tradablePickSeasons, teamA.id, [...teamAPicks, pick])) {
         blocked.add(pick.dpid);
       }
     }
     return blocked;
-  }, [stepienOnGlobal, teamA, teamAPicksAvailable, teamAPicks, state.draftPicks, state.leagueStats?.year, tradablePickSeasons]);
+  }, [stepienOnGlobal, teamA, teamAPicksAvailable, teamAPicks, tradablePicks, state.leagueStats?.year, tradablePickSeasons]);
   const stepienBlockedB = useMemo(() => {
     if (!stepienOnGlobal || !teamB) return new Set<number>();
     const blocked = new Set<number>();
     for (const pick of teamBPicksAvailable) {
       if (teamBPicks.some(p => p.dpid === pick.dpid)) continue;
-      if (wouldStepienViolateForTid(state.draftPicks ?? [], state.leagueStats?.year ?? new Date().getFullYear(), tradablePickSeasons, teamB.id, [...teamBPicks, pick])) {
+      if (wouldStepienViolateForTid(tradablePicks, state.leagueStats?.year ?? new Date().getFullYear(), tradablePickSeasons, teamB.id, [...teamBPicks, pick])) {
         blocked.add(pick.dpid);
       }
     }
     return blocked;
-  }, [stepienOnGlobal, teamB, teamBPicksAvailable, teamBPicks, state.draftPicks, state.leagueStats?.year, tradablePickSeasons]);
+  }, [stepienOnGlobal, teamB, teamBPicksAvailable, teamBPicks, tradablePicks, state.leagueStats?.year, tradablePickSeasons]);
 
   const displayTeamARoster = useMemo(() => {
     const incoming = teamBPlayers.map(p => ({ ...p, isIncoming: true }));
@@ -209,8 +275,18 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
       leaguePerAvg: isRegularSeason ? computeLeaguePerAvg(activePlayers, currentYearForEval) : 15,
       isRegularSeason,
       mvpRank,
+      leaguePlayerPercentile: pbaMode
+        ? buildLeagueRelativeTradePercentiles(activePlayers, currentYearForEval)
+        : undefined,
+      credibleResignExpiringIds: buildCredibleResignExpiringIds({
+        players: activePlayers,
+        teams: activeTeams,
+        currentYear: currentYearForEval,
+        date: state.date,
+        leagueStats: state.leagueStats as any,
+      }),
     };
-  }, [activePlayers, currentYearForEval, state.date, mvpRank]);
+  }, [pbaMode, activePlayers, activeTeams, currentYearForEval, state.date, state.leagueStats, mvpRank]);
   const confStandings = useMemo(() => {
     const map = new Map<number, { confRank: number; gbFromLeader: number }>();
     const groups = Array.from(new Set(activeTeams.map(t => (t.conference ?? '').trim()).filter(Boolean)));
@@ -232,9 +308,9 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
   const teamOutlooks = useMemo(() => {
     const map = new Map<number, TradeOutlook>();
     activeTeams.forEach(t => {
-      const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId);
+      const manual = resolveManualOutlook(t, state.gameMode, state.userTeamId, state.leagueStats?.playIn !== false);
       if (manual) { map.set(t.id, manual); return; }
-      const payroll = getTeamPayrollUSD(activePlayers, t.id, t, currentYearForEval);
+      const payroll = getTeamPayrollUSD(activePlayers, t.id, t, currentYearForEval, state.leagueStats as any);
       const standings = confStandings.get(t.id);
       const expiring = activePlayers.filter(p => p.tid === t.id && (p.contract?.exp ?? 0) <= currentYearForEval).length;
       const rec = effectiveRecord(t, currentYearForEval);
@@ -249,30 +325,31 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
   const salaryMismatchInfo = useMemo(() => {
     if (!teamA || !teamB) return null;
-    if (state.leagueStats?.salaryCapEnabled === false) return null;
-    const cba = validateCBATradeRules({
-      teamAId: teamA.id,
-      teamBId: teamB.id,
-      teamAPlayers,
-      teamBPlayers,
-      teamAPicks,
-      teamBPicks,
-      teamACashUSD,
-      teamBCashUSD,
-      teams: activeTeams,
-      players: activePlayers,
-      leagueStats: state.leagueStats,
-      currentDate: state.date,
-      currentYear: currentYearForEval,
-    });
-    if (!cba.ok) {
-      return { message: cba.reason ?? 'Trade violates current CBA settings.', team: (cba.offendingSide ?? 'A') as 'A' | 'B' };
+    if (state.leagueStats?.salaryCapEnabled !== false) {
+      const cba = validateCBATradeRules({
+        teamAId: teamA.id,
+        teamBId: teamB.id,
+        teamAPlayers,
+        teamBPlayers,
+        teamAPicks,
+        teamBPicks,
+        teamACashUSD,
+        teamBCashUSD,
+        teams: activeTeams,
+        players: activePlayers,
+        leagueStats: state.leagueStats,
+        currentDate: state.date,
+        currentYear: currentYearForEval,
+      });
+      if (!cba.ok) {
+        return { message: cba.reason ?? 'Trade violates current CBA settings.', team: (cba.offendingSide ?? 'A') as 'A' | 'B' };
+      }
     }
 
     // Stepien Rule — neither team may end up with no 1st in two consecutive future drafts.
     if (state.leagueStats?.stepienRuleEnabled !== false && teamA && teamB && (teamAPicks.length > 0 || teamBPicks.length > 0)) {
       const stepien = validateStepienRule(
-        state.draftPicks ?? [],
+        tradablePicks,
         currentYearForEval,
         state.leagueStats?.tradableDraftPickSeasons ?? DEFAULT_TRADABLE_PICK_SEASONS,
         teamA.id, teamB.id,
@@ -286,7 +363,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
       }
     }
     return null;
-  }, [teamA, teamB, teamAPlayers, teamBPlayers, teamAPicks, teamBPicks, teamACashUSD, teamBCashUSD, activeTeams, activePlayers, state.leagueStats, state.date, state.draftPicks, currentYearForEval]);
+  }, [teamA, teamB, teamAPlayers, teamBPlayers, teamAPicks, teamBPicks, teamACashUSD, teamBCashUSD, activeTeams, activePlayers, state.leagueStats, state.date, tradablePicks, currentYearForEval]);
 
   const handleConfirm = () => {
     if (teamAId !== null && teamBId !== null) setShowSummaryModal(true);
@@ -297,7 +374,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
 
     // GM Mode: evaluate whether the other team accepts. Trade Finder's cap
     // absorption offers are pre-vetted by the engine; still re-check CBA here.
-    if (isGM && !force && (!initialPreAccepted || salaryMismatchInfo)) {
+    if (isGM && !force && (!preAcceptedStillExact || salaryMismatchInfo)) {
       const evaluation = evaluateTradeMachineExecution({
         teamAId,
         teamBId,
@@ -373,6 +450,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
             otherTeamId={teamBId}
             onSelectTeam={id => {
               if (!isGM) {
+                markTradeEdited();
                 setTeamAId(id);
                 setTeamAPlayers([]);
                 setTeamAPicks([]);
@@ -386,15 +464,25 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
             salaryMismatchTeam={salaryMismatchInfo?.team === 'A' ? 'A' : null}
             selectedPlayerIds={new Set(teamAPlayers.map(p => p.internalId))}
             selectedPlayers={teamAPlayers}
-            onRemovePlayer={id => setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== id))}
+            onRemovePlayer={id => {
+              markTradeEdited();
+              setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== id));
+            }}
             selectedPicks={teamAPicks}
-            onRemovePick={dpid => setTeamAPicks(teamAPicks.filter(x => x.dpid !== dpid))}
+            onRemovePick={dpid => {
+              markTradeEdited();
+              setTeamAPicks(teamAPicks.filter(x => x.dpid !== dpid));
+            }}
             activeTeams={activeTeams}
             currentYear={currentYearForEval}
             lotterySlotByTid={lotterySlotByTid}
             cashCapRemaining={teamACashCapRemaining}
             cashUSD={teamACashUSD}
-            setCashUSD={setTeamACashUSD}
+            setCashUSD={value => {
+              markTradeEdited();
+              setTeamACashUSD(value);
+            }}
+            formatCash={formatDisplaySalaryUSD}
             activeTab={activeTabA}
             setActiveTab={setActiveTabA}
             displayRoster={displayTeamARoster}
@@ -402,15 +490,20 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
             canClickAssets={canClickAssets}
             currentSeason={state.leagueStats.year}
             postDeadlinePreFA={postDeadlinePreFA}
+            credibleResignExpiringIds={tvContext.credibleResignExpiringIds}
             rslCtx={rslCtx}
             onTogglePlayer={player => {
+              markTradeEdited();
               if ((player as any).isIncoming) setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== player.internalId));
               else if (teamAPlayers.some(x => x.internalId === player.internalId)) setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== player.internalId));
               else setTeamAPlayers([...teamAPlayers, player]);
             }}
-            onTogglePick={pick => teamAPicks.some(p => p.dpid === pick.dpid) ? setTeamAPicks(teamAPicks.filter(p => p.dpid !== pick.dpid)) : setTeamAPicks([...teamAPicks, pick])}
+            onTogglePick={pick => {
+              markTradeEdited();
+              teamAPicks.some(p => p.dpid === pick.dpid) ? setTeamAPicks(teamAPicks.filter(p => p.dpid !== pick.dpid)) : setTeamAPicks([...teamAPicks, pick]);
+            }}
             stepienBlocked={stepienBlockedA}
-            stateTeams={state.teams}
+            stateTeams={activeTeams}
             nonNBATeams={state.nonNBATeams ?? []}
             suggestedPlayerIds={suggestedPlayerIds}
             suggestedPickIds={suggestedPickIds}
@@ -422,6 +515,7 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
             selectedTeamId={teamBId}
             otherTeamId={teamAId}
             onSelectTeam={id => {
+              markTradeEdited();
               setTeamBId(id);
               setTeamBPlayers([]);
               setTeamBPicks([]);
@@ -434,15 +528,25 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
             salaryMismatchTeam={salaryMismatchInfo?.team === 'B' ? 'B' : null}
             selectedPlayerIds={new Set(teamBPlayers.map(p => p.internalId))}
             selectedPlayers={teamBPlayers}
-            onRemovePlayer={id => setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== id))}
+            onRemovePlayer={id => {
+              markTradeEdited();
+              setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== id));
+            }}
             selectedPicks={teamBPicks}
-            onRemovePick={dpid => setTeamBPicks(teamBPicks.filter(x => x.dpid !== dpid))}
+            onRemovePick={dpid => {
+              markTradeEdited();
+              setTeamBPicks(teamBPicks.filter(x => x.dpid !== dpid));
+            }}
             activeTeams={activeTeams}
             currentYear={currentYearForEval}
             lotterySlotByTid={lotterySlotByTid}
             cashCapRemaining={teamBCashCapRemaining}
             cashUSD={teamBCashUSD}
-            setCashUSD={setTeamBCashUSD}
+            setCashUSD={value => {
+              markTradeEdited();
+              setTeamBCashUSD(value);
+            }}
+            formatCash={formatDisplaySalaryUSD}
             activeTab={activeTabB}
             setActiveTab={setActiveTabB}
             displayRoster={displayTeamBRoster}
@@ -450,15 +554,20 @@ export const TradeMachineModal: React.FC<TradeMachineModalProps> = ({
             canClickAssets={canClickAssets}
             currentSeason={state.leagueStats.year}
             postDeadlinePreFA={postDeadlinePreFA}
+            credibleResignExpiringIds={tvContext.credibleResignExpiringIds}
             rslCtx={rslCtx}
             onTogglePlayer={player => {
+              markTradeEdited();
               if ((player as any).isIncoming) setTeamAPlayers(teamAPlayers.filter(x => x.internalId !== player.internalId));
               else if (teamBPlayers.some(x => x.internalId === player.internalId)) setTeamBPlayers(teamBPlayers.filter(x => x.internalId !== player.internalId));
               else setTeamBPlayers([...teamBPlayers, player]);
             }}
-            onTogglePick={pick => teamBPicks.some(p => p.dpid === pick.dpid) ? setTeamBPicks(teamBPicks.filter(p => p.dpid !== pick.dpid)) : setTeamBPicks([...teamBPicks, pick])}
+            onTogglePick={pick => {
+              markTradeEdited();
+              teamBPicks.some(p => p.dpid === pick.dpid) ? setTeamBPicks(teamBPicks.filter(p => p.dpid !== pick.dpid)) : setTeamBPicks([...teamBPicks, pick]);
+            }}
             stepienBlocked={stepienBlockedB}
-            stateTeams={state.teams}
+            stateTeams={activeTeams}
             nonNBATeams={state.nonNBATeams ?? []}
             formatContract={formatContract}
           />

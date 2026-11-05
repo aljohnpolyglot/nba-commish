@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Player, PlayerK2 } from '../types';
+import type { LeagueStats } from '../../types';
 import { mapPlayerToK2 } from '../lib/playerMapping';
 import { computeTeamProficiency } from '../../utils/coachSliders';
 import { computeDefensiveSystemFit, blendDefensiveProficiency } from '../../utils/defensiveSystemFit';
@@ -10,6 +11,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ARCHETYPE_PROFILES } from '../constants/archetypes';
 import { TrainingFocusModal } from './TrainingFocusModal';
 import { ATTRIBUTE_LABELS, getK2SubAttributes } from '../constants/trainingSystems';
+import { PlayerPortrait } from '../../components/shared/PlayerPortrait';
 
 interface Props {
   roster: Player[];
@@ -22,9 +24,10 @@ interface Props {
   };
   /** League-wide K2 rosters for slider normalization — must match what CoachingPage passes. */
   allRosters?: PlayerK2[][];
+  leagueStats?: Partial<LeagueStats> | null;
 }
 
-export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }: Props) {
+export function SystemProficiencyView({ roster, systemFamiliarity, allRosters, leagueStats }: Props) {
   const [selectedSystem, setSelectedSystem] = useState<string | null>(null);
   const [side, setSide] = useState<'offense' | 'defense'>('offense');
 
@@ -32,9 +35,9 @@ export function SystemProficiencyView({ roster, systemFamiliarity, allRosters }:
     if (roster.length === 0) return { sortedProfs: [] as [string, number][], coachSliders: null, k2Roster: [] as PlayerK2[] };
     const mapped = roster.map(mapPlayerToK2);
     // Shared util — produces identical sortedProfs to CoachingView's CoachingPage.
-    const { sortedProfs: sp, coachSliders } = computeTeamProficiency(mapped as any, allRosters as any, systemFamiliarity);
+    const { sortedProfs: sp, coachSliders } = computeTeamProficiency(mapped as any, allRosters as any, systemFamiliarity, leagueStats);
     return { sortedProfs: sp, coachSliders, k2Roster: mapped };
-  }, [roster, systemFamiliarity, allRosters]);
+  }, [roster, systemFamiliarity, allRosters, leagueStats]);
 
   const tiers = useMemo(() => {
     const categories = {
@@ -276,7 +279,7 @@ function SystemCard({ name, score, tier, accent = 'blue', systemMap, onClick }: 
             style={{ width: `${score}%` }}
           />
         </div>
-        <span className="ml-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">{score}</span>
+        <span className="ml-3 text-[10px] font-black text-slate-500 uppercase tracking-widest">{Math.round(score)}</span>
       </div>
     </button>
   );
@@ -528,10 +531,18 @@ function PlayerFitCard({ player, fitScore, tier }: { player: PlayerK2, fitScore:
         : 'bg-slate-950/40 border-slate-800/30 hover:border-slate-700'
     }`}>
        <div className="flex items-center gap-4">
-          <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black border transition-colors ${
-            tier === 'elite' ? 'bg-blue-500/20 border-blue-500/30 text-blue-400' : 'bg-slate-800 border-slate-700 text-slate-400'
-          }`}>
-             {player.pos}
+          <div className="relative shrink-0">
+            <PlayerPortrait
+              imgUrl={player.imgURL}
+              face={player.face}
+              playerName={player.name}
+              size={40}
+            />
+            <span className={`absolute -bottom-1 -right-1 min-w-5 rounded-full border px-1 py-0.5 text-center text-[8px] font-black ${
+              tier === 'elite' ? 'bg-blue-950 border-blue-500/40 text-blue-300' : 'bg-slate-900 border-slate-700 text-slate-300'
+            }`}>
+              {player.pos}
+            </span>
           </div>
           <div>
              <div className="text-xs font-black text-white group-hover:text-blue-400 transition-colors uppercase tracking-tight">{player.name}</div>

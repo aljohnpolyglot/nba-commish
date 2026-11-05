@@ -15,6 +15,7 @@ export const SimDateDisplay: React.FC = () => {
 
   const isSimming = state.isProcessing && !state.lazySimProgress;
   if (!isSimming) return null;
+  if (state.processingAction) return null;
 
   const isGM = state.gameMode === 'gm';
   const isLLMWait = !state.simCurrentDate;
@@ -41,7 +42,7 @@ export const SimDateDisplay: React.FC = () => {
           {isLLMWait ? (
             <div className="text-center">
               <p className="text-slate-400 text-sm font-medium tracking-widest uppercase">
-                Processing Executive Order
+                Processing Commissioner Action
               </p>
             </div>
           ) : (

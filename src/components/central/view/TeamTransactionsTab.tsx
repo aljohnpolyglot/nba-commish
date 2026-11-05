@@ -1,73 +1,101 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useGame } from '../../../store/GameContext';
-import { NBAPlayer, NBATeam } from '../../../types';
-import { PlayerBioView } from './PlayerBioView';
+import { NBATeam } from '../../../types';
 import { TradeDetailView } from './TradeDetailView';
-import { TeamTransactionsFeed, TransactionsPagination } from './TransactionsFeed';
-import { buildDisplayItems, detectType, DisplayItem, EnrichedEntry, findPlayerInText, findTeamInText, getSeasonYear } from './TransactionsShared';
+import { TeamTransactionsFeed, TransactionsPagination, type TradeSelection } from './TransactionsFeed';
+import { buildDisplayItems, detectType, DisplayItem, EnrichedEntry, findPlayerInText, findStaffInText, findTeamInText, getSeasonYear, getTransactionStaffCandidates, getTransactionTeamIds, sortTransactionHistoryNewestFirst } from './TransactionsShared';
 import { SearchField } from './TransactionsShared';
+import { normalizeDate } from '../../../utils/helpers';
 
 interface TeamTransactionsTabProps {
   team: NBATeam;
+  selectedSeason?: number;
 }
 
-export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }) => {
-  const { state } = useGame();
+export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team, selectedSeason }) => {
+  const { state, navigateToPlayer } = useGame();
+  const maxVisibleYear = state.leagueStats?.year ?? new Date().getFullYear();
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('');
-  const [selectedYear, setSelectedYear] = useState<number>(() => state.leagueStats?.year ?? new Date().getFullYear());
-  const [viewingPlayer, setViewingPlayer] = useState<NBAPlayer | null>(null);
-  const [selectedTrade, setSelectedTrade] = useState<{ text: string; date: string; legs?: { text: string; date: string }[] } | null>(null);
+  const [selectedYear, setSelectedYear] = useState<number>(() => maxVisibleYear);
+  const [selectedTrade, setSelectedTrade] = useState<TradeSelection>(null);
   const [page, setPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(30);
 
   useEffect(() => {
-    setSelectedYear(state.leagueStats?.year ?? new Date().getFullYear());
-  }, [state.leagueStats?.year]);
+    setSelectedYear(maxVisibleYear);
+  }, [maxVisibleYear]);
+
+  useEffect(() => {
+    if (selectedSeason != null) setSelectedYear(selectedSeason);
+  }, [selectedSeason]);
 
   const playerByName = useMemo(() => {
     const map = new Map<string, typeof state.players[0]>();
     state.players.forEach(player => map.set(player.name.toLowerCase(), player));
     return map;
   }, [state.players]);
+  const playerById = useMemo(() => {
+    const map = new Map<string, typeof state.players[0]>();
+    state.players.forEach(player => map.set(player.internalId, player));
+    return map;
+  }, [state.players]);
+  const staffCandidates = useMemo(() => getTransactionStaffCandidates(state), [
+    state.nonNBATeams,
+    state.staff,
+    state.staffFreeAgents,
+    state.staffRetirementAnnouncements,
+    state.teams,
+  ]);
 
   const enrichedHistory = useMemo<EnrichedEntry[]>(() => (
-    [...(state.history || [])]
-      .sort((left, right) => {
-        const leftDate = typeof left === 'string' ? state.date : (left as any).date || state.date;
-        const rightDate = typeof right === 'string' ? state.date : (right as any).date || state.date;
-        return new Date(rightDate).getTime() - new Date(leftDate).getTime();
-      })
+    sortTransactionHistoryNewestFirst([...(state.history || [])], state.date)
+      .filter(raw => typeof raw === 'string' || normalizeDate((raw as any).date || state.date) <= normalizeDate(state.date))
       .map(raw => {
         const entry = typeof raw === 'string' ? { text: raw, date: state.date, type: 'League Event' } : raw as { text: string; date: string; type?: string };
         const text = entry.text || '';
+        const kind = detectType(text, entry.type);
+        const playerFromId = Array.isArray((entry as any).playerIds)
+          ? ((entry as any).playerIds as string[]).map(playerId => playerById.get(playerId)).find(Boolean) ?? null
+          : null;
+        const resolvedPlayer = playerFromId ?? findPlayerInText(text, playerByName);
         return {
           ...entry,
-          kind: detectType(text, entry.type),
-          player: findPlayerInText(text, playerByName),
-          team: findTeamInText(text, state.teams),
+          kind,
+          player: resolvedPlayer,
+          playerIdentityMatch: playerFromId ? 'id' : resolvedPlayer ? 'name' : undefined,
+          staff: kind === 'Personnel'
+            ? findStaffInText(text, [...(team.tycoon?.staffMembers ?? []), ...staffCandidates])
+            : null,
+          team: getTransactionTeamIds(entry as any).includes(team.id) ? team : findTeamInText(text, state.teams),
         };
       })
-  ), [playerByName, state.date, state.history, state.teams]);
+  ), [playerById, playerByName, staffCandidates, state.date, state.history, state.teams, team.tycoon?.staffMembers]);
 
   const availableYears = useMemo(() => {
     const set = new Set<number>();
     enrichedHistory.forEach(entry => {
       if (entry.kind === 'League Event') return;
       const text = entry.text || '';
-      if (!text.includes(team.name) && !text.includes(team.abbrev)) return;
-      const year = getSeasonYear(entry.date || '');
-      if (year > 2000) set.add(year);
+      if (!getTransactionTeamIds(entry as any).includes(team.id) && !text.includes(team.name) && !text.includes(team.abbrev)) return;
+      const year = getSeasonYear(entry.date || '', state.leagueStats);
+      if (year > 0 && year <= maxVisibleYear) set.add(year);
     });
     return Array.from(set).sort((left, right) => right - left);
-  }, [enrichedHistory, team]);
+  }, [enrichedHistory, maxVisibleYear, state.leagueStats, team]);
+
+  useEffect(() => {
+    if (availableYears.length > 0 && !availableYears.includes(selectedYear)) {
+      setSelectedYear(availableYears[0]);
+    }
+  }, [availableYears, selectedYear]);
 
   const filteredHistory = useMemo(() => enrichedHistory.filter(entry => {
     if (entry.kind === 'League Event') return false;
     const text = entry.text || '';
-    if (!text.includes(team.name) && !text.includes(team.abbrev)) return false;
-    if (selectedYear && getSeasonYear(entry.date || '') !== selectedYear) return false;
+    if (!getTransactionTeamIds(entry as any).includes(team.id) && !text.includes(team.name) && !text.includes(team.abbrev)) return false;
+    if (selectedYear && getSeasonYear(entry.date || '', state.leagueStats) !== selectedYear) return false;
     if (searchQuery && !text.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     if (filterType) {
       const lowered = text.toLowerCase();
@@ -80,7 +108,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
       else if (entry.kind !== filterType) return false;
     }
     return true;
-  }), [enrichedHistory, filterType, searchQuery, selectedYear, team]);
+  }), [enrichedHistory, filterType, searchQuery, selectedYear, state.leagueStats, team]);
 
   const displayItems = useMemo<DisplayItem[]>(() => buildDisplayItems(filteredHistory), [filteredHistory]);
   const totalPages = Math.max(1, Math.ceil(displayItems.length / itemsPerPage));
@@ -91,7 +119,6 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
   }, [searchQuery, filterType, selectedYear, team.id, itemsPerPage]);
 
   if (selectedTrade) return <TradeDetailView entry={selectedTrade} legs={selectedTrade.legs} onBack={() => setSelectedTrade(null)} />;
-  if (viewingPlayer) return <PlayerBioView player={viewingPlayer} onBack={() => setViewingPlayer(null)} />;
 
   return (
     <div className="space-y-3">
@@ -107,6 +134,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
           <option value="">All Types</option>
           <option value="Draft">Draft</option>
           <option value="Signing">Signing</option>
+          <option value="Contract Option">Contract Option</option>
           <option value="Personnel">Staff / Personnel</option>
           <option value="Trade">Trade</option>
           <option value="Transfer">Transfer (Buyout)</option>
@@ -117,7 +145,7 @@ export const TeamTransactionsTab: React.FC<TeamTransactionsTabProps> = ({ team }
         <SearchField value={searchQuery} onChange={setSearchQuery} placeholder="Search…" className="flex-1 min-w-[160px]" />
       </div>
 
-      <TeamTransactionsFeed visibleItems={visibleItems} teams={state.teams} setSelectedTrade={setSelectedTrade} setViewingPlayer={setViewingPlayer} emptyLabel={`No transactions found for ${team.name}`} />
+      <TeamTransactionsFeed visibleItems={visibleItems} teams={state.teams} setSelectedTrade={setSelectedTrade} onViewPlayer={navigateToPlayer} emptyLabel={`No transactions found for ${team.name}`} />
       <TransactionsPagination displayCount={displayItems.length} page={page} totalPages={totalPages} itemsPerPage={itemsPerPage} setItemsPerPage={setItemsPerPage} setPage={setPage} compact />
     </div>
   );

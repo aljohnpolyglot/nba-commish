@@ -1,6 +1,8 @@
 import { NBAPlayer as Player } from '../../../types';
 import { PlayerGameStats } from '../types';
+import type { GameRuleConfig } from '../types';
 import { PossessionEnd } from './types';
+import { DEFAULT_GAME_RULES } from '../gameRuleRuntime';
 
 const BLANK = (p: Player): PlayerGameStats => ({
   playerId: p.internalId,
@@ -40,6 +42,19 @@ const BLANK = (p: Player): PlayerGameStats => ({
 export class BoxAccumulator {
   private byId = new Map<string, PlayerGameStats>();
   private order: string[] = [];
+  private flagrant1ById = new Map<string, number>();
+  private flagrant2ById = new Map<string, number>();
+  private disqualified = new Map<string, 'technical' | 'flagrant_1' | 'flagrant_2'>();
+  private disciplineEvents: Array<{
+    playerId: string;
+    discipline: 'technical' | 'flagrant_1' | 'flagrant_2';
+    ejected: boolean;
+    card?: 'yellow' | 'red';
+    period: number;
+    clockSeconds: number;
+  }> = [];
+
+  constructor(private readonly rules: GameRuleConfig = DEFAULT_GAME_RULES) {}
 
   registerRoster(roster: Player[], starterCount: number) {
     roster.forEach((p, i) => {
@@ -62,16 +77,25 @@ export class BoxAccumulator {
     });
   }
 
-  applyPossession(end: PossessionEnd, offenseIds: string[], defenseIds: string[], teamScoreDelta: { off: number }) {
+  applyPossession(
+    end: PossessionEnd,
+    offenseIds: string[],
+    defenseIds: string[],
+    teamScoreDelta: { off: number },
+    context?: { period: number; clockSeconds: number },
+  ) {
     if (end.kind === 'shot') {
       const s = this.byId.get(end.shooterId);
       if (s) {
-        s.fga += 1;
-        if (end.zone === 'three') s.threePa += 1;
-        if (end.zone === 'four') s.fourPa += 1;
-        if (end.zone === 'rim')      s.fgaAtRim    = (s.fgaAtRim ?? 0) + 1;
-        if (end.zone === 'lowPost')  s.fgaLowPost  = (s.fgaLowPost ?? 0) + 1;
-        if (end.zone === 'midRange') s.fgaMidRange = (s.fgaMidRange ?? 0) + 1;
+        const countsAsFieldGoalAttempt = end.made || !end.fouled;
+        if (countsAsFieldGoalAttempt) {
+          s.fga += 1;
+          if (end.zone === 'three') s.threePa += 1;
+          if (end.zone === 'four') s.fourPa += 1;
+          if (end.zone === 'rim')      s.fgaAtRim    = (s.fgaAtRim ?? 0) + 1;
+          if (end.zone === 'lowPost')  s.fgaLowPost  = (s.fgaLowPost ?? 0) + 1;
+          if (end.zone === 'midRange') s.fgaMidRange = (s.fgaMidRange ?? 0) + 1;
+        }
         if (end.made) {
           s.fgm += 1;
           if (end.zone === 'three') s.threePm += 1;
@@ -79,13 +103,15 @@ export class BoxAccumulator {
           if (end.zone === 'rim')      s.fgAtRim    = (s.fgAtRim ?? 0) + 1;
           if (end.zone === 'lowPost')  s.fgLowPost  = (s.fgLowPost ?? 0) + 1;
           if (end.zone === 'midRange') s.fgMidRange = (s.fgMidRange ?? 0) + 1;
-          s.pts += end.zone === 'three' ? 3 : end.zone === 'four' ? 4 : 2;
+          s.pts += Math.max(0, end.pts - end.ftMade);
+          if (end.isDunk) s.dunks = (s.dunks ?? 0) + 1;
         }
         if (end.ftAttempts > 0) {
           s.fta += end.ftAttempts;
           s.ftm += end.ftMade;
           s.pts += end.ftMade;
         }
+        if ((end.penaltyPoints ?? 0) > 0) s.pts += end.penaltyPoints ?? 0;
         if (end.blockerId) s.ba = (s.ba ?? 0) + 1;
       }
       if (end.assisterId) {
@@ -101,7 +127,7 @@ export class BoxAccumulator {
         if (f) f.pf += 1;
       }
       // Plus/Minus
-      const ptsScored = (end.made ? (end.zone === 'three' ? 3 : end.zone === 'four' ? 4 : 2) : 0) + end.ftMade;
+      const ptsScored = end.pts + (end.penaltyPoints ?? 0);
       if (ptsScored > 0) {
         offenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm += ptsScored; });
         defenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm -= ptsScored; });
@@ -123,11 +149,56 @@ export class BoxAccumulator {
         v.ftm += end.ftMade;
         v.pts += end.ftMade;
       }
-      if (end.ftMade > 0) {
-        offenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm += end.ftMade; });
-        defenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm -= end.ftMade; });
-        teamScoreDelta.off += end.ftMade;
+      if (v && (end.penaltyPoints ?? 0) > 0) v.pts += end.penaltyPoints ?? 0;
+      const foulPoints = end.ftMade + (end.penaltyPoints ?? 0);
+      if (foulPoints > 0) {
+        offenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm += foulPoints; });
+        defenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm -= foulPoints; });
+        teamScoreDelta.off += foulPoints;
       }
+    } else if (end.kind === 'discipline') {
+      const offender = this.byId.get(end.offenderId);
+      const victim = this.byId.get(end.victimId);
+      if (end.discipline === 'technical') {
+        if (offender) offender.techs = (offender.techs ?? 0) + 1;
+      } else {
+        if (offender) offender.pf += 1;
+        const target = end.discipline === 'flagrant_1' ? this.flagrant1ById : this.flagrant2ById;
+        target.set(end.offenderId, (target.get(end.offenderId) ?? 0) + 1);
+      }
+      if (victim) {
+        victim.fta += end.ftAttempts;
+        victim.ftm += end.ftMade;
+        victim.pts += end.ftMade;
+        victim.pts += end.penaltyPoints ?? 0;
+      }
+      const disciplinePoints = end.ftMade + (end.penaltyPoints ?? 0);
+      if (disciplinePoints > 0) {
+        offenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm += disciplinePoints; });
+        defenseIds.forEach(id => { const x = this.byId.get(id); if (x) x.pm -= disciplinePoints; });
+        teamScoreDelta.off += disciplinePoints;
+      }
+
+      const count = end.discipline === 'technical'
+        ? offender?.techs ?? 0
+        : end.discipline === 'flagrant_1'
+          ? this.flagrant1ById.get(end.offenderId) ?? 0
+          : this.flagrant2ById.get(end.offenderId) ?? 0;
+      const limit = end.discipline === 'technical'
+        ? this.rules.techEjectionLimit
+        : end.discipline === 'flagrant_1'
+          ? this.rules.flagrant1EjectionLimit
+          : this.rules.flagrant2EjectionLimit;
+      const ejected = count >= limit;
+      if (ejected) this.disqualified.set(end.offenderId, end.discipline);
+      this.disciplineEvents.push({
+        playerId: end.offenderId,
+        discipline: end.discipline,
+        ejected,
+        card: this.rules.useYellowRedCards ? (ejected ? 'red' : 'yellow') : undefined,
+        period: context?.period ?? 1,
+        clockSeconds: Math.max(0, context?.clockSeconds ?? 0),
+      });
     }
   }
 
@@ -146,5 +217,17 @@ export class BoxAccumulator {
    *  to decide foul-out / foul-trouble swaps mid-game. */
   getPf(playerId: string): number {
     return this.byId.get(playerId)?.pf ?? 0;
+  }
+
+  isDisqualified(playerId: string): boolean {
+    return this.disqualified.has(playerId);
+  }
+
+  getDisqualification(playerId: string) {
+    return this.disqualified.get(playerId);
+  }
+
+  getDisciplineEvents() {
+    return [...this.disciplineEvents];
   }
 }

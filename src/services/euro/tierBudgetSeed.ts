@@ -21,11 +21,27 @@ const TEAM_PRESTIGE_HINT: Record<string, Record<string, SetupTierLabel>> = {
     CSK: 'Established',
     FBA: 'Established',
   },
+  'italian-serie-a': { MIL: 'Powerhouse', VBO: 'Established' },
+  'german-bbl': { BAY: 'Powerhouse', BER: 'Established', ULM: 'Established' },
+  'greek-heba-a1': { OLY: 'Powerhouse', PAN: 'Powerhouse' },
+  'turkish-bsl': { FEN: 'Powerhouse', EFE: 'Powerhouse' },
+  'lithuanian-lkl': { ZAL: 'Powerhouse', RYT: 'Established' },
+  'israeli-bsl': { MTA: 'Powerhouse' },
 };
 
 const TIER_BUDGET_BASELINE: Record<string, number> = {
   endesa: 8_000_000,
   euroleague: 18_000_000,
+  eurocup: 10_000_000,
+  'french-jeep-elite': 7_000_000,
+  'italian-serie-a': 8_000_000,
+  'german-bbl': 8_000_000,
+  'greek-heba-a1': 7_000_000,
+  'turkish-bsl': 9_000_000,
+  'lithuanian-lkl': 4_500_000,
+  'israeli-bsl': 6_000_000,
+  'vtb-united-league': 8_000_000,
+  'adriatic-league': 6_000_000,
 };
 
 const TIER_MULTIPLIERS: Record<SetupTierLabel, number> = {

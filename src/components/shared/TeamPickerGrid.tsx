@@ -1,24 +1,18 @@
 import React, { useState, useMemo } from 'react';
 import { Search, CheckCircle2 } from 'lucide-react';
 import type { NBATeam } from '../../types';
+import { getTeamFullName } from '../../utils/teamNames';
 
 export interface TeamPickerGridProps {
-  /** All teams to display. */
   teams: NBATeam[];
-  /** Current selection. Pass an array for multi-select, a single id for single-select. */
   selectedIds: number[];
-  /** Called when a tile is toggled. Caller owns the state update. */
   onToggle: (teamId: number) => void;
-  /** Single- vs multi-select. In single mode, onToggle is called with the new id and the caller should replace selectedIds with [id]. */
   mode?: 'single' | 'multi';
-  /** Optional filter — hide teams whose id is in this set (e.g. excluded conferences). */
   excludeIds?: Set<number>;
-  /** Show a search box above the grid. Default: true. */
   searchable?: boolean;
-  /** Tailwind grid cols class; falls back to responsive 1/2 cols. */
   gridClassName?: string;
-  /** Selection accent color — 'sky' (default), 'emerald', 'amber', 'blue'. */
   accent?: 'sky' | 'emerald' | 'amber' | 'blue';
+  getMeta?: (team: NBATeam) => React.ReactNode;
 }
 
 const ACCENT_CLASSES = {
@@ -28,11 +22,6 @@ const ACCENT_CLASSES = {
   blue:    { ring: 'bg-blue-600/20 border-blue-500/50',       check: 'text-blue-400' },
 };
 
-/**
- * Shared team picker — unifies the team-grid UI used by InvitePerformanceModal,
- * AllStarHostPickerModal, and future modals that need team selection. Supports
- * single and multi select with a consistent visual style.
- */
 export const TeamPickerGrid: React.FC<TeamPickerGridProps> = ({
   teams,
   selectedIds,
@@ -42,6 +31,7 @@ export const TeamPickerGrid: React.FC<TeamPickerGridProps> = ({
   searchable = true,
   gridClassName = 'grid-cols-1 sm:grid-cols-2',
   accent = 'sky',
+  getMeta,
 }) => {
   const [query, setQuery] = useState('');
   const accentClasses = ACCENT_CLASSES[accent];
@@ -53,7 +43,7 @@ export const TeamPickerGrid: React.FC<TeamPickerGridProps> = ({
     return filtered.filter(t =>
       t.name?.toLowerCase().includes(q) ||
       t.abbrev?.toLowerCase().includes(q) ||
-      ((t as any).region ?? '').toLowerCase().includes(q)
+      (t.region ?? '').toLowerCase().includes(q)
     );
   }, [teams, query, excludeIds]);
 
@@ -86,9 +76,11 @@ export const TeamPickerGrid: React.FC<TeamPickerGridProps> = ({
               {team.logoUrl && (
                 <img src={team.logoUrl} alt={team.name} className="w-8 h-8 object-contain" referrerPolicy="no-referrer" />
               )}
-              <span className="text-sm font-bold text-white truncate">{team.name}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-bold text-white">{getTeamFullName(team)}</span>
+                {getMeta && <span className="mt-0.5 block truncate text-[10px] font-semibold text-slate-500">{getMeta(team)}</span>}
+              </span>
               {selected && <CheckCircle2 size={16} className={`ml-auto ${accentClasses.check}`} />}
-              {/* Single-mode hint: only one can be selected at a time — caller should handle this by replacing state. */}
               {mode === 'single' && selected && <span className="sr-only">selected</span>}
             </button>
           );

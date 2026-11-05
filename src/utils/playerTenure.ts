@@ -1,4 +1,5 @@
 import type { NBAPlayer } from '../types';
+import { isFranchiseCareerLoyaltyActive } from './franchiseCareerLoyalty';
 
 export function resolveYearsWithCurrentTeamFromStats(player: NBAPlayer): number {
   const currentTid = typeof player.tid === 'number' ? player.tid : -1;
@@ -24,5 +25,9 @@ export function getCurrentTeamRegularSeasonYears(player: NBAPlayer): number {
 }
 
 export function isFranchiseLifer(player: NBAPlayer, minYears = 10): boolean {
-  return getCurrentTeamRegularSeasonYears(player) >= minYears;
+  const nbaLikeRoster = player.tid >= 0 && player.tid < 100
+    && (player.status == null || player.status === 'Active');
+  return isFranchiseCareerLoyaltyActive(player)
+    || (nbaLikeRoster && (player.moodTraits ?? []).includes('LOYAL') && getCurrentTeamRegularSeasonYears(player) >= 5)
+    || getCurrentTeamRegularSeasonYears(player) >= minYears;
 }

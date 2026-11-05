@@ -1,0 +1,6 @@
+Boxes, Suites, and Tables — south-west
+======================================
+
+B1	sections/b1-south-west.svg
+BR1	sections/br1-south-west.svg
+MC1	sections/mc1-south-west.svg

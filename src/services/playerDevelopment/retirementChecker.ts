@@ -1,4 +1,6 @@
 import type { NBAPlayer } from '../../types';
+import { getBasketballEraRules } from '../era/basketballEraRules';
+import { simDebug } from '../../utils/simDebug';
 
 export interface RetireeRecord {
   playerId: string;
@@ -28,92 +30,89 @@ function toApprox2K(rawOvr: number): number {
   return Math.min(99, Math.round(0.88 * rawOvr + 31));
 }
 
+export interface RetirementProbabilityInput {
+  age: number;
+  rawOvr: number;
+  previousOvr?: number;
+  allStarApps?: number;
+  recentAllStar?: boolean;
+  lastSeasonGP?: number;
+  lastSeasonPPG?: number;
+  lastTwoSeasonsGP?: number;
+  underContract?: boolean;
+  contractYearsRemaining?: number;
+  injuryGames?: number;
+  competitor?: boolean;
+  farewellTour?: boolean;
+  year?: number;
+}
+
+const clamp01 = (value: number) => Math.max(0, Math.min(1, value));
+
+export function calculateRetirementProbability(input: RetirementProbabilityInput): number {
+  const age = Math.max(16, Number(input.age) || 16);
+  const rawOvr = Number.isFinite(input.rawOvr) ? input.rawOvr : 50;
+  const previousOvr = Number.isFinite(input.previousOvr) ? Number(input.previousOvr) : rawOvr;
+  const lastSeasonGP = Math.max(0, Number(input.lastSeasonGP) || 0);
+  const lastSeasonPPG = Math.max(0, Number(input.lastSeasonPPG) || 0);
+  const lastTwoSeasonsGP = Math.max(lastSeasonGP, Number(input.lastTwoSeasonsGP) || 0);
+  const allStarApps = Math.max(0, Number(input.allStarApps) || 0);
+  const year = Number.isFinite(input.year) ? Number(input.year) : 2026;
+  const era = getBasketballEraRules(year);
+
+  // A weak market is not the same thing as leaving professional basketball.
+  // Young fringe players belong in free agency or the external-league router;
+  // retirement pressure only becomes meaningful once a player reaches the
+  // veteran exit window.
+  const careerExitExposure = clamp01((age - 29) / 7);
+  if (careerExitExposure <= 0) return 0;
+
+  const fatherTimeExposure = 1 / (1 + Math.exp(-(age - 36) / 3.5));
+  const abilityPressure = clamp01((56 - rawOvr) / 24);
+  const declinePressure = clamp01((previousOvr - rawOvr) / 12);
+  const availabilityPressure = clamp01(1 - lastSeasonGP / 65);
+  const twoYearAbsencePressure = clamp01(1 - lastTwoSeasonsGP / 50);
+  const productionPressure = clamp01(1 - lastSeasonPPG / 18);
+  const injuryPressure = clamp01((Number(input.injuryGames) || 0) / 82);
+
+  const physicalPressure = fatherTimeExposure * era.fatherTimeDeclineMultiplier * (
+    0.08
+    + abilityPressure * 0.34
+    + declinePressure * 0.2
+    + injuryPressure * 0.16
+  );
+  const rolePressure = availabilityPressure * 0.18
+    + twoYearAbsencePressure * 0.14
+    + productionPressure * 0.1;
+  const marketPressure = input.underContract
+    ? -0.2 - Math.min(0.09, Math.max(0, Number(input.contractYearsRemaining) || 0) * 0.03)
+    : 0.08 + twoYearAbsencePressure * 0.12;
+  const achievementResistance = (input.recentAllStar ? 0.14 : 0)
+    + Math.min(0.14, allStarApps * 0.012)
+    + (lastSeasonGP >= 50 && lastSeasonPPG >= 15 ? 0.12 : 0);
+  const competitiveResistance = input.competitor
+    ? era.competitiveLongevityWeight * (0.35 + fatherTimeExposure * 0.65)
+    : 0;
+  const farewellPressure = input.farewellTour ? 0.28 : 0;
+
+  return clamp01(
+    physicalPressure
+    + careerExitExposure * (rolePressure + marketPressure + farewellPressure)
+    - careerExitExposure * (achievementResistance + competitiveResistance),
+  );
+}
+
 export function retireProb(age: number, rawOvr: number, allStarApps = 0, recentAllStar = false, lastSeasonGP = 0, lastSeasonPPG = 0): number {
-  if (age < 34) {
-    return rawOvr < 45 ? 0.12 : 0;
-  }
-
-  if (age >= 45) return 1.0;
-
-  // ── Active All-Stars never retire — if they're still earning selections, they keep going.
-  if (recentAllStar) return 0;
-
-  // Productive scorers should not randomly vanish after a 15-20 PPG season.
-  // Klay-type late-career starters can decline physically while still being
-  // valuable enough that retirement should be rare, not a coin flip.
-  if (lastSeasonGP >= 45 && lastSeasonPPG >= 20 && age <= 42) return 0;
-  const scorerMult = lastSeasonGP >= 45 && lastSeasonPPG >= 15
-    ? (age <= 40 ? 0.08 : age <= 42 ? 0.15 : 0.35)
-    : 1.0;
-  const dampen = (prob: number) => Math.min(1.0, prob * scorerMult);
-
-  // ── "Still productive" immunity ──────────────────────────────────
-  // Played 50+ games last season at solid-starter+ level (BBGM 60+ ≈ K2 84+).
-  // Catches Kawhi/late-career LeBron — guys producing without All-Star nods.
-  // Caps at age 43 so even productive vets eventually retire.
-  if (lastSeasonGP >= 50 && rawOvr >= 60 && age <= 42) return 0;
-
-  // ── Legend multiplier — all-time greats hang on longer ───────────
-  const legendMult = allStarApps >= 15 ? 0.30
-                   : allStarApps >= 10 ? 0.50
-                   : allStarApps >= 5  ? 0.75
-                   : 1.0;
-
-  // ── BBGM OVR scale (practical range 35-82): ─────────────────────────────
-  //   65+ = All-Star / superstar (top ~15 in league)
-  //   55-64 = solid starter
-  //   45-54 = rotation / bench
-  //   <45  = end of bench / washed
-  //
-  // Key principle: OVR matters MORE than age. As long as a player is still
-  // producing they keep playing. The curve only kicks in for genuine decline.
-
-  // ── All-Star / superstar (BBGM 65+) — sharply softened ──────────────────
-  // If you're still elite, you don't retire by accident. Compare real LeBron
-  // (41yo, 19.2 ppg, K2 88) — should not even consider retirement.
-  if (rawOvr >= 65) {
-    if (age <= 38) return 0;
-    if (age <= 39) return dampen(0.01 * legendMult);
-    if (age <= 40) return dampen(0.02 * legendMult);
-    if (age <= 41) return dampen(0.04 * legendMult);
-    if (age <= 42) return dampen(0.07 * legendMult);
-    if (age <= 43) return dampen(0.15 * legendMult);
-    return dampen(0.30 * legendMult);                        // age 44
-  }
-
-  // ── Solid starter (BBGM 55-64) ──────────────────────────────────────────
-  if (rawOvr >= 55) {
-    if (age <= 34) return dampen(0.05 * legendMult);
-    if (age <= 35) return dampen(0.10 * legendMult);
-    if (age <= 36) return dampen(0.15 * legendMult);
-    if (age <= 37) return dampen(0.25 * legendMult);
-    if (age <= 38) return dampen(0.35 * legendMult);
-    if (age <= 39) return dampen(0.50 * legendMult);
-    if (age <= 40) return dampen(0.60 * legendMult);
-    if (age <= 41) return dampen(0.70 * legendMult);
-    return dampen(0.80 * legendMult);
-  }
-
-  // ── Rotation / bench (BBGM 45-54) ───────────────────────────────────────
-  if (rawOvr >= 45) {
-    if (age <= 34) return dampen(0.15 * legendMult);
-    if (age <= 35) return dampen(0.25 * legendMult);
-    if (age <= 36) return dampen(0.35 * legendMult);
-    if (age <= 37) return dampen(0.50 * legendMult);
-    if (age <= 38) return dampen(0.60 * legendMult);
-    if (age <= 39) return dampen(0.75 * legendMult);
-    if (age <= 40) return dampen(0.85 * legendMult);
-    return dampen(Math.min(1.0, 0.95 * legendMult));
-  }
-
-  // ── Washed (BBGM < 45) ──────────────────────────────────────────────────
-  if (age <= 34) return dampen(0.30 * legendMult);
-  if (age <= 35) return dampen(0.40 * legendMult);
-  if (age <= 36) return dampen(0.60 * legendMult);
-  if (age <= 37) return dampen(0.70 * legendMult);
-  if (age <= 38) return dampen(0.80 * legendMult);
-  if (age <= 39) return dampen(0.90 * legendMult);
-  return dampen(Math.min(1.0, 0.95 * legendMult));
+  return calculateRetirementProbability({
+    age,
+    rawOvr,
+    allStarApps,
+    recentAllStar,
+    lastSeasonGP,
+    lastSeasonPPG,
+    lastTwoSeasonsGP: lastSeasonGP,
+    year: 2026,
+  });
 }
 function computeCareerTotals(player: NBAPlayer): { gp: number; pts: number; reb: number; ast: number } {
   const stats = player.stats ?? [];
@@ -133,7 +132,9 @@ function countAllStarAppearances(player: NBAPlayer): number {
 }
 
 function countChampionships(player: NBAPlayer): number {
-  return (player.awards ?? []).filter(a => a.type === 'Champion').length;
+  return (player.awards ?? []).filter(a =>
+    a.type === 'Champion' || a.type === 'Won Championship' || a.type === 'NBA Champion'
+  ).length;
 }
 
 
@@ -149,47 +150,18 @@ function wasAllStarRecently(player: NBAPlayer, year: number): boolean {
  * Returns the probability [0, 1] that a player's upcoming season is their
  * farewell tour (i.e. very likely to be their last season).
  *
- * Tiers:
- *  - Legends (≥15 All-Star + age ≥37): automatic — LeBron, Kareem, Jordan never
- *    get forced out while still star-level, but this fires when the body starts to go.
- *    We use OVR ≥ 90 (2K scale) as "still All-Star level" — they skip farewell entirely.
- *  - High All-Star (≥10 All-Star) + age 37+: very likely
- *  - Moderate All-Star (≥5) + age 38+: likely
- *  - Regular players: ~70% of retireProb (slightly below, since we want farewell to
- *    be a reasonable warning, not a certainty for all aging fringe players)
+ * Uses the same continuous production, decline, health, market, achievement, and
+ * competitive-drive model as retirement; age only supplies Father Time exposure.
  *
  * @public — exported for PlayerBioMoraleTab retirement watch display.
  */
 export function farewellTourProb(age: number, rawOvr: number, allStarApps: number, recentAllStar = false): number {
-  if (age < 34) return 0;
-
-  // Elite raw OVR (still playing at star level): never a farewell — they just keep going.
-  if (rawOvr >= 75) return 0;
-
-  // If they just made the All-Star game they are not retiring — no age cap.
-  // A 42-year-old All-Star is still an active contributor; farewell tour fires only
-  // after they stop earning selections.
-  if (recentAllStar) return 0;
-
-  // Legend tier: ≥15 All-Star + significant age → guaranteed farewell
-  if (allStarApps >= 15 && age >= 41) return 1.0;
-  if (allStarApps >= 15 && age >= 39) return 0.70;
-
-  // High All-Star (10-14) + aging
-  if (allStarApps >= 10 && age >= 39) return 0.95;
-  if (allStarApps >= 10 && age >= 37) return 0.75;
-  if (allStarApps >= 10 && age >= 36) return 0.50;
-
-  // Moderate All-Star (5-9)
-  if (allStarApps >= 5 && age >= 40) return 0.90;
-  if (allStarApps >= 5 && age >= 38) return 0.65;
-  if (allStarApps >= 5 && age >= 36) return 0.35;
-
-  // Regular players — base retire prob * 0.7 + small All-Star bonus
-  const base = retireProb(age, rawOvr);
-  if (base <= 0) return 0;
-  const allStarBonus = Math.min(0.15, allStarApps * 0.02);
-  return Math.min(0.90, base * 0.70 + allStarBonus);
+  if (age < 32) return 0;
+  if (recentAllStar || rawOvr >= 75) return 0;
+  const fatherTimeExposure = 1 / (1 + Math.exp(-(age - 36) / 3.5));
+  const base = calculateRetirementProbability({ age, rawOvr, allStarApps, recentAllStar, year: 2026 });
+  const publicCareerWeight = Math.min(0.25, allStarApps * 0.018) * fatherTimeExposure;
+  return Math.min(0.9, Math.max(0, base * 0.62 + publicCareerWeight));
 }
 
 export interface FarewellRecord {
@@ -212,13 +184,15 @@ export interface FarewellRecord {
 export function runFarewellTourChecks(
   players: NBAPlayer[],
   year: number,
+  options: { excludedPlayerIds?: Set<string> } = {},
 ): { players: NBAPlayer[]; newFarewells: FarewellRecord[] } {
   const newFarewells: FarewellRecord[] = [];
 
-  const ACTIVE_STATUSES = new Set(['Active', 'Free Agent']);
+  const ACTIVE_STATUSES = new Set(['Active', 'Free Agent', 'FreeAgent']);
 
   const updated = players.map(p => {
     // Skip non-active, deceased, external, or already flagged
+    if (options.excludedPlayerIds?.has(p.internalId)) return p;
     if (!ACTIVE_STATUSES.has((p as any).status ?? 'Active')) return p;
     if ((p as any).diedYear) return p;
     if (p.tid === -2) return p;
@@ -226,11 +200,34 @@ export function runFarewellTourChecks(
 
     // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
     const age = p.born?.year ? (year - p.born.year) : (typeof p.age === 'number' && p.age > 0 ? p.age : 0);
-    if (age < 34) return p;
-
+    if (age < 32) return p;
     const allStarCount = countAllStarAppearances(p);
     const recentStar = wasAllStarRecently(p, year);
-    const prob = farewellTourProb(age, p.overallRating ?? 60, allStarCount, recentStar);
+    const regularRows = (p.stats ?? []).filter((row: any) => !row.playoffs);
+    const lastSeasonRows = regularRows.filter((row: any) => Number(row.season) === year);
+    const lastSeasonGP = lastSeasonRows.reduce((sum: number, row: any) => sum + Number(row.gp ?? 0), 0);
+    const lastSeasonPts = lastSeasonRows.reduce((sum: number, row: any) => sum + Number(row.pts ?? 0), 0);
+    const lastSeasonPPG = lastSeasonGP > 0 ? lastSeasonPts / lastSeasonGP : 0;
+    const previousOvr = [...((p as any).ovrHistory ?? [])]
+      .filter((entry: any) => Number(entry?.season) < year && Number.isFinite(Number(entry?.ovr)))
+      .sort((left: any, right: any) => Number(right.season) - Number(left.season))[0]?.ovr;
+    const prob = Math.min(0.9, calculateRetirementProbability({
+      age,
+      rawOvr: p.overallRating ?? 60,
+      previousOvr,
+      allStarApps: allStarCount,
+      recentAllStar: recentStar,
+      lastSeasonGP,
+      lastSeasonPPG,
+      lastTwoSeasonsGP: regularRows
+        .filter((row: any) => Number(row.season) >= year - 1)
+        .reduce((sum: number, row: any) => sum + Number(row.gp ?? 0), 0),
+      underContract: !!p.contract && Number(p.contract.exp) >= year + 1 && p.tid >= 0,
+      contractYearsRemaining: Math.max(0, Number(p.contract?.exp ?? year) - year),
+      injuryGames: Number(p.injury?.gamesRemaining ?? 0),
+      competitor: (p.moodTraits ?? []).includes('COMPETITOR'),
+      year,
+    }) * 0.75 + Math.min(0.18, allStarCount * 0.012));
     if (prob <= 0) return p;
 
     const roll = seededRandom(`farewell_${p.internalId}_${year}`);
@@ -300,12 +297,108 @@ export function runMortalityChecks(
 
 // ─── Public API ───────────────────────────────────────────────────────────────
 
+export interface RetirementDecisionEvaluation {
+  evaluated: boolean;
+  eligible: boolean;
+  skipReason?: 'inactive' | 'deceased' | 'prospect' | 'wnba' | 'excluded' | 'protected-market';
+  age: number;
+  ovr: number;
+  allStarAppearances: number;
+  probability: number;
+  roll: number;
+  willRetire: boolean;
+  clearFarewell: boolean;
+}
+
+export interface RetirementRunDiagnostics {
+  playersScanned: number;
+  evaluated: number;
+  eligible: number;
+  selected: number;
+  persisted: number;
+}
+
+export function evaluateRetirementDecision(
+  player: NBAPlayer,
+  year: number,
+  options: { protectedPlayerIds?: Set<string>; excludedPlayerIds?: Set<string> } = {},
+): RetirementDecisionEvaluation {
+  const empty = (
+    skipReason: RetirementDecisionEvaluation['skipReason'],
+  ): RetirementDecisionEvaluation => ({
+    evaluated: false,
+    eligible: false,
+    skipReason,
+    age: 0,
+    ovr: player.overallRating ?? 60,
+    allStarAppearances: 0,
+    probability: 0,
+    roll: 1,
+    willRetire: false,
+    clearFarewell: false,
+  });
+  const status = player.status ?? 'Active';
+  if (!new Set(['Active', 'Free Agent', 'FreeAgent']).has(status)) return empty('inactive');
+  if (player.diedYear) return empty('deceased');
+  if (player.tid === -2) return empty('prospect');
+  if (status === 'WNBA') return empty('wnba');
+  if (options.excludedPlayerIds?.has(player.internalId)) return empty('excluded');
+  if (options.protectedPlayerIds?.has(player.internalId)) return empty('protected-market');
+
+  const age = player.born?.year
+    ? year - player.born.year
+    : typeof player.age === 'number' && player.age > 0 ? player.age : 0;
+  const ovr = player.overallRating ?? 60;
+  const isFarewell = Boolean(player.farewellTour);
+  const allStarAppearances = countAllStarAppearances(player);
+  const recentStar = wasAllStarRecently(player, year);
+  const regularStats = (player.stats ?? []).filter(row => !row.playoffs);
+  const lastSeasonRows = regularStats.filter(row => Number(row.season) === year);
+  const lastSeasonGP = lastSeasonRows.reduce((sum, row) => sum + Number(row.gp ?? 0), 0);
+  const lastSeasonPts = lastSeasonRows.reduce((sum, row) => sum + Number(row.pts ?? 0), 0);
+  const lastSeasonPPG = lastSeasonGP > 0 ? lastSeasonPts / lastSeasonGP : 0;
+  const lastTwoSeasonsGP = regularStats
+    .filter(row => Number(row.season) >= year - 1)
+    .reduce((sum, row) => sum + Number(row.gp ?? 0), 0);
+  const previousOvr = [...(player.ovrHistory ?? [])]
+    .filter(entry => Number(entry?.season) < year && Number.isFinite(Number(entry?.ovr)))
+    .sort((left, right) => Number(right.season) - Number(left.season))[0]?.ovr;
+  const underContract = Boolean(player.contract && Number(player.contract.exp) >= year + 1 && player.tid >= 0);
+  const probability = calculateRetirementProbability({
+    age,
+    rawOvr: ovr,
+    previousOvr,
+    allStarApps: allStarAppearances,
+    recentAllStar: recentStar,
+    lastSeasonGP,
+    lastSeasonPPG,
+    lastTwoSeasonsGP,
+    underContract,
+    contractYearsRemaining: Math.max(0, Number(player.contract?.exp ?? year) - year),
+    injuryGames: Number(player.injury?.gamesRemaining ?? 0),
+    competitor: (player.moodTraits ?? []).includes('COMPETITOR'),
+    farewellTour: isFarewell,
+    year,
+  });
+  const productiveScorer = lastSeasonGP >= 45 && lastSeasonPPG >= 15;
+  const clearFarewell = isFarewell && (recentStar || productiveScorer || underContract);
+  const roll = probability > 0 ? seededRandom(`retire_${player.internalId}_${year}`) : 1;
+  return {
+    evaluated: true,
+    eligible: probability > 0,
+    age,
+    ovr,
+    allStarAppearances,
+    probability,
+    roll,
+    willRetire: probability > 0 && roll < probability,
+    clearFarewell,
+  };
+}
+
 /**
  * Run retirement checks for all active/FA players.
  * Call this inside applySeasonRollover AFTER age increments.
- *
- * Players with `farewellTour: true` are guaranteed to retire — no dice roll.
- * (They already survived one farewell season, that's their last.)
  *
  * @param players  The already-aged player list from rollover
  * @param year     The season that just ended (pre-increment)
@@ -314,125 +407,48 @@ export function runMortalityChecks(
 export function runRetirementChecks(
   players: NBAPlayer[],
   year: number,
-  options: { protectedPlayerIds?: Set<string> } = {},
-): { players: NBAPlayer[]; newRetirees: RetireeRecord[] } {
+  options: { protectedPlayerIds?: Set<string>; excludedPlayerIds?: Set<string> } = {},
+): { players: NBAPlayer[]; newRetirees: RetireeRecord[]; diagnostics: RetirementRunDiagnostics } {
   const newRetirees: RetireeRecord[] = [];
   const protectedPlayerIds = options.protectedPlayerIds ?? new Set<string>();
+  const excludedPlayerIds = options.excludedPlayerIds ?? new Set<string>();
 
-  // 'FreeAgent' (no space) is a legacy typo that leaked from the old trim path —
-  // include it as a defensive alias so stuck pre-migration vets still retire.
-  const ACTIVE_STATUSES = new Set(['Active', 'Free Agent', 'FreeAgent', 'Prospect']);
-  // External men's leagues are handled by retireExternalLeaguePlayers() in
-  // externalLeagueSustainer.ts — called BEFORE this function in seasonRollover.ts.
-  // Players arriving here are already NBA/FA; external leagues skip through below.
+  const evaluations = new Map<string, RetirementDecisionEvaluation>();
 
   const updated = players.map(p => {
-    const status = (p as any).status ?? 'Active';
-
-    // Skip: already retired, deceased, external leagues, draft prospects, WNBA
-    if (!ACTIVE_STATUSES.has(status)) return p;
-    if ((p as any).diedYear) return p;
-    if (p.tid === -2) return p; // unborn draft prospect
-    if ((p as any).status === 'WNBA') return p;
-    if (protectedPlayerIds.has(p.internalId)) {
-      console.log(`[Retirement] Skipping ${p.name} — active user FA bid market.`);
-      return p;
+    const evaluation = evaluateRetirementDecision(p, year, { protectedPlayerIds, excludedPlayerIds });
+    evaluations.set(p.internalId, evaluation);
+    if (evaluation.skipReason === 'protected-market') {
+      simDebug('development', () => `[Retirement] Skipping ${p.name} — active user FA bid market.`, {
+        playerId: p.internalId,
+        event: 'retirement-market-skip',
+      });
     }
-
-    // Prefer born.year calculation — player.age can be stale/wrong from BBGM load
-    const age = p.born?.year ? (year - p.born.year) : (typeof p.age === 'number' && p.age > 0 ? p.age : 0);
-    if (age < 34) return p; // too young to consider
-
-    const ovr = p.overallRating ?? 60;
-
-    // Hard force-retire: abandoned late-career FAs. Evidence from 5-year sim audit:
-    // Kyle Lowry (46), P.J. Tucker (47), Brook Lopez (44), etc. all stuck as FAs.
-    // Guard fires for FA (tid === -1) at 43+ with no recent games-played signal.
-    // Previously age >= 40 which caught Curry/LeBron-tier who are still All-Stars;
-    // bumped to 43 since All-Star immunity above handles the elite-late-career case.
-    if (p.tid === -1 && age >= 43) {
-      const lastTwoSeasonsGP = (p.stats ?? [])
-        .filter((s: any) => !s.playoffs && (s.season ?? 0) >= (year - 1))
-        .reduce((sum: number, s: any) => sum + (s.gp ?? 0), 0);
-      if (lastTwoSeasonsGP === 0) {
-        console.log(`[Retirement] ${p.name} (age ${age}, OVR ${ovr}) — FORCE RETIRE (FA, 40+, 0 GP in last 2 seasons)`);
-        const { gp, pts, reb, ast } = computeCareerTotals(p);
-        const allStars = countAllStarAppearances(p);
-        const champs = countChampionships(p);
-        newRetirees.push({
-          playerId: p.internalId, name: p.name, age, ovr,
-          allStarAppearances: allStars, championships: champs,
-          careerGP: gp, careerPts: pts, careerReb: reb, careerAst: ast,
-          isLegend: allStars >= 5,
-        });
-        return {
-          ...p,
-          status: 'Retired' as const,
-          tid: -1,
-          retiredYear: year,
-          farewellTour: undefined,
-        } as any;
-      }
+    if (!evaluation.evaluated || !evaluation.eligible) {
+      return evaluation.clearFarewell ? { ...p, farewellTour: undefined } as NBAPlayer : p;
     }
-
-    const isFarewell = !!(p as any).farewellTour;
-    const allStarCount = countAllStarAppearances(p);
-    const recentStar = wasAllStarRecently(p, year);
-    // Last season GP — feeds the "still productive" immunity in retireProb
-    const lastSeasonGP = (p.stats ?? [])
-      .filter((s: any) => !s.playoffs && s.season === year)
-      .reduce((sum: number, s: any) => sum + (s.gp ?? 0), 0);
-    const lastSeasonPts = (p.stats ?? [])
-      .filter((s: any) => !s.playoffs && s.season === year)
-      .reduce((sum: number, s: any) => sum + (s.pts ?? 0), 0);
-    const lastSeasonPPG = lastSeasonGP > 0 ? lastSeasonPts / lastSeasonGP : 0;
-    const productiveScorer = lastSeasonGP >= 45 && lastSeasonPPG >= 15;
-
-    // Farewell tour players retire guaranteed — they already had their goodbye season.
-    // Exceptions: OVR recovered to elite (≥75), still making All-Star games,
-    // or still scoring like a real rotation/starter piece.
-    // A player who made the All-Star game last season isn't done — cancel the flag and loop.
-    if (isFarewell && ovr < 75 && !recentStar && !productiveScorer) {
-      // Guaranteed retirement — no roll needed
-      console.log(
-        `[Retirement] ${p.name} (age ${age}, OVR ${ovr}) — FAREWELL TOUR → RETIRED`
-      );
-    } else {
-      // If farewell-flagged but still making All-Stars, clear the flag so it
-      // doesn't re-fire next rollover as a guaranteed retirement.
-      const clearFarewell = isFarewell && (recentStar || productiveScorer);
-
-      const prob = retireProb(age, ovr, allStarCount, recentStar, lastSeasonGP, lastSeasonPPG);
-      if (prob <= 0) {
-        return clearFarewell ? { ...p, farewellTour: undefined } as any : p;
-      }
-      const roll = seededRandom(`retire_${p.internalId}_${year}`);
-      if (age >= 34) {
-        const survived = roll >= prob;
-        console.log(
-          `[Retirement] ${p.name} (age ${age}, OVR ${ovr}) — prob: ${(prob * 100).toFixed(1)}%, roll: ${roll.toFixed(4)} → ${survived ? 'SURVIVED' : 'RETIRED'}`
-        );
-      }
-      if (roll >= prob) return clearFarewell ? { ...p, farewellTour: undefined } as any : p;
-    }
+    const survived = !evaluation.willRetire;
+    simDebug('development', () => (
+      `[Retirement] ${p.name} (age ${evaluation.age}, OVR ${evaluation.ovr}) — prob: ${(evaluation.probability * 100).toFixed(1)}%, roll: ${evaluation.roll.toFixed(4)} → ${survived ? 'SURVIVED' : 'RETIRED'}`
+    ), { playerId: p.internalId, event: 'retirement-roll' });
+    if (survived) return evaluation.clearFarewell ? { ...p, farewellTour: undefined } as NBAPlayer : p;
 
     // Retiring!
-     // Retiring!
     const { gp, pts, reb, ast } = computeCareerTotals(p);
     const champCount = countChampionships(p);
 
     newRetirees.push({
       playerId:           p.internalId,
       name:               p.name,
-      age,
-      ovr,
-      allStarAppearances: allStarCount,
+      age: evaluation.age,
+      ovr: evaluation.ovr,
+      allStarAppearances: evaluation.allStarAppearances,
       championships:      champCount,
       careerGP:           gp,
       careerPts:          pts,
       careerReb:          reb,
       careerAst:          ast,
-      isLegend:           allStarCount >= 5,
+      isLegend:           evaluation.allStarAppearances >= 5,
     });
 
     return {
@@ -442,18 +458,30 @@ export function runRetirementChecks(
       retiredYear:  year,
       farewellTour: undefined,  // clean up flag
       contract:     undefined,
-    } as any as NBAPlayer;
+      hasBirdRights: undefined,
+      birdRightsTeamId: undefined,
+      birdRightsSeason: undefined,
+      declinedTeamOptionByTid: undefined,
+      declinedTeamOptionSeasonYear: undefined,
+      declinedTeamOptionSalaryUSD: undefined,
+      offseasonDecisionTeamId: undefined,
+      offseasonDecisionSeason: undefined,
+      twoWay: undefined,
+      nonGuaranteed: false,
+      gLeagueAssigned: false,
+    } as NBAPlayer;
   });
 
-  // Summary log for debugging
-  const checked34Plus = players.filter(p => {
-    const ACTIVE = new Set(['Active', 'Free Agent', 'Prospect']);
-    if (!ACTIVE.has((p as any).status ?? 'Active')) return false;
-    if ((p as any).diedYear || p.tid === -2 || (p as any).status === 'WNBA') return false;
-    const a = p.born?.year ? (year - p.born.year) : (typeof p.age === 'number' ? p.age : 0);
-    return a >= 34;
-  }).length;
-  console.log(`[Retirement] Checked ${checked34Plus} players age 34+, ${newRetirees.length} retired, ${checked34Plus - newRetirees.length} survived`);
+  const diagnostics: RetirementRunDiagnostics = {
+    playersScanned: players.length,
+    evaluated: [...evaluations.values()].filter(evaluation => evaluation.evaluated).length,
+    eligible: [...evaluations.values()].filter(evaluation => evaluation.eligible).length,
+    selected: newRetirees.length,
+    persisted: newRetirees.length,
+  };
+  simDebug('development', () => (
+    `[Retirement] Evaluated ${diagnostics.evaluated} players, ${diagnostics.eligible} had a non-zero retirement probability, ${diagnostics.selected} retired.`
+  ), { event: 'retirement-summary', ...diagnostics });
 
-  return { players: updated, newRetirees };
+  return { players: updated, newRetirees, diagnostics };
 }

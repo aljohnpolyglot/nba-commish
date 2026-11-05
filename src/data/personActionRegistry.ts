@@ -13,11 +13,14 @@ import {
   Syringe,
   TrendingUp,
   Trophy,
+  UserPlus,
   UserX,
   Utensils,
   Zap,
 } from 'lucide-react';
 import type { PersonActionDef } from './personActionCore';
+import { EXTERNAL_LEAGUE_STATUSES } from '../constants';
+import type { NBAPlayer } from '../types';
 import {
   ACTIVE_NBA_ONLY,
   ALL_STAFF,
@@ -29,19 +32,32 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
   {
     id: 'view_bio',
     title: 'View Bio',
-    description: 'View detailed scouting report and bio.',
+    description: 'Open this person’s biography and career history.',
     icon: Eye,
     color: 'bg-blue-500',
     hover: 'hover:bg-blue-600',
     eligibility: {
       allowProspects: true,
-      staffTypes: ['coach', 'referee'],
+      staffTypes: ['gm', 'coach', 'referee', 'league_office'],
+    },
+  },
+  {
+    id: 'retire_now',
+    title: 'Retire Now',
+    description: 'End this coach’s active staff career immediately.',
+    icon: UserX,
+    color: 'bg-amber-600',
+    hover: 'hover:bg-amber-700',
+    eligibility: {
+      staffOnly: true,
+      includesStaff: true,
+      staffTypes: ['gm', 'coach', 'referee', 'league_office'],
     },
   },
   {
     id: 'view_scouting',
     title: 'View Scouting',
-    description: 'Open the draft scouting report for this prospect.',
+    description: 'Open the separate draft scouting report for this prospect.',
     icon: Eye,
     color: 'bg-indigo-500',
     hover: 'hover:bg-indigo-600',
@@ -52,13 +68,24 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
   {
     id: 'view_ratings',
     title: 'View Ratings',
-    description: 'View and edit attribute ratings.',
+    description: 'Open this person’s professional attribute ratings.',
     icon: BarChart2,
     color: 'bg-violet-500',
     hover: 'hover:bg-violet-600',
     eligibility: {
-      playerStatuses: ['Active', 'Free Agent', 'WNBA', 'Euroleague', 'PBA', 'B-League', 'G-League', 'Endesa', 'China CBA', 'NBL Australia', 'Retired'],
-      staffTypes: ['coach'],
+      playerStatuses: ['Active', 'Free Agent', ...(EXTERNAL_LEAGUE_STATUSES as readonly NonNullable<NBAPlayer['status']>[]), 'Retired'],
+      staffTypes: ['gm', 'coach', 'referee', 'league_office'],
+    },
+  },
+  {
+    id: 'contact',
+    title: 'Message Player',
+    description: 'Open a private conversation with this player.',
+    icon: MessageSquare,
+    color: 'bg-indigo-500',
+    hover: 'hover:bg-indigo-600',
+    eligibility: {
+      playerStatuses: PERSONAL_STATUSES,
     },
   },
   {
@@ -68,6 +95,17 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     icon: ArrowLeftRight,
     color: 'bg-sky-500',
     hover: 'hover:bg-sky-600',
+    eligibility: {
+      staffTypes: ['coach'],
+    },
+  },
+  {
+    id: 'sign_staff',
+    title: 'Sign Staff',
+    description: 'Open contract talks for this position.',
+    icon: UserPlus,
+    color: 'bg-emerald-500',
+    hover: 'hover:bg-emerald-600',
     eligibility: {
       staffTypes: ['coach'],
     },
@@ -92,35 +130,6 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     hover: 'hover:bg-emerald-600',
     eligibility: {
       staffTypes: ['coach'],
-    },
-  },
-  {
-    id: 'contact',
-    title: 'Direct Message',
-    description: 'Send a private message to this person.',
-    icon: MessageSquare,
-    color: 'bg-indigo-500',
-    hover: 'hover:bg-indigo-600',
-    eligibility: {
-      playerStatuses: PERSONAL_STATUSES,
-      includesStaff: true,
-      includesLeagueOffice: true,
-      includesRefs: true,
-      staffTypes: ALL_STAFF,
-    },
-  },
-  {
-    id: 'bribe',
-    title: 'Bribe',
-    description: 'Offer money for favorable actions.',
-    icon: HandCoins,
-    color: 'bg-emerald-500',
-    hover: 'hover:bg-emerald-600',
-    eligibility: {
-      playerStatuses: PERSONAL_STATUSES,
-      includesStaff: true,
-      includesRefs: true,
-      staffTypes: ALL_STAFF,
     },
   },
   {
@@ -156,7 +165,7 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
   {
     id: 'give_money',
     title: 'Disburse Funds',
-    description: 'Give money for any reason — bonus, gift, or bribe.',
+    description: 'Issue a bonus, gift, or approved payment.',
     icon: HandCoins,
     color: 'bg-emerald-500',
     hover: 'hover:bg-emerald-600',
@@ -217,6 +226,7 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     eligibility: {
       requireActiveNBA: true,
       includesStaff: true,
+      staffTypes: STAFF_NO_OWNER,
     },
   },
   {
@@ -243,12 +253,13 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
       staffOnly: true,
       includesStaff: true,
       includesRefs: true,
-      staffTypes: ['gm', 'owner', 'coach'],
+      includesLeagueOffice: true,
+      staffTypes: ALL_STAFF,
     },
   },
   {
     id: 'endorse_hof',
-    title: 'Endorse for HOF',
+    title: 'Endorse Hall of Fame',
     description: 'Nominate this retired player for the Hall of Fame.',
     icon: Trophy,
     color: 'bg-amber-500',
@@ -280,17 +291,10 @@ export const PERSON_ACTION_DEFS: PersonActionDef[] = [
     eligibility: {
       requireActiveNBA: true,
       excludeInjured: true,
-    },
-  },
-  {
-    id: 'leak_scandal',
-    title: 'Leak Scandal',
-    description: 'Anonymously leak damaging information.',
-    icon: Eye,
-    color: 'bg-rose-500',
-    hover: 'hover:bg-rose-600',
-    eligibility: {
-      requireActiveNBA: true,
+      includesStaff: true,
+      includesRefs: true,
+      includesLeagueOffice: true,
+      staffTypes: ALL_STAFF,
     },
   },
   {
